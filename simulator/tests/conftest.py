@@ -20,3 +20,7 @@ def ctx():
 @pytest.fixture(scope="session")
 def cal(ctx):
     return ctx.cal
+
+
+def pytest_configure(config):
+    config.addinivalue_line("markers", "slow: regenerates a committed artefact from scratch (about 10 s); runs in `make test`")
