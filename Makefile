@@ -1,4 +1,4 @@
-.PHONY: check docs-check tracker-lint test-security test-phi-logs rbac-matrix test-tools test-load load-check up down logs test test-db test-db-create test-db-reset test-chaos synthea demo-seed demo-seed-clean evaluate simulate evaluate-check reset web-install web-dev web-build web-test web-e2e test-e2e review-packs review-packs-check test-review-packs
+.PHONY: check docs-check tracker-lint test-security test-phi-logs rbac-matrix test-offline test-tools test-load load-check up down logs test test-db test-db-create test-db-reset test-chaos synthea demo-seed demo-seed-clean evaluate simulate evaluate-check reset web-install web-dev web-build web-test web-e2e test-e2e review-packs review-packs-check test-review-packs
 
 up:
 	docker compose up -d --build
@@ -173,6 +173,11 @@ rbac-matrix:
 # stack, or `make reset` afterwards. Not part of `make check`.
 test-phi-logs:
 	PYTHONPATH=api $(PY) tools/check/phi_scan.py live
+
+# T-F14: the demo flow with the api, HAPI and Postgres on a compose network that has no route out (docker-compose.offline.yml),
+# LLM_NETWORK_ENABLED=false, in its own compose project and volumes; also proves the block from inside the containers.
+test-offline:
+	PYTHONPATH=api $(PY) tools/check/offline_check.py
 
 # Cross-cutting tests in tests/ (scanner, linters, load harness). PYTHONPATH=api makes a git worktree
 # test its own api/ rather than the checkout the venv was installed from.

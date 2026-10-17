@@ -1,0 +1,48 @@
+# Offline overlay (F10, T-F14): `docker compose -f docker-compose.yml -f docker-compose.offline.yml ...`, driven by
+# `make test-offline` (tools/check/offline_check.py), which gives it its own compose project and volumes.
+#
+# The api, HAPI, Postgres, scheduler and watchdog are attached to ONE network, `offline`, declared `internal: true`:
+# Docker gives such a network no gateway, so a container on it can reach its peers by name and nothing else (no DNS
+# for the outside, no route). No iptables, no host firewall. Docker publishes no host ports for a container that is
+# only on an internal network, so the only door is `edge`, a 40-line TCP forwarder (tools/check/tcp_forward.py) on both
+# networks that publishes the API and FHIR ports and forwards them to the containers. `edge` runs no project code; it
+# exists so that the host can talk to the stack.
+#
+# LLM_NETWORK_ENABLED=false is also set (as it is by default) so the application itself never tries; the block proves
+# that nothing else does either. LLM_PROVIDER defaults to the template provider; OFFLINE_LLM_PROVIDER=azure_openai
+# starts the api with a model provider and no network, to show the fallback.
+services:
+  postgres:
+    ports: !reset []
+    networks: !override [offline]
+  fhir:
+    ports: !reset []
+    networks: !override [offline]
+  api:
+    ports: !reset []
+    networks: !override [offline]
+    environment:
+      LLM_NETWORK_ENABLED: "false"
+      LLM_PROVIDER: ${OFFLINE_LLM_PROVIDER:-template}
+      LLM_CACHE_MODE: replay
+  scheduler:
+    networks: !override [offline]
+  watchdog:
+    networks: !override [offline]
+  edge:
+    image: python:3.12-slim
+    command: ["python", "-u", "/forward.py", "8000:api:8000", "8080:fhir:8080"]
+    volumes:
+      - ./tools/check/tcp_forward.py:/forward.py:ro
+    ports:
+      - "${API_PORT:-8000}:8000"
+      - "${FHIR_PORT:-8080}:8080"
+    depends_on:
+      api:
+        condition: service_healthy
+    networks: [offline, edge]
+
+networks:
+  offline:
+    internal: true
+  edge: {}
