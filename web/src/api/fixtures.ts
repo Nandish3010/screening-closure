@@ -117,7 +117,7 @@ add(11, 0.05, 80, [
 add(12, 0.9, 4, [["acknowledge", 3, "lab:Central Lab"], ["accept_ownership", 0, "coordinator:Maryam Al Suwaidi", SARA]]);
 
 export function seedEvents(): Record<string, CaseEvent[]> {
-  return Object.fromEntries(defs.map((d) => [d.id, d.events]));
+  return structuredClone(Object.fromEntries(defs.map((d) => [d.id, d.events])));
 }
 
 export const SEED_METRICS: Omit<ClosureMetrics, "sim_time"> = {

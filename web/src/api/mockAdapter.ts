@@ -65,7 +65,7 @@ export function createMockAdapter(storage: Pick<Storage, "getItem" | "setItem" |
   const detail = (db: MockDb, id: string): CaseDetail => {
     const evs = must(db, id);
     const s = summarise(id, evs, SIM_NOW, FIXTURE_RISK[id] ?? 0.2);
-    return { case_id: id, state: s.state, events: evs, owner: s.owner, sla_due_at: s.sla_due_at, overdue_days: s.overdue_days, risk_score: s.risk_score };
+    return { case_id: id, state: s.state, events: structuredClone(evs), owner: s.owner, sla_due_at: s.sla_due_at, overdue_days: s.overdue_days, risk_score: s.risk_score };
   };
   function append(db: MockDb, id: string, type: string, actor: string, payload: Record<string, unknown>, eventId?: string) {
     const evs = must(db, id);
