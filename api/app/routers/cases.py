@@ -152,8 +152,8 @@ def list_cases(
     identity: Identity = Depends(require_identity),
 ) -> list[dict]:
     """The worklist (A9): one row per case with the fields the web needs, in a stable order
-    (genesis time, then case id). Filters: `state`, `owner` (an actor, a user id or a display
-    name), `overdue`, `provider`, `flagged` (open watchdog flag). A patient sees only their own
+    (genesis time, then case id). Filters: `state`, `owner` (the opaque actor `role:user_id` or its
+    bare user id, never a display name: F8-1), `overdue`, `provider`, `flagged` (open watchdog flag). A patient sees only their own
     cases; everyone else sees all. `risk_score` (D9) is the modelled probability of loss to follow-up,
     for ordering only: the rows come back in the same order with or without it, and a patient's rows
     carry null."""

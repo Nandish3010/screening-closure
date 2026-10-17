@@ -158,7 +158,10 @@ def test_t_a27_every_filter_equals_a_brute_force_filter_over_the_cases(backend):
     for ow in owners:
         assert got(owner=ow) == expect(owner=ow), ow
         assert got(owner=ow.split(":", 1)[1]) == expect(owner=ow)  # by user id
-    assert got(owner="rr pco 0") == expect(owner=actor_of("primary_care_owner", "rr pco 0"))  # by display name
+    # F8-1: a display name never matches (it would put a staff member's name in the URL and the access log)
+    assert got(owner="rr pco 0") == []
+    assert got(owner="rr pco 0".upper()) == [] and got(owner="primary_care_owner:rr pco 0") == []
+    assert got(owner="") == expect()  # an empty filter is no filter, as before
     for pv in providers:
         assert got(provider=pv) == expect(provider=pv), pv
     assert got(provider="nowhere") == []

@@ -80,8 +80,10 @@ def matches(row: dict, *, owner=None, overdue=None, provider=None, flagged=None)
         o = row["owner"]
         if o is None:
             return False
+        # F8-1: opaque identifiers only (the actor `role:user_id`, or its bare user id), never the display
+        # name: a name in the query string would reach the access log, and a name is not an identity.
         _, user_id = users.split_actor(o["actor"])
-        if owner not in (o["actor"], user_id, o["display_name"]):
+        if owner not in (o["actor"], user_id):
             return False
     if overdue is not None and row["overdue"] is not overdue:
         return False

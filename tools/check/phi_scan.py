@@ -119,10 +119,8 @@ QUERY_REVIEW: dict[tuple[str, str, str], tuple[str, str]] = {
     ("GET", "/cases", "flagged"): ("bool", "true or false"),
     ("GET", "/cases", "provider"): ("opaque", "a provider (organisation) key such as `endo-1`, not a person"),
     ("GET", "/cases", "owner"): (
-        "gap",
-        "F8-1: matches the owner's actor, opaque user id OR display name (api/app/readmodel.py `matches`). The web sends "
-        "the opaque actor. A caller that sends a display name puts a staff member's name in the URL and so in the access log. "
-        "Not patient data; fix by accepting only the actor or user id.",
+        "opaque",
+        "the owner's actor (`role:user_id`) or bare user id; a display name never matches (F8-1, fixed in api/app/readmodel.py `matches`)",
     ),
     ("GET", "/alerts", "active"): ("bool", "true or false"),
 }
@@ -245,7 +243,10 @@ class Walk:
         self.call("POST", f"/cases/{case_id}/events", "coord",
                   {"type": "contact_patient", "payload": {"free_text": FREE_TEXT}, "actor": f"coordinator:{MARKER}"}, expect=422)
         self.call("POST", "/cases", "coord", {"patient_ref": f"{MARKER} {PHONE_DIGITS} {EMAIL}"}, expect=422)
-        self.call("POST", f"/drafts/{draft['draft_id']}/reject", "pco", {"reason": FREE_TEXT}, expect=409)
+        # A16: the reject reason is a fixed taxonomy, so marker free text is a 422 before anything runs ...
+        self.call("POST", f"/drafts/{draft['draft_id']}/reject", "pco", {"reason": FREE_TEXT}, expect=422)
+        self.call("POST", f"/drafts/{draft['draft_id']}/reject", "pco",
+                  {"reason": "other_with_note", "note": FREE_TEXT}, expect=409)  # ... and a note on an approved draft is a 409
         self.call("POST", "/auth/dev-login", None, {"role": "lab", "name": f"{MARKER}: {EMAIL}"}, expect=422)
         # time passes: the scheduler sweeps and the watchdog scans with the case in the database
         if self.advance_days:

@@ -74,8 +74,10 @@ def test_every_path_parameter_is_a_uuid_and_every_query_parameter_is_reviewed():
     assert {(r[0], r[1], r[3]) for r in rows if r[2] == "query"} == set(ps.QUERY_REVIEW)
 
 
-def test_the_owner_filter_is_the_one_documented_gap():
-    assert ps.GAP_PARAMS == {("GET", "/cases", "owner")}
+def test_the_owner_filter_matches_opaque_ids_only_and_there_are_no_documented_gaps():
+    """F8-1 (fixed): ?owner= was reviewed as a gap because a display name matched; it is now opaque only."""
+    assert ps.GAP_PARAMS == set()
+    assert ps.QUERY_REVIEW[("GET", "/cases", "owner")][0] == "opaque"
 
 
 def _spec(**params):
