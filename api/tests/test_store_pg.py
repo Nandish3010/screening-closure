@@ -264,3 +264,10 @@ def test_migration_runner_is_idempotent(pool):
     assert [r[0] for r in rows] == versions
     assert "001_events.sql" in versions
     assert len(rows) == len(set(versions))
+
+
+def test_runs_against_the_test_database(pool):
+    """T-F2: the session is pointed at a database marked as a test database, not the dev one."""
+    with pool.connection() as conn:
+        name = conn.execute("SELECT current_database()").fetchone()[0]
+    assert name.endswith("_test"), name

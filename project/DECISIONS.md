@@ -189,3 +189,18 @@ Architecture decision records, one per decision. Add new entries at the end with
 - "Who was told, when, and who took it" is answered from the timeline alone: `escalate` rows, then `escalation_accepted` with its actor.
 - A rung accepted by the wrong person is refused by the engine (409), not just hidden in the UI.
 - The notification text for a rung (A7) hangs off the `escalate` event; the event names here are what Cut C and the decision matrix (E5) should use.
+
+## ADR-015: Integration tests use their own database, `closure_test`
+
+**Context.** `make test-db` ran against the dev database. Every integration test creates cases and events that nothing can delete (the log is append-only by trigger), so after a few dozen runs the dev database held about 1,200 test cases next to the seeded cohort, and the demo worklist, the sweep and the metrics all saw them.
+
+**Decision.**
+- The compose postgres holds a second database, `closure_test`, owned by the same role. A fresh volume gets it from `docker/postgres-init/10-create-test-db.sh` (mounted into `docker-entrypoint-initdb.d`); `make test-db` creates it with the same SQL if it is missing, which covers volumes made before this change. One server, two databases: no extra container, and HAPI keeps using `closure`.
+- `make test-db` sets `DATABASE_URL=postgresql://closure:closure_dev_password@localhost:5433/closure_test` (override with `TEST_DATABASE_URL`). `make test-db-reset` drops and recreates it, empty; the test session migrates it again.
+- The guard lives in `api/tests/conftest.py` (`pytest_collection_finish`): if any selected test is marked `integration` and `DATABASE_URL` is set, the database name must end in `_test`, otherwise the session aborts with exit code 3 and a message naming the database and the fix. The rule is "marked as a test database" rather than "not named closure", so a typo or a staging URL fails closed. A session-scoped fixture runs the migrations on the test database.
+- `make reset` wipes the dev stack, including the polluted test cases and the cohort; `make demo-seed` rebuilds the cohort. The dev database now holds only the seeded cohort.
+
+**Consequences.**
+- T-F2 is checked by a unit test of the guard, a real pytest subprocess pointed at the dev URL that must abort, an integration test asserting `current_database()` ends in `_test`, and a before/after row count of the dev database around `make test-db` (unchanged).
+- The unit suite (`make test`) is unaffected; with `DATABASE_URL` unset nothing here runs.
+- Running `pytest -m integration` by hand with the dev URL now fails on purpose.
