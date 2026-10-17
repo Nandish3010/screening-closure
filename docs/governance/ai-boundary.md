@@ -9,7 +9,7 @@ Where a language model may be used in this system, where it may not, how its out
 - Draft one patient message (purpose, channel and language chosen by a person or by the pathway), as text.
 - Nothing else. There is no model call anywhere in the closure engine, the scheduler, the escalation ladder, the watchdog or the closure check.
 
-A draft is only a proposal. It is shown to the case owner, who approves it or rejects it. Only after approval does the notification mock "send" it. The prompt, the draft, the provider and model, the approver and the timestamps are stored as Provenance (D4, D5).
+A draft is only a proposal. It is shown to the case owner, who approves it or rejects it. Only after approval does the notification mock "send" it. The exact prompt, the draft, the provider and model, the requester, the approver and the timestamps are stored as Provenance (D4, D5): see section 7.
 
 The model sees the minimum it needs: the care owner's name and role, the next step in plain words, an appointment date if there is one, and the pathway name. It is never given the patient's name, contact details, identifiers or clinical history. The only clinical fact a message may state is that the screening test found blood.
 
@@ -33,8 +33,37 @@ This is structural, not a policy: the rules above hold even if the model, or a p
 | Value | Behaviour |
 |---|---|
 | `template` | Deterministic, offline. Fills the reviewed template for the purpose, channel and language. Used as the default and as the fallback. |
-| `azure_openai`, `jais` | Registered names. Until the adapters (D7) are built they resolve to a stub that raises `ProviderUnavailable`, so a draft falls back to the template. Tests and the default configuration never call a real endpoint. |
+| `azure_openai`, `jais` | HTTP adapters (`api/app/ai/adapters.py`) wrapped by the output cache (`api/app/ai/cache.py`). Network calls are off by default (`LLM_NETWORK_ENABLED=false`). Tests and the default configuration never call a real endpoint. |
 | anything else | Startup fails with a clear error (`UnknownProvider`). |
+
+**Switches and keys.** Environment variables only. Real values never go in the repository, and these keys are deliberately not in `.env.example`.
+
+| Variable | Meaning | Default |
+|---|---|---|
+| `LLM_PROVIDER` | `template`, `azure_openai` or `jais` | `template` |
+| `LLM_NETWORK_ENABLED` | `true` allows outbound calls to the model endpoint. Anything else keeps the network off: the adapter raises `ProviderUnavailable` before building a request. | `false` |
+| `LLM_CACHE_MODE` | `replay`, `record` or `off` (section 3a) | `replay` |
+| `LLM_CACHE_DIR` | Cache directory | `api/app/ai/cache/` |
+| `LLM_TIMEOUT_SECONDS` | Per-request timeout, 0 to 120 | `10` |
+| `AZURE_OPENAI_ENDPOINT`, `AZURE_OPENAI_API_KEY`, `AZURE_OPENAI_DEPLOYMENT` | Required for `azure_openai`. Request goes to `<endpoint>/openai/deployments/<deployment>/chat/completions` with the key in the `api-key` header. | none |
+| `AZURE_OPENAI_API_VERSION` | Optional API version | `2024-06-01` |
+| `JAIS_ENDPOINT`, `JAIS_API_KEY`, `JAIS_MODEL` | Required for `jais`. The endpoint is the full URL of an OpenAI-compatible chat completions API; the key is sent as a bearer token. The hosting and API shape are an assumption to confirm with the host. | none |
+
+Adapter rules: the endpoint must be `https` (plain `http` only for `localhost`); the key is never logged or put in an error message; temperature 0; a timeout, connection error, non-200 status, malformed body or cut-off output is a failure that becomes a template draft. The request carries a fixed system prompt and the user prompt built from the request (section 7) and nothing else: no patient data.
+
+**Prompt.** The system prompt forbids diagnosis, naming any disease, medical advice and reassurance; asks for plain language at about grade 6; asks for the exact language requested; tells the model to use the care owner name, next step and appointment date word for word; and asks for the message text only. The validator in section 4 still runs on whatever comes back.
+
+### 3a. Output cache (record and replay)
+
+Model providers are wrapped in a cache keyed by the prompt hash, so the demo runs offline and repeats exactly.
+
+| `LLM_CACHE_MODE` | Behaviour |
+|---|---|
+| `replay` (default) | Never touches the network. A recorded output for the prompt is used. With none, the template is used and the abstention reason is `cache_miss`. |
+| `record` | Calls the real provider (still needs `LLM_NETWORK_ENABLED=true`) and stores the output, even one the validator will reject, so a replay reproduces the same outcome. |
+| `off` | No cache. The provider is called every time. |
+
+Files are `api/app/ai/cache/<provider>/<prompt_hash>.json`, each holding the model id, the language, the text and the exact prompt. The directory is committed for the demo. It is empty until someone with credentials records it: `LLM_PROVIDER=azure_openai LLM_NETWORK_ENABLED=true python -m app.ai.cache record` (the care owner's name is part of the prompt, so record with the demo owner's name: `--owner-name`). The template provider needs no cache.
 
 ## 4. Output validation
 
@@ -66,7 +95,7 @@ The phrase lists and the Arabic text are pending clinician review (H1) and nativ
 3. Record the abstention (section 6).
 4. Never raise to the caller because of a provider problem. A draft is always produced.
 
-Abstention reasons: `provider_unavailable`, `provider_error:<ExceptionName>`, `invalid_result`, and `validation_failed:<rule>[,<rule>...]`.
+Abstention reasons: `provider_unavailable`, `cache_miss`, `provider_error:<ExceptionName>`, `invalid_result`, and `validation_failed:<rule>[,<rule>...]`.
 
 The template is the reviewed text the owner would otherwise write from. Every template for every purpose, channel and language is rendered and validated by the tests, so the fallback itself always passes the rules. When `LLM_PROVIDER=template` there is no model route, so there is nothing to abstain from and nothing is counted as an abstention.
 
@@ -80,4 +109,16 @@ The template is the reviewed text the owner would otherwise write from. Every te
 - An abstention is an attempt that ended in the template because the provider failed or its output was rejected. It is recorded with the purpose, channel, language, provider, reason and prompt hash.
 - Drafts produced by the `template` provider are attempts but not abstentions.
 
-It is reported overall and broken down by reason, by validation rule, by language and by channel (the fairness split in the evaluation). A high rate for one language or channel shows where the model is weaker, and the care owner still receives a usable draft either way. The in-memory `AbstentionLog` holds the records; the metrics endpoint and the evaluation read it (D11, T-D15).
+It is reported overall and broken down by reason, by validation rule, by language and by channel (the fairness split in the evaluation). A high rate for one language or channel shows where the model is weaker, and the care owner still receives a usable draft either way. The counts come from the stored drafts (below), not from process memory, so they survive a restart. The in-memory `AbstentionLog` still exists for code that drafts outside the API.
+
+**Where it is stored and read (D11).** Every `POST /cases/{id}/drafts` writes one `drafts` row. A row whose `abstention_reason` is set (with `abstained_at`, the simulation time) is an abstention. `GET /metrics/abstention` (coordinator and supervisor) returns `{attempts, abstentions, rate, by_reason, by_language, by_channel}`: `by_reason` counts abstentions by reason category (`validation_failed`, `provider_unavailable`, `provider_error`, `invalid_result`, `cache_miss`); the other two are the fairness split. `app.metrics_abstention.abstention_rate_hook` is the function the simulator's `AbstentionHook` calls: it runs one draft per case record, in the record's language and channel, through the configured provider and cache and returns the abstention share (0.0 for `template`, 1.0 for a model provider with an empty cache).
+
+## 7. Provenance
+
+Each draft is stored with what is needed to reproduce and audit it (`api/migrations/002_drafts.sql`):
+
+- `drafts`: draft id, case, purpose, channel, language, text, provider, model id, whether the template was used, abstention reason and time, prompt hash, who requested it (`created_by`), when (simulation time), and `approved_at` / `approved_by` (empty until D5).
+- `prompts`: the prompt hash with the exact system prompt and user prompt it covers. `prompt_hash = sha256(system_prompt + "\n---\n" + prompt_text)`, so an auditor recomputes the hash from the stored text and re-runs the same prompt.
+- The `message_drafted` event on the case carries the draft id, both texts (one is null for a single-language draft), the provider, `fallback_used` and the prompt hash, with the actor `model:<provider>`. It is an annotation: it changes no state.
+
+The database refuses to edit or delete a prompt, to delete a draft, and to change anything on a draft except filling `approved_at` and `approved_by` once. A draft is refused (HTTP 409) for a case whose outreach is frozen by a consent withdrawal, and for a closed case.

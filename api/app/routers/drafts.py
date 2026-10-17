@@ -1,4 +1,4 @@
-"""AI message drafts (D4).
+"""AI message drafts (D4) and the abstention metric (D11).
 
 The model drafts, a human approves (docs/governance/ai-boundary.md). This module holds the only
 route that calls a drafting provider. It never changes a case's state: it appends the
@@ -9,6 +9,7 @@ Routes (roles in `app.policy.ROUTE_POLICY`, registered below so a missing entry 
 
 * `POST /cases/{id}/drafts`  primary_care_owner, specialist_owner, coordinator, supervisor
 * `GET  /cases/{id}/drafts`  same roles
+* `GET  /metrics/abstention` coordinator, supervisor
 """
 
 from __future__ import annotations
@@ -20,7 +21,7 @@ from uuid import UUID, uuid4
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, ConfigDict
 
-from app import policy
+from app import metrics_abstention, policy
 from app.ai.draft_store import (
     DraftRecord,
     DraftStore,
@@ -58,11 +59,13 @@ store: DraftStore = InMemoryDraftStore()
 _pg: PostgresDraftStore | None = None
 
 DRAFT_ROLES = frozenset({policy.PCO, policy.SPEC, policy.COORD, policy.SUPER})
+METRICS_ROLES = frozenset({policy.COORD, policy.SUPER})
 
 # Fail closed: a route without an entry in ROUTE_POLICY is refused for everyone. Patients, the
 # lab and every automated actor (including `model:*`, which cannot authenticate) are not listed.
 policy.ROUTE_POLICY[("POST", "/cases/{case_id}/drafts")] = DRAFT_ROLES
 policy.ROUTE_POLICY[("GET", "/cases/{case_id}/drafts")] = DRAFT_ROLES
+policy.ROUTE_POLICY[("GET", "/metrics/abstention")] = METRICS_ROLES
 
 
 def draft_store() -> DraftStore:
@@ -272,3 +275,7 @@ def list_drafts(case_id: UUID) -> list[dict]:
         raise HTTPException(404, "case not found")
     return [_draft_json(d) for d in draft_store().list_for_case(case_id)]
 
+
+@router.get("/metrics/abstention")
+def abstention_metric() -> dict:
+    return metrics_abstention.summarise(draft_store().attempt_counts())
