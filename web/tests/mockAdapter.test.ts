@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { ApiError, type ApiClient } from "../src/api/contract";
 import { DEMO_OVERDUE_CASE_ID, DEMO_PATIENT_CASE_ID, SIM_NOW } from "../src/api/fixtures";
+import { ROLE_PROVIDERS } from "../src/api/identities";
 import { createMockAdapter } from "../src/api/mockAdapter";
 import { overdueDays } from "../src/lib/derive";
 
@@ -18,6 +19,7 @@ describe("mock adapter: reads", () => {
     expect(top.overdue).toBe(true);
     expect(overdueDays(top.due_at, SIM_NOW)).toBeGreaterThan(10);
     expect(top.owner).toBe("Dr. Layla Haddad");
+    expect(top.owner_actor).toBe("primary_care_owner:Dr. Layla Haddad");
     expect(typeof top.risk_score).toBe("number");
     expect(top.due_at).toBeTruthy();
     expect(top.escalation_level).toBe(0);
@@ -54,11 +56,16 @@ describe("mock adapter: reads", () => {
   it("404s an unknown case", async () => {
     await expect(api.getCase("nope")).rejects.toMatchObject({ status: 404 });
   });
-  it("builds a timeline with SLA breach and escalation items for an overdue case", async () => {
+  it("builds a timeline with derived SLA, escalation, bounce and watchdog items for the cases that have them", async () => {
     const tl = await api.getTimeline(DEMO_OVERDUE_CASE_ID);
     const kinds = new Set(tl.items.map((i) => i.kind));
-    expect(kinds).toContain("sla_breach");
+    expect(kinds).toContain("event");
+    expect(kinds).toContain("sla_started");
+    expect(kinds).toContain("sla_breached");
     expect(kinds).toContain("escalation");
+    expect(tl.items.every((i) => typeof i.kind === "string" && typeof i.at === "string")).toBe(true);
+    expect((await api.getTimeline(cid(15))).items.find((i) => i.kind === "bounce")).toMatchObject({ to_provider: "Marina Digestive Health", reason: "timeout" });
+    expect((await api.getTimeline(cid(13))).items.find((i) => i.kind === "watchdog")).toMatchObject({ reason: "idle", idle_days: 11 });
     expect(tl.sim_time).toBe(SIM_NOW);
     const ats = tl.items.map((i) => i.at);
     expect([...ats].sort()).toEqual(ats);
@@ -102,11 +109,14 @@ describe("mock adapter: writes mirror the engine", () => {
     expect(advanced.overdue).toBe(false);
     expect(advanced.escalation_level).toBe(0);
   });
-  it("first provider rejects a hand-off with a taxonomy reason, others accept", async () => {
-    const r = await api.postEvent(DEMO_PATIENT_CASE_ID, { type: "handoff_requested", actor: "coordinator:m", payload: { to_provider: "Al Noor Endoscopy Centre" } });
+  it("first provider rejects a hand-off with a taxonomy reason, others accept (and ownership moves only then)", async () => {
+    const r = await api.postEvent(DEMO_PATIENT_CASE_ID, { type: "handoff_requested", actor: "primary_care_owner:Sara Al Mansoori", payload: { to_provider: "Al Noor Endoscopy Centre" } });
     expect(r.events.at(-1)).toMatchObject({ type: "handoff_rejected", payload: { reason: "capacity" } });
-    const a = await api.postEvent(DEMO_PATIENT_CASE_ID, { type: "handoff_requested", actor: "coordinator:m", payload: { to_provider: "Corniche Gastro Unit" } });
+    expect(r).toMatchObject({ owner: "Sara Al Mansoori", pending_handoff: null, last_handoff: { outcome: "rejected", reason: "capacity", to_provider: "Al Noor Endoscopy Centre" } });
+    const a = await api.postEvent(DEMO_PATIENT_CASE_ID, { type: "handoff_requested", actor: "primary_care_owner:Sara Al Mansoori", payload: { to_provider: "Corniche Gastro Unit" } });
     expect(a.events.at(-1)?.type).toBe("handoff_accepted");
+    expect(a).toMatchObject({ owner: "Dr. Karim Nasser", owner_actor: "specialist_owner:Dr. Karim Nasser", provider: "Corniche Gastro Unit", pending_handoff: null });
+    expect(a.last_handoff).toMatchObject({ outcome: "accepted", to_provider: "Corniche Gastro Unit", by: "specialist_owner:Dr. Karim Nasser" });
   });
   it("rejects the old event names", async () => {
     for (const type of ["hand_off", "hand_off_accepted", "hand_off_rejected", "draft_generated", "draft_approved"]) {
@@ -129,22 +139,9 @@ describe("mock adapter: writes mirror the engine", () => {
     expect(reopened.state).toBe("reopened");
     expect(reopened.events.at(-1)).toMatchObject({ type: "reopen", payload: { reason: "new finding" } });
   });
-  it("login is a no-op for the mock", async () => {
-    await expect(api.login("clinician", "dr_ali")).resolves.toBeUndefined();
-  });
-  it("draft: generate then approve writes provenance events and the backend's message_sent", async () => {
-    const d = await api.requestDraft(DEMO_PATIENT_CASE_ID, "coordinator:m");
-    expect(d).toMatchObject({ provider: expect.any(String), fallback_used: expect.any(Boolean) });
-    expect(d.text_ar.length).toBeGreaterThan(5);
-    const ap = await api.approveDraft(d.draft_id, "Maryam");
-    expect(ap.approved_by).toBe("Maryam");
-    const types = (await api.getCase(DEMO_PATIENT_CASE_ID)).events.map((e) => e.type);
-    expect(types.slice(-3)).toEqual(["message_drafted", "message_approved", "message_sent"]);
-    const evs = (await api.getCase(DEMO_PATIENT_CASE_ID)).events;
-    expect(evs.at(-3)?.payload).toMatchObject({ draft_id: d.draft_id, provider: d.provider, fallback_used: d.fallback_used, text_en: d.text_en, text_ar: d.text_ar });
-    expect(evs.at(-2)?.payload).toEqual({ draft_id: d.draft_id });
-    expect(evs.at(-1)).toMatchObject({ actor: "system:sender", payload: { draft_id: d.draft_id } });
-    await expect(api.approveDraft("missing", "x")).rejects.toMatchObject({ status: 404 });
+  it("login records who is acting and the provider a clinician acts for; me() reports it", async () => {
+    await expect(api.login("clinician", "Dr. Huda Rahman", ROLE_PROVIDERS.clinician)).resolves.toBeUndefined();
+    expect(await api.me()).toMatchObject({ role: "clinician", name: "Dr. Huda Rahman", user_id: "primary_care_owner:Dr. Huda Rahman", provider: "Marina Digestive Health" });
   });
   it("persists to storage so a second adapter (another tab) sees the change", async () => {
     const store = new Map<string, string>();
@@ -155,5 +152,218 @@ describe("mock adapter: writes mirror the engine", () => {
     expect((await b.getCase(DEMO_PATIENT_CASE_ID)).events.at(-1)?.type).toBe("callback_requested");
     await a.resetDemo!();
     expect((await b.getCase(DEMO_PATIENT_CASE_ID)).events.some((e) => e.type === "callback_requested")).toBe(false);
+  });
+});
+
+const cid = (n: number) => `c${String(n).padStart(7, "0")}-0000-4000-8000-${String(n).padStart(12, "0")}`;
+const OWNER = "primary_care_owner:Dr. Layla Haddad";
+const request = { purpose: "result_notification", channel: "sms", language: "en" } as const;
+
+describe("mock adapter: drafts and the approval gate (D4, D5)", () => {
+  it("requesting a draft returns the D4 shape and writes a message_drafted event WITHOUT text", async () => {
+    await api.login("coordinator", "Maryam Al Suwaidi");
+    const d = await api.requestDraft(DEMO_PATIENT_CASE_ID, request);
+    expect(d).toMatchObject({ language: "en", provider: "template", fallback_used: false, abstention_reason: null, text_ar: null });
+    expect(d.text).toBe(d.text_en);
+    expect(d.prompt_hash).toMatch(/^[0-9a-f]{64}$/);
+    const ar = await api.requestDraft(DEMO_PATIENT_CASE_ID, { ...request, language: "ar" });
+    expect(ar).toMatchObject({ language: "ar", text_en: null });
+    expect(ar.text_ar).toMatch(/تنظير القولون/);
+    const evs = (await api.getCase(DEMO_PATIENT_CASE_ID)).events;
+    expect(evs.at(-2)).toMatchObject({ type: "message_drafted", actor: "model:template", payload: { draft_id: d.draft_id, provider: "template", fallback_used: false, prompt_hash: d.prompt_hash, language: "en" } });
+    expect(evs.at(-2)?.payload).not.toHaveProperty("text_en");
+    expect(evs.at(-2)?.payload).not.toHaveProperty("text_ar");
+    const listed = await api.listDrafts(DEMO_PATIENT_CASE_ID);
+    expect(listed.map((x) => x.draft_id)).toEqual([d.draft_id, ar.draft_id]);
+    expect(listed[0]).toMatchObject({ case_id: DEMO_PATIENT_CASE_ID, purpose: "result_notification", channel: "sms", text: d.text, approved_at: null, rejected_at: null });
+  });
+
+  it("lists the seeded drafts, including a fallback with an abstention reason", async () => {
+    const drafts = await api.listDrafts(cid(2));
+    expect(drafts[0]).toMatchObject({ draft_id: "d-seed-2", fallback_used: true, abstention_reason: "provider_unavailable", approved_at: null });
+  });
+
+  it("a coordinator may request but not approve or reject: 403, nothing written", async () => {
+    await api.login("coordinator", "Maryam Al Suwaidi");
+    const d = await api.requestDraft(DEMO_PATIENT_CASE_ID, request);
+    const before = (await api.getCase(DEMO_PATIENT_CASE_ID)).events.length;
+    await expect(api.approveDraft(d.draft_id)).rejects.toMatchObject({ status: 403 });
+    await expect(api.rejectDraft(d.draft_id, "no")).rejects.toMatchObject({ status: 403 });
+    expect((await api.getCase(DEMO_PATIENT_CASE_ID)).events).toHaveLength(before);
+  });
+
+  it("only the case's owner approves; another clinician gets 403 (owner scoping)", async () => {
+    await api.login("coordinator", "Maryam Al Suwaidi");
+    const d = await api.requestDraft(DEMO_OVERDUE_CASE_ID, request);
+    await api.login("clinician", "Dr. Huda Rahman", ROLE_PROVIDERS.clinician);
+    await expect(api.approveDraft(d.draft_id)).rejects.toMatchObject({ status: 403, message: expect.stringContaining("Dr. Layla Haddad") });
+  });
+
+  it("approve: no body, approved_by is the actor, message_approved then message_sent from system:notifier", async () => {
+    await api.login("owner", "Dr. Layla Haddad", ROLE_PROVIDERS.owner);
+    const d = await api.requestDraft(DEMO_OVERDUE_CASE_ID, request);
+    const ap = await api.approveDraft(d.draft_id);
+    expect(ap).toMatchObject({ draft_id: d.draft_id, approved_by: OWNER, sent: true, blocked_reason: null, notification_id: expect.any(String) });
+    const evs = (await api.getCase(DEMO_OVERDUE_CASE_ID)).events;
+    expect(evs.slice(-3).map((e) => e.type)).toEqual(["message_drafted", "message_approved", "message_sent"]);
+    expect(evs.at(-2)).toMatchObject({ actor: OWNER, payload: { draft_id: d.draft_id } });
+    expect(evs.at(-1)).toMatchObject({ actor: "system:notifier", payload: { draft_id: d.draft_id, channel: "sms", language: "en", purpose: "result_notification", notification_id: ap.notification_id } });
+    expect((await api.listDrafts(DEMO_OVERDUE_CASE_ID)).at(-1)).toMatchObject({ approved_by: OWNER, rejected_at: null });
+    await expect(api.approveDraft(d.draft_id)).rejects.toMatchObject({ status: 409 });
+    await expect(api.rejectDraft(d.draft_id, "late")).rejects.toMatchObject({ status: 409 });
+    await expect(api.approveDraft("missing")).rejects.toMatchObject({ status: 404 });
+  });
+
+  it("an approval whose channel the patient switched off stands but is blocked: sent false, reason consent, no message_sent", async () => {
+    await api.postEvent(DEMO_OVERDUE_CASE_ID, { type: "consent_updated", actor: "patient:x", payload: { channel_sms: false } });
+    await api.login("owner", "Dr. Layla Haddad", ROLE_PROVIDERS.owner);
+    const d = await api.requestDraft(DEMO_OVERDUE_CASE_ID, request);
+    const ap = await api.approveDraft(d.draft_id);
+    expect(ap).toMatchObject({ sent: false, blocked_reason: "consent", approved_by: OWNER });
+    const types = (await api.getCase(DEMO_OVERDUE_CASE_ID)).events.slice(-2).map((e) => e.type);
+    expect(types).toEqual(["message_drafted", "message_approved"]);
+  });
+
+  it("reject: reason required (422), recorded on the draft, no event, then 409 on a second decision", async () => {
+    await api.login("owner", "Dr. Layla Haddad", ROLE_PROVIDERS.owner);
+    const d = await api.requestDraft(DEMO_OVERDUE_CASE_ID, request);
+    const before = (await api.getCase(DEMO_OVERDUE_CASE_ID)).events.length;
+    await expect(api.rejectDraft(d.draft_id, "   ")).rejects.toMatchObject({ status: 422 });
+    const rej = await api.rejectDraft(d.draft_id, "Wrong tone");
+    expect(rej).toMatchObject({ draft_id: d.draft_id, rejected_by: OWNER, reason: "Wrong tone" });
+    expect((await api.getCase(DEMO_OVERDUE_CASE_ID)).events).toHaveLength(before);
+    expect((await api.listDrafts(DEMO_OVERDUE_CASE_ID)).at(-1)).toMatchObject({ rejected_by: OWNER, rejection_reason: "Wrong tone", approved_at: null });
+    await expect(api.approveDraft(d.draft_id)).rejects.toMatchObject({ status: 409 });
+  });
+
+  it("409 when outreach is frozen (consent withdrawn) or the case is closed, and for an appointment confirmation without a date", async () => {
+    await api.login("coordinator", "Maryam Al Suwaidi");
+    await expect(api.requestDraft(cid(14), request)).rejects.toMatchObject({ status: 409, message: expect.stringContaining("withdrawn consent") });
+    await expect(api.requestDraft(cid(11), request)).rejects.toMatchObject({ status: 409, message: expect.stringContaining("closed") });
+    await expect(api.requestDraft(cid(9), { ...request, purpose: "appointment_confirmation" })).rejects.toMatchObject({ status: 409, message: expect.stringContaining("appointment") });
+  });
+
+  it("a draft pending when consent is withdrawn can no longer be approved (409) but can be rejected", async () => {
+    await api.login("owner", "Dr. Layla Haddad", ROLE_PROVIDERS.owner);
+    const d = await api.requestDraft(DEMO_OVERDUE_CASE_ID, request);
+    await api.postEvent(DEMO_OVERDUE_CASE_ID, { type: "consent_updated", actor: "patient:x", payload: { withdrawn: true } });
+    await expect(api.approveDraft(d.draft_id)).rejects.toMatchObject({ status: 409 });
+    await expect(api.rejectDraft(d.draft_id, "consent withdrawn")).resolves.toMatchObject({ reason: "consent withdrawn" });
+  });
+});
+
+describe("mock adapter: consent (A6)", () => {
+  it("merges partial updates over the all-allowed defaults and keeps the history", async () => {
+    await api.postEvent(DEMO_PATIENT_CASE_ID, { type: "consent_updated", actor: "patient:x", payload: { channel_sms: false } });
+    const d = await api.postEvent(DEMO_PATIENT_CASE_ID, { type: "consent_updated", actor: "patient:x", payload: { share_with_specialist: false } });
+    expect(d.consent).toMatchObject({ channel_sms: false, channel_whatsapp: true, channel_phone: true, channel_letter: true, share_with_specialist: false, withdrawn: false, updated_by: "patient:x" });
+    expect(d.consent_history?.map((h) => h.changes)).toEqual([{ channel_sms: false }, { share_with_specialist: false }]);
+    expect(d.consent_frozen).toBe(false);
+  });
+  it("422 for an empty or non-boolean payload", async () => {
+    await expect(api.postEvent(DEMO_PATIENT_CASE_ID, { type: "consent_updated", actor: "patient:x", payload: {} })).rejects.toMatchObject({ status: 422 });
+    await expect(api.postEvent(DEMO_PATIENT_CASE_ID, { type: "consent_updated", actor: "patient:x", payload: { channel_sms: "no" } })).rejects.toMatchObject({ status: 422 });
+    await expect(api.postEvent(DEMO_PATIENT_CASE_ID, { type: "consent_updated", actor: "patient:x", payload: { channel: "sms" } })).rejects.toMatchObject({ status: 422 }); // the old shape
+  });
+  it("withdrawal freezes outreach (409 on contact, handoff, drafts), adds review_requested, and restoring clears it", async () => {
+    const w = await api.postEvent(cid(3), { type: "consent_updated", actor: "patient:x", payload: { withdrawn: true } });
+    expect(w).toMatchObject({ consent_frozen: true, review_reason: "consent_withdrawn" });
+    expect(w.events.at(-1)).toMatchObject({ type: "review_requested", actor: "system:consent", payload: { reason: "consent_withdrawn" } });
+    await expect(api.postEvent(cid(3), { type: "contact_patient", actor: "coordinator:m", payload: {} })).rejects.toMatchObject({ status: 409 });
+    await expect(api.postEvent(cid(3), { type: "handoff_requested", actor: "primary_care_owner:Omar Khalid", payload: { to_provider: "Corniche Gastro Unit" } })).rejects.toMatchObject({ status: 409 });
+    const r = await api.postEvent(cid(3), { type: "consent_updated", actor: "coordinator:m", payload: { withdrawn: false } });
+    expect(r).toMatchObject({ consent_frozen: false, review_reason: null });
+  });
+  it("review_requested, message_approved and message_sent cannot be posted by anyone", async () => {
+    for (const type of ["review_requested", "message_approved", "message_sent"]) {
+      await expect(api.postEvent(DEMO_PATIENT_CASE_ID, { type, actor: "coordinator:m", payload: { draft_id: "x" } })).rejects.toMatchObject({ status: 403 });
+    }
+  });
+});
+
+describe("mock adapter: referral handoff (A5) and owner scoping", () => {
+  it("shows a pending request and a bounced one on the read model", async () => {
+    const pending = await api.getCase(cid(16));
+    expect(pending.pending_handoff).toMatchObject({ to_provider: "Corniche Gastro Unit", requested_by: "primary_care_owner:Dr. Layla Haddad", from_owner: "primary_care_owner:Dr. Layla Haddad" });
+    expect(pending.owner).toBe("Dr. Layla Haddad");
+    const bounced = await api.getCase(cid(15));
+    expect(bounced.state).toBe("referral_rejected");
+    expect(bounced.pending_handoff).toBeNull();
+    expect(bounced.last_handoff).toMatchObject({ outcome: "rejected", reason: "timeout", bounced: true, to_provider: "Marina Digestive Health", by: "system:scheduler" });
+    expect(bounced.overdue).toBe(true); // reassign: 2 working days from the bounce
+    expect(bounced.due_at).toBeTruthy();
+  });
+  it("a clinician acts only on cases they own: 403 and nothing written", async () => {
+    const before = (await api.getCase(DEMO_OVERDUE_CASE_ID)).events.length;
+    await expect(api.postEvent(DEMO_OVERDUE_CASE_ID, { type: "clinician_review", actor: "primary_care_owner:Dr. Huda Rahman", payload: { signed_by: "x" } }))
+      .rejects.toMatchObject({ status: 403, message: expect.stringContaining("Dr. Layla Haddad") });
+    expect((await api.getCase(DEMO_OVERDUE_CASE_ID)).events).toHaveLength(before);
+  });
+  it("a non-owner clinician may request a handoff to their own provider, which then waits for acceptance", async () => {
+    await api.login("clinician", "Dr. Huda Rahman", "Marina Digestive Health");
+    const actor = "primary_care_owner:Dr. Huda Rahman";
+    await expect(api.postEvent(DEMO_OVERDUE_CASE_ID, { type: "handoff_requested", actor, payload: { to_provider: "Corniche Gastro Unit" } })).rejects.toMatchObject({ status: 403 });
+    const d = await api.postEvent(DEMO_OVERDUE_CASE_ID, { type: "handoff_requested", actor, payload: { to_provider: "Marina Digestive Health" } });
+    expect(d.pending_handoff).toMatchObject({ to_provider: "Marina Digestive Health", requested_by: actor, from_owner: OWNER });
+    expect(d.owner).toBe("Dr. Layla Haddad"); // ownership does not move on a request
+    await expect(api.postEvent(DEMO_OVERDUE_CASE_ID, { type: "handoff_requested", actor, payload: { to_provider: "Marina Digestive Health" } })).rejects.toMatchObject({ status: 409 });
+  });
+  it("the receiving provider's clinician accepts a pending request and becomes the owner", async () => {
+    await api.login("specialist", "Dr. Karim Nasser", "Corniche Gastro Unit");
+    const d = await api.postEvent(cid(16), { type: "handoff_accepted", actor: "specialist_owner:Dr. Karim Nasser", payload: {} });
+    expect(d).toMatchObject({ owner: "Dr. Karim Nasser", provider: "Corniche Gastro Unit", pending_handoff: null, last_handoff: { outcome: "accepted" } });
+  });
+  it("an answer needs a pending request, the requester cannot accept it, and the reason must be in the taxonomy", async () => {
+    await expect(api.postEvent(DEMO_PATIENT_CASE_ID, { type: "handoff_accepted", actor: "coordinator:m", payload: {} })).rejects.toMatchObject({ status: 409 });
+    await expect(api.postEvent(cid(16), { type: "handoff_accepted", actor: "primary_care_owner:Dr. Layla Haddad", payload: {} })).rejects.toMatchObject({ status: 409 });
+    await api.login("specialist", "Dr. Karim Nasser", "Corniche Gastro Unit");
+    const karim = "specialist_owner:Dr. Karim Nasser";
+    await expect(api.postEvent(cid(16), { type: "handoff_rejected", actor: karim, payload: { reason: "no idea" } })).rejects.toMatchObject({ status: 422 });
+    await expect(api.postEvent(cid(16), { type: "handoff_rejected", actor: karim, payload: { reason: "timeout" } })).rejects.toMatchObject({ status: 422 });
+    const declined = await api.postEvent(cid(16), { type: "handoff_rejected", actor: karim, payload: { reason: "wrong_service" } });
+    expect(declined).toMatchObject({ owner: "Dr. Layla Haddad", pending_handoff: null, last_handoff: { outcome: "rejected", reason: "wrong_service" } });
+  });
+  it("a bounced referral is re-routed by a coordinator with reassign, which moves it back to owner_accepted", async () => {
+    await expect(api.postEvent(cid(15), { type: "reassign", actor: "primary_care_owner:Dr. Layla Haddad", payload: { owner: "specialist_owner:Dr. Karim Nasser" } })).rejects.toMatchObject({ status: 403 });
+    const d = await api.postEvent(cid(15), { type: "reassign", actor: "coordinator:Maryam Al Suwaidi", payload: { owner: "specialist_owner:Dr. Karim Nasser" } });
+    expect(d).toMatchObject({ state: "owner_accepted", owner: "Dr. Karim Nasser", owner_actor: "specialist_owner:Dr. Karim Nasser" });
+  });
+});
+
+describe("mock adapter: worklist filters, alerts, clocks", () => {
+  it("flagged=true keeps only cases with an open watchdog flag; rows carry provider and pending_handoff", async () => {
+    const flagged = await api.listCases({ flagged: true });
+    expect(flagged.map((c) => c.case_id)).toEqual([cid(13)]);
+    expect(flagged[0].watchdog_flagged).toMatchObject({ reason: "idle", idle_days: 11 });
+    const all = await api.listCases();
+    expect(all.find((c) => c.case_id === cid(9))).toMatchObject({ provider: "Corniche Gastro Unit", owner: "Dr. Karim Nasser" });
+    expect(all.find((c) => c.case_id === cid(16))?.pending_handoff?.to_provider).toBe("Corniche Gastro Unit");
+    expect(all.find((c) => c.case_id === cid(5))).toMatchObject({ provider: null, pending_handoff: null, last_handoff: null });
+  });
+  it("GET /alerts: none at start; the scheduler-down alert can be raised and cleared", async () => {
+    expect(await api.listAlerts()).toEqual([]);
+    await api.setSchedulerDown!(true);
+    expect(await api.listAlerts()).toEqual([{ kind: "scheduler_down", since: expect.any(String), cleared_at: null }]);
+    await api.setSchedulerDown!(false);
+    expect((await api.listAlerts())[0].cleared_at).toBe(SIM_NOW);
+  });
+  it("the confirmatory clock starts at handoff_accepted when there was one (A13), other clocks at state entry", async () => {
+    const d9 = await api.getCase(cid(9)); // handoff accepted 20 days ago, booked 12 days ago
+    const tl = await api.getTimeline(cid(9));
+    const started = tl.items.find((i) => i.kind === "sla_started");
+    expect(started).toMatchObject({ sla: "complete_confirmatory" });
+    const accepted = d9.events.find((e) => e.type === "handoff_accepted")!;
+    expect(started?.at).toBe(accepted.at);
+    const t1 = (await api.getTimeline(DEMO_OVERDUE_CASE_ID)).items.find((i) => i.kind === "sla_started");
+    expect(t1).toMatchObject({ sla: "clinician_review" });
+  });
+  it("closed has no clock; clinician_reviewed has the 3-working-day close SLA; referral_rejected the 2-day reassign SLA", async () => {
+    expect((await api.getCase(cid(11))).due_at).toBeNull();
+    const reviewed = await api.getCase(cid(10));
+    expect(reviewed.state).toBe("clinician_reviewed");
+    expect(reviewed.due_at).toBeTruthy();
+    expect(reviewed.overdue).toBe(false);
+    expect((await api.getTimeline(cid(10))).items.find((i) => i.kind === "sla_started")).toMatchObject({ sla: "close" });
+    expect((await api.getTimeline(cid(15))).items.find((i) => i.kind === "sla_started")).toMatchObject({ sla: "reassign" });
   });
 });

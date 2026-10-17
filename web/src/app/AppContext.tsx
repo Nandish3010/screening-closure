@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import type { ApiClient, Me, Role } from "../api/contract";
-import { ROLES } from "../api/contract";
+import { OWNER_SCOPED_ROLES, ROLES } from "../api/contract";
+import { ROLE_NAMES, ROLE_PROVIDERS, backendActor } from "../api/identities";
 
 const ROLE_KEY = "sc.role";
 
@@ -11,8 +12,14 @@ export interface AppState {
   me: Me | null;
   /** Display name of the acting user for the current role. */
   actorName: string;
-  /** Actor string posted with events, e.g. "coordinator:Maryam Al Suwaidi". */
+  /**
+   * The acting login as the backend knows it (`role:name` with a BACKEND role), e.g.
+   * "primary_care_owner:Dr. Layla Haddad". The mock uses it as the actor of what the UI posts; the real API
+   * derives the actor from the bearer token and ignores it. Compared with the case owner's actor.
+   */
   actor: string;
+  /** The provider this clinician login acts for (owner roles), else undefined. */
+  provider: string | undefined;
   simTime: string | null;
   refreshSim: () => void;
 }
@@ -36,7 +43,7 @@ export function AppProvider({ api, children, initialRole }: { api: ApiClient; ch
   // Log in as the chosen role (http: POST /auth/dev-login, then the bearer token rides on every request;
   // mock: no-op). Runs on mount and on every role switch; the adapter makes requests wait for it.
   useEffect(() => {
-    api.login(role, DEFAULT_NAMES[role]).catch(() => undefined);
+    api.login(role, DEFAULT_NAMES[role], ROLE_PROVIDERS[role]).catch(() => undefined);
   }, [api, role]);
 
   useEffect(() => {
@@ -68,19 +75,13 @@ export function AppProvider({ api, children, initialRole }: { api: ApiClient; ch
 
   const value = useMemo<AppState>(() => {
     const actorName = me && me.role === role ? me.name : DEFAULT_NAMES[role];
-    return { api, role, setRole, me, actorName, actor: `${role}:${actorName}`, simTime, refreshSim };
+    return { api, role, setRole, me, actorName, actor: backendActor(role, actorName), provider: ROLE_PROVIDERS[role], simTime, refreshSim };
   }, [api, role, setRole, me, simTime, refreshSim]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
 
-export const DEFAULT_NAMES: Record<Role, string> = {
-  coordinator: "Maryam Al Suwaidi",
-  owner: "Dr. Layla Haddad",
-  specialist: "Dr. Karim Nasser",
-  clinician: "Dr. Huda Rahman",
-  patient: "Patient",
-};
+export const DEFAULT_NAMES = ROLE_NAMES;
 
 export function useApp(): AppState {
   const v = useContext(Ctx);
@@ -88,23 +89,36 @@ export function useApp(): AppState {
   return v;
 }
 
-/** Roles allowed to take each action. Server-side RBAC is out of scope for Cut C. */
+const OWNERS = ["owner", "specialist", "clinician"] as const;
+
+/**
+ * Roles allowed to take each action: a UI mirror of api/app/policy.py EVENT_POLICY and ROUTE_POLICY (the API is the
+ * authority; a hidden or disabled action is also refused there). "owner", "specialist" and "clinician" are the
+ * backend's clinician roles (primary_care_owner / specialist_owner), who act only on cases they own (A5).
+ */
 export const PERMISSIONS = {
-  acknowledge: ["coordinator", "owner"],
-  accept: ["coordinator", "owner"],
-  contact: ["coordinator", "owner"],
-  book: ["coordinator", "owner"],
-  handOff: ["coordinator", "owner"],
-  escalate: ["coordinator", "owner"],
-  draft: ["coordinator", "owner"],
-  approve: ["coordinator", "owner"],
-  recordResult: ["coordinator", "owner", "specialist"],
-  acceptEscalation: ["coordinator", "owner"],
-  markLostContact: ["coordinator", "owner"],
-  signOff: ["clinician"],
-  reopen: ["clinician"],
-} as const satisfies Record<string, Role[]>;
+  acknowledge: ["coordinator"],
+  accept: OWNERS,
+  contact: ["coordinator", ...OWNERS],
+  book: ["coordinator", ...OWNERS],
+  handOff: OWNERS,
+  answerHandoff: OWNERS,
+  reassign: ["coordinator"],
+  escalate: ["coordinator"],
+  draft: ["coordinator", ...OWNERS],
+  /** Approving or rejecting a draft is the case owner's decision. Never the coordinator. */
+  decideDraft: OWNERS,
+  recordResult: ["specialist"],
+  acceptEscalation: ["coordinator", ...OWNERS],
+  markLostContact: ["coordinator", ...OWNERS],
+  recordConsent: ["coordinator"],
+  signOff: OWNERS,
+  reopen: OWNERS,
+} as const satisfies Record<string, readonly Role[]>;
 
 export function can(role: Role, action: keyof typeof PERMISSIONS): boolean {
   return (PERMISSIONS[action] as readonly Role[]).includes(role);
 }
+
+/** Clinician logins act only on cases they own (A5). */
+export const isOwnerScoped = (role: Role): boolean => OWNER_SCOPED_ROLES.includes(role);

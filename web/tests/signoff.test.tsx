@@ -51,17 +51,26 @@ describe("SignOffPanel", () => {
 describe("Case detail: sign-off through the client", () => {
   it("clinician review + close are posted, case ends up closed", async () => {
     const user = userEvent.setup();
+    // Dr. Layla Haddad (the "owner" login) owns this case, so she may sign it off.
     const { api } = renderWithApp(<CaseDetailPage />, {
-      role: "clinician", route: `/coordinator/${DEMO_OVERDUE_CASE_ID}`, path: "/coordinator/:caseId",
+      role: "owner", route: `/coordinator/${DEMO_OVERDUE_CASE_ID}`, path: "/coordinator/:caseId",
     });
     await screen.findByTestId("signoff");
     await user.type(screen.getByLabelText("Evidence reference"), "DiagnosticReport/colonoscopy-0001");
-    await user.type(screen.getByLabelText("Signed by"), "Dr. Huda Rahman");
+    await user.type(screen.getByLabelText("Signed by"), "Dr. Layla Haddad");
     await user.click(screen.getByTestId("signoff"));
     await waitFor(() => expect(screen.getByTestId("flash")).toHaveTextContent(/closed/i));
     const d = await api.getCase(DEMO_OVERDUE_CASE_ID);
     expect(d.state).toBe("closed");
     expect(d.events.slice(-2).map((e) => e.type)).toEqual(["clinician_review", "close"]);
-    expect(d.events.at(-1)?.payload).toMatchObject({ evidence_ref: "DiagnosticReport/colonoscopy-0001", signed_by: "Dr. Huda Rahman" });
+    expect(d.events.at(-1)?.payload).toMatchObject({ evidence_ref: "DiagnosticReport/colonoscopy-0001", signed_by: "Dr. Layla Haddad" });
+    expect(d.events.at(-1)?.actor).toBe("primary_care_owner:Dr. Layla Haddad");
+  });
+
+  it("a clinician who does not own the case cannot sign it off, and is told why (owner scoping, A5)", async () => {
+    renderWithApp(<CaseDetailPage />, { role: "clinician", route: `/coordinator/${DEMO_OVERDUE_CASE_ID}`, path: "/coordinator/:caseId" });
+    await screen.findByTestId("signoff");
+    expect(screen.getByTestId("signoff")).toBeDisabled();
+    expect(screen.getByTestId("signoff-why")).toHaveTextContent(/do not own this case.*Dr\. Layla Haddad/i);
   });
 });

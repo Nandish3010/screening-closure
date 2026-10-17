@@ -1,15 +1,24 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { useApp } from "../app/AppContext";
-import type { AgeBucket, ClosureMetrics } from "../api/contract";
+import type { AgeBucket, Alert, CaseSummary, ClosureMetrics } from "../api/contract";
 import { BarChart } from "../components/BarChart";
-import { titleCase } from "../lib/format";
+import { WatchdogMarker, watchdogDetail } from "../components/WatchdogMarker";
+import { fmtDateTime, shortId, titleCase } from "../lib/format";
+import { StatePill } from "./CoordinatorPage";
 
 const BUCKETS: AgeBucket[] = ["0-30", "31-60", "61-90", "90+"];
+
+/** How often the dashboard re-reads the alerts: the stale-scheduler banner must appear within 60 s (T-C16). */
+export const ALERT_POLL_MS = 10_000;
 
 export function DashboardPage() {
   const { api } = useApp();
   const [m, setM] = useState<ClosureMetrics | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [flagged, setFlagged] = useState<CaseSummary[] | null>(null);
+  const [flaggedError, setFlaggedError] = useState<string | null>(null);
+  const [alerts, setAlerts] = useState<Alert[]>([]);
 
   useEffect(() => {
     let live = true;
@@ -19,10 +28,56 @@ export function DashboardPage() {
     };
   }, [api]);
 
+  // "Cases nobody is looking at": the watchdog's open flags, longest idle first.
+  const loadFlagged = useCallback(() => {
+    api.listCases({ flagged: true })
+      .then((rows) => {
+        setFlagged(rows.filter((c) => c.watchdog_flagged && c.state !== "closed").sort((a, b) => (b.watchdog_flagged?.idle_days ?? 0) - (a.watchdog_flagged?.idle_days ?? 0)));
+        setFlaggedError(null);
+      })
+      .catch((e) => setFlaggedError(String(e.message ?? e)));
+  }, [api]);
+  useEffect(loadFlagged, [loadFlagged]);
+
+  const loadAlerts = useCallback(() => {
+    api.listAlerts().then(setAlerts).catch(() => undefined); // an unreachable alert feed must not hide the dashboard
+  }, [api]);
+  useEffect(() => {
+    loadAlerts();
+    const t = setInterval(loadAlerts, ALERT_POLL_MS);
+    return () => clearInterval(t);
+  }, [loadAlerts]);
+
+  const down = alerts.filter((a) => a.kind === "scheduler_down" && !a.cleared_at);
+  const recovered = alerts.filter((a) => a.kind === "scheduler_down" && a.cleared_at);
+
   return (
     <main className="container">
       <h1>Closure dashboard</h1>
       <p className="muted">Synthetic data on a simulated clock. Every number is regenerated from a fixed seed.</p>
+      {down.map((a) => (
+        <p key={a.since} className="banner banner-watchdog" role="alert" data-testid="scheduler-banner">
+          <strong>The scheduler is down.</strong> It has not reported since {fmtDateTime(a.since)}, so SLA clocks are not being checked and no case will be marked overdue or escalated until it is back.
+        </p>
+      ))}
+      {down.length === 0 && recovered.length > 0 && (
+        <p className="banner banner-ok" role="status" data-testid="scheduler-recovered">
+          The scheduler is running again (it was down since {fmtDateTime(recovered.at(-1)!.since)}, cleared {fmtDateTime(recovered.at(-1)!.cleared_at)}).
+        </p>
+      )}
+      {api.setSchedulerDown && (
+        <p className="muted">
+          Demo only (mock adapter):{" "}
+          <button
+            type="button"
+            className="btn btn-small"
+            data-testid="toggle-scheduler"
+            onClick={() => api.setSchedulerDown!(down.length === 0).then(loadAlerts)}
+          >
+            {down.length === 0 ? "Simulate scheduler down" : "Simulate scheduler back up"}
+          </button>
+        </p>
+      )}
       {error && <p className="banner banner-bad" role="alert">Could not load metrics: {error}</p>}
       {!m && !error && <p role="status">Loading metrics...</p>}
       {m && (
@@ -55,6 +110,25 @@ export function DashboardPage() {
           </div>
         </>
       )}
+
+      <section className="panel" aria-labelledby="nobody-h" data-testid="nobody-panel">
+        <h2 id="nobody-h">Cases nobody is looking at</h2>
+        <p className="muted">Open cases the watchdog flagged because nothing has happened on them for too long. Someone needs to take each one.</p>
+        {flaggedError && <p className="banner banner-bad" role="alert">Could not load flagged cases: {flaggedError}</p>}
+        {!flagged && !flaggedError && <p role="status">Loading flagged cases...</p>}
+        {flagged && flagged.length === 0 && <p className="banner banner-ok" data-testid="nobody-empty">No flagged cases. Every open case has had recent activity.</p>}
+        {flagged && flagged.length > 0 && (
+          <ul className="plain nobody" data-testid="nobody-list">
+            {flagged.map((c) => (
+              <li key={c.case_id} data-testid="nobody-row">
+                <Link to={`/coordinator/${c.case_id}`}>{shortId(c.case_id)}</Link> <StatePill state={c.state} />{" "}
+                <WatchdogMarker flag={c.watchdog_flagged!} compact />
+                <span className="muted"> {watchdogDetail(c.watchdog_flagged!)} Owner: {c.owner ?? "nobody"}. Last activity {fmtDateTime(c.last_event_at)}.</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
     </main>
   );
 }

@@ -7,9 +7,11 @@ export interface WorklistFilters {
   /** "" = anyone; "__unowned__" = no owner; else exact owner name. */
   owner: string;
   overdueOnly: boolean;
+  /** Only cases with an open watchdog flag ("nobody is looking at this"). */
+  flaggedOnly: boolean;
 }
 
-export const DEFAULT_FILTERS: WorklistFilters = { state: "open", owner: "", overdueOnly: false };
+export const DEFAULT_FILTERS: WorklistFilters = { state: "open", owner: "", overdueOnly: false, flaggedOnly: false };
 export const UNOWNED = "__unowned__";
 
 /**
@@ -36,6 +38,7 @@ export function filterWorklist(cases: CaseSummary[], f: WorklistFilters): CaseSu
     if (f.state === "open" ? c.state === "closed" : f.state !== "all" && c.state !== f.state) return false;
     if (f.owner === UNOWNED ? !!c.owner : f.owner !== "" && c.owner !== f.owner) return false;
     if (f.overdueOnly && !c.overdue) return false;
+    if (f.flaggedOnly && !c.watchdog_flagged) return false;
     return true;
   });
 }

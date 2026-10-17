@@ -1,9 +1,13 @@
 /** Derivations shared by the mock adapter and the UI (state, owner, SLA clock, handoffs, consent, drafts). */
 import type {
-  CaseDetail, CaseEvent, CaseSummary, ContactChannel, EscalationRung, Lang, TimelineItem, WatchdogFlag,
+  CaseDetail, CaseEvent, CaseSummary, Consent, ConsentChanges, ConsentHistoryEntry, DraftRecord, EscalationRung, Lang,
+  LastHandoff, PendingHandoff, TimelineItem, WatchdogFlag,
 } from "../api/contract";
-import { ApiError } from "../api/contract";
-import { SLA_WORKING_DAYS, addWorkingDays, nextTransition, rungLevel, transitionFor, wholeDaysBetween } from "./pathway";
+import { ApiError, CONSENT_KEYS, HANDOFF_REJECT_REASONS } from "../api/contract";
+import {
+  REFERRAL_STATES, SLA_CLOCK_FROM_HANDOFF, SLA_WORKING_DAYS, addWorkingDays, nextTransition,
+  rungLevel, transitionFor, wholeDaysBetween,
+} from "./pathway";
 
 export const INITIAL_STATE = "result_received";
 
@@ -27,13 +31,22 @@ export function isAutomatedActor(actor: string): boolean {
   return AUTOMATED_ROLES.has(actorRole(actor));
 }
 
+/**
+ * The state after `ev`, or null when `ev` leaves it alone. Main-path and side transitions come from the
+ * pathway table; a rejected handoff (human, or the scheduler's bounce) also sends the case to
+ * `referral_rejected`, but only from a referral state.
+ */
+export function nextState(state: string, ev: { type: string }): string | null {
+  const t = transitionFor(state, ev.type);
+  if (t) return t.to;
+  if (ev.type === "handoff_rejected" && REFERRAL_STATES.includes(state)) return "referral_rejected";
+  return null;
+}
+
 /** Replays events exactly like the engine: only transition events change state. */
 export function replayState(events: CaseEvent[]): string {
   let state = INITIAL_STATE;
-  for (const ev of events) {
-    const t = transitionFor(state, ev.type);
-    if (t) state = t.to;
-  }
+  for (const ev of events) state = nextState(state, ev) ?? state;
   return state;
 }
 
@@ -42,31 +55,107 @@ export function stateEnteredAt(events: CaseEvent[]): string {
   let state = INITIAL_STATE;
   let at = events[0]?.at ?? new Date(0).toISOString();
   for (const ev of events) {
-    const t = transitionFor(state, ev.type);
-    if (t) {
-      state = t.to;
+    const to = nextState(state, ev);
+    if (to) {
+      state = to;
       at = ev.at;
     }
   }
   return at;
 }
 
-export function currentOwner(events: CaseEvent[]): { name: string; role?: string } | null {
-  for (let i = events.length - 1; i >= 0; i--) {
-    const ev = events[i];
-    if (ev.type === "accept_ownership" && typeof ev.payload.owner === "string") {
-      return { name: ev.payload.owner, role: typeof ev.payload.owner_role === "string" ? ev.payload.owner_role : undefined };
+// ---- Owner, provider and handoffs (A5) --------------------------------------------------------
+
+export interface OwnerView {
+  /** `role:name` as the backend knows them. */
+  actor: string;
+  name: string;
+  /** Display role ("Primary care physician"), from the payload or the actor's backend role. */
+  role: string;
+}
+
+const ROLE_LABEL: Record<string, string> = {
+  primary_care_owner: "Primary care physician",
+  specialist_owner: "Specialist",
+  supervisor: "Supervisor",
+  coordinator: "Care coordinator",
+};
+
+function ownerFrom(ev: CaseEvent): OwnerView {
+  const role = typeof ev.payload.owner_role === "string" ? ev.payload.owner_role : ROLE_LABEL[actorRole(ev.actor)] ?? actorRole(ev.actor);
+  return { actor: ev.actor, name: actorName(ev.actor) || ev.actor, role };
+}
+
+export interface HandoffReplay {
+  owner: OwnerView | null;
+  pending: PendingHandoff | null;
+  last: LastHandoff | null;
+  /** The provider the current owner acts for: the provider of the latest accepted handoff. */
+  provider: string | null;
+}
+
+/**
+ * Owner and handoff state by replay (A5, ADR-016). The owner changes only on accept_ownership,
+ * handoff_accepted and reassign, never on a mere request. `pending` is set by handoff_requested and cleared
+ * by any answer or a reassignment; `last` is the latest answer, with `bounced` for the scheduler's timeout.
+ */
+export function replayHandoffs(events: CaseEvent[]): HandoffReplay {
+  let owner: OwnerView | null = null;
+  let pending: PendingHandoff | null = null;
+  let last: LastHandoff | null = null;
+  let provider: string | null = null;
+  for (const ev of events) {
+    if (ev.type === "accept_ownership") {
+      if (!isAutomatedActor(ev.actor)) owner = ownerFrom(ev);
+    } else if (ev.type === "reassign" && typeof ev.payload.owner === "string") {
+      const actor = ev.payload.owner.includes(":") ? ev.payload.owner : `primary_care_owner:${ev.payload.owner}`;
+      owner = { actor, name: actorName(actor), role: ROLE_LABEL[actorRole(actor)] ?? "Primary care physician" };
+      pending = null;
+    } else if (ev.type === "handoff_requested") {
+      pending = { to_provider: String(ev.payload.to_provider ?? ""), requested_by: ev.actor, from_owner: owner?.actor ?? null, requested_at: ev.at };
+    } else if (ev.type === "handoff_accepted") {
+      const to = typeof ev.payload.provider === "string" ? ev.payload.provider : pending?.to_provider ?? "";
+      last = { outcome: "accepted", to_provider: to, by: ev.actor, at: ev.at };
+      provider = to || provider;
+      if (!isAutomatedActor(ev.actor)) owner = ownerFrom(ev);
+      pending = null;
+    } else if (ev.type === "handoff_rejected") {
+      last = {
+        outcome: "rejected", to_provider: pending?.to_provider ?? (typeof ev.payload.provider === "string" ? ev.payload.provider : ""),
+        by: ev.actor, at: ev.at,
+        ...(typeof ev.payload.reason === "string" ? { reason: ev.payload.reason } : {}),
+        ...(ev.payload.bounced === true ? { bounced: true } : {}),
+      };
+      pending = null;
     }
   }
+  return { owner, pending, last, provider };
+}
+
+export const ownerOf = (events: CaseEvent[]): OwnerView | null => replayHandoffs(events).owner;
+export const pendingHandoffOf = (events: CaseEvent[]): PendingHandoff | null => replayHandoffs(events).pending;
+export const lastHandoffOf = (events: CaseEvent[]): LastHandoff | null => replayHandoffs(events).last;
+export const providerOf = (events: CaseEvent[]): string | null => replayHandoffs(events).provider;
+
+/** Back-compat for the patient page: the owner's display name and role. */
+export function currentOwner(events: CaseEvent[]): { name: string; role?: string; actor?: string } | null {
+  const o = ownerOf(events);
+  return o ? { name: o.name, role: o.role, actor: o.actor } : null;
+}
+
+/** Latest `handoff_accepted` (referral acceptance), the start of the confirmatory SLA clock (A13). */
+function latestReferralAcceptance(events: CaseEvent[]): string | null {
+  for (let i = events.length - 1; i >= 0; i--) if (events[i].type === "handoff_accepted") return events[i].at;
   return null;
 }
 
 export function slaClock(events: CaseEvent[], state: string, simNow: string) {
   const next = nextTransition(state);
   const days = next ? SLA_WORKING_DAYS[next.event] : undefined;
-  if (!next || days === undefined) return { due_at: null as string | null, days_overdue: 0, sla_event: next?.event ?? null };
-  const due = addWorkingDays(stateEnteredAt(events), days);
-  return { due_at: due, days_overdue: Math.max(0, wholeDaysBetween(due, simNow)), sla_event: next.event };
+  if (!next || days === undefined) return { due_at: null as string | null, started_at: null as string | null, days_overdue: 0, sla_event: next?.event ?? null };
+  const started = (SLA_CLOCK_FROM_HANDOFF.includes(next.event) ? latestReferralAcceptance(events) : null) ?? stateEnteredAt(events);
+  const due = addWorkingDays(started, days);
+  return { due_at: due, started_at: started, days_overdue: Math.max(0, wholeDaysBetween(due, simNow)), sla_event: next.event };
 }
 
 /** Whole days past `due_at` as of `simNow`; 0 when not due yet or when there is no clock. */
@@ -88,9 +177,9 @@ function lastStateChangeIndex(events: CaseEvent[]): number {
   let state = INITIAL_STATE;
   let idx = 0;
   events.forEach((ev, i) => {
-    const t = transitionFor(state, ev.type);
-    if (t) {
-      state = t.to;
+    const to = nextState(state, ev);
+    if (to) {
+      state = to;
       idx = i;
     }
   });
@@ -157,15 +246,40 @@ export function pendingEscalation(events: CaseEvent[]): PendingEscalation | null
   return pending;
 }
 
-/**
- * Consent is frozen when the latest `consent_updated` says the patient withdrew.
- * MOCK ASSUMPTION: payload `{withdrawn: true}`. Against the real backend the read model's
- * `consent_frozen` is authoritative and this is only the fallback.
- */
+/** Programme defaults (A6): everything is allowed until the patient says otherwise. */
+export const DEFAULT_CONSENT: Consent = {
+  channel_sms: true, channel_whatsapp: true, channel_phone: true, channel_letter: true,
+  share_with_specialist: true, withdrawn: false, updated_at: null, updated_by: null,
+};
+
+/** The booleans of a `consent_updated` payload (anything else is ignored; the engine answers 422 to it). */
+export function consentChangesOf(payload: Record<string, unknown>): ConsentChanges {
+  const out: ConsentChanges = {};
+  for (const k of CONSENT_KEYS) if (typeof payload[k] === "boolean") out[k] = payload[k] as boolean;
+  return out;
+}
+
+/** Consent by replaying every `consent_updated` in order over the defaults (A6). */
+export function consentOf(events: CaseEvent[]): Consent {
+  let c: Consent = { ...DEFAULT_CONSENT };
+  for (const ev of events) {
+    if (ev.type === "consent_updated") c = { ...c, ...consentChangesOf(ev.payload), updated_at: ev.at, updated_by: ev.actor };
+  }
+  return c;
+}
+
+export function consentHistoryOf(events: CaseEvent[]): ConsentHistoryEntry[] {
+  return events.filter((e) => e.type === "consent_updated").map((e) => ({ at: e.at, actor: e.actor, changes: consentChangesOf(e.payload) }));
+}
+
+/** Outreach is frozen exactly while consent is withdrawn. The real read model's `consent_frozen` wins over this. */
 export function consentFrozen(events: CaseEvent[]): boolean {
-  let frozen = false;
-  for (const ev of events) if (ev.type === "consent_updated") frozen = ev.payload.withdrawn === true;
-  return frozen;
+  return consentOf(events).withdrawn;
+}
+
+/** Channels the patient currently allows, in display order. */
+export function allowedChannels(c: Consent): ("sms" | "whatsapp" | "phone" | "letter")[] {
+  return (["sms", "whatsapp", "phone", "letter"] as const).filter((ch) => c[`channel_${ch}`]);
 }
 
 /** True after `mark_lost_contact` until the patient is reached again (contact or acknowledgement). */
@@ -187,13 +301,19 @@ export function summarise(
   const state = replayState(events);
   const clock = slaClock(events, state, simNow);
   const watchdog = watchdogFlag(events);
+  const h = replayHandoffs(events);
   return {
     case_id: caseId,
     pathway: "colorectal_fit",
     state,
     created_at: events[0]?.at ?? simNow,
     updated_at: events[events.length - 1]?.at ?? simNow,
-    owner: currentOwner(events)?.name ?? null,
+    owner: h.owner?.name ?? null,
+    owner_actor: h.owner?.actor ?? null,
+    owner_role: h.owner?.role ?? null,
+    provider: h.provider,
+    pending_handoff: h.pending,
+    last_handoff: h.last,
     due_at: clock.due_at,
     overdue: clock.due_at !== null && new Date(simNow).getTime() > new Date(clock.due_at).getTime(),
     escalation_level: escalationLevel(events),
@@ -204,36 +324,79 @@ export function summarise(
   };
 }
 
+/**
+ * The owner on the wire is `{actor, display_name, role}` (A14) or, until then, the actor string
+ * (`primary_care_owner:Dr Sara Khan`) or a bare name. Normalised to a display name plus the rest.
+ */
+export function normalizeOwner(raw: unknown): { owner: string | null; owner_actor: string | null; owner_role: string | null } {
+  if (raw && typeof raw === "object") {
+    const o = raw as { actor?: unknown; display_name?: unknown; role?: unknown };
+    const actor = typeof o.actor === "string" ? o.actor : null;
+    const name = typeof o.display_name === "string" && o.display_name ? o.display_name : actor ? actorName(actor) || actor : null;
+    return { owner: name, owner_actor: actor, owner_role: typeof o.role === "string" ? o.role : null };
+  }
+  if (typeof raw === "string" && raw) {
+    return raw.includes(":")
+      ? { owner: actorName(raw) || raw, owner_actor: raw, owner_role: null }
+      : { owner: raw, owner_actor: null, owner_role: null };
+  }
+  return { owner: null, owner_actor: null, owner_role: null };
+}
+
 /** Fill read-model fields a backend row lacks (older server, partial rows) so the UI never crashes. */
 export function completeSummary(row: Partial<CaseSummary> & Pick<CaseSummary, "case_id">): CaseSummary {
+  const o = normalizeOwner((row as { owner?: unknown }).owner);
   return {
     pathway: "colorectal_fit",
     state: "result_received",
     created_at: "",
     updated_at: "",
     ...row,
-    owner: row.owner ?? null,
-    due_at: row.due_at ?? null,
+    owner: o.owner,
+    owner_actor: row.owner_actor ?? o.owner_actor,
+    owner_role: row.owner_role ?? o.owner_role,
+    due_at: row.due_at ?? (row as { breach_due_at?: string | null }).breach_due_at ?? null,
     overdue: row.overdue ?? false,
     escalation_level: row.escalation_level ?? 0,
     consent_frozen: row.consent_frozen ?? false,
     last_event_at: row.last_event_at ?? row.updated_at ?? "",
+    watchdog_flagged: row.watchdog_flagged ?? null,
+    provider: row.provider ?? null,
+    pending_handoff: row.pending_handoff ?? null,
+    last_handoff: row.last_handoff ?? null,
   };
 }
 
-/** Same for GET /cases/{id}: missing fields are derived from the event log. */
-export function completeDetail(d: CaseDetail): CaseDetail {
+/**
+ * Same for GET /cases/{id}. The real response nests the read model under `read_model` (and `GET /cases`
+ * flattens it in A9); both are accepted. Missing fields are derived from the event log.
+ */
+export function completeDetail(raw: CaseDetail): CaseDetail {
+  const rm = (raw as { read_model?: Record<string, unknown> }).read_model ?? {};
+  const d = { ...rm, ...raw } as CaseDetail & Record<string, unknown>;
   const events = d.events ?? [];
+  const h = replayHandoffs(events);
+  const o = d.owner !== undefined ? normalizeOwner(d.owner) : normalizeOwner(h.owner ? { actor: h.owner.actor, display_name: h.owner.name, role: h.owner.role } : null);
+  const consent = (d.consent as Consent | undefined) ? { ...DEFAULT_CONSENT, ...(d.consent as Consent) } : consentOf(events);
+  const frozen = d.consent_frozen ?? consent.withdrawn;
   return {
     ...d,
     events,
-    owner: d.owner !== undefined ? d.owner : currentOwner(events)?.name ?? null,
-    due_at: d.due_at ?? null,
+    owner: o.owner,
+    owner_actor: d.owner_actor ?? o.owner_actor,
+    owner_role: d.owner_role ?? o.owner_role,
+    due_at: d.due_at ?? (d as { breach_due_at?: string | null }).breach_due_at ?? null,
     overdue: d.overdue ?? overdueMarker(events) !== null,
     escalation_level: d.escalation_level ?? escalationLevel(events),
-    consent_frozen: d.consent_frozen ?? consentFrozen(events),
+    consent_frozen: frozen,
+    consent,
+    consent_history: d.consent_history ?? consentHistoryOf(events),
+    review_reason: d.review_reason !== undefined ? d.review_reason : frozen ? "consent_withdrawn" : null,
     last_event_at: d.last_event_at ?? events.at(-1)?.at ?? d.updated_at ?? "",
     watchdog_flagged: d.watchdog_flagged !== undefined ? d.watchdog_flagged : watchdogFlag(events),
+    provider: d.provider !== undefined ? d.provider : h.provider,
+    pending_handoff: d.pending_handoff !== undefined ? d.pending_handoff : h.pending,
+    last_handoff: d.last_handoff !== undefined ? d.last_handoff : h.last,
   };
 }
 
@@ -241,19 +404,88 @@ export function completeDetail(d: CaseDetail): CaseDetail {
 export const ANNOTATION_EVENTS = [
   "handoff_requested", "handoff_accepted", "handoff_rejected", "escalate", "escalation_accepted",
   "callback_requested", "consent_updated", "message_drafted", "message_approved", "message_sent",
-  "mark_overdue", "watchdog_flagged", "mark_lost_contact",
+  "mark_overdue", "watchdog_flagged", "mark_lost_contact", "review_requested",
 ];
 
-/** Mirrors api/app/state_machine.apply for the mock. Throws ApiError(409) like the real API. */
-export function validateAppend(state: string, type: string, actor: string, payload: Record<string, unknown>) {
-  if (ANNOTATION_EVENTS.includes(type)) {
-    if (state === "closed") throw new ApiError(409, "case is closed");
-    return;
+/** Backend roles that are owner-scoped (A5): they act only on cases they own. */
+const OWNER_BACKEND_ROLES = new Set(["primary_care_owner", "specialist_owner"]);
+/** Roles that count as the clinician for reopen (the UI's own "clinician" prefix is still accepted by the mock). */
+const CLINICIAN_ACTOR_ROLES = new Set(["clinician", "primary_care_owner", "specialist_owner"]);
+/** Events that freeze while consent is withdrawn (A6). */
+const FROZEN_EVENTS = ["contact_patient", "message_drafted", "message_approved", "message_sent", "handoff_requested"];
+
+export interface AppendContext {
+  /** An in-process write by the mock itself (the simulated scheduler, notifier, API): skips role and ownership checks. */
+  internal?: boolean;
+  /** The provider the acting clinician acts for (their login claim). */
+  provider?: string | null;
+}
+
+/** True when the backend would refuse a case action from this actor because they are an owner-scoped clinician who does not own it. */
+export function isOwnerScopedActor(actor: string): boolean {
+  return OWNER_BACKEND_ROLES.has(actorRole(actor));
+}
+
+/**
+ * Mirrors api/app/state_machine.apply and api/app/policy.py for the mock. Throws ApiError with the status
+ * the real API uses: 403 role or owner scope, 409 invalid transition or frozen outreach, 422 malformed payload.
+ */
+export function validateAppend(events: CaseEvent[], type: string, actor: string, payload: Record<string, unknown>, ctx: AppendContext = {}) {
+  const state = replayState(events);
+  const h = replayHandoffs(events);
+  const frozen = consentOf(events).withdrawn;
+
+  if (!ctx.internal) {
+    if (["message_approved", "message_sent", "review_requested"].includes(type)) {
+      throw new ApiError(403, `nobody may post '${type}' through the events route`);
+    }
+    if (isOwnerScopedActor(actor)) {
+      const mine = h.owner?.actor === actor;
+      const takesUnowned = type === "accept_ownership" && h.owner === null;
+      const answers = (type === "handoff_accepted" || type === "handoff_rejected") && h.pending !== null && !!ctx.provider && h.pending.to_provider === ctx.provider;
+      // GUESS: the "request handoff to my provider" path the UI offers a clinician who does not own the case.
+      const asksForMine = type === "handoff_requested" && !!ctx.provider && payload.to_provider === ctx.provider;
+      if (!mine && !takesUnowned && !answers && !asksForMine) {
+        throw new ApiError(403, `${actorRole(actor)} '${actorName(actor)}' may only act on cases they own (this case's owner is ${h.owner?.name ?? "not yet assigned"})`);
+      }
+    }
   }
+  if (state === "closed" && type !== "reopen") throw new ApiError(409, "case is closed");
+  if (frozen && FROZEN_EVENTS.includes(type) && !(ctx.internal && type === "message_sent")) {
+    throw new ApiError(409, `consent withdrawn: '${type}' is refused while the patient's consent is withdrawn; a human must review the case`);
+  }
+
+  if (type === "handoff_requested") {
+    const to = payload.to_provider;
+    if (typeof to !== "string" || !to.trim()) throw new ApiError(422, "handoff_requested needs a non-empty string 'to_provider'");
+    if (!h.owner) throw new ApiError(409, "handoff_requested: the case has no owner to hand over from");
+    if (h.pending) throw new ApiError(409, `a handoff to '${h.pending.to_provider}' is already pending; it must be answered or bounce first`);
+  } else if (type === "handoff_accepted" || type === "handoff_rejected") {
+    if (!h.pending) throw new ApiError(409, `${type}: there is no pending handoff request`);
+    if (!ctx.internal && (actor === h.pending.requested_by || actor === h.pending.from_owner) && type === "handoff_accepted") {
+      throw new ApiError(409, "the requester (or the owner the case comes from) cannot accept their own handoff");
+    }
+    if (type === "handoff_rejected") {
+      const reason = payload.reason;
+      const bounce = reason === "timeout";
+      if (bounce ? actor !== "system:scheduler" || payload.bounced !== true : !(HANDOFF_REJECT_REASONS as readonly string[]).includes(String(reason))) {
+        throw new ApiError(422, `handoff_rejected reason must be one of ${JSON.stringify(HANDOFF_REJECT_REASONS)}, got ${JSON.stringify(reason)}`);
+      }
+    }
+  } else if (type === "consent_updated") {
+    const given = Object.keys(payload).filter((k) => (CONSENT_KEYS as readonly string[]).includes(k));
+    if (given.length === 0) throw new ApiError(422, `consent_updated needs at least one of ${JSON.stringify(CONSENT_KEYS)}`);
+    if (given.some((k) => typeof payload[k] !== "boolean")) throw new ApiError(422, "consent_updated values must be booleans");
+  }
+
+  if (ANNOTATION_EVENTS.includes(type) && !(type === "handoff_accepted" && state === "referral_rejected")) return;
   const t = transitionFor(state, type);
   if (!t) throw new ApiError(409, `event '${type}' not allowed from state '${state}'`);
-  if (type === "reopen" && actorRole(actor) !== "clinician") {
+  if (type === "reopen" && !CLINICIAN_ACTOR_ROLES.has(actorRole(actor))) {
     throw new ApiError(403, "only a clinician may reopen a closed case");
+  }
+  if (type === "reassign" && !["coordinator", "supervisor"].includes(actorRole(actor)) && !ctx.internal) {
+    throw new ApiError(403, "only a coordinator or supervisor may reassign a rejected referral");
   }
   if (t.to === "closed" && isAutomatedActor(actor)) {
     throw new ApiError(409, "automated actors may not close a case");
@@ -268,8 +500,10 @@ export function validateAppend(state: string, type: string, actor: string, paylo
 export interface HandoffView {
   provider: string;
   status: "requested" | "accepted" | "rejected";
-  /** Taxonomy code (capacity | wrong_service | missing_info | patient_declined) when rejected. */
+  /** Taxonomy code (capacity | wrong_service | missing_info | patient_declined, or timeout) when rejected. */
   reason?: string;
+  /** True when the scheduler bounced an unanswered request (reason "timeout"). */
+  bounced?: boolean;
   at: string;
 }
 
@@ -292,79 +526,69 @@ export function handoffs(events: CaseEvent[]): HandoffView[] {
       if (open) {
         open.status = rejected ? "rejected" : "accepted";
         open.reason = reason;
+        open.bounced = ev.payload.bounced === true || undefined;
         open.at = ev.at;
-      } else out.push({ provider: hint || "Unknown provider", status: rejected ? "rejected" : "accepted", reason, at: ev.at });
+      } else out.push({ provider: hint || "Unknown provider", status: rejected ? "rejected" : "accepted", reason, bounced: ev.payload.bounced === true || undefined, at: ev.at });
     }
   }
   return out;
 }
 
-export interface ConsentView {
-  channel: ContactChannel | null;
-  share_with_specialist: boolean;
-  updated_at: string | null;
-}
+/** Draft status for the review panel. */
+export type DraftStatus = "pending" | "approved" | "rejected";
 
-export function consentState(events: CaseEvent[]): ConsentView {
-  let view: ConsentView = { channel: null, share_with_specialist: false, updated_at: null };
-  for (const ev of events) {
-    if (ev.type === "consent_updated") {
-      view = {
-        channel: (ev.payload.channel as ContactChannel) ?? view.channel,
-        share_with_specialist: Boolean(ev.payload.share_with_specialist),
-        updated_at: ev.at,
-      };
-    }
-  }
-  return view;
-}
-
-export interface DraftView {
-  draft_id: string;
-  provider: string;
-  fallback_used: boolean;
-  text_ar?: string;
-  text_en?: string;
-  generated_at: string;
-  generated_by: string;
-  approved_by?: string;
-  approved_at?: string;
-  /** Set by the backend's `message_sent`, which can only follow an approval. */
+export interface DraftView extends DraftRecord {
+  status: DraftStatus;
+  /** Set when a `message_sent {draft_id}` exists for an approved draft (it can only follow an approval). */
   sent_at?: string;
 }
 
-/** AI-draft provenance: who/what produced each draft, who approved it, and whether it was sent. */
-export function drafts(events: CaseEvent[]): DraftView[] {
-  const out: DraftView[] = [];
+/**
+ * Drafts for the review panel. `GET /cases/{id}/drafts` is the source (the timeline events carry no text);
+ * drafts the API did not return (an older backend, a role that may not list them) are rebuilt from the
+ * `message_drafted` events, including any text an older payload still carries.
+ */
+export function draftViews(records: DraftRecord[], events: CaseEvent[]): DraftView[] {
+  const byId = new Map(records.map((r) => [r.draft_id, r]));
   for (const ev of events) {
-    if (ev.type === "message_drafted") {
-      out.push({
-        draft_id: String(ev.payload.draft_id),
-        provider: String(ev.payload.provider ?? "unknown"),
-        fallback_used: Boolean(ev.payload.fallback_used),
-        text_ar: typeof ev.payload.text_ar === "string" ? ev.payload.text_ar : undefined,
-        text_en: typeof ev.payload.text_en === "string" ? ev.payload.text_en : undefined,
-        generated_at: ev.at,
-        generated_by: ev.actor,
-      });
-    } else if (ev.type === "message_approved") {
-      const d = out.find((x) => x.draft_id === String(ev.payload.draft_id));
-      if (d) {
-        d.approved_by = typeof ev.payload.approved_by === "string" ? ev.payload.approved_by : actorName(ev.actor) || ev.actor;
-        d.approved_at = ev.at;
-      }
-    } else if (ev.type === "message_sent") {
-      const d = out.find((x) => x.draft_id === String(ev.payload.draft_id));
-      if (d && d.approved_at) d.sent_at = ev.at;
+    if (ev.type !== "message_drafted") continue;
+    const id = String(ev.payload.draft_id);
+    if (byId.has(id)) continue;
+    const lang: Lang = ev.payload.language === "ar" || typeof ev.payload.text_ar === "string" ? "ar" : "en";
+    const text_ar = typeof ev.payload.text_ar === "string" ? ev.payload.text_ar : null;
+    const text_en = typeof ev.payload.text_en === "string" ? ev.payload.text_en : null;
+    byId.set(id, {
+      draft_id: id, case_id: "", purpose: "", channel: "", language: lang,
+      text: (lang === "ar" ? text_ar : text_en) ?? text_en ?? text_ar ?? "",
+      text_ar, text_en,
+      provider: String(ev.payload.provider ?? "unknown"), fallback_used: Boolean(ev.payload.fallback_used),
+      abstention_reason: typeof ev.payload.abstention_reason === "string" ? ev.payload.abstention_reason : null,
+      prompt_hash: typeof ev.payload.prompt_hash === "string" ? ev.payload.prompt_hash : "",
+      created_by: ev.actor, created_at: ev.at, approved_at: null, approved_by: null,
+      rejected_at: null, rejected_by: null, rejection_reason: null,
+    });
+  }
+  const sent = new Map<string, string>();
+  for (const ev of events) {
+    if (ev.type === "message_sent" && typeof ev.payload.draft_id === "string") sent.set(ev.payload.draft_id, ev.at);
+    if (ev.type === "message_approved" && typeof ev.payload.draft_id === "string") {
+      const r = byId.get(ev.payload.draft_id);
+      if (r && !r.approved_at) byId.set(r.draft_id, { ...r, approved_at: ev.at, approved_by: ev.actor });
     }
   }
-  return out;
+  return [...byId.values()]
+    .sort((a, b) => a.created_at.localeCompare(b.created_at))
+    .map((r) => ({
+      ...r,
+      status: r.rejected_at ? "rejected" : r.approved_at ? "approved" : "pending",
+      ...(r.approved_at && sent.has(r.draft_id) ? { sent_at: sent.get(r.draft_id) } : {}),
+    }));
 }
 
-export function rejectionReasons(events: CaseEvent[]): { provider: string; reason: string | undefined; at: string }[] {
+export function rejectionReasons(events: CaseEvent[]): { provider: string; reason: string | undefined; at: string; bounced: boolean }[] {
   return handoffs(events)
     .filter((h) => h.status === "rejected")
-    .map((h) => ({ provider: h.provider, reason: h.reason, at: h.at }));
+    .map((h) => ({ provider: h.provider, reason: h.reason, at: h.at, bounced: Boolean(h.bounced) }));
 }
 
 export function hasCallbackPending(events: CaseEvent[]): boolean {

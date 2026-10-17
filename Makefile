@@ -1,4 +1,4 @@
-.PHONY: check docs-check tracker-lint test-security test-tools test-load load-check up down logs test test-db test-db-create test-db-reset test-chaos synthea demo-seed demo-seed-clean evaluate simulate evaluate-check reset web-install web-dev web-build web-test web-e2e review-packs review-packs-check test-review-packs
+.PHONY: check docs-check tracker-lint test-security test-tools test-load load-check up down logs test test-db test-db-create test-db-reset test-chaos synthea demo-seed demo-seed-clean evaluate simulate evaluate-check reset web-install web-dev web-build web-test web-e2e test-e2e review-packs review-packs-check test-review-packs
 
 up:
 	docker compose up -d --build
@@ -174,3 +174,6 @@ review-packs-check:
 # T-E17: packs equal a fresh build and contain every string in the sources.
 test-review-packs:
 	$(PY) -m pytest tools/review/tests -q
+
+# The name the test plan uses (TEST-CASES.md): same suite as web-e2e.
+test-e2e: web-e2e

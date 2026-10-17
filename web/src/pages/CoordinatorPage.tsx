@@ -61,6 +61,10 @@ export function CoordinatorPage() {
           <input type="checkbox" checked={filters.overdueOnly} onChange={(e) => set({ overdueOnly: e.target.checked })} />
           <span>Overdue only</span>
         </label>
+        <label className="check">
+          <input type="checkbox" checked={filters.flaggedOnly} onChange={(e) => set({ flaggedOnly: e.target.checked })} />
+          <span>Flagged only (nobody is looking)</span>
+        </label>
       </form>
 
       {error && <p className="banner banner-bad" role="alert">Could not load cases: {error}</p>}
@@ -80,14 +84,16 @@ export function CoordinatorPage() {
                     <tr key={c.case_id} data-testid="worklist-row" className={`${od.overdue ? "row-overdue" : ""} ${c.watchdog_flagged ? "row-watchdog" : ""}`.trim()}>
                       <td data-label="Case"><Link to={`/coordinator/${c.case_id}`}>{shortId(c.case_id)}</Link></td>
                       <td data-label="State"><StatePill state={c.state} /></td>
-                      <td data-label="Owner">{c.owner ?? <span className="muted">Unowned</span>}</td>
+                      <td data-label="Owner">{c.owner ?? <span className="muted">Unowned</span>}{c.provider && <span className="muted"> · {c.provider}</span>}</td>
                       <td data-label="Due">{fmtDate(c.due_at)}</td>
                       <td data-label="Overdue">{od.overdue ? <span className="chip chip-bad">{od.days > 0 ? `${od.days} day${od.days === 1 ? "" : "s"}` : "overdue"}</span> : <span className="muted">-</span>}</td>
                       <td data-label="Escalation">{c.escalation_level > 0 ? <span className="chip chip-warn" title={`Escalation level ${c.escalation_level} of 3`}>Level {c.escalation_level}</span> : <span className="muted">-</span>}</td>
                       <td data-label="Flags">
                         {c.watchdog_flagged && <WatchdogMarker flag={c.watchdog_flagged} compact />}
                         {c.consent_frozen && <span className="chip chip-warn" title="Patient consent is frozen: do not contact the patient">Consent frozen</span>}
-                        {!c.watchdog_flagged && !c.consent_frozen && <span className="muted">-</span>}
+                        {c.pending_handoff && <span className="chip chip-warn" data-testid="pending-handoff-chip" title={`Hand-off to ${c.pending_handoff.to_provider} is waiting for acceptance`}>Hand-off pending</span>}
+                        {c.last_handoff?.bounced && c.state === "referral_rejected" && <span className="chip chip-bad" data-testid="bounced-chip" title="The provider did not answer in 3 working days">Hand-off bounced</span>}
+                        {!c.watchdog_flagged && !c.consent_frozen && !c.pending_handoff && !(c.last_handoff?.bounced && c.state === "referral_rejected") && <span className="muted">-</span>}
                       </td>
                       <td data-label="Last activity">{fmtDateTime(c.last_event_at)}</td>
                       <td data-label="Risk"><RiskBar value={c.risk_score} /></td>

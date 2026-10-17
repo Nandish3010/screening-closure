@@ -1,16 +1,19 @@
 import { useState } from "react";
 import type { Role } from "../api/contract";
+import { can } from "../app/AppContext";
 import { ActionButton } from "./ActionButton";
 
 /**
  * Clinician sign-off. The Close button stays disabled until BOTH an evidence reference and a
- * signer are present (and the acting role is clinician), and it says why while disabled.
+ * signer are present (and the acting role is a clinician: an owner role), and it says why while disabled.
  * The engine enforces the same rule (state_machine.apply) - this is the UI mirror, not the guard.
  */
 export function SignOffPanel({
-  role, onSignOff, busy, needsReview,
+  role, onSignOff, busy, needsReview, extraWhy,
 }: {
   role: Role;
+  /** A reason the acting clinician may not sign this case off, e.g. they do not own it (A5). */
+  extraWhy?: string | null;
   onSignOff: (evidenceRef: string, signedBy: string) => void;
   busy?: boolean;
   /** True when the case is still at confirmatory_completed (review event is posted first). */
@@ -20,7 +23,8 @@ export function SignOffPanel({
   const [signer, setSigner] = useState("");
 
   const reasons: string[] = [];
-  if (role !== "clinician") reasons.push("Only a clinician can sign off. Switch the role to clinician.");
+  if (!can(role, "signOff")) reasons.push("Only a clinician (a case owner) can sign off. Switch the role to owner, specialist or clinician.");
+  else if (extraWhy) reasons.push(extraWhy);
   if (!evidence.trim()) reasons.push("Add an evidence reference (for example the colonoscopy report id).");
   if (!signer.trim()) reasons.push("Enter the name of the clinician who signs.");
 
