@@ -44,8 +44,7 @@ def _run_rep(job: tuple) -> dict:
             "metrics": metrics_of(ctx, res),
             "event_hash": res.event_hash[:16],
             "n_events": res.n_events,
-            "counters": {k: v for k, v in res.counters.items() if k != "sla_overrides"},
-            "sla_overrides": res.counters.get("sla_overrides", {}),
+            "counters": dict(res.counters),
         }
     return out
 
@@ -122,7 +121,6 @@ def evaluate(
     status_counts: dict[str, int] = {}
     for p in ctx.params.rows():
         status_counts[p.status] = status_counts.get(p.status, 0) + 1
-    overrides = rep_results[0]["arms"][ORCHESTRATED]["sla_overrides"] if rep_results else {}
     result = {
         "meta": {
             "schema_version": SCHEMA_VERSION,
@@ -138,7 +136,6 @@ def evaluate(
             "pathway_hash": ctx.pathway_hash(),
             "git_commit": git_commit(),
             "parameter_status_counts": dict(sorted(status_counts.items())),
-            "sla_overrides": overrides,
             "ci_method": "percentile bootstrap over replications; differences are paired by replication (common random numbers)",
         },
         "arms": agg["arms"],

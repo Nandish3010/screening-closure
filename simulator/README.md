@@ -59,7 +59,7 @@ outcomes, so changing a parameter never re-draws anything and differences betwee
 |---|---|---|
 | Owner | none (`accept_ownership` is implicit, `owner: null`) | named owner on `accept_ownership`; changes on a provider transfer |
 | First outreach | one letter or SMS in a default language | patient's preferred channel and language |
-| Timers | none | working-day SLA per pathway step from the YAML (`close` uses `orchestration.signoff_sla_working_days`; `complete_confirmatory` uses the DoH 31-day KPI, see below) |
+| Timers | none | working-day SLA per pathway step from the YAML (`close` uses `orchestration.signoff_sla_working_days`; `complete_confirmatory` is 31 working days in the YAML, the DoH KPI) |
 | Overdue / escalation | none | `overdue` at breach, then the YAML ladder: reminder (owner), escalate (supervisor, human phone call), escalate (coordinator, alternate contact route) |
 | Unreachable patient | silent loss | delivery failure detected, contact recovery attempted; ladder exhausted -> `lost_contact` flagged to a human |
 | Referral | rejection or silence may never be noticed | `handoff_requested/accepted/rejected`; rejections bounce to the owner with their reason; unanswered referrals bounce on a timer |
@@ -126,8 +126,8 @@ earlier leaves, which is how a research file of proposed values can be merged be
 
 Keys read by other code only: `fit_positivity_rate` (`generate_results.py`); `eligible_age_min/max`, `fit_interval_months`,
 `malaffi_integration_assumption`, `gi_referral_*`, `navigation_*` and the `*_integrated_ref` / `colonoscopy_completion_*` keys are
-provenance and benchmarks reported in `results.md`, not simulator inputs. `generate_results.py` still hard-codes ages 45-75 while
-`eligible_age_min` is 40.
+provenance and benchmarks reported in `results.md`, not simulator inputs. `generate_results.py` selects ages 40-75, matching
+`eligible_age_min`.
 
 ### Calibration
 
@@ -177,7 +177,7 @@ Three steps, all synthetic, all seeded (default seed 20261017). Provenance and l
    - `load_cohort.py` POSTs the hospital and practitioner bundles, then every patient bundle, to HAPI
      (`FHIR_BASE_URL`, default `http://localhost:8080/fhir`). It refuses to run if HAPI already has Patients
      (`--force` to override; `--skip-if-loaded` to exit 0 instead).
-   - `generate_results.py` reads the patients back, picks those aged 45-75 on `SIM_CLOCK_START`, draws a seeded
+   - `generate_results.py` reads the patients back, picks those aged 40-75 on `SIM_CLOCK_START`, draws a seeded
      FIT outcome per patient (`fit_positivity_rate` in `params.yaml`), and writes an Observation + DiagnosticReport
      per positive, plus `data/results/manifest.json`. Options: `--seed`, `--cap N`, `--rate`.
 3. **Cases**: `create_cases.py` POSTs one case per manifest entry to `API_URL/cases` (default

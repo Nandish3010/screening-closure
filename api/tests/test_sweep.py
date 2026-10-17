@@ -52,11 +52,11 @@ def test_due_at_uses_the_entering_event_time_and_the_state_sla():
     m = drive(("acknowledge", "lab:l", {}), model=start_model(), start_day=2)
     assert m.state == "acknowledged" and m.clock_started_at == at(3)
     assert due_at_for(m, PATHWAY, UAE) == at(7)  # Monday 12th, same time of day
-    # the 45 working day complete_confirmatory SLA: nine weeks after a Monday booking
+    # the 31 working day complete_confirmatory SLA (DoH KPI): six weeks and one working day after a Monday booking
     m = drive(*TO_CONTACTED, ("patient_acknowledge", "patient:p", {}), ("book_confirmatory", "primary_care_owner:k", {}))
     assert m.state == "confirmatory_booked"
     m = dataclasses.replace(m, clock_started_at=at(0))
-    assert due_at_for(m, PATHWAY, UAE) == at(0) + timedelta(weeks=9)
+    assert due_at_for(m, PATHWAY, UAE) == at(0) + timedelta(weeks=6, days=1)
 
 
 def test_a_friday_start_skips_the_weekend():

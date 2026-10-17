@@ -32,7 +32,7 @@ export const SLA_WORKING_DAYS: Record<string, number> = {
   contact_patient: 5,
   patient_acknowledge: 7,
   book_confirmatory: 14,
-  complete_confirmatory: 45,
+  complete_confirmatory: 31,
   clinician_review: 5,
 };
 

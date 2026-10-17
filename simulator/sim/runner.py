@@ -56,7 +56,6 @@ def run_arm(ctx: Context, arm: str, cases: int, days: int, seed: int,
     pts = patients if patients is not None else make_patients(ctx, cases, seed)
     engine = Engine(arm, ctx.mp, ctx.pathway, ctx.cal, days, seed)
     result = engine.run(pts)
-    result.counters["sla_overrides"] = engine.sla_overrides
     return result
 
 

@@ -64,3 +64,8 @@ def test_every_default_leaf_has_provenance():
     p = load_params(DEFAULT_PARAMS, warn=False)
     for row in p.rows():
         assert row.source and row.status
+
+
+def test_pathway_yaml_is_the_single_source_for_the_confirmatory_sla(ctx):
+    """The DoH 31-working-day KPI lives in the pathway YAML; the sourced parameter must agree with it."""
+    assert ctx.pathway.slas_working_days["complete_confirmatory"] == ctx.mp.followup_target_working_days

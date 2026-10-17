@@ -253,13 +253,6 @@ def render_markdown(res: dict) -> str:
             _cell(res["difference"].get(key), kind, signed=True),
         ])
     gen = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
-    ov = meta.get("sla_overrides") or {}
-    sla_note = ""
-    if ov:
-        sla_note = "SLA override: " + "; ".join(
-            f"`{k}` uses {v['used']} working days (DoH KPI, `followup_target_working_days`) instead of {v['pathway_yaml']} in the pathway YAML"
-            for k, v in sorted(ov.items())
-        ) + ". "
     parts = [
         "# Evaluation results: baseline vs orchestrated",
         "",
@@ -270,7 +263,7 @@ def render_markdown(res: dict) -> str:
         f"- Seed {meta['seed']}, {meta['replications']} replications x {meta['cases_per_replication']:,} cases x {meta['follow_up_days']} days of follow-up, "
         f"{meta['bootstrap_resamples']} bootstrap resamples",
         f"- Parameters hash `{meta['params_hash'][:16]}`, pathway `{meta['pathway']}` v{meta['pathway_version']} hash `{meta['pathway_hash'][:16]}`, git commit `{meta['git_commit'][:12]}`",
-        f"- {sla_note}Intervals are percentile bootstrap 95% CIs over replications; differences are orchestrated minus baseline, paired by replication (same patients and random numbers in both arms).",
+        f"- Intervals are percentile bootstrap 95% CIs over replications; differences are orchestrated minus baseline, paired by replication (same patients and random numbers in both arms).",
         "",
         "## Summary",
         "",

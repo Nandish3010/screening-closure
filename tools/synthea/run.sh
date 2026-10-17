@@ -10,9 +10,10 @@ SYNTHEA_SEED="${SYNTHEA_SEED:-20261017}"
 SYNTHEA_POPULATION="${SYNTHEA_POPULATION:-300}"
 # Reference/end date (YYYYMMDD) for ages and the end of simulated history. Default = the date of
 # SIM_CLOCK_START (2026-01-05), so the cohort is a pure function of (version, seed, population,
-# date), not of wall clock, and 45-75 means "aged 45-75 on the simulation start date".
+# date), not of wall clock, and 40-75 means "aged 40-75 on the simulation start date" (Abu Dhabi policy age range,
+# docs/evidence.md section 8).
 SYNTHEA_REFERENCE_DATE="${SYNTHEA_REFERENCE_DATE:-20260105}"
-SYNTHEA_AGE_RANGE="${SYNTHEA_AGE_RANGE:-45-75}"
+SYNTHEA_AGE_RANGE="${SYNTHEA_AGE_RANGE:-40-75}"
 SYNTHEA_STATE="${SYNTHEA_STATE:-Massachusetts}"
 
 DATA=/data/synthea

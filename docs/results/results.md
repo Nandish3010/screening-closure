@@ -1,12 +1,12 @@
 # Evaluation results: baseline vs orchestrated
 
-generated_at: 2026-10-17 19:13:06 UTC (this line is the only non-deterministic content; `results.json` is byte-for-byte reproducible)
+generated_at: 2026-10-17 19:17:18 UTC (this line is the only non-deterministic content; `results.json` is byte-for-byte reproducible)
 
 All data are synthetic. Reproduce every number here with `make evaluate`; verify reproducibility with `make evaluate-check`.
 
 - Seed 20261017, 20 replications x 2,000 cases x 360 days of follow-up, 1000 bootstrap resamples
-- Parameters hash `39bbc121ac0d0f49`, pathway `colorectal_fit` v0.2 hash `b5f4bea6c1c9177f`, git commit `ebd165fd1ce7`
-- SLA override: `complete_confirmatory` uses 31 working days (DoH KPI, `followup_target_working_days`) instead of 45 in the pathway YAML. Intervals are percentile bootstrap 95% CIs over replications; differences are orchestrated minus baseline, paired by replication (same patients and random numbers in both arms).
+- Parameters hash `39bbc121ac0d0f49`, pathway `colorectal_fit` v0.2 hash `aa292e69548b80ec`, git commit `d2310c365822`
+- Intervals are percentile bootstrap 95% CIs over replications; differences are orchestrated minus baseline, paired by replication (same patients and random numbers in both arms).
 
 ## Summary
 

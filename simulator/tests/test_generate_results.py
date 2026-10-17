@@ -26,7 +26,7 @@ def variant(pid: str, birth: str, **extra) -> dict:
 
 
 def cohort(n: int = 400) -> list[dict]:
-    # ages 45..75 at 2026-01-05 (born 1950-07-01 .. 1980-07-01), so everyone is eligible
+    # ages 45..75 at 2026-01-05 (born 1950-07-01 .. 1980-07-01), so everyone is eligible (40-75)
     return [variant(str(i), f"{1951 + i % 30}-07-01") for i in range(n)]
 
 
@@ -39,8 +39,8 @@ def test_sample_is_a_real_small_synthea_bundle():
 
 def test_age_filter_lower_bound():
     ok = lambda birth: gr.is_eligible(variant("x", birth), CLOCK)  # noqa: E731
-    assert ok("1981-01-05") is True    # exactly 45 on 2026-01-05
-    assert ok("1981-01-06") is False   # 44, turns 45 tomorrow
+    assert ok("1986-01-05") is True    # exactly 40 on 2026-01-05
+    assert ok("1986-01-06") is False   # 39, turns 40 tomorrow
 
 
 def test_age_filter_upper_bound():

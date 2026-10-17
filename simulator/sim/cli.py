@@ -30,7 +30,7 @@ def _cmd_run(args) -> int:
         info = {
             "arm": arm, "cases": args.cases, "days": args.days, "seed": args.seed,
             "events": res.n_events, "event_log_sha256": res.event_hash, "seconds": round(elapsed, 2),
-            "counters": {k: v for k, v in res.counters.items() if k != "sla_overrides"},
+            "counters": dict(res.counters),
         }
         if args.verify:
             bad = []

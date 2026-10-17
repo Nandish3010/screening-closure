@@ -170,14 +170,6 @@ class Engine:
             raise ParamError(f"engine has no actor model for pathway events {unknown}")
         self.slas = dict(pathway.slas_working_days)
         self.slas.setdefault("close", mp.signoff_sla_working_days)
-        # DoH KPI: colonoscopy within 31 working days of referral. Until the pathway YAML says so,
-        # the simulator uses that value for complete_confirmatory (recorded in the results meta).
-        self.sla_overrides: dict[str, dict] = {}
-        if "complete_confirmatory" in self.slas and self.slas["complete_confirmatory"] != mp.followup_target_working_days:
-            self.sla_overrides["complete_confirmatory"] = {
-                "pathway_yaml": self.slas["complete_confirmatory"], "used": mp.followup_target_working_days,
-            }
-            self.slas["complete_confirmatory"] = mp.followup_target_working_days
         self.ladder = pathway.escalation_ladder
         for r in self.ladder:
             for table, name in ((mp.escalation_effect_prob, "orchestration.escalation_effect_prob"),

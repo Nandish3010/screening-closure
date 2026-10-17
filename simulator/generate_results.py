@@ -3,7 +3,7 @@
 
 Pipeline step 2 of 3 (load_cohort -> generate_results -> create_cases).
 
-For every patient aged 45-75 on SIM_CLOCK_START, a seeded draw decides whether their FIT is
+For every patient aged 40-75 on SIM_CLOCK_START, a seeded draw decides whether their FIT is
 positive (rate from simulator/params.yaml: fit_positivity_rate). For each POSITIVE it writes an
 Observation and a DiagnosticReport to HAPI and records them in data/results/manifest.json.
 
@@ -39,7 +39,8 @@ DEFAULT_FHIR = "http://localhost:8080/fhir"
 DEFAULT_SEED = 20261017
 DEFAULT_CLOCK = "2026-01-05T08:00:00Z"
 DEFAULT_RATE = 0.07
-AGE_MIN, AGE_MAX = 45, 75
+# Abu Dhabi policy: FIT screening for adults aged 40-75 (docs/evidence.md section 8: IFHAS V10, ADPHC 2019).
+AGE_MIN, AGE_MAX = 40, 75
 WINDOW_DAYS = 14
 MANIFEST = REPO_ROOT / "data" / "results" / "manifest.json"
 PARAMS = Path(__file__).resolve().parent / "params.yaml"
@@ -85,7 +86,7 @@ def patient_key(patient: dict) -> str:
 
 
 def is_eligible(patient: dict, clock: datetime) -> bool:
-    """Aged 45-75 (inclusive, completed years) on the clock date, and not deceased by then."""
+    """Aged 40-75 (inclusive, completed years) on the clock date, and not deceased by then."""
     birth = patient.get("birthDate")
     if not birth:
         return False
@@ -241,7 +242,7 @@ def main(argv: list[str] | None = None) -> int:
         patients = fetch_patients(client, base)
         eligible = eligible_patients(patients, clock)
         positives = select_positives(patients, args.seed, rate, clock, args.cap)
-        log.info("patients=%d eligible(45-75 at %s)=%d positives=%d (rate=%s seed=%d cap=%s)",
+        log.info("patients=%d eligible(40-75 at %s)=%d positives=%d (rate=%s seed=%d cap=%s)",
                  len(patients), clock.date(), len(eligible), len(positives), rate, args.seed, args.cap)
 
         created = existing = 0
@@ -265,7 +266,7 @@ def main(argv: list[str] | None = None) -> int:
         "sim_clock_start": _iso(clock),
         "fit_positivity_rate": rate,
         "patients_in_hapi": len(patients),
-        "eligible_45_75": len(eligible),
+        "eligible_40_75": len(eligible),
         "results": entries,
     }, indent=2) + "\n")
     print(f"SUMMARY patients={len(patients)} eligible={len(eligible)} positives={len(positives)} "

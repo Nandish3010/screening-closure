@@ -166,7 +166,7 @@ No peer-reviewed estimate of the share of EHR phone numbers that are wrong was f
 | Blood test (Shield) | DoH Circular 2025/42, 18 Mar 2025 | Liquid biopsy added to IFHAS for UAE nationals 40+ who are unwilling to have colonoscopy or FIT; "not a replacement" for colonoscopy every 10 years or annual FIT | P |
 | 2016 HAAD guidance (FIT every 2 years) | cited in the BMC Cancer 2021 paper | superseded in 2019 by annual FIT | P |
 
-Note: the simulator's `generate_results.py` currently selects ages **45-75**; the Abu Dhabi documents say **40-75**. I found no Abu Dhabi source for 45.
+Note: `generate_results.py` previously selected ages **45-75** while the Abu Dhabi documents say **40-75** (no Abu Dhabi source for 45). Fixed at M1 integration (commit "A-fix"): the generator and the Synthea default now use 40-75.
 
 ### 8b. Published uptake, positivity and follow-up numbers
 
@@ -245,4 +245,4 @@ What I could not find, with what each gap means for the submission:
 7. **Rejection rate for an already-indicated GI referral after a positive screen.** Not found; the proposal borrows from national e-referral data (paediatric Saudi), a colonoscopy central-intake abstract and an FQHC derivation.
 8. **Rows I could not verify (marked S):** NHS e-RS "about 2%" rejection, NHS outpatient DNA 5.9%/5.6%, STOP CRC median 72 (49-120), the Springer environmental scan, Latin American positivity by threshold, the Pulse 26% survey, centralised navigation 13% non-contact, and the Kaggle licence. Re-check these before citing.
 9. **Source inconsistencies to be aware of:** AltaMed (IQR and the 122 vs 108 completers), Abu Dhabi audit (933 vs about 992 denominator; IQR stated as one number), National Guideline (15 vs 31 working days), VA mortality CI, LA County navigation odds ratio.
-10. **Simulator-versus-policy mismatches discovered along the way:** eligible age 45 in `generate_results.py` against 40 in Abu Dhabi policy; `complete_confirmatory` SLA of 45 working days against the 31-working-day national KPI.
+10. **Simulator-versus-policy mismatches discovered along the way:** eligible age 45 in `generate_results.py` against 40 in Abu Dhabi policy; `complete_confirmatory` SLA of 45 working days against the 31-working-day national KPI. Both fixed at M1 integration (commit "A-fix: align eligibility age and confirmatory SLA with DoH standard"): the generator and Synthea default are 40-75 and the pathway YAML SLA is 31 working days.

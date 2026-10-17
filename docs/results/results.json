@@ -1680,7 +1680,7 @@
     "cases_per_replication": 2000,
     "ci_method": "percentile bootstrap over replications; differences are paired by replication (common random numbers)",
     "follow_up_days": 360,
-    "git_commit": "ebd165fd1ce7b2aa12700530e847557abcb7014f",
+    "git_commit": "d2310c3658229aad62506f8e9eb29c3566b5feaf",
     "parameter_status_counts": {
       "assumed": 87,
       "calibrated": 16,
@@ -1692,17 +1692,11 @@
     ],
     "params_hash": "39bbc121ac0d0f49d21a9203bb46c9b540f98c4c61b92ea779a9eac81de7fd9d",
     "pathway": "colorectal_fit",
-    "pathway_hash": "b5f4bea6c1c9177ffbcc9111ade2e638ad3be4fc644acaefbd44ac5147236ec9",
+    "pathway_hash": "aa292e69548b80ec7fe0aa3c48d565008dd73a77c0e8c40f34c3843fe4727c71",
     "pathway_version": "0.2",
     "replications": 20,
     "schema_version": 1,
-    "seed": 20261017,
-    "sla_overrides": {
-      "complete_confirmatory": {
-        "pathway_yaml": 45,
-        "used": 31
-      }
-    }
+    "seed": 20261017
   },
   "parameters": [
     {
@@ -1892,7 +1886,7 @@
     },
     {
       "key": "followup_target_working_days",
-      "notes": "The same guideline's clause 12.5.2 says 15 working days; Appendix 3 says 31 days. DoH IFHAS V10 Appendix 9: referral within 15 working days of releasing results. Current pathway SLA complete_confirmatory is 45 working days, looser than this KPI; reconcile as a design decision.",
+      "notes": "The same guideline's clause 12.5.2 says 15 working days; Appendix 3 says 31 days. DoH IFHAS V10 Appendix 9: referral within 15 working days of releasing results. The pathway YAML slas_working_days.complete_confirmatory is 31 to match (reconciled at M1; the YAML is the single source and a test keeps the two equal).",
       "source": "UAE National Guideline for Colorectal Cancer Screening and Diagnosis, 3rd ed. 2022, Appendix 2: colonoscopy within 31 working days of referral after positive FIT (>90% acceptable, >95% desirable). https://www.isahd.ae/content/docs/Colorectal%20guideline%20Screening%20and%20Diagnosis_UAE%20National%20Guidelines.pdf",
       "status": "sourced",
       "value": 31

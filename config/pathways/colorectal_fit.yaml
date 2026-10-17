@@ -76,7 +76,7 @@ slas_working_days:
   contact_patient: 5
   patient_acknowledge: 7
   book_confirmatory: 14
-  complete_confirmatory: 45
+  complete_confirmatory: 31   # DoH IFHAS KPI: colonoscopy within 31 working days of referral (docs/evidence.md section 8)
   clinician_review: 5
 # A rung is emitted `after_breach_days` working days after the due date; the next rung is
 # only valid after the previous one (no skipping). A human in `accepted_by` accepts a rung
