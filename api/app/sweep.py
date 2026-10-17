@@ -1,8 +1,10 @@
-"""Scheduler SLA sweep: find breaches, emit `mark_overdue` (A3) and walk the escalation ladder (A4).
+"""Scheduler SLA sweep: find breaches, emit `mark_overdue` (A3), walk the escalation ladder (A4)
+and bounce unanswered referral handoffs (A5).
 
 The planner (`plan_case`) is a pure function of (case model, pathway, calendar, now). It never
-reads a clock and never produces anything but `mark_overdue` / `escalate` events from
-`system:scheduler`; in particular it can never produce `close` (T-A16). `run_sweep` feeds it
+reads a clock and never produces anything but `mark_overdue` / `escalate` / bounce (`handoff_rejected` with
+reason `timeout`) events from `system:scheduler`; in particular it can never produce `close`
+(T-A16). `run_sweep` feeds it
 every open case from a store and appends what it plans.
 
 Idempotency: each planned event has a deterministic id, uuid5 over (case, state, due date
@@ -28,7 +30,9 @@ log = logging.getLogger("app.sweep")
 
 SCHEDULER_ACTOR = "system:scheduler"
 # The only event types the scheduler may ever emit (mirrors app.policy.EVENT_POLICY).
-SCHEDULER_EVENT_TYPES = frozenset({"mark_overdue", "escalate", "watchdog_flagged"})
+SCHEDULER_EVENT_TYPES = frozenset(
+    {"mark_overdue", "escalate", "watchdog_flagged", "handoff_rejected"}
+)
 # Fixed namespace for deterministic event ids (never change: it would break idempotency).
 SWEEP_NAMESPACE = uuid.UUID("5c6d0a9e-77f1-4b8e-9d0c-0f3f6a1b2e44")
 
@@ -55,10 +59,62 @@ def due_at_for(model: CaseModel, pathway: Pathway, calendar: WorkingCalendar) ->
     return _utc(calendar.add_working_days(model.clock_started_at, days))
 
 
+def handoff_due_at(
+    model: CaseModel, pathway: Pathway, calendar: WorkingCalendar
+) -> datetime | None:
+    """When the pending handoff request expires unanswered, or None if nothing is pending.
+
+    Counted in working days from the request (`handoff_response_working_days`, ADR-016).
+    """
+    pending = model.pending_handoff
+    if not pending:
+        return None
+    requested = datetime.fromisoformat(pending["requested_at"])
+    return _utc(calendar.add_working_days(requested, pathway.handoff_response_working_days))
+
+
+def plan_bounce(
+    case_id: UUID, model: CaseModel, pathway: Pathway, calendar: WorkingCalendar, now: datetime
+) -> Event | None:
+    """`handoff_rejected {reason: timeout, bounced: true}` for a request that went unanswered.
+
+    Ownership never moved (it changes only on acceptance), so the bounce returns the case to the
+    requester by clearing the pending request; in the referral states it also moves the case to
+    `referral_rejected` so it needs a re-route (which has its own SLA and ladder).
+    """
+    due = handoff_due_at(model, pathway, calendar)
+    if due is None or now <= due:
+        return None
+    pending = model.pending_handoff
+    return Event(
+        case_id,
+        "handoff_rejected",
+        now,
+        SCHEDULER_ACTOR,
+        {
+            "reason": pathway.handoff_bounce_reason,
+            "bounced": True,
+            "to_provider": pending["to_provider"],
+            "returned_to": pending["from_owner"],
+            "requested_at": pending["requested_at"],
+            "due_at": due.isoformat(),
+            "working_days": pathway.handoff_response_working_days,
+        },
+        sweep_event_id(case_id, "handoff", datetime.fromisoformat(pending["requested_at"]), "bounce"),
+    )
+
+
 def plan_case(
     case_id: UUID, model: CaseModel, pathway: Pathway, calendar: WorkingCalendar, now: datetime
 ) -> list[Event]:
-    """The events the scheduler should append for this case at sim time `now`, in order."""
+    """The events the scheduler should append for this case at sim time `now`, in order.
+
+    A bounce comes alone: it can change the case's state, so the overdue/escalation events are
+    planned from the new model (`run_sweep` re-plans straight after a bounce).
+    """
+    bounce = plan_bounce(case_id, model, pathway, calendar, now)
+    if bounce is not None:
+        return [bounce]
     due = due_at_for(model, pathway, calendar)
     if due is None or now <= due:
         return []
@@ -133,6 +189,7 @@ class SweepResult:
     cases_evaluated: int = 0
     mark_overdue: int = 0
     escalate: int = 0
+    handoff_bounced: int = 0
     rejected: int = 0  # planned events the state machine refused (a race with another writer)
     errors: list[str] = field(default_factory=list)
 
@@ -142,6 +199,7 @@ class SweepResult:
             "cases_evaluated": self.cases_evaluated,
             "mark_overdue": self.mark_overdue,
             "escalate": self.escalate,
+            "handoff_bounced": self.handoff_bounced,
             "rejected": self.rejected,
             "errors": list(self.errors),
         }
@@ -163,22 +221,38 @@ def run_sweep(
             result.errors.append(f"{case_id}: {error}")
             log.error("case %s does not replay: %s", case_id, error)
             continue
-        for event in plan_case(case_id, model, pathway, calendar, now):
-            if event.type not in SCHEDULER_EVENT_TYPES or event.actor != SCHEDULER_ACTOR:
-                raise RuntimeError(f"scheduler planned a forbidden event: {event.type}")
-            try:
-                store.append(event, pathway)
-            except InvalidTransition as exc:
-                # Another writer moved the case between our read and our write; the next
-                # sweep re-plans from the new state.
-                result.rejected += 1
-                log.info("case %s: %s refused: %s", case_id, event.type, exc)
+        # A bounce can move the case to another state, so re-plan once from the new model.
+        for _ in range(2):
+            bounced = False
+            for event in plan_case(case_id, model, pathway, calendar, now):
+                if event.type not in SCHEDULER_EVENT_TYPES or event.actor != SCHEDULER_ACTOR:
+                    raise RuntimeError(f"scheduler planned a forbidden event: {event.type}")
+                if event.type == "handoff_rejected" and (
+                    event.payload.get("reason") != pathway.handoff_bounce_reason
+                    or event.payload.get("bounced") is not True
+                ):
+                    raise RuntimeError("scheduler planned a handoff_rejected that is not a bounce")
+                try:
+                    store.append(event, pathway)
+                except InvalidTransition as exc:
+                    # Another writer moved the case between our read and our write; the next
+                    # sweep re-plans from the new state.
+                    result.rejected += 1
+                    log.info("case %s: %s refused: %s", case_id, event.type, exc)
+                    break
+                except (CaseNotFound, EventIdConflict) as exc:
+                    result.errors.append(f"{case_id}: {type(exc).__name__}: {exc}")
+                    break
+                if event.type == "mark_overdue":
+                    result.mark_overdue += 1
+                elif event.type == "handoff_rejected":
+                    result.handoff_bounced += 1
+                    bounced = True
+                else:
+                    result.escalate += 1
+            if not bounced:
                 break
-            except (CaseNotFound, EventIdConflict) as exc:
-                result.errors.append(f"{case_id}: {type(exc).__name__}: {exc}")
+            model = store.read_model(case_id, pathway)
+            if model is None:
                 break
-            if event.type == "mark_overdue":
-                result.mark_overdue += 1
-            else:
-                result.escalate += 1
     return result

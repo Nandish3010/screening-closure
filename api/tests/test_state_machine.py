@@ -122,6 +122,28 @@ def check_step(prev: CaseModel, ev: Event, new: CaseModel) -> None:
         assert ev.type == "escalation_accepted" and prev.escalation_level >= 1
     if new.owner != prev.owner:
         assert ev.type in ("accept_ownership", "handoff_accepted", "reassign")
+    # (e) referral handoff contract (A5): ownership moves only on acceptance of a pending request
+    if ev.type == "handoff_requested":
+        assert prev.owner is not None and prev.pending_handoff is None
+        assert new.pending_handoff and new.pending_handoff["from_owner"] == prev.owner
+        assert new.owner == prev.owner
+    elif ev.type == "handoff_accepted":
+        assert prev.pending_handoff is not None and new.pending_handoff is None
+        assert new.owner == ev.actor and not is_automated(ev.actor)
+        assert new.provider == (ev.payload.get("provider") or prev.pending_handoff["to_provider"]).strip()
+    elif ev.type == "handoff_rejected":
+        assert prev.pending_handoff is not None and new.pending_handoff is None
+        assert new.owner == prev.owner  # the case stays with the referrer
+        assert new.last_handoff["outcome"] == "rejected"
+        if ev.payload["reason"] == PATHWAY.handoff_bounce_reason:
+            assert ev.actor == "system:scheduler" and ev.payload.get("bounced") is True
+        else:
+            assert ev.payload["reason"] in PATHWAY.handoff_reject_reasons
+            assert ev.actor != "system:scheduler"
+    elif ev.type == "reassign":
+        assert new.pending_handoff is None
+    else:
+        assert new.pending_handoff == prev.pending_handoff
     assert new.consent_frozen == (new.state == "consent_withdrawn")
     assert (new.resume_state is not None) == (new.state == "consent_withdrawn")
     assert new.last_event_at == ev.at
@@ -171,7 +193,9 @@ def plausible_event(draw, model: CaseModel, at: datetime):
     next_rung = PATHWAY.rung_at(model.escalation_level + 1)
     payload = {
         **SIGNED,
-        "reason": "capacity",
+        "reason": draw(st.sampled_from(["capacity", "wrong_service", "missing_info", "patient_declined", "timeout"])),
+        "to_provider": "endoscopy-unit",
+        "bounced": draw(st.booleans()),
         "owner": "primary_care_owner:new",
         "withdrawn": draw(st.booleans()),
         "failed_attempts": draw(st.integers(0, 5)),
@@ -204,7 +228,9 @@ def noise_event(draw, at: datetime):
             optional={
                 "evidence_ref": st.sampled_from(["", "DiagnosticReport/1", None]),
                 "signed_by": st.sampled_from(["", "Practitioner/9", None]),
-                "reason": st.sampled_from(["", "capacity"]),
+                "reason": st.sampled_from(["", "capacity", "timeout", "nonsense"]),
+                "to_provider": st.sampled_from(["", "endoscopy-unit", 7]),
+                "bounced": st.sampled_from([True, False, None]),
                 "withdrawn": st.sampled_from([True, False, 1, 0, "true", None]),
                 "failed_attempts": st.sampled_from([0, 2, 3, 4, True, "9"]),
                 "state": st.sampled_from(OPEN),
@@ -379,6 +405,9 @@ def test_read_model_shape_and_values():
         "resume_state": None,
         "clock_started_at": (AT + timedelta(days=3)).isoformat(),
         "breach_due_at": None,
+        "provider": None,
+        "pending_handoff": None,
+        "last_handoff": None,
     }
 
 
@@ -470,12 +499,11 @@ def test_mark_overdue_twice_and_on_a_state_without_sla_is_refused():
     with pytest.raises(InvalidTransition):
         step(m, make_event("mark_overdue", "system:scheduler",
                            {"state": "patient_contacted", "due_at": AT.isoformat()}, AT + timedelta(days=30)), PATHWAY)
-    rejected = drive(*TO_CONTACTED, ("patient_acknowledge", "patient:p", {}),
-                     ("handoff_rejected", "specialist_owner:s", {"reason": "capacity"}))
-    assert rejected.state == "referral_rejected"
+    withdrawn = drive(*TO_CONTACTED, ("consent_updated", "patient:p", {"withdrawn": True}))
+    assert withdrawn.state == "consent_withdrawn"  # carries no SLA
     with pytest.raises(InvalidTransition):
-        step(rejected, make_event("mark_overdue", "system:scheduler",
-                                  {"state": "referral_rejected", "due_at": AT.isoformat()}, AT + timedelta(days=30)), PATHWAY)
+        step(withdrawn, make_event("mark_overdue", "system:scheduler",
+                                   {"state": "consent_withdrawn", "due_at": AT.isoformat()}, AT + timedelta(days=30)), PATHWAY)
 
 
 def test_escalation_rungs_are_ordered_never_skipped_or_repeated():
@@ -570,21 +598,26 @@ def test_client_cannot_choose_where_a_case_resumes():
 
 def test_referral_rejection_and_reroute():
     m = drive(*TO_CONTACTED, ("patient_acknowledge", "patient:p", {}),
-              ("book_confirmatory", OWNER, {}))
+              ("handoff_requested", OWNER, {"to_provider": "endo-1"}))
     with pytest.raises(InvalidTransition):  # reason is mandatory
         step(m, make_event("handoff_rejected", "specialist_owner:s", {}), PATHWAY)
     rej = step(m, make_event("handoff_rejected", "specialist_owner:s", {"reason": "capacity"}), PATHWAY)
-    assert rej.state == "referral_rejected"
-    via_accept = step(rej, make_event("handoff_accepted", "specialist_owner:t", {}), PATHWAY)
+    assert rej.state == "referral_rejected" and rej.owner == OWNER and rej.pending_handoff is None
+    # re-route: the referrer asks again, the new provider accepts
+    again = step(rej, make_event("handoff_requested", OWNER, {"to_provider": "endo-2"}), PATHWAY)
+    via_accept = step(again, make_event("handoff_accepted", "specialist_owner:t", {}), PATHWAY)
     assert via_accept.state == "owner_accepted" and via_accept.owner == "specialist_owner:t"
+    assert via_accept.provider == "endo-2"
     via_reassign = step(rej, make_event("reassign", "supervisor:su", {"owner": "primary_care_owner:z"}), PATHWAY)
     assert via_reassign.state == "owner_accepted" and via_reassign.owner == "primary_care_owner:z"
     with pytest.raises(InvalidTransition):
         step(rej, make_event("reassign", "supervisor:su", {}), PATHWAY)  # needs an owner
-    with pytest.raises(InvalidTransition):  # rejection is not available from other states
-        step(drive(*TO_CONTACTED), make_event("handoff_rejected", "specialist_owner:s", {"reason": "capacity"}), PATHWAY)
+    with pytest.raises(InvalidTransition):  # nothing pending: nothing to accept
+        step(rej, make_event("handoff_accepted", "specialist_owner:t", {}), PATHWAY)
     with pytest.raises(InvalidTransition):
-        step(rej, make_event("handoff_accepted", "system:scheduler", {}), PATHWAY)
+        step(again, make_event("handoff_accepted", "system:scheduler", {}), PATHWAY)
+    with pytest.raises(InvalidTransition):  # nothing pending in a state that could reject
+        step(drive(*TO_CONTACTED), make_event("handoff_rejected", "specialist_owner:s", {"reason": "capacity"}), PATHWAY)
 
 
 def test_lost_contact_after_n_failed_attempts_and_exit():
@@ -631,9 +664,10 @@ def test_reopen_needs_a_human_and_a_reason_and_cannot_skip_review():
         step(drive(*TO_CONTACTED), make_event("reopen", OWNER, {"reason": "x"}), PATHWAY)
 
 
+# (handoff_requested / handoff_accepted / handoff_rejected have preconditions: test_handoff.py)
 ANNOTATIONS_WITHOUT_RULES = [
-    "handoff_requested", "message_drafted", "message_approved", "message_sent",
-    "callback_requested", "watchdog_flagged", "consent_updated", "handoff_accepted",
+    "message_drafted", "message_approved", "message_sent",
+    "callback_requested", "watchdog_flagged", "consent_updated",
 ]
 
 
@@ -643,8 +677,6 @@ ANNOTATIONS_WITHOUT_RULES = [
         (s, t)
         for s in OPEN
         for t in ANNOTATIONS_WITHOUT_RULES
-        # handoff_accepted is the re-route transition out of referral_rejected
-        if (s, t) != ("referral_rejected", "handoff_accepted")
     ],
 )
 def test_annotations_are_allowed_in_any_open_state_without_changing_it(state, type_):
@@ -784,4 +816,5 @@ def test_real_config_loads_every_documented_event():
     assert expected <= set(PATHWAY.event_types)
     assert PATHWAY.sla_for_state("patient_contacted") == ("patient_acknowledge", 7)
     assert PATHWAY.sla_for_state("lost_contact") == ("contact_patient", 5)
-    assert PATHWAY.sla_for_state("closed") is None and PATHWAY.sla_for_state("referral_rejected") is None
+    assert PATHWAY.sla_for_state("closed") is None and PATHWAY.sla_for_state("consent_withdrawn") is None
+    assert PATHWAY.sla_for_state("referral_rejected") == ("reassign", 2)  # re-route a bounced referral (A5)

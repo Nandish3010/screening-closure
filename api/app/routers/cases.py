@@ -19,7 +19,7 @@ from app.events import (
     replay_model,
 )
 from app.pathway import Pathway
-from app.state_machine import InvalidTransition
+from app.state_machine import InvalidTransition, PayloadError, validate_payload
 
 router = APIRouter(prefix="/cases", tags=["cases"])
 
@@ -114,6 +114,11 @@ def post_event(
     if store.current_state(case_id) is None:
         raise HTTPException(404, "case not found")
     policy.authorize_case_access(identity, _patient_ref(case_id))
+    if identity.role in policy.OWNER_SCOPED:
+        model = store.read_model(case_id, pathway)
+        if model is None:
+            raise HTTPException(404, "case not found")
+        policy.authorize_owner_scope(identity, body.type, model)
     at = body.at or clock.now()
     if at.tzinfo is None:
         at = at.replace(tzinfo=UTC)
@@ -122,9 +127,12 @@ def post_event(
     extra = {"event_id": body.event_id} if body.event_id is not None else {}
     event = Event(case_id, body.type, at, identity.actor, body.payload, **extra)
     try:
+        validate_payload(event, pathway)  # malformed payload: 422 before anything is written
         store.append(event, pathway)
     except CaseNotFound:
         raise HTTPException(404, "case not found")
+    except PayloadError as exc:
+        raise HTTPException(422, str(exc))
     except InvalidTransition as exc:
         raise HTTPException(409, str(exc))
     except EventIdConflict:

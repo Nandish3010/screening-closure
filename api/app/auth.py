@@ -38,6 +38,8 @@ AUTOMATED_ROLE_NAMES = ("system", "scheduler", "watchdog", "model")
 
 NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9 ._@-]{0,63}$")  # no ":" so role:name parses
 PATIENT_REF_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9/._-]{0,99}$")
+PROVIDER_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9 ._@/-]{0,99}$")
+PROVIDER_ROLES = ("primary_care_owner", "specialist_owner")  # roles that act for a provider
 
 
 class AuthError(Exception):
@@ -50,6 +52,13 @@ class Identity:
     role: str
     name: str
     patient_ref: str | None = None
+    # The provider (organisation) a clinician acts for. Referral handoffs are addressed to a
+    # provider; a clinician may answer one addressed to theirs (A5). Defaults to the name.
+    provider: str | None = None
+
+    @property
+    def effective_provider(self) -> str:
+        return self.provider or self.name
 
     @property
     def actor(self) -> str:
@@ -73,7 +82,9 @@ def _sign(body: str, secret: str) -> str:
     return _b64(hmac.new(secret.encode(), body.encode(), hashlib.sha256).digest())
 
 
-def validate_user(role: str, name: str, patient_ref: str | None) -> None:
+def validate_user(
+    role: str, name: str, patient_ref: str | None, provider: str | None = None
+) -> None:
     if role in AUTOMATED_ROLE_NAMES:
         raise AuthError(f"automated actors cannot authenticate: {role!r}")
     if role not in USER_ROLES:
@@ -85,13 +96,26 @@ def validate_user(role: str, name: str, patient_ref: str | None) -> None:
             raise AuthError("patient_ref is only for the patient role")
         if not PATIENT_REF_RE.match(patient_ref):
             raise AuthError("bad patient_ref")
+    if provider is not None:
+        if role not in PROVIDER_ROLES:
+            raise AuthError("provider is only for primary_care_owner and specialist_owner")
+        if not PROVIDER_RE.match(provider):
+            raise AuthError("bad provider")
 
 
-def issue_token(role: str, name: str, patient_ref: str | None = None, secret: str | None = None) -> str:
-    validate_user(role, name, patient_ref)
+def issue_token(
+    role: str,
+    name: str,
+    patient_ref: str | None = None,
+    secret: str | None = None,
+    provider: str | None = None,
+) -> str:
+    validate_user(role, name, patient_ref, provider)
     claims: dict = {"v": 1, "role": role, "name": name}
     if patient_ref is not None:
         claims["patient_ref"] = patient_ref
+    if provider is not None:
+        claims["provider"] = provider
     body = _b64(json.dumps(claims, sort_keys=True, separators=(",", ":")).encode())
     return f"{body}.{_sign(body, secret or settings.dev_auth_secret)}"
 
@@ -106,10 +130,11 @@ def verify_token(token: str, secret: str | None = None) -> Identity:
     try:
         claims = json.loads(_unb64(body))
         role, name, patient_ref = claims["role"], claims["name"], claims.get("patient_ref")
-        validate_user(role, name, patient_ref)  # a validly signed token still cannot be a model
+        provider = claims.get("provider")
+        validate_user(role, name, patient_ref, provider)  # a signed token still cannot be a model
     except (ValueError, KeyError, TypeError) as exc:
         raise AuthError("malformed token") from exc
-    return Identity("user", role, name, patient_ref)
+    return Identity("user", role, name, patient_ref, provider)
 
 
 def service_identity(token: str) -> Identity | None:

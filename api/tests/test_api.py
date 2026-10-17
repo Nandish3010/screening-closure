@@ -27,7 +27,7 @@ def test_case_lifecycle_and_response_shape():
     assert created["events"][0]["type"] == "case_created"
     assert created["events"][0]["event_id"]
 
-    resp = post(case_id, "close", OWNER)
+    resp = post(case_id, "book_confirmatory", COORD)  # allowed role, wrong state
     assert resp.status_code == 409
 
     first = client.get("/pathways", headers=COORD).json()["transitions"][0]["event"]

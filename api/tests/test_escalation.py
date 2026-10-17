@@ -252,7 +252,7 @@ def test_escalation_and_acceptance_over_http(http_case):
     # the service token cannot accept anything; the wrong humans cannot; the right one can
     assert post(case_id, "escalation_accepted", SCHED).status_code == 403
     assert post(case_id, "escalation_accepted", COORD).status_code == 409
-    assert post(case_id, "escalation_accepted", OWNER).status_code == 409
+    assert post(case_id, "escalation_accepted", OWNER).status_code == 403  # not the owner (nobody is)
     accepted = post(case_id, "escalation_accepted", SUP)
     assert accepted.status_code == 201
     assert accepted.json()["events"][-1]["actor"] == "supervisor:sam"

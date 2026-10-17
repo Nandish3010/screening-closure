@@ -65,6 +65,9 @@ class Pathway:
     slas_working_days: dict[str, int] = field(default_factory=dict)
     escalation_ladder: tuple[EscalationRung, ...] = ()
     closure_rule: str = ""
+    handoff_response_working_days: int = 3
+    handoff_reject_reasons: tuple[str, ...] = ()
+    handoff_bounce_reason: str = "timeout"
     raw: dict = field(default_factory=dict, compare=False, repr=False)
 
     @property
@@ -183,6 +186,9 @@ def load_pathway(path: str | Path) -> Pathway:
                 for r in raw.get("escalation_ladder", [])
             ),
             closure_rule=raw.get("closure_rule", ""),
+            handoff_response_working_days=raw.get("handoff_response_working_days", 3),
+            handoff_reject_reasons=tuple(raw.get("handoff_reject_reasons", [])),
+            handoff_bounce_reason=raw.get("handoff_bounce_reason", "timeout"),
             raw=raw,
         )
     except KeyError as exc:
@@ -260,3 +266,14 @@ def _validate(pw: Pathway) -> None:
     for r in pw.escalation_ladder:
         if not r.accepted_by:
             raise PathwayError(f"rung {r.rung!r} needs at least one accepted_by role")
+
+    days = pw.handoff_response_working_days
+    if isinstance(days, bool) or not isinstance(days, int) or days < 1:
+        raise PathwayError("handoff_response_working_days must be an integer >= 1")
+    reasons = pw.handoff_reject_reasons
+    if len(reasons) != len(set(reasons)) or not all(isinstance(r, str) and r for r in reasons):
+        raise PathwayError("handoff_reject_reasons must be unique non-empty strings")
+    if pw.handoff_bounce_reason in reasons:
+        raise PathwayError(
+            "handoff_bounce_reason is reserved for the scheduler and may not be a human reason"
+        )

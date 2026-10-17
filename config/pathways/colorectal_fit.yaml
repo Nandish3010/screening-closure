@@ -56,6 +56,7 @@ annotations:
   - escalation_accepted
   - handoff_requested
   - handoff_accepted
+  - handoff_rejected
   - consent_updated
   - message_drafted
   - message_approved
@@ -78,6 +79,7 @@ slas_working_days:
   book_confirmatory: 14
   complete_confirmatory: 31   # DoH IFHAS KPI: colonoscopy within 31 working days of referral (docs/evidence.md section 8)
   clinician_review: 5
+  reassign: 2         # a rejected or bounced referral (referral_rejected) must be re-routed within 2 working days (A5)
 # A rung is emitted `after_breach_days` working days after the due date; the next rung is
 # only valid after the previous one (no skipping). A human in `accepted_by` accepts a rung
 # with `escalation_accepted`, which stops further rungs for that breach (ADR-014).
@@ -85,4 +87,10 @@ escalation_ladder:
   - {rung: reminder, after_breach_days: 0, notify: owner, target: owner, action: reminder, accepted_by: [primary_care_owner, specialist_owner]}
   - {rung: supervisor, after_breach_days: 3, notify: owner_supervisor, target: supervisor, action: escalate, accepted_by: [supervisor]}
   - {rung: coordinator, after_breach_days: 7, notify: programme_coordinator, target: coordinator, action: escalate, accepted_by: [coordinator]}
+# Referral handoff contract (A5, ADR-016). Ownership changes only when the receiving provider
+# accepts. A request unanswered for `handoff_response_working_days` working days is bounced by
+# the scheduler sweep with reason `handoff_bounce_reason`, which only `system:scheduler` may use.
+handoff_response_working_days: 3
+handoff_reject_reasons: [capacity, wrong_service, missing_info, patient_declined]
+handoff_bounce_reason: timeout
 closure_rule: "A case may only enter `closed` via the `close` event carrying evidence_ref and signed_by. No automated actor may emit `close`."

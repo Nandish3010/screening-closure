@@ -65,7 +65,7 @@ def test_a_friday_start_skips_the_weekend():
     assert due_at_for(model, PATHWAY, UAE) == datetime(2026, 1, 13, 8, 0, tzinfo=UTC)  # Tuesday
 
 
-@pytest.mark.parametrize("state", ["referral_rejected", "consent_withdrawn", "closed"])
+@pytest.mark.parametrize("state", ["consent_withdrawn", "closed"])
 def test_states_without_an_sla_have_no_due_date(state):
     model = dataclasses.replace(start_model(), state=state)
     assert due_at_for(model, PATHWAY, UAE) is None
@@ -235,7 +235,12 @@ def test_scheduler_emits_only_overdue_and_escalate_never_close(events, jump_days
     assert all(e.actor == SCHEDULER_ACTOR for e in new)
     assert {e.type for e in new} <= SCHEDULER_EVENT_TYPES
     assert "close" not in {e.type for e in new}
-    assert store.current_state(cid) == state_before  # the scheduler never changes the state
+    if any(e.type == "handoff_rejected" for e in new):
+        # the only state change the scheduler can cause: a bounced referral needs a re-route
+        assert store.current_state(cid) in (state_before, "referral_rejected")
+        assert all(e.payload.get("reason") == "timeout" and e.payload.get("bounced") for e in new if e.type == "handoff_rejected")
+    else:
+        assert store.current_state(cid) == state_before  # otherwise the scheduler never changes the state
     if state_before != "closed":
         assert store.current_state(cid) != "closed"
 

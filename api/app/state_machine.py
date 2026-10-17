@@ -9,6 +9,11 @@ replay of the event log produces:
     escalation_level     rungs of the escalation ladder emitted for the current breach
     escalation_accepted  a human accepted the latest rung (no further rungs for this breach)
     owner                actor of the latest accept_ownership / handoff_accepted / reassign
+    provider             the provider the owner acts for (set by handoff_accepted, or by
+                         accept_ownership / reassign when the payload names one)
+    pending_handoff      an unanswered handoff request {to_provider, requested_by, from_owner,
+                         requested_at}; ownership changes only when it is accepted (A5)
+    last_handoff         outcome of the latest answered or bounced handoff (A5)
     consent_frozen       outreach is frozen (state is consent_withdrawn)
     last_event_at        `at` of the latest event, including annotations
     resume_state         where the case returns to when consent is restored (side state only)
@@ -33,12 +38,18 @@ if TYPE_CHECKING:  # avoid a circular import; events.py imports this module
 CASE_CREATED = "case_created"  # genesis marker; does not change state
 CONSENT_WITHDRAWN = "consent_withdrawn"
 
+SCHEDULER_ACTOR_NAME = "system:scheduler"
+
 # Actor prefixes that denote automation (scheduler, watchdog, drafting model...).
 AUTOMATED_ACTOR_PREFIXES = ("system:", "scheduler", "watchdog", "model:")
 
 
 class InvalidTransition(Exception):
     pass
+
+
+class PayloadError(InvalidTransition):
+    """The event's payload is malformed (the API answers 422; a store answers like any refusal)."""
 
 
 def is_automated(actor: str) -> bool:
@@ -66,6 +77,9 @@ class CaseModel:
     resume_state: str | None = None
     clock_started_at: datetime | None = None
     breach_due_at: datetime | None = None
+    provider: str | None = None
+    pending_handoff: dict | None = None
+    last_handoff: dict | None = None
 
     def to_json(self) -> dict:
         def iso(dt):
@@ -82,6 +96,9 @@ class CaseModel:
             "resume_state": self.resume_state,
             "clock_started_at": iso(self.clock_started_at),
             "breach_due_at": iso(self.breach_due_at),
+            "provider": self.provider,
+            "pending_handoff": dict(self.pending_handoff) if self.pending_handoff else None,
+            "last_handoff": dict(self.last_handoff) if self.last_handoff else None,
         }
 
 
@@ -107,13 +124,14 @@ def step(model: CaseModel, event: Event, pathway: Pathway) -> CaseModel:
     """Return the new read model, or raise InvalidTransition. Never mutates anything."""
     if event.type in pathway.human_only_events and is_automated(event.actor):
         raise InvalidTransition(f"event {event.type!r} requires a human actor")
+    _precheck(model, event, pathway)
 
     candidates = pathway.transitions_for(model.state, event.type)
     chosen = next((t for t in candidates if t.matches(event.payload)), None)
     if chosen is not None:
-        return _finish(_transition(model, event, pathway, chosen), event)
+        return _finish(_transition(model, event, pathway, chosen), event, model)
     if event.type in pathway.annotations and model.state in pathway.open_states:
-        return _finish(_annotate(model, event, pathway), event)
+        return _finish(_annotate(model, event, pathway), event, model)
     if candidates:
         raise InvalidTransition(
             f"event {event.type!r} from state {model.state!r}: payload does not satisfy "
@@ -253,11 +271,88 @@ _ANNOTATION_RULES = {
 }
 
 
-def _finish(model: CaseModel, event: Event) -> CaseModel:
-    """Bookkeeping common to every accepted event: last_event_at and the owner."""
-    owner = model.owner
-    if event.type in ("accept_ownership", "handoff_accepted"):
-        owner = event.actor
-    elif event.type == "reassign":
-        owner = str(event.payload["owner"])
-    return replace(model, last_event_at=_aware(event.at), owner=owner)
+# -- payload validation and the handoff rules (A5) ------------------
+
+
+def validate_payload(event: Event, pathway: Pathway) -> None:
+    """Raise PayloadError if the event's payload is malformed for its type. Pure; the API calls
+    it first so a malformed payload is a 422, and `step` calls it again so no store can skip it."""
+    payload, actor, kind = event.payload, event.actor, event.type
+    if kind == "handoff_requested":
+        provider = payload.get("to_provider")
+        if not isinstance(provider, str) or not provider.strip():
+            raise PayloadError("handoff_requested needs a non-empty string 'to_provider'")
+    elif kind == "handoff_rejected":
+        reason = payload.get("reason")
+        if reason == pathway.handoff_bounce_reason:
+            if actor != SCHEDULER_ACTOR_NAME or payload.get("bounced") is not True:
+                raise PayloadError(
+                    f"reason {reason!r} is reserved for the scheduler's bounce "
+                    "(actor system:scheduler with bounced: true)"
+                )
+        else:
+            if actor == SCHEDULER_ACTOR_NAME:
+                raise PayloadError(
+                    f"the scheduler may only reject a handoff with reason "
+                    f"{pathway.handoff_bounce_reason!r}"
+                )
+            if reason not in pathway.handoff_reject_reasons:
+                raise PayloadError(
+                    f"handoff_rejected reason must be one of {list(pathway.handoff_reject_reasons)}, "
+                    f"got {reason!r}"
+                )
+    elif kind == "handoff_accepted":
+        provider = payload.get("provider")
+        if provider is not None and (not isinstance(provider, str) or not provider.strip()):
+            raise PayloadError("handoff_accepted 'provider', if given, must be a non-empty string")
+
+
+def _precheck(model: CaseModel, event: Event, pathway: Pathway) -> None:
+    kind, actor = event.type, event.actor
+    validate_payload(event, pathway)
+    pending = model.pending_handoff
+    if kind == "handoff_requested":
+        if model.owner is None:
+            raise InvalidTransition("handoff_requested: the case has no owner to hand over from")
+        if pending is not None:
+            raise InvalidTransition(
+                f"a handoff to {pending['to_provider']!r} is already pending; "
+                "it must be answered or bounce first"
+            )
+    elif kind in ("handoff_accepted", "handoff_rejected"):
+        if pending is None:
+            raise InvalidTransition(f"{kind}: there is no pending handoff request")
+        if kind == "handoff_accepted" and actor in (pending["requested_by"], pending["from_owner"]):
+            raise InvalidTransition("a handoff cannot be accepted by the party that requested it")
+
+
+def _finish(model: CaseModel, event: Event, before: CaseModel | None = None) -> CaseModel:
+    """Bookkeeping common to every accepted event: last_event_at, ownership, handoff, consent."""
+    kind, payload, at = event.type, event.payload, _aware(event.at)
+    out = replace(model, last_event_at=at)
+    if kind == "accept_ownership":
+        out = replace(out, owner=event.actor, provider=payload.get("provider"))
+    elif kind == "reassign":
+        out = replace(out, owner=str(payload["owner"]), provider=payload.get("provider"),
+                      pending_handoff=None)
+    elif kind == "handoff_requested":
+        out = replace(out, pending_handoff={
+            "to_provider": payload["to_provider"].strip(),
+            "requested_by": event.actor,
+            "from_owner": model.owner,
+            "requested_at": at.isoformat(),
+        })
+    elif kind == "handoff_accepted":
+        pending = (before or model).pending_handoff
+        provider = (payload.get("provider") or pending["to_provider"]).strip()
+        out = replace(out, owner=event.actor, provider=provider, pending_handoff=None,
+                      last_handoff={"outcome": "accepted", "to_provider": pending["to_provider"],
+                                    "by": event.actor, "at": at.isoformat()})
+    elif kind == "handoff_rejected":
+        pending = (before or model).pending_handoff
+        out = replace(out, pending_handoff=None, last_handoff={
+            "outcome": "rejected", "reason": payload["reason"],
+            "bounced": payload.get("bounced") is True, "to_provider": pending["to_provider"],
+            "by": event.actor, "at": at.isoformat(),
+        })
+    return out
