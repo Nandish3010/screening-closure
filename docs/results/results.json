@@ -1680,7 +1680,7 @@
     "cases_per_replication": 2000,
     "ci_method": "percentile bootstrap over replications; differences are paired by replication (common random numbers)",
     "follow_up_days": 360,
-    "git_commit": "08d97c32322776ebe35a2b6878f7138345bf3a43",
+    "git_commit": "ecb1f18ddf11c4ff0c6110629fb5dc1537f8a4f5",
     "parameter_status_counts": {
       "assumed": 87,
       "calibrated": 16,
