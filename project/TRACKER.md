@@ -12,7 +12,7 @@ One row per ticket. Tickets come from this file and nowhere else. Plan: [PLAN.md
 | M3 | Interfaces | 18 Oct 16:00 | 15 | 10 | doing |
 | M4 | AI edge and governance | 18 Oct 18:00 | 11 | 8 | doing |
 | M5 | Hardening, docs, demo | 18 Oct 22:30 | 14 | 4 | doing |
-| Total |  |  | 78 | 53 |  |
+| Total | | | 78 | 53 | |
 
 Tickets per cut: A 16, B 13, C 11, D 11, E 12, F 12 (75, including A13 to A16 and B12 and B13 added after the first plan, plus the 3 done M0 tickets). Human-owner tasks are listed separately at the bottom.
 
