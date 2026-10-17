@@ -52,6 +52,7 @@ services:
         required: false
     environment:
       PATHWAY_PATH: /config/pathways/colorectal_fit.yaml
+      CALENDAR_PATH: /config/calendar.yaml
       # Set explicitly so a missing .env cannot silently fall back to the in-memory store.
       DATABASE_URL: postgresql://${POSTGRES_USER:-closure}:${POSTGRES_PASSWORD:-closure_dev_password}@postgres:5432/${POSTGRES_DB:-closure}
     volumes:

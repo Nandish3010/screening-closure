@@ -1,0 +1,9 @@
+# Working-day calendar used by every SLA (api/app/calendar.py). See ADR-009.
+#
+# UAE default: Monday to Friday are working days, Saturday and Sunday are the weekend.
+# Verify the convention against an official source before citing it (ADR-009).
+timezone: Asia/Dubai        # the calendar day is the local day in this zone
+weekend: [saturday, sunday] # any subset of weekday names, at least one day must stay working
+# Optional public holidays, ISO dates (or {date: 2026-12-02, name: ...}). Empty on purpose:
+# moon-sighted holidays are not predictable and no source has been chosen (ADR-009).
+holidays: []

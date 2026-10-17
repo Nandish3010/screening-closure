@@ -104,6 +104,10 @@ Architecture decision records, one per decision. Add new entries at the end with
 - Public holidays that move with the lunar calendar are not predictable in advance, so the initial holiday list is empty and documented as an assumption until a source is chosen (A1).
 - Verify the weekend convention against an official source before citing it in the submission; some private-sector employers and some emirates may differ, which is why it is configurable.
 
+**Assumption recorded in A1 (holiday list).** `config/calendar.yaml` ships with `holidays: []` and the time zone `Asia/Dubai`. Reason: the dates of Eid al-Fitr, Eid al-Adha and the Islamic New Year depend on moon sighting and are announced days ahead, the fixed-date holidays (for example National Day on 2 and 3 December) can be added by any deployment, and we have no authoritative source in the repository, so a guessed list would be an unsourced number inside the SLA arithmetic. The consequence is that every due date in the prototype and in the evaluation assumes no public holidays, which can only make a due date earlier than reality (a conservative direction for a safety net) and is stated in the limitations table. Adding a holiday is a config edit and needs no code change (tested in `test_calendar.py`).
+
+**Instant semantics (A1).** The calendar day of an instant is its date in the configured zone. A start on a non-working day counts from 00:00 of the next working day; the time of day of the (effective) start is kept, so a 2 working day SLA started Thursday 10:00 is due Monday 10:00. `add_working_days` always returns a working day and `working_days_between(start, add_working_days(start, n)) == n` holds for every start (property-tested, T-A13).
+
 ## ADR-010: No SNOMED CT; LOINC and plain text only
 
 **Context.** Codes make resources interoperable, but SNOMED CT is distributed under licence terms. A public repository with a bundled synthetic dataset should not depend on checking licence status for each user.
