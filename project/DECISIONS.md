@@ -190,7 +190,6 @@ Architecture decision records, one per decision. Add new entries at the end with
 - A rung accepted by the wrong person is refused by the engine (409), not just hidden in the UI.
 - The notification text for a rung (A7) hangs off the `escalate` event; the event names here are what Cut C and the decision matrix (E5) should use.
 
-<<<<<<< HEAD
 ## ADR-015: Erasure versus the append-only log: the log holds opaque ids only
 
 **Context.** The event log is append-only by design: database triggers reject `UPDATE`, `DELETE` and `TRUNCATE` on `events` (ADR-004), because an audit trail that can be edited is not credible. A data subject may ask for their personal data to be erased (a right described in secondary readings of the UAE PDPL, Federal Decree-Law 45 of 2021; whether the PDPL governs health data at all, and the minimum retention period for health records under Federal Law 2 of 2019, are both to verify, see `docs/governance/regulatory-mapping.md` items 1 and 2). Both cannot be satisfied if the log holds personal data. The regulatory mapping already named the option: keep direct identifiers in a separate erasable store and put only a pseudonymous key in events. This ADR makes that the rule.
@@ -306,4 +305,3 @@ The model provider for drafting is bound by the same order. If no in-country, ap
 **Consequences.**
 - T-A25 and the notification half of T-A23 are checked against both the in-memory log and Postgres.
 - D5 only needs `notify.send(...)` after `message_approved`; the gate itself (an approved draft exists) is D5's.
->>>>>>> main
