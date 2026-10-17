@@ -15,6 +15,14 @@ from typing import Protocol
 from uuid import UUID
 
 
+class DraftNotFound(KeyError):
+    pass
+
+
+class DraftAlreadyDecided(ValueError):
+    """The draft was already approved or rejected: a draft gets exactly one decision (D5)."""
+
+
 @dataclass(frozen=True)
 class PromptRecord:
     prompt_hash: str
@@ -40,6 +48,13 @@ class DraftRecord:
     created_at: datetime
     approved_at: datetime | None = None
     approved_by: str | None = None
+    rejected_at: datetime | None = None
+    rejected_by: str | None = None
+    rejection_reason: str | None = None
+
+    @property
+    def decided(self) -> bool:
+        return self.approved_at is not None or self.rejected_at is not None
 
 
 @dataclass(frozen=True)
@@ -64,6 +79,16 @@ class DraftStore(Protocol):
 
     def attempt_counts(self) -> list[AttemptCount]:
         """Attempts grouped by (language, channel, abstention reason). The input to D11."""
+        ...
+
+    def approve(self, draft_id: UUID, approved_by: str, approved_at: datetime, cur=None) -> DraftRecord:
+        """Record the one approval (`cur`: run inside the caller's Postgres transaction).
+        Raises DraftNotFound / DraftAlreadyDecided."""
+        ...
+
+    def reject(self, draft_id: UUID, rejected_by: str, rejected_at: datetime, reason: str,
+               cur=None) -> DraftRecord:
+        """Record the one rejection. Raises DraftNotFound / DraftAlreadyDecided."""
         ...
 
 
@@ -98,20 +123,30 @@ class InMemoryDraftStore:
             counter = Counter((d.language, d.channel, d.abstention_reason) for d in self._drafts.values())
         return [AttemptCount(*key, n) for key, n in sorted(counter.items(), key=lambda kv: tuple(map(str, kv[0])))]
 
-    def approve(self, draft_id: UUID, approved_by: str, approved_at: datetime) -> DraftRecord:
-        """Used by D5 and by tests of the immutability rule: only the approval fields change, once."""
+    def _decide(self, draft_id: UUID, **changes) -> DraftRecord:
         with self._lock:
-            d = self._drafts[draft_id]
-            if d.approved_at is not None:
-                raise ValueError(f"draft {draft_id} is already approved")
-            self._drafts[draft_id] = replace(d, approved_at=approved_at, approved_by=approved_by)
+            d = self._drafts.get(draft_id)
+            if d is None:
+                raise DraftNotFound(str(draft_id))
+            if d.decided:
+                raise DraftAlreadyDecided(f"draft {draft_id} already has a decision")
+            self._drafts[draft_id] = replace(d, **changes)
             return self._drafts[draft_id]
+
+    def approve(self, draft_id: UUID, approved_by: str, approved_at: datetime, cur=None) -> DraftRecord:
+        return self._decide(draft_id, approved_at=approved_at, approved_by=approved_by)
+
+    def reject(self, draft_id: UUID, rejected_by: str, rejected_at: datetime, reason: str,
+               cur=None) -> DraftRecord:
+        return self._decide(draft_id, rejected_at=rejected_at, rejected_by=rejected_by,
+                            rejection_reason=reason)
 
 
 _COLS = (
     "draft_id, case_id, purpose, channel, language, text, provider, model_id, fallback_used, "
     "abstention_reason, abstained_at, prompt_hash, created_by, created_at, approved_at, approved_by"
 )
+_ALL_COLS = _COLS + ", rejected_at, rejected_by, rejection_reason"
 
 
 class PostgresDraftStore:
@@ -135,13 +170,13 @@ class PostgresDraftStore:
 
     def get(self, draft_id: UUID) -> DraftRecord | None:
         with self.pool.connection() as conn:
-            row = conn.execute(f"SELECT {_COLS} FROM drafts WHERE draft_id = %s", (draft_id,)).fetchone()
+            row = conn.execute(f"SELECT {_ALL_COLS} FROM drafts WHERE draft_id = %s", (draft_id,)).fetchone()
         return DraftRecord(*row) if row else None
 
     def list_for_case(self, case_id: UUID) -> list[DraftRecord]:
         with self.pool.connection() as conn:
             rows = conn.execute(
-                f"SELECT {_COLS} FROM drafts WHERE case_id = %s ORDER BY created_at, seq", (case_id,)
+                f"SELECT {_ALL_COLS} FROM drafts WHERE case_id = %s ORDER BY created_at, seq", (case_id,)
             ).fetchall()
         return [DraftRecord(*r) for r in rows]
 
@@ -160,3 +195,36 @@ class PostgresDraftStore:
                 " GROUP BY 1, 2, 3 ORDER BY 1, 2, 3"
             ).fetchall()
         return [AttemptCount(*r) for r in rows]
+
+    # -- decisions (D5). `cur` lets the caller run the update inside its own transaction, so the
+    # approval and the `message_approved` event commit or roll back together.
+
+    def _decide(self, cur, sets: str, params: tuple, draft_id: UUID) -> DraftRecord:
+        sql = (
+            f"UPDATE drafts SET {sets} WHERE draft_id = %s"
+            " AND approved_at IS NULL AND rejected_at IS NULL"
+            f" RETURNING {_ALL_COLS}"
+        )
+        if cur is None:
+            with self.pool.connection() as conn:
+                row = conn.execute(sql, (*params, draft_id)).fetchone()
+                existing = None if row else conn.execute(
+                    "SELECT 1 FROM drafts WHERE draft_id = %s", (draft_id,)).fetchone()
+        else:
+            row = cur.execute(sql, (*params, draft_id)).fetchone()
+            existing = None if row else cur.execute(
+                "SELECT 1 FROM drafts WHERE draft_id = %s", (draft_id,)).fetchone()
+        if row is None:
+            if existing is None:
+                raise DraftNotFound(str(draft_id))
+            raise DraftAlreadyDecided(f"draft {draft_id} already has a decision")
+        return DraftRecord(*row)
+
+    def approve(self, draft_id: UUID, approved_by: str, approved_at: datetime, cur=None) -> DraftRecord:
+        return self._decide(cur, "approved_at = %s, approved_by = %s", (approved_at, approved_by), draft_id)
+
+    def reject(self, draft_id: UUID, rejected_by: str, rejected_at: datetime, reason: str,
+               cur=None) -> DraftRecord:
+        return self._decide(
+            cur, "rejected_at = %s, rejected_by = %s, rejection_reason = %s",
+            (rejected_at, rejected_by, reason), draft_id)

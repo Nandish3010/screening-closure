@@ -288,13 +288,13 @@ def test_t_a23_withdrawal_freezes_outreach_and_flags_the_case_for_review():
         ("contact_patient", PCO, {}),
         ("message_drafted", COORD, {}),
         ("message_drafted", PCO, {}),
-        ("message_approved", PCO, {}),
         ("handoff_requested", PCO, {"to_provider": "endo-1"}),
         ("handoff_requested", SUP, {"to_provider": "endo-1"}),
     ]:
         r = post(cid, type_, headers, payload)
         assert r.status_code == 409 and "consent withdrawn" in r.json()["detail"], (type_, r.text)
     assert post(cid, "message_sent", PCO).status_code == 403  # nobody posts it
+    assert post(cid, "message_approved", PCO).status_code == 403  # only POST /drafts/{id}/approve (D5)
     assert len(case(cid)["events"]) == n
     # a human can still act on what matters: ask for a callback
     assert post(cid, "callback_requested", PATIENT, {"reason": "consent_withdrawn"}).status_code == 201

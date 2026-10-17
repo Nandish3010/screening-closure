@@ -3,13 +3,22 @@
 The model drafts, a human approves (docs/governance/ai-boundary.md). This module holds the only
 route that calls a drafting provider. It never changes a case's state: it appends the
 annotation `message_drafted` as the automated actor `model:<provider>`, and stores the draft,
-the exact prompt and the provider as provenance. Approval and sending are D5.
+the exact prompt and the provider as provenance.
+
+It also holds the approval gate (D5): `POST /drafts/{id}/approve` is the only code path that
+calls `notify.send`, and so the only way a `message_sent` event can come to exist. Nothing else
+in the API imports `notify.send`, `notify.emit_message_sent` or the notifier actor
+(`tests/test_approval_gate.py` scans the source for that), `message_sent` and `message_approved`
+are not postable through `POST /cases/{id}/events` (empty EVENT_POLICY), and the state machine
+accepts `message_sent` only from `system:notifier`.
 
 Routes (roles in `app.policy.ROUTE_POLICY`, registered below so a missing entry fails closed):
 
-* `POST /cases/{id}/drafts`  primary_care_owner, specialist_owner, coordinator, supervisor
-* `GET  /cases/{id}/drafts`  same roles
-* `GET  /metrics/abstention` coordinator, supervisor
+* `POST /cases/{id}/drafts`        primary_care_owner, specialist_owner, coordinator, supervisor
+* `GET  /cases/{id}/drafts`        same roles
+* `POST /drafts/{id}/approve`      primary_care_owner, specialist_owner (the case's owner), supervisor
+* `POST /drafts/{id}/reject`       same roles; body {reason}
+* `GET  /metrics/abstention`       coordinator, supervisor
 """
 
 from __future__ import annotations
@@ -19,10 +28,12 @@ from datetime import datetime
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, field_validator
 
-from app import metrics_abstention, policy
+from app import metrics_abstention, notify, policy
 from app.ai.draft_store import (
+    DraftAlreadyDecided,
+    DraftNotFound,
     DraftRecord,
     DraftStore,
     InMemoryDraftStore,
@@ -60,12 +71,17 @@ _pg: PostgresDraftStore | None = None
 
 DRAFT_ROLES = frozenset({policy.PCO, policy.SPEC, policy.COORD, policy.SUPER})
 METRICS_ROLES = frozenset({policy.COORD, policy.SUPER})
+# Approving or rejecting a draft is the case owner's decision (or a supervisor's). Never the
+# coordinator, the lab, the patient or any automated actor. Owner scoping is checked per case.
+DECIDE_ROLES = frozenset({policy.PCO, policy.SPEC, policy.SUPER})
 
 # Fail closed: a route without an entry in ROUTE_POLICY is refused for everyone. Patients, the
 # lab and every automated actor (including `model:*`, which cannot authenticate) are not listed.
 policy.ROUTE_POLICY[("POST", "/cases/{case_id}/drafts")] = DRAFT_ROLES
 policy.ROUTE_POLICY[("GET", "/cases/{case_id}/drafts")] = DRAFT_ROLES
 policy.ROUTE_POLICY[("GET", "/metrics/abstention")] = METRICS_ROLES
+policy.ROUTE_POLICY[("POST", "/drafts/{draft_id}/approve")] = DECIDE_ROLES
+policy.ROUTE_POLICY[("POST", "/drafts/{draft_id}/reject")] = DECIDE_ROLES
 
 
 def draft_store() -> DraftStore:
@@ -86,6 +102,20 @@ class CreateDraft(BaseModel):
     purpose: Purpose
     channel: Channel
     language: Language
+
+
+class RejectDraft(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    reason: str
+
+    @field_validator("reason")
+    @classmethod
+    def _reason(cls, value: str) -> str:
+        value = value.strip()
+        if not value or len(value) > 500:
+            raise ValueError("reason must be 1-500 characters")
+        return value
 
 
 # ---------------------------------------------------------------- building the request
@@ -192,6 +222,9 @@ def _draft_json(d: DraftRecord) -> dict:
         "created_at": iso(d.created_at),
         "approved_at": iso(d.approved_at),
         "approved_by": d.approved_by,
+        "rejected_at": iso(d.rejected_at),
+        "rejected_by": d.rejected_by,
+        "rejection_reason": d.rejection_reason,
     }
 
 
@@ -279,3 +312,100 @@ def list_drafts(case_id: UUID) -> list[dict]:
 @router.get("/metrics/abstention")
 def abstention_metric() -> dict:
     return metrics_abstention.summarise(draft_store().attempt_counts())
+
+
+# ---------------------------------------------------------------- the approval gate (D5)
+
+# Why the notification mock did not send, as the API reports it (the detail is on the
+# notification row, `GET /cases/{id}/notifications`).
+_BLOCKED = {"blocked_consent": "consent", "blocked_contact": "contact"}
+
+
+def _decidable(draft_id: UUID, identity: Identity) -> tuple[DraftRecord, object]:
+    """Load the draft and its case for a decision, or raise 404 / 403 / 409.
+
+    The owner check is the same one the events route uses: a clinician decides only on cases
+    they own; a supervisor on any case.
+    """
+    draft = draft_store().get(draft_id)
+    if draft is None:
+        raise HTTPException(404, "draft not found")
+    model = cases.store.read_model(draft.case_id, cases.pathway)
+    if model is None:
+        raise HTTPException(404, "case not found")
+    policy.authorize_owner_scope(identity, "decide_draft", model)
+    if draft.approved_at is not None:
+        raise HTTPException(409, "draft is already approved")
+    if draft.rejected_at is not None:
+        raise HTTPException(409, "draft is already rejected")
+    return draft, model
+
+
+@router.post("/drafts/{draft_id}/approve")
+def approve_draft(draft_id: UUID, identity: Identity = Depends(require_identity)) -> dict:
+    """Approve a draft and hand it to the notification mock.
+
+    One transaction (Postgres) or one critical section (in-memory) records the approval on the
+    draft and appends `message_approved` as the approver, so neither can exist without the
+    other. Only then is `notify.send` called, which writes `message_sent` as `system:notifier`
+    and the notification row, or reports why it did not (consent / contact): the approval stands
+    and the response says `sent: false`.
+    """
+    draft, model = _decidable(draft_id, identity)
+    if model.consent_frozen:
+        raise HTTPException(409, "outreach is frozen: the patient has withdrawn consent")
+    if model.state not in cases.pathway.open_states:
+        raise HTTPException(409, "the case is closed: nothing to approve")
+
+    now = clock.now()
+    event = Event(draft.case_id, "message_approved", now, identity.actor, {"draft_id": str(draft_id)})
+    drafts_db = draft_store()
+    try:
+        cases.store.append(
+            event, cases.pathway,
+            within=lambda cur: drafts_db.approve(draft_id, identity.actor, now, cur=cur),
+        )
+    except CaseNotFound:
+        raise HTTPException(404, "case not found") from None
+    except DraftNotFound:
+        raise HTTPException(404, "draft not found") from None
+    except DraftAlreadyDecided:  # lost a race with another decision: nothing was written
+        raise HTTPException(409, "draft already has a decision") from None
+    except InvalidTransition as exc:  # e.g. consent withdrawn or the case closed since the read
+        raise HTTPException(409, str(exc)) from None
+    except EventIdConflict:
+        raise HTTPException(409, "event id conflict") from None
+
+    base = {"draft_id": str(draft_id), "approved_by": identity.actor, "approved_at": now.isoformat()}
+    try:
+        sent = notify.send(
+            draft.case_id, draft.channel, draft.language, draft.purpose, draft.text,
+            draft_id=str(draft_id), at=now,
+        )
+    except (InvalidTransition, CaseNotFound) as exc:
+        # The case changed between the approval and the send (closed, or consent withdrawn):
+        # nothing went out and no message_sent exists. The approval stands, as recorded.
+        log.warning("approved draft %s was not sent: %s", draft_id, exc)
+        return {**base, "sent": False, "blocked_reason": "case_state", "notification_id": None}
+    if sent.status == "sent":
+        return {**base, "sent": True, "blocked_reason": None, "notification_id": str(sent.id)}
+    return {**base, "sent": False, "blocked_reason": _BLOCKED.get(sent.status, sent.status),
+            "notification_id": str(sent.id)}
+
+
+@router.post("/drafts/{draft_id}/reject")
+def reject_draft(
+    draft_id: UUID, body: RejectDraft, identity: Identity = Depends(require_identity)
+) -> dict:
+    """Reject a draft with a reason. Recorded on the draft row only: the event vocabulary has no
+    `message_rejected` yet (ticket A16). Allowed on a frozen case (it can only stop outreach)."""
+    draft, _model = _decidable(draft_id, identity)
+    now = clock.now()
+    try:
+        draft_store().reject(draft_id, identity.actor, now, body.reason)
+    except DraftNotFound:
+        raise HTTPException(404, "draft not found") from None
+    except DraftAlreadyDecided:
+        raise HTTPException(409, "draft already has a decision") from None
+    return {"draft_id": str(draft_id), "rejected_by": identity.actor,
+            "rejected_at": now.isoformat(), "reason": body.reason}

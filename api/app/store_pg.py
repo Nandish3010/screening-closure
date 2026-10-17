@@ -66,9 +66,13 @@ class PostgresEventStore:
                 raise CaseAlreadyExists(str(case_id)) from exc
             _insert_event(cur, genesis_event, 1)
 
-    def append(self, event: Event, pathway: Pathway) -> str:
+    def append(self, event: Event, pathway: Pathway, *, within=None) -> str:
         # `with pool.connection()` commits on clean exit and rolls back on any exception,
         # so an InvalidTransition (or any other error) leaves no row and no state change.
+        #
+        # `within(cur)`, if given, runs in this same transaction after the event is accepted and
+        # inserted (D5 uses it to record a draft's approval): if it raises, the event is rolled
+        # back with it. It is skipped when the event id was already stored (an idempotent retry).
         with self._pool.connection() as conn, conn.cursor() as cur:
             # Serialise writers on this case; held until commit/rollback.
             cur.execute(
@@ -120,6 +124,8 @@ class PostgresEventStore:
                 "UPDATE cases SET current_state = %s, updated_at = now() WHERE id = %s",
                 (new_state, event.case_id),
             )
+            if within is not None:
+                within(cur)
             return new_state
 
     def events_for(self, case_id: UUID) -> list[Event]:

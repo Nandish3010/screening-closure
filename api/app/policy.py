@@ -71,7 +71,9 @@ EVENT_POLICY: dict[str, frozenset[str]] = {
     "consent_updated": frozenset({PATIENT, COORD}),
     "mark_lost_contact": frozenset({PCO, SPEC, COORD, SUPER}),
     "message_drafted": frozenset({PCO, SPEC, COORD}),
-    "message_approved": CLINICIANS,
+    # Only the draft approval route (D5) writes message_approved, because it must come with the
+    # approval of a stored draft; posting it here would fake an approval. Nobody may post it.
+    "message_approved": frozenset(),
     # Only the approval-gated send path (D5) writes message_sent; nobody may post it.
     "message_sent": frozenset(),
     "callback_requested": frozenset({PATIENT, COORD}),

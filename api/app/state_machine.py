@@ -64,6 +64,8 @@ CONSENT_FROZEN_EVENTS = frozenset(
 CONSENT_ACTOR = "system:consent"  # emits review_requested, and nothing else
 REVIEW_REASONS = ("consent_withdrawn",)
 SCHEDULER_ACTOR_NAME = "system:scheduler"
+MODEL_ACTOR_PREFIX = "model:"
+MODEL_ALLOWED_EVENTS = frozenset({"message_drafted"})  # the only thing a drafting model may emit (T-D2)
 NOTIFIER_ACTOR = "system:notifier"  # the notification mock: the only actor that writes message_sent
 
 # Actor prefixes that denote automation (scheduler, watchdog, drafting model...).
@@ -360,6 +362,9 @@ def _precheck(model: CaseModel, event: Event, pathway: Pathway) -> None:
     if actor == CONSENT_ACTOR and kind != "review_requested":
         raise InvalidTransition(f"{CONSENT_ACTOR!r} may only emit review_requested")
     validate_payload(event, pathway)
+    # A drafting model may annotate a case with its draft and do nothing else (T-D2).
+    if actor.startswith(MODEL_ACTOR_PREFIX) and kind not in MODEL_ALLOWED_EVENTS:
+        raise InvalidTransition(f"a model actor may only emit {sorted(MODEL_ALLOWED_EVENTS)}, not {kind!r}")
     # A message is "sent" only by the notification mock, after the approval gate (T-D1).
     if kind == "message_sent" and actor != NOTIFIER_ACTOR:
         raise InvalidTransition(f"message_sent is written only by {NOTIFIER_ACTOR!r}, not {actor!r}")
