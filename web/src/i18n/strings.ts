@@ -101,7 +101,7 @@ export const STRINGS: Record<Lang, PatientStrings> = {
       "سيراجع الطبيب الفحص ويشرح لك معناه.",
     ],
     ownerHeading: "من يتابع حالتك",
-    ownerLine: (name, role) => `المسؤول عن متابعة حالتك: ${iso(name)} (${role}). يمكنك طرح أي سؤال.`,
+    ownerLine: (name, role) => `المسؤول عن متابعة حالتك:\n${iso(name)} (${role}).\nيمكنك طرح أي سؤال.`,
     ownerPending: "سنعيّن لك منسق رعاية قريبًا.",
     understand: "فهمت",
     understandDone: "شكرًا لك. سجلنا أنك فهمت.",
