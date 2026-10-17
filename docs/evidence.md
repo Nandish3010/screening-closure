@@ -1,6 +1,6 @@
 # Evidence for simulator parameters
 
-Research compiled 2026-10-18. Companion file: `simulator/params.proposed.yaml` (proposal only; `simulator/params.yaml` is untouched).
+Research compiled 2026-10-18. The sourced values were proposed in `simulator/params.proposed.yaml`, adopted by ticket B11 and folded into `simulator/params.yaml` at the M1 integration (the proposal file is removed; `params.yaml` is the single source).
 
 ## How parameters are graded
 

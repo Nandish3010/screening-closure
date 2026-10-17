@@ -121,7 +121,7 @@ placeholder), `assumed` (no public source, `source: TODO`). Loading validates th
 
 **Change a parameter:** edit the `value` in `params.yaml` (keep `source` and `status` honest), run `make evaluate`.
 **Layer a file** without editing the base: `make evaluate PARAMS="simulator/params.yaml my_overrides.yaml"`; later files override
-earlier leaves, which is how a research file such as `params.proposed.yaml` is merged. **Add a parameter:** add the leaf to
+earlier leaves, which is how a research file of proposed values can be merged before it is adopted into `params.yaml`. **Add a parameter:** add the leaf to
 `params.yaml`, add the field to `ModelParams` in `simulator/sim/params.py` and read it where it is used.
 
 Keys read by other code only: `fit_positivity_rate` (`generate_results.py`); `eligible_age_min/max`, `fit_interval_months`,

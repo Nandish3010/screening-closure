@@ -1,6 +1,6 @@
 # Behaviour-simulator parameters. Every leaf is {value, source, status[, notes]}; nothing is hard-coded
 # in simulator/sim/. status: sourced | sourced-adjacent | calibrated | assumed.
-#   sourced / sourced-adjacent: adopted from simulator/params.proposed.yaml (research ticket B11,
+#   sourced / sourced-adjacent: adopted from the E1 research proposal (research ticket B11; the proposal file was folded into this file at M1,
 #     evidence in docs/evidence.md on main); sources and caveats are in each leaf.
 #   calibrated: a placeholder tuned so the BASELINE arm reproduces the Mohl 2023 completion curve
 #     (see docs/results/results.md for how close it gets).
@@ -10,7 +10,7 @@
 # Time is in days (calendar days unless a key says working_days). Probabilities are in [0, 1].
 
 # ======================================================================================
-# Part 1: adopted from params.proposed.yaml (research ticket B11)
+# Part 1: adopted from the E1 research proposal (research ticket B11)
 # ======================================================================================
 acknowledgement_delay_days:
   value: 2

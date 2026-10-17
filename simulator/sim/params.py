@@ -3,7 +3,7 @@
 A parameters file is a YAML tree whose leaves are `{value, source, status}`. A node is a leaf when
 it has any of those three keys; then all three are required and `source`/`status` must be non-empty
 text. Anything else is a group. Several files can be layered (later files override earlier leaves),
-which is how `params.proposed.yaml` (literature-sourced values) is merged over `params.yaml`.
+which is how a research file of proposed values can be merged over `params.yaml`.
 
 `Params` is the flat, validated store (dotted keys). `ModelParams` is the typed view the simulator
 components read; it fails at load time, naming the key, if a required parameter is missing.
