@@ -1,4 +1,4 @@
-.PHONY: check docs-check tracker-lint test-security test-phi-logs rbac-matrix test-offline test-tools test-load load-check up down logs test test-db test-db-create test-db-reset test-chaos synthea demo-seed demo-seed-clean evaluate simulate evaluate-check reset web-install web-dev web-build web-test web-e2e test-e2e review-packs review-packs-check test-review-packs
+.PHONY: check docs-check tracker-lint test-security test-phi-logs rbac-matrix test-offline fresh-clone test-tools test-load load-check up down logs test test-db test-db-create test-db-reset test-chaos synthea demo-seed demo-seed-clean evaluate simulate evaluate-check reset web-install web-dev web-build web-test web-e2e test-e2e review-packs review-packs-check test-review-packs
 
 up:
 	docker compose up -d --build
@@ -178,6 +178,11 @@ test-phi-logs:
 # LLM_NETWORK_ENABLED=false, in its own compose project and volumes; also proves the block from inside the containers.
 test-offline:
 	PYTHONPATH=api $(PY) tools/check/offline_check.py
+
+# T-F13 (F12): clones this repository into a temp dir and runs the fresh-clone steps there against its own compose
+# project and shifted ports, timing each; writes docs/results/fresh-clone.md-style checklist output for the second machine (H5).
+fresh-clone:
+	sh tools/check/fresh_clone.sh
 
 # Cross-cutting tests in tests/ (scanner, linters, load harness). PYTHONPATH=api makes a git worktree
 # test its own api/ rather than the checkout the venv was installed from.

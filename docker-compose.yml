@@ -5,7 +5,7 @@ services:
   postgres:
     image: postgres:16
     ports:
-      - "5433:5432"  # host access for `make test-db` (5432 is often taken locally)
+      - "${POSTGRES_PORT:-5433}:5432"  # host access for `make test-db` (5432 is often taken locally)
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-closure}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-closure_dev_password}
@@ -26,9 +26,12 @@ services:
   # synthetic cohort (~1 GB of FHIR JSON for 300 patients) exhausts the JVM heap ("Out of memory" in H2).
   # Consequence: `make reset` (down -v) now wipes FHIR data together with the cases, keeping them consistent.
   fhir:
-    image: hapiproject/hapi:latest
+    # Pinned (F12, ADR-006): the image this project was built and tested on, HAPI FHIR 8.12.0 (docker.io digest
+    # sha256:0ff86aac4c7bd13a1ee226444a70263bb46ed1c28ef543c30a44f865b80ca04e, the same image `latest` pointed to on 2026-10-18).
+    # The bare `v8.12.0` tag does not exist: HAPI starter tags carry a build suffix.
+    image: hapiproject/hapi:v8.12.0-2
     ports:
-      - "8080:8080"
+      - "${FHIR_PORT:-8080}:8080"
     environment:
       hapi.fhir.fhir_version: R4
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-closure}
@@ -48,7 +51,7 @@ services:
   api:
     build: ./api
     ports:
-      - "8000:8000"
+      - "${API_PORT:-8000}:8000"
     env_file:
       - path: .env
         required: false
