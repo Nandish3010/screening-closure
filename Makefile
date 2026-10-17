@@ -1,4 +1,4 @@
-.PHONY: check docs-check tracker-lint test-security rbac-matrix test-tools test-load load-check up down logs test test-db test-db-create test-db-reset test-chaos synthea demo-seed demo-seed-clean evaluate simulate evaluate-check reset web-install web-dev web-build web-test web-e2e test-e2e review-packs review-packs-check test-review-packs
+.PHONY: check docs-check tracker-lint test-security test-phi-logs rbac-matrix test-tools test-load load-check up down logs test test-db test-db-create test-db-reset test-chaos synthea demo-seed demo-seed-clean evaluate simulate evaluate-check reset web-install web-dev web-build web-test web-e2e test-e2e review-packs review-packs-check test-review-packs
 
 up:
 	docker compose up -d --build
@@ -152,14 +152,27 @@ tracker-lint:
 # strings, password literals, .env ignored and never in history, .env.example placeholders only); the RBAC matrix
 # (F7, T-F9: every route and event type against every role, own case and other case, probed on the app and compared
 # with the policy tables; a route without a policy decision fails; docs/governance/rbac-matrix.md must equal a fresh
-# render, `make rbac-matrix` rewrites it). F8 adds the PHI scans.
+# render, `make rbac-matrix` rewrites it); no PHI in URLs (F8, T-F11: path parameters are UUIDs, every query parameter
+# reviewed); and the demo walk with marker values in-process, every log record scanned for the markers, e-mails and
+# phone-like digit runs (T-F10). The same scan against the running stack's container logs is `make test-phi-logs`.
 test-security:
 	$(PY) tools/check/secrets_scan.py
 	PYTHONPATH=api $(PY) tools/check/rbac_matrix.py --check
-	PYTHONPATH=api $(PY) -m pytest tests/test_rbac_matrix.py -q
+	PYTHONPATH=api $(PY) tools/check/phi_scan.py routes
+	PYTHONPATH=api $(PY) tools/check/phi_scan.py walk
+	PYTHONPATH=api $(PY) -m pytest tests/test_rbac_matrix.py tests/test_phi_scan.py -q
 
 rbac-matrix:
 	PYTHONPATH=api $(PY) tools/check/rbac_matrix.py --write
+
+# T-F10, T-F11 against the RUNNING stack (`make up` first; API_URL or API_PORT if not on :8000): walks the flow with
+# marker values (display names, patient_ref, free text that the payload schemas must refuse), advances the sim clock
+# so the scheduler and watchdog act, then scans `docker compose logs` of api (which holds the uvicorn access log),
+# scheduler and watchdog; fhir and postgres are scanned and reported but not gated. It writes a few synthetic marker
+# cases (deterministic ids) into that stack's database and resets the sim clock to its start: run it on a throwaway
+# stack, or `make reset` afterwards. Not part of `make check`.
+test-phi-logs:
+	PYTHONPATH=api $(PY) tools/check/phi_scan.py live
 
 # Cross-cutting tests in tests/ (scanner, linters, load harness). PYTHONPATH=api makes a git worktree
 # test its own api/ rather than the checkout the venv was installed from.
