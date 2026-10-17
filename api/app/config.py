@@ -36,6 +36,10 @@ class Settings(BaseSettings):
     watchdog_service_token: str = WATCHDOG_TOKEN_DEFAULT
     # In compose this is overridden to /config/pathways/colorectal_fit.yaml
     pathway_path: str = str(_DEFAULT_PATHWAY)
+    # Closure evidence (A15, ADR-021): when true, `close` requires evidence_ref to resolve in HAPI.
+    # Compose sets it to true; unit tests use a fake verifier instead.
+    fhir_verify_evidence: bool = False
+    fhir_timeout_seconds: float = 5.0
     # Working-day calendar (weekend set, holidays, time zone). Compose sets /config/calendar.yaml.
     calendar_path: str = str(_DEFAULT_CALENDAR)
 

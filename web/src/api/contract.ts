@@ -139,7 +139,10 @@ export type TransitionEvent = (typeof TRANSITION_EVENTS)[number];
  *  book_confirmatory     {appointment_ref?: string}                   (an id like "Appointment/a1", no spaces)
  *  complete_confirmatory {result_ref?: string}                        (confirmatory result reference)
  *  clinician_review      {signed_by?: string}                         (your own actor or "Practitioner/<user_id>")
- *  close                 {evidence_ref: string, signed_by: string}   (REQUIRED by the engine)
+ *  close                 {evidence_ref: string, signed_by: string}   (REQUIRED). BACKEND (A15): evidence_ref is
+ *                        "DiagnosticReport/<id>" or "Procedure/<id>" and must exist in the FHIR store;
+ *                        signed_by must be the caller's own actor ("role:user_id") or "Practitioner/<user_id>"
+ *                        with the caller's `user_id` from GET /me, else 403 (signer) or 422 (evidence)
  *  reopen                {reason: "new_finding"|"evidence_inadequate"|"closed_in_error"|"patient_request"|"other"}
  *  reassign              {owner: string ("role:user_id" of the new owner), provider?: string}
  *  callback_requested    {reason?: "patient_does_not_understand"|"wants_to_speak_to_clinician"|"cannot_attend"|"other", lang?}

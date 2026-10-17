@@ -292,3 +292,17 @@ Architecture decision records, one per decision. Add new entries at the end with
 - A log written before A14 keeps its old actors (`role:name`) and loose payloads; they still replay, because the machine does not apply the schema. `make reset` and `make demo-seed` rebuild the dev database. The seeded cohort only contains `case_created` events.
 - Names in tokens: the dev token still carries the name (it is a development credential, ADR-012); only the log and the case responses are name-free. The opaque id is stable per (role, name), so anyone who knows a name and the namespace can recompute it: this protects the log from casual disclosure, not from a determined guesser. Production identity replaces dev login with an OIDC subject, which would be hashed the same way.
 - Web: the client must stop sending `owner`, `owner_role` and free-text `reason` values and read names from `owner` and `actors` (contract.ts BACKEND comments).
+
+## ADR-021: Closure evidence must resolve, and the signer is the closer
+
+**Context.** The closure guard proved a human clinician signed something and that `evidence_ref` and `signed_by` were non-empty strings (assumption L28). A meaningless reference ("x") passed, and `signed_by` could name someone else. A coordinator cannot sign, but a clinician could sign for a colleague.
+
+**Decision.**
+- `close` takes `evidence_ref` of the form `DiagnosticReport/<id>` or `Procedure/<id>` (the payload schema, always). With `FHIR_VERIFY_EVIDENCE=true` (set in compose; false by default so unit tests and no-docker runs need no server) the API asks HAPI `GET <base>/<ref>` before it appends: 200 resolves; 404 or 410 is a 422 "does not resolve"; any other answer or no answer is a 503, because a closure that cannot be checked must not be assumed good. Nothing is written in either case.
+- `signed_by` must be the caller's own actor string (`role:user_id`) or `Practitioner/<user_id>`, the Practitioner resource the FHIR projection (A12) creates for that user id. Any other value is 403 and nothing is written. `clinician_review.signed_by`, when given, follows the same rule. The check order is payload shape, signer, then the FHIR lookup, so a forged signature never causes a lookup.
+- The check lives in the API, not in the pure state machine: the machine and the simulator keep the presence-only guard (the simulator's synthetic closes use readable ids and no FHIR server). The database transaction still enforces the transition guard.
+
+**Consequences.**
+- "Resolves" proves the reference exists, not that it is the right document for this patient; adequacy of evidence (is it a colonoscopy report for this patient?) is for the clinician review (H1). A later ticket could check `DiagnosticReport.subject` against the case's `patient_ref`.
+- With verification on, a demo closure needs a real report in HAPI: the synthetic cohort's FIT `DiagnosticReport`s resolve; the demo script must create (or the seeder load) a colonoscopy `DiagnosticReport` or `Procedure` to close with.
+- The web's close dialog must send a resource reference, not free text, and the caller's own `user_id` (from `GET /me`) as `Practitioner/<user_id>`.

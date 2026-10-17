@@ -57,6 +57,9 @@ services:
       CALENDAR_PATH: /config/calendar.yaml
       # Set explicitly so a missing .env cannot silently fall back to the in-memory store.
       DATABASE_URL: postgresql://${POSTGRES_USER:-closure}:${POSTGRES_PASSWORD:-closure_dev_password}@postgres:5432/${POSTGRES_DB:-closure}
+      # `close` needs an evidence_ref (DiagnosticReport/<id> or Procedure/<id>) that exists in HAPI (A15, ADR-021).
+      FHIR_BASE_URL: http://fhir:8080/fhir
+      FHIR_VERIFY_EVIDENCE: "true"
     volumes:
       - ./config:/config:ro
     depends_on:

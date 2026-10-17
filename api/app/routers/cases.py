@@ -4,7 +4,7 @@ from uuid import UUID, uuid4
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, ConfigDict, Field
 
-from app import consent, notify, payloads, policy, users
+from app import consent, evidence, notify, payloads, policy, users
 from app.auth import Identity, require_identity
 from app.clock import clock
 from app.events import (
@@ -129,6 +129,26 @@ def _patient_ref(case_id: UUID) -> str | None:
     return events[0].payload.get("patient_ref") if events else None
 
 
+def _check_signature_and_evidence(identity: Identity, event_type: str, payload: dict) -> None:
+    """A15 (ADR-021): a signature is the signer's own, and closure evidence must resolve."""
+    signed_by = payload.get("signed_by")
+    if event_type in ("clinician_review", "close") and signed_by is not None:
+        if not evidence.signed_by_matches(identity, signed_by):
+            raise HTTPException(
+                403,
+                f"signed_by must be your own identity ({identity.actor} or "
+                f"Practitioner/{identity.user_id}), not {signed_by!r}",
+            )
+    if event_type == "close":
+        ref = payload["evidence_ref"]  # shape already checked by the payload schema
+        try:
+            resolves = evidence.verifier.exists(ref)
+        except evidence.EvidenceUnavailable as exc:
+            raise HTTPException(503, f"cannot verify closure evidence: {exc}")
+        if not resolves:
+            raise HTTPException(422, f"evidence_ref {ref!r} does not resolve to a resource")
+
+
 @router.post("/{case_id}/events", status_code=201)
 def post_event(
     case_id: UUID, body: PostEvent, identity: Identity = Depends(require_identity)
@@ -152,6 +172,7 @@ def post_event(
     try:
         payloads.validate(body.type, body.payload)  # free text cannot enter the log (A14)
         validate_payload(event, pathway)  # malformed payload: 422 before anything is written
+        _check_signature_and_evidence(identity, body.type, body.payload)
         store.append(event, pathway)
     except CaseNotFound:
         raise HTTPException(404, "case not found")

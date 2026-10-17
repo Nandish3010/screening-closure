@@ -285,6 +285,8 @@ Final as of A2 (`config/pathways/colorectal_fit.yaml`, `api/app/state_machine.py
 
 Taxonomies for `reason`: `reopen` takes `new_finding`, `evidence_inadequate`, `closed_in_error`, `patient_request`, `other`; `callback_requested` takes `patient_does_not_understand`, `wants_to_speak_to_clinician`, `cannot_attend`, `other`; `handoff_rejected` takes the pathway's four human reasons or the scheduler-only `timeout`; `watchdog_flagged` takes `idle`, `scheduler_down`; `review_requested` takes `consent_withdrawn`. `reassign.owner` and `handoff_rejected.returned_to` are actor strings (`role:user_id`). The in-process emitters (sweep, consent, notification mock) validate against the same schemas before they append. The schema is enforced at the API boundary and in those emitters; the pure state machine and the simulator are not bound by it.
 
+**Closure evidence (A15, ADR-021).** `close` needs `evidence_ref` = `DiagnosticReport/<id>` or `Procedure/<id>` (shape checked always; 422 otherwise) and, when `FHIR_VERIFY_EVIDENCE=true` (set in compose), the resource must exist in HAPI (422 if not, 503 if HAPI cannot be asked, nothing written). `signed_by` on `close` (and on `clinician_review` when given) must be the caller's own actor (`role:user_id`) or `Practitioner/<user_id>`, the Practitioner the FHIR projection creates for them; anything else is 403.
+
 Heartbeats from the scheduler are not case events. Their storage is decided in A11.
 
 ### Read model

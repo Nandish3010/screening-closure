@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import Depends, FastAPI
 
-from app import auth, notify, policy, users
+from app import auth, evidence, notify, policy, users
 from app.clock import clock
 from app.config import settings
 from app.events import InMemoryEventStore
@@ -27,6 +27,10 @@ async def lifespan(app: FastAPI):
     # switch a local run onto a database. Unset means the in-memory store.
     database_url = os.environ.get("DATABASE_URL")
     pool = None
+    if isinstance(evidence.configure(settings), evidence.FhirVerifier):
+        log.info("closure evidence is verified against %s", settings.fhir_base_url)
+    else:
+        log.warning("closure evidence is NOT verified (FHIR_VERIFY_EVIDENCE is not true)")
     if database_url:
         from app.db import create_pool, run_migrations
         from app.store_pg import (
