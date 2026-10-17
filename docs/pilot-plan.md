@@ -19,7 +19,7 @@ Status: draft for the provider, the clinical lead and the human owner to adjust.
 | Preparation | before day 1 (duration set with the provider) | Agreements, approvals, data feed built and tested on synthetic data, role set-up, staff briefing, baseline audit | G0 |
 | Shadow mode | 1 to 30 | The engine observes the provider's real result feed and creates shadow cases. It computes owners, clocks, overdue flags and escalation suggestions. **It sends nothing and assigns nothing.** Staff keep acting through existing channels. Coordinators review the flags weekly. | G1 at day 30 |
 | Active mode | 31 to 90 | Owners work from the worklist; escalations go to named people who accept them; drafted patient messages are sent after owner approval through the provider's existing channel; closures are signed by a clinician. | G2 at day 60, G3 at day 90 |
-| Follow-up tail | 91 to 180 | No new enrolment beyond day 90. Cases enrolled in the window continue to be followed so that closure outcomes can be measured. This is a decision of this plan, not part of the original brief: a pathway with a 45 working-day completion SLA cannot be measured at day 90 for cases that arrive late in the window. | Final readout at day 180 |
+| Follow-up tail | 91 to 180 | No new enrolment beyond day 90. Cases enrolled in the window continue to be followed so that closure outcomes can be measured. This is a decision of this plan, not part of the original brief: a pathway with a 31 working-day completion SLA, counted from referral acceptance, cannot be measured at day 90 for cases that arrive late in the window. | Final readout at day 180 |
 
 Cases enrolled during shadow mode keep running in shadow with no intervention until day 30, then move to active handling at day 31. This gives the concurrent comparison group: what actually happened in the first 30 days under existing channels, next to what the engine would have flagged.
 
@@ -42,7 +42,7 @@ Supporting measures reported with the KPIs: shadow-mode flag agreement (how ofte
 
 **How much the numbers can say.** With the placeholder volumes in the cost script (three providers at 3,000 FIT results per year each) about 155 actionable cases are expected to enter during the 90-day window. Percentages estimated on that many cases carry wide uncertainty and will be reported with intervals. The pilot is not a trial: the comparison is before and after plus the concurrent shadow period, with no randomisation, so differences are described as associations. Provider volumes are a data request below; the plan changes if they are much lower.
 
-**Reconciliation needed.** The pathway config sets a 45 working-day SLA for completing the confirmatory test, while the standard reportedly measures colonoscopy within 31 working days of referral. The two probably start their clocks at different events (result received versus referral); the clinician review should settle the definitions and whether the config SLA changes.
+**Reconciliation needed.** The pathway config now sets a 31 working-day SLA for completing the confirmatory test, with the clock started at referral acceptance (`handoff_accepted`, A13, ADR-020), to match the standard's colonoscopy within 31 working days of referral. Still to settle with the clinical lead: whether referral acceptance is the right start event, the 15 versus 31 working-day reading in the national guideline, and reporting the programme-level share within target alongside the per-case SLA.
 
 ## 4. Roles and staffing
 
