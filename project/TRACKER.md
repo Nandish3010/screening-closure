@@ -7,12 +7,12 @@ One row per ticket. Tickets come from this file and nowhere else. Plan: [PLAN.md
 | Milestone | Scope | Target (local, IST) | Tickets | Done | Status |
 |---|---|---|---|---|---|
 | M0 | Scaffold, persistence, cohort | 17 Oct (done) | 3 | 3 | done |
-| M1 | Core loop | 18 Oct 04:00 | 13 | 0 | todo |
+| M1 | Core loop | 18 Oct 04:00 | 13 | 5 | doing |
 | M2 | Simulator and `make evaluate` | 18 Oct 10:00 | 17 | 0 | todo |
-| M3 | Interfaces | 18 Oct 16:00 | 14 | 0 | todo |
+| M3 | Interfaces | 18 Oct 16:00 | 14 | 3 | doing |
 | M4 | AI edge and governance | 18 Oct 18:00 | 11 | 0 | todo |
 | M5 | Hardening, docs, demo | 18 Oct 22:30 | 14 | 0 | todo |
-| Total | | | 72 | 3 | |
+| Total | | | 72 | 11 | |
 
 Tickets per cut: A 12, B 11, C 11, D 11, E 12, F 12 (69 planned, plus the 3 done M0 tickets). Human-owner tasks are listed separately at the bottom.
 
