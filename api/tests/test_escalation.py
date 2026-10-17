@@ -5,8 +5,7 @@ Timeline used throughout (UAE calendar, Mon-Fri): a case created Monday 5 Jan 08
 supervisor at +3 working days (Monday 12 Jan 08:00Z) and coordinator at +7 (Friday 16 Jan 08:00Z).
 """
 
-import dataclasses
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 from uuid import uuid4
 
 import pytest
