@@ -1,0 +1,257 @@
+import { useCallback, useEffect, useState } from "react";
+import { Link, useParams } from "react-router-dom";
+import { useApp } from "../app/AppContext";
+import type { CaseDetail, ContactChannel, Lang } from "../api/contract";
+import { DEMO_PATIENT_CASE_ID } from "../api/fixtures";
+import { DIR, STRINGS, roleLabel } from "../i18n/strings";
+import { consentState, currentOwner, hasCallbackPending, patientLang } from "../lib/derive";
+import { stateIndex } from "../lib/pathway";
+
+const LAST_KEY = "sc.patient.last";
+const LANG_KEY = "sc.lang";
+
+function readLast(caseId: string): CaseDetail | null {
+  try {
+    const raw = localStorage.getItem(LAST_KEY);
+    if (!raw) return null;
+    const j = JSON.parse(raw) as { caseId: string; detail: CaseDetail };
+    return j.caseId === caseId ? j.detail : null;
+  } catch {
+    return null;
+  }
+}
+function writeLast(caseId: string, detail: CaseDetail) {
+  try {
+    localStorage.setItem(LAST_KEY, JSON.stringify({ caseId, detail }));
+  } catch {
+    /* ignore */
+  }
+}
+function lastCaseId(): string | null {
+  try {
+    const raw = localStorage.getItem(LAST_KEY);
+    return raw ? (JSON.parse(raw) as { caseId: string }).caseId : null;
+  } catch {
+    return null;
+  }
+}
+function readLang(): Lang | null {
+  try {
+    const l = localStorage.getItem(LANG_KEY);
+    return l === "ar" || l === "en" ? l : null;
+  } catch {
+    return null;
+  }
+}
+
+/** /patient: the installed PWA's start page. Sends the patient to the last case they opened. */
+export function PatientHome() {
+  const last = lastCaseId();
+  const [lang] = useState<Lang>(readLang() ?? "en");
+  const t = STRINGS[lang];
+  if (last) return <PatientView caseId={last} />;
+  return (
+    <main className="patient" lang={lang} dir={DIR[lang]} data-testid="patient-root">
+      <h1>{t.homeTitle}</h1>
+      <p>{t.homeBody}</p>
+      <p><Link to={`/patient/${DEMO_PATIENT_CASE_ID}`}>Demo case</Link></p>
+    </main>
+  );
+}
+
+export function PatientPage() {
+  const { caseId } = useParams();
+  return <PatientView caseId={caseId ?? ""} />;
+}
+
+function progressStep(state: string): number {
+  const i = stateIndex(state);
+  if (i <= 0) return 0;
+  if (i <= 5) return 1; // acknowledged .. confirmatory_booked (care team ready, test being booked)
+  if (i <= 6) return 2; // confirmatory_completed
+  return 3;
+}
+
+export function PatientView({ caseId }: { caseId: string }) {
+  const { api, refreshSim } = useApp();
+  const [detail, setDetail] = useState<CaseDetail | null>(() => readLast(caseId));
+  const [offline, setOffline] = useState(false);
+  const [error, setError] = useState(false);
+  const [lang, setLangState] = useState<Lang>(() => readLang() ?? "en");
+  const [busy, setBusy] = useState(false);
+  const [notice, setNotice] = useState<"callback" | "ack" | "failed" | "saved" | "saveFailed" | null>(null);
+  const t = STRINGS[lang];
+
+  useEffect(() => {
+    document.documentElement.lang = lang;
+    document.documentElement.dir = DIR[lang];
+    return () => {
+      document.documentElement.lang = "en";
+      document.documentElement.dir = "ltr";
+    };
+  }, [lang]);
+
+  const load = useCallback(async () => {
+    try {
+      const d = await api.getCase(caseId);
+      setDetail(d);
+      writeLast(caseId, d);
+      setOffline(false);
+      setError(false);
+      if (!readLang()) {
+        const l = patientLang(d.events);
+        if (l) setLangState(l);
+      }
+    } catch {
+      // Network or API failure: keep whatever we last saved on this device.
+      if (readLast(caseId)) setOffline(true);
+      else setError(true);
+    }
+  }, [api, caseId]);
+
+  useEffect(() => {
+    void load();
+    const on = () => void load();
+    window.addEventListener("online", on);
+    return () => window.removeEventListener("online", on);
+  }, [load]);
+
+  const setLang = (l: Lang) => {
+    setLangState(l);
+    try {
+      localStorage.setItem(LANG_KEY, l);
+    } catch {
+      /* ignore */
+    }
+  };
+
+  const post = async (type: string, payload: Record<string, unknown>) => {
+    setBusy(true);
+    try {
+      const d = await api.postEvent(caseId, { type, actor: `patient:${caseId}`, payload });
+      setDetail(d);
+      writeLast(caseId, d);
+      refreshSim();
+      return true;
+    } catch {
+      return false;
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const onAcknowledge = async () => setNotice((await post("patient_acknowledge", { lang })) ? "ack" : "failed");
+  const onCallback = async () =>
+    setNotice((await post("callback_requested", { reason: "patient_does_not_understand", lang })) ? "callback" : "failed");
+
+  const consent = detail ? consentState(detail.events) : null;
+  const saveConsent = async (channel: ContactChannel, share: boolean) =>
+    setNotice((await post("consent_updated", { channel, share_with_specialist: share })) ? "saved" : "saveFailed");
+
+  const toggle = (
+    <button type="button" className="btn lang-toggle" onClick={() => setLang(lang === "en" ? "ar" : "en")} lang={lang === "en" ? "ar" : "en"} aria-label={`${t.language}: ${t.switchTo}`}>
+      {t.switchTo}
+    </button>
+  );
+
+  if (!detail) {
+    return (
+      <main className="patient" lang={lang} dir={DIR[lang]} data-testid="patient-root">
+        <div className="patient-top">{toggle}</div>
+        <p role={error ? "alert" : "status"}>{error ? t.loadError : t.loading}</p>
+      </main>
+    );
+  }
+
+  const owner = currentOwner(detail.events);
+  const ownerName = owner?.name ?? detail.owner ?? null;
+  const step = progressStep(detail.state);
+  const idx = stateIndex(detail.state);
+  const acknowledged = idx >= stateIndex("patient_acknowledged");
+  const canAck = detail.state === "patient_contacted";
+  const callbackAsked = notice === "callback" || hasCallbackPending(detail.events);
+
+  return (
+    <main className="patient" lang={lang} dir={DIR[lang]} data-testid="patient-root">
+      <div className="patient-top">
+        <h1>{t.appTitle}</h1>
+        {toggle}
+      </div>
+
+      {offline && <p className="banner banner-warn" role="status">{t.offline}</p>}
+
+      <section aria-labelledby="p-result">
+        <h2 id="p-result">{t.resultHeading}</h2>
+        <p className="big">{t.resultBody}</p>
+        <p className="muted">{t.notDiagnosis}</p>
+      </section>
+
+      <section aria-labelledby="p-progress">
+        <h2 id="p-progress">{t.progressHeading}</h2>
+        <ol className="progress">
+          {t.progress.map((label, i) => (
+            <li key={label} className={i < step ? "done" : i === step ? "current" : ""} aria-current={i === step ? "step" : undefined}>
+              {label}
+            </li>
+          ))}
+        </ol>
+      </section>
+
+      <section aria-labelledby="p-next">
+        <h2 id="p-next">{t.nextHeading}</h2>
+        <ol className="steps">
+          {t.nextSteps.map((s) => <li key={s}>{s}</li>)}
+        </ol>
+      </section>
+
+      <section aria-labelledby="p-owner">
+        <h2 id="p-owner">{t.ownerHeading}</h2>
+        <p className="big" data-testid="patient-owner">
+          {ownerName ? t.ownerLine(ownerName, roleLabel(owner?.role ?? "Care coordinator", lang)) : t.ownerPending}
+        </p>
+      </section>
+
+      <section className="actions" aria-label="Actions">
+        {acknowledged ? (
+          <p className="banner banner-ok" role="status" data-testid="ack-done">{t.understandDone}</p>
+        ) : (
+          <>
+            <button type="button" className="btn btn-primary btn-xl" onClick={onAcknowledge} disabled={!canAck || busy} aria-describedby="ack-hint">
+              {t.understand}
+            </button>
+            {!canAck && <p id="ack-hint" className="muted">{t.understandWait}</p>}
+          </>
+        )}
+        <button type="button" className="btn btn-xl" onClick={onCallback} disabled={busy}>
+          {t.dontUnderstand}
+        </button>
+        {callbackAsked && <p className="banner banner-ok" role="status" data-testid="callback-done">{t.callbackDone}</p>}
+        {notice === "failed" && <p className="banner banner-bad" role="alert">{t.actionFailed}</p>}
+      </section>
+
+      <section aria-labelledby="p-consent">
+        <h2 id="p-consent">{t.consentHeading}</h2>
+        <label className="field">
+          <span>{t.channelLabel}</span>
+          <select
+            value={consent?.channel ?? "phone"}
+            onChange={(e) => void saveConsent(e.target.value as ContactChannel, consent?.share_with_specialist ?? false)}
+          >
+            {(["phone", "sms", "whatsapp"] as const).map((c) => <option key={c} value={c}>{t.channels[c]}</option>)}
+          </select>
+        </label>
+        <label className="check">
+          <input
+            type="checkbox"
+            checked={consent?.share_with_specialist ?? false}
+            onChange={(e) => void saveConsent(consent?.channel ?? "phone", e.target.checked)}
+          />
+          <span>{t.shareLabel}</span>
+        </label>
+        <p className="muted" role="status" aria-live="polite">
+          {notice === "saved" ? t.saved : notice === "saveFailed" ? t.saveFailed : ""}
+        </p>
+      </section>
+    </main>
+  );
+}
