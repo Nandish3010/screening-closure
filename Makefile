@@ -1,4 +1,4 @@
-.PHONY: up down logs test test-db test-db-create test-db-reset synthea demo-seed demo-seed-clean evaluate simulate evaluate-check reset web-install web-dev web-build web-test web-e2e
+.PHONY: up down logs test test-db test-db-create test-db-reset synthea demo-seed demo-seed-clean evaluate simulate evaluate-check reset web-install web-dev web-build web-test web-e2e test-e2e
 
 up:
 	docker compose up -d --build
@@ -115,3 +115,6 @@ web-test:
 # Playwright e2e against a mock-adapter `vite preview` (needs `npx playwright install chromium` once).
 web-e2e:
 	cd web && npm run test:e2e
+
+# The name the test plan uses (TEST-CASES.md): same suite as web-e2e.
+test-e2e: web-e2e

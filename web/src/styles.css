@@ -194,3 +194,4 @@ table.worklist { width: 100%; border-collapse: collapse; background: var(--surfa
 .decision .field { align-self: stretch; }
 .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 .nobody li { padding: 0.5rem 0; border-top: 1px solid var(--border); }
+.tl { overflow-wrap: anywhere; }
