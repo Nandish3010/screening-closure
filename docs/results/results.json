@@ -1,0 +1,3128 @@
+{
+  "arms": {
+    "baseline": {
+      "automation_abstention_rate": null,
+      "closed_share": {
+        "ci_high": 0.539951,
+        "ci_low": 0.527923,
+        "mean": 0.5341,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "completion_180d": {
+        "ci_high": 0.52645,
+        "ci_low": 0.515473,
+        "mean": 0.5209,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "completion_360d": {
+        "ci_high": 0.557584,
+        "ci_low": 0.545899,
+        "mean": 0.552025,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "completion_90d": {
+        "ci_high": 0.431201,
+        "ci_low": 0.422699,
+        "mean": 0.426975,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "completion_final": {
+        "ci_high": 0.558376,
+        "ci_low": 0.54585,
+        "mean": 0.552025,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "consent_breach_rate": {
+        "ci_high": 0.004575,
+        "ci_low": 0.003175,
+        "mean": 0.003825,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "delay_harm_share": {
+        "ci_high": 0.463201,
+        "ci_low": 0.451674,
+        "mean": 0.457425,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "escalation_precision": null,
+      "escalations_per_100_cases": {
+        "ci_high": 0.0,
+        "ci_low": 0.0,
+        "mean": 0.0,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "fairness.channel.closure_median_gap_max_days": {
+        "ci_high": 5.159307,
+        "ci_low": 3.726582,
+        "mean": 4.405323,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "fairness.channel.completion_gap_max": {
+        "ci_high": 0.059668,
+        "ci_low": 0.041689,
+        "mean": 0.051031,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "fairness.channel.letter.closure_median": {
+        "ci_high": 71.994131,
+        "ci_low": 69.573851,
+        "mean": 70.76324,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "fairness.channel.letter.completion_final": {
+        "ci_high": 0.567881,
+        "ci_low": 0.538904,
+        "mean": 0.553769,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "fairness.channel.letter.n": {
+        "ci_high": 301.40125,
+        "ci_low": 288.54875,
+        "mean": 295.0,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "fairness.channel.phone.closure_median": {
+        "ci_high": 71.940276,
+        "ci_low": 69.961695,
+        "mean": 70.920824,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "fairness.channel.phone.completion_final": {
+        "ci_high": 0.556635,
+        "ci_low": 0.536098,
+        "mean": 0.546812,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "fairness.channel.phone.n": {
+        "ci_high": 310.15125,
+        "ci_low": 296.25,
+        "mean": 303.35,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "fairness.channel.sms.closure_median": {
+        "ci_high": 70.532034,
+        "ci_low": 69.298758,
+        "mean": 69.908046,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "fairness.channel.sms.completion_final": {
+        "ci_high": 0.560788,
+        "ci_low": 0.546278,
+        "mean": 0.553858,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "fairness.channel.sms.n": {
+        "ci_high": 809.75,
+        "ci_low": 790.89875,
+        "mean": 800.4,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "fairness.channel.whatsapp.closure_median": {
+        "ci_high": 71.079919,
+        "ci_low": 69.507806,
+        "mean": 70.264145,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "fairness.channel.whatsapp.completion_final": {
+        "ci_high": 0.559864,
+        "ci_low": 0.541785,
+        "mean": 0.551144,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "fairness.channel.whatsapp.n": {
+        "ci_high": 610.05375,
+        "ci_low": 592.59875,
+        "mean": 601.25,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "fairness.language.ar.closure_median": {
+        "ci_high": 71.480345,
+        "ci_low": 70.297196,
+        "mean": 70.917343,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "fairness.language.ar.completion_final": {
+        "ci_high": 0.528165,
+        "ci_low": 0.512554,
+        "mean": 0.520534,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "fairness.language.ar.n": {
+        "ci_high": 907.85125,
+        "ci_low": 891.89875,
+        "mean": 899.7,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "fairness.language.closure_median_gap_max_days": {
+        "ci_high": 5.174317,
+        "ci_low": 3.292815,
+        "mean": 4.229292,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "fairness.language.completion_gap_max": {
+        "ci_high": 0.099394,
+        "ci_low": 0.0782,
+        "mean": 0.088595,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "fairness.language.en.closure_median": {
+        "ci_high": 69.713859,
+        "ci_low": 68.43205,
+        "mean": 69.05696,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "fairness.language.en.completion_final": {
+        "ci_high": 0.612402,
+        "ci_low": 0.594715,
+        "mean": 0.603571,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "fairness.language.en.n": {
+        "ci_high": 711.25125,
+        "ci_low": 695.65,
+        "mean": 703.6,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "fairness.language.other.closure_median": {
+        "ci_high": 73.208566,
+        "ci_low": 71.103195,
+        "mean": 72.138729,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "fairness.language.other.completion_final": {
+        "ci_high": 0.541553,
+        "ci_low": 0.522821,
+        "mean": 0.531991,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "fairness.language.other.n": {
+        "ci_high": 402.6525,
+        "ci_low": 390.89875,
+        "mean": 396.7,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "lost_to_follow_up_rate": {
+        "ci_high": 0.451551,
+        "ci_low": 0.439548,
+        "mean": 0.445475,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "messy.conflicting_ack.closed_share": {
+        "ci_high": 0.588539,
+        "ci_low": 0.542381,
+        "mean": 0.564538,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "messy.conflicting_ack.closure_median": {
+        "ci_high": 83.195391,
+        "ci_low": 77.963934,
+        "mean": 80.669525,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "messy.conflicting_ack.completion_final": {
+        "ci_high": 0.603082,
+        "ci_low": 0.561902,
+        "mean": 0.581888,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "messy.conflicting_ack.completion_final_unaffected": {
+        "ci_high": 0.55637,
+        "ci_low": 0.544916,
+        "mean": 0.550798,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "messy.conflicting_ack.handled_rate": {
+        "ci_high": 0.0,
+        "ci_low": 0.0,
+        "mean": 0.0,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "messy.conflicting_ack.n": {
+        "ci_high": 80.50125,
+        "ci_low": 73.35,
+        "mean": 76.9,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "messy.consent_after_booking.closed_share": {
+        "ci_high": 0.670624,
+        "ci_low": 0.603666,
+        "mean": 0.636783,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "messy.consent_after_booking.closure_median": {
+        "ci_high": 74.059471,
+        "ci_low": 66.982215,
+        "mean": 70.519478,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "messy.consent_after_booking.completion_final": {
+        "ci_high": 0.699529,
+        "ci_low": 0.622137,
+        "mean": 0.659989,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "messy.consent_after_booking.completion_final_unaffected": {
+        "ci_high": 0.556823,
+        "ci_low": 0.54417,
+        "mean": 0.55081,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "messy.consent_after_booking.handled_rate": {
+        "ci_high": 0.0,
+        "ci_low": 0.0,
+        "mean": 0.0,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "messy.consent_after_booking.n": {
+        "ci_high": 26.60125,
+        "ci_low": 20.94875,
+        "mean": 23.7,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "messy.duplicate_result.closed_share": {
+        "ci_high": 0.54493,
+        "ci_low": 0.500438,
+        "mean": 0.521585,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "messy.duplicate_result.closure_median": {
+        "ci_high": 72.382313,
+        "ci_low": 67.355064,
+        "mean": 69.896653,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "messy.duplicate_result.completion_final": {
+        "ci_high": 0.560886,
+        "ci_low": 0.519028,
+        "mean": 0.53953,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "messy.duplicate_result.completion_final_unaffected": {
+        "ci_high": 0.558969,
+        "ci_low": 0.546518,
+        "mean": 0.552864,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "messy.duplicate_result.handled_rate": {
+        "ci_high": 0.0,
+        "ci_low": 0.0,
+        "mean": 0.0,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "messy.duplicate_result.n": {
+        "ci_high": 123.60125,
+        "ci_low": 115.5,
+        "mean": 119.55,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "messy.provider_switch.closed_share": {
+        "ci_high": 0.157712,
+        "ci_low": 0.121523,
+        "mean": 0.139255,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "messy.provider_switch.closure_median": {
+        "ci_high": 126.268292,
+        "ci_low": 107.863303,
+        "mean": 116.957898,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "messy.provider_switch.completion_final": {
+        "ci_high": 0.160328,
+        "ci_low": 0.126829,
+        "mean": 0.143563,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "messy.provider_switch.completion_final_unaffected": {
+        "ci_high": 0.573472,
+        "ci_low": 0.560537,
+        "mean": 0.56691,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "messy.provider_switch.handled_rate": {
+        "ci_high": 0.0,
+        "ci_low": 0.0,
+        "mean": 0.0,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "messy.provider_switch.n": {
+        "ci_high": 73.55,
+        "ci_low": 66.64875,
+        "mean": 70.2,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "messy.wrong_contact.closed_share": {
+        "ci_high": 0.222918,
+        "ci_low": 0.197137,
+        "mean": 0.208122,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "messy.wrong_contact.closure_median": {
+        "ci_high": 182.981935,
+        "ci_low": 163.597698,
+        "mean": 173.146757,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "messy.wrong_contact.completion_final": {
+        "ci_high": 0.227069,
+        "ci_low": 0.203419,
+        "mean": 0.214661,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "messy.wrong_contact.completion_final_unaffected": {
+        "ci_high": 0.588169,
+        "ci_low": 0.576014,
+        "mean": 0.582404,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "messy.wrong_contact.handled_rate": {
+        "ci_high": 0.0,
+        "ci_low": 0.0,
+        "mean": 0.0,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "messy.wrong_contact.n": {
+        "ci_high": 169.15125,
+        "ci_low": 161.55,
+        "mean": 165.45,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "n_cases": {
+        "ci_high": 2000.0,
+        "ci_low": 2000.0,
+        "mean": 2000.0,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "open_30d": {
+        "ci_high": 0.998025,
+        "ci_low": 0.997025,
+        "mean": 0.997525,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "open_60d": {
+        "ci_high": 0.82255,
+        "ci_low": 0.817925,
+        "mean": 0.8203,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "open_90d": {
+        "ci_high": 0.628226,
+        "ci_low": 0.620274,
+        "mean": 0.62415,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "owned_share": {
+        "ci_high": 0.0,
+        "ci_low": 0.0,
+        "mean": 0.0,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "reopen_rate": {
+        "ci_high": 0.031548,
+        "ci_low": 0.027594,
+        "mean": 0.029724,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "silent_loss_rate": {
+        "ci_high": 0.451251,
+        "ci_low": 0.439597,
+        "mean": 0.445475,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "time_to_closure_median": {
+        "ci_high": 70.641353,
+        "ci_low": 70.032749,
+        "mean": 70.326264,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "time_to_closure_p90": {
+        "ci_high": 146.163565,
+        "ci_low": 140.447614,
+        "mean": 143.238816,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "time_to_colonoscopy_median": {
+        "ci_high": 61.559774,
+        "ci_low": 60.756297,
+        "mean": 61.165534,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "time_to_colonoscopy_p25": {
+        "ci_high": 46.884898,
+        "ci_low": 46.186474,
+        "mean": 46.54685,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "time_to_colonoscopy_p75": {
+        "ci_high": 86.280027,
+        "ci_low": 84.67265,
+        "mean": 85.455286,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "time_to_first_contact_median": {
+        "ci_high": 12.569841,
+        "ci_low": 12.224005,
+        "mean": 12.389052,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "time_to_first_contact_p90": {
+        "ci_high": 23.452669,
+        "ci_low": 22.921911,
+        "mean": 23.192335,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "time_to_ownership_median": null,
+      "time_to_ownership_p90": null
+    },
+    "orchestrated": {
+      "automation_abstention_rate": null,
+      "closed_share": {
+        "ci_high": 0.835801,
+        "ci_low": 0.828724,
+        "mean": 0.8322,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "completion_180d": {
+        "ci_high": 0.833526,
+        "ci_low": 0.82695,
+        "mean": 0.83015,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "completion_360d": {
+        "ci_high": 0.835601,
+        "ci_low": 0.828775,
+        "mean": 0.8323,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "completion_90d": {
+        "ci_high": 0.763701,
+        "ci_low": 0.757624,
+        "mean": 0.76045,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "completion_final": {
+        "ci_high": 0.83565,
+        "ci_low": 0.829049,
+        "mean": 0.8323,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "consent_breach_rate": {
+        "ci_high": 0.0,
+        "ci_low": 0.0,
+        "mean": 0.0,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "delay_harm_share": {
+        "ci_high": 0.171401,
+        "ci_low": 0.165025,
+        "mean": 0.168275,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "escalation_precision": {
+        "ci_high": 0.486137,
+        "ci_low": 0.47865,
+        "mean": 0.482202,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "escalations_per_100_cases": {
+        "ci_high": 99.865062,
+        "ci_low": 98.152375,
+        "mean": 99.095,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "fairness.channel.closure_median_gap_max_days": {
+        "ci_high": 8.523442,
+        "ci_low": 6.867569,
+        "mean": 7.73215,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "fairness.channel.completion_gap_max": {
+        "ci_high": 0.049547,
+        "ci_low": 0.03359,
+        "mean": 0.041705,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "fairness.channel.letter.closure_median": {
+        "ci_high": 69.255168,
+        "ci_low": 67.638548,
+        "mean": 68.456222,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "fairness.channel.letter.completion_final": {
+        "ci_high": 0.834627,
+        "ci_low": 0.813627,
+        "mean": 0.824296,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "fairness.channel.letter.n": {
+        "ci_high": 301.75125,
+        "ci_low": 288.54875,
+        "mean": 295.0,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "fairness.channel.phone.closure_median": {
+        "ci_high": 61.689931,
+        "ci_low": 60.616781,
+        "mean": 61.176618,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "fairness.channel.phone.completion_final": {
+        "ci_high": 0.850888,
+        "ci_low": 0.830286,
+        "mean": 0.840925,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "fairness.channel.phone.n": {
+        "ci_high": 310.35375,
+        "ci_low": 296.65,
+        "mean": 303.35,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "fairness.channel.sms.closure_median": {
+        "ci_high": 62.873667,
+        "ci_low": 62.389043,
+        "mean": 62.644608,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "fairness.channel.sms.completion_final": {
+        "ci_high": 0.838073,
+        "ci_low": 0.828567,
+        "mean": 0.833583,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "fairness.channel.sms.n": {
+        "ci_high": 809.80125,
+        "ci_low": 790.49125,
+        "mean": 800.4,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "fairness.channel.whatsapp.closure_median": {
+        "ci_high": 61.903809,
+        "ci_low": 61.088673,
+        "mean": 61.501713,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "fairness.channel.whatsapp.completion_final": {
+        "ci_high": 0.835226,
+        "ci_low": 0.824719,
+        "mean": 0.830115,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "fairness.channel.whatsapp.n": {
+        "ci_high": 610.9,
+        "ci_low": 592.55,
+        "mean": 601.25,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "fairness.language.ar.closure_median": {
+        "ci_high": 63.318381,
+        "ci_low": 62.857458,
+        "mean": 63.080064,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "fairness.language.ar.completion_final": {
+        "ci_high": 0.834433,
+        "ci_low": 0.824386,
+        "mean": 0.829529,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "fairness.language.ar.n": {
+        "ci_high": 908.45125,
+        "ci_low": 892.145,
+        "mean": 899.7,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "fairness.language.closure_median_gap_max_days": {
+        "ci_high": 2.059064,
+        "ci_low": 1.122427,
+        "mean": 1.574431,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "fairness.language.completion_gap_max": {
+        "ci_high": 0.029476,
+        "ci_low": 0.020432,
+        "mean": 0.025002,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "fairness.language.en.closure_median": {
+        "ci_high": 63.224593,
+        "ci_low": 62.723848,
+        "mean": 63.003677,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "fairness.language.en.completion_final": {
+        "ci_high": 0.839411,
+        "ci_low": 0.827818,
+        "mean": 0.833787,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "fairness.language.en.n": {
+        "ci_high": 710.8525,
+        "ci_low": 696.0975,
+        "mean": 703.6,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "fairness.language.other.closure_median": {
+        "ci_high": 63.132555,
+        "ci_low": 61.809364,
+        "mean": 62.463256,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "fairness.language.other.completion_final": {
+        "ci_high": 0.842902,
+        "ci_low": 0.829256,
+        "mean": 0.836076,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "fairness.language.other.n": {
+        "ci_high": 402.3,
+        "ci_low": 390.9975,
+        "mean": 396.7,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "lost_to_follow_up_rate": {
+        "ci_high": 0.170925,
+        "ci_low": 0.164449,
+        "mean": 0.1677,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "messy.conflicting_ack.closed_share": {
+        "ci_high": 0.861849,
+        "ci_low": 0.831068,
+        "mean": 0.84685,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "messy.conflicting_ack.closure_median": {
+        "ci_high": 64.948903,
+        "ci_low": 62.572791,
+        "mean": 63.777457,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "messy.conflicting_ack.completion_final": {
+        "ci_high": 0.862623,
+        "ci_low": 0.831716,
+        "mean": 0.84685,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "messy.conflicting_ack.completion_final_unaffected": {
+        "ci_high": 0.834836,
+        "ci_low": 0.828264,
+        "mean": 0.831681,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "messy.conflicting_ack.handled_rate": {
+        "ci_high": 1.0,
+        "ci_low": 1.0,
+        "mean": 1.0,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "messy.conflicting_ack.n": {
+        "ci_high": 83.35125,
+        "ci_low": 76.1475,
+        "mean": 79.8,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "messy.consent_after_booking.closed_share": {
+        "ci_high": 0.656752,
+        "ci_low": 0.583719,
+        "mean": 0.621393,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "messy.consent_after_booking.closure_median": {
+        "ci_high": 63.982311,
+        "ci_low": 59.956166,
+        "mean": 61.938194,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "messy.consent_after_booking.completion_final": {
+        "ci_high": 0.657721,
+        "ci_low": 0.587268,
+        "mean": 0.621393,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "messy.consent_after_booking.completion_final_unaffected": {
+        "ci_high": 0.839511,
+        "ci_low": 0.832504,
+        "mean": 0.835956,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "messy.consent_after_booking.handled_rate": {
+        "ci_high": 1.0,
+        "ci_low": 1.0,
+        "mean": 1.0,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "messy.consent_after_booking.n": {
+        "ci_high": 36.70375,
+        "ci_low": 30.1,
+        "mean": 33.55,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "messy.duplicate_result.closed_share": {
+        "ci_high": 0.834475,
+        "ci_low": 0.811264,
+        "mean": 0.822989,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "messy.duplicate_result.closure_median": {
+        "ci_high": 63.905959,
+        "ci_low": 61.749191,
+        "mean": 62.863985,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "messy.duplicate_result.completion_final": {
+        "ci_high": 0.834878,
+        "ci_low": 0.812817,
+        "mean": 0.822989,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "messy.duplicate_result.completion_final_unaffected": {
+        "ci_high": 0.836477,
+        "ci_low": 0.829289,
+        "mean": 0.83285,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "messy.duplicate_result.handled_rate": {
+        "ci_high": 1.0,
+        "ci_low": 1.0,
+        "mean": 1.0,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "messy.duplicate_result.n": {
+        "ci_high": 123.4,
+        "ci_low": 115.49625,
+        "mean": 119.6,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "messy.provider_switch.closed_share": {
+        "ci_high": 0.726242,
+        "ci_low": 0.681726,
+        "mean": 0.703971,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "messy.provider_switch.closure_median": {
+        "ci_high": 73.419598,
+        "ci_low": 69.336109,
+        "mean": 71.457744,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "messy.provider_switch.completion_final": {
+        "ci_high": 0.726226,
+        "ci_low": 0.680938,
+        "mean": 0.703971,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "messy.provider_switch.completion_final_unaffected": {
+        "ci_high": 0.839307,
+        "ci_low": 0.832235,
+        "mean": 0.835578,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "messy.provider_switch.handled_rate": {
+        "ci_high": 1.0,
+        "ci_low": 1.0,
+        "mean": 1.0,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "messy.provider_switch.n": {
+        "ci_high": 53.65,
+        "ci_low": 47.29875,
+        "mean": 50.45,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "messy.wrong_contact.closed_share": {
+        "ci_high": 0.785366,
+        "ci_low": 0.762757,
+        "mean": 0.774243,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "messy.wrong_contact.closure_median": {
+        "ci_high": 76.343711,
+        "ci_low": 73.986391,
+        "mean": 75.160809,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "messy.wrong_contact.completion_final": {
+        "ci_high": 0.786082,
+        "ci_low": 0.76338,
+        "mean": 0.774533,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "messy.wrong_contact.completion_final_unaffected": {
+        "ci_high": 0.841154,
+        "ci_low": 0.833881,
+        "mean": 0.837507,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "messy.wrong_contact.handled_rate": {
+        "ci_high": 0.951078,
+        "ci_low": 0.936411,
+        "mean": 0.94374,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "messy.wrong_contact.n": {
+        "ci_high": 168.9025,
+        "ci_low": 161.45,
+        "mean": 165.45,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "n_cases": {
+        "ci_high": 2000.0,
+        "ci_low": 2000.0,
+        "mean": 2000.0,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "open_30d": {
+        "ci_high": 0.995425,
+        "ci_low": 0.993875,
+        "mean": 0.9946,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "open_60d": {
+        "ci_high": 0.637102,
+        "ci_low": 0.62945,
+        "mean": 0.633075,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "open_90d": {
+        "ci_high": 0.290826,
+        "ci_low": 0.285974,
+        "mean": 0.28825,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "owned_share": {
+        "ci_high": 1.0,
+        "ci_low": 0.999875,
+        "mean": 0.99995,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "reopen_rate": {
+        "ci_high": 0.031905,
+        "ci_low": 0.029482,
+        "mean": 0.030721,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "silent_loss_rate": {
+        "ci_high": 0.0,
+        "ci_low": 0.0,
+        "mean": 0.0,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "time_to_closure_median": {
+        "ci_high": 63.076734,
+        "ci_low": 62.766765,
+        "mean": 62.923579,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "time_to_closure_p90": {
+        "ci_high": 96.002514,
+        "ci_low": 94.995174,
+        "mean": 95.458898,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "time_to_colonoscopy_median": {
+        "ci_high": 55.029208,
+        "ci_low": 54.466562,
+        "mean": 54.743802,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "time_to_colonoscopy_p25": {
+        "ci_high": 43.357242,
+        "ci_low": 42.945182,
+        "mean": 43.143857,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "time_to_colonoscopy_p75": {
+        "ci_high": 69.609989,
+        "ci_low": 68.946605,
+        "mean": 69.288614,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "time_to_first_contact_median": {
+        "ci_high": 11.180813,
+        "ci_low": 11.061408,
+        "mean": 11.119327,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "time_to_first_contact_p90": {
+        "ci_high": 17.477439,
+        "ci_low": 17.214189,
+        "mean": 17.344859,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "time_to_ownership_median": {
+        "ci_high": 5.257387,
+        "ci_low": 5.140297,
+        "mean": 5.197745,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "time_to_ownership_p90": {
+        "ci_high": 9.179271,
+        "ci_low": 8.96204,
+        "mean": 9.071367,
+        "n_reps": 20,
+        "of_reps": 20
+      }
+    }
+  },
+  "difference": {
+    "automation_abstention_rate": null,
+    "closed_share": {
+      "ci_high": 0.303501,
+      "ci_low": 0.292624,
+      "mean": 0.2981,
+      "n_reps": 20,
+      "of_reps": 20
+    },
+    "completion_180d": {
+      "ci_high": 0.313952,
+      "ci_low": 0.304274,
+      "mean": 0.30925,
+      "n_reps": 20,
+      "of_reps": 20
+    },
+    "completion_360d": {
+      "ci_high": 0.285353,
+      "ci_low": 0.27515,
+      "mean": 0.280275,
+      "n_reps": 20,
+      "of_reps": 20
+    },
+    "completion_90d": {
+      "ci_high": 0.337128,
+      "ci_low": 0.329399,
+      "mean": 0.333475,
+      "n_reps": 20,
+      "of_reps": 20
+    },
+    "completion_final": {
+      "ci_high": 0.285325,
+      "ci_low": 0.275024,
+      "mean": 0.280275,
+      "n_reps": 20,
+      "of_reps": 20
+    },
+    "consent_breach_rate": {
+      "ci_high": -0.003199,
+      "ci_low": -0.004575,
+      "mean": -0.003825,
+      "n_reps": 20,
+      "of_reps": 20
+    },
+    "delay_harm_share": {
+      "ci_high": -0.283949,
+      "ci_low": -0.294651,
+      "mean": -0.28915,
+      "n_reps": 20,
+      "of_reps": 20
+    },
+    "escalation_precision": null,
+    "escalations_per_100_cases": {
+      "ci_high": 99.9025,
+      "ci_low": 98.217313,
+      "mean": 99.095,
+      "n_reps": 20,
+      "of_reps": 20
+    },
+    "fairness.channel.closure_median_gap_max_days": {
+      "ci_high": 4.292636,
+      "ci_low": 2.279856,
+      "mean": 3.326827,
+      "n_reps": 20,
+      "of_reps": 20
+    },
+    "fairness.channel.completion_gap_max": {
+      "ci_high": 0.004385,
+      "ci_low": -0.023324,
+      "mean": -0.009326,
+      "n_reps": 20,
+      "of_reps": 20
+    },
+    "fairness.channel.letter.closure_median": {
+      "ci_high": -1.109937,
+      "ci_low": -3.397071,
+      "mean": -2.307019,
+      "n_reps": 20,
+      "of_reps": 20
+    },
+    "fairness.channel.letter.completion_final": {
+      "ci_high": 0.288878,
+      "ci_low": 0.252552,
+      "mean": 0.270528,
+      "n_reps": 20,
+      "of_reps": 20
+    },
+    "fairness.channel.letter.n": {
+      "ci_high": 0.0,
+      "ci_low": 0.0,
+      "mean": 0.0,
+      "n_reps": 20,
+      "of_reps": 20
+    },
+    "fairness.channel.phone.closure_median": {
+      "ci_high": -8.795921,
+      "ci_low": -10.807204,
+      "mean": -9.744205,
+      "n_reps": 20,
+      "of_reps": 20
+    },
+    "fairness.channel.phone.completion_final": {
+      "ci_high": 0.307726,
+      "ci_low": 0.282969,
+      "mean": 0.294112,
+      "n_reps": 20,
+      "of_reps": 20
+    },
+    "fairness.channel.phone.n": {
+      "ci_high": 0.0,
+      "ci_low": 0.0,
+      "mean": 0.0,
+      "n_reps": 20,
+      "of_reps": 20
+    },
+    "fairness.channel.sms.closure_median": {
+      "ci_high": -6.699131,
+      "ci_low": -7.814277,
+      "mean": -7.263437,
+      "n_reps": 20,
+      "of_reps": 20
+    },
+    "fairness.channel.sms.completion_final": {
+      "ci_high": 0.286315,
+      "ci_low": 0.273452,
+      "mean": 0.279726,
+      "n_reps": 20,
+      "of_reps": 20
+    },
+    "fairness.channel.sms.n": {
+      "ci_high": 0.0,
+      "ci_low": 0.0,
+      "mean": 0.0,
+      "n_reps": 20,
+      "of_reps": 20
+    },
+    "fairness.channel.whatsapp.closure_median": {
+      "ci_high": -7.888794,
+      "ci_low": -9.551268,
+      "mean": -8.762432,
+      "n_reps": 20,
+      "of_reps": 20
+    },
+    "fairness.channel.whatsapp.completion_final": {
+      "ci_high": 0.288253,
+      "ci_low": 0.270254,
+      "mean": 0.278971,
+      "n_reps": 20,
+      "of_reps": 20
+    },
+    "fairness.channel.whatsapp.n": {
+      "ci_high": 0.0,
+      "ci_low": 0.0,
+      "mean": 0.0,
+      "n_reps": 20,
+      "of_reps": 20
+    },
+    "fairness.language.ar.closure_median": {
+      "ci_high": -7.250783,
+      "ci_low": -8.393051,
+      "mean": -7.837278,
+      "n_reps": 20,
+      "of_reps": 20
+    },
+    "fairness.language.ar.completion_final": {
+      "ci_high": 0.316492,
+      "ci_low": 0.301255,
+      "mean": 0.308994,
+      "n_reps": 20,
+      "of_reps": 20
+    },
+    "fairness.language.ar.n": {
+      "ci_high": 0.0,
+      "ci_low": 0.0,
+      "mean": 0.0,
+      "n_reps": 20,
+      "of_reps": 20
+    },
+    "fairness.language.closure_median_gap_max_days": {
+      "ci_high": -1.726501,
+      "ci_low": -3.71268,
+      "mean": -2.654861,
+      "n_reps": 20,
+      "of_reps": 20
+    },
+    "fairness.language.completion_gap_max": {
+      "ci_high": -0.052611,
+      "ci_low": -0.075626,
+      "mean": -0.063593,
+      "n_reps": 20,
+      "of_reps": 20
+    },
+    "fairness.language.en.closure_median": {
+      "ci_high": -5.529604,
+      "ci_low": -6.614755,
+      "mean": -6.053283,
+      "n_reps": 20,
+      "of_reps": 20
+    },
+    "fairness.language.en.completion_final": {
+      "ci_high": 0.237019,
+      "ci_low": 0.222797,
+      "mean": 0.230217,
+      "n_reps": 20,
+      "of_reps": 20
+    },
+    "fairness.language.en.n": {
+      "ci_high": 0.0,
+      "ci_low": 0.0,
+      "mean": 0.0,
+      "n_reps": 20,
+      "of_reps": 20
+    },
+    "fairness.language.other.closure_median": {
+      "ci_high": -8.764477,
+      "ci_low": -10.613642,
+      "mean": -9.675474,
+      "n_reps": 20,
+      "of_reps": 20
+    },
+    "fairness.language.other.completion_final": {
+      "ci_high": 0.314055,
+      "ci_low": 0.293913,
+      "mean": 0.304085,
+      "n_reps": 20,
+      "of_reps": 20
+    },
+    "fairness.language.other.n": {
+      "ci_high": 0.0,
+      "ci_low": 0.0,
+      "mean": 0.0,
+      "n_reps": 20,
+      "of_reps": 20
+    },
+    "lost_to_follow_up_rate": {
+      "ci_high": -0.273021,
+      "ci_low": -0.282876,
+      "mean": -0.277775,
+      "n_reps": 20,
+      "of_reps": 20
+    },
+    "messy.conflicting_ack.closed_share": {
+      "ci_high": 0.307695,
+      "ci_low": 0.257663,
+      "mean": 0.282312,
+      "n_reps": 20,
+      "of_reps": 20
+    },
+    "messy.conflicting_ack.closure_median": {
+      "ci_high": -14.603108,
+      "ci_low": -19.19865,
+      "mean": -16.892068,
+      "n_reps": 20,
+      "of_reps": 20
+    },
+    "messy.conflicting_ack.completion_final": {
+      "ci_high": 0.287259,
+      "ci_low": 0.241754,
+      "mean": 0.264962,
+      "n_reps": 20,
+      "of_reps": 20
+    },
+    "messy.conflicting_ack.completion_final_unaffected": {
+      "ci_high": 0.285819,
+      "ci_low": 0.275896,
+      "mean": 0.280882,
+      "n_reps": 20,
+      "of_reps": 20
+    },
+    "messy.conflicting_ack.handled_rate": {
+      "ci_high": 1.0,
+      "ci_low": 1.0,
+      "mean": 1.0,
+      "n_reps": 20,
+      "of_reps": 20
+    },
+    "messy.conflicting_ack.n": {
+      "ci_high": 3.7,
+      "ci_low": 2.15,
+      "mean": 2.9,
+      "n_reps": 20,
+      "of_reps": 20
+    },
+    "messy.consent_after_booking.closed_share": {
+      "ci_high": 0.004992,
+      "ci_low": -0.036755,
+      "mean": -0.01539,
+      "n_reps": 20,
+      "of_reps": 20
+    },
+    "messy.consent_after_booking.closure_median": {
+      "ci_high": -5.145592,
+      "ci_low": -12.096614,
+      "mean": -8.581285,
+      "n_reps": 20,
+      "of_reps": 20
+    },
+    "messy.consent_after_booking.completion_final": {
+      "ci_high": -0.013912,
+      "ci_low": -0.06069,
+      "mean": -0.038596,
+      "n_reps": 20,
+      "of_reps": 20
+    },
+    "messy.consent_after_booking.completion_final_unaffected": {
+      "ci_high": 0.290285,
+      "ci_low": 0.279928,
+      "mean": 0.285146,
+      "n_reps": 20,
+      "of_reps": 20
+    },
+    "messy.consent_after_booking.handled_rate": {
+      "ci_high": 1.0,
+      "ci_low": 1.0,
+      "mean": 1.0,
+      "n_reps": 20,
+      "of_reps": 20
+    },
+    "messy.consent_after_booking.n": {
+      "ci_high": 11.15,
+      "ci_low": 8.55,
+      "mean": 9.85,
+      "n_reps": 20,
+      "of_reps": 20
+    },
+    "messy.duplicate_result.closed_share": {
+      "ci_high": 0.322587,
+      "ci_low": 0.279652,
+      "mean": 0.301404,
+      "n_reps": 20,
+      "of_reps": 20
+    },
+    "messy.duplicate_result.closure_median": {
+      "ci_high": -5.088001,
+      "ci_low": -9.236565,
+      "mean": -7.032668,
+      "n_reps": 20,
+      "of_reps": 20
+    },
+    "messy.duplicate_result.completion_final": {
+      "ci_high": 0.302735,
+      "ci_low": 0.262627,
+      "mean": 0.283459,
+      "n_reps": 20,
+      "of_reps": 20
+    },
+    "messy.duplicate_result.completion_final_unaffected": {
+      "ci_high": 0.285847,
+      "ci_low": 0.274032,
+      "mean": 0.279986,
+      "n_reps": 20,
+      "of_reps": 20
+    },
+    "messy.duplicate_result.handled_rate": {
+      "ci_high": 1.0,
+      "ci_low": 1.0,
+      "mean": 1.0,
+      "n_reps": 20,
+      "of_reps": 20
+    },
+    "messy.duplicate_result.n": {
+      "ci_high": 0.15,
+      "ci_low": 0.0,
+      "mean": 0.05,
+      "n_reps": 20,
+      "of_reps": 20
+    },
+    "messy.provider_switch.closed_share": {
+      "ci_high": 0.597716,
+      "ci_low": 0.531022,
+      "mean": 0.564716,
+      "n_reps": 20,
+      "of_reps": 20
+    },
+    "messy.provider_switch.closure_median": {
+      "ci_high": -37.336541,
+      "ci_low": -53.538162,
+      "mean": -45.500154,
+      "n_reps": 20,
+      "of_reps": 20
+    },
+    "messy.provider_switch.completion_final": {
+      "ci_high": 0.59145,
+      "ci_low": 0.528131,
+      "mean": 0.560408,
+      "n_reps": 20,
+      "of_reps": 20
+    },
+    "messy.provider_switch.completion_final_unaffected": {
+      "ci_high": 0.27399,
+      "ci_low": 0.26325,
+      "mean": 0.268668,
+      "n_reps": 20,
+      "of_reps": 20
+    },
+    "messy.provider_switch.handled_rate": {
+      "ci_high": 1.0,
+      "ci_low": 1.0,
+      "mean": 1.0,
+      "n_reps": 20,
+      "of_reps": 20
+    },
+    "messy.provider_switch.n": {
+      "ci_high": -17.7,
+      "ci_low": -21.80125,
+      "mean": -19.75,
+      "n_reps": 20,
+      "of_reps": 20
+    },
+    "messy.wrong_contact.closed_share": {
+      "ci_high": 0.584181,
+      "ci_low": 0.545765,
+      "mean": 0.566121,
+      "n_reps": 20,
+      "of_reps": 20
+    },
+    "messy.wrong_contact.closure_median": {
+      "ci_high": -86.877231,
+      "ci_low": -108.84765,
+      "mean": -97.985949,
+      "n_reps": 20,
+      "of_reps": 20
+    },
+    "messy.wrong_contact.completion_final": {
+      "ci_high": 0.577439,
+      "ci_low": 0.542254,
+      "mean": 0.559871,
+      "n_reps": 20,
+      "of_reps": 20
+    },
+    "messy.wrong_contact.completion_final_unaffected": {
+      "ci_high": 0.260407,
+      "ci_low": 0.249949,
+      "mean": 0.255103,
+      "n_reps": 20,
+      "of_reps": 20
+    },
+    "messy.wrong_contact.handled_rate": {
+      "ci_high": 0.950857,
+      "ci_low": 0.935523,
+      "mean": 0.94374,
+      "n_reps": 20,
+      "of_reps": 20
+    },
+    "messy.wrong_contact.n": {
+      "ci_high": 0.0,
+      "ci_low": 0.0,
+      "mean": 0.0,
+      "n_reps": 20,
+      "of_reps": 20
+    },
+    "n_cases": {
+      "ci_high": 0.0,
+      "ci_low": 0.0,
+      "mean": 0.0,
+      "n_reps": 20,
+      "of_reps": 20
+    },
+    "open_30d": {
+      "ci_high": -0.002424,
+      "ci_low": -0.003426,
+      "mean": -0.002925,
+      "n_reps": 20,
+      "of_reps": 20
+    },
+    "open_60d": {
+      "ci_high": -0.183724,
+      "ci_low": -0.190901,
+      "mean": -0.187225,
+      "n_reps": 20,
+      "of_reps": 20
+    },
+    "open_90d": {
+      "ci_high": -0.332175,
+      "ci_low": -0.339575,
+      "mean": -0.3359,
+      "n_reps": 20,
+      "of_reps": 20
+    },
+    "owned_share": {
+      "ci_high": 1.0,
+      "ci_low": 0.999875,
+      "mean": 0.99995,
+      "n_reps": 20,
+      "of_reps": 20
+    },
+    "reopen_rate": {
+      "ci_high": 0.002468,
+      "ci_low": -0.000479,
+      "mean": 0.000997,
+      "n_reps": 20,
+      "of_reps": 20
+    },
+    "silent_loss_rate": {
+      "ci_high": -0.439874,
+      "ci_low": -0.451501,
+      "mean": -0.445475,
+      "n_reps": 20,
+      "of_reps": 20
+    },
+    "time_to_closure_median": {
+      "ci_high": -7.09183,
+      "ci_low": -7.685589,
+      "mean": -7.402684,
+      "n_reps": 20,
+      "of_reps": 20
+    },
+    "time_to_closure_p90": {
+      "ci_high": -44.954544,
+      "ci_low": -50.859165,
+      "mean": -47.779918,
+      "n_reps": 20,
+      "of_reps": 20
+    },
+    "time_to_colonoscopy_median": {
+      "ci_high": -6.056414,
+      "ci_low": -6.782215,
+      "mean": -6.421732,
+      "n_reps": 20,
+      "of_reps": 20
+    },
+    "time_to_colonoscopy_p25": {
+      "ci_high": -3.086378,
+      "ci_low": -3.71732,
+      "mean": -3.402993,
+      "n_reps": 20,
+      "of_reps": 20
+    },
+    "time_to_colonoscopy_p75": {
+      "ci_high": -15.383806,
+      "ci_low": -16.995496,
+      "mean": -16.166672,
+      "n_reps": 20,
+      "of_reps": 20
+    },
+    "time_to_first_contact_median": {
+      "ci_high": -1.135551,
+      "ci_low": -1.409777,
+      "mean": -1.269725,
+      "n_reps": 20,
+      "of_reps": 20
+    },
+    "time_to_first_contact_p90": {
+      "ci_high": -5.61928,
+      "ci_low": -6.099351,
+      "mean": -5.847475,
+      "n_reps": 20,
+      "of_reps": 20
+    },
+    "time_to_ownership_median": null,
+    "time_to_ownership_p90": null
+  },
+  "meta": {
+    "bootstrap_resamples": 1000,
+    "cases_per_replication": 2000,
+    "ci_method": "percentile bootstrap over replications; differences are paired by replication (common random numbers)",
+    "follow_up_days": 360,
+    "git_commit": "ecb1f18ddf11c4ff0c6110629fb5dc1537f8a4f5",
+    "parameter_status_counts": {
+      "assumed": 87,
+      "calibrated": 16,
+      "sourced": 13,
+      "sourced-adjacent": 15
+    },
+    "params_files": [
+      "simulator/params.yaml"
+    ],
+    "params_hash": "39bbc121ac0d0f49d21a9203bb46c9b540f98c4c61b92ea779a9eac81de7fd9d",
+    "pathway": "colorectal_fit",
+    "pathway_hash": "024b31c50766f69d194f32b74920e0599092f8a894b490d499cdc2dc1a4fe851",
+    "pathway_version": "0.1",
+    "replications": 20,
+    "schema_version": 1,
+    "seed": 20261017,
+    "sla_overrides": {
+      "complete_confirmatory": {
+        "pathway_yaml": 45,
+        "used": 31
+      }
+    }
+  },
+  "parameters": [
+    {
+      "key": "acknowledgement_delay_days",
+      "notes": "Equals the pathway's own SLA (config/pathways/colorectal_fit.yaml acknowledge: 2 working days), so it is a design choice, not evidence. Section Gaps #2.",
+      "source": "No public measurement of staff time-to-acknowledge a positive result. Policy anchors only: UAE National Guideline cl. 12.3 (result to participant < 15 working days), DoH IFHAS V10 s.4.9.2.1 (results documented within 10 days of initial visit).",
+      "status": "assumed",
+      "value": 2
+    },
+    {
+      "key": "appointment.booking_lead_median_days",
+      "notes": "",
+      "source": "Calibrated to reproduce the Mohl 2023 baseline completion curve (see docs/results/results.md); placeholder was 14, no public source",
+      "status": "calibrated",
+      "value": 24
+    },
+    {
+      "key": "appointment.booking_lead_sigma",
+      "notes": "",
+      "source": "Calibrated to reproduce the Mohl 2023 baseline completion curve (see docs/results/results.md); placeholder was 0.5, no public source",
+      "status": "calibrated",
+      "value": 0.6
+    },
+    {
+      "key": "appointment.max_attempts",
+      "notes": "",
+      "source": "TODO",
+      "status": "assumed",
+      "value": 3
+    },
+    {
+      "key": "appointment.rebook_lead_median_days",
+      "notes": "",
+      "source": "TODO",
+      "status": "assumed",
+      "value": 7
+    },
+    {
+      "key": "appointment.reminder_days_before",
+      "notes": "",
+      "source": "TODO",
+      "status": "assumed",
+      "value": [
+        7,
+        1
+      ]
+    },
+    {
+      "key": "appointment.responsiveness_noshow_shift",
+      "notes": "",
+      "source": "TODO",
+      "status": "assumed",
+      "value": 0.5
+    },
+    {
+      "key": "baseline.channel_share.letter",
+      "notes": "",
+      "source": "TODO",
+      "status": "assumed",
+      "value": 0.5
+    },
+    {
+      "key": "baseline.channel_share.sms",
+      "notes": "",
+      "source": "TODO",
+      "status": "assumed",
+      "value": 0.5
+    },
+    {
+      "key": "baseline.default_language",
+      "notes": "",
+      "source": "TODO",
+      "status": "assumed",
+      "value": "en"
+    },
+    {
+      "key": "baseline.noshow_self_rebook_median_days",
+      "notes": "",
+      "source": "TODO",
+      "status": "assumed",
+      "value": 30
+    },
+    {
+      "key": "baseline.noshow_self_rebook_prob",
+      "notes": "",
+      "source": "Calibrated to reproduce the Mohl 2023 baseline completion curve (see docs/results/results.md); placeholder was 0.30, no public source",
+      "status": "calibrated",
+      "value": 0.45
+    },
+    {
+      "key": "calendar.holidays",
+      "notes": "",
+      "source": "TODO",
+      "status": "assumed",
+      "value": []
+    },
+    {
+      "key": "colonoscopy_completion_12m",
+      "notes": "Spread of published 12-month figures: Abu Dhabi 0.305 ever (2015-2016), AltaMed 0.333, Sea Mar 0.428, STOP CRC 0.528, safety net 0.556, PROSPR 0.581-0.838, Kaiser 0.832-0.837. Sensitivity 0.31 to 0.84.",
+      "source": "Mohl et al. 2023, 56.1% at 360 d (median organisation 53.4%, range 17.4-71.8%). https://pmc.ncbi.nlm.nih.gov/articles/PMC9856942",
+      "status": "sourced",
+      "value": 0.56
+    },
+    {
+      "key": "colonoscopy_completion_12m_integrated_ref",
+      "notes": "UAE National Guideline desirable KPI is >95% referral to colonoscopy after positive FIT (acceptable 90%); no published programme reached it in the sources found.",
+      "source": "Corley et al. 2017, 83.2% within 12 months. https://jamanetwork.com/journals/jama/fullarticle/2620087",
+      "status": "sourced",
+      "value": 0.832
+    },
+    {
+      "key": "colonoscopy_completion_3m",
+      "notes": "Unmanaged baseline arm, cumulative from the positive result. All stool-based tests (FIT + mt-sDNA); FIT-only 12-month is 0.487 (Fendrick 2023, https://pmc.ncbi.nlm.nih.gov/articles/PMC10698770/). Other FIT settings: FQHC 0.229 (Sea Mar), integrated Kaiser 0.742 (Corley).",
+      "source": "Mohl et al., JAMA Netw Open 2023;6(1):e2251384, 43.3% at 90 d, 32,769 stool-test positives, 39 US organisations. https://pmc.ncbi.nlm.nih.gov/articles/PMC9856942",
+      "status": "sourced",
+      "value": 0.43
+    },
+    {
+      "key": "colonoscopy_completion_3m_integrated_ref",
+      "notes": "Reference arm for an actively managed programme (ceiling for the orchestrated arm). 30 d 0.333, 2 mo 0.636.",
+      "source": "Corley et al., JAMA 2017;317:1631, 74.2% within 3 months of 81,518 FIT positives, Kaiser Permanente. https://jamanetwork.com/journals/jama/fullarticle/2620087",
+      "status": "sourced",
+      "value": 0.742
+    },
+    {
+      "key": "colonoscopy_completion_6m",
+      "notes": "FQHC 0.371 (Sea Mar, https://pmc.ncbi.nlm.nih.gov/articles/PMC8477359/); Kaiser integrated 0.806 (Corley, JAMA 2017, https://jamanetwork.com/journals/jama/fullarticle/2620087).",
+      "source": "Mohl et al. 2023, 51.4% at 180 d. https://pmc.ncbi.nlm.nih.gov/articles/PMC9856942",
+      "status": "sourced",
+      "value": 0.51
+    },
+    {
+      "key": "colonoscopy_completion_6m_integrated_ref",
+      "notes": "Kaiser Northern California 2017 program: 42% within 30 d, 81% within 6 mo, 83.7% ever (https://pmc.ncbi.nlm.nih.gov/articles/PMC7526597/).",
+      "source": "Corley et al. 2017, 80.6% within 6 months. https://jamanetwork.com/journals/jama/fullarticle/2620087",
+      "status": "sourced",
+      "value": 0.806
+    },
+    {
+      "key": "colonoscopy_never_completes_12m",
+      "notes": "Share with no follow-up colonoscopy within a year. Some later complete, so this is not 'never' in the strict sense; the cohorts do not give the long tail.",
+      "source": "Derived: 1 - 0.561 from Mohl et al. 2023. https://pmc.ncbi.nlm.nih.gov/articles/PMC9856942",
+      "status": "sourced-adjacent",
+      "value": 0.44
+    },
+    {
+      "key": "delay_harm_threshold_days",
+      "notes": "Risk-flag threshold for reporting delay exposure, not a clinical claim. Observational evidence. VA cohort (Gastroenterology 2021, https://doi.org/10.1053/j.gastro.2021.01.219) shows CRC HR 1.13-1.28 from 13 months. Timeliness benchmarks: PROSPR 90 d (secondary citation), UAE 31 working days (below).",
+      "source": "Systematic review, Clin Gastroenterol Hepatol 2021 (PMID 33010414): colonoscopy 'should not be delayed beyond 9 months' after positive FIT. https://doi.org/10.1016/j.cgh.2020.09.048 . Corley JAMA 2017: first significant excess at 10-12 months, any CRC OR 1.48 (1.05-2.08), advanced stage OR 1.97 (1.14-3.42); >12 months OR 2.25 and 3.22. https://jamanetwork.com/journals/jama/fullarticle/2620087",
+      "status": "sourced-adjacent",
+      "value": 270
+    },
+    {
+      "key": "dna_rate",
+      "notes": "Baseline (no electronic reminder) non-attendance at a booked colonoscopy. General outpatient DNA 5.6-5.9% in England 2023-25 (NHS Hospital Outpatient Activity, unverified, page blocked). Pre-booking loss is much larger, see gi_referral_non_attendance_abu_dhabi.",
+      "source": "Lam et al. 2021 standard-care arm, colonoscopy non-attendance 11.9%. https://doi.org/10.1111/jgh.15218",
+      "status": "sourced-adjacent",
+      "value": 0.119
+    },
+    {
+      "key": "eligible_age_max",
+      "notes": "",
+      "source": "UAE National Guideline s.3.4 and DoH IFHAS V10 Appendix (40-75). Ages 76-85 decided individually. https://www.isahd.ae/content/docs/Colorectal%20guideline%20Screening%20and%20Diagnosis_UAE%20National%20Guidelines.pdf",
+      "status": "sourced",
+      "value": 75
+    },
+    {
+      "key": "eligible_age_min",
+      "notes": "generate_results.py currently uses 45; no Abu Dhabi source for 45 was found.",
+      "source": "UAE National Guideline s.3.4 (ages 40-75); DoH IFHAS V10 Appendix (FIT, 40-75 years, annually); ADPHC 24 Sep 2019 (40 and older). https://www.doh.gov.ae/-/media/EE758C3B77314BC394F2479AEF803AA2.ashx",
+      "status": "sourced",
+      "value": 40
+    },
+    {
+      "key": "fit_interval_months",
+      "notes": "",
+      "source": "UAE National Guideline Standard 2 (FIT every year); DoH IFHAS V10; ADPHC 2019. The earlier 2-year interval (HAAD 2016) was superseded in 2019.",
+      "status": "sourced",
+      "value": 12
+    },
+    {
+      "key": "fit_positivity_rate",
+      "notes": "Cut-off dependent. England 2023-24 1.76% (gov.uk BCSP standards data report 2023-24, 120 ug/g), Netherlands 4.4% (RIVM/LECO 2018-2021, 47 ug/g), Scotland 2.8%, Kaiser N. California 3.4% (>20 ug/g). Abu Dhabi 2015-2016: 13.5% of those screened with FIT/gFOBT (Almansoori, BMC Cancer 2021, https://pmc.ncbi.nlm.nih.gov/articles/PMC8343888/, cut-off not stated). Sensitivity 0.018 to 0.135.",
+      "source": "Ding et al., Cancers 2022;14(4):1073, pooled positivity 7.28% across 93 studies, https://pubmed.ncbi.nlm.nih.gov/35205821/ ; AltaMed FQHC 7.0%, https://pmc.ncbi.nlm.nih.gov/articles/PMC9716593/",
+      "status": "sourced-adjacent",
+      "value": 0.07
+    },
+    {
+      "key": "followup_target_working_days",
+      "notes": "The same guideline's clause 12.5.2 says 15 working days; Appendix 3 says 31 days. DoH IFHAS V10 Appendix 9: referral within 15 working days of releasing results. Current pathway SLA complete_confirmatory is 45 working days, looser than this KPI; reconcile as a design decision.",
+      "source": "UAE National Guideline for Colorectal Cancer Screening and Diagnosis, 3rd ed. 2022, Appendix 2: colonoscopy within 31 working days of referral after positive FIT (>90% acceptable, >95% desirable). https://www.isahd.ae/content/docs/Colorectal%20guideline%20Screening%20and%20Diagnosis_UAE%20National%20Guidelines.pdf",
+      "status": "sourced",
+      "value": 31
+    },
+    {
+      "key": "gi_referral_made_rate",
+      "notes": "Safety-net system: 87% referred (13% never referred), https://doi.org/10.1038/ajg.2016.555 . UAE guideline KPI: 90% acceptable, >95% desirable (Appendix 2).",
+      "source": "Sea Mar FQHC: 642 of 711 abnormal FIT (90%) had a GI referral. https://pmc.ncbi.nlm.nih.gov/articles/PMC8477359/",
+      "status": "sourced-adjacent",
+      "value": 0.9
+    },
+    {
+      "key": "gi_referral_non_attendance_abu_dhabi",
+      "notes": "Informational local anchor, FIT/gFOBT, Emirati nationals, 2015-2016. The paper prints 933 as the denominator but its percentages fit ~992; derivation uses 1,429 positives minus 436 colonoscopies.",
+      "source": "Derived: 36.3% of the ~992 positives without colonoscopy were 'referred to GI, did not attend' (about 360 of 1,429 positives), Almansoori et al., BMC Cancer 2021;21:897. https://pmc.ncbi.nlm.nih.gov/articles/PMC8343888/",
+      "status": "sourced-adjacent",
+      "value": 0.25
+    },
+    {
+      "key": "handoff.baseline_rejection_notice_median_days",
+      "notes": "",
+      "source": "TODO",
+      "status": "assumed",
+      "value": 21
+    },
+    {
+      "key": "handoff.baseline_rejection_noticed_prob",
+      "notes": "",
+      "source": "Calibrated to reproduce the Mohl 2023 baseline completion curve (see docs/results/results.md); placeholder was 0.40, no public source",
+      "status": "calibrated",
+      "value": 0.55
+    },
+    {
+      "key": "handoff.declined_reengage_prob",
+      "notes": "",
+      "source": "TODO",
+      "status": "assumed",
+      "value": 0.5
+    },
+    {
+      "key": "handoff.max_attempts",
+      "notes": "",
+      "source": "TODO",
+      "status": "assumed",
+      "value": 4
+    },
+    {
+      "key": "handoff.no_response_prob",
+      "notes": "",
+      "source": "TODO",
+      "status": "assumed",
+      "value": 0.04
+    },
+    {
+      "key": "handoff.rejection_reason_share.capacity",
+      "notes": "",
+      "source": "TODO",
+      "status": "assumed",
+      "value": 0.35
+    },
+    {
+      "key": "handoff.rejection_reason_share.missing_info",
+      "notes": "",
+      "source": "TODO",
+      "status": "assumed",
+      "value": 0.3
+    },
+    {
+      "key": "handoff.rejection_reason_share.patient_declined",
+      "notes": "",
+      "source": "TODO",
+      "status": "assumed",
+      "value": 0.2
+    },
+    {
+      "key": "handoff.rejection_reason_share.wrong_service",
+      "notes": "",
+      "source": "TODO",
+      "status": "assumed",
+      "value": 0.15
+    },
+    {
+      "key": "handoff.reroute_delay_median_days",
+      "notes": "",
+      "source": "TODO",
+      "status": "assumed",
+      "value": 2.0
+    },
+    {
+      "key": "handoff.response_delay_median_days",
+      "notes": "",
+      "source": "TODO",
+      "status": "assumed",
+      "value": 2.0
+    },
+    {
+      "key": "handoff.response_delay_sigma",
+      "notes": "",
+      "source": "TODO",
+      "status": "assumed",
+      "value": 0.7
+    },
+    {
+      "key": "handoff.response_sla_working_days",
+      "notes": "",
+      "source": "TODO",
+      "status": "assumed",
+      "value": 3
+    },
+    {
+      "key": "malaffi_integration_assumption",
+      "notes": "No official DoH or Malaffi document names FHIR (checked DoH HIE standards page and Malaffi policies page). Vendor pages claiming FHIR are unverified. Confirm with ddg@doh.gov.ae or hie@doh.gov.ae. IFHAS visits are meant to be tagged for tracking through Malaffi (IFHAS V10 s.4.11.4.1).",
+      "source": "DoH Circular 2026/10, 19 Jan 2026: mandatory Malaffi minimum dataset listed as HL7 message types (ADT, PPR, ORU, OMP, RDS, RAS, VXU, SIU incl. future appointments). https://www.doh.gov.ae/-/media/84A213F71AA545D69E01A23A0A99C598.ashx",
+      "status": "sourced",
+      "value": "HL7 v2 message feeds; FHIR R4 not confirmed"
+    },
+    {
+      "key": "messy.baseline_conflict_delay_days",
+      "notes": "",
+      "source": "TODO",
+      "status": "assumed",
+      "value": 10
+    },
+    {
+      "key": "messy.baseline_switch_delay_days",
+      "notes": "",
+      "source": "TODO",
+      "status": "assumed",
+      "value": 30
+    },
+    {
+      "key": "messy.baseline_switch_loss_prob",
+      "notes": "",
+      "source": "TODO",
+      "status": "assumed",
+      "value": 0.7
+    },
+    {
+      "key": "messy.conflicting_ack_rate",
+      "notes": "",
+      "source": "TODO",
+      "status": "assumed",
+      "value": 0.04
+    },
+    {
+      "key": "messy.consent_after_booking_rate",
+      "notes": "",
+      "source": "TODO",
+      "status": "assumed",
+      "value": 0.02
+    },
+    {
+      "key": "messy.duplicate_delay_max_days",
+      "notes": "",
+      "source": "TODO",
+      "status": "assumed",
+      "value": 10
+    },
+    {
+      "key": "messy.duplicate_result_rate",
+      "notes": "",
+      "source": "TODO",
+      "status": "assumed",
+      "value": 0.06
+    },
+    {
+      "key": "messy.rate_multiplier",
+      "notes": "",
+      "source": "TODO",
+      "status": "assumed",
+      "value": 1.0
+    },
+    {
+      "key": "messy.switch_window_days",
+      "notes": "",
+      "source": "TODO",
+      "status": "assumed",
+      "value": 60
+    },
+    {
+      "key": "metrics.escalation_precision_window_working_days",
+      "notes": "",
+      "source": "TODO",
+      "status": "assumed",
+      "value": 5
+    },
+    {
+      "key": "metrics.ltfu_idle_days",
+      "notes": "",
+      "source": "TODO",
+      "status": "assumed",
+      "value": 30
+    },
+    {
+      "key": "metrics.min_group_size",
+      "notes": "",
+      "source": "TODO",
+      "status": "assumed",
+      "value": 30
+    },
+    {
+      "key": "navigation_effect",
+      "notes": "Multiply the baseline completion probability, cap at colonoscopy_completion_12m_integrated_ref. Consistent with the Annals 2025 RCT (55.1% vs 42.1%, RD 13.0 pp, aOR 1.69; https://pmc.ncbi.nlm.nih.gov/articles/PMC13007779/). Populations are US health-disparity groups.",
+      "source": "Pooled risk ratio for colonoscopy completion, patient navigation vs usual care, 8 navigation studies, moderate certainty, J Gen Intern Med 2026 (PMID 42618855), RR 1.27 (95% CI 1.10-1.46). https://doi.org/10.1007/s11606-026-10706-x",
+      "status": "sourced",
+      "value": 1.27
+    },
+    {
+      "key": "navigation_time_reduction_days",
+      "notes": "One trial, completers only. Annals 2025 RCT mean time 229 vs 256 d (-27 d) over the full follow-up window.",
+      "source": "Coronado et al., Cancer Epidemiol Biomarkers Prev 2021 (RCT, Kaiser NW): median time to colonoscopy 73 d navigation vs 88 d usual care. https://pmc.ncbi.nlm.nih.gov/articles/PMC9273475/",
+      "status": "sourced-adjacent",
+      "value": 15
+    },
+    {
+      "key": "no_show_rate_by_channel.letter",
+      "notes": "The old placeholders (0.30 / 0.20 / 0.40) have no public support. If they were meant as non-response to first outreach rather than colonoscopy DNA, keep them as assumed and rename the key.",
+      "source": "Lam et al. 2021, standard-care arm (written appointment slip only): 11.9%. https://doi.org/10.1111/jgh.15218",
+      "status": "sourced-adjacent",
+      "value": 0.119
+    },
+    {
+      "key": "no_show_rate_by_channel.phone_call",
+      "notes": "No colonoscopy-specific phone-call trial value found. Cochrane covers general appointments.",
+      "source": "Set equal to SMS: Cochrane CD007458 (Gurol-Urganci 2013), text vs phone call RR attendance 0.99 (0.95-1.02). https://www.cochrane.org/evidence/CD007458_mobile-phone-messaging-reminders-attendance-healthcare-appointments",
+      "status": "sourced-adjacent",
+      "value": 0.089
+    },
+    {
+      "key": "no_show_rate_by_channel.sms",
+      "notes": "General outpatient colonoscopy, not FIT-positive patients. Mahmud, JAMA Netw Open 2021 (n=753) found no SMS effect, so see sms_reminder_effect range.",
+      "source": "Lam et al., J Gastroenterol Hepatol 2021 (RCT, 2,225 booked colonoscopy patients, Hong Kong): 8.9% with SMS 7-10 d before. https://doi.org/10.1111/jgh.15218",
+      "status": "sourced-adjacent",
+      "value": 0.089
+    },
+    {
+      "key": "orchestration.consent_review_delay_median_days",
+      "notes": "",
+      "source": "TODO",
+      "status": "assumed",
+      "value": 2.0
+    },
+    {
+      "key": "orchestration.contact_recovery_delay_median_days",
+      "notes": "",
+      "source": "TODO",
+      "status": "assumed",
+      "value": 2.0
+    },
+    {
+      "key": "orchestration.contact_recovery_prob.on_failure",
+      "notes": "",
+      "source": "TODO",
+      "status": "assumed",
+      "value": 0.4
+    },
+    {
+      "key": "orchestration.contact_recovery_prob.owner",
+      "notes": "",
+      "source": "TODO",
+      "status": "assumed",
+      "value": 0.25
+    },
+    {
+      "key": "orchestration.contact_recovery_prob.owner_supervisor",
+      "notes": "",
+      "source": "TODO",
+      "status": "assumed",
+      "value": 0.5
+    },
+    {
+      "key": "orchestration.contact_recovery_prob.programme_coordinator",
+      "notes": "",
+      "source": "TODO",
+      "status": "assumed",
+      "value": 0.7
+    },
+    {
+      "key": "orchestration.delivery_failure_detect_days.letter",
+      "notes": "",
+      "source": "TODO",
+      "status": "assumed",
+      "value": 7.0
+    },
+    {
+      "key": "orchestration.delivery_failure_detect_days.phone",
+      "notes": "",
+      "source": "TODO",
+      "status": "assumed",
+      "value": 0.1
+    },
+    {
+      "key": "orchestration.delivery_failure_detect_days.sms",
+      "notes": "",
+      "source": "TODO",
+      "status": "assumed",
+      "value": 0.25
+    },
+    {
+      "key": "orchestration.delivery_failure_detect_days.whatsapp",
+      "notes": "",
+      "source": "TODO",
+      "status": "assumed",
+      "value": 0.25
+    },
+    {
+      "key": "orchestration.escalation_effect_prob.owner",
+      "notes": "",
+      "source": "TODO",
+      "status": "assumed",
+      "value": 0.5
+    },
+    {
+      "key": "orchestration.escalation_effect_prob.owner_supervisor",
+      "notes": "",
+      "source": "TODO",
+      "status": "assumed",
+      "value": 0.85
+    },
+    {
+      "key": "orchestration.escalation_effect_prob.programme_coordinator",
+      "notes": "",
+      "source": "TODO",
+      "status": "assumed",
+      "value": 1.0
+    },
+    {
+      "key": "orchestration.ladder_exhausted_wait_working_days",
+      "notes": "",
+      "source": "TODO",
+      "status": "assumed",
+      "value": 5
+    },
+    {
+      "key": "orchestration.reaction_delay_median_days",
+      "notes": "",
+      "source": "TODO",
+      "status": "assumed",
+      "value": 1.0
+    },
+    {
+      "key": "orchestration.reaction_delay_sigma",
+      "notes": "",
+      "source": "TODO",
+      "status": "assumed",
+      "value": 0.6
+    },
+    {
+      "key": "orchestration.signoff_sla_working_days",
+      "notes": "",
+      "source": "TODO",
+      "status": "assumed",
+      "value": 3
+    },
+    {
+      "key": "orchestration.timer_miss_prob",
+      "notes": "",
+      "source": "TODO",
+      "status": "assumed",
+      "value": 0.02
+    },
+    {
+      "key": "orchestration.transfer_reestablish_days",
+      "notes": "",
+      "source": "TODO",
+      "status": "assumed",
+      "value": 5.0
+    },
+    {
+      "key": "orchestration.watchdog_effect_prob",
+      "notes": "",
+      "source": "TODO",
+      "status": "assumed",
+      "value": 0.9
+    },
+    {
+      "key": "orchestration.watchdog_idle_days",
+      "notes": "",
+      "source": "TODO",
+      "status": "assumed",
+      "value": 14
+    },
+    {
+      "key": "orchestration.watchdog_reaction_delay_days",
+      "notes": "",
+      "source": "TODO",
+      "status": "assumed",
+      "value": 2.0
+    },
+    {
+      "key": "patient_response.coordinator_route_response_rate",
+      "notes": "",
+      "source": "TODO",
+      "status": "assumed",
+      "value": 0.7
+    },
+    {
+      "key": "patient_response.dropout_residual_multiplier",
+      "notes": "",
+      "source": "TODO",
+      "status": "assumed",
+      "value": 0.25
+    },
+    {
+      "key": "patient_response.human_dropout_residual_multiplier",
+      "notes": "",
+      "source": "TODO",
+      "status": "assumed",
+      "value": 0.6
+    },
+    {
+      "key": "patient_response.language_mismatch_multiplier",
+      "notes": "",
+      "source": "Calibrated to reproduce the Mohl 2023 baseline completion curve (see docs/results/results.md); placeholder was 0.6, no public source",
+      "status": "calibrated",
+      "value": 0.8
+    },
+    {
+      "key": "patient_response.response_delay_median_days.letter",
+      "notes": "",
+      "source": "TODO",
+      "status": "assumed",
+      "value": 6.0
+    },
+    {
+      "key": "patient_response.response_delay_median_days.phone",
+      "notes": "",
+      "source": "TODO",
+      "status": "assumed",
+      "value": 0.5
+    },
+    {
+      "key": "patient_response.response_delay_median_days.sms",
+      "notes": "",
+      "source": "TODO",
+      "status": "assumed",
+      "value": 1.5
+    },
+    {
+      "key": "patient_response.response_delay_median_days.whatsapp",
+      "notes": "",
+      "source": "TODO",
+      "status": "assumed",
+      "value": 1.0
+    },
+    {
+      "key": "patient_response.response_delay_sigma",
+      "notes": "",
+      "source": "TODO",
+      "status": "assumed",
+      "value": 0.9
+    },
+    {
+      "key": "patient_response.response_rate_by_channel.letter",
+      "notes": "",
+      "source": "Calibrated to reproduce the Mohl 2023 baseline completion curve (see docs/results/results.md); placeholder was 0.55, no public source",
+      "status": "calibrated",
+      "value": 0.85
+    },
+    {
+      "key": "patient_response.response_rate_by_channel.phone",
+      "notes": "",
+      "source": "Calibrated to reproduce the Mohl 2023 baseline completion curve (see docs/results/results.md); placeholder was 0.80, no public source",
+      "status": "calibrated",
+      "value": 0.95
+    },
+    {
+      "key": "patient_response.response_rate_by_channel.sms",
+      "notes": "",
+      "source": "Calibrated to reproduce the Mohl 2023 baseline completion curve (see docs/results/results.md); placeholder was 0.70, no public source",
+      "status": "calibrated",
+      "value": 0.92
+    },
+    {
+      "key": "patient_response.response_rate_by_channel.whatsapp",
+      "notes": "",
+      "source": "Calibrated to reproduce the Mohl 2023 baseline completion curve (see docs/results/results.md); placeholder was 0.75, no public source",
+      "status": "calibrated",
+      "value": 0.93
+    },
+    {
+      "key": "patient_response.self_presentation_median_days",
+      "notes": "",
+      "source": "Calibrated to reproduce the Mohl 2023 baseline completion curve (see docs/results/results.md); placeholder was 60, no public source",
+      "status": "calibrated",
+      "value": 120
+    },
+    {
+      "key": "patient_response.self_presentation_prob",
+      "notes": "",
+      "source": "Calibrated to reproduce the Mohl 2023 baseline completion curve (see docs/results/results.md); placeholder was 0.10, no public source",
+      "status": "calibrated",
+      "value": 0.38
+    },
+    {
+      "key": "patient_response.staff_call_response_rate",
+      "notes": "",
+      "source": "TODO",
+      "status": "assumed",
+      "value": 0.65
+    },
+    {
+      "key": "patients.channel_share.letter",
+      "notes": "",
+      "source": "TODO",
+      "status": "assumed",
+      "value": 0.15
+    },
+    {
+      "key": "patients.channel_share.phone",
+      "notes": "",
+      "source": "TODO",
+      "status": "assumed",
+      "value": 0.15
+    },
+    {
+      "key": "patients.channel_share.sms",
+      "notes": "",
+      "source": "TODO",
+      "status": "assumed",
+      "value": 0.4
+    },
+    {
+      "key": "patients.channel_share.whatsapp",
+      "notes": "",
+      "source": "TODO",
+      "status": "assumed",
+      "value": 0.3
+    },
+    {
+      "key": "patients.consent_withdrawal_declines_care_prob",
+      "notes": "",
+      "source": "TODO",
+      "status": "assumed",
+      "value": 0.3
+    },
+    {
+      "key": "patients.consent_withdrawal_prob",
+      "notes": "",
+      "source": "TODO",
+      "status": "assumed",
+      "value": 0.02
+    },
+    {
+      "key": "patients.consent_withdrawal_window_days",
+      "notes": "",
+      "source": "TODO",
+      "status": "assumed",
+      "value": 90
+    },
+    {
+      "key": "patients.dropout_prob_per_lapse",
+      "notes": "",
+      "source": "TODO",
+      "status": "assumed",
+      "value": 0.15
+    },
+    {
+      "key": "patients.language_share.ar",
+      "notes": "",
+      "source": "TODO",
+      "status": "assumed",
+      "value": 0.45
+    },
+    {
+      "key": "patients.language_share.en",
+      "notes": "",
+      "source": "TODO",
+      "status": "assumed",
+      "value": 0.35
+    },
+    {
+      "key": "patients.language_share.other",
+      "notes": "",
+      "source": "TODO",
+      "status": "assumed",
+      "value": 0.2
+    },
+    {
+      "key": "patients.provider_switch_prob",
+      "notes": "",
+      "source": "TODO",
+      "status": "assumed",
+      "value": 0.05
+    },
+    {
+      "key": "patients.refusal_prob",
+      "notes": "",
+      "source": "Calibrated to reproduce the Mohl 2023 baseline completion curve (see docs/results/results.md); placeholder was 0.12, no public source",
+      "status": "calibrated",
+      "value": 0.12
+    },
+    {
+      "key": "patients.responsiveness_sd",
+      "notes": "",
+      "source": "TODO",
+      "status": "assumed",
+      "value": 0.8
+    },
+    {
+      "key": "referral_rejection_rate",
+      "notes": "No GI-specific returned-referral rate for an already-indicated post-screen referral exists in the public literature found. Sensitivity 0.012 to 0.085. NHS e-RS 'about 2%' is unverified (page blocked).",
+      "source": "Derived 4.6% (15 of 324 abnormal FIT had a referral problem, e.g. insurance authorisation), AltaMed FQHC, https://pmc.ncbi.nlm.nih.gov/articles/PMC9716593/ . Range 1.2% (incomplete forms, Champlain GI central intake, https://pmc.ncbi.nlm.nih.gov/articles/PMC10872000/) to 8.48% (Saudi SMARC e-referral, https://pmc.ncbi.nlm.nih.gov/articles/PMC12647054/).",
+      "status": "sourced-adjacent",
+      "value": 0.05
+    },
+    {
+      "key": "reopen.after_closure_prob",
+      "notes": "",
+      "source": "TODO",
+      "status": "assumed",
+      "value": 0.03
+    },
+    {
+      "key": "reopen.lag_median_days",
+      "notes": "",
+      "source": "TODO",
+      "status": "assumed",
+      "value": 30
+    },
+    {
+      "key": "reopen.lag_sigma",
+      "notes": "",
+      "source": "TODO",
+      "status": "assumed",
+      "value": 0.6
+    },
+    {
+      "key": "reopen.resume_state",
+      "notes": "",
+      "source": "TODO",
+      "status": "assumed",
+      "value": "owner_accepted"
+    },
+    {
+      "key": "simulation.intake_window_days",
+      "notes": "",
+      "source": "TODO",
+      "status": "assumed",
+      "value": 30
+    },
+    {
+      "key": "simulation.start_date",
+      "notes": "",
+      "source": "TODO",
+      "status": "assumed",
+      "value": "2026-01-05"
+    },
+    {
+      "key": "sms_reminder_effect",
+      "notes": "Sensitivity 0 (Mahmud et al., JAMA Netw Open 2021, 753 patients, no effect, https://doi.org/10.1001/jamanetworkopen.2020.34553) to 0.34 (Cochrane CD007458, non-attendance 21.4% text vs 32.2% no reminder, derived from 78.6% vs 67.8% attendance). Reminder to positive-FOBT patients to see the GP raised 120-day colonoscopy from 47.1% to 70.3% (Azulay, JMIR mHealth 2019, https://pmc.ncbi.nlm.nih.gov/articles/PMC6379817/): a different outcome, not used.",
+      "source": "Relative reduction in colonoscopy non-attendance, (11.9 - 8.9) / 11.9, Lam et al. 2021. https://doi.org/10.1111/jgh.15218",
+      "status": "sourced-adjacent",
+      "value": 0.25
+    },
+    {
+      "key": "staff.delay_median_days.accept_ownership",
+      "notes": "",
+      "source": "Calibrated to reproduce the Mohl 2023 baseline completion curve (see docs/results/results.md); placeholder was 1.0, no public source",
+      "status": "calibrated",
+      "value": 2
+    },
+    {
+      "key": "staff.delay_median_days.book_confirmatory",
+      "notes": "",
+      "source": "Calibrated to reproduce the Mohl 2023 baseline completion curve (see docs/results/results.md); placeholder was 4.0, no public source",
+      "status": "calibrated",
+      "value": 6
+    },
+    {
+      "key": "staff.delay_median_days.clinician_review",
+      "notes": "",
+      "source": "TODO",
+      "status": "assumed",
+      "value": 4.0
+    },
+    {
+      "key": "staff.delay_median_days.close",
+      "notes": "",
+      "source": "TODO",
+      "status": "assumed",
+      "value": 2.0
+    },
+    {
+      "key": "staff.delay_median_days.contact_patient",
+      "notes": "",
+      "source": "Calibrated to reproduce the Mohl 2023 baseline completion curve (see docs/results/results.md); placeholder was 3.0, no public source",
+      "status": "calibrated",
+      "value": 5
+    },
+    {
+      "key": "staff.delay_sigma",
+      "notes": "",
+      "source": "TODO",
+      "status": "assumed",
+      "value": 0.8
+    },
+    {
+      "key": "staff.forget_prob",
+      "notes": "",
+      "source": "Calibrated to reproduce the Mohl 2023 baseline completion curve (see docs/results/results.md); placeholder was 0.04, no public source",
+      "status": "calibrated",
+      "value": 0.015
+    },
+    {
+      "key": "time_to_colonoscopy_iqr_days",
+      "notes": "Other IQRs: Kaiser 23-62 (Corley), safety net 140-232, STOP CRC 49-120 (unverified, search summary only). The Abu Dhabi paper states IQR as the single number 114.25, so it is not used.",
+      "source": "Sea Mar FQHC, IQR 52-131 d (same source as the median). https://pmc.ncbi.nlm.nih.gov/articles/PMC8477359/",
+      "status": "sourced-adjacent",
+      "value": [
+        52,
+        131
+      ]
+    },
+    {
+      "key": "time_to_colonoscopy_median_days",
+      "notes": "Completers only. Abu Dhabi 2015-2016: median 72 d (https://pmc.ncbi.nlm.nih.gov/articles/PMC8343888/). Kaiser 37 d (Corley), PROSPR 41-174 d, safety net 184 d (https://doi.org/10.1038/ajg.2016.555), AltaMed 94 d. Suggested parametric form: lognormal fitted to median and IQR (shape choice is an assumption).",
+      "source": "Sea Mar FQHC, completers, median 83 d. BMC Gastroenterol 2021, https://pmc.ncbi.nlm.nih.gov/articles/PMC8477359/",
+      "status": "sourced-adjacent",
+      "value": 83
+    },
+    {
+      "key": "working_week",
+      "notes": "Mon-Fri holds, with Friday a half day in government. Private clinics set their own hours (private-sector rule 8 h/day or 48 h/week). Sharjah is the exception (Mon-Thu, Fri-Sun off) and out of scope for Abu Dhabi.",
+      "source": "u.ae, Working hours in the public sector: federal government Mon-Thu 07:30-15:30, Fri until 12:00, Sat-Sun weekend since 1 Jan 2022; Abu Dhabi government adopted a similar system. https://u.ae/en/information-and-services/jobs/Sector-of-employment/working-in-uae-government-sector/working-hours-in-the-public-sector",
+      "status": "sourced",
+      "value": {
+        "friday_end": "12:00",
+        "friday_half_day": true,
+        "weekend": [
+          "Sat",
+          "Sun"
+        ],
+        "working_days": [
+          "Mon",
+          "Tue",
+          "Wed",
+          "Thu",
+          "Fri"
+        ]
+      }
+    },
+    {
+      "key": "wrong_contact_rate",
+      "notes": "Range 0.025 (AltaMed 'patient not found', https://pmc.ncbi.nlm.nih.gov/articles/PMC9716593/) to 0.206 (UK surgical clinic, unreachable after 3 calls, includes no-answer, https://pmc.ncbi.nlm.nih.gov/articles/PMC13422818/). No peer-reviewed rate of wrong EHR phone numbers found. Abu Dhabi: Emirates ID, phone and email are mandatory in the Malaffi minimum dataset (https://www.doh.gov.ae/en/resources/HIE).",
+      "source": "Derived 8.3% (59 of 711 abnormal FIT: provider unable to reach patient), Sea Mar FQHC, BMC Gastroenterol 2021, https://pmc.ncbi.nlm.nih.gov/articles/PMC8477359/",
+      "status": "sourced-adjacent",
+      "value": 0.08
+    }
+  ],
+  "per_replication": [
+    {
+      "arms": {
+        "baseline": {
+          "counters": {
+            "blocked_messages": 0,
+            "timers_missed": 0,
+            "watchdog_flags": 0
+          },
+          "event_hash": "bba7f59256544326",
+          "n_events": 19125
+        },
+        "orchestrated": {
+          "counters": {
+            "blocked_messages": 267,
+            "timers_missed": 315,
+            "watchdog_flags": 2068
+          },
+          "event_hash": "22938bf5056a6c5f",
+          "n_events": 45668
+        }
+      },
+      "rep": 0,
+      "seed": 1342014136
+    },
+    {
+      "arms": {
+        "baseline": {
+          "counters": {
+            "blocked_messages": 0,
+            "timers_missed": 0,
+            "watchdog_flags": 0
+          },
+          "event_hash": "24390765e900b424",
+          "n_events": 18807
+        },
+        "orchestrated": {
+          "counters": {
+            "blocked_messages": 120,
+            "timers_missed": 297,
+            "watchdog_flags": 2032
+          },
+          "event_hash": "8e8a11b1d50d1f88",
+          "n_events": 45684
+        }
+      },
+      "rep": 1,
+      "seed": 1940855630
+    },
+    {
+      "arms": {
+        "baseline": {
+          "counters": {
+            "blocked_messages": 0,
+            "timers_missed": 0,
+            "watchdog_flags": 0
+          },
+          "event_hash": "3c86114968621da4",
+          "n_events": 18848
+        },
+        "orchestrated": {
+          "counters": {
+            "blocked_messages": 184,
+            "timers_missed": 297,
+            "watchdog_flags": 2222
+          },
+          "event_hash": "c448ba0169c71edb",
+          "n_events": 46126
+        }
+      },
+      "rep": 2,
+      "seed": 1816057052
+    },
+    {
+      "arms": {
+        "baseline": {
+          "counters": {
+            "blocked_messages": 0,
+            "timers_missed": 0,
+            "watchdog_flags": 0
+          },
+          "event_hash": "2590d9fb2fbdb0e0",
+          "n_events": 19159
+        },
+        "orchestrated": {
+          "counters": {
+            "blocked_messages": 222,
+            "timers_missed": 304,
+            "watchdog_flags": 2230
+          },
+          "event_hash": "2648b20f7838d752",
+          "n_events": 46072
+        }
+      },
+      "rep": 3,
+      "seed": 1459769704
+    },
+    {
+      "arms": {
+        "baseline": {
+          "counters": {
+            "blocked_messages": 0,
+            "timers_missed": 0,
+            "watchdog_flags": 0
+          },
+          "event_hash": "ee0c43b6e0b453b1",
+          "n_events": 19114
+        },
+        "orchestrated": {
+          "counters": {
+            "blocked_messages": 205,
+            "timers_missed": 284,
+            "watchdog_flags": 2068
+          },
+          "event_hash": "99fa7eb932604d45",
+          "n_events": 45804
+        }
+      },
+      "rep": 4,
+      "seed": 36103111
+    },
+    {
+      "arms": {
+        "baseline": {
+          "counters": {
+            "blocked_messages": 0,
+            "timers_missed": 0,
+            "watchdog_flags": 0
+          },
+          "event_hash": "d0a668aeb94c9316",
+          "n_events": 19148
+        },
+        "orchestrated": {
+          "counters": {
+            "blocked_messages": 322,
+            "timers_missed": 284,
+            "watchdog_flags": 2134
+          },
+          "event_hash": "f6cf6080655f2782",
+          "n_events": 46093
+        }
+      },
+      "rep": 5,
+      "seed": 1020376767
+    },
+    {
+      "arms": {
+        "baseline": {
+          "counters": {
+            "blocked_messages": 0,
+            "timers_missed": 0,
+            "watchdog_flags": 0
+          },
+          "event_hash": "39f5b6c8237b0b03",
+          "n_events": 18947
+        },
+        "orchestrated": {
+          "counters": {
+            "blocked_messages": 213,
+            "timers_missed": 315,
+            "watchdog_flags": 2127
+          },
+          "event_hash": "fe2e616e801815d2",
+          "n_events": 45755
+        }
+      },
+      "rep": 6,
+      "seed": 872446774
+    },
+    {
+      "arms": {
+        "baseline": {
+          "counters": {
+            "blocked_messages": 0,
+            "timers_missed": 0,
+            "watchdog_flags": 0
+          },
+          "event_hash": "ea014d320af98e4b",
+          "n_events": 18515
+        },
+        "orchestrated": {
+          "counters": {
+            "blocked_messages": 258,
+            "timers_missed": 312,
+            "watchdog_flags": 2272
+          },
+          "event_hash": "8df50e4de8dceca2",
+          "n_events": 46016
+        }
+      },
+      "rep": 7,
+      "seed": 1274216146
+    },
+    {
+      "arms": {
+        "baseline": {
+          "counters": {
+            "blocked_messages": 0,
+            "timers_missed": 0,
+            "watchdog_flags": 0
+          },
+          "event_hash": "4b3b0a4156bf55b5",
+          "n_events": 18974
+        },
+        "orchestrated": {
+          "counters": {
+            "blocked_messages": 273,
+            "timers_missed": 320,
+            "watchdog_flags": 2036
+          },
+          "event_hash": "5958022a9dcb8573",
+          "n_events": 45736
+        }
+      },
+      "rep": 8,
+      "seed": 1700184140
+    },
+    {
+      "arms": {
+        "baseline": {
+          "counters": {
+            "blocked_messages": 0,
+            "timers_missed": 0,
+            "watchdog_flags": 0
+          },
+          "event_hash": "86fe1cfb7854f441",
+          "n_events": 18431
+        },
+        "orchestrated": {
+          "counters": {
+            "blocked_messages": 221,
+            "timers_missed": 280,
+            "watchdog_flags": 2238
+          },
+          "event_hash": "451e30ff7eb59b18",
+          "n_events": 46290
+        }
+      },
+      "rep": 9,
+      "seed": 992032902
+    },
+    {
+      "arms": {
+        "baseline": {
+          "counters": {
+            "blocked_messages": 0,
+            "timers_missed": 0,
+            "watchdog_flags": 0
+          },
+          "event_hash": "52c870d6e38a4de3",
+          "n_events": 19015
+        },
+        "orchestrated": {
+          "counters": {
+            "blocked_messages": 178,
+            "timers_missed": 294,
+            "watchdog_flags": 1884
+          },
+          "event_hash": "c90e48a8a0791ef9",
+          "n_events": 45734
+        }
+      },
+      "rep": 10,
+      "seed": 1464108423
+    },
+    {
+      "arms": {
+        "baseline": {
+          "counters": {
+            "blocked_messages": 0,
+            "timers_missed": 0,
+            "watchdog_flags": 0
+          },
+          "event_hash": "c733509a02aab183",
+          "n_events": 18450
+        },
+        "orchestrated": {
+          "counters": {
+            "blocked_messages": 202,
+            "timers_missed": 292,
+            "watchdog_flags": 2310
+          },
+          "event_hash": "e8d3a6c35700272e",
+          "n_events": 46198
+        }
+      },
+      "rep": 11,
+      "seed": 130687957
+    },
+    {
+      "arms": {
+        "baseline": {
+          "counters": {
+            "blocked_messages": 0,
+            "timers_missed": 0,
+            "watchdog_flags": 0
+          },
+          "event_hash": "917be01d743edc6c",
+          "n_events": 18631
+        },
+        "orchestrated": {
+          "counters": {
+            "blocked_messages": 161,
+            "timers_missed": 333,
+            "watchdog_flags": 2293
+          },
+          "event_hash": "40edbdca4586411a",
+          "n_events": 45928
+        }
+      },
+      "rep": 12,
+      "seed": 9483932
+    },
+    {
+      "arms": {
+        "baseline": {
+          "counters": {
+            "blocked_messages": 0,
+            "timers_missed": 0,
+            "watchdog_flags": 0
+          },
+          "event_hash": "9b6b80e63b8764c3",
+          "n_events": 18976
+        },
+        "orchestrated": {
+          "counters": {
+            "blocked_messages": 268,
+            "timers_missed": 311,
+            "watchdog_flags": 1999
+          },
+          "event_hash": "22bee95fd5b7267c",
+          "n_events": 45723
+        }
+      },
+      "rep": 13,
+      "seed": 680970674
+    },
+    {
+      "arms": {
+        "baseline": {
+          "counters": {
+            "blocked_messages": 0,
+            "timers_missed": 0,
+            "watchdog_flags": 0
+          },
+          "event_hash": "f06c106f47203503",
+          "n_events": 18729
+        },
+        "orchestrated": {
+          "counters": {
+            "blocked_messages": 214,
+            "timers_missed": 299,
+            "watchdog_flags": 2184
+          },
+          "event_hash": "9548ded084ad2c18",
+          "n_events": 45511
+        }
+      },
+      "rep": 14,
+      "seed": 1919788354
+    },
+    {
+      "arms": {
+        "baseline": {
+          "counters": {
+            "blocked_messages": 0,
+            "timers_missed": 0,
+            "watchdog_flags": 0
+          },
+          "event_hash": "1c4c547c9d04e2c0",
+          "n_events": 18848
+        },
+        "orchestrated": {
+          "counters": {
+            "blocked_messages": 244,
+            "timers_missed": 291,
+            "watchdog_flags": 2103
+          },
+          "event_hash": "8bc0842908220fdb",
+          "n_events": 45614
+        }
+      },
+      "rep": 15,
+      "seed": 1617658768
+    },
+    {
+      "arms": {
+        "baseline": {
+          "counters": {
+            "blocked_messages": 0,
+            "timers_missed": 0,
+            "watchdog_flags": 0
+          },
+          "event_hash": "c873a67d28f39c0a",
+          "n_events": 18887
+        },
+        "orchestrated": {
+          "counters": {
+            "blocked_messages": 251,
+            "timers_missed": 303,
+            "watchdog_flags": 2094
+          },
+          "event_hash": "cdc3b3c36ec0b8f8",
+          "n_events": 45601
+        }
+      },
+      "rep": 16,
+      "seed": 2047760267
+    },
+    {
+      "arms": {
+        "baseline": {
+          "counters": {
+            "blocked_messages": 0,
+            "timers_missed": 0,
+            "watchdog_flags": 0
+          },
+          "event_hash": "340babc0a7be1377",
+          "n_events": 18719
+        },
+        "orchestrated": {
+          "counters": {
+            "blocked_messages": 202,
+            "timers_missed": 279,
+            "watchdog_flags": 2105
+          },
+          "event_hash": "78b98d5a90048e21",
+          "n_events": 46054
+        }
+      },
+      "rep": 17,
+      "seed": 2139938488
+    },
+    {
+      "arms": {
+        "baseline": {
+          "counters": {
+            "blocked_messages": 0,
+            "timers_missed": 0,
+            "watchdog_flags": 0
+          },
+          "event_hash": "0124b3c0bce511d1",
+          "n_events": 18977
+        },
+        "orchestrated": {
+          "counters": {
+            "blocked_messages": 189,
+            "timers_missed": 288,
+            "watchdog_flags": 2298
+          },
+          "event_hash": "6f68be98804b6bd8",
+          "n_events": 46070
+        }
+      },
+      "rep": 18,
+      "seed": 1673824959
+    },
+    {
+      "arms": {
+        "baseline": {
+          "counters": {
+            "blocked_messages": 0,
+            "timers_missed": 0,
+            "watchdog_flags": 0
+          },
+          "event_hash": "79c6cb1a09924766",
+          "n_events": 18884
+        },
+        "orchestrated": {
+          "counters": {
+            "blocked_messages": 235,
+            "timers_missed": 284,
+            "watchdog_flags": 2213
+          },
+          "event_hash": "e359f89b92308ad5",
+          "n_events": 46114
+        }
+      },
+      "rep": 19,
+      "seed": 976426562
+    }
+  ]
+}

@@ -1,31 +1,338 @@
-# Behaviour-simulator parameters. Every value is a placeholder: source TODO, status assumed.
-# fit_positivity_rate is read by simulator/generate_results.py.
+# Behaviour-simulator parameters. Every leaf is {value, source, status[, notes]}; nothing is hard-coded
+# in simulator/sim/. status: sourced | sourced-adjacent | calibrated | assumed.
+#   sourced / sourced-adjacent: adopted from simulator/params.proposed.yaml (research ticket B11,
+#     evidence in docs/evidence.md on main); sources and caveats are in each leaf.
+#   calibrated: a placeholder tuned so the BASELINE arm reproduces the Mohl 2023 completion curve
+#     (see docs/results/results.md for how close it gets).
+#   assumed: no checkable public source (source: TODO).
+# Layer files at the CLI with repeated --params flags (later files override earlier keys).
+# fit_positivity_rate is read by simulator/generate_results.py (keep it in block style).
+# Time is in days (calendar days unless a key says working_days). Probabilities are in [0, 1].
+
+# ======================================================================================
+# Part 1: adopted from params.proposed.yaml (research ticket B11)
+# ======================================================================================
 acknowledgement_delay_days:
   value: 2
-  source: TODO
+  source: "No public measurement of staff time-to-acknowledge a positive result. Policy anchors only: UAE National Guideline cl. 12.3 (result to participant < 15 working days), DoH IFHAS V10 s.4.9.2.1 (results documented within 10 days of initial visit)."
   status: assumed
+  notes: "Equals the pathway's own SLA (config/pathways/colorectal_fit.yaml acknowledge: 2 working days), so it is a design choice, not evidence. Section Gaps #2."
+
+# Interpreted as non-attendance at a BOOKED colonoscopy appointment, by reminder channel.
 no_show_rate_by_channel:
   sms:
-    value: 0.30
-    source: TODO
-    status: assumed
+    value: 0.089
+    source: "Lam et al., J Gastroenterol Hepatol 2021 (RCT, 2,225 booked colonoscopy patients, Hong Kong): 8.9% with SMS 7-10 d before. https://doi.org/10.1111/jgh.15218"
+    status: sourced-adjacent
+    notes: "General outpatient colonoscopy, not FIT-positive patients. Mahmud, JAMA Netw Open 2021 (n=753) found no SMS effect, so see sms_reminder_effect range."
   phone_call:
-    value: 0.20
-    source: TODO
-    status: assumed
+    value: 0.089
+    source: "Set equal to SMS: Cochrane CD007458 (Gurol-Urganci 2013), text vs phone call RR attendance 0.99 (0.95-1.02). https://www.cochrane.org/evidence/CD007458_mobile-phone-messaging-reminders-attendance-healthcare-appointments"
+    status: sourced-adjacent
+    notes: "No colonoscopy-specific phone-call trial value found. Cochrane covers general appointments."
   letter:
-    value: 0.40
-    source: TODO
-    status: assumed
+    value: 0.119
+    source: "Lam et al. 2021, standard-care arm (written appointment slip only): 11.9%. https://doi.org/10.1111/jgh.15218"
+    status: sourced-adjacent
+    notes: "The old placeholders (0.30 / 0.20 / 0.40) have no public support. If they were meant as non-response to first outreach rather than colonoscopy DNA, keep them as assumed and rename the key."
+
 referral_rejection_rate:
   value: 0.05
-  source: TODO
-  status: assumed
+  source: "Derived 4.6% (15 of 324 abnormal FIT had a referral problem, e.g. insurance authorisation), AltaMed FQHC, https://pmc.ncbi.nlm.nih.gov/articles/PMC9716593/ . Range 1.2% (incomplete forms, Champlain GI central intake, https://pmc.ncbi.nlm.nih.gov/articles/PMC10872000/) to 8.48% (Saudi SMARC e-referral, https://pmc.ncbi.nlm.nih.gov/articles/PMC12647054/)."
+  status: sourced-adjacent
+  notes: "No GI-specific returned-referral rate for an already-indicated post-screen referral exists in the public literature found. Sensitivity 0.012 to 0.085. NHS e-RS 'about 2%' is unverified (page blocked)."
+
 wrong_contact_rate:
   value: 0.08
-  source: TODO
-  status: assumed
+  source: "Derived 8.3% (59 of 711 abnormal FIT: provider unable to reach patient), Sea Mar FQHC, BMC Gastroenterol 2021, https://pmc.ncbi.nlm.nih.gov/articles/PMC8477359/"
+  status: sourced-adjacent
+  notes: "Range 0.025 (AltaMed 'patient not found', https://pmc.ncbi.nlm.nih.gov/articles/PMC9716593/) to 0.206 (UK surgical clinic, unreachable after 3 calls, includes no-answer, https://pmc.ncbi.nlm.nih.gov/articles/PMC13422818/). No peer-reviewed rate of wrong EHR phone numbers found. Abu Dhabi: Emirates ID, phone and email are mandatory in the Malaffi minimum dataset (https://www.doh.gov.ae/en/resources/HIE)."
+
 fit_positivity_rate:
   value: 0.07
-  source: TODO (published FIT positivity ranges ~5-8%)
-  status: assumed
+  source: "Ding et al., Cancers 2022;14(4):1073, pooled positivity 7.28% across 93 studies, https://pubmed.ncbi.nlm.nih.gov/35205821/ ; AltaMed FQHC 7.0%, https://pmc.ncbi.nlm.nih.gov/articles/PMC9716593/"
+  status: sourced-adjacent
+  notes: "Cut-off dependent. England 2023-24 1.76% (gov.uk BCSP standards data report 2023-24, 120 ug/g), Netherlands 4.4% (RIVM/LECO 2018-2021, 47 ug/g), Scotland 2.8%, Kaiser N. California 3.4% (>20 ug/g). Abu Dhabi 2015-2016: 13.5% of those screened with FIT/gFOBT (Almansoori, BMC Cancer 2021, https://pmc.ncbi.nlm.nih.gov/articles/PMC8343888/, cut-off not stated). Sensitivity 0.018 to 0.135."
+
+# ---------------------------------------------------------------- new keys
+colonoscopy_completion_3m:
+  value: 0.43
+  source: "Mohl et al., JAMA Netw Open 2023;6(1):e2251384, 43.3% at 90 d, 32,769 stool-test positives, 39 US organisations. https://pmc.ncbi.nlm.nih.gov/articles/PMC9856942"
+  status: sourced
+  notes: "Unmanaged baseline arm, cumulative from the positive result. All stool-based tests (FIT + mt-sDNA); FIT-only 12-month is 0.487 (Fendrick 2023, https://pmc.ncbi.nlm.nih.gov/articles/PMC10698770/). Other FIT settings: FQHC 0.229 (Sea Mar), integrated Kaiser 0.742 (Corley)."
+
+colonoscopy_completion_6m:
+  value: 0.51
+  source: "Mohl et al. 2023, 51.4% at 180 d. https://pmc.ncbi.nlm.nih.gov/articles/PMC9856942"
+  status: sourced
+  notes: "FQHC 0.371 (Sea Mar, https://pmc.ncbi.nlm.nih.gov/articles/PMC8477359/); Kaiser integrated 0.806 (Corley, JAMA 2017, https://jamanetwork.com/journals/jama/fullarticle/2620087)."
+
+colonoscopy_completion_12m:
+  value: 0.56
+  source: "Mohl et al. 2023, 56.1% at 360 d (median organisation 53.4%, range 17.4-71.8%). https://pmc.ncbi.nlm.nih.gov/articles/PMC9856942"
+  status: sourced
+  notes: "Spread of published 12-month figures: Abu Dhabi 0.305 ever (2015-2016), AltaMed 0.333, Sea Mar 0.428, STOP CRC 0.528, safety net 0.556, PROSPR 0.581-0.838, Kaiser 0.832-0.837. Sensitivity 0.31 to 0.84."
+
+colonoscopy_never_completes_12m:
+  value: 0.44
+  source: "Derived: 1 - 0.561 from Mohl et al. 2023. https://pmc.ncbi.nlm.nih.gov/articles/PMC9856942"
+  status: sourced-adjacent
+  notes: "Share with no follow-up colonoscopy within a year. Some later complete, so this is not 'never' in the strict sense; the cohorts do not give the long tail."
+
+colonoscopy_completion_3m_integrated_ref:
+  value: 0.742
+  source: "Corley et al., JAMA 2017;317:1631, 74.2% within 3 months of 81,518 FIT positives, Kaiser Permanente. https://jamanetwork.com/journals/jama/fullarticle/2620087"
+  status: sourced
+  notes: "Reference arm for an actively managed programme (ceiling for the orchestrated arm). 30 d 0.333, 2 mo 0.636."
+
+colonoscopy_completion_6m_integrated_ref:
+  value: 0.806
+  source: "Corley et al. 2017, 80.6% within 6 months. https://jamanetwork.com/journals/jama/fullarticle/2620087"
+  status: sourced
+  notes: "Kaiser Northern California 2017 program: 42% within 30 d, 81% within 6 mo, 83.7% ever (https://pmc.ncbi.nlm.nih.gov/articles/PMC7526597/)."
+
+colonoscopy_completion_12m_integrated_ref:
+  value: 0.832
+  source: "Corley et al. 2017, 83.2% within 12 months. https://jamanetwork.com/journals/jama/fullarticle/2620087"
+  status: sourced
+  notes: "UAE National Guideline desirable KPI is >95% referral to colonoscopy after positive FIT (acceptable 90%); no published programme reached it in the sources found."
+
+gi_referral_made_rate:
+  value: 0.90
+  source: "Sea Mar FQHC: 642 of 711 abnormal FIT (90%) had a GI referral. https://pmc.ncbi.nlm.nih.gov/articles/PMC8477359/"
+  status: sourced-adjacent
+  notes: "Safety-net system: 87% referred (13% never referred), https://doi.org/10.1038/ajg.2016.555 . UAE guideline KPI: 90% acceptable, >95% desirable (Appendix 2)."
+
+gi_referral_non_attendance_abu_dhabi:
+  value: 0.25
+  source: "Derived: 36.3% of the ~992 positives without colonoscopy were 'referred to GI, did not attend' (about 360 of 1,429 positives), Almansoori et al., BMC Cancer 2021;21:897. https://pmc.ncbi.nlm.nih.gov/articles/PMC8343888/"
+  status: sourced-adjacent
+  notes: "Informational local anchor, FIT/gFOBT, Emirati nationals, 2015-2016. The paper prints 933 as the denominator but its percentages fit ~992; derivation uses 1,429 positives minus 436 colonoscopies."
+
+time_to_colonoscopy_median_days:
+  value: 83
+  source: "Sea Mar FQHC, completers, median 83 d. BMC Gastroenterol 2021, https://pmc.ncbi.nlm.nih.gov/articles/PMC8477359/"
+  status: sourced-adjacent
+  notes: "Completers only. Abu Dhabi 2015-2016: median 72 d (https://pmc.ncbi.nlm.nih.gov/articles/PMC8343888/). Kaiser 37 d (Corley), PROSPR 41-174 d, safety net 184 d (https://doi.org/10.1038/ajg.2016.555), AltaMed 94 d. Suggested parametric form: lognormal fitted to median and IQR (shape choice is an assumption)."
+
+time_to_colonoscopy_iqr_days:
+  value: [52, 131]
+  source: "Sea Mar FQHC, IQR 52-131 d (same source as the median). https://pmc.ncbi.nlm.nih.gov/articles/PMC8477359/"
+  status: sourced-adjacent
+  notes: "Other IQRs: Kaiser 23-62 (Corley), safety net 140-232, STOP CRC 49-120 (unverified, search summary only). The Abu Dhabi paper states IQR as the single number 114.25, so it is not used."
+
+dna_rate:
+  value: 0.119
+  source: "Lam et al. 2021 standard-care arm, colonoscopy non-attendance 11.9%. https://doi.org/10.1111/jgh.15218"
+  status: sourced-adjacent
+  notes: "Baseline (no electronic reminder) non-attendance at a booked colonoscopy. General outpatient DNA 5.6-5.9% in England 2023-25 (NHS Hospital Outpatient Activity, unverified, page blocked). Pre-booking loss is much larger, see gi_referral_non_attendance_abu_dhabi."
+
+sms_reminder_effect:
+  value: 0.25
+  source: "Relative reduction in colonoscopy non-attendance, (11.9 - 8.9) / 11.9, Lam et al. 2021. https://doi.org/10.1111/jgh.15218"
+  status: sourced-adjacent
+  notes: "Sensitivity 0 (Mahmud et al., JAMA Netw Open 2021, 753 patients, no effect, https://doi.org/10.1001/jamanetworkopen.2020.34553) to 0.34 (Cochrane CD007458, non-attendance 21.4% text vs 32.2% no reminder, derived from 78.6% vs 67.8% attendance). Reminder to positive-FOBT patients to see the GP raised 120-day colonoscopy from 47.1% to 70.3% (Azulay, JMIR mHealth 2019, https://pmc.ncbi.nlm.nih.gov/articles/PMC6379817/): a different outcome, not used."
+
+navigation_effect:
+  value: 1.27
+  source: "Pooled risk ratio for colonoscopy completion, patient navigation vs usual care, 8 navigation studies, moderate certainty, J Gen Intern Med 2026 (PMID 42618855), RR 1.27 (95% CI 1.10-1.46). https://doi.org/10.1007/s11606-026-10706-x"
+  status: sourced
+  notes: "Multiply the baseline completion probability, cap at colonoscopy_completion_12m_integrated_ref. Consistent with the Annals 2025 RCT (55.1% vs 42.1%, RD 13.0 pp, aOR 1.69; https://pmc.ncbi.nlm.nih.gov/articles/PMC13007779/). Populations are US health-disparity groups."
+
+navigation_time_reduction_days:
+  value: 15
+  source: "Coronado et al., Cancer Epidemiol Biomarkers Prev 2021 (RCT, Kaiser NW): median time to colonoscopy 73 d navigation vs 88 d usual care. https://pmc.ncbi.nlm.nih.gov/articles/PMC9273475/"
+  status: sourced-adjacent
+  notes: "One trial, completers only. Annals 2025 RCT mean time 229 vs 256 d (-27 d) over the full follow-up window."
+
+delay_harm_threshold_days:
+  value: 270
+  source: "Systematic review, Clin Gastroenterol Hepatol 2021 (PMID 33010414): colonoscopy 'should not be delayed beyond 9 months' after positive FIT. https://doi.org/10.1016/j.cgh.2020.09.048 . Corley JAMA 2017: first significant excess at 10-12 months, any CRC OR 1.48 (1.05-2.08), advanced stage OR 1.97 (1.14-3.42); >12 months OR 2.25 and 3.22. https://jamanetwork.com/journals/jama/fullarticle/2620087"
+  status: sourced-adjacent
+  notes: "Risk-flag threshold for reporting delay exposure, not a clinical claim. Observational evidence. VA cohort (Gastroenterology 2021, https://doi.org/10.1053/j.gastro.2021.01.219) shows CRC HR 1.13-1.28 from 13 months. Timeliness benchmarks: PROSPR 90 d (secondary citation), UAE 31 working days (below)."
+
+followup_target_working_days:
+  value: 31
+  source: "UAE National Guideline for Colorectal Cancer Screening and Diagnosis, 3rd ed. 2022, Appendix 2: colonoscopy within 31 working days of referral after positive FIT (>90% acceptable, >95% desirable). https://www.isahd.ae/content/docs/Colorectal%20guideline%20Screening%20and%20Diagnosis_UAE%20National%20Guidelines.pdf"
+  status: sourced
+  notes: "The same guideline's clause 12.5.2 says 15 working days; Appendix 3 says 31 days. DoH IFHAS V10 Appendix 9: referral within 15 working days of releasing results. Current pathway SLA complete_confirmatory is 45 working days, looser than this KPI; reconcile as a design decision."
+
+eligible_age_min:
+  value: 40
+  source: "UAE National Guideline s.3.4 (ages 40-75); DoH IFHAS V10 Appendix (FIT, 40-75 years, annually); ADPHC 24 Sep 2019 (40 and older). https://www.doh.gov.ae/-/media/EE758C3B77314BC394F2479AEF803AA2.ashx"
+  status: sourced
+  notes: "generate_results.py currently uses 45; no Abu Dhabi source for 45 was found."
+
+eligible_age_max:
+  value: 75
+  source: "UAE National Guideline s.3.4 and DoH IFHAS V10 Appendix (40-75). Ages 76-85 decided individually. https://www.isahd.ae/content/docs/Colorectal%20guideline%20Screening%20and%20Diagnosis_UAE%20National%20Guidelines.pdf"
+  status: sourced
+  notes: ""
+
+fit_interval_months:
+  value: 12
+  source: "UAE National Guideline Standard 2 (FIT every year); DoH IFHAS V10; ADPHC 2019. The earlier 2-year interval (HAAD 2016) was superseded in 2019."
+  status: sourced
+  notes: ""
+
+working_week:
+  value: {working_days: [Mon, Tue, Wed, Thu, Fri], friday_half_day: true, friday_end: "12:00", weekend: [Sat, Sun]}
+  source: "u.ae, Working hours in the public sector: federal government Mon-Thu 07:30-15:30, Fri until 12:00, Sat-Sun weekend since 1 Jan 2022; Abu Dhabi government adopted a similar system. https://u.ae/en/information-and-services/jobs/Sector-of-employment/working-in-uae-government-sector/working-hours-in-the-public-sector"
+  status: sourced
+  notes: "Mon-Fri holds, with Friday a half day in government. Private clinics set their own hours (private-sector rule 8 h/day or 48 h/week). Sharjah is the exception (Mon-Thu, Fri-Sun off) and out of scope for Abu Dhabi."
+
+malaffi_integration_assumption:
+  value: "HL7 v2 message feeds; FHIR R4 not confirmed"
+  source: "DoH Circular 2026/10, 19 Jan 2026: mandatory Malaffi minimum dataset listed as HL7 message types (ADT, PPR, ORU, OMP, RDS, RAS, VXU, SIU incl. future appointments). https://www.doh.gov.ae/-/media/84A213F71AA545D69E01A23A0A99C598.ashx"
+  status: sourced
+  notes: "No official DoH or Malaffi document names FHIR (checked DoH HIE standards page and Malaffi policies page). Vendor pages claiming FHIR are unverified. Confirm with ddg@doh.gov.ae or hie@doh.gov.ae. IFHAS visits are meant to be tagged for tracking through Malaffi (IFHAS V10 s.4.11.4.1)."
+
+# ======================================================================================
+# Part 2: model parameters with no public source (placeholders) or calibrated to Part 1
+# ======================================================================================
+# ---- simulation and calendar ----------------------------------------------------------------
+simulation:
+  start_date: {value: "2026-01-05", source: TODO, status: assumed}      # must be a working day
+  intake_window_days: {value: 30, source: TODO, status: assumed}       # results arrive uniformly over this window
+calendar:
+  holidays: {value: [], source: TODO, status: assumed}                  # ISO dates that are non-working
+
+# ---- patients ---------------------------------------------------------------------------------
+patients:
+  language_share:
+    ar: {value: 0.45, source: TODO, status: assumed}
+    en: {value: 0.35, source: TODO, status: assumed}
+    other: {value: 0.20, source: TODO, status: assumed}
+  channel_share:              # patient's preferred contact channel
+    sms: {value: 0.40, source: TODO, status: assumed}
+    whatsapp: {value: 0.30, source: TODO, status: assumed}
+    phone: {value: 0.15, source: TODO, status: assumed}
+    letter: {value: 0.15, source: TODO, status: assumed}
+  provider_switch_prob: {value: 0.05, source: TODO, status: assumed}
+  responsiveness_sd: {value: 0.8, source: TODO, status: assumed}       # logit-scale spread of the latent responsiveness factor
+  consent_withdrawal_prob: {value: 0.02, source: TODO, status: assumed}
+  consent_withdrawal_window_days: {value: 90, source: TODO, status: assumed}
+  consent_withdrawal_declines_care_prob: {value: 0.30, source: TODO, status: assumed}
+  refusal_prob: {value: 0.12, source: "Calibrated to reproduce the Mohl 2023 baseline completion curve (see docs/results/results.md); placeholder was 0.12, no public source", status: calibrated}            # P(patient will not have the colonoscopy whatever is done)
+  dropout_prob_per_lapse: {value: 0.15, source: TODO, status: assumed}  # P(disengage) after each unanswered contact or no-show
+
+# ---- staff behaviour (delays are lognormal: median * exp(sigma * z)) ------------------------
+staff:
+  delay_median_days:          # acknowledge uses acknowledgement_delay_days above
+    accept_ownership: {value: 2, source: "Calibrated to reproduce the Mohl 2023 baseline completion curve (see docs/results/results.md); placeholder was 1.0, no public source", status: calibrated}
+    contact_patient: {value: 5, source: "Calibrated to reproduce the Mohl 2023 baseline completion curve (see docs/results/results.md); placeholder was 3.0, no public source", status: calibrated}
+    book_confirmatory: {value: 6, source: "Calibrated to reproduce the Mohl 2023 baseline completion curve (see docs/results/results.md); placeholder was 4.0, no public source", status: calibrated}
+    clinician_review: {value: 4.0, source: TODO, status: assumed}
+    close: {value: 2.0, source: TODO, status: assumed}
+  delay_sigma: {value: 0.8, source: TODO, status: assumed}
+  forget_prob: {value: 0.015, source: "Calibrated to reproduce the Mohl 2023 baseline completion curve (see docs/results/results.md); placeholder was 0.04, no public source", status: calibrated}            # P(a staff step is never done unless prompted)
+
+# ---- patient response to outreach -----------------------------------------------------------
+patient_response:
+  response_rate_by_channel:   # P(patient acts on one outreach attempt) before modifiers
+    sms: {value: 0.92, source: "Calibrated to reproduce the Mohl 2023 baseline completion curve (see docs/results/results.md); placeholder was 0.70, no public source", status: calibrated}
+    whatsapp: {value: 0.93, source: "Calibrated to reproduce the Mohl 2023 baseline completion curve (see docs/results/results.md); placeholder was 0.75, no public source", status: calibrated}
+    phone: {value: 0.95, source: "Calibrated to reproduce the Mohl 2023 baseline completion curve (see docs/results/results.md); placeholder was 0.80, no public source", status: calibrated}
+    letter: {value: 0.85, source: "Calibrated to reproduce the Mohl 2023 baseline completion curve (see docs/results/results.md); placeholder was 0.55, no public source", status: calibrated}
+  response_delay_median_days:
+    sms: {value: 1.5, source: TODO, status: assumed}
+    whatsapp: {value: 1.0, source: TODO, status: assumed}
+    phone: {value: 0.5, source: TODO, status: assumed}
+    letter: {value: 6.0, source: TODO, status: assumed}
+  response_delay_sigma: {value: 0.9, source: TODO, status: assumed}
+  language_mismatch_multiplier: {value: 0.8, source: "Calibrated to reproduce the Mohl 2023 baseline completion curve (see docs/results/results.md); placeholder was 0.6, no public source", status: calibrated}  # message not in the patient's language
+  staff_call_response_rate: {value: 0.65, source: TODO, status: assumed}     # human phone call from supervisor
+  coordinator_route_response_rate: {value: 0.70, source: TODO, status: assumed}
+  dropout_residual_multiplier: {value: 0.25, source: TODO, status: assumed}  # response multiplier for a dropped-out patient (digital)
+  human_dropout_residual_multiplier: {value: 0.60, source: TODO, status: assumed}
+  self_presentation_prob: {value: 0.38, source: "Calibrated to reproduce the Mohl 2023 baseline completion curve (see docs/results/results.md); placeholder was 0.10, no public source", status: calibrated}       # patient eventually acts without being prompted
+  self_presentation_median_days: {value: 120, source: "Calibrated to reproduce the Mohl 2023 baseline completion curve (see docs/results/results.md); placeholder was 60, no public source", status: calibrated}
+
+# ---- appointment ------------------------------------------------------------------------------
+appointment:
+  booking_lead_median_days: {value: 24, source: "Calibrated to reproduce the Mohl 2023 baseline completion curve (see docs/results/results.md); placeholder was 14, no public source", status: calibrated}
+  booking_lead_sigma: {value: 0.6, source: "Calibrated to reproduce the Mohl 2023 baseline completion curve (see docs/results/results.md); placeholder was 0.5, no public source", status: calibrated}
+  rebook_lead_median_days: {value: 7, source: TODO, status: assumed}
+  reminder_days_before: {value: [7, 1], source: TODO, status: assumed}
+  max_attempts: {value: 3, source: TODO, status: assumed}                    # appointments before giving up (max 4)
+  responsiveness_noshow_shift: {value: 0.5, source: TODO, status: assumed}   # logit shift per unit responsiveness
+
+# ---- referral / handoff ------------------------------------------------------------------------
+handoff:
+  no_response_prob: {value: 0.04, source: TODO, status: assumed}             # receiving service never answers
+  rejection_reason_share:
+    capacity: {value: 0.35, source: TODO, status: assumed}
+    wrong_service: {value: 0.15, source: TODO, status: assumed}
+    missing_info: {value: 0.30, source: TODO, status: assumed}
+    patient_declined: {value: 0.20, source: TODO, status: assumed}
+  response_delay_median_days: {value: 2.0, source: TODO, status: assumed}
+  response_delay_sigma: {value: 0.7, source: TODO, status: assumed}
+  response_sla_working_days: {value: 3, source: TODO, status: assumed}       # orchestrated: unanswered referral bounces back
+  reroute_delay_median_days: {value: 2.0, source: TODO, status: assumed}
+  declined_reengage_prob: {value: 0.50, source: TODO, status: assumed}       # owner persuades a patient who declined
+  max_attempts: {value: 4, source: TODO, status: assumed}                    # referral attempts (max 5)
+  baseline_rejection_noticed_prob: {value: 0.55, source: "Calibrated to reproduce the Mohl 2023 baseline completion curve (see docs/results/results.md); placeholder was 0.40, no public source", status: calibrated}
+  baseline_rejection_notice_median_days: {value: 21, source: TODO, status: assumed}
+
+# ---- baseline arm (today's process) -----------------------------------------------------------
+baseline:
+  channel_share:              # the single letter/SMS goes out on one of these
+    letter: {value: 0.50, source: TODO, status: assumed}
+    sms: {value: 0.50, source: TODO, status: assumed}
+  default_language: {value: "en", source: TODO, status: assumed}
+  noshow_self_rebook_prob: {value: 0.45, source: "Calibrated to reproduce the Mohl 2023 baseline completion curve (see docs/results/results.md); placeholder was 0.30, no public source", status: calibrated}
+  noshow_self_rebook_median_days: {value: 30, source: TODO, status: assumed}
+
+# ---- orchestrated arm -------------------------------------------------------------------------
+orchestration:
+  reaction_delay_median_days: {value: 1.0, source: TODO, status: assumed}    # time to act after a reminder or escalation
+  reaction_delay_sigma: {value: 0.6, source: TODO, status: assumed}
+  escalation_effect_prob:     # P(staff act) per ladder rung, keyed by the pathway's notify role
+    owner: {value: 0.50, source: TODO, status: assumed}
+    owner_supervisor: {value: 0.85, source: TODO, status: assumed}
+    programme_coordinator: {value: 1.00, source: TODO, status: assumed}
+  contact_recovery_prob:      # P(a wrong contact is corrected), per ladder rung / on delivery failure
+    on_failure: {value: 0.40, source: TODO, status: assumed}
+    owner: {value: 0.25, source: TODO, status: assumed}
+    owner_supervisor: {value: 0.50, source: TODO, status: assumed}
+    programme_coordinator: {value: 0.70, source: TODO, status: assumed}
+  contact_recovery_delay_median_days: {value: 2.0, source: TODO, status: assumed}
+  delivery_failure_detect_days:
+    sms: {value: 0.25, source: TODO, status: assumed}
+    whatsapp: {value: 0.25, source: TODO, status: assumed}
+    phone: {value: 0.10, source: TODO, status: assumed}
+    letter: {value: 7.0, source: TODO, status: assumed}
+  ladder_exhausted_wait_working_days: {value: 5, source: TODO, status: assumed}
+  signoff_sla_working_days: {value: 3, source: TODO, status: assumed}        # `close` has no SLA in the pathway YAML
+  timer_miss_prob: {value: 0.02, source: TODO, status: assumed}              # scheduler silently fails to arm a timer
+  watchdog_idle_days: {value: 14, source: TODO, status: assumed}
+  watchdog_effect_prob: {value: 0.90, source: TODO, status: assumed}
+  watchdog_reaction_delay_days: {value: 2.0, source: TODO, status: assumed}
+  consent_review_delay_median_days: {value: 2.0, source: TODO, status: assumed}
+  transfer_reestablish_days: {value: 5.0, source: TODO, status: assumed}     # new owner takes over after a provider switch
+
+# ---- reopening after closure (both arms) ----------------------------------------------------
+reopen:
+  after_closure_prob: {value: 0.03, source: TODO, status: assumed}
+  lag_median_days: {value: 30, source: TODO, status: assumed}
+  lag_sigma: {value: 0.6, source: TODO, status: assumed}
+  resume_state: {value: owner_accepted, source: TODO, status: assumed}
+
+# ---- messy-case injection ---------------------------------------------------------------------
+# Wrong contact numbers use wrong_contact_rate; provider switches use patients.provider_switch_prob.
+messy:
+  rate_multiplier: {value: 1.0, source: TODO, status: assumed}               # scales the three rates below; 0 switches them off
+  duplicate_result_rate: {value: 0.06, source: TODO, status: assumed}
+  duplicate_delay_max_days: {value: 10, source: TODO, status: assumed}
+  conflicting_ack_rate: {value: 0.04, source: TODO, status: assumed}
+  consent_after_booking_rate: {value: 0.02, source: TODO, status: assumed}
+  switch_window_days: {value: 60, source: TODO, status: assumed}
+  baseline_switch_loss_prob: {value: 0.70, source: TODO, status: assumed}
+  baseline_switch_delay_days: {value: 30, source: TODO, status: assumed}
+  baseline_conflict_delay_days: {value: 10, source: TODO, status: assumed}
+
+# ---- metric definitions -----------------------------------------------------------------------
+metrics:
+  ltfu_idle_days: {value: 30, source: TODO, status: assumed}                 # unfinished and no progress this long = lost to follow-up
+  escalation_precision_window_working_days: {value: 5, source: TODO, status: assumed}
+  min_group_size: {value: 30, source: TODO, status: assumed}                 # smaller fairness groups are reported but excluded from max-gap
