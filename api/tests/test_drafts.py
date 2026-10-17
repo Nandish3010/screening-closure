@@ -40,6 +40,8 @@ def new_case(patient_ref="Patient/1"):
 
 
 def post_event(case_id, type_, role, payload=None, name=None, patient_ref=None):
+    if name is None and role in ("primary_care_owner", "specialist_owner"):
+        name = "Dr Sara Khan"  # clinicians act only on cases they own (A5), and this is the owner
     r = client.post(
         f"/cases/{case_id}/events", json={"type": type_, "payload": payload or {}},
         headers=H(role, name, patient_ref),
@@ -48,10 +50,10 @@ def post_event(case_id, type_, role, payload=None, name=None, patient_ref=None):
     return r.json()
 
 
-def owned_case(owner="Dr Sara Khan"):
+def owned_case(owner="Dr Sara Khan", role="primary_care_owner"):
     cid = new_case()
     post_event(cid, "acknowledge", "lab")
-    post_event(cid, "accept_ownership", "primary_care_owner", name=owner)
+    post_event(cid, "accept_ownership", role, name=owner)
     return cid
 
 
@@ -271,14 +273,14 @@ def test_consent_frozen_case_is_409_and_writes_nothing():
 
 
 def test_closed_case_is_409():
-    cid = owned_case()
+    cid = owned_case(role="specialist_owner")  # complete_confirmatory is a specialist event
     for type_, role, payload in [
-        ("contact_patient", "primary_care_owner", {}),
+        ("contact_patient", "specialist_owner", {}),
         ("patient_acknowledge", "patient", {}),
-        ("book_confirmatory", "primary_care_owner", {}),
+        ("book_confirmatory", "specialist_owner", {}),
         ("complete_confirmatory", "specialist_owner", {}),
-        ("clinician_review", "primary_care_owner", {}),
-        ("close", "primary_care_owner", SIGNED),
+        ("clinician_review", "specialist_owner", {}),
+        ("close", "specialist_owner", SIGNED),
     ]:
         post_event(cid, type_, role, payload, patient_ref="Patient/1" if role == "patient" else None)
     assert client.get(f"/cases/{cid}", headers=H("coordinator")).json()["state"] == "closed"
