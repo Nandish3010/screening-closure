@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field
 from app.clock import clock
 from app.events import (
     CASE_CREATED,
+    CaseAlreadyExists,
     CaseNotFound,
     CaseSummary,
     Event,
@@ -26,6 +27,9 @@ store: EventStore = InMemoryEventStore()
 
 
 class CreateCase(BaseModel):
+    # Optional client-chosen id (e.g. uuid5 of the result) so seeding scripts can retry
+    # without duplicating cases. Omitted -> the server generates one.
+    case_id: UUID | None = None
     patient_ref: str | None = None  # TODO: FHIR Patient reference
     result_ref: str | None = None  # TODO: FHIR DiagnosticReport reference
 
@@ -72,9 +76,13 @@ def _case_json(case_id: UUID) -> dict:
 
 @router.post("", status_code=201)
 def create_case(body: CreateCase) -> dict:
-    case_id = uuid4()
-    genesis = Event(case_id, CASE_CREATED, clock.now(), "system:intake", body.model_dump())
-    store.create_case(case_id, pathway.name, genesis, pathway.initial_state)
+    case_id = body.case_id or uuid4()
+    payload = body.model_dump(exclude={"case_id"})
+    genesis = Event(case_id, CASE_CREATED, clock.now(), "system:intake", payload)
+    try:
+        store.create_case(case_id, pathway.name, genesis, pathway.initial_state)
+    except CaseAlreadyExists:
+        raise HTTPException(409, "CaseAlreadyExists")
     return _case_json(case_id)
 
 

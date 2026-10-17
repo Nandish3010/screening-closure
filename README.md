@@ -18,7 +18,7 @@ Runs fully offline on a laptop. Run the closure-invariant property test and the 
 
 ## Persistence
 
-Cases are stored in Postgres. The `events` table is append-only (triggers reject UPDATE, DELETE and TRUNCATE) and is the source of truth. Appending an event is one transaction: the case row is locked, the stored log is replayed and checked against `cases.current_state`, the new event is validated by the state machine, and only then are the event row and the new state written, so an invalid transition leaves nothing behind and concurrent writers cannot both win. `cases.current_state` is a derived read model, never trusted without replay. Every event carries an `event_id`; retrying a request with the same `event_id` inserts once. Schema changes are applied at API startup by an in-app migration runner (`api/migrations/*.sql`, recorded in `schema_migrations`). Without `DATABASE_URL` the API falls back to a non-durable in-memory store.
+Cases are stored in Postgres. The `events` table is append-only (triggers reject UPDATE, DELETE and TRUNCATE) and is the source of truth. Appending an event is one transaction: the case row is locked, the stored log is replayed and checked against `cases.current_state`, the new event is validated by the state machine, and only then are the event row and the new state written, so an invalid transition leaves nothing behind and concurrent writers cannot both win. `cases.current_state` is a derived read model, never trusted without replay. Every event carries an `event_id`; retrying a request with the same `event_id` inserts once. Schema changes are applied at API startup by an in-app migration runner (`api/migrations/*.sql`, recorded in `schema_migrations`). Without `DATABASE_URL` the API falls back to a non-durable in-memory store. HAPI FHIR stores its data in the same Postgres (its own `hfj_*` tables), so `make reset` wipes cases and FHIR resources together.
 
 ## Repo layout
 
@@ -27,12 +27,13 @@ config/pathways/   pathway definitions (states, transitions, SLAs, escalation la
 api/               FastAPI service, event log, state machine, tests, SQL migrations
 scheduler/         SLA sweep loop (stub) + heartbeat
 watchdog/          silent-failure watchdog (stub)
-simulator/         seeded behaviour simulator (parameters only so far)
+simulator/         synthetic cohort pipeline (load, FIT results, cases) + simulator parameters
+tools/synthea/     containerised Synthea runner (make synthea)
 web/               Vite + React PWA (not scaffolded yet)
 docs/              data provenance, design choices, assumptions and limitations
 ```
 
-Services (docker compose): postgres 16, HAPI FHIR R4, api, scheduler, watchdog.
+Services (docker compose): postgres 16, HAPI FHIR R4, api, scheduler, watchdog. Optional `synthea` (profile `tools`) generates the synthetic cohort; `make demo-seed` seeds HAPI and the API with it (see [simulator/README.md](simulator/README.md)).
 
 ## Status
 

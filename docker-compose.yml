@@ -19,15 +19,28 @@ services:
       retries: 10
     networks: [closure]
 
-  # HAPI FHIR R4. Deliberately uses HAPI's default embedded H2 database (no
-  # dependency on the postgres service) to avoid datasource config pain in Week 1.
-  # TODO: point HAPI at postgres if FHIR data must survive `make reset`.
+  # HAPI FHIR R4, stored in the shared postgres (database ${POSTGRES_DB}; HAPI's tables are hfj_*/trm_*/
+  # etc. and do not collide with cases/events). It used to run on HAPI's default in-memory H2, but the
+  # synthetic cohort (~1 GB of FHIR JSON for 300 patients) exhausts the JVM heap ("Out of memory" in H2).
+  # Consequence: `make reset` (down -v) now wipes FHIR data together with the cases, keeping them consistent.
   fhir:
     image: hapiproject/hapi:latest
     ports:
       - "8080:8080"
     environment:
       hapi.fhir.fhir_version: R4
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-closure}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-closure}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-closure_dev_password}
+      SPRING_DATASOURCE_DRIVERCLASSNAME: org.postgresql.Driver
+      SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT: ca.uhn.fhir.jpa.model.dialect.HapiFhirPostgresDialect
+      SPRING_JPA_PROPERTIES_HIBERNATE_SEARCH_ENABLED: "false"
+      # Synthea patient bundles reach 20 MB each; the default container heap (~25% of RAM) is too small
+      # to parse and process them in one transaction.
+      JAVA_TOOL_OPTIONS: -Xmx3g
+    depends_on:
+      postgres:
+        condition: service_healthy
     networks: [closure]
 
   api:
@@ -82,6 +95,22 @@ services:
       api:
         condition: service_healthy
     networks: [closure]
+
+  # Synthetic cohort generator. Not started by `make up` (profile "tools"); run with `make synthea`.
+  # The downloaded Synthea jar is untrusted input: it executes only inside this container, and
+  # the only host path it can write is ./data (gitignored).
+  synthea:
+    image: eclipse-temurin:17-jre
+    profiles: [tools]
+    entrypoint: ["/bin/sh", "/tools/run.sh"]
+    environment:
+      SYNTHEA_VERSION: ${SYNTHEA_VERSION:-v3.3.0}
+      SYNTHEA_SEED: ${SYNTHEA_SEED:-20261017}
+      SYNTHEA_POPULATION: ${SYNTHEA_POPULATION:-300}
+      SYNTHEA_REFERENCE_DATE: ${SYNTHEA_REFERENCE_DATE:-20260105}
+    volumes:
+      - ./data:/data
+      - ./tools/synthea:/tools:ro
 
 volumes:
   pgdata:

@@ -44,3 +44,17 @@ def test_list_cases_filters_by_state_and_unknown_case_404():
     assert case_id in [c["case_id"] for c in listed]
     assert client.get("/cases", params={"state": "no_such_state"}).json() == []
     assert client.get(f"/cases/{uuid4()}").status_code == 404
+
+
+def test_client_supplied_case_id_is_idempotent_and_conflicts_on_reuse():
+    case_id = str(uuid4())
+    body = {"case_id": case_id, "patient_ref": "Patient/1", "result_ref": "DiagnosticReport/2"}
+    first = client.post("/cases", json=body)
+    assert first.status_code == 201
+    assert first.json()["case_id"] == case_id
+    genesis = first.json()["events"][0]["payload"]
+    assert genesis == {"patient_ref": "Patient/1", "result_ref": "DiagnosticReport/2"}
+    second = client.post("/cases", json=body)
+    assert second.status_code == 409
+    assert "CaseAlreadyExists" in second.json()["detail"]
+    assert len(client.get("/cases").json()) >= 1
