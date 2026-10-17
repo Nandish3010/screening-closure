@@ -2,7 +2,8 @@
 
 The sweep itself (due dates on the working-day calendar, `mark_overdue`, the escalation
 ladder) is `api/app/sweep.py`, run inside the API next to the event store and driven by the
-API's simulation clock. This process authenticates as `system:scheduler` with a service token
+API's simulation clock; the API splits it over `SWEEP_WORKERS` processes (A17), invisible here.
+This process authenticates as `system:scheduler` with a service token
 that the API restricts to `mark_overdue`, `escalate` and `watchdog_flagged`; it can never
 close a case.
 
@@ -94,8 +95,8 @@ def main() -> None:
         if summary is not None:
             last_ok = time.time()  # wall-clock-ok: liveness heartbeat only
             log.info(
-                "sweep sim_time=%s evaluated=%s mark_overdue=%s escalate=%s handoff_bounced=%s rejected=%s errors=%s",
-                summary["sim_time"], summary["cases_evaluated"], summary["mark_overdue"],
+                "sweep sim_time=%s workers=%s evaluated=%s mark_overdue=%s escalate=%s handoff_bounced=%s rejected=%s errors=%s",
+                summary["sim_time"], summary.get("workers", 1), summary["cases_evaluated"], summary["mark_overdue"],
                 summary["escalate"], summary.get("handoff_bounced", 0), summary["rejected"],
                 len(summary["errors"]),
             )

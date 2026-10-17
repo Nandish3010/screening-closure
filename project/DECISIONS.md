@@ -67,7 +67,7 @@ Architecture decision records, one per decision. Add new entries at the end with
 **Consequences.**
 - `make reset` (`docker compose down -v`) wipes cases and FHIR resources together, so they cannot disagree.
 - One database to back up and size, but HAPI and the case store share load and a failure domain. Acceptable for a prototype; a pilot would separate them.
-- The image tag is currently `latest`, which weakens reproducibility; pin it before the fresh-clone verification (F12).
+- The image tag was `latest`, which weakens reproducibility. F12 pinned it to `hapiproject/hapi:v8.12.0-2` (HAPI FHIR 8.12.0, digest `sha256:0ff86aac4c7bd13a1ee226444a70263bb46ed1c28ef543c30a44f865b80ca04e`, identical to what `latest` resolved to on 2026-10-18 and to the running container's `X-Powered-By: HAPI FHIR 8.12.0`). The tag `v8.12.0` does not exist; starter-image tags carry a build suffix (`-1`, `-2`), so the pinned tag was verified by pulling it. Upgrading is a deliberate edit of `docker-compose.yml` followed by `make reset && make demo-seed && make check`.
 
 ## ADR-007: AI only at the edges
 

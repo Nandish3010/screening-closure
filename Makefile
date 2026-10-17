@@ -1,4 +1,4 @@
-.PHONY: test-demo test-e2e-live demo-scenario demo-snapshot demo-restore demo-reset demo-kill-scheduler check docs-check tracker-lint test-security test-tools test-load load-check up down logs test test-db test-db-create test-db-reset test-chaos synthea demo-seed demo-seed-clean evaluate simulate evaluate-check reset web-install web-dev web-build web-test web-e2e test-e2e review-packs review-packs-check test-review-packs
+.PHONY: test-demo test-e2e-live demo-scenario demo-snapshot demo-restore demo-reset demo-kill-scheduler check docs-check tracker-lint test-security test-tools test-load load-check up down logs test test-db test-db-create test-db-reset test-chaos synthea demo-seed demo-seed-clean evaluate simulate evaluate-check reset web-install web-dev web-build web-test web-e2e test-e2e review-packs review-packs-check test-review-packs test-phi-logs rbac-matrix test-offline fresh-clone
 
 up:
 	docker compose up -d --build
@@ -40,11 +40,17 @@ test-db-reset:
 test-db: test-db-create
 	DATABASE_URL=$(TEST_DATABASE_URL) .venv/bin/pytest api/tests -q -m "integration and not chaos"
 
-# Chaos tests (T-A32): stop and start the scheduler container of the running stack and watch the
-# watchdog raise and clear its alert. Needs `make up` first and docker on the host; it writes no
-# cases. Until F3 adds the full chaos suite this runs only the tests marked `chaos`.
+# Chaos tests (F3, F4, F5; T-A32, T-F3 to T-F7), all marked `chaos`:
+#   * fault injection (api/tests/faults.py, honoured only when APP_ENV=test): duplicate delivery, clock skew,
+#     a store failure after the event insert;
+#   * the sweep killed part-way through 5,000 cases (SIGKILL, single process and sharded), rerun, exactly the
+#     planned events once;
+#   * garbage from the drafting model, and consent withdrawn between the approval and the send;
+#   * T-A32 (api/tests/test_chaos.py): stops and starts the scheduler container of the running stack and watches the
+#     watchdog raise and clear its alert. It skips itself when the stack is not up; the others need only Postgres on
+#     the compose stack (each creates and drops its own scratch database, never the dev one).
 test-chaos:
-	.venv/bin/pytest api/tests -q -s -m chaos
+	PYTHONPATH=$(CURDIR)/api DATABASE_URL=$(TEST_DATABASE_URL) .venv/bin/pytest api/tests -q -s -m chaos
 
 # Python for the simulator scripts: the project venv if present, else python3 (needs httpx).
 PY := $(shell [ -x .venv/bin/python ] && echo .venv/bin/python || echo python3)
@@ -168,10 +174,41 @@ docs-check:
 tracker-lint:
 	$(PY) tools/check/tracker_lint.py
 
-# Secrets and repo hygiene (F9): token shapes, private keys, JWT-looking strings, password literals,
-# .env ignored and never in history, .env.example placeholders only. F7 and F8 add RBAC and PHI scans here.
+# Security gates, none of which needs the stack: secrets and repo hygiene (F9: token shapes, private keys, JWT-looking
+# strings, password literals, .env ignored and never in history, .env.example placeholders only); the RBAC matrix
+# (F7, T-F9: every route and event type against every role, own case and other case, probed on the app and compared
+# with the policy tables; a route without a policy decision fails; docs/governance/rbac-matrix.md must equal a fresh
+# render, `make rbac-matrix` rewrites it); no PHI in URLs (F8, T-F11: path parameters are UUIDs, every query parameter
+# reviewed); and the demo walk with marker values in-process, every log record scanned for the markers, e-mails and
+# phone-like digit runs (T-F10). The same scan against the running stack's container logs is `make test-phi-logs`.
 test-security:
 	$(PY) tools/check/secrets_scan.py
+	PYTHONPATH=api $(PY) tools/check/rbac_matrix.py --check
+	PYTHONPATH=api $(PY) tools/check/phi_scan.py routes
+	PYTHONPATH=api $(PY) tools/check/phi_scan.py walk
+	PYTHONPATH=api $(PY) -m pytest tests/test_rbac_matrix.py tests/test_phi_scan.py -q
+
+rbac-matrix:
+	PYTHONPATH=api $(PY) tools/check/rbac_matrix.py --write
+
+# T-F10, T-F11 against the RUNNING stack (`make up` first; API_URL or API_PORT if not on :8000): walks the flow with
+# marker values (display names, patient_ref, free text that the payload schemas must refuse), advances the sim clock
+# so the scheduler and watchdog act, then scans `docker compose logs` of api (which holds the uvicorn access log),
+# scheduler and watchdog; fhir and postgres are scanned and reported but not gated. It writes a few synthetic marker
+# cases (deterministic ids) into that stack's database and resets the sim clock to its start: run it on a throwaway
+# stack, or `make reset` afterwards. Not part of `make check`.
+test-phi-logs:
+	PYTHONPATH=api $(PY) tools/check/phi_scan.py live
+
+# T-F14: the demo flow with the api, HAPI and Postgres on a compose network that has no route out (docker-compose.offline.yml),
+# LLM_NETWORK_ENABLED=false, in its own compose project and volumes; also proves the block from inside the containers.
+test-offline:
+	PYTHONPATH=api $(PY) tools/check/offline_check.py
+
+# T-F13 (F12): clones this repository into a temp dir and runs the fresh-clone steps there against its own compose
+# project and shifted ports, timing each; writes docs/results/fresh-clone.md-style checklist output for the second machine (H5).
+fresh-clone:
+	sh tools/check/fresh_clone.sh
 
 # Cross-cutting tests in tests/ (scanner, linters, load harness). PYTHONPATH=api makes a git worktree
 # test its own api/ rather than the checkout the venv was installed from.

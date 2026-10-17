@@ -11,11 +11,19 @@ Idempotency: each planned event has a deterministic id, uuid5 over (case, state,
 [, rung]). Running the sweep again, or two sweeps at once, therefore inserts each event once:
 the store treats a repeated event_id on the same case as a no-op. The state machine adds a
 second line of defence (a case that is already overdue refuses another `mark_overdue`).
+
+Parallel sweep (A17). `run_sweep_parallel` splits the open cases into `n` disjoint slices swept by `n`
+spawned worker processes, each with its own connection pool; `SweepPool` keeps those processes alive for
+the scheduler route (`app.routers.scheduler`, `SWEEP_WORKERS`, default min(4, cpus)). The slices are
+disjoint and exhaustive and the event ids are deterministic, so the result equals `run_sweep` and a sweep
+that is repeated, overlapped or killed part-way only ever leaves each planned event in the log once.
 """
 
 from __future__ import annotations
 
 import logging
+import os
+import threading
 import uuid
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
@@ -191,6 +199,10 @@ class SweepResult:
     handoff_bounced: int = 0
     rejected: int = 0  # planned events the state machine refused (a race with another writer)
     errors: list[str] = field(default_factory=list)
+    # (event_id, case_id) of every event a shard worker appended, filled only when the caller asked
+    # for it (`record=True`): the parent process projects them to FHIR (A12) because the workers
+    # write through their own plain stores, not the API's projecting wrapper. Not part of to_json.
+    emitted_refs: list[tuple[str, str]] = field(default_factory=list, repr=False)
 
     def to_json(self) -> dict:
         return {
@@ -290,9 +302,32 @@ def run_sweep(
     return result
 
 
+class _RecordingStore:
+    """Delegates to a store and notes the (event_id, case_id) of every event it appended."""
+
+    def __init__(self, inner) -> None:
+        self._inner = inner
+        self.refs: list[tuple[str, str]] = []
+        if hasattr(inner, "append_many"):  # the sweep probes for it with hasattr
+            self.append_many = self._append_many
+
+    def append(self, event, pathway, *, within=None):
+        state = self._inner.append(event, pathway, within=within)
+        self.refs.append((str(event.event_id), str(event.case_id)))
+        return state
+
+    def _append_many(self, events, pathway, *, within=None):
+        state = self._inner.append_many(events, pathway, within=within)
+        self.refs.extend((str(e.event_id), str(e.case_id)) for e in events)
+        return state
+
+    def __getattr__(self, name):
+        return getattr(self._inner, name)
+
+
 def _sweep_shard(args: tuple) -> dict:
     """Worker entry point (top level so it can be pickled): sweep one slice with its own pool."""
-    database_url, pathway, calendar, now, index, count = args
+    database_url, pathway, calendar, now, index, count, record = args
     from psycopg_pool import ConnectionPool
 
     from app.store_pg import PostgresEventStore
@@ -300,7 +335,13 @@ def _sweep_shard(args: tuple) -> dict:
     pool = ConnectionPool(database_url, min_size=1, max_size=2, open=True)
     try:
         pool.wait(timeout=30)
-        return run_sweep(PostgresEventStore(pool), pathway, calendar, now, shard=(index, count)).to_json()
+        store = PostgresEventStore(pool)
+        if record:
+            store = _RecordingStore(store)
+        out = run_sweep(store, pathway, calendar, now, shard=(index, count)).to_json()
+        if record:
+            out["emitted_refs"] = store.refs
+        return out
     finally:
         pool.close()
 
@@ -328,6 +369,7 @@ def run_sweep_parallel(
     now: datetime,
     workers: int = 4,
     executor=None,
+    record: bool = False,
 ) -> SweepResult:
     """The same sweep, split into `workers` disjoint slices of the cases swept by separate
     processes (each with its own connection pool). Replaying every open case is CPU-bound
@@ -338,11 +380,12 @@ def run_sweep_parallel(
 
     Processes are started with `spawn` (never `fork`) so this is safe to call from a threaded
     server process. Pass an `executor` from `make_sweep_executor` to reuse warm workers;
-    otherwise a pool is created and shut down for this one sweep.
+    otherwise a pool is created and shut down for this one sweep. `record=True` also collects
+    `SweepResult.emitted_refs` (what the workers appended).
     """
     if workers < 1:
         raise ValueError("workers must be >= 1")
-    jobs = [(database_url, pathway, calendar, now, k, workers) for k in range(workers)]
+    jobs = [(database_url, pathway, calendar, now, k, workers, record) for k in range(workers)]
     total = SweepResult(sim_time=_utc(now).isoformat())
     own = executor is None
     if own:
@@ -358,7 +401,86 @@ def run_sweep_parallel(
             total.handoff_bounced += part["handoff_bounced"]
             total.rejected += part["rejected"]
             total.errors += part["errors"]
+            total.emitted_refs += [tuple(r) for r in part.get("emitted_refs", ())]
     finally:
         if own:
             executor.shutdown()
     return total
+
+
+# ---- the scheduler route's long-lived pool (A17) ---------------------------------------------------
+
+DEFAULT_MAX_WORKERS = 4
+
+
+def default_sweep_workers() -> int:
+    return max(1, min(DEFAULT_MAX_WORKERS, os.cpu_count() or 1))
+
+
+def sweep_workers_from_env(environ=None) -> int:
+    """`SWEEP_WORKERS` (an integer >= 1), default min(4, cpus). 1 means the single-process sweep.
+    An unusable value (not a number, or below 1) falls back to the default and is logged."""
+    raw = (os.environ if environ is None else environ).get("SWEEP_WORKERS", "").strip()
+    if not raw:
+        return default_sweep_workers()
+    try:
+        value = int(raw)
+    except ValueError:
+        value = 0
+    if value < 1:
+        log.warning("SWEEP_WORKERS=%r is not an integer >= 1; using %d", raw, default_sweep_workers())
+        return default_sweep_workers()
+    return value
+
+
+class SweepPool:
+    """The scheduler route's sweep runner: `workers` spawned processes started once and kept (so a
+    sweep pays no process start-up), created lazily on the first sweep. Sweeps are serialised by a
+    lock, so overlapping calls never fight over the same connections; the sweep itself is
+    idempotent, so serialising only costs time. A pool whose worker died is replaced and the sweep
+    retried once. `workers == 1` never creates a pool: the caller runs `run_sweep` in-process."""
+
+    def __init__(self, workers: int) -> None:
+        if workers < 1:
+            raise ValueError("workers must be >= 1")
+        self.workers = workers
+        self._executor = None
+        self._lock = threading.Lock()
+
+    @property
+    def started(self) -> bool:
+        return self._executor is not None
+
+    def warm(self) -> None:
+        """Start the worker processes now (they import the sweep modules before the first use), so
+        the first sweep does not pay for it. The API does not call this at start-up; the load test does."""
+        with self._lock:
+            if self._executor is None:
+                self._executor = make_sweep_executor(self.workers)
+
+    def run(self, database_url: str, pathway: Pathway, calendar: WorkingCalendar, now: datetime,
+            record: bool = False) -> SweepResult:
+        from concurrent.futures.process import BrokenProcessPool
+
+        with self._lock:
+            for attempt in (1, 2):
+                if self._executor is None:
+                    self._executor = make_sweep_executor(self.workers)
+                try:
+                    return run_sweep_parallel(database_url, pathway, calendar, now, workers=self.workers,
+                                              executor=self._executor, record=record)
+                except BrokenProcessPool:
+                    log.error("sweep worker pool broke (attempt %d); replacing it", attempt)
+                    self._discard()
+                    if attempt == 2:
+                        raise
+        raise AssertionError("unreachable")
+
+    def _discard(self) -> None:
+        executor, self._executor = self._executor, None
+        if executor is not None:
+            executor.shutdown(wait=False, cancel_futures=True)
+
+    def shutdown(self) -> None:
+        with self._lock:
+            self._discard()
