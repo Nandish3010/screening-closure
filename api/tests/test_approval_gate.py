@@ -18,7 +18,7 @@ from hypothesis import HealthCheck, given, settings
 from hypothesis import strategies as st
 
 import app as app_package
-from api_helpers import ROLES, login_headers, make_client
+from api_helpers import ROLES, actor_of, login_headers, make_client, user_id_of
 from app import notify, policy
 from app.ai.draft_store import InMemoryDraftStore
 from app.ai.provider import SYSTEM_PROMPT
@@ -35,7 +35,7 @@ client = make_client()
 PATHWAY = load_pathway(app_settings.pathway_path)
 BODY = {"purpose": "result_notification", "channel": "sms", "language": "en"}
 OWNER_NAME = "Dr Sara Khan"
-OWNER_ACTOR = f"primary_care_owner:{OWNER_NAME}"
+OWNER_ACTOR = actor_of("primary_care_owner", OWNER_NAME)  # A14: the actor holds an opaque id
 
 
 def H(role, name=None, patient_ref=None):
@@ -147,8 +147,8 @@ def test_approval_records_the_approver_then_the_notifier_sends(fresh):
 def test_a_supervisor_may_approve_any_case(fresh):
     cid, did = drafted_case()
     r = approve(did, "supervisor", "sam")
-    assert r.status_code == 200 and r.json()["approved_by"] == "supervisor:sam" and r.json()["sent"] is True
-    assert [e.actor for e in log_of(cid) if e.type == "message_approved"] == ["supervisor:sam"]
+    assert r.status_code == 200 and r.json()["approved_by"] == actor_of("supervisor", "sam") and r.json()["sent"] is True
+    assert [e.actor for e in log_of(cid) if e.type == "message_approved"] == [actor_of("supervisor", "sam")]
 
 
 def test_the_specialist_who_owns_the_case_may_approve(fresh):
@@ -348,7 +348,7 @@ def test_approval_on_a_closed_case_is_409(fresh):
         ("book_confirmatory", "specialist_owner", {}),
         ("complete_confirmatory", "specialist_owner", {}),
         ("clinician_review", "specialist_owner", {}),
-        ("close", "specialist_owner", {"evidence_ref": "DiagnosticReport/1", "signed_by": "Practitioner/9"}),
+        ("close", "specialist_owner", {"evidence_ref": "DiagnosticReport/1", "signed_by": f"Practitioner/{user_id_of('specialist_owner', OWNER_NAME)}"}),
     ]:
         post_event(cid, type_, role, payload, patient_ref="Patient/1" if role == "patient" else None)
     before = types(cid)
@@ -445,7 +445,7 @@ def test_the_flow_leaves_the_provenance_intact(fresh):
     assert hashlib.sha256((prompt.system_prompt + "\n---\n" + prompt.prompt_text).encode()).hexdigest() == d.prompt_hash
     assert prompt.system_prompt == SYSTEM_PROMPT
     # who: requester, approver; when: sim time; what: draft text, provider, hash
-    assert d.created_by == "coordinator:Maryam" and d.approved_by == OWNER_ACTOR
+    assert d.created_by == actor_of("coordinator", "Maryam") and d.approved_by == OWNER_ACTOR
     assert d.approved_at is not None and d.approved_at >= d.created_at
     events = log_of(cid)
     drafted = next(e for e in events if e.type == "message_drafted")

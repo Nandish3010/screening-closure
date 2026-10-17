@@ -8,7 +8,7 @@ from uuid import UUID
 
 import pytest
 
-from api_helpers import ROLES, login_headers, make_client
+from api_helpers import ROLES, actor_of, login_headers, make_client, user_id_of
 from app import policy
 from app.ai import provider as prov
 from app.ai.draft_store import InMemoryDraftStore
@@ -17,7 +17,11 @@ from app.routers import cases, drafts
 
 client = make_client()
 BODY = {"purpose": "result_notification", "channel": "sms", "language": "en"}
-SIGNED = {"evidence_ref": "DiagnosticReport/1", "signed_by": "Practitioner/9"}
+# A15: the closer signs as themselves (the specialist owner "Dr Sara Khan" is who post_event acts as).
+SIGNED = {
+    "evidence_ref": "DiagnosticReport/1",
+    "signed_by": f"Practitioner/{user_id_of('specialist_owner', 'Dr Sara Khan')}",
+}
 ALLOWED = ["primary_care_owner", "specialist_owner", "coordinator", "supervisor"]
 FORBIDDEN = ["lab", "patient"]
 
@@ -161,7 +165,7 @@ def test_requester_is_stored_from_the_token():
     cid = owned_case()
     out = create(cid, role="supervisor", name="Sam").json()
     row = drafts.store.get(UUID(out["draft_id"]))
-    assert row.created_by == "supervisor:Sam"
+    assert row.created_by == actor_of("supervisor", "Sam")
     assert (row.purpose, row.channel, row.language) == ("result_notification", "sms", "en")
     assert row.approved_at is None and row.approved_by is None
     assert row.abstention_reason is None and row.abstained_at is None

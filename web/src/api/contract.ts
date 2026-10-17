@@ -165,7 +165,9 @@ export type TransitionEvent = (typeof TRANSITION_EVENTS)[number];
  *  accept_ownership      {provider?: string}                          (the owner is the caller; send no name)
  *  contact_patient       {channel?: ContactChannel | "letter", draft_id?: string (uuid)}
  *  patient_acknowledge   {lang?: "en"|"ar"}
- *  book_confirmatory     {appointment_ref?: string}                   (an id like "Appointment/a1", no spaces)
+ *  book_confirmatory     {appointment_ref?: string, appointment_date?: "YYYY-MM-DD" | ISO date-time}
+ *                                                                     (ref is an id like "Appointment/a1", no spaces; the date is what an
+ *                                                                      appointment-confirmation draft states, D4)
  *  complete_confirmatory {result_ref?: string}                        (confirmatory result reference)
  *  clinician_review      {signed_by?: string}                         (your own actor or "Practitioner/<user_id>")
  *  close                 {evidence_ref: string, signed_by: string}   (REQUIRED). BACKEND (A15): evidence_ref is

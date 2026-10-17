@@ -139,7 +139,11 @@ export function createHttpAdapter(baseUrl: string, fetchImpl: typeof fetch = (..
     },
     async getTimeline(id): Promise<CaseTimeline> {
       try {
-        return await request<CaseTimeline>(`/cases/${encodeURIComponent(id)}/timeline`);
+        const t = await request<CaseTimeline>(`/cases/${encodeURIComponent(id)}/timeline`);
+        // The API's derived kinds (A9) are `handoff_bounce` and `watchdog_flag`; the renderers use
+        // the shorter `bounce` and `watchdog` (the mock's names).
+        const KIND: Record<string, string> = { handoff_bounce: "bounce", watchdog_flag: "watchdog" };
+        return { ...t, items: t.items.map((it) => (it.kind in KIND ? ({ ...it, kind: KIND[it.kind] } as TimelineItem) : it)) };
       } catch (e) {
         if (!(e instanceof ApiError) || e.status !== 404) throw e;
         // Endpoint not shipped yet: fall back to the plain event log.

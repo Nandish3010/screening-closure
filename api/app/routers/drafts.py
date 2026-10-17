@@ -30,7 +30,7 @@ from uuid import UUID, uuid4
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, ConfigDict, field_validator
 
-from app import metrics_abstention, notify, policy
+from app import metrics_abstention, notify, policy, users
 from app.ai.draft_store import (
     DraftAlreadyDecided,
     DraftNotFound,
@@ -155,12 +155,14 @@ def appointment_date(events, state: str, language: str) -> str | None:
     return None
 
 
-def split_actor(actor: str | None) -> tuple[str, str] | None:
-    """`role:name` -> (role, name)."""
-    if not actor or ":" not in actor:
+def owner_identity(owner: str | None) -> tuple[str, str] | None:
+    """The owner actor (`role:user_id`, opaque since A14) -> (role, display name from the users
+    table). The name goes into the draft text, which lives in the drafts table (erasable), never
+    into an event."""
+    if not owner or ":" not in owner:
         return None
-    role, name = actor.split(":", 1)
-    return role, name
+    resolved = users.resolve_actor(owner)
+    return resolved["role"], resolved["display_name"]
 
 
 def build_request(case_id: UUID, body: CreateDraft, identity: Identity) -> DraftRequest:
@@ -174,7 +176,7 @@ def build_request(case_id: UUID, body: CreateDraft, identity: Identity) -> Draft
 
     # The patient hears from the case owner. A case without an owner yet is drafted in the
     # requester's name (they are the human who will approve it).
-    owner_role, owner_name = split_actor(model.owner) or (identity.role, identity.name)
+    owner_role, owner_name = owner_identity(model.owner) or (identity.role, identity.name)
     date = appointment_date(cases.store.events_for(case_id), model.state, body.language)
     if body.purpose == "appointment_confirmation" and date is None:
         raise HTTPException(409, "no booked appointment date on this case: cannot confirm an appointment")

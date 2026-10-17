@@ -47,6 +47,8 @@ Provider = Annotated[str, StringConstraints(pattern=r"^[A-Za-z0-9][A-Za-z0-9 ._@
 ActorId = Annotated[str, StringConstraints(pattern=r"^[a-z_]{3,30}:[A-Za-z0-9_-]{1,64}$")]
 Uuid = Annotated[str, StringConstraints(pattern=r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")]
 Sha256 = Annotated[str, StringConstraints(pattern=r"^[0-9a-f]{64}$")]
+# A booked appointment's date for the patient message (D4): an ISO-8601 date or date-time, nothing else.
+IsoDate = Annotated[str, StringConstraints(pattern=r"^\d{4}-\d{2}-\d{2}(T[0-9:.+Zz-]{1,40})?$")]
 # Closure evidence is a FHIR report or procedure, by reference (A15).
 EvidenceRef = Annotated[str, StringConstraints(pattern=r"^(DiagnosticReport|Procedure)/[A-Za-z0-9.-]{1,64}$")]
 # The clinician who signs is an actor (`role:user_id`) or the Practitioner mapped to it (A15).
@@ -117,6 +119,8 @@ class PatientAcknowledge(_Human):
 
 class BookConfirmatory(_Human):
     appointment_ref: Ref | None = None
+    appointment_date: IsoDate | None = None  # read by the drafts route (D4) for confirmations
+    appointment_at: IsoDate | None = None
 
 
 class CompleteConfirmatory(_Human):
