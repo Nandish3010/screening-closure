@@ -56,7 +56,9 @@ describe("Case detail: sign-off through the client", () => {
       role: "owner", route: `/coordinator/${DEMO_OVERDUE_CASE_ID}`, path: "/coordinator/:caseId",
     });
     await screen.findByTestId("signoff");
-    await user.type(screen.getByLabelText("Evidence reference"), "DiagnosticReport/colonoscopy-0001");
+    const evidence = screen.getByLabelText("Evidence reference");
+    await user.clear(evidence); // prefilled from the confirmatory result on the case
+    await user.type(evidence, "DiagnosticReport/colonoscopy-0001");
     await user.type(screen.getByLabelText("Signed by"), "Dr. Layla Haddad");
     await user.click(screen.getByTestId("signoff"));
     await waitFor(() => expect(screen.getByTestId("flash")).toHaveTextContent(/closed/i));

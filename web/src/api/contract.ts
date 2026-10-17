@@ -105,7 +105,7 @@ export type TransitionEvent = (typeof TRANSITION_EVENTS)[number];
  *                      that one request through (today it is a 403 and the UI shows the engine's reason).
  *  reassign            payload {owner: string}                        actor: coordinator or supervisor,
  *                      only from `referral_rejected` (a rejected or bounced referral); owner becomes `owner`.
- *  escalate            payload {rung: EscalationRung, target_role: string}
+ *  escalate            payload {rung: EscalationRung, state: string, target?: string}
  *                                                                     actor: a human (the scheduler
  *                                                                     also emits it: "system:scheduler")
  *  escalation_accepted payload {rung: EscalationRung}                 actor: a human. The ticket gives
@@ -117,10 +117,9 @@ export type TransitionEvent = (typeof TRANSITION_EVENTS)[number];
  *                      anything else is 422). `withdrawn: true` freezes outreach, the API then adds
  *                      `review_requested`; `withdrawn: false` restores. actor: patient (own case) or the
  *                      coordinator recording the patient's instruction.
- *  reopen              payload {reason: string}                       actor: a clinician (owner role)
+ *  reopen              payload {reason: ReopenReason (taxonomy)}      actor: a clinician (owner role)
  *                      ONLY, only on a closed case. The UI shows the resulting `state` the backend returns.
- *  mark_lost_contact   payload {} (none specified; the engine also wants failed_attempts >= 3, which the UI
- *                      cannot know: an engine refusal is shown verbatim)    actor: coordinator/owner
+ *  mark_lost_contact   payload {failed_attempts: number >= 3}         actor: coordinator/owner
  *
  * Written by the backend (the UI only displays them):
  *  handoff_accepted    payload {} (optional {provider})               actor: the accepting clinician
@@ -617,8 +616,8 @@ export interface Alert {
 // ---------------------------------------------------------------------------------------
 
 /** The UI's roles. They map onto the backend's roles (api/app/auth.py USER_ROLES) by BACKEND_ROLE. */
-export type Role = "coordinator" | "owner" | "specialist" | "clinician" | "patient";
-export const ROLES: Role[] = ["coordinator", "owner", "specialist", "clinician", "patient"];
+export type Role = "coordinator" | "owner" | "specialist" | "clinician" | "supervisor" | "patient";
+export const ROLES: Role[] = ["coordinator", "owner", "specialist", "clinician", "supervisor", "patient"];
 
 /**
  * UI role -> backend role used for `POST /auth/dev-login`. The backend has no separate "clinician": sign-off
@@ -629,6 +628,7 @@ export const BACKEND_ROLE: Record<Role, string> = {
   owner: "primary_care_owner",
   specialist: "specialist_owner",
   clinician: "primary_care_owner",
+  supervisor: "supervisor",
   patient: "patient",
 };
 /** Roles that act only on cases they own (A5 owner scoping): the clinician roles. */
@@ -646,6 +646,27 @@ export interface Me {
   user_id?: string;
   /** The provider the caller acts for (owner roles). */
   provider?: string;
+  /** Patients only: the `Patient/<id>` whose case they own (decided by the login, E8). */
+  patient_ref?: string;
+}
+
+/** `reopen.reason` taxonomy (A14). The UI shows the label, the API takes the code. */
+export const REOPEN_REASONS = ["new_finding", "evidence_inadequate", "closed_in_error", "patient_request", "other"] as const;
+export type ReopenReason = (typeof REOPEN_REASONS)[number];
+
+/**
+ * POST /cases/{id}/confirmatory-result (E8; primary_care_owner / specialist_owner who OWN the case; no body) -> 201
+ * `{case_id, evidence_ref, procedure_ref, report_ref, written, recorded_at}`. The API creates a synthetic colonoscopy
+ * `Procedure` and `DiagnosticReport` in HAPI and returns their references; `evidence_ref` is the Procedure, which is what
+ * `complete_confirmatory.result_ref` and `close.evidence_ref` take. 409 before the colonoscopy is booked, 403 for a
+ * clinician who does not own the case, 503 when HAPI is down. It appends no event.
+ */
+export interface ConfirmatoryResult {
+  case_id: string;
+  evidence_ref: string;
+  procedure_ref: string;
+  report_ref: string;
+  recorded_at: string;
 }
 
 // ---------------------------------------------------------------------------------------
@@ -655,13 +676,26 @@ export interface Me {
 export interface ApiClient {
   /** "mock" | "http" - for display only. */
   readonly adapter: "mock" | "http";
-  health(): Promise<{ status: string }>;
+  /** GET /health (public): `sim_time` is the simulation clock, readable by every role (`/metrics/closure` is staff-only). */
+  health(): Promise<{ status: string; sim_time?: string }>;
   /**
    * Switch identity. http: POST /auth/dev-login {role (backend role), name, provider?}, keep the bearer
    * token and attach it to every later request (requests wait for a login in flight). `provider` is sent
    * for the owner roles. mock: remembers the identity (it decides who may approve a draft), needs no token.
    */
   login(role: Role, name: string, provider?: string): Promise<void>;
+  /**
+   * Log in as the patient who owns `caseId` (E8). The real API needs `patient_ref` for a patient login and a patient
+   * cannot look it up, so the http adapter reads it from the case with a staff login of its own (which does not
+   * touch this session), remembers it, then logs in as that patient. No-op for the mock.
+   */
+  loginPatientFor?(caseId: string, name?: string): Promise<void>;
+  /** The actor string (`role:user_id`) a demo login would have, e.g. for `reassign.owner`. http: logs in to learn the opaque id. */
+  actorFor(role: Role, name: string, provider?: string): Promise<string>;
+  /** Record the colonoscopy as FHIR evidence (E8, see ConfirmatoryResult). Owners of the case only. */
+  recordConfirmatoryResult(caseId: string): Promise<ConfirmatoryResult>;
+  /** POST /clock/advance (supervisor only): move the simulation clock forward. http only. Returns the new sim time. */
+  advanceClock?(by: { days?: number; hours?: number }): Promise<string>;
   me(): Promise<Me>;
   listCases(params?: CaseListParams): Promise<CaseSummary[]>;
   getCase(caseId: string): Promise<CaseDetail>;

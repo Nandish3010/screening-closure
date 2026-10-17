@@ -44,6 +44,13 @@ class Settings(BaseSettings):
     # no-docker runs leave it off.
     fhir_projection: bool = False
     fhir_projection_drain_seconds: float = 20.0
+    # Browser origins allowed to call the API (comma separated). The web app runs on its own port
+    # (vite dev 5173, vite preview 4173/4175), so the browser needs CORS including the Authorization
+    # header. Local development origins only by default; never a wildcard.
+    cors_allow_origins: str = (
+        "http://localhost:5173,http://127.0.0.1:5173,http://localhost:4173,http://127.0.0.1:4173,"
+        "http://localhost:4175,http://127.0.0.1:4175"
+    )
     # Working-day calendar (weekend set, holidays, time zone). Compose sets /config/calendar.yaml.
     calendar_path: str = str(_DEFAULT_CALENDAR)
 

@@ -49,6 +49,8 @@ ROUTE_POLICY: dict[tuple[str, str], object] = {
     ("POST", "/cases/{case_id}/events"): ALL_USERS | SCHEDULER | WATCHDOG,
     # Closure metrics for the dashboard (A10).
     ("GET", "/metrics/closure"): frozenset({COORD, SUPER}),
+    # Record the confirmatory colonoscopy as FHIR evidence (E8): the case's owner (checked in the handler).
+    ("POST", "/cases/{case_id}/confirmatory-result"): frozenset({PCO, SPEC}),
     # Demo clock: supervisor only.
     ("POST", "/clock/advance"): frozenset({SUPER}),
     ("POST", "/clock/reset"): frozenset({SUPER}),

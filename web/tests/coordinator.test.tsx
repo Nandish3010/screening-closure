@@ -49,7 +49,7 @@ describe("Case detail actions", () => {
     const types = (await api.getCase(DEMO_OVERDUE_CASE_ID)).events.slice(-2).map((e) => e.type);
     expect(types).toEqual(["escalate", "message_drafted"]);
     const all = (await api.getCase(DEMO_OVERDUE_CASE_ID)).events;
-    expect(all.find((e) => e.type === "escalate" && e.actor.startsWith("coordinator:"))?.payload).toEqual({ rung: "supervisor", target_role: "supervisor" });
+    expect(all.find((e) => e.type === "escalate" && e.actor.startsWith("coordinator:"))?.payload).toEqual({ rung: "supervisor", state: expect.any(String), target: "supervisor" });
     expect(all.at(-1)?.payload).not.toHaveProperty("text_en");
   });
 
@@ -198,21 +198,15 @@ describe("Hand-off: pending, bounced, owner scoping (A5)", () => {
     expect(screen.queryByTestId("handoff-bounced")).toBeNull();
   });
 
-  it("a clinician who does not own the case is routed through 'request handoff to my provider' and then sees 'waiting for acceptance'", async () => {
-    const user = userEvent.setup();
+  it("a clinician who does not own the case cannot request a hand-off: the page says to ask the current owner (the API answers 403)", async () => {
     const { api } = openCase(1, "clinician");
     expect(await screen.findByTestId("handoff-not-owner")).toHaveTextContent(/do not own this case.*Dr\. Layla Haddad/i);
+    expect(screen.getByTestId("handoff-not-owner")).toHaveTextContent(/Ask the current owner \(Dr\. Layla Haddad\) to hand it off to Marina Digestive Health/);
     expect(screen.queryByTestId("hand-off")).toBeNull();
-    const btn = screen.getByTestId("request-my-provider");
-    expect(btn).toHaveTextContent("Marina Digestive Health");
-    await user.click(btn);
-    const waiting = await screen.findByTestId("handoff-waiting");
-    expect(waiting).toHaveTextContent(/Waiting for acceptance/);
-    expect(waiting).toHaveTextContent(/Marina Digestive Health/);
-    expect(screen.getByTestId("handoff-pending")).toHaveTextContent(/Dr\. Layla Haddad stays responsible/);
+    expect(screen.queryByTestId("request-my-provider")).toBeNull();
+    expect(screen.queryByText(/Request handoff to my provider/i)).toBeNull();
     const d = await api.getCase(DEMO_OVERDUE_CASE_ID);
-    expect(d.pending_handoff).toMatchObject({ to_provider: "Marina Digestive Health", requested_by: "primary_care_owner:Dr. Huda Rahman" });
-    expect(d.owner).toBe("Dr. Layla Haddad");
+    expect(d.pending_handoff ?? null).toBeNull();
   });
 
   it("the owner requests a hand-off from the provider list and waits for acceptance when the provider has not answered", async () => {
@@ -270,19 +264,17 @@ describe("Reopen (clinician only, closed cases only)", () => {
     expect(screen.getByTestId("reopen-why")).toHaveTextContent(/only|cannot|clinician/i);
   });
 
-  it("a clinician must give a reason; then the case is reopened through the client", async () => {
+  it("a clinician picks a reason from the taxonomy; then the case is reopened through the client", async () => {
     const user = userEvent.setup();
     const { api } = openCase(11, "clinician"); // Dr. Huda Rahman signed and owns this case
     const btn = await screen.findByTestId("reopen");
-    expect(btn).toBeDisabled();
-    expect(screen.getByTestId("reopen-why")).toHaveTextContent(/reason/i);
-    await user.type(screen.getByLabelText("Reason for reopening"), "New finding on the report");
-    expect(btn).toBeEnabled();
+    expect(btn).toBeEnabled(); // the reason is a taxonomy select with a default
+    await user.selectOptions(screen.getByLabelText("Reason for reopening"), "evidence_inadequate");
     await user.click(btn);
     await waitFor(() => expect(screen.getByTestId("flash")).toHaveTextContent(/reopened/i));
     const d = await api.getCase(cid(11));
     expect(d.state).toBe("reopened");
-    expect(d.events.at(-1)).toMatchObject({ type: "reopen", actor: "primary_care_owner:Dr. Huda Rahman", payload: { reason: "New finding on the report" } });
+    expect(d.events.at(-1)).toMatchObject({ type: "reopen", actor: "primary_care_owner:Dr. Huda Rahman", payload: { reason: "evidence_inadequate" } });
     expect(screen.queryByTestId("reopen-panel")).toBeNull();
     // A reopened case goes back to clinician review (YAML: reopened --clinician_review--> clinician_reviewed).
     expect(screen.getByTestId("signoff")).toBeInTheDocument();

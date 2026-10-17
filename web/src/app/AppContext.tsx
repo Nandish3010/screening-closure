@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import type { ApiClient, Me, Role } from "../api/contract";
-import { OWNER_SCOPED_ROLES, ROLES } from "../api/contract";
+import { BACKEND_ROLE, OWNER_SCOPED_ROLES, ROLES } from "../api/contract";
 import { ROLE_NAMES, ROLE_PROVIDERS, backendActor } from "../api/identities";
 
 const ROLE_KEY = "sc.role";
@@ -20,6 +20,8 @@ export interface AppState {
   actor: string;
   /** The provider this clinician login acts for (owner roles), else undefined. */
   provider: string | undefined;
+  /** The API's opaque `user_id` for the acting login (http only; the real API's actor is `role:user_id`). */
+  userId: string | undefined;
   simTime: string | null;
   refreshSim: () => void;
 }
@@ -48,6 +50,7 @@ export function AppProvider({ api, children, initialRole }: { api: ApiClient; ch
 
   useEffect(() => {
     let live = true;
+    setMe(null); // a stale /me from the previous role must not name the new one
     api.me().then((m) => {
       if (!live) return;
       setMe(m);
@@ -57,10 +60,11 @@ export function AppProvider({ api, children, initialRole }: { api: ApiClient; ch
     return () => {
       live = false;
     };
-  }, [api, initialRole]);
+  }, [api, initialRole, role]);
 
   const refreshSim = useCallback(() => {
-    api.closureMetrics().then((m) => setSimTime(m.sim_time)).catch(() => setSimTime(null));
+    // /health is public and carries the sim clock; /metrics/closure is staff-only, so a clinician or patient would get a 403.
+    api.health().then((h) => (h.sim_time ? setSimTime(h.sim_time) : api.closureMetrics().then((m) => setSimTime(m.sim_time)))).catch(() => setSimTime(null));
   }, [api]);
   useEffect(refreshSim, [refreshSim]);
 
@@ -75,7 +79,10 @@ export function AppProvider({ api, children, initialRole }: { api: ApiClient; ch
 
   const value = useMemo<AppState>(() => {
     const actorName = me && me.role === role ? me.name : DEFAULT_NAMES[role];
-    return { api, role, setRole, me, actorName, actor: backendActor(role, actorName), provider: ROLE_PROVIDERS[role], simTime, refreshSim };
+    // Against the real API the actor is `role:user_id` (opaque id, A14): compared with `owner.actor` to tell "mine".
+    const userId = api.adapter === "http" && me && me.role === role ? me.user_id : undefined;
+    const actor = userId ? `${BACKEND_ROLE[role]}:${userId}` : backendActor(role, actorName);
+    return { api, role, setRole, me, actorName, actor, provider: ROLE_PROVIDERS[role], userId, simTime, refreshSim };
   }, [api, role, setRole, me, simTime, refreshSim]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
@@ -90,6 +97,7 @@ export function useApp(): AppState {
 }
 
 const OWNERS = ["owner", "specialist", "clinician"] as const;
+const STAFF_ESCALATORS = ["coordinator", "supervisor"] as const;
 
 /**
  * Roles allowed to take each action: a UI mirror of api/app/policy.py EVENT_POLICY and ROUTE_POLICY (the API is the
@@ -99,18 +107,21 @@ const OWNERS = ["owner", "specialist", "clinician"] as const;
 export const PERMISSIONS = {
   acknowledge: ["coordinator"],
   accept: OWNERS,
-  contact: ["coordinator", ...OWNERS],
+  contact: ["coordinator", "supervisor", ...OWNERS],
   book: ["coordinator", ...OWNERS],
   handOff: OWNERS,
   answerHandoff: OWNERS,
-  reassign: ["coordinator"],
-  escalate: ["coordinator"],
+  reassign: ["coordinator", "supervisor"],
+  escalate: STAFF_ESCALATORS,
   draft: ["coordinator", ...OWNERS],
   /** Approving or rejecting a draft is the case owner's decision. Never the coordinator. */
   decideDraft: OWNERS,
   recordResult: ["specialist"],
-  acceptEscalation: ["coordinator", ...OWNERS],
-  markLostContact: ["coordinator", ...OWNERS],
+  /** The supervisor rung is accepted by a supervisor, the coordinator rung by a coordinator, the reminder by the owner (the API decides). */
+  acceptEscalation: ["coordinator", "supervisor", ...OWNERS],
+  markLostContact: ["coordinator", "supervisor", ...OWNERS],
+  /** Record the colonoscopy as FHIR evidence (E8): the case owner (the API checks ownership). */
+  recordColonoscopy: OWNERS,
   recordConsent: ["coordinator"],
   signOff: OWNERS,
   reopen: OWNERS,

@@ -1,4 +1,5 @@
-import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
+import { useState } from "react";
+import { Link, NavLink, matchPath, useLocation, useNavigate } from "react-router-dom";
 import { useApp } from "../app/AppContext";
 import { ROLES, type Role } from "../api/contract";
 import { DEMO_PATIENT_CASE_ID } from "../api/fixtures";
@@ -13,6 +14,31 @@ export function SimBadge() {
   );
 }
 
+/**
+ * Demo-only control for the supervisor role (the only role the API lets move the simulation clock):
+ * POST /clock/advance. Not rendered by the mock adapter, whose clock is fixed.
+ */
+function ClockControl() {
+  const { api, refreshSim } = useApp();
+  const [days, setDays] = useState(1);
+  const [status, setStatus] = useState<string | null>(null);
+  if (!api.advanceClock) return null;
+  const advance = () =>
+    api.advanceClock!({ days })
+      .then(() => { setStatus(null); refreshSim(); })
+      .catch((e) => setStatus(String((e as Error).message)));
+  return (
+    <span className="clock-control" data-testid="clock-control">
+      <label>
+        <span>Advance clock (days)</span>{" "}
+        <input type="number" min={1} max={365} value={days} onChange={(e) => setDays(Number(e.target.value))} aria-label="Days to advance the simulation clock" />
+      </label>{" "}
+      <button className="btn btn-small" onClick={advance} data-testid="advance-clock" disabled={!(days > 0)}>Advance</button>
+      {status && <span role="alert" className="why">{status}</span>}
+    </span>
+  );
+}
+
 export function Header() {
   const { role, setRole, api, actorName } = useApp();
   const navigate = useNavigate();
@@ -20,8 +46,14 @@ export function Header() {
 
   const onRole = (r: Role) => {
     setRole(r);
-    if (r === "patient") navigate(`/patient/${DEMO_PATIENT_CASE_ID}`);
-    else if (pathname.startsWith("/patient")) navigate("/coordinator");
+    if (r === "patient") {
+      // The patient sees the case the staff member was looking at (their patient_ref is read from it, E8).
+      const here = matchPath("/coordinator/:caseId", pathname)?.params.caseId ?? matchPath("/patient/:caseId", pathname)?.params.caseId;
+      navigate(here ? `/patient/${here}` : api.adapter === "http" ? "/patient" : `/patient/${DEMO_PATIENT_CASE_ID}`);
+    } else if (pathname.startsWith("/patient")) {
+      const here = matchPath("/patient/:caseId", pathname)?.params.caseId;
+      navigate(here && api.adapter === "http" ? `/coordinator/${here}` : "/coordinator");
+    }
   };
 
   return (
@@ -48,6 +80,7 @@ export function Header() {
             </select>
           </label>
           <span className="who" title="Acting as">{actorName}</span>
+          {role === "supervisor" && <ClockControl />}
           <span className={`adapter adapter-${api.adapter}`} title="API adapter">{api.adapter}</span>
           {api.resetDemo && (
             <button className="btn btn-small" onClick={() => api.resetDemo!().then(() => location.reload())}>

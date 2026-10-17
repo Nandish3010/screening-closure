@@ -4,7 +4,8 @@ import { can, isOwnerScoped, useApp } from "../app/AppContext";
 import type {
   CaseDetail, CaseTimeline, ConsentChanges, ContactChannel, DraftApproval, DraftRecord, EscalationRung, TimelineItem,
 } from "../api/contract";
-import { ApiError, HANDOFF_REJECT_REASONS, PROVIDERS } from "../api/contract";
+import { ApiError, HANDOFF_REJECT_REASONS, PROVIDERS, REOPEN_REASONS, type ReopenReason } from "../api/contract";
+import { REASSIGN_TARGETS, ROLE_NAMES, ROLE_PROVIDERS } from "../api/identities";
 import { ActionButton } from "../components/ActionButton";
 import { DraftsPanel } from "../components/DraftsPanel";
 import { SignOffPanel } from "../components/SignOffPanel";
@@ -19,12 +20,17 @@ import { WatchdogMarker, watchdogDetail } from "../components/WatchdogMarker";
 import { RiskBar, StatePill } from "./CoordinatorPage";
 
 const CHANNEL_NAME: Record<string, string> = { sms: "text messages", whatsapp: "WhatsApp", phone: "phone calls", letter: "letters" };
-/** Owners the coordinator can re-route a bounced or rejected referral to (demo list). */
-const REASSIGN_TARGETS = ["primary_care_owner:Dr. Layla Haddad", "specialist_owner:Dr. Karim Nasser", "primary_care_owner:Dr. Huda Rahman"];
+const REOPEN_LABEL: Record<ReopenReason, string> = {
+  new_finding: "New finding on the colonoscopy report",
+  evidence_inadequate: "The closure evidence is inadequate",
+  closed_in_error: "Closed in error",
+  patient_request: "The patient asked for a review",
+  other: "Other",
+};
 
 export function CaseDetailPage() {
   const { caseId = "" } = useParams();
-  const { api, role, actor, actorName, provider: myProvider, refreshSim, simTime } = useApp();
+  const { api, role, actor, actorName, provider: myProvider, userId, refreshSim, simTime } = useApp();
   const [detail, setDetail] = useState<CaseDetail | null>(null);
   const [timeline, setTimeline] = useState<CaseTimeline | null>(null);
   const [draftRecords, setDraftRecords] = useState<DraftRecord[]>([]);
@@ -36,13 +42,14 @@ export function CaseDetailPage() {
   // Local form state
   const [provider, setProvider] = useState<string>(PROVIDERS[0]);
   const [rung, setRung] = useState<EscalationRung>("supervisor");
-  const [reopenReason, setReopenReason] = useState("");
+  const [reopenReason, setReopenReason] = useState<ReopenReason>(REOPEN_REASONS[0]);
+  const [failedAttempts, setFailedAttempts] = useState(3);
   const [channel, setChannel] = useState<ContactChannel>("phone");
   const [appointment, setAppointment] = useState("");
   const [appointmentDate, setAppointmentDate] = useState("");
   const [resultRef, setResultRef] = useState("");
   const [declineReason, setDeclineReason] = useState<string>(HANDOFF_REJECT_REASONS[0]);
-  const [reassignTo, setReassignTo] = useState(REASSIGN_TARGETS[0]);
+  const [reassignTo, setReassignTo] = useState<(typeof REASSIGN_TARGETS)[number]>(REASSIGN_TARGETS[0]);
 
   const reload = useCallback(async () => {
     const [d, t, recs] = await Promise.all([
@@ -122,12 +129,13 @@ export function CaseDetailPage() {
   const why = (action: Parameters<typeof can>[1], who: string, scoped = false) =>
     can(role, action) ? (scoped ? scopeWhy : null) : `Your role (${role}) cannot do this. Switch the role to ${who}.`;
   const closedWhy = closed ? "This case is closed." : null;
-  const ownerRole = role === "owner" || role === "clinician" ? "Primary care physician" : role === "specialist" ? "Specialist" : "Care coordinator";
   const escalateRungs = ESCALATION_LADDER.filter((r) => r.rung !== "reminder");
   const rungTarget = ESCALATION_LADDER.find((r) => r.rung === rung)?.target_role ?? rung;
   const pendingApprovedDraft = draftList.find((d) => d.status === "approved");
   const answersHandoff = !!pending && ownerScoped && !!myProvider && pending.to_provider === myProvider && pending.requested_by !== actor && pending.from_owner !== actor;
   const allowed = allowedChannels(consent);
+  /** The Procedure/DiagnosticReport the confirmatory result named, offered as the closure evidence. */
+  const recordedEvidence = [...events].reverse().find((e) => e.type === "complete_confirmatory" && /^(Procedure|DiagnosticReport)\//.test(String(e.payload.result_ref ?? "")))?.payload.result_ref as string | undefined;
 
   return (
     <main className="container">
@@ -199,11 +207,11 @@ export function CaseDetailPage() {
               </ActionButton>
             )}
             {state === "acknowledged" && (
-              <ActionButton primary testId="accept-ownership" busy={busy} disabledReason={why("accept", "owner, specialist or clinician")} onClick={() => act(() => post("accept_ownership", { owner_role: ownerRole }), "You now own this case.")}>
+              <ActionButton primary testId="accept-ownership" busy={busy} disabledReason={why("accept", "owner, specialist or clinician")} onClick={() => act(() => post("accept_ownership", {}), "You now own this case.")}>
                 Accept ownership
               </ActionButton>
             )}
-            {state === "owner_accepted" && (
+            {(state === "owner_accepted" || state === "lost_contact") && (
               <>
                 <label className="field"><span>Channel used</span>
                   <select value={channel} onChange={(e) => setChannel(e.target.value as ContactChannel)}>
@@ -228,7 +236,10 @@ export function CaseDetailPage() {
             )}
             {state === "confirmatory_booked" && (
               <>
-                <label className="field"><span>Confirmatory result reference</span><input value={resultRef} onChange={(e) => setResultRef(e.target.value)} placeholder="DiagnosticReport/colonoscopy-0001" /></label>
+                <label className="field"><span>Confirmatory result reference</span><input value={resultRef} onChange={(e) => setResultRef(e.target.value)} placeholder="Procedure/colonoscopy-0001" /></label>
+                <ActionButton testId="record-colonoscopy" busy={busy} disabledReason={why("recordColonoscopy", "owner, specialist or clinician (the case owner)", true)} onClick={() => act(async () => { const r = await api.recordConfirmatoryResult(caseId); setResultRef(r.evidence_ref); return r; }, (r) => `Colonoscopy recorded in the FHIR store as ${r.evidence_ref}. Now record the confirmatory result.`)}>
+                  Record colonoscopy result
+                </ActionButton>
                 <ActionButton primary testId="record-result" busy={busy} disabledReason={why("recordResult", "specialist", true) ?? (resultRef.trim() ? null : "Enter the result reference first.")} onClick={() => act(() => post("complete_confirmatory", { result_ref: resultRef.trim() }), "Confirmatory result recorded.")}>
                   Record confirmatory result
                 </ActionButton>
@@ -240,6 +251,12 @@ export function CaseDetailPage() {
                 busy={busy}
                 needsReview={state !== "clinician_reviewed"}
                 extraWhy={scopeWhy}
+                defaultEvidence={recordedEvidence}
+                signer={userId ? `Practitioner/${userId}` : undefined}
+                onRecordResult={can(role, "recordColonoscopy") && !scopeWhy ? async () => {
+                  const r = await api.recordConfirmatoryResult(caseId);
+                  return r.evidence_ref;
+                } : undefined}
                 onSignOff={(evidence, signer) =>
                   act(async () => {
                     if (state !== "clinician_reviewed") await post("clinician_review", { signed_by: signer });
@@ -252,20 +269,30 @@ export function CaseDetailPage() {
               <div data-testid="reassign-panel">
                 <p className="muted">The referral was rejected or bounced. A coordinator or supervisor can re-route it, or the owner can request a new hand-off.</p>
                 <label className="field"><span>New owner</span>
-                  <select value={reassignTo} onChange={(e) => setReassignTo(e.target.value)}>
-                    {REASSIGN_TARGETS.map((t) => <option key={t} value={t}>{actorNameOf(t)}</option>)}
+                  <select value={reassignTo} onChange={(e) => setReassignTo(e.target.value as (typeof REASSIGN_TARGETS)[number])}>
+                    {REASSIGN_TARGETS.map((t) => <option key={t} value={t}>{ROLE_NAMES[t]}</option>)}
                   </select>
                 </label>
-                <ActionButton primary testId="reassign" busy={busy} disabledReason={why("reassign", "coordinator")} onClick={() => act(() => post("reassign", { owner: reassignTo }), `Referral re-routed to ${actorNameOf(reassignTo)}.`)}>
+                <ActionButton primary testId="reassign" busy={busy} disabledReason={why("reassign", "coordinator")} onClick={() => act(async () => {
+                  // reassign.owner is the new owner's actor string (role:user_id), which the API alone can tell us.
+                  const owner = await api.actorFor(reassignTo, ROLE_NAMES[reassignTo], ROLE_PROVIDERS[reassignTo]);
+                  const to = ROLE_PROVIDERS[reassignTo];
+                  return post("reassign", { owner, ...(to ? { provider: to } : {}) });
+                }, `Referral re-routed to ${ROLE_NAMES[reassignTo]}.`)}>
                   Re-route to new owner
                 </ActionButton>
               </div>
             )}
             {closed && <p>This case is closed. The audit trail below is final unless a clinician reopens it.</p>}
             {!closed && (
-              <ActionButton testId="mark-lost-contact" busy={busy} disabledReason={lost ? "Already marked as lost contact." : why("markLostContact", "coordinator or owner", true)} onClick={() => act(() => post("mark_lost_contact", {}), "Marked as lost contact.")}>
-                Mark patient as lost contact
-              </ActionButton>
+              <>
+                <label className="field"><span>Failed contact attempts (at least 3)</span>
+                  <input type="number" min={3} value={failedAttempts} onChange={(e) => setFailedAttempts(Number(e.target.value))} />
+                </label>
+                <ActionButton testId="mark-lost-contact" busy={busy} disabledReason={lost ? "Already marked as lost contact." : failedAttempts < 3 ? "The pathway needs at least 3 failed attempts." : why("markLostContact", "coordinator or owner", true)} onClick={() => act(() => post("mark_lost_contact", { failed_attempts: failedAttempts }), "Marked as lost contact.")}>
+                  Mark patient as lost contact
+                </ActionButton>
+              </>
             )}
           </section>
 
@@ -273,12 +300,16 @@ export function CaseDetailPage() {
             <section className="panel" aria-labelledby="reopen-h" data-testid="reopen-panel">
               <h3 id="reopen-h">Reopen case</h3>
               <p className="muted">Only a clinician can reopen a closed case. The reason goes on the audit trail.</p>
-              <label className="field"><span>Reason for reopening</span><input value={reopenReason} onChange={(e) => setReopenReason(e.target.value)} placeholder="New finding on the colonoscopy report" /></label>
+              <label className="field"><span>Reason for reopening</span>
+                <select value={reopenReason} onChange={(e) => setReopenReason(e.target.value as ReopenReason)}>
+                  {REOPEN_REASONS.map((r) => <option key={r} value={r}>{REOPEN_LABEL[r]}</option>)}
+                </select>
+              </label>
               <ActionButton
                 testId="reopen"
                 busy={busy}
-                disabledReason={why("reopen", "owner, specialist or clinician", true) ?? (reopenReason.trim() ? null : "Enter the reason for reopening first.")}
-                onClick={() => act(async () => { await post("reopen", { reason: reopenReason.trim() }); setReopenReason(""); }, "Case reopened.")}
+                disabledReason={why("reopen", "owner, specialist or clinician", true)}
+                onClick={() => act(async () => { await post("reopen", { reason: reopenReason }); setReopenReason(REOPEN_REASONS[0]); }, "Case reopened.")}
               >
                 Reopen case
               </ActionButton>
@@ -311,15 +342,14 @@ export function CaseDetailPage() {
               </div>
             ) : notMine ? (
               <>
-                <p className="muted" data-testid="handoff-not-owner">{scopeWhy} To take part, ask for the case to be handed to your own provider.</p>
-                <ActionButton testId="request-my-provider" busy={busy} disabledReason={closedWhy ?? frozenWhy ?? (myProvider ? null : "Your login has no provider.")} onClick={() => act(() => post("handoff_requested", { to_provider: myProvider }), `Hand-off to ${myProvider} requested. Waiting for acceptance.`)}>
-                  Request handoff to my provider{myProvider ? ` (${myProvider})` : ""}
-                </ActionButton>
+                <p className="muted" data-testid="handoff-not-owner">
+                  {scopeWhy} Only the owner can hand a case over. Ask the current owner ({detail.owner}) to hand it off{myProvider ? ` to ${myProvider}` : ""}.
+                </p>
               </>
             ) : (
               <>
                 <label className="field"><span>Provider</span>
-                  <select value={provider} onChange={(e) => setProvider(e.target.value)}>
+                  <select value={provider} onChange={(e) => setProvider(e.target.value)} data-testid="handoff-provider">
                     {PROVIDERS.map((p) => <option key={p}>{p}</option>)}
                   </select>
                 </label>
@@ -347,7 +377,7 @@ export function CaseDetailPage() {
                 {escalateRungs.map((r) => <option key={r.rung} value={r.rung}>{RUNG_LABEL[r.rung]} (after {r.after_breach_days} days)</option>)}
               </select>
             </label>
-            <ActionButton testId="escalate" busy={busy} disabledReason={closedWhy ?? why("escalate", "coordinator")} onClick={() => act(() => post("escalate", { rung, target_role: rungTarget }), `Escalated to ${RUNG_LABEL[rung]}.`)}>
+            <ActionButton testId="escalate" busy={busy} disabledReason={closedWhy ?? why("escalate", "coordinator")} onClick={() => act(() => post("escalate", { rung, state, target: rungTarget }), `Escalated to ${RUNG_LABEL[rung]}.`)}>
               Escalate
             </ActionButton>
             {pendingEsc && !closed && (

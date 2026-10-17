@@ -20,8 +20,21 @@ export function actorRole(actor: string): string {
   return i < 0 ? actor : actor.slice(0, i);
 }
 
-/** The name part of `role:name`; "" for a bare actor such as `watchdog`. */
+/**
+ * Display names the API resolved for actor strings (A14): the log holds `role:opaque_user_id`, the names live in the
+ * API's `users` table and come back as the `actors` map of `GET /cases/{id}` and `GET /cases/{id}/timeline`. The http
+ * adapter registers them here as it reads, so `actorName` shows "Dr. Layla Haddad" and not a 12-hex id.
+ */
+const knownActors = new Map<string, string>();
+export function registerActors(map: Record<string, { display_name?: string } | null> | undefined) {
+  if (!map) return;
+  for (const [actor, who] of Object.entries(map)) if (who?.display_name) knownActors.set(actor, who.display_name);
+}
+
+/** The name part of `role:name` (the display name the API gave, when known); "" for a bare actor such as `watchdog`. */
 export function actorName(actor: string): string {
+  const known = knownActors.get(actor);
+  if (known) return known;
   const i = actor.indexOf(":");
   return i < 0 ? "" : actor.slice(i + 1);
 }
@@ -240,7 +253,7 @@ export function pendingEscalation(events: CaseEvent[]): PendingEscalation | null
   let pending: PendingEscalation | null = null;
   for (const ev of events) {
     if (ev.type === "escalate") {
-      pending = { rung: String(ev.payload.rung ?? ""), target_role: String(ev.payload.target_role ?? ""), at: ev.at };
+      pending = { rung: String(ev.payload.rung ?? ""), target_role: String(ev.payload.target ?? ev.payload.target_role ?? ""), at: ev.at };
     } else if (ev.type === "escalation_accepted") pending = null;
   }
   return pending;
@@ -443,9 +456,7 @@ export function validateAppend(events: CaseEvent[], type: string, actor: string,
       const mine = h.owner?.actor === actor;
       const takesUnowned = type === "accept_ownership" && h.owner === null;
       const answers = (type === "handoff_accepted" || type === "handoff_rejected") && h.pending !== null && !!ctx.provider && h.pending.to_provider === ctx.provider;
-      // GUESS: the "request handoff to my provider" path the UI offers a clinician who does not own the case.
-      const asksForMine = type === "handoff_requested" && !!ctx.provider && payload.to_provider === ctx.provider;
-      if (!mine && !takesUnowned && !answers && !asksForMine) {
+      if (!mine && !takesUnowned && !answers) {
         throw new ApiError(403, `${actorRole(actor)} '${actorName(actor)}' may only act on cases they own (this case's owner is ${h.owner?.name ?? "not yet assigned"})`);
       }
     }

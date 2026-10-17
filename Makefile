@@ -1,4 +1,4 @@
-.PHONY: check docs-check tracker-lint test-security test-tools test-load load-check up down logs test test-db test-db-create test-db-reset test-chaos synthea demo-seed demo-seed-clean evaluate simulate evaluate-check reset web-install web-dev web-build web-test web-e2e test-e2e review-packs review-packs-check test-review-packs
+.PHONY: test-e2e-live check docs-check tracker-lint test-security test-tools test-load load-check up down logs test test-db test-db-create test-db-reset test-chaos synthea demo-seed demo-seed-clean evaluate simulate evaluate-check reset web-install web-dev web-build web-test web-e2e test-e2e review-packs review-packs-check test-review-packs
 
 up:
 	docker compose up -d --build
@@ -177,3 +177,17 @@ test-review-packs:
 
 # The name the test plan uses (TEST-CASES.md): same suite as web-e2e.
 test-e2e: web-e2e
+
+# Playwright against the REAL stack (E8): an http-adapter build of the web app (own port 4175) in front of the
+# running compose stack with the seeded cohort. The full flow (worklist, ownership, draft approved and sent,
+# handoff, booking, clock advance with overdue and escalation, colonoscopy Procedure in HAPI, review, close with
+# the signer's Practitioner, reopen), the declined-handoff re-route, and T-C16 (stops the scheduler container,
+# the dashboard banner appears within 90 s, restarts it, the banner clears; about 3 minutes).
+# It skips with a message when the stack is down or not seeded. It creates its own cases and advances the
+# simulation clock: run `make demo-reset` afterwards to put the demo state back.
+test-e2e-live:
+	@if ! curl -fsS -o /dev/null http://localhost:8000/health 2>/dev/null; then \
+		echo "test-e2e-live: SKIPPED, the API is not reachable at http://localhost:8000 (start the stack with 'make up' and seed it with 'make demo-seed')"; \
+	else \
+		cd web && npx playwright test -c playwright.live.config.ts; \
+	fi

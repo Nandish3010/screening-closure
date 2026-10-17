@@ -26,8 +26,8 @@ All data in this project is synthetic. No real patient, clinician, facility or s
 
 | parameter | value |
 |---|---|
-| population (`SYNTHEA_POPULATION`) | 300 living patients (Synthea also exports the deceased it generated along the way, 82 in the reference run: 382 patient bundles) |
-| age range | 40-75 (`-a 40-75`, the new default). The cohort loaded in the reference run was generated with 45-75 and stays so until `make demo-seed-clean && make demo-seed` is rerun |
+| population (`SYNTHEA_POPULATION`) | 300 living patients (Synthea also exports the deceased it generated along the way: 384 patients in HAPI in the reference run, 364 patient bundles plus 2 infrastructure bundles) |
+| age range | 40-75 (`-a 40-75`). The dev stack was regenerated with it on 18 Oct 2026 (`make demo-seed-clean && make reset && make demo-seed`): 384 Patient resources in HAPI, 300 aged 40-75 on 2026-01-05 and not deceased by then, 22 positive FIT reports and 22 cases |
 | state | Massachusetts |
 | years of history | 5 (`--exporter.years_of_history=5`) |
 | FHIR export | R4, `use_us_core_ig=false`; hospital and practitioner bundles exported |
@@ -87,7 +87,7 @@ Nothing in the records. Synthea's statistical models are derived from published 
 The full list, with where each gap bites and how to remove it, is [assumptions-limitations.md](assumptions-limitations.md). The ones that concern this cohort:
 
 - Synthea needs a US state: names, addresses, phone numbers, geography, facilities, insurance and care patterns are Massachusetts / US. There are no Arabic names and no UAE demographics, languages, or health-system structure.
-- The cohort is 40-75 by construction (45-75 for the cohort currently loaded, until it is regenerated), so it does not reflect a real screening-eligible population's age mix or a real invitation/uptake process.
+- The cohort is 40-75 by construction, so it does not reflect a real screening-eligible population's age mix or a real invitation/uptake process.
 - Synthea does not model FIT screening for this pathway; the FIT positivity rate (7%) is a simulator parameter (sourced-adjacent, cut-off dependent) and is not a Synthea output. Which patients are positive is unrelated to their clinical history (a positive patient is not more likely to have a colorectal condition in the record).
 - Deceased patients are generated and loaded (Synthea exports them) but are excluded from FIT generation.
 - One result per patient; no repeat testing, negative result records, or non-responders.

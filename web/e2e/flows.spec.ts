@@ -87,8 +87,8 @@ test("reopen: only a clinician can reopen a closed case, with a reason", async (
   await expect(page.getByTestId("reopen")).toBeDisabled();
   await expect(page.getByTestId("reopen-why")).toContainText("clinician");
   await page.getByLabel("Switch role").selectOption("clinician");
-  await expect(page.getByTestId("reopen")).toBeDisabled();
-  await page.getByLabel("Reason for reopening").fill("New finding on the colonoscopy report");
+  await expect(page.getByTestId("reopen-why")).toHaveCount(0); // the reason is a taxonomy select with a default
+  await page.getByLabel("Reason for reopening").selectOption("new_finding");
   await expect(page.getByTestId("reopen")).toBeEnabled();
   await page.getByTestId("reopen").click();
   await expect(page.getByTestId("flash")).toContainText("reopened");

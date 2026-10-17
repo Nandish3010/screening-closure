@@ -163,17 +163,16 @@ test("an ordinary rejection is labelled with its reason and is not called a boun
   await expect(page.getByTestId("handoff-bounced")).toHaveCount(0);
 });
 
-test("a clinician who does not own the case requests a hand-off to their provider and waits for acceptance", async ({ page }) => {
+test("a clinician who does not own the case is told to ask the owner to hand it off, and the receiving provider accepts another pending request", async ({ page }) => {
   await page.goto(`/coordinator/${OVERDUE_CASE}`);
   await page.getByLabel("Switch role").selectOption("clinician");
   await expect(page.getByTestId("handoff-not-owner")).toContainText("You do not own this case (the owner is Dr. Layla Haddad)");
   await expect(page.getByTestId("signoff")).toBeDisabled();
   await expect(page.getByTestId("signoff-why")).toContainText("do not own this case");
   await expect(page.getByTestId("hand-off")).toHaveCount(0);
-  await page.getByTestId("request-my-provider").click();
-  await expect(page.getByTestId("handoff-waiting")).toContainText("Waiting for acceptance");
-  await expect(page.getByTestId("handoff-waiting")).toContainText("Marina Digestive Health");
-  await expect(page.getByTestId("handoff-pending")).toContainText("Dr. Layla Haddad stays responsible");
+  // Only the owner can request a hand-off (the API answers 403 to anyone else): no button, an instruction instead.
+  await expect(page.getByTestId("request-my-provider")).toHaveCount(0);
+  await expect(page.getByTestId("handoff-not-owner")).toContainText("Ask the current owner (Dr. Layla Haddad) to hand it off to Marina Digestive Health");
   // The clinician at the receiving provider accepts a different pending request and takes the case over.
   await page.getByLabel("Switch role").selectOption("specialist");
   await page.goto("/coordinator");

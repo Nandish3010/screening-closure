@@ -7,7 +7,7 @@
  * who is acting, because the real API decides who may approve a draft from the bearer token.
  */
 import type {
-  Alert, ApiClient, CaseDetail, CaseEvent, CaseListParams, CaseSummary, CaseTimeline, ClosureMetrics, Draft, DraftApproval,
+  Alert, ApiClient, CaseDetail, CaseEvent, CaseListParams, CaseSummary, CaseTimeline, ClosureMetrics, ConfirmatoryResult, Draft, DraftApproval,
   DraftRecord, DraftRejection, DraftRequestBody, Me, PostEventBody, Role, TimelineItem,
 } from "./contract";
 import { ApiError, BACKEND_ROLE, OWNER_SCOPED_ROLES, ROLES } from "./contract";
@@ -15,7 +15,7 @@ import { FIXTURE_RISK, SEED_ALERTS, SEED_METRICS, SIM_NOW, seedDrafts, seedEvent
 import { PROVIDER_CLINICIANS, ROLE_NAMES, ROLE_PROVIDERS, backendActor } from "./identities";
 import { ESCALATION_LADDER } from "../lib/pathway";
 import {
-  consentHistoryOf, consentOf, isOwnerScopedActor, overdueDays, pendingEscalation, replayHandoffs, replayState, slaClock, summarise,
+  consentHistoryOf, consentOf, overdueDays, pendingEscalation, replayHandoffs, replayState, slaClock, summarise,
   validateAppend,
 } from "../lib/derive";
 
@@ -153,10 +153,24 @@ export function createMockAdapter(storage: Pick<Storage, "getItem" | "setItem" |
   return {
     adapter: "mock",
     async health() {
-      return { status: "ok" };
+      return { status: "ok", sim_time: SIM_NOW };
     },
     async login(role, name, provider) {
       session = { role, name, provider: provider ?? ROLE_PROVIDERS[role] };
+    },
+    async actorFor(role, name) {
+      return backendActor(role, name);
+    },
+    async recordConfirmatoryResult(id): Promise<ConfirmatoryResult> {
+      const db = load();
+      const evs = must(db, id);
+      if (!OWNER_SCOPED_ROLES.includes(session.role)) throw new ApiError(403, `role '${BACKEND_ROLE[session.role]}' may not call POST /cases/{case_id}/confirmatory-result`);
+      const owner = replayHandoffs(evs).owner;
+      if (!owner || owner.actor !== actor()) throw new ApiError(403, `${BACKEND_ROLE[session.role]} '${session.name}' may only act on cases they own (this case's owner is ${owner?.name ?? "not yet assigned"})`);
+      return {
+        case_id: id, evidence_ref: `Procedure/colonoscopy-${id}`, procedure_ref: `Procedure/colonoscopy-${id}`,
+        report_ref: `DiagnosticReport/colonoscopy-report-${id}`, recorded_at: SIM_NOW,
+      };
     },
     async me(): Promise<Me> {
       return { role: session.role, name: session.name, user_id: actor(), provider: session.provider };
@@ -217,16 +231,13 @@ export function createMockAdapter(storage: Pick<Storage, "getItem" | "setItem" |
     async postEvent(id, body: PostEventBody) {
       const db = load();
       const payload = body.payload ?? {};
-      const before = replayHandoffs(must(db, id));
       append(db, id, body.type, body.actor, payload, { eventId: body.event_id });
-      // The mock plays the receiving provider of a handoff. A clinician asking on their own provider's behalf
-      // (not the owner) is left pending: the UI shows "waiting for acceptance".
+      // The mock plays the receiving provider of a handoff (only the owner can request one, as in the real API).
       if (body.type === "handoff_requested") {
         const provider = String(payload.to_provider ?? "");
-        const asksForMine = isOwnerScopedActor(body.actor) && before.owner?.actor !== body.actor;
         const clinician = PROVIDER_CLINICIANS[provider];
         const answerer = clinician ? `${clinician.role}:${clinician.name}` : `provider:${provider}`;
-        if (!asksForMine && answerer !== body.actor) {
+        if (answerer !== body.actor) {
           if (provider === "Al Noor Endoscopy Centre") {
             append(db, id, "handoff_rejected", answerer, { reason: "capacity" }, { internal: true });
           } else {

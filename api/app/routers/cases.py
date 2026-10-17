@@ -4,7 +4,7 @@ from uuid import UUID, uuid4
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, ConfigDict, Field
 
-from app import consent, evidence, fhir_projection, notify, payloads, policy, readmodel, users
+from app import confirmatory, consent, evidence, fhir_projection, notify, payloads, policy, readmodel, users
 from app.calendar import default_calendar
 from app.config import settings as app_settings
 from app.auth import Identity, require_identity
@@ -250,3 +250,28 @@ def case_notifications(case_id: UUID, identity: Identity = Depends(require_ident
         raise HTTPException(404, "case not found")
     policy.authorize_owner_scope(identity, "view_notifications", model)
     return [n.to_json() for n in notify.log.for_case(case_id)]
+
+
+# States from which the colonoscopy result can be recorded: the test is booked or already
+# completed (the clinician may record the evidence after `complete_confirmatory`), or the case is
+# back for review. Earlier states have no colonoscopy to record; a closed case needs a reopen first.
+RESULT_STATES = frozenset({"confirmatory_booked", "confirmatory_completed", "clinician_reviewed", "reopened"})
+
+
+@router.post("/{case_id}/confirmatory-result", status_code=201)
+def record_confirmatory_result(case_id: UUID, identity: Identity = Depends(require_identity)) -> dict:
+    """Record the confirmatory colonoscopy (demo, E8): creates a synthetic `Procedure` and
+    `DiagnosticReport` in HAPI for the case's patient and returns their references. The case owner
+    only (a primary_care_owner or specialist_owner who owns it). It appends no event: the owner
+    then posts `complete_confirmatory {result_ref}` and `close {evidence_ref}` with the reference."""
+    model = store.read_model(case_id, pathway)
+    if model is None:
+        raise HTTPException(404, "case not found")
+    policy.authorize_owner_scope(identity, "record_confirmatory_result", model)
+    if model.state not in RESULT_STATES:
+        raise HTTPException(409, f"no colonoscopy to record in state {model.state!r}")
+    try:
+        refs = confirmatory.recorder.record(case_id, _patient_ref(case_id), clock.now())
+    except confirmatory.RecorderUnavailable as exc:
+        raise HTTPException(503, f"cannot record the colonoscopy result: {exc}")
+    return {"case_id": str(case_id), "evidence_ref": refs["procedure_ref"], **refs, "recorded_at": clock.now().isoformat()}

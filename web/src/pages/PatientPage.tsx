@@ -73,7 +73,7 @@ function progressStep(state: string): number {
 }
 
 export function PatientView({ caseId }: { caseId: string }) {
-  const { api, refreshSim } = useApp();
+  const { api, refreshSim, role } = useApp();
   const [detail, setDetail] = useState<CaseDetail | null>(() => readLast(caseId));
   const [offline, setOffline] = useState(false);
   const [error, setError] = useState(false);
@@ -110,11 +110,13 @@ export function PatientView({ caseId }: { caseId: string }) {
   }, [api, caseId]);
 
   useEffect(() => {
-    void load();
+    // The real API wants a patient_ref for a patient login: read it from this case (http adapter, demo only).
+    const ready = role === "patient" && api.loginPatientFor ? api.loginPatientFor(caseId).catch(() => undefined) : Promise.resolve();
+    void ready.then(load);
     const on = () => void load();
     window.addEventListener("online", on);
     return () => window.removeEventListener("online", on);
-  }, [load]);
+  }, [load, api, caseId, role]);
 
   const setLang = (l: Lang) => {
     setLangState(l);

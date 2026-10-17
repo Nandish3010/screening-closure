@@ -11,6 +11,7 @@ export const ROLE_NAMES: Record<Role, string> = {
   owner: "Dr. Layla Haddad",
   specialist: "Dr. Karim Nasser",
   clinician: "Dr. Huda Rahman",
+  supervisor: "Dr. Noura Al Hammadi",
   patient: "Patient",
 };
 
@@ -33,3 +34,6 @@ export const PROVIDER_CLINICIANS: Record<string, { role: "primary_care_owner" | 
 export function backendActor(role: Role, name: string): string {
   return `${BACKEND_ROLE[role]}:${name}`;
 }
+
+/** The owners a coordinator can re-route a bounced or rejected referral to (demo list); `reassign.owner` needs their actor string. */
+export const REASSIGN_TARGETS: readonly Role[] = ["owner", "specialist", "clinician"];

@@ -1,7 +1,7 @@
 import type { TimelineItem } from "../api/contract";
 import { RUNG_LABEL, handoffReasonLabel } from "../lib/pathway";
 import { fmtDateTime, titleCase } from "../lib/format";
-import { isAutomatedActor, itemKey, type DraftView } from "../lib/derive";
+import { actorName, actorRole, isAutomatedActor, itemKey, type DraftView } from "../lib/derive";
 import { WATCHDOG_TEXT, watchdogDetail } from "./WatchdogMarker";
 
 const EVENT_LABEL: Record<string, string> = {
@@ -57,9 +57,12 @@ function payloadSummary(type: string, p: Record<string, unknown>): string {
 
 /** "Automated" chip for scheduler, watchdog, model and system actors. */
 export function ActorTag({ actor }: { actor: string }) {
+  // The real log holds `role:opaque_id`; show the display name the API resolved (`role:name`) and keep the raw actor in the tooltip.
+  const name = actorName(actor);
+  const shown = name ? `${actorRole(actor)}:${name}` : actor;
   return (
     <>
-      <span className="mono">{actor}</span>
+      <span className="mono" title={actor}>{shown}</span>
       {isAutomatedActor(actor) && <> <span className="chip chip-auto" data-testid="automated-chip">automated</span></>}
     </>
   );

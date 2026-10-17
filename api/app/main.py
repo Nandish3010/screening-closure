@@ -3,8 +3,9 @@ import os
 from contextlib import asynccontextmanager
 
 from fastapi import Depends, FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
-from app import auth, evidence, fhir_projection, notify, ops, policy, users
+from app import auth, confirmatory, evidence, fhir_projection, notify, ops, policy, users
 from app.clock import clock
 from app.config import settings
 from app.events import InMemoryEventStore
@@ -28,6 +29,7 @@ async def lifespan(app: FastAPI):
     # switch a local run onto a database. Unset means the in-memory store.
     database_url = os.environ.get("DATABASE_URL")
     pool = None
+    confirmatory.configure(settings)
     if isinstance(evidence.configure(settings), evidence.FhirVerifier):
         log.info("closure evidence is verified against %s", settings.fhir_base_url)
     else:
@@ -79,6 +81,14 @@ app = FastAPI(
     version="0.1.0",
     lifespan=lifespan,
     dependencies=[Depends(policy.enforce_route_policy)],
+)
+# The web app is served from another local port; it sends `Authorization: Bearer ...`, so the browser
+# preflights every call. Only the configured local origins are allowed (settings.cors_allow_origins).
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[o.strip() for o in settings.cors_allow_origins.split(",") if o.strip()],
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type"],
 )
 app.include_router(auth_router.router)
 app.include_router(cases.router)

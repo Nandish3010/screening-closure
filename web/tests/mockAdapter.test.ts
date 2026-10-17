@@ -299,14 +299,13 @@ describe("mock adapter: referral handoff (A5) and owner scoping", () => {
       .rejects.toMatchObject({ status: 403, message: expect.stringContaining("Dr. Layla Haddad") });
     expect((await api.getCase(DEMO_OVERDUE_CASE_ID)).events).toHaveLength(before);
   });
-  it("a non-owner clinician may request a handoff to their own provider, which then waits for acceptance", async () => {
+  it("a non-owner clinician cannot request a handoff, even to their own provider (the real API answers 403)", async () => {
     await api.login("clinician", "Dr. Huda Rahman", "Marina Digestive Health");
     const actor = "primary_care_owner:Dr. Huda Rahman";
-    await expect(api.postEvent(DEMO_OVERDUE_CASE_ID, { type: "handoff_requested", actor, payload: { to_provider: "Corniche Gastro Unit" } })).rejects.toMatchObject({ status: 403 });
-    const d = await api.postEvent(DEMO_OVERDUE_CASE_ID, { type: "handoff_requested", actor, payload: { to_provider: "Marina Digestive Health" } });
-    expect(d.pending_handoff).toMatchObject({ to_provider: "Marina Digestive Health", requested_by: actor, from_owner: OWNER });
-    expect(d.owner).toBe("Dr. Layla Haddad"); // ownership does not move on a request
-    await expect(api.postEvent(DEMO_OVERDUE_CASE_ID, { type: "handoff_requested", actor, payload: { to_provider: "Marina Digestive Health" } })).rejects.toMatchObject({ status: 409 });
+    for (const to_provider of ["Corniche Gastro Unit", "Marina Digestive Health"]) {
+      await expect(api.postEvent(DEMO_OVERDUE_CASE_ID, { type: "handoff_requested", actor, payload: { to_provider } })).rejects.toMatchObject({ status: 403 });
+    }
+    expect((await api.getCase(DEMO_OVERDUE_CASE_ID)).pending_handoff ?? null).toBeNull();
   });
   it("the receiving provider's clinician accepts a pending request and becomes the owner", async () => {
     await api.login("specialist", "Dr. Karim Nasser", "Corniche Gastro Unit");
