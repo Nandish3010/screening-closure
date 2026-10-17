@@ -64,6 +64,9 @@ def build_record(
     lost = visible = breach = False
     withdrawn_at = None
     handled: list[str] = []
+    # Messy tags are REALISED tags: wrong_contact is a static patient attribute, the others count
+    # only if the messy event actually happened in this arm (e.g. a switch after booking does not).
+    tags: list[str] = ["wrong_contact"] if "wrong_contact" in messy else []
     for ev in events:
         rel = (ev.at - first_at) / DAY
         et = ev.type
@@ -91,15 +94,24 @@ def build_record(
                 handled.append("consent_after_booking")
         elif et == "reopened":
             reopens.append(rel)
+        elif et == "provider_switched":
+            if ev.payload.get("applies") and "provider_switch" not in tags:
+                tags.append("provider_switch")
+        elif et in ("duplicate_result_merged", "duplicate_result_received"):
+            tags.append("duplicate_result")
+            if et == "duplicate_result_merged":
+                handled.append("duplicate_result")
+        elif et in ("conflicting_ack_rejected", "conflicting_ack_unresolved"):
+            tags.append("conflicting_ack")
+            if et == "conflicting_ack_rejected":
+                handled.append("conflicting_ack")
         elif et == "escalated":
             escalations.append(rel)
-        elif et == "duplicate_result_merged":
-            handled.append("duplicate_result")
-        elif et == "conflicting_ack_rejected":
-            handled.append("conflicting_ack")
         elif et == "consent_updated" and ev.payload.get("status") == "withdrawn":
             if withdrawn_at is None:
                 withdrawn_at = rel
+            if ev.payload.get("source") == "after_booking":
+                tags.append("consent_after_booking")
         elif et == "message_sent" and withdrawn_at is not None and rel > withdrawn_at:
             breach = True
         if et == "lost_contact":
@@ -107,7 +119,7 @@ def build_record(
         if et in VISIBILITY_EVENTS:
             visible = True
     return CaseRecord(
-        idx=idx, language=language, channel=channel, messy=tuple(messy), follow_up_days=follow_up_days,
+        idx=idx, language=language, channel=channel, messy=tuple(dict.fromkeys(tags)), follow_up_days=follow_up_days,
         t0=t0, t_owner=t_owner, t_contact=t_contact, t_complete=t_complete,
         closes=tuple(closes), reopens=tuple(reopens), escalations=tuple(escalations),
         actions=tuple(actions), last_progress=last_progress, lost_contact=lost, visible=visible,

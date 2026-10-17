@@ -1,4 +1,4 @@
-.PHONY: up down logs test test-db synthea demo-seed demo-seed-clean evaluate reset
+.PHONY: up down logs test test-db synthea demo-seed demo-seed-clean evaluate simulate evaluate-check reset
 
 up:
 	docker compose up -d --build
@@ -44,8 +44,35 @@ demo-seed:
 demo-seed-clean:
 	rm -rf data/synthea/out data/results
 
+# ---- behaviour simulator and evaluation (pure Python; no database, no network) -----------------
+# The simulator imports the API's pathway loader and state machine, so api/ goes on PYTHONPATH.
+SIMENV := PYTHONPATH=api:.
+SEED ?= 20261017
+CASES ?= 2000
+REPS ?= 20
+ARM ?= orchestrated
+SIM_DAYS ?= 120
+EVAL_DAYS ?= 360
+PARAMS ?= simulator/params.yaml
+PARAM_FLAGS := $(foreach f,$(PARAMS),--params $(f))
+
+# Regenerates docs/results/results.json and results.md (every number in the docs) from the seed.
+# Change a parameter in simulator/params.yaml (or layer a file: make evaluate PARAMS="simulator/params.yaml my.yaml").
 evaluate:
-	@echo "TODO: regenerates every number in docs from a fixed seed"
+	$(SIMENV) $(PY) -m simulator.sim.cli evaluate --reps $(REPS) --cases $(CASES) --days $(EVAL_DAYS) --seed $(SEED) $(PARAM_FLAGS) --out-dir docs/results
+
+# One arm, one run, with the closure-rule and consent invariants checked on every case log.
+simulate:
+	$(SIMENV) $(PY) -m simulator.sim.cli run --arm $(ARM) --cases $(CASES) --days $(SIM_DAYS) --seed $(SEED) $(PARAM_FLAGS) --verify
+
+# Runs evaluate twice into temp dirs (the second time single-process) and requires identical results.json.
+evaluate-check:
+	@set -e; a=$$(mktemp -d); b=$$(mktemp -d); \
+	$(SIMENV) $(PY) -m simulator.sim.cli evaluate --reps $(REPS) --cases $(CASES) --days $(EVAL_DAYS) --seed $(SEED) $(PARAM_FLAGS) --out-dir $$a >/dev/null; \
+	$(SIMENV) $(PY) -m simulator.sim.cli evaluate --reps $(REPS) --cases $(CASES) --days $(EVAL_DAYS) --seed $(SEED) $(PARAM_FLAGS) --out-dir $$b --jobs 1 >/dev/null; \
+	if diff -q $$a/results.json $$b/results.json >/dev/null; then \
+		echo "evaluate-check: PASS, results.json identical across runs (sha256 $$(shasum -a 256 $$a/results.json | cut -c1-16))"; rm -rf $$a $$b; \
+	else echo "evaluate-check: FAIL, results.json differs ($$a vs $$b)"; diff $$a/results.json $$b/results.json | head -20; exit 1; fi
 
 reset:
 	docker compose down -v
