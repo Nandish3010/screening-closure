@@ -538,14 +538,24 @@ class ProjectingStore:
         self._inner = inner
         self.projector = projector
         projector.store = inner
+        if hasattr(inner, "append_many"):  # the sweep probes for it with hasattr
+            self.append_many = self._append_many
 
     def create_case(self, case_id, pathway_name, genesis_event, initial_state):
         self._inner.create_case(case_id, pathway_name, genesis_event, initial_state)
         self.projector.project(case_id, genesis_event)
 
-    def append(self, event, pathway):
-        state = self._inner.append(event, pathway)
+    def append(self, event, pathway, *, within=None):
+        state = self._inner.append(event, pathway, within=within)
         self.projector.project(event.case_id, event)
+        return state
+
+    def _append_many(self, events, pathway, *, within=None):
+        """The sweep's batched append (F6), offered only when the inner store has one. Projects
+        every event of the batch after the commit (idempotent by event id, so a retry is harmless)."""
+        state = self._inner.append_many(events, pathway, within=within)
+        for event in events:
+            self.projector.project(event.case_id, event)
         return state
 
     def __getattr__(self, name):

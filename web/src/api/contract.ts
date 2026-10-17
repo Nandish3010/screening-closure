@@ -116,10 +116,13 @@ export type TransitionEvent = (typeof TRANSITION_EVENTS)[number];
  *                      `draft_id`; if it is unavailable the UI says "draft text unavailable, request a
  *                      new draft".)
  *  message_approved    payload {draft_id}                             actor: the approving human
- *                      (written when POST /drafts/{id}/approve succeeds; the approver is the actor)
- *  message_sent        payload {draft_id}                             actor: "system:<sender>"
+ *                      (written only by POST /drafts/{id}/approve; the approver is the actor. It cannot
+ *                      be posted to POST /cases/{id}/events: 403 for every role)
+ *  message_sent        payload {draft_id, notification_id, channel, language, purpose}
+ *                                                                     actor: "system:notifier"
  *                      (emitted by the backend AFTER message_approved. A message is never sent
- *                      without a preceding approval; the UI shows "approved, not sent yet" until it appears)
+ *                      without a preceding approval; the UI shows "approved, not sent yet" until it appears.
+ *                      Absent after an approval whose channel was blocked: see DraftApproval.sent)
  *  mark_overdue        payload {state: string, due_at: string}        actor: "system:scheduler"
  *  watchdog_flagged    payload {reason: "idle"|"scheduler_down", idle_days?: number, last_activity_at?: string}
  *                                                                     actor: "system:watchdog" (BACKEND, A11: only
@@ -349,8 +352,15 @@ export interface CaseTimeline {
 // ---------------------------------------------------------------------------------------
 
 /**
- * POST /cases/{id}/drafts   body: {requested_by: string}
- * -> 201 Draft. BACKEND: also appends a `message_drafted` event (see vocabulary above).
+ * POST /cases/{id}/drafts   body: {purpose, channel, language}   (see DraftRequestBody)
+ * -> 201 Draft. BACKEND (D4): also appends a `message_drafted` event (see vocabulary above).
+ * The requester is the bearer token's identity, never a body field: `requested_by` is a 422.
+ *   purpose   "result_notification" | "reminder" | "appointment_confirmation"
+ *   channel   "sms" | "whatsapp" | "letter"
+ *   language  "en" | "ar"
+ * The real response also carries `language`, `text`, `abstention_reason` and `prompt_hash`;
+ * `text_ar` / `text_en` hold the text in the requested language and are null in the other.
+ * 409 when the case is closed or its outreach is frozen (consent withdrawn).
  * `fallback_used` is true when the deterministic template was used instead of the model.
  */
 export interface Draft {
@@ -361,15 +371,57 @@ export interface Draft {
   fallback_used: boolean;
 }
 
+/** Body of POST /cases/{id}/drafts (the final shape; the Api method still passes `requestedBy`). */
+export interface DraftRequestBody {
+  purpose: "result_notification" | "reminder" | "appointment_confirmation";
+  channel: "sms" | "whatsapp" | "letter";
+  language: "en" | "ar";
+}
+
 /**
- * POST /drafts/{draft_id}/approve   body: {approved_by: string}
- * -> 200 {draft_id, approved_by, approved_at}. BACKEND: appends `message_approved` to the owning
- * case and then emits `message_sent`. A draft is never "sent" until this succeeds.
+ * POST /drafts/{draft_id}/approve   NO body (the approver is the bearer token's identity; an
+ * `approved_by` field is ignored)
+ * -> 200 DraftApproval. BACKEND (D5): in one transaction sets approved_at/approved_by on the draft
+ * and appends `message_approved {draft_id}` (actor: the approver); then the notification mock is
+ * called, which appends `message_sent {draft_id, notification_id, channel, language, purpose}`
+ * as `system:notifier` and writes the notification row. A draft is never "sent" until this succeeds.
+ *
+ * Roles: primary_care_owner / specialist_owner of THAT case, or supervisor. Never coordinator,
+ * lab or patient (403). Errors: 404 unknown draft; 409 already approved or rejected, case closed,
+ * or outreach frozen by a consent withdrawal (nothing is written in any 409 case).
+ *
+ * `sent: false` is still a 200: the approval stands but the mock did not send because the
+ * patient's consent for that channel is off (`blocked_reason: "consent"`) or the contact details
+ * are flagged invalid (`"contact"`), or the case changed before the send (`"case_state"`). No
+ * `message_sent` exists then; `notification_id` points at the logged, blocked row
+ * (GET /cases/{id}/notifications has the detail). When `sent` is true, `blocked_reason` is null.
+ * `approved_by` is the actor string, e.g. "primary_care_owner:Dr Sara Khan"; `approved_at` is
+ * simulation time. `sent`, `blocked_reason` and `notification_id` are always present from the
+ * backend (optional here only so the mock adapter keeps compiling; the UI should treat a missing
+ * `sent` as true).
  */
 export interface DraftApproval {
   draft_id: string;
   approved_by: string;
   approved_at: string;
+  sent?: boolean;
+  blocked_reason?: "consent" | "contact" | "case_state" | null;
+  notification_id?: string | null;
+}
+
+/**
+ * POST /drafts/{draft_id}/reject   body: {reason: string}  (1-500 characters)
+ * -> 200 DraftRejection. Same roles and ownership rule as approve; allowed on a frozen case.
+ * BACKEND: recorded on the draft row only (rejected_at/rejected_by/rejection_reason, also listed
+ * by GET /cases/{id}/drafts). No event is written: `message_rejected` is not in the vocabulary yet
+ * (ticket A16), so the timeline shows nothing for a rejection. 409 if the draft already has a
+ * decision. Not yet on the Api interface below (Cut C adds `rejectDraft` with the review UI, C10).
+ */
+export interface DraftRejection {
+  draft_id: string;
+  rejected_by: string;
+  rejected_at: string;
+  reason: string;
 }
 
 // ---------------------------------------------------------------------------------------

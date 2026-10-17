@@ -275,9 +275,15 @@ def test_t_a23_after_a_withdrawal_over_http_no_outbound_row_exists(http_case, no
     rows = client.get(f"/cases/{cid}/notifications", headers=COORD).json()
     assert [x["status"] for x in rows] == ["sent"] + ["blocked_consent"] * 4
     assert [x for x in rows if x["status"] in ("sent", "queued") and x["created_at"] >= withdrawn_at] == []
-    for type_, h, payload in [("message_drafted", COORD, DRAFTED), ("message_approved", PCO, APPROVED)]:
-        r = client.post(f"/cases/{cid}/events", json={"type": type_, "payload": payload}, headers=h)
-        assert r.status_code == 409
+    r = client.post(
+        f"/cases/{cid}/events", json={"type": "message_drafted", "payload": DRAFTED}, headers=COORD
+    )
+    assert r.status_code == 409
+    # message_approved is not postable at all (only POST /drafts/{id}/approve writes it, D5)
+    r = client.post(
+        f"/cases/{cid}/events", json={"type": "message_approved", "payload": APPROVED}, headers=PCO
+    )
+    assert r.status_code == 403
     listed = client.get("/cases", params={"state": "consent_withdrawn"}, headers=COORD).json()
     assert cid in [c["case_id"] for c in listed]
     assert client.get(f"/cases/{cid}", headers=COORD).json()["read_model"]["review_reason"] == "consent_withdrawn"

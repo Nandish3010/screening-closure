@@ -68,10 +68,12 @@ class PostgresEventStore:
                 raise CaseAlreadyExists(str(case_id)) from exc
             _insert_event(cur, genesis_event, 1)
 
-    def append(self, event: Event, pathway: Pathway) -> str:
-        return self.append_many([event], pathway)
+    def append(self, event: Event, pathway: Pathway, *, within=None) -> str:
+        return self.append_many([event], pathway, within=within)
 
-    def append_many(self, events: Sequence[Event], pathway: Pathway) -> str:
+    def append_many(
+        self, events: Sequence[Event], pathway: Pathway, *, within=None
+    ) -> str:
         """Append one or more events of ONE case in a single transaction: one row lock, one log
         read and replay, one commit. Each event is checked against the state the previous one
         produced, exactly as if appended one after another, but the batch is all-or-nothing:
@@ -79,6 +81,9 @@ class PostgresEventStore:
 
         An event whose event_id is already on this case is skipped (idempotent retry); one that
         is on another case raises EventIdConflict. Returns the case's state afterwards.
+
+        `within(cur)`, if given, runs in the same transaction after the events are inserted
+        (D5 records a draft's approval there): if it raises, the events roll back with it.
         """
         if not events:
             raise ValueError("append_many needs at least one event")
@@ -87,6 +92,10 @@ class PostgresEventStore:
             raise ValueError("append_many takes events of a single case")
         # `with pool.connection()` commits on clean exit and rolls back on any exception,
         # so an InvalidTransition (or any other error) leaves no row and no state change.
+        #
+        # `within(cur)`, if given, runs in this same transaction after the event is accepted and
+        # inserted (D5 uses it to record a draft's approval): if it raises, the event is rolled
+        # back with it. It is skipped when the event id was already stored (an idempotent retry).
         with self._pool.connection() as conn, conn.cursor() as cur:
             # Serialise writers on this case; held until commit/rollback.
             cur.execute(
@@ -142,6 +151,8 @@ class PostgresEventStore:
                 "UPDATE cases SET current_state = %s, updated_at = now() WHERE id = %s",
                 (model.state, case_id),
             )
+            if within is not None:
+                within(cur)
             return model.state
 
     def events_for(self, case_id: UUID) -> list[Event]:

@@ -6,7 +6,7 @@ from uuid import uuid4
 
 import pytest
 
-from api_helpers import APPROVED, DRAFTED, actor_of, login_headers, make_client
+from api_helpers import DRAFTED, actor_of, login_headers, make_client
 from app.clock import clock
 from app.config import settings as app_settings
 from app.consent import channel_allowed, ensure_review_requested, review_event_id
@@ -288,13 +288,13 @@ def test_t_a23_withdrawal_freezes_outreach_and_flags_the_case_for_review():
         ("contact_patient", PCO, {}),
         ("message_drafted", COORD, DRAFTED),
         ("message_drafted", PCO, DRAFTED),
-        ("message_approved", PCO, APPROVED),
         ("handoff_requested", PCO, {"to_provider": "endo-1"}),
         ("handoff_requested", SUP, {"to_provider": "endo-1"}),
     ]:
         r = post(cid, type_, headers, payload)
         assert r.status_code == 409 and "consent withdrawn" in r.json()["detail"], (type_, r.text)
     assert post(cid, "message_sent", PCO).status_code == 403  # nobody posts it
+    assert post(cid, "message_approved", PCO).status_code == 403  # only POST /drafts/{id}/approve (D5)
     assert len(case(cid)["events"]) == n
     # a human can still act on what matters: ask for a callback
     assert post(cid, "callback_requested", PATIENT, {"reason": "wants_to_speak_to_clinician"}).status_code == 201
