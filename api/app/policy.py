@@ -73,6 +73,9 @@ EVENT_POLICY: dict[str, frozenset[str]] = {
     # Only the approval-gated send path (D5) writes message_sent; nobody may post it.
     "message_sent": frozenset(),
     "callback_requested": frozenset({PATIENT, COORD}),
+    # Emitted in process by the API itself as `system:consent` when consent is withdrawn (A6);
+    # nobody can post it.
+    "review_requested": frozenset(),
     "watchdog_flagged": SCHEDULER,
 }
 

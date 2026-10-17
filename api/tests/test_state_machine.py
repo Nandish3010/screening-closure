@@ -22,7 +22,9 @@ from app.events import CASE_CREATED, Event, InMemoryEventStore, replay, replay_m
 from app.pathway import PathwayError, load_pathway
 from app.state_machine import (
     CaseModel,
+    CONSENT_FROZEN_EVENTS,
     InvalidTransition,
+    PayloadError,
     apply,
     genesis,
     initial_model,
@@ -42,7 +44,7 @@ HUMANS = [
     "clinician:dr_a", "primary_care_owner:pc", "specialist_owner:sp", "coordinator:co",
     "supervisor:su", "patient:pa", "lab:lb",
 ]
-AUTOMATED = ["system:scheduler", "watchdog", "model:drafter"]
+AUTOMATED = ["system:scheduler", "system:consent", "watchdog", "model:drafter"]
 ACTORS = [*HUMANS, *AUTOMATED]
 SIGNED = {"evidence_ref": "DiagnosticReport/1", "signed_by": "Practitioner/9"}
 HUMAN_ONLY = {
@@ -144,6 +146,22 @@ def check_step(prev: CaseModel, ev: Event, new: CaseModel) -> None:
         assert new.pending_handoff is None
     else:
         assert new.pending_handoff == prev.pending_handoff
+    # (f) consent ledger (A6): history is append-only, the current value is the replay of it
+    assert new.consent["withdrawn"] == new.consent_frozen
+    if ev.type == "consent_updated":
+        assert len(new.consent_history) == len(prev.consent_history) + 1
+        assert new.consent_history[:-1] == prev.consent_history
+        assert not is_automated(ev.actor)
+        for key, value in new.consent_history[-1]["changes"].items():
+            assert isinstance(value, bool) and (key == "withdrawn" or new.consent[key] is value)
+    else:
+        assert new.consent_history == prev.consent_history
+    if prev.consent_frozen:
+        assert ev.type not in CONSENT_FROZEN_EVENTS  # refused while consent is withdrawn
+    if new.review_reason != prev.review_reason:
+        assert (new.review_reason == "consent_withdrawn" and ev.type == "review_requested"
+                and ev.actor == "system:consent") or (new.review_reason is None and prev.consent_frozen
+                                                      and not new.consent_frozen)
     assert new.consent_frozen == (new.state == "consent_withdrawn")
     assert (new.resume_state is not None) == (new.state == "consent_withdrawn")
     assert new.last_event_at == ev.at
@@ -193,11 +211,13 @@ def plausible_event(draw, model: CaseModel, at: datetime):
     next_rung = PATHWAY.rung_at(model.escalation_level + 1)
     payload = {
         **SIGNED,
-        "reason": draw(st.sampled_from(["capacity", "wrong_service", "missing_info", "patient_declined", "timeout"])),
+        "reason": draw(st.sampled_from(["capacity", "wrong_service", "missing_info", "patient_declined", "timeout", "consent_withdrawn"])),
         "to_provider": "endoscopy-unit",
         "bounced": draw(st.booleans()),
         "owner": "primary_care_owner:new",
         "withdrawn": draw(st.booleans()),
+        "channel_sms": draw(st.booleans()),
+        "reason_for_review": "x",
         "failed_attempts": draw(st.integers(0, 5)),
         "state": model.state,
         "due_at": AT.isoformat(),
@@ -408,6 +428,14 @@ def test_read_model_shape_and_values():
         "provider": None,
         "pending_handoff": None,
         "last_handoff": None,
+        "consent": {
+            "channel_sms": True, "channel_whatsapp": True, "channel_phone": True,
+            "channel_letter": True, "share_with_specialist": True, "withdrawn": False,
+            "updated_at": None, "updated_by": None,
+        },
+        "consent_history": [],
+        "review_reason": None,
+        "review_requested_at": None,
     }
 
 
@@ -572,9 +600,10 @@ def test_consent_updates_outside_withdrawal_are_annotations():
     withdrawn = step(m, make_event("consent_updated", "patient:p", {"withdrawn": True}), PATHWAY)
     twice = step(withdrawn, make_event("consent_updated", "patient:p", {"withdrawn": True}), PATHWAY)
     assert twice.state == "consent_withdrawn" and twice.resume_state == "patient_contacted"
-    # a lookalike value does not trigger the transition
+    # a lookalike value is not a boolean: refused outright (a payload error), never a transition
     for v in (1, "true", None):
-        assert step(m, make_event("consent_updated", "patient:p", {"withdrawn": v}), PATHWAY).state == m.state
+        with pytest.raises(PayloadError):
+            step(m, make_event("consent_updated", "patient:p", {"withdrawn": v}), PATHWAY)
 
 
 def test_consent_cannot_be_updated_by_automation_or_on_a_closed_case():

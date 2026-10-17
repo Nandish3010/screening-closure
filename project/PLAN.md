@@ -229,7 +229,7 @@ Final as of A2 (`config/pathways/colorectal_fit.yaml`, `api/app/state_machine.py
 | `case_created` | exists | system intake | genesis marker; starts the first SLA clock; no state change |
 | `acknowledge` | exists | lab | state change: `result_received` to `acknowledged` |
 | `accept_ownership` | exists | primary_care_owner | state change: `acknowledged` to `owner_accepted`; `owner` becomes the actor |
-| `contact_patient` | exists | primary_care_owner | state change: `owner_accepted` to `patient_contacted`, or `lost_contact` back to `patient_contacted` |
+| `contact_patient` | exists | primary_care_owner | state change: `owner_accepted` to `patient_contacted`, or `lost_contact` back to `patient_contacted`. Refused while consent is withdrawn |
 | `patient_acknowledge` | exists | patient | state change: `patient_contacted` to `patient_acknowledged` |
 | `book_confirmatory` | exists | specialist_owner or primary_care_owner | state change: `patient_acknowledged` to `confirmatory_booked` |
 | `complete_confirmatory` | exists | specialist_owner | state change: `confirmatory_booked` to `confirmatory_completed` |
@@ -243,11 +243,12 @@ Final as of A2 (`config/pathways/colorectal_fit.yaml`, `api/app/state_machine.py
 | `handoff_accepted` | A5 | a clinician at the provider the request names | annotation: needs a pending request; `owner` becomes the actor, `provider` the request's `to_provider` (or the payload's optional `provider`), `pending_handoff` clears. The requester or the owner it came from cannot accept it. From `referral_rejected` it is the re-route: state change to `owner_accepted`. Human only |
 | `handoff_rejected` | A5 | receiving clinician, or the scheduler on a bounce | needs a pending request. `reason` is one of `capacity`, `wrong_service`, `missing_info`, `patient_declined` (anything else is 422); the one other value is `timeout`, reserved for the scheduler's bounce (`system:scheduler` with `bounced: true`). From `patient_acknowledged` or `confirmatory_booked`: state change to `referral_rejected` (ownership stays with the referrer, who must re-route within 2 working days or the ladder starts). From any other open state: annotation that clears the request and leaves the state alone. Sets `last_handoff` |
 | `reassign` | A2 | supervisor or coordinator | state change: `referral_rejected` to `owner_accepted`; requires `owner`, which becomes the new owner; optional `provider`; clears any pending request |
-| `consent_updated` | A2 defines, A6 uses | patient, or coordinator recording the patient's instruction | `withdrawn: true` from any open state: state change to `consent_withdrawn` (outreach frozen, prior state remembered). `withdrawn: false` from `consent_withdrawn`: state change back to the prior state. Anything else: annotation. Human only |
+| `consent_updated` | A6 | patient (own case), or coordinator recording the patient's instruction | payload: any subset of the booleans `channel_sms`, `channel_whatsapp`, `channel_phone`, `channel_letter`, `share_with_specialist`, `withdrawn` (at least one; a non-boolean or an empty payload is 422). Each event is appended to the case's consent history and merged into `consent`. `withdrawn: true` from any open state: state change to `consent_withdrawn` (outreach frozen, prior state remembered) and the API then adds `review_requested`. `withdrawn: false` from `consent_withdrawn`: state change back to the prior state. Anything else: annotation. Human only |
 | `mark_lost_contact` | A2 | owner, coordinator or supervisor | state change: `patient_contacted` to `lost_contact`; requires `failed_attempts` of at least 3 |
-| `message_drafted` | A2 defines, D4 uses | model or template actor | annotation |
-| `message_approved` | A2 defines, D5 uses | owner role | annotation; human only |
-| `message_sent` | A2 defines, D5 uses | system, only after approval | annotation |
+| `review_requested` | A6 | `system:consent` (the API itself; no route can post it) | annotation: payload `{reason: "consent_withdrawn", source_event_id}`. Sets `review_reason` / `review_requested_at` in the read model so the case is on the human-review list; cleared when consent is restored. `system:consent` may emit this and nothing else |
+| `message_drafted` | A2 defines, D4 uses | model or template actor | annotation. Refused while consent is withdrawn |
+| `message_approved` | A2 defines, D5 uses | owner role | annotation; human only. Refused while consent is withdrawn |
+| `message_sent` | A2 defines, A7 writes | `system:notifier`, only through `app.notify.send` after approval | annotation. Refused while consent is withdrawn |
 | `callback_requested` | A2 defines, C6 uses | patient | annotation: creates a human callback task; human only |
 | `watchdog_flagged` | A2 defines, A11 uses | watchdog | annotation: the case appears in "cases nobody is looking at" |
 
@@ -269,6 +270,10 @@ Every case route that returns a case includes `read_model`, derived by replaying
   "resume_state": null,
   "clock_started_at": "2026-01-08T08:00:00+00:00",
   "breach_due_at": "2026-01-19T08:00:00+00:00",
+  "consent": {"channel_sms": true, "channel_whatsapp": true, "channel_phone": true, "channel_letter": true, "share_with_specialist": true, "withdrawn": false, "updated_at": null, "updated_by": null},
+  "consent_history": [{"at": "2026-01-06T09:00:00+00:00", "actor": "patient:pat", "changes": {"channel_sms": false}}],
+  "review_reason": null,
+  "review_requested_at": null,
   "provider": "endoscopy-unit-1",
   "pending_handoff": null,
   "last_handoff": {"outcome": "accepted", "to_provider": "endoscopy-unit-1", "by": "specialist_owner:dr_s", "at": "2026-01-09T08:00:00+00:00"}
@@ -276,6 +281,8 @@ Every case route that returns a case includes `read_model`, derived by replaying
 ```
 
 `state` is a main or side state. `overdue` and `escalation_level` are flags, not states, so a case can be overdue and in `patient_contacted` (ADR-011). They reset when the state changes, except for a consent-withdrawn excursion, which keeps them. `resume_state` is set only while in `consent_withdrawn` and is derived by replay, never taken from the client. `clock_started_at` is when the current state's SLA clock started; `breach_due_at` is set with `overdue`. Cut C can rely on the first six keys; `clock_started_at` and `breach_due_at` are extras for the timeline.
+
+Consent (A6, ADR-017): `consent` is the current value, derived by replaying every `consent_updated` in order over the programme defaults (everything allowed until the patient says otherwise; `updated_at` is null until then); `consent_history` lists every change, oldest first, as `{at, actor, changes}`. `consent_frozen` is true exactly while `consent.withdrawn` is true (state `consent_withdrawn`); while frozen the API answers 409 "consent withdrawn" to `contact_patient`, `message_drafted`, `message_approved`, `message_sent` and `handoff_requested`. `review_reason` is `consent_withdrawn` from the moment the API flags the withdrawal until consent is restored; `GET /cases?state=consent_withdrawn` is the human-review list.
 
 Referral handoff (A5, ADR-016): `owner` changes only on `accept_ownership`, `handoff_accepted` or `reassign`, never when a handoff is merely requested. `provider` is the provider the owner acts for (set by `handoff_accepted`). `pending_handoff` is `{to_provider, requested_by, from_owner, requested_at}` while a request is unanswered, else null. `last_handoff` is `{outcome: "accepted"|"rejected", to_provider, by, at}` plus `reason` and `bounced` when rejected (a scheduler bounce has `reason: "timeout"`, `bounced: true`). An unanswered request is bounced by the scheduler sweep after `handoff_response_working_days` (3) working days, which is logged as a `handoff_rejected` event.
 
@@ -311,6 +318,7 @@ Who may post which event type through `POST /cases/{id}/events` (a missing type 
 | `escalate` | scheduler, coordinator, supervisor |
 | `escalation_accepted` | primary_care_owner, specialist_owner, supervisor, coordinator (the state machine also requires the actor's role to be in the rung's `accepted_by`) |
 | `mark_overdue`, `watchdog_flagged` | scheduler |
+| `review_requested` | nobody (the API emits it itself as `system:consent` when consent is withdrawn) |
 | `message_sent` | nobody (only the approval-gated send path in D5 writes it) |
 
 **Owner scoping (A5).** A `primary_care_owner` or `specialist_owner` may post an event only on a case they own (`read_model.owner` equals their `role:name`). Exceptions: `accept_ownership` on a case with no owner, and `handoff_accepted` / `handoff_rejected` on a case whose `pending_handoff.to_provider` equals the caller's provider (login `provider`, default the name). Anything else is 403 and nothing is written. Supervisors, coordinators, lab and patients are not owner-scoped (patients stay limited to their own case). Hand a case on with `handoff_requested` and let the receiver accept before they act on it.

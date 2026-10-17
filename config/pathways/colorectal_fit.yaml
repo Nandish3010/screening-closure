@@ -58,6 +58,7 @@ annotations:
   - handoff_accepted
   - handoff_rejected
   - consent_updated
+  - review_requested
   - message_drafted
   - message_approved
   - message_sent

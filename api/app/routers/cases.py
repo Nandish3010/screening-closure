@@ -4,7 +4,7 @@ from uuid import UUID, uuid4
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, ConfigDict, Field
 
-from app import policy
+from app import consent, policy
 from app.auth import Identity, require_identity
 from app.clock import clock
 from app.events import (
@@ -137,6 +137,9 @@ def post_event(
         raise HTTPException(409, str(exc))
     except EventIdConflict:
         raise HTTPException(409, "event_id already used by another case")
+    if body.type == "consent_updated":
+        # Withdrawal freezes outreach and flags the case for human review (system:consent).
+        consent.ensure_review_requested(store, pathway, case_id, event.event_id, at)
     return _case_json(case_id)
 
 
