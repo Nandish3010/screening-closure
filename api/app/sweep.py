@@ -211,11 +211,14 @@ def run_sweep(
     calendar: WorkingCalendar,
     now: datetime,
     only=None,
+    shard: tuple[int, int] | None = None,
 ) -> SweepResult:
-    """Evaluate every open case (or only those in `only`) at sim time `now` and append the
-    planned events. Safe to run repeatedly and concurrently."""
+    """Evaluate every open case (or only those in `only`, or only slice `shard=(k, n)`) at sim
+    time `now` and append the planned events. Safe to run repeatedly and concurrently."""
     result = SweepResult(sim_time=_utc(now).isoformat())
-    for case_id, model, error in store.iter_open_case_models(pathway, only=only):
+    # `shard` is only passed to stores that support it (Postgres); the in-memory store sweeps all.
+    kwargs = {"shard": shard} if shard is not None else {}
+    for case_id, model, error in store.iter_open_case_models(pathway, only=only, **kwargs):
         result.cases_evaluated += 1
         if model is None:
             result.errors.append(f"{case_id}: {error}")
@@ -224,7 +227,8 @@ def run_sweep(
         # A bounce can move the case to another state, so re-plan once from the new model.
         for _ in range(2):
             bounced = False
-            for event in plan_case(case_id, model, pathway, calendar, now):
+            planned = plan_case(case_id, model, pathway, calendar, now)
+            for event in planned:
                 if event.type not in SCHEDULER_EVENT_TYPES or event.actor != SCHEDULER_ACTOR:
                     raise RuntimeError(f"scheduler planned a forbidden event: {event.type}")
                 if event.type == "handoff_rejected" and (
@@ -232,6 +236,26 @@ def run_sweep(
                     or event.payload.get("bounced") is not True
                 ):
                     raise RuntimeError("scheduler planned a handoff_rejected that is not a bounce")
+            # Fast path: several events for one case (a breach and its first rung) go in one
+            # transaction instead of one each. All-or-nothing; if the batch is refused for any
+            # reason we fall back to the one-by-one loop below, which keeps its exact behaviour.
+            if (
+                len(planned) > 1
+                and hasattr(store, "append_many")
+                and not any(e.type == "handoff_rejected" for e in planned)
+            ):
+                try:
+                    store.append_many(planned, pathway)
+                except (InvalidTransition, CaseNotFound, EventIdConflict):
+                    pass
+                else:
+                    for event in planned:
+                        if event.type == "mark_overdue":
+                            result.mark_overdue += 1
+                        else:
+                            result.escalate += 1
+                    planned = []
+            for event in planned:
                 try:
                     store.append(event, pathway)
                 except InvalidTransition as exc:
@@ -256,3 +280,77 @@ def run_sweep(
             if model is None:
                 break
     return result
+
+
+def _sweep_shard(args: tuple) -> dict:
+    """Worker entry point (top level so it can be pickled): sweep one slice with its own pool."""
+    database_url, pathway, calendar, now, index, count = args
+    from psycopg_pool import ConnectionPool
+
+    from app.store_pg import PostgresEventStore
+
+    pool = ConnectionPool(database_url, min_size=1, max_size=2, open=True)
+    try:
+        pool.wait(timeout=30)
+        return run_sweep(PostgresEventStore(pool), pathway, calendar, now, shard=(index, count)).to_json()
+    finally:
+        pool.close()
+
+
+def _noop(_: int) -> int:
+    return _
+
+
+def make_sweep_executor(workers: int):
+    """A reusable pool of `workers` spawned processes for `run_sweep_parallel`. A long-running
+    scheduler creates it once and keeps it, so each sweep pays no process start-up (about a
+    second); `warm=True` semantics: the workers import the sweep modules before the first use."""
+    import multiprocessing
+    from concurrent.futures import ProcessPoolExecutor
+
+    executor = ProcessPoolExecutor(max_workers=workers, mp_context=multiprocessing.get_context("spawn"))
+    list(executor.map(_noop, range(workers * 4)))
+    return executor
+
+
+def run_sweep_parallel(
+    database_url: str,
+    pathway: Pathway,
+    calendar: WorkingCalendar,
+    now: datetime,
+    workers: int = 4,
+    executor=None,
+) -> SweepResult:
+    """The same sweep, split into `workers` disjoint slices of the cases swept by separate
+    processes (each with its own connection pool). Replaying every open case is CPU-bound
+    Python, so slices scale with cores. The result is identical to `run_sweep`: the slices
+    cover every case exactly once, event ids are deterministic, and every append still goes
+    through the transactional store, so a slice that overlaps another or is run twice can
+    only produce no-ops.
+
+    Processes are started with `spawn` (never `fork`) so this is safe to call from a threaded
+    server process. Pass an `executor` from `make_sweep_executor` to reuse warm workers;
+    otherwise a pool is created and shut down for this one sweep.
+    """
+    if workers < 1:
+        raise ValueError("workers must be >= 1")
+    jobs = [(database_url, pathway, calendar, now, k, workers) for k in range(workers)]
+    total = SweepResult(sim_time=_utc(now).isoformat())
+    own = executor is None
+    if own:
+        import multiprocessing
+        from concurrent.futures import ProcessPoolExecutor
+
+        executor = ProcessPoolExecutor(max_workers=workers, mp_context=multiprocessing.get_context("spawn"))
+    try:
+        for part in executor.map(_sweep_shard, jobs):
+            total.cases_evaluated += part["cases_evaluated"]
+            total.mark_overdue += part["mark_overdue"]
+            total.escalate += part["escalate"]
+            total.handoff_bounced += part["handoff_bounced"]
+            total.rejected += part["rejected"]
+            total.errors += part["errors"]
+    finally:
+        if own:
+            executor.shutdown()
+    return total

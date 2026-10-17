@@ -1,0 +1,23 @@
+{
+  "label": "before",
+  "commit": "960e628",
+  "description": "Two optimisations, both in `api/app/sweep.py` and `api/app/store_pg.py`, no behaviour change (`make test` and `make test-db` pass unchanged). (1) The events the scheduler plans for one case (a breach and its first escalation rung) are appended in one transaction, `PostgresEventStore.append_many`: one row lock, one log read and replay and one commit instead of one of each per event; if the batch is refused for any reason the sweep falls back to appending one by one. (2) `run_sweep_parallel` / `shard=(k, n)`: the open cases are split into disjoint slices by a stable hash of the case id and swept by separate processes, each with its own connection pool, because replaying every case is CPU-bound Python. Before is the single-process sweep at commit 960e628, the base of this branch; after is the same call on this branch. Same machine, seed and sweep time. Timings vary by about 10% from run to run on a shared laptop.",
+  "results": {
+    "1000": {
+      "wall_seconds": 0.2,
+      "resweep_seconds": 0.07
+    },
+    "10000": {
+      "wall_seconds": 1.84,
+      "resweep_seconds": 0.73
+    },
+    "100000": {
+      "wall_seconds": 19.57,
+      "resweep_seconds": 8.58
+    }
+  },
+  "notes": [
+    "A first run, on a busy machine and before the base had moved, measured 48 s for the 100,000-case single-process sweep. It did not reproduce on the quiet reruns (17 to 20 s) and is not used here. The single-process path alone does not reach the 5 s target; the sharded path does, and the scheduler route (`api/app/routers/scheduler.py`, Cut A) still calls the single-process `run_sweep`, so switching it to `run_sweep_parallel` with a long-lived `make_sweep_executor` pool is a follow-up for Cut A.",
+    "Variability: repeated 100,000-case sharded runs (8 to 12 workers, warm worker pool) on this shared laptop ranged from about 4.4 s to 6.1 s depending on what else the machine was doing, so the 5 s target is met on a quiet machine and missed by up to about 20% on a busy one. The worker processes are started before the clock, as a long-running scheduler would keep them; starting them per sweep adds about a second."
+  ]
+}
