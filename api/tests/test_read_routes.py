@@ -184,7 +184,8 @@ def test_t_a27_the_row_shape_and_the_resolved_owner(backend):
     assert row["owner"] == {"actor": me, "display_name": "Dr Row Shape", "role": "primary_care_owner"}
     assert row["provider"] == "rr-unit" and row["state"] == "owner_accepted"
     assert row["overdue"] is False and row["escalation_level"] == 0 and row["consent_frozen"] is False
-    assert row["watchdog_flagged"] is None and row["pending_handoff"] is None and row["risk_score"] is None
+    assert row["watchdog_flagged"] is None and row["pending_handoff"] is None
+    assert 0.0 <= row["risk_score"] <= 1.0  # D9: the modelled risk of loss to follow-up; ordering only
     d = detail(cid)
     assert row["last_event_at"] == row["updated_at"] == d["events"][-1]["at"] and row["created_at"] == d["events"][0]["at"]
     # due_at: the current state's SLA (accept_ownership 2 working days -> owner_accepted awaits contact, 5)

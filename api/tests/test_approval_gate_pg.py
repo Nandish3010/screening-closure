@@ -231,22 +231,62 @@ def test_reject_is_recorded_on_the_row_and_blocks_approval(client, pool):
     cid = owned_case(client)
     did = make_draft(client, cid)
     n = q(pool, "SELECT count(*) FROM events WHERE case_id = %s", (cid,))[0][0]
-    r = client.post(f"/drafts/{did}/reject", json={"reason": "wrong register"}, headers=H(client, "primary_care_owner", OWNER))
+    r = client.post(f"/drafts/{did}/reject", json={"reason": "tone"}, headers=H(client, "primary_care_owner", OWNER))
     assert r.status_code == 200, r.text
     approved_at, _ab, rejected_at, rejected_by, reason = draft_row(pool, did)
-    assert approved_at is None and rejected_by == OWNER_ACTOR and reason == "wrong register"
+    assert approved_at is None and rejected_by == OWNER_ACTOR and reason == "tone"
     assert rejected_at.isoformat() == r.json()["rejected_at"]
-    assert q(pool, "SELECT count(*) FROM events WHERE case_id = %s", (cid,))[0][0] == n  # no event
+    assert q(pool, "SELECT count(*) FROM events WHERE case_id = %s", (cid,))[0][0] == n + 1  # message_rejected (A16)
+    ((actor, payload),) = event_rows(pool, cid, "message_rejected")
+    assert actor == OWNER_ACTOR and payload == {"draft_id": did, "reason": "tone"}
     assert approve(client, did).status_code == 409
-    assert client.post(f"/drafts/{did}/reject", json={"reason": "again"}, headers=H(client, "supervisor", "sam")).status_code == 409
+    assert client.post(f"/drafts/{did}/reject", json={"reason": "inaccurate"}, headers=H(client, "supervisor", "sam")).status_code == 409
     assert event_rows(pool, cid, "message_sent") == []
+
+
+def test_rejection_and_message_rejected_commit_or_roll_back_together(client, pool):
+    """A16: the draft row update and the event share a transaction."""
+    store = cases.store
+    cid = owned_case(client)
+    did = make_draft(client, cid)
+    event = Event(UUID(cid), "message_rejected", clock.now(), OWNER_ACTOR, {"draft_id": did, "reason": "tone"})
+    n = q(pool, "SELECT count(*) FROM events WHERE case_id = %s", (cid,))[0][0]
+
+    def boom(_cur):
+        raise RuntimeError("the draft update failed")
+
+    with pytest.raises(RuntimeError):
+        store.append(event, PATHWAY, within=boom)
+    assert q(pool, "SELECT count(*) FROM events WHERE case_id = %s", (cid,))[0][0] == n
+    assert draft_row(pool, did)[2] is None
+
+    # the draft already decided (another transaction won): no event row, over HTTP a 409
+    ds = drafts.draft_store()
+    ds.reject(UUID(did), OWNER_ACTOR, clock.now(), "tone")
+    with pytest.raises(DraftAlreadyDecided):
+        store.append(event, PATHWAY, within=lambda cur: ds.reject(UUID(did), OWNER_ACTOR, clock.now(), "tone", cur=cur))
+    assert q(pool, "SELECT count(*) FROM events WHERE case_id = %s", (cid,))[0][0] == n
+    assert client.post(f"/drafts/{did}/reject", json={"reason": "tone"},
+                       headers=H(client, "primary_care_owner", OWNER)).status_code == 409
+    assert event_rows(pool, cid, "message_rejected") == []
+
+
+def test_other_with_note_stores_the_note_on_the_row_only(client, pool):
+    cid = owned_case(client)
+    did = make_draft(client, cid)
+    r = client.post(f"/drafts/{did}/reject", json={"reason": "other_with_note", "note": "patient prefers a call"},
+                    headers=H(client, "primary_care_owner", OWNER))
+    assert r.status_code == 200, r.text
+    assert draft_row(pool, did)[4] == "other_with_note: patient prefers a call"
+    ((_actor, payload),) = event_rows(pool, cid, "message_rejected")
+    assert payload == {"draft_id": did, "reason": "other_with_note"}
 
 
 def test_the_database_allows_one_decision_per_draft(client, pool):
     cid = owned_case(client)
     approved, rejected, blank = make_draft(client, cid), make_draft(client, cid), make_draft(client, cid)
     approve(client, approved)
-    client.post(f"/drafts/{rejected}/reject", json={"reason": "no"}, headers=H(client, "primary_care_owner", OWNER))
+    client.post(f"/drafts/{rejected}/reject", json={"reason": "not_needed"}, headers=H(client, "primary_care_owner", OWNER))
     for sql, did in (
         ("UPDATE drafts SET rejected_at = now(), rejected_by = 'x', rejection_reason = 'late' WHERE draft_id = %s", approved),
         ("UPDATE drafts SET approved_at = now(), approved_by = 'x' WHERE draft_id = %s", rejected),

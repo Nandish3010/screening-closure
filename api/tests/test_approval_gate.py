@@ -8,6 +8,7 @@ frozen or closed case, and the whole flow leaves its provenance behind.
 
 import hashlib
 import re
+from dataclasses import replace
 import threading
 from contextlib import contextmanager
 from pathlib import Path
@@ -19,7 +20,7 @@ from hypothesis import strategies as st
 
 import app as app_package
 from api_helpers import ROLES, actor_of, login_headers, make_client, user_id_of
-from app import notify, policy
+from app import notify, payloads, policy
 from app.ai.draft_store import InMemoryDraftStore
 from app.ai.provider import SYSTEM_PROMPT
 from app.clock import clock
@@ -92,8 +93,9 @@ def approve(draft_id, role="primary_care_owner", name=OWNER_NAME):
     return client.post(f"/drafts/{draft_id}/approve", headers=H(role, name))
 
 
-def reject(draft_id, reason="wrong tone", role="primary_care_owner", name=OWNER_NAME):
-    return client.post(f"/drafts/{draft_id}/reject", json={"reason": reason}, headers=H(role, name))
+def reject(draft_id, reason="tone", role="primary_care_owner", name=OWNER_NAME, note=None):
+    body = {"reason": reason} if note is None else {"reason": reason, "note": note}
+    return client.post(f"/drafts/{draft_id}/reject", json=body, headers=H(role, name))
 
 
 def log_of(cid):
@@ -182,7 +184,7 @@ def test_t_d13_roles_that_never_approve_get_403_and_nothing_is_written(fresh, ro
     r = approve(did, role, "someone") if role != "patient" else client.post(
         f"/drafts/{did}/approve", headers=H("patient", "pat", "Patient/1"))
     assert r.status_code == 403
-    r = client.post(f"/drafts/{did}/reject", json={"reason": "x"},
+    r = client.post(f"/drafts/{did}/reject", json={"reason": "tone"},
                     headers=H(role, "someone", "Patient/1" if role == "patient" else None))
     assert r.status_code == 403
     assert types(cid) == before and notify.log.for_case(UUID(cid)) == []
@@ -207,7 +209,7 @@ def test_t_d13_a_case_without_an_owner_cannot_be_approved_by_a_clinician(fresh):
 def test_t_d13_unauthenticated_and_automated_callers_are_refused(fresh):
     cid, did = drafted_case()
     assert client.post(f"/drafts/{did}/approve").status_code == 401
-    assert client.post(f"/drafts/{did}/reject", json={"reason": "x"}).status_code == 401
+    assert client.post(f"/drafts/{did}/reject", json={"reason": "tone"}).status_code == 401
     sched = {"Authorization": f"Bearer {app_settings.scheduler_service_token}"}
     assert client.post(f"/drafts/{did}/approve", headers=sched).status_code == 403
     # a model or system actor cannot even obtain a token
@@ -387,21 +389,44 @@ def test_an_invalid_contact_blocks_the_send(fresh):
 # ---------------------------------------------------------------- reject
 
 
-def test_reject_records_the_decision_and_no_event(fresh):
+def test_reject_records_the_decision_and_appends_message_rejected(fresh):
+    """A16: the rejection is on the draft row AND on the case log, as the rejecting human."""
     cid, did = drafted_case()
     before = types(cid)
-    r = reject(did, "  too formal for this patient  ")
+    r = reject(did, "tone")
     assert r.status_code == 200, r.text
     out = r.json()
     assert out["draft_id"] == did and out["rejected_by"] == OWNER_ACTOR
-    assert out["reason"] == "too formal for this patient" and out["rejected_at"]
-    assert types(cid) == before  # no message_rejected in the vocabulary yet (A16)
+    assert out["reason"] == "tone" and out["note"] is None and out["rejected_at"]
+    assert types(cid) == before + ["message_rejected"]
+    ev = log_of(cid)[-1]
+    assert ev.actor == OWNER_ACTOR and ev.payload == {"draft_id": did, "reason": "tone"}
+    assert ev.at.isoformat() == out["rejected_at"]
     row = drafts.draft_store().get(UUID(did))
-    assert row.rejected_by == OWNER_ACTOR and row.rejection_reason == out["reason"]
+    assert row.rejected_by == OWNER_ACTOR and row.rejection_reason == "tone"
     assert row.approved_at is None
     listed = client.get(f"/cases/{cid}/drafts", headers=H("coordinator")).json()[0]
-    assert listed["rejected_by"] == OWNER_ACTOR and listed["rejection_reason"] == out["reason"]
+    assert listed["rejected_by"] == OWNER_ACTOR and listed["rejection_reason"] == "tone"
     assert listed["rejected_at"] == out["rejected_at"] and listed["approved_at"] is None
+    # it is on the timeline too
+    tl = client.get(f"/cases/{cid}/timeline", headers=H("coordinator")).json()["items"]
+    assert [i["payload"] for i in tl if i["kind"] == "event" and i["type"] == "message_rejected"] == [ev.payload]
+
+
+@pytest.mark.parametrize("reason", payloads.MESSAGE_REJECT_REASONS[:-1])
+def test_every_taxonomy_reason_is_accepted(fresh, reason):
+    cid, did = drafted_case()
+    assert reject(did, reason).status_code == 200
+    assert log_of(cid)[-1].payload == {"draft_id": did, "reason": reason}
+
+
+def test_other_with_note_keeps_the_note_on_the_draft_and_out_of_the_log(fresh):
+    cid, did = drafted_case()
+    r = reject(did, "other_with_note", note="  patient prefers a call  ")
+    assert r.status_code == 200, r.text
+    assert r.json()["reason"] == "other_with_note" and r.json()["note"] == "patient prefers a call"
+    assert log_of(cid)[-1].payload == {"draft_id": did, "reason": "other_with_note"}  # no free text in the log
+    assert drafts.draft_store().get(UUID(did)).rejection_reason == "other_with_note: patient prefers a call"
 
 
 def test_a_rejected_draft_cannot_be_approved_and_an_approved_one_cannot_be_rejected(fresh):
@@ -418,19 +443,53 @@ def test_a_rejected_draft_cannot_be_approved_and_an_approved_one_cannot_be_rejec
     assert len(sent_events(cid)) == 1 and len(log_of(cid)) == n + 2  # approved + sent only
 
 
-@pytest.mark.parametrize("body", [{}, {"reason": ""}, {"reason": "   "}, {"reason": "x" * 501},
-                                  {"reason": "ok", "rejected_by": "someone"}, {"reason": 5}])
-def test_reject_needs_a_reason(fresh, body):
+@pytest.mark.parametrize("body", [
+    {}, {"reason": ""}, {"reason": "   "}, {"reason": "too formal for this patient"}, {"reason": "Tone"},
+    {"reason": "tone", "rejected_by": "someone"}, {"reason": 5},
+    {"reason": "other_with_note"}, {"reason": "other_with_note", "note": "  "},
+    {"reason": "other_with_note", "note": "x" * 201}, {"reason": "tone", "note": "why not"},
+])
+def test_reject_needs_a_taxonomy_reason(fresh, body):
     cid, did = drafted_case()
     r = client.post(f"/drafts/{did}/reject", json=body, headers=H("primary_care_owner", OWNER_NAME))
     assert r.status_code == 422
     assert drafts.draft_store().get(UUID(did)).decided is False
+    assert "message_rejected" not in types(cid)
 
 
 def test_a_draft_may_be_rejected_on_a_frozen_case(fresh):
     cid, did = drafted_case()
     post_event(cid, "consent_updated", "patient", {"withdrawn": True}, patient_ref="Patient/1")
     assert reject(did).status_code == 200  # rejecting can only stop outreach
+    assert types(cid)[-1] == "message_rejected"
+
+
+def test_a_draft_on_a_closed_case_cannot_be_rejected_and_nothing_is_written(fresh):
+    cid, did = drafted_case()
+    n = len(log_of(cid))
+    real = cases.store.read_model
+    with pytest.MonkeyPatch().context() as mp:
+        mp.setattr(cases.store, "read_model", lambda c, pw: replace(real(c, pw), state=pw.terminal_state))
+        r = reject(did)
+    assert r.status_code == 409 and "closed" in r.json()["detail"]
+    assert len(log_of(cid)) == n and drafts.draft_store().get(UUID(did)).decided is False
+
+
+def test_message_rejected_has_no_poster_and_is_human_only(fresh):
+    """A16: nobody may post it through the events route; the state machine refuses automated actors."""
+    assert policy.EVENT_POLICY["message_rejected"] == frozenset()
+    cid, did = drafted_case()
+    for role in ROLES:
+        r = client.post(f"/cases/{cid}/events", headers=H(role, OWNER_NAME if "owner" in role else None, "Patient/1" if role == "patient" else None),
+                        json={"type": "message_rejected", "payload": {"draft_id": did, "reason": "tone"}})
+        assert r.status_code in (403, 404), (role, r.status_code)
+    assert "message_rejected" in PATHWAY.human_only_events
+    ev = Event(UUID(cid), "message_rejected", clock.now(), "system:notifier", {"draft_id": did, "reason": "tone"})
+    with pytest.raises(InvalidTransition):
+        replay_model([*log_of(cid), ev], PATHWAY)
+    model_actor = Event(UUID(cid), "message_rejected", clock.now(), "model:template", {"draft_id": did, "reason": "tone"})
+    with pytest.raises(InvalidTransition):
+        replay_model([*log_of(cid), model_actor], PATHWAY)
 
 
 # ---------------------------------------------------------------- provenance
@@ -587,7 +646,7 @@ def test_t_d1_no_message_is_sent_without_a_prior_human_approval(steps):
                 if kind == "approve":
                     client.post(f"/drafts/{did}/approve", headers=as_role(role))
                 else:
-                    client.post(f"/drafts/{did}/reject", json={"reason": "no"}, headers=as_role(role))
+                    client.post(f"/drafts/{did}/reject", json={"reason": "not_needed"}, headers=as_role(role))
             elif kind == "event":
                 _k, type_, role = step_
                 client.post(f"/cases/{cid}/events", json={"type": type_, "payload": {"draft_id": made[0] if made else "x"}},

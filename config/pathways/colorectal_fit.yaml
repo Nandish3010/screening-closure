@@ -61,6 +61,7 @@ annotations:
   - review_requested
   - message_drafted
   - message_approved
+  - message_rejected
   - message_sent
   - callback_requested
   - watchdog_flagged
@@ -70,6 +71,7 @@ human_only_events:
   - handoff_accepted
   - consent_updated
   - message_approved
+  - message_rejected
   - callback_requested
   - reopen
 slas_working_days:

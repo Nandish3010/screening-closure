@@ -111,6 +111,7 @@ SAMPLES = {
     "mark_lost_contact": {"failed_attempts": 3},
     "review_requested": {"reason": "consent_withdrawn", "source_event_id": UUID_A},
     "message_drafted": DRAFTED, "message_approved": {"draft_id": UUID_A},
+    "message_rejected": {"draft_id": UUID_A, "reason": "tone"},
     "message_sent": {"notification_id": UUID_A, "channel": "sms", "language": "en", "purpose": "first_contact"},
     "callback_requested": {"reason": "patient_does_not_understand", "lang": "en"},
     "watchdog_flagged": {"reason": "idle", "idle_days": 7},
@@ -144,6 +145,21 @@ def test_human_events_take_a_note_of_at_most_200_characters(event_type):
     payloads.validate(event_type, ok)
     with pytest.raises(payloads.PayloadSchemaError, match="at most 200"):
         payloads.validate(event_type, {**SAMPLES[event_type], "note": "n" * 201})
+
+
+@pytest.mark.parametrize("reason", payloads.MESSAGE_REJECT_REASONS)
+def test_message_rejected_takes_the_taxonomy_and_nothing_else(reason):
+    payloads.validate("message_rejected", {"draft_id": UUID_A, "reason": reason})
+
+
+@pytest.mark.parametrize("bad", [
+    {"draft_id": UUID_A, "reason": "too formal"}, {"draft_id": UUID_A, "reason": "Tone"}, {"draft_id": UUID_A},
+    {"reason": "tone"}, {"draft_id": "not-a-uuid", "reason": "tone"},
+    {"draft_id": UUID_A, "reason": "tone", "note": "n"},  # no free text, not even a note
+])
+def test_message_rejected_refuses_free_text_and_malformed_payloads(bad):
+    with pytest.raises(payloads.PayloadSchemaError):
+        payloads.validate("message_rejected", bad)
 
 
 @pytest.mark.parametrize("event_type", ["mark_overdue", "review_requested", "message_drafted", "message_sent", "watchdog_flagged"])

@@ -304,6 +304,37 @@ def test_t_a33_the_actor_names_in_fhir_are_the_only_place_a_person_s_name_appear
     assert "Dr Proj A" in json.dumps(fake.of_type("Practitioner"))  # the erasable FHIR store holds the name
 
 
+def test_t_d5_a_rejection_is_projected_as_provenance_with_the_rejecting_human(stack, monkeypatch):
+    """A16: `message_rejected` is an event like any other, so it becomes a Provenance on the case's
+    Task with the rejecting owner as agent, and the reason code in the log entry's payload."""
+    from app.ai.draft_store import InMemoryDraftStore
+    from app.routers import drafts
+
+    monkeypatch.setattr(drafts, "store", InMemoryDraftStore())
+    fake, projector, store = stack
+    coord, lab = login("coordinator", "fp coord"), login("lab", "fp lab")
+    pco = login("primary_care_owner", "Dr Proj A")
+    cid = client.post("/cases", json={"patient_ref": "Patient/p-1", "result_ref": "DiagnosticReport/r-1"},
+                      headers=coord).json()["case_id"]
+    post(cid, "acknowledge", lab)
+    post(cid, "accept_ownership", pco)
+    body = {"purpose": "result_notification", "channel": "sms", "language": "en"}
+    draft_id = client.post(f"/cases/{cid}/drafts", json=body, headers=coord).json()["draft_id"]
+    rejected = client.post(f"/drafts/{draft_id}/reject", json={"reason": "wrong_language"}, headers=pco)
+    assert rejected.status_code == 200, rejected.text
+
+    events = {e.type: e for e in store.events_for(UUID(cid))}
+    prov = {p["entity"][0]["what"]["identifier"]["value"]: p for p in fake.of_type("Provenance")}
+    p = prov[str(events["message_rejected"].event_id)]
+    assert p["activity"]["coding"][0]["code"] == "message_rejected"
+    assert f"Task/task-{cid}" in [t["reference"] for t in p["target"]]
+    rejecter = actor_of("primary_care_owner", "Dr Proj A")
+    assert events["message_rejected"].actor == rejecter and events["message_rejected"].payload["reason"] == "wrong_language"
+    assert p["agent"][0]["who"] == {"reference": f"Practitioner/{rejecter.split(':')[1]}"}
+    row = drafts.draft_store().get(UUID(draft_id))
+    assert row.rejected_by == rejecter and row.rejection_reason == "wrong_language"
+
+
 def test_t_d5_a_draft_and_its_approval_are_projected_as_provenance(stack, monkeypatch):
     """T-D5, FHIR half: `message_drafted` (agent: the model) and `message_approved` (agent: the
     approving owner) each become a Provenance on the case's Task, and approval fills the draft's

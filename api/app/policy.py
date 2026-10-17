@@ -90,6 +90,9 @@ EVENT_POLICY: dict[str, frozenset[str]] = {
     # Only the draft approval route (D5) writes message_approved, because it must come with the
     # approval of a stored draft; posting it here would fake an approval. Nobody may post it.
     "message_approved": frozenset(),
+    # Only the draft rejection route (A16) writes message_rejected, in the same transaction as the
+    # rejection of the stored draft; posting it here would record a rejection of nothing.
+    "message_rejected": frozenset(),
     # Only the approval-gated send path (D5) writes message_sent; nobody may post it.
     "message_sent": frozenset(),
     "callback_requested": frozenset({PATIENT, COORD}),

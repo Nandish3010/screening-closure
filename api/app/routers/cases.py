@@ -1,3 +1,4 @@
+import logging
 from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
@@ -21,8 +22,10 @@ from app.events import (
     replay_model,
 )
 from app.pathway import Pathway
+from app.risk import score as risk
 from app.state_machine import InvalidTransition, PayloadError, validate_payload
 
+log = logging.getLogger("app.cases")
 router = APIRouter(prefix="/cases", tags=["cases"])
 
 # Both set by app.main at startup (avoids a circular import). The in-memory store is the
@@ -64,7 +67,36 @@ def _actors_json(events, model) -> dict:
     return {a: users.resolve_actor(a) for a in sorted(actors)}
 
 
-def _case_json(case_id: UUID) -> dict:
+# ---- the loss-to-follow-up risk score (D9) --------------------------------------------------------
+# The ONLY place in the API that computes or reads it (T-D10, tests/test_risk_boundary.py): it is
+# serialized into the worklist row and the case page for ordering and explanation, and feeds nothing
+# else: not the sweep, not a state, not an escalation, not a closure. Patients never see it. A failure
+# to score (a missing or corrupt model file) leaves the field null and never breaks the worklist.
+
+
+def _sees_risk(identity: Identity | None) -> bool:
+    return identity is not None and identity.role != "patient"
+
+
+def _risk_score(lc: LoadedCase, now: datetime) -> float | None:
+    try:
+        return risk.score_case(lc.model, lc.events, lc.created_at, now)
+    except Exception:  # noqa: BLE001 - an ordering aid must never take the worklist down
+        log.warning("risk score unavailable for case %s", lc.case_id, exc_info=True)
+        return None
+
+
+def _risk_explained(model, events, now: datetime) -> dict | None:
+    try:
+        return risk.explain_case(model, events, events[0].at, now)
+    except Exception:  # noqa: BLE001
+        log.warning("risk explanation unavailable", exc_info=True)
+        return None
+
+
+def _case_json(case_id: UUID, identity: Identity | None = None) -> dict:
+    """The case page. `identity` decides whether the risk fields are filled (staff yes, patient and
+    unauthenticated internal callers no)."""
     state = store.current_state(case_id)
     if state is None:
         raise CaseNotFound(str(case_id))
@@ -73,6 +105,8 @@ def _case_json(case_id: UUID) -> dict:
     row = readmodel.case_row(
         LoadedCase(case_id, pathway.name, events[0].at, events, model), pathway, default_calendar()
     )
+    explained = _risk_explained(model, events, clock.now()) if _sees_risk(identity) else None
+    row["risk_score"] = explained["score"] if explained else None
     return {
         # The worklist fields (owner as {actor, display_name, role}, due_at, ...) so a case page
         # needs no second request; the keys below it are the case itself.
@@ -84,6 +118,8 @@ def _case_json(case_id: UUID) -> dict:
         "read_model": model.to_json(),
         "actors": _actors_json(events, model),
         "events": [_event_json(e) for e in events],
+        # D9: {score, top_factors: [{feature, value, contribution}]}; null for a patient or if unscorable.
+        "risk": explained,
     }
 
 
@@ -118,14 +154,20 @@ def list_cases(
     """The worklist (A9): one row per case with the fields the web needs, in a stable order
     (genesis time, then case id). Filters: `state`, `owner` (an actor, a user id or a display
     name), `overdue`, `provider`, `flagged` (open watchdog flag). A patient sees only their own
-    cases; everyone else sees all."""
+    cases; everyone else sees all. `risk_score` (D9) is the modelled probability of loss to follow-up,
+    for ordering only: the rows come back in the same order with or without it, and a patient's rows
+    carry null."""
     calendar = default_calendar()
+    now = clock.now()
+    with_risk = _sees_risk(identity)
     rows = []
     for lc in store.load_cases(pathway, state):
         if identity.role == "patient" and (identity.patient_ref is None or lc.patient_ref != identity.patient_ref):
             continue
         row = readmodel.case_row(lc, pathway, calendar)
         if row is not None and readmodel.matches(row, owner=owner, overdue=overdue, provider=provider, flagged=flagged):
+            if with_risk:  # D9: filled last, so no filter or order above depends on it
+                row["risk_score"] = _risk_score(lc, now)
             rows.append(row)
     return rows
 
@@ -192,14 +234,14 @@ def post_event(
     if body.type == "consent_updated":
         # Withdrawal freezes outreach and flags the case for human review (system:consent).
         consent.ensure_review_requested(store, pathway, case_id, event.event_id, at)
-    return _case_json(case_id)
+    return _case_json(case_id, identity)
 
 
 @router.get("/{case_id}")
 def get_case(case_id: UUID, identity: Identity = Depends(require_identity)) -> dict:
     try:
         policy.authorize_case_access(identity, _patient_ref(case_id))
-        return _case_json(case_id)
+        return _case_json(case_id, identity)
     except CaseNotFound:
         raise HTTPException(404, "case not found")
 
