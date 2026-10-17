@@ -75,7 +75,7 @@ class Case:
         "consent_ok", "withdrawn", "declined_care", "dropped_out", "lapses", "resp_idx", "rec_idx", "h_idx",
         "h_cur", "hstate", "appt_idx", "appt_t", "pending_appt", "reminders", "awaiting_patient", "sub",
         "timer_n", "watch_n", "watch_armed", "last_act", "extra_delay", "abandoned", "reopened", "round",
-        "bchannel", "lost_reasons", "booked_once",
+        "bchannel", "lost_reasons", "booked_once", "last_flag",
     )
 
     def __init__(self, p: Patient, lat: Latents, msy: MessyPlan, end: float, initial_state: str, bchannel: str, refuses: bool = False):
@@ -116,6 +116,7 @@ class Case:
         self.bchannel = bchannel
         self.lost_reasons: list[str] = []
         self.booked_once = False
+        self.last_flag = -1.0
 
 
 @dataclass
@@ -439,6 +440,9 @@ class Engine:
         self.schedule(t + idle, "watch", c)
         if c.appt_t is not None and c.appt_t > t:
             return  # a confirmed future appointment is a scheduled wait, not silence
+        if c.last_act <= c.last_flag:
+            return  # already flagged for this stretch of silence; flag again only after new activity
+        c.last_flag = t
         self.counters["watchdog_flags"] += 1
         self.emit(c, t, "watchdog_flagged", "watchdog", {"idle_days": round(t - c.last_act, 2), "step": c.step})
         k = c.watch_n
