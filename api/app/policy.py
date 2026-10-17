@@ -37,6 +37,8 @@ ROUTE_POLICY: dict[tuple[str, str], object] = {
     ("GET", "/cases"): STAFF,
     # Patients may read their own case only (checked in the handler).
     ("GET", "/cases/{case_id}"): ALL_USERS,
+    # The notification log of a case: owners (of that case), coordinators, supervisors (A7).
+    ("GET", "/cases/{case_id}/notifications"): frozenset({PCO, SPEC, COORD, SUPER}),
     # Every role may try; EVENT_POLICY decides per event type.
     ("POST", "/cases/{case_id}/events"): ALL_USERS | SCHEDULER,
     # Demo clock: supervisor only.
@@ -62,7 +64,9 @@ EVENT_POLICY: dict[str, frozenset[str]] = {
     "escalation_accepted": frozenset({PCO, SPEC, SUPER, COORD}),
     "handoff_requested": frozenset({PCO, SPEC, SUPER}),
     "handoff_accepted": CLINICIANS,
-    "handoff_rejected": CLINICIANS,
+    # Humans reject with a reason from the taxonomy; the scheduler may emit exactly the bounce
+    # (reason `timeout`, bounced: true); the state machine enforces both (A5, ADR-016).
+    "handoff_rejected": CLINICIANS | {SCHEDULER_ROLE},
     "reassign": frozenset({SUPER, COORD}),
     "consent_updated": frozenset({PATIENT, COORD}),
     "mark_lost_contact": frozenset({PCO, SPEC, COORD, SUPER}),
@@ -71,11 +75,20 @@ EVENT_POLICY: dict[str, frozenset[str]] = {
     # Only the approval-gated send path (D5) writes message_sent; nobody may post it.
     "message_sent": frozenset(),
     "callback_requested": frozenset({PATIENT, COORD}),
+    # Emitted in process by the API itself as `system:consent` when consent is withdrawn (A6);
+    # nobody can post it.
+    "review_requested": frozenset(),
     "watchdog_flagged": SCHEDULER,
 }
 
 # Roles that act only on their own case.
 OWN_CASE_ONLY = frozenset({PATIENT})
+
+# Owner scoping (A5): a primary_care_owner or specialist_owner acts only on cases they own,
+# except for accepting ownership of an unowned case and answering a handoff addressed to their
+# provider. Supervisors and coordinators (and the other roles) are not owner-scoped.
+OWNER_SCOPED = frozenset({PCO, SPEC})
+HANDOFF_ANSWERS = frozenset({"handoff_accepted", "handoff_rejected"})
 
 
 def enforce_route_policy(
@@ -113,3 +126,25 @@ def authorize_case_access(identity: Identity, patient_ref: str | None) -> None:
         identity.patient_ref is None or identity.patient_ref != patient_ref
     ):
         raise HTTPException(404, "case not found")
+
+
+def authorize_owner_scope(identity: Identity, event_type: str, model) -> None:
+    """Per-owner scoping for clinicians. `model` is the case's read model (replayed)."""
+    if identity.role not in OWNER_SCOPED:
+        return
+    if model.owner == identity.actor:
+        return
+    if event_type == "accept_ownership" and model.owner is None:
+        return
+    pending = model.pending_handoff
+    if (
+        event_type in HANDOFF_ANSWERS
+        and pending is not None
+        and pending["to_provider"] == identity.effective_provider
+    ):
+        return
+    raise HTTPException(
+        403,
+        f"{identity.role} {identity.name!r} may only act on cases they own "
+        f"(this case's owner is {model.owner or 'not yet assigned'})",
+    )

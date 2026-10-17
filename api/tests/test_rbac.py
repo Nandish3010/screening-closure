@@ -17,6 +17,7 @@ from api_helpers import ROLES, login_headers, make_client
 
 client = make_client()
 SIGNED = {"evidence_ref": "DiagnosticReport/1", "signed_by": "Practitioner/9"}
+SPEC_PROVIDER = "test specialist_owner"  # a clinician's default provider is their login name
 
 
 def H(role, name=None, patient_ref=None):
@@ -169,9 +170,12 @@ def walk(case_id, upto):
         ("accept_ownership", "primary_care_owner", {}),
         ("contact_patient", "primary_care_owner", {}),
         ("patient_acknowledge", "patient", {}),
-        ("book_confirmatory", "primary_care_owner", {}),
+        # ownership passes to the specialist only on acceptance (A5)
+        ("handoff_requested", "primary_care_owner", {"to_provider": SPEC_PROVIDER}),
+        ("handoff_accepted", "specialist_owner", {}),
+        ("book_confirmatory", "specialist_owner", {}),
         ("complete_confirmatory", "specialist_owner", {}),
-        ("clinician_review", "primary_care_owner", {}),
+        ("clinician_review", "specialist_owner", {}),
     ]
     for type_, role, payload in steps[:upto]:
         h = H(role, patient_ref="Patient/1" if role == "patient" else None)
@@ -198,7 +202,7 @@ def walk(case_id, upto):
 )
 def test_wrong_role_gets_403_and_writes_nothing(type_, wrong_role):
     case_id = new_case()
-    walk(case_id, 7)  # clinician_reviewed: close is otherwise valid
+    walk(case_id, 9)  # clinician_reviewed: close is otherwise valid
     before = event_count(case_id)
     r = post(case_id, type_, H(wrong_role, patient_ref="Patient/1" if wrong_role == "patient" else None),
              SIGNED if type_ == "close" else {})
@@ -208,16 +212,16 @@ def test_wrong_role_gets_403_and_writes_nothing(type_, wrong_role):
 
 def test_owner_can_close_with_evidence_and_the_actor_is_recorded():
     case_id = new_case()
-    walk(case_id, 7)
-    r = post(case_id, "close", H("specialist_owner", "dr s"), SIGNED)
+    walk(case_id, 9)
+    r = post(case_id, "close", H("specialist_owner"), SIGNED)
     assert r.status_code == 201 and r.json()["state"] == "closed"
-    assert r.json()["events"][-1]["actor"] == "specialist_owner:dr s"
+    assert r.json()["events"][-1]["actor"] == "specialist_owner:test specialist_owner"
 
 
 def test_close_without_evidence_is_still_409_for_an_allowed_role():
     case_id = new_case()
-    walk(case_id, 7)
-    assert post(case_id, "close", H("primary_care_owner"), {}).status_code == 409
+    walk(case_id, 9)
+    assert post(case_id, "close", H("specialist_owner"), {}).status_code == 409
 
 
 def test_unlisted_event_types_cannot_be_posted_by_anyone():
@@ -271,7 +275,7 @@ def test_staff_routes_by_role():
 # -- service identity ----------------------------------------------------------------------
 
 
-def test_scheduler_service_token_maps_to_system_scheduler_and_three_event_types():
+def test_scheduler_service_token_maps_to_system_scheduler_and_its_event_types():
     sched = auth_service_headers()
     me = client.get("/me", headers=sched).json()
     assert me["user_id"] == "system:scheduler" and me["role"] == "scheduler"
@@ -281,7 +285,8 @@ def test_scheduler_service_token_maps_to_system_scheduler_and_three_event_types(
     assert client.get("/cases", headers=sched).status_code == 403
     assert client.post("/cases", json={}, headers=sched).status_code == 403
     allowed = {t for t, roles in policy.EVENT_POLICY.items() if "scheduler" in roles}
-    assert allowed == {"mark_overdue", "escalate", "watchdog_flagged"}
+    # handoff_rejected: only the bounce (reason timeout), enforced by the state machine (A5)
+    assert allowed == {"mark_overdue", "escalate", "watchdog_flagged", "handoff_rejected"}
 
 
 def test_wrong_service_token_is_401():

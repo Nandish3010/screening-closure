@@ -1,4 +1,4 @@
-.PHONY: up down logs test test-db synthea demo-seed demo-seed-clean evaluate simulate evaluate-check reset web-install web-dev web-build web-test web-e2e
+.PHONY: up down logs test test-db test-db-create test-db-reset synthea demo-seed demo-seed-clean evaluate simulate evaluate-check reset web-install web-dev web-build web-test web-e2e
 
 up:
 	docker compose up -d --build
@@ -19,9 +19,26 @@ test:
 		docker compose run --rm --no-deps -e DATABASE_URL= api pytest tests -q -m "not integration"; \
 	fi
 
-# Integration tests against the running compose postgres (published on host port 5433).
-test-db:
-	DATABASE_URL=postgresql://closure:closure_dev_password@localhost:5433/closure .venv/bin/pytest api/tests -q -m integration
+# Integration tests run against their own database, `closure_test`, in the same compose postgres
+# (published on host port 5433). The dev database `closure` is never used: the test session
+# refuses to start if DATABASE_URL names it (api/tests/conftest.py, ADR-015). The test session
+# runs the migrations itself.
+TEST_DATABASE_URL ?= postgresql://closure:closure_dev_password@localhost:5433/closure_test
+PSQL_ADMIN := docker compose exec -T postgres psql -v ON_ERROR_STOP=1 -U closure -d postgres -At
+
+# Creates closure_test if it does not exist (a fresh volume already has it from
+# docker/postgres-init; an older volume does not).
+test-db-create:
+	@$(PSQL_ADMIN) -c "SELECT 1 FROM pg_database WHERE datname='closure_test'" | grep -q 1 \
+		|| $(PSQL_ADMIN) -c "CREATE DATABASE closure_test OWNER closure"
+
+# Drops and recreates the test database (empty; the next `make test-db` migrates it again).
+test-db-reset:
+	$(PSQL_ADMIN) -c "DROP DATABASE IF EXISTS closure_test WITH (FORCE)"
+	$(PSQL_ADMIN) -c "CREATE DATABASE closure_test OWNER closure"
+
+test-db: test-db-create
+	DATABASE_URL=$(TEST_DATABASE_URL) .venv/bin/pytest api/tests -q -m integration
 
 # Python for the simulator scripts: the project venv if present, else python3 (needs httpx).
 PY := $(shell [ -x .venv/bin/python ] && echo .venv/bin/python || echo python3)
