@@ -16,7 +16,7 @@ from __future__ import annotations
 
 from fastapi import Depends, HTTPException, Request
 
-from app.auth import SCHEDULER_ROLE, USER_ROLES, Identity, optional_identity
+from app.auth import SCHEDULER_ROLE, USER_ROLES, WATCHDOG_ROLE, Identity, optional_identity
 
 PUBLIC = "public"
 ANY_IDENTITY = "any_identity"  # any valid user or service token
@@ -26,6 +26,7 @@ CLINICIANS = frozenset({PCO, SPEC})  # roles that may sign off a clinical decisi
 STAFF = frozenset(USER_ROLES) - {PATIENT}
 ALL_USERS = frozenset(USER_ROLES)
 SCHEDULER = frozenset({SCHEDULER_ROLE})
+WATCHDOG = frozenset({WATCHDOG_ROLE})
 
 # (method, path template) -> PUBLIC | ANY_IDENTITY | frozenset of roles
 ROUTE_POLICY: dict[tuple[str, str], object] = {
@@ -43,14 +44,20 @@ ROUTE_POLICY: dict[tuple[str, str], object] = {
     # The notification log of a case: owners (of that case), coordinators, supervisors (A7).
     ("GET", "/cases/{case_id}/notifications"): frozenset({PCO, SPEC, COORD, SUPER}),
     # Every role may try; EVENT_POLICY decides per event type.
-    ("POST", "/cases/{case_id}/events"): ALL_USERS | SCHEDULER,
+    ("POST", "/cases/{case_id}/events"): ALL_USERS | SCHEDULER | WATCHDOG,
     # Closure metrics for the dashboard (A10).
     ("GET", "/metrics/closure"): frozenset({COORD, SUPER}),
     # Demo clock: supervisor only.
     ("POST", "/clock/advance"): frozenset({SUPER}),
     ("POST", "/clock/reset"): frozenset({SUPER}),
-    # The scheduler service's periodic sweep.
+    # The scheduler service's periodic sweep and its heartbeat.
     ("POST", "/scheduler/sweep"): SCHEDULER,
+    ("POST", "/scheduler/heartbeat"): SCHEDULER,
+    # The watchdog service's scan (idle cases, scheduler liveness); its own token, nobody else.
+    ("POST", "/watchdog/scan"): WATCHDOG,
+    # Liveness for the dashboard (A11): coordinator and supervisor; the watchdog may read it too.
+    ("GET", "/heartbeats"): frozenset({COORD, SUPER}) | WATCHDOG,
+    ("GET", "/alerts"): frozenset({COORD, SUPER}) | WATCHDOG,
 }
 
 # event type -> roles allowed to emit it via POST /cases/{id}/events
@@ -83,7 +90,8 @@ EVENT_POLICY: dict[str, frozenset[str]] = {
     # Emitted in process by the API itself as `system:consent` when consent is withdrawn (A6);
     # nobody can post it.
     "review_requested": frozenset(),
-    "watchdog_flagged": SCHEDULER,
+    # Only the watchdog service (A11); the scheduler no longer holds it.
+    "watchdog_flagged": WATCHDOG,
 }
 
 # Roles that act only on their own case.

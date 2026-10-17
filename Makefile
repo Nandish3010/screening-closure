@@ -1,4 +1,4 @@
-.PHONY: up down logs test test-db test-db-create test-db-reset synthea demo-seed demo-seed-clean evaluate simulate evaluate-check reset web-install web-dev web-build web-test web-e2e
+.PHONY: up down logs test test-db test-db-create test-db-reset test-chaos synthea demo-seed demo-seed-clean evaluate simulate evaluate-check reset web-install web-dev web-build web-test web-e2e
 
 up:
 	docker compose up -d --build
@@ -14,9 +14,9 @@ logs:
 # offline; the simulator tests need the venv).
 test:
 	@if [ -x .venv/bin/pytest ]; then \
-		.venv/bin/pytest api/tests simulator/tests -q -m "not integration"; \
+		.venv/bin/pytest api/tests simulator/tests -q -m "not integration and not chaos"; \
 	else \
-		docker compose run --rm --no-deps -e DATABASE_URL= api pytest tests -q -m "not integration"; \
+		docker compose run --rm --no-deps -e DATABASE_URL= api pytest tests -q -m "not integration and not chaos"; \
 	fi
 
 # Integration tests run against their own database, `closure_test`, in the same compose postgres
@@ -38,7 +38,13 @@ test-db-reset:
 	$(PSQL_ADMIN) -c "CREATE DATABASE closure_test OWNER closure"
 
 test-db: test-db-create
-	DATABASE_URL=$(TEST_DATABASE_URL) .venv/bin/pytest api/tests -q -m integration
+	DATABASE_URL=$(TEST_DATABASE_URL) .venv/bin/pytest api/tests -q -m "integration and not chaos"
+
+# Chaos tests (T-A32): stop and start the scheduler container of the running stack and watch the
+# watchdog raise and clear its alert. Needs `make up` first and docker on the host; it writes no
+# cases. Until F3 adds the full chaos suite this runs only the tests marked `chaos`.
+test-chaos:
+	.venv/bin/pytest api/tests -q -s -m chaos
 
 # Python for the simulator scripts: the project venv if present, else python3 (needs httpx).
 PY := $(shell [ -x .venv/bin/python ] && echo .venv/bin/python || echo python3)

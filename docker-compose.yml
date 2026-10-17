@@ -94,9 +94,7 @@ services:
         required: false
     environment:
       API_URL: http://api:8000
-      HEARTBEAT_PATH: /heartbeat/scheduler.json
-    volumes:
-      - heartbeat:/heartbeat:ro
+      WATCHDOG_INTERVAL_SECONDS: ${WATCHDOG_INTERVAL_SECONDS:-10}
     depends_on:
       api:
         condition: service_healthy

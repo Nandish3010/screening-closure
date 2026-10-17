@@ -4,13 +4,13 @@ from contextlib import asynccontextmanager
 
 from fastapi import Depends, FastAPI
 
-from app import auth, evidence, notify, policy, users
+from app import auth, evidence, notify, ops, policy, users
 from app.clock import clock
 from app.config import settings
 from app.events import InMemoryEventStore
 from app.pathway import load_pathway
 from app.routers import auth as auth_router
-from app.routers import cases, scheduler
+from app.routers import cases, scheduler, watchdog
 from app.routers import clock as clock_router
 from app.routers import metrics as metrics_router
 
@@ -38,6 +38,7 @@ async def lifespan(app: FastAPI):
             PostgresClockStore,
             PostgresEventStore,
             PostgresNotificationLog,
+            PostgresOpsStore,
             PostgresUserDirectory,
         )
 
@@ -46,12 +47,14 @@ async def lifespan(app: FastAPI):
         cases.store = PostgresEventStore(pool)
         notify.log = PostgresNotificationLog(pool)
         users.directory = PostgresUserDirectory(pool)
+        ops.store = PostgresOpsStore(pool)
         resumed = clock.bind(PostgresClockStore(pool, "main"))
         log.info("event store: postgres; sim clock resumed at %s", resumed.isoformat())
     else:
         cases.store = InMemoryEventStore()
         notify.log = notify.InMemoryNotificationLog()
         users.directory = users.InMemoryUserDirectory()
+        ops.store = ops.InMemoryOpsStore()
         log.warning("event store: IN-MEMORY (DATABASE_URL not set); data is not durable")
     try:
         yield
@@ -71,6 +74,7 @@ app.include_router(auth_router.router)
 app.include_router(cases.router)
 app.include_router(clock_router.router)
 app.include_router(scheduler.router)
+app.include_router(watchdog.router)
 app.include_router(metrics_router.router)
 
 

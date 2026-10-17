@@ -209,6 +209,10 @@ Everything below is a working contract for Cuts C and D. "Exists" means in the c
 | `POST /clock/advance` | exists (A3) | `{days?, hours?}`, each >= 0, at least one > 0 (else 422); the clock never moves backwards | `{sim_time}`; supervisor only; persisted in the `sim_clock` table |
 | `POST /clock/reset` | exists (A3) | none | `{sim_time}` (the configured start); supervisor only |
 | `POST /scheduler/sweep` | exists (A3) | none | `{sim_time, cases_evaluated, mark_overdue, escalate, handoff_bounced, rejected, errors[]}`; the scheduler service token only |
+| `POST /scheduler/heartbeat` | exists (A11) | `{sweep_ok, consecutive_failures?, interval_seconds?, sim_time?}` (no other keys) | `{ok: true}`; the scheduler service token only. Posted on every scheduler loop, also after a failed sweep. Stored in the `heartbeats` table (migration 005) with the arrival time; not a case event (ADR-023) |
+| `POST /watchdog/scan` | exists (A11) | `{uptime_seconds?, idle_days?}` | `{scan: {sim_time, idle_days, cases_evaluated, flagged, rejected, errors[]}, scheduler: {status: ok\|warming\|failing\|down, ...}, alerts_open[]}`; the watchdog service token only. Records the watchdog's own heartbeat, flags idle cases on the sim clock (`watchdog_flagged {reason: idle, idle_days, last_activity_at}`, once per idle episode) and opens or clears the `scheduler_down` / `scheduler_failing` alert from the scheduler's heartbeat age (older than 60 s, or missing once the watchdog has been up for 60 s) |
+| `GET /heartbeats` | exists (A11) | none | `{scheduler: {service, last_beat_at, age_seconds, sweep_ok, consecutive_failures, interval_seconds, sim_time} \| null, watchdog: {service, last_beat_at, age_seconds, uptime_seconds} \| null}`; the age is computed by the database (wall clock). coordinator, supervisor (the watchdog token may read it) |
+| `GET /alerts?active=` | exists (A11) | optional `active=true` | list, newest first, of `{id, kind, since, cleared_at, detail}`; `cleared_at` is null while open; kinds `scheduler_down`, `scheduler_failing`, and a derived `watchdog_down` (`derived: true`) when the watchdog's own heartbeat is older than 60 s. coordinator, supervisor (the watchdog token may read it). `since` and `cleared_at` are wall-clock times |
 
 Event shape (all routes): `{seq, event_id, type, at, actor, payload}`. `event_id` is the idempotency key: a retry with the same id inserts once. `at` defaults to the sim clock, never the wall clock, and may not be later than the sim clock (422); backdating is allowed. `actor` is derived from the caller's identity (`role:user_id` with an opaque `user_id`, A14, ADR-019; or `system:scheduler` for the scheduler service) and a client-supplied `actor` is rejected with 422. Errors are JSON with a `detail` string.
 
@@ -250,7 +254,7 @@ Final as of A2 (`config/pathways/colorectal_fit.yaml`, `api/app/state_machine.py
 | `message_approved` | A2 defines, D5 uses | owner role | annotation; human only. Refused while consent is withdrawn |
 | `message_sent` | A2 defines, A7 writes | `system:notifier`, only through `app.notify.send` after approval | annotation. Refused while consent is withdrawn |
 | `callback_requested` | A2 defines, C6 uses | patient | annotation: creates a human callback task; human only |
-| `watchdog_flagged` | A2 defines, A11 uses | watchdog | annotation: the case appears in "cases nobody is looking at" |
+| `watchdog_flagged` | A11 | the watchdog service (`system:watchdog`), via `POST /watchdog/scan` or the events route with its own token | annotation: payload `{reason: idle, idle_days, last_activity_at}`; sets the read model's `watchdog_flag` and the case appears in "cases nobody is looking at" (`GET /cases?flagged=true`). Written once per idle episode (uuid5 of case and last real event), cleared by any later event. A case that is closed never gets one |
 
 **Payloads (A14, ADR-019; authority `api/app/payloads.py`).** The event log is immutable, so free text must not enter it. Every event type has a strict schema: a key that is not listed is rejected with 422 (nothing is written), string values must have the shape of an id or a code (not prose), `reason` fields take only their taxonomy, and the only free text is `note`, **at most 200 characters, on the events a person posts**. Staff must not put patient identifiers, names or clinical detail in a note (the log cannot be erased); a note is for a short operational remark such as "called twice, no answer". Display names live in the `users` table, draft text in the `drafts` table and message bodies in the `notifications` table; the log holds only their ids and hashes. In particular `message_drafted` carries `draft_id, provider, fallback_used, prompt_hash, language` and no text; the web reads the text with `GET /cases/{id}/drafts` (the drafts router belongs to the AI cut, D4, and is not in main yet; until it lands the UI shows "draft text unavailable").
 
@@ -286,7 +290,7 @@ Taxonomies for `reason`: `reopen` takes `new_finding`, `evidence_inadequate`, `c
 
 **Closure evidence (A15, ADR-021).** `close` needs `evidence_ref` = `DiagnosticReport/<id>` or `Procedure/<id>` (shape checked always; 422 otherwise) and, when `FHIR_VERIFY_EVIDENCE=true` (set in compose), the resource must exist in HAPI (422 if not, 503 if HAPI cannot be asked, nothing written). `signed_by` on `close` (and on `clinician_review` when given) must be the caller's own actor (`role:user_id`) or `Practitioner/<user_id>`, the Practitioner the FHIR projection creates for them; anything else is 403.
 
-Heartbeats from the scheduler are not case events. Their storage is decided in A11.
+Heartbeats from the scheduler (and the watchdog) are not case events: they are rows in the `heartbeats` table, and a dead scheduler is a row in `system_alerts` (`GET /alerts`), because there is no case to put it on (A11, ADR-023).
 
 ### Read model
 
@@ -335,7 +339,8 @@ Final as of A8. Authority is `api/app/policy.py`; the decision matrix in E5 is c
 | `coordinator` | Sees the worklist and dashboard, records the patient's instructions (acknowledge, consent, callback), escalates and reassigns, accepts the coordinator rung. Cannot sign off a closure. |
 | `patient` | Sees only their own case, acknowledges, controls consent, requests a callback. |
 | `supervisor` | Accepts the supervisor rung, accepts ownership on behalf of an owner, reassigns, controls the demo clock. Cannot sign off a closure. |
-| `scheduler` (service) | Not a user role. Authenticates with the scheduler service token as `system:scheduler`; may emit only `mark_overdue`, `escalate`, `watchdog_flagged` and the handoff bounce (`handoff_rejected` with reason `timeout`). |
+| `scheduler` (service) | Not a user role. Authenticates with the scheduler service token as `system:scheduler`; may emit only `mark_overdue`, `escalate` and the handoff bounce (`handoff_rejected` with reason `timeout`), and post its heartbeat. |
+| `watchdog` (service) | Not a user role. Authenticates with the watchdog service token (`WATCHDOG_SERVICE_TOKEN`) as `system:watchdog`; may run the scan, post nothing but `watchdog_flagged`, and read `/heartbeats` and `/alerts`. It cannot read or create cases. |
 
 Who may post which event type through `POST /cases/{id}/events` (a missing type is refused for everyone):
 
@@ -354,7 +359,8 @@ Who may post which event type through `POST /cases/{id}/events` (a missing type 
 | `reassign` | supervisor, coordinator |
 | `escalate` | scheduler, coordinator, supervisor |
 | `escalation_accepted` | primary_care_owner, specialist_owner, supervisor, coordinator (the state machine also requires the actor's role to be in the rung's `accepted_by`) |
-| `mark_overdue`, `watchdog_flagged` | scheduler |
+| `mark_overdue` | scheduler |
+| `watchdog_flagged` | watchdog (service token) |
 | `review_requested` | nobody (the API emits it itself as `system:consent` when consent is withdrawn) |
 | `message_sent` | nobody over HTTP. Only `app.notify.send` (A7) writes it, as `system:notifier`; the state machine refuses any other actor, so D5's approval gate calls `notify.send(case_id, channel, language, purpose, body)` and there is no other path |
 

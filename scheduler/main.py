@@ -6,9 +6,11 @@ API's simulation clock. This process authenticates as `system:scheduler` with a 
 that the API restricts to `mark_overdue`, `escalate` and `watchdog_flagged`; it can never
 close a case.
 
-Heartbeat (not a case event): a JSON file the watchdog reads. It is refreshed on every loop,
-including when the sweep fails, and records whether the last sweep worked, so a scheduler that
-is alive but useless is distinguishable from one that is dead.
+Heartbeat (not a case event): posted to the API (`POST /scheduler/heartbeat`, stored in the
+`heartbeats` table) on every loop, including when the sweep fails, with whether the sweep worked
+and how many in a row have failed, so a scheduler that is alive but useless is distinguishable
+from one that is dead. The watchdog reads its age from the API and raises an alert when it is
+older than 60 seconds (A11). A JSON file in the shared volume is still written for debugging.
 """
 
 import json
@@ -48,6 +50,26 @@ def run_sweep() -> dict | None:
     return None
 
 
+def post_heartbeat(summary: dict | None, failures: int) -> None:
+    """Tell the API this loop ran. A failure to reach it is logged, never fatal: the next loop
+    tries again, and a missing heartbeat is exactly what the watchdog is there to notice."""
+    body = json.dumps({
+        "sweep_ok": summary is not None,
+        "consecutive_failures": failures,
+        "interval_seconds": INTERVAL_SECONDS,
+        "sim_time": summary.get("sim_time") if summary else None,
+    }).encode()
+    request = urllib.request.Request(
+        f"{API_URL}/scheduler/heartbeat", data=body, method="POST",
+        headers={"Authorization": f"Bearer {SERVICE_TOKEN}", "Content-Type": "application/json"},
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=10) as resp:
+            resp.read()
+    except Exception as exc:
+        log.warning("heartbeat not delivered: %s", exc)
+
+
 def write_heartbeat(summary: dict | None, last_ok_wall_ts: float | None) -> None:
     HEARTBEAT_PATH.parent.mkdir(parents=True, exist_ok=True)
     tmp = HEARTBEAT_PATH.with_suffix(".tmp")
@@ -65,8 +87,10 @@ def write_heartbeat(summary: dict | None, last_ok_wall_ts: float | None) -> None
 def main() -> None:
     log.info("starting; interval=%ss heartbeat=%s api=%s", INTERVAL_SECONDS, HEARTBEAT_PATH, API_URL)
     last_ok = None
+    failures = 0
     while True:
         summary = run_sweep()
+        failures = 0 if summary is not None else failures + 1
         if summary is not None:
             last_ok = time.time()  # wall-clock-ok: liveness heartbeat only
             log.info(
@@ -76,6 +100,7 @@ def main() -> None:
                 len(summary["errors"]),
             )
         write_heartbeat(summary, last_ok)
+        post_heartbeat(summary, failures)
         time.sleep(INTERVAL_SECONDS)
 
 

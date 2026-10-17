@@ -177,6 +177,24 @@ export type EscalationRung = (typeof ESCALATION_RUNGS)[number];
 export const WATCHDOG_REASONS = ["idle", "scheduler_down"] as const;
 export type WatchdogReason = (typeof WATCHDOG_REASONS)[number];
 
+/**
+ * BACKEND (A11, live): \`GET /alerts\` (coordinator, supervisor) -> \`SystemAlert[]\`, newest first (\`?active=true\` keeps the
+ * open ones); \`GET /heartbeats\` -> \`{scheduler, watchdog}\` each \`{service, last_beat_at, age_seconds, ...} | null\`. These are wall-clock
+ * times (real seconds), not simulated time: a dead scheduler is a fact about the running system. A case is flagged idle with
+ * \`watchdog_flagged\` (reason "idle") and \`GET /cases\` returns the open one as \`watchdog_flagged\`; a dead scheduler is NOT a case
+ * event, it is an alert here.
+ */
+export interface SystemAlert {
+  id: number | null;
+  kind: "scheduler_down" | "scheduler_failing" | "watchdog_down" | string;
+  /** Wall-clock ISO time the alert opened. */
+  since: string;
+  /** Null while the alert is open. */
+  cleared_at: string | null;
+  derived?: boolean;
+  detail: Record<string, unknown>;
+}
+
 export interface WatchdogFlag {
   reason: WatchdogReason;
   idle_days?: number;

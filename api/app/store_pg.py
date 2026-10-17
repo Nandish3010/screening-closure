@@ -320,3 +320,53 @@ class PostgresUserDirectory:
 
             self.upsert(record_for(identity))
         self._known.add(identity.user_id)
+
+
+class PostgresOpsStore:
+    """Heartbeats and system alerts (migration 005). Ages come from the database's now()."""
+
+    def __init__(self, pool: ConnectionPool) -> None:
+        self._pool = pool
+
+    def beat(self, service: str, info: dict) -> None:
+        with self._pool.connection() as conn:
+            conn.execute(
+                "INSERT INTO heartbeats (service, beat_at, info) VALUES (%s, now(), %s)"
+                " ON CONFLICT (service) DO UPDATE SET beat_at = now(), info = EXCLUDED.info",
+                (service, Jsonb(info)),
+            )
+
+    def heartbeats(self) -> dict:
+        from app.ops import Heartbeat
+
+        with self._pool.connection() as conn:
+            rows = conn.execute(
+                "SELECT service, beat_at, extract(epoch FROM (now() - beat_at)), info FROM heartbeats"
+            ).fetchall()
+        return {r[0]: Heartbeat(r[0], r[1], float(r[2]), r[3]) for r in rows}
+
+    def open_alert(self, kind: str, detail: dict) -> bool:
+        with self._pool.connection() as conn:
+            row = conn.execute(
+                "INSERT INTO system_alerts (kind, detail) VALUES (%s, %s)"
+                " ON CONFLICT (kind) WHERE cleared_at IS NULL DO NOTHING RETURNING id",
+                (kind, Jsonb(detail)),
+            ).fetchone()
+        return row is not None
+
+    def clear_alert(self, kind: str) -> bool:
+        with self._pool.connection() as conn:
+            cur = conn.execute(
+                "UPDATE system_alerts SET cleared_at = now() WHERE kind = %s AND cleared_at IS NULL", (kind,)
+            )
+            return cur.rowcount > 0
+
+    def alerts(self, active_only: bool = False, limit: int = 100) -> list:
+        from app.ops import Alert
+
+        sql = "SELECT id, kind, since, cleared_at, detail FROM system_alerts"
+        if active_only:
+            sql += " WHERE cleared_at IS NULL"
+        with self._pool.connection() as conn:
+            rows = conn.execute(sql + " ORDER BY id DESC LIMIT %s", (limit,)).fetchall()
+        return [Alert(*r) for r in rows]

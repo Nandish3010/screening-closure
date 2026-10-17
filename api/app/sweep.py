@@ -31,9 +31,7 @@ log = logging.getLogger("app.sweep")
 
 SCHEDULER_ACTOR = "system:scheduler"
 # The only event types the scheduler may ever emit (mirrors app.policy.EVENT_POLICY).
-SCHEDULER_EVENT_TYPES = frozenset(
-    {"mark_overdue", "escalate", "watchdog_flagged", "handoff_rejected"}
-)
+SCHEDULER_EVENT_TYPES = frozenset({"mark_overdue", "escalate", "handoff_rejected"})
 # Fixed namespace for deterministic event ids (never change: it would break idempotency).
 SWEEP_NAMESPACE = uuid.UUID("5c6d0a9e-77f1-4b8e-9d0c-0f3f6a1b2e44")
 

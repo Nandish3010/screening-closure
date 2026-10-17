@@ -301,7 +301,7 @@ def test_scheduler_service_token_maps_to_system_scheduler_and_its_event_types():
     assert client.post("/cases", json={}, headers=sched).status_code == 403
     allowed = {t for t, roles in policy.EVENT_POLICY.items() if "scheduler" in roles}
     # handoff_rejected: only the bounce (reason timeout), enforced by the state machine (A5)
-    assert allowed == {"mark_overdue", "escalate", "watchdog_flagged", "handoff_rejected"}
+    assert allowed == {"mark_overdue", "escalate", "handoff_rejected"}  # watchdog_flagged moved to the watchdog (A11)
 
 
 def test_wrong_service_token_is_401():
@@ -343,7 +343,7 @@ def test_event_policy_covers_exactly_the_pathway_vocabulary():
     assert set(policy.EVENT_POLICY) == postable, set(policy.EVENT_POLICY) ^ postable
     # only roles that exist
     for roles in policy.EVENT_POLICY.values():
-        assert roles <= set(ROLES) | {"scheduler"}
+        assert roles <= set(ROLES) | {"scheduler", "watchdog"}
 
 
 def test_decision_matrix_examples():
