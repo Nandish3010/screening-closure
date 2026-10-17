@@ -93,7 +93,7 @@ def test_register_provider_overrides(monkeypatch):
         {"owner_name": "   "},
         {"next_step": ""},
         {"owner_name": "Dr {owner_name}"},
-        {"owner_name": "x" * 61},
+        {"owner_name": "x" * 41},
         {"purpose": "appointment_confirmation", "appointment_date": None},
     ],
 )

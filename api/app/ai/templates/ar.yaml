@@ -1,0 +1,142 @@
+# TODO native-speaker review (H2): every string in this file is an unreviewed Arabic draft.
+# Until a native speaker signs off, label it "Arabic draft, unreviewed" in any submission.
+# Same rules as en.yaml: plain Modern Standard Arabic, short sentences (about grade-6 reading
+# level), no diagnosis, no advice beyond "the next step is ...; your care team will contact you".
+# The only clinical fact allowed is "the screening test found blood".
+# Placeholders: {owner_name} {next_step} {appointment_date}. `{next_step}` and
+# `{appointment_date}` are supplied in Arabic by the caller. `_with_date` variants are used when
+# an appointment date is supplied. Limits: sms 320, whatsapp 600, letter 1200 characters.
+version: 1
+language: ar
+purposes:
+  # TODO native-speaker review (H2)
+  result_notification:
+    description: First message to the patient after a positive FIT result is owned.
+    sms: >-
+      وجد فحص الكشف المبكر الذي أجريته دماً. الخطوة التالية هي {next_step}.
+      سيتواصل معك فريق رعايتك. المسؤول عن رعايتك هو {owner_name}.
+    whatsapp: |-
+      مرحباً، هذه رسالة من فريق رعايتك.
+
+      وجد فحص الكشف المبكر الذي أجريته دماً.
+
+      الخطوة التالية هي {next_step}. سيتواصل معك فريق رعايتك للحديث عنها وترتيبها.
+
+      المسؤول عن رعايتك هو {owner_name}.
+    letter: |-
+      السلام عليكم،
+
+      نكتب إليك بخصوص فحص الكشف المبكر الذي أجريته مؤخراً. وجد الفحص دماً.
+
+      الخطوة التالية هي {next_step}. سيتواصل معك فريق رعايتك للحديث عنها وترتيبها.
+
+      المسؤول عن رعايتك هو {owner_name}. هو الشخص في فريق رعايتك المسؤول عن خطوتك التالية.
+
+      مع تحياتنا،
+      فريق رعايتك
+  # TODO native-speaker review (H2)
+  reminder:
+    description: Reminder when the patient has not yet taken the next step.
+    sms: >-
+      تذكير من فريق رعايتك. الخطوة التالية بعد الفحص هي {next_step}.
+      سيتواصل معك فريق رعايتك. المسؤول عن رعايتك هو {owner_name}.
+    sms_with_date: >-
+      تذكير من فريق رعايتك. موعدك في {appointment_date}.
+      الخطوة التالية هي {next_step}. المسؤول عن رعايتك هو {owner_name}.
+    whatsapp: |-
+      مرحباً، هذا تذكير من فريق رعايتك.
+
+      الخطوة التالية بعد الفحص هي {next_step}. سيتواصل معك فريق رعايتك لترتيبها.
+
+      المسؤول عن رعايتك هو {owner_name}.
+    whatsapp_with_date: |-
+      مرحباً، هذا تذكير من فريق رعايتك.
+
+      موعدك في {appointment_date}. الخطوة التالية هي {next_step}.
+
+      المسؤول عن رعايتك هو {owner_name}.
+    letter: |-
+      السلام عليكم،
+
+      هذا تذكير من فريق رعايتك. بعد الفحص، الخطوة التالية هي {next_step}.
+
+      سيتواصل معك فريق رعايتك لترتيبها. المسؤول عن رعايتك هو {owner_name}.
+
+      مع تحياتنا،
+      فريق رعايتك
+    letter_with_date: |-
+      السلام عليكم،
+
+      هذا تذكير من فريق رعايتك. موعدك في {appointment_date}.
+
+      الخطوة التالية هي {next_step}. المسؤول عن رعايتك هو {owner_name}.
+
+      مع تحياتنا،
+      فريق رعايتك
+  # TODO native-speaker review (H2)
+  appointment_confirmation:
+    description: Confirms a booked appointment. Requires appointment_date.
+    sms: >-
+      تم تأكيد موعدك في {appointment_date}. الخطوة التالية هي {next_step}.
+      سيتواصل معك فريق رعايتك بالتفاصيل. المسؤول عن رعايتك هو {owner_name}.
+    whatsapp: |-
+      مرحباً، هذه رسالة من فريق رعايتك.
+
+      تم تأكيد موعدك في {appointment_date}. الخطوة التالية هي {next_step}.
+
+      سيتواصل معك فريق رعايتك بالتفاصيل. المسؤول عن رعايتك هو {owner_name}.
+    letter: |-
+      السلام عليكم،
+
+      نكتب إليك لتأكيد موعدك. الموعد في {appointment_date}.
+
+      الخطوة التالية هي {next_step}. سيتواصل معك فريق رعايتك بالتفاصيل.
+
+      المسؤول عن رعايتك هو {owner_name}.
+
+      مع تحياتنا،
+      فريق رعايتك
+  # TODO native-speaker review (H2)
+  escalation_notice:
+    description: Tells the patient that a more senior member of the care team now knows, so the next step is not delayed.
+    sms: >-
+      نريد التأكد من أن خطوتك التالية لن تتأخر. تم إبلاغ أحد كبار أعضاء فريق رعايتك.
+      الخطوة التالية هي {next_step}. المسؤول عن رعايتك هو {owner_name}. سيتواصل معك فريق رعايتك.
+    whatsapp: |-
+      مرحباً، هذه رسالة من فريق رعايتك.
+
+      نريد التأكد من أن خطوتك التالية لن تتأخر. تم إبلاغ أحد كبار أعضاء فريق رعايتك.
+
+      الخطوة التالية هي {next_step}. سيتواصل معك فريق رعايتك. المسؤول عن رعايتك هو {owner_name}.
+    letter: |-
+      السلام عليكم،
+
+      نريد التأكد من أن خطوتك التالية لن تتأخر. تم إبلاغ أحد كبار أعضاء فريق رعايتك.
+
+      الخطوة التالية هي {next_step}. سيتواصل معك فريق رعايتك. المسؤول عن رعايتك هو {owner_name}.
+
+      مع تحياتنا،
+      فريق رعايتك
+  # TODO native-speaker review (H2)
+  callback_ack:
+    description: Acknowledges that the patient asked for help understanding a message. A human will call.
+    sms: >-
+      شكراً لإخبارنا أنك تحتاج إلى مساعدة لفهم الرسالة. سيتصل بك أحد أفراد فريق رعايتك.
+      الخطوة التالية هي {next_step}. المسؤول عن رعايتك هو {owner_name}.
+    whatsapp: |-
+      مرحباً، شكراً لإخبارنا أنك تحتاج إلى مساعدة لفهم الرسالة.
+
+      سيتصل بك أحد أفراد فريق رعايتك ليشرح لك. الخطوة التالية هي {next_step}.
+
+      المسؤول عن رعايتك هو {owner_name}.
+    letter: |-
+      السلام عليكم،
+
+      شكراً لإخبارنا أنك تحتاج إلى مساعدة لفهم رسالتنا.
+
+      سيتصل بك أحد أفراد فريق رعايتك ليشرح لك. الخطوة التالية هي {next_step}.
+
+      المسؤول عن رعايتك هو {owner_name}.
+
+      مع تحياتنا،
+      فريق رعايتك

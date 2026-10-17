@@ -1,0 +1,135 @@
+# English message templates (D2). These are also the fallback text shown to the case owner.
+# Rules: plain words, short sentences (about grade-6 reading level), no diagnosis language,
+# no advice beyond "the next step is ...; your care team will contact you".
+# The only clinical fact allowed is "your screening test found blood".
+# Placeholders: {owner_name} {next_step} {appointment_date}. Variants ending in `_with_date`
+# are used when an appointment date is supplied. Limits: sms 320, whatsapp 600, letter 1200 chars.
+version: 1
+language: en
+purposes:
+  result_notification:
+    description: First message to the patient after a positive FIT result is owned.
+    sms: >-
+      Your screening test found blood. The next step is {next_step}.
+      Your care team will contact you. Your care owner is {owner_name}.
+    whatsapp: |-
+      Hello. This is a message from your care team.
+
+      Your screening test found blood.
+
+      The next step is {next_step}. Your care team will contact you to talk about it and to arrange it.
+
+      Your care owner is {owner_name}.
+    letter: |-
+      Hello,
+
+      We are writing about the screening test you did recently. The test found blood.
+
+      The next step is {next_step}. Your care team will contact you to talk about it and to arrange it.
+
+      Your care owner is {owner_name}. This is the person in your care team who is responsible for your next step.
+
+      Kind regards,
+      Your care team
+  reminder:
+    description: Reminder when the patient has not yet taken the next step.
+    sms: >-
+      Reminder from your care team. The next step after your screening test is {next_step}.
+      Your care team will contact you. Your care owner is {owner_name}.
+    sms_with_date: >-
+      Reminder from your care team. Your appointment is on {appointment_date}.
+      The next step is {next_step}. Your care owner is {owner_name}.
+    whatsapp: |-
+      Hello. This is a reminder from your care team.
+
+      The next step after your screening test is {next_step}. Your care team will contact you to arrange it.
+
+      Your care owner is {owner_name}.
+    whatsapp_with_date: |-
+      Hello. This is a reminder from your care team.
+
+      Your appointment is on {appointment_date}. The next step is {next_step}.
+
+      Your care owner is {owner_name}.
+    letter: |-
+      Hello,
+
+      This is a reminder from your care team. After your screening test, the next step is {next_step}.
+
+      Your care team will contact you to arrange it. Your care owner is {owner_name}.
+
+      Kind regards,
+      Your care team
+    letter_with_date: |-
+      Hello,
+
+      This is a reminder from your care team. Your appointment is on {appointment_date}.
+
+      The next step is {next_step}. Your care owner is {owner_name}.
+
+      Kind regards,
+      Your care team
+  appointment_confirmation:
+    description: Confirms a booked appointment. Requires appointment_date.
+    sms: >-
+      Your appointment is on {appointment_date}. The next step is {next_step}.
+      Your care team will contact you with the details. Your care owner is {owner_name}.
+    whatsapp: |-
+      Hello. This is a message from your care team.
+
+      Your appointment is on {appointment_date}. The next step is {next_step}.
+
+      Your care team will contact you with the details. Your care owner is {owner_name}.
+    letter: |-
+      Hello,
+
+      We are writing to confirm your appointment. It is on {appointment_date}.
+
+      The next step is {next_step}. Your care team will contact you with the details.
+
+      Your care owner is {owner_name}.
+
+      Kind regards,
+      Your care team
+  escalation_notice:
+    description: Tells the patient that a more senior member of the care team now knows, so the next step is not delayed.
+    sms: >-
+      We want to make sure your next step is not delayed. A senior member of your care team has been told.
+      The next step is {next_step}. Your care owner is {owner_name}. Your care team will contact you.
+    whatsapp: |-
+      Hello. This is a message from your care team.
+
+      We want to make sure your next step is not delayed. A senior member of your care team has been told.
+
+      The next step is {next_step}. Your care team will contact you. Your care owner is {owner_name}.
+    letter: |-
+      Hello,
+
+      We want to make sure your next step is not delayed. A senior member of your care team has been told.
+
+      The next step is {next_step}. Your care team will contact you. Your care owner is {owner_name}.
+
+      Kind regards,
+      Your care team
+  callback_ack:
+    description: Acknowledges that the patient asked for help understanding a message. A human will call.
+    sms: >-
+      Thank you for telling us you need help to understand. A person from your care team will call you.
+      The next step is {next_step}. Your care owner is {owner_name}.
+    whatsapp: |-
+      Hello. Thank you for telling us you need help to understand.
+
+      A person from your care team will call you to explain. The next step is {next_step}.
+
+      Your care owner is {owner_name}.
+    letter: |-
+      Hello,
+
+      Thank you for telling us you need help to understand our message.
+
+      A person from your care team will call you to explain. The next step is {next_step}.
+
+      Your care owner is {owner_name}.
+
+      Kind regards,
+      Your care team

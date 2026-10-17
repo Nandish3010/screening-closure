@@ -32,7 +32,7 @@ CHANNEL_MAX_CHARS: dict[str, int] = {"sms": 320, "whatsapp": 600, "letter": 1200
 
 # Longest value accepted for a free-text request field. Keeps worst-case messages inside the
 # channel limits (templates are tested at this length).
-MAX_FIELD_CHARS = 60
+MAX_FIELD_CHARS = 40
 
 TEMPLATE_PROVIDER = "template"
 PROVIDER_NAMES: tuple[str, ...] = ("template", "azure_openai", "jais")
