@@ -10,7 +10,7 @@ from app.config import settings
 from app.events import InMemoryEventStore
 from app.pathway import load_pathway
 from app.routers import auth as auth_router
-from app.routers import cases, scheduler
+from app.routers import cases, drafts, scheduler
 from app.routers import clock as clock_router
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s:     %(name)s: %(message)s")
@@ -57,6 +57,7 @@ app.include_router(auth_router.router)
 app.include_router(cases.router)
 app.include_router(clock_router.router)
 app.include_router(scheduler.router)
+app.include_router(drafts.router)
 
 
 @app.get("/health")
