@@ -44,6 +44,8 @@ ROUTE_POLICY: dict[tuple[str, str], object] = {
     ("GET", "/cases/{case_id}/notifications"): frozenset({PCO, SPEC, COORD, SUPER}),
     # Every role may try; EVENT_POLICY decides per event type.
     ("POST", "/cases/{case_id}/events"): ALL_USERS | SCHEDULER,
+    # Closure metrics for the dashboard (A10).
+    ("GET", "/metrics/closure"): frozenset({COORD, SUPER}),
     # Demo clock: supervisor only.
     ("POST", "/clock/advance"): frozenset({SUPER}),
     ("POST", "/clock/reset"): frozenset({SUPER}),

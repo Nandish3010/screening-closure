@@ -106,6 +106,11 @@ class EventStore(Protocol):
 
     def list_cases(self, state: str | None = None) -> list[CaseSummary]: ...
 
+    def abstention_counts(self) -> tuple[int, int] | None:
+        """(draft attempts, abstentions) from the `drafts` table, or None where it does not
+        exist (the AI cut's migration may not be applied)."""
+        ...
+
     def load_cases(self, pathway: Pathway, state: str | None = None) -> list[LoadedCase]:
         """Every case of the pathway (optionally only those currently in `state`) with its log
         and read model, ordered by (genesis time, case id). One batch read, not one per case."""
@@ -200,6 +205,9 @@ class InMemoryEventStore:
             ]
         for cid, model in snapshot:
             yield cid, model, None
+
+    def abstention_counts(self) -> tuple[int, int] | None:
+        return None  # no drafts table in memory
 
     def load_cases(self, pathway: Pathway, state: str | None = None) -> list[LoadedCase]:
         with self._lock:

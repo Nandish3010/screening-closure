@@ -164,6 +164,21 @@ class PostgresEventStore:
                 except InvalidTransition as exc:
                     yield case_id, None, str(exc)
 
+    def abstention_counts(self) -> tuple[int, int] | None:
+        """(draft attempts, abstentions) if the AI cut's `drafts` table exists, else None.
+
+        An abstention is a draft row where the template was used instead of the model and a
+        reason was recorded (`abstention_reason IS NOT NULL`). Any schema difference degrades
+        to None rather than failing the metrics route."""
+        try:
+            with self._pool.connection() as conn:
+                if conn.execute("SELECT to_regclass('public.drafts')").fetchone()[0] is None:
+                    return None
+                row = conn.execute("SELECT count(*), count(abstention_reason) FROM drafts").fetchone()
+            return int(row[0]), int(row[1])
+        except Exception:
+            return None
+
     def load_cases(self, pathway: Pathway, state: str | None = None, chunk: int = 500) -> list[LoadedCase]:
         sql = "SELECT id FROM cases WHERE pathway = %s"
         params: list = [pathway.name]

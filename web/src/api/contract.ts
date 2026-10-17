@@ -360,7 +360,14 @@ export interface DraftApproval {
 
 export type AgeBucket = "0-30" | "31-60" | "61-90" | "90+";
 
-/** GET /metrics/closure */
+/**
+ * GET /metrics/closure (coordinator, supervisor). BACKEND (A10, live): beyond the fields below the API returns
+ * `cases_total, cases_open, cases_closed, closures_measured, unsafe_closures, p50_working_days,
+ * p90_working_days, lost_to_follow_up, lost_never_surfaced, cases_flagged` and
+ * `abstention: {attempts, abstentions, rate} | null`; `bottleneck_by_transition[].transition` is "a -> b"
+ * (the state left and entered) and each row also has `median_working_days` and `n`; `p50_days` and
+ * `p90_days` are null while nothing has closed. Definitions: api/app/metrics.py.
+ */
 export interface ClosureMetrics {
   p50_days: number;
   p90_days: number;
