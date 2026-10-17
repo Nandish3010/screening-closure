@@ -1,0 +1,148 @@
+# Inputs for tools/pilot/cost_model.py.
+#
+# EVERY value here is an assumption chosen to show the shape of the cost curve. None comes from a quote,
+# a contract, a published price list or pilot data. Replace each one with a sourced figure (and change its
+# status) before any number from this model is used in a commercial conversation.
+#
+# Format: a small YAML subset (nested mappings, scalars, inline lists, # comments) read by the script's own
+# parser, so no third-party package is needed. Currency is AED. Each input has: value, unit, status, basis.
+# status must be "assumed" or "sourced"; the script refuses an input with no status.
+
+currency: AED
+
+scenarios:
+  screened_members_per_year: [10000, 50000, 200000]
+
+inputs:
+  positivity_rate:
+    value: 0.07
+    unit: share of screened members with a positive FIT
+    status: assumed
+    basis: Same value as simulator/params.yaml fit_positivity_rate (assumed there too; published ranges around 5-8 percent are to verify in docs/evidence.md).
+
+  hosting_fixed_aed_per_month:
+    value: 9000
+    unit: AED per month
+    status: assumed
+    basis: In-country hosting of the full stack with a standby copy (database, API, scheduler, watchdog, FHIR server, web). Not a quote.
+
+  hosting_variable_aed_per_1000_cases_per_year:
+    value: 400
+    unit: AED per 1,000 actionable cases per year
+    status: assumed
+    basis: Storage and compute growth with case volume. Not a quote.
+
+  third_party_licences_aed_per_year:
+    value: 24000
+    unit: AED per year
+    status: assumed
+    basis: Monitoring, backup and logging tools. Excludes our own product fee, which is modelled separately under pricing.
+
+  support_fte_base:
+    value: 0.5
+    unit: FTE
+    status: assumed
+    basis: Operations, on-call and release support needed at any volume.
+
+  support_fte_per_50k_members:
+    value: 0.25
+    unit: FTE per 50,000 screened members per year
+    status: assumed
+    basis: Extra support as volume and provider count grow.
+
+  support_fte_loaded_cost_aed_per_year:
+    value: 300000
+    unit: AED per FTE per year
+    status: assumed
+    basis: Fully loaded engineer or support analyst cost.
+
+  integration_one_off_aed_per_provider:
+    value: 120000
+    unit: AED per participating provider, one-off
+    status: assumed
+    basis: Data feed build and test, role set-up, training, and local security assessment support.
+
+  members_per_provider:
+    value: 20000
+    unit: screened members per year per provider
+    status: assumed
+    basis: Used only to estimate how many providers a given volume implies.
+
+  amortisation_years:
+    value: 3
+    unit: years
+    status: assumed
+    basis: Period over which the one-off integration cost is spread.
+
+  coordinator_minutes_per_case_manual:
+    value: 90
+    unit: minutes of coordinator time per actionable case without the engine
+    status: assumed
+    basis: Chasing, calling, re-booking and recording across the pathway. To be measured in the pilot shadow period.
+
+  coordinator_minutes_per_case_with_engine:
+    value: 35
+    unit: minutes of coordinator time per actionable case with the engine
+    status: assumed
+    basis: Remaining human work: owner decisions, approvals, calls the engine cannot do. To be measured in the pilot.
+
+  coordinator_cost_aed_per_hour:
+    value: 120
+    unit: AED per hour
+    status: assumed
+    basis: Loaded cost of a screening or referral coordinator.
+
+  price_per_screened_member_per_year_aed:
+    value: 6.0
+    unit: AED per screened member per year
+    status: assumed
+    basis: Illustrative fee for commercial option A. Not an offer.
+
+  price_per_actionable_case_aed:
+    value: 90
+    unit: AED per actionable (FIT-positive) case
+    status: assumed
+    basis: Illustrative fee for commercial option B. Not an offer.
+
+pilot:
+  pilot_providers:
+    value: 3
+    unit: providers
+    status: assumed
+    basis: Pilot plan asks for two to three providers; the upper end is used.
+
+  pilot_fit_screened_per_provider_per_year:
+    value: 3000
+    unit: FIT results per provider per year
+    status: assumed
+    basis: Placeholder until providers supply their real volumes (a data request in the pilot plan).
+
+  pilot_days:
+    value: 90
+    unit: days
+    status: assumed
+    basis: Enrolment window of the pilot (30 days shadow, 60 days active).
+
+  followup_tail_days:
+    value: 90
+    unit: days
+    status: assumed
+    basis: Follow-up after the last enrolment so cases can reach closure and be measured. A decision of this plan, not part of the original brief.
+
+  pilot_support_fte:
+    value: 1.0
+    unit: FTE during the enrolment window
+    status: assumed
+    basis: Pilot manager and engineer support.
+
+  tail_support_fte:
+    value: 0.25
+    unit: FTE during the follow-up tail
+    status: assumed
+    basis: Monitoring and reporting only.
+
+  pilot_governance_review_one_off_aed:
+    value: 60000
+    unit: AED, one-off
+    status: assumed
+    basis: Clinical safety review, security assessment, legal review of data agreements.
