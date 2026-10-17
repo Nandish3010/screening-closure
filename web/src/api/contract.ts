@@ -282,9 +282,14 @@ export interface PostEventBody {
 /**
  * GET /cases/{id}/timeline -> { case_id, sim_time, items: TimelineItem[] }
  *
- * BACKEND: items are sorted by `at` ascending. `kind: "event"` items are the raw log
- * rows; `sla_breach` and `escalation` items are derived by the scheduler / SLA sweep
- * and interleaved by time. The UI also derives SLA clocks, handoffs, consent state and
+ * BACKEND (A9, live): the response is `{case_id, sim_time, items, actors}`. Items are sorted by `at`
+ * ascending. `kind: "event"` items are the raw log rows. The API derives these from the log and
+ * interleaves them (they are not stored): `sla_started` (`at` = clock start, with `state, sla, working_days,
+ * due_at, clock_start`), `sla_breached` (`at` = the due date, `detected_at` = when the sweep wrote it;
+ * the type below calls it `sla_breach`), `escalation` (`rung, level, target_role, after_breach_days,
+ * accepted, accepted_at, accepted_by`), `handoff_bounce` (`to_provider, returned_to, requested_at, reason`)
+ * and `watchdog_flag` (`reason, idle_days, cleared_at`). `actors` maps each actor string to
+ * `{actor, display_name, role}`. The older `sla_breach` / `escalation` shapes below are the mock's. The UI also derives SLA clocks, handoffs, consent state and
  * AI-draft provenance, overdue and watchdog markers from the `event` items alone, so a timeline with only events
  * degrades gracefully.
  */

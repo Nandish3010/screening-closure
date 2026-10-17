@@ -46,6 +46,24 @@ class CaseSummary:
     updated_at: datetime
 
 
+@dataclass(frozen=True)
+class LoadedCase:
+    """A case with its full log and read model, for the list routes and metrics (A9, A10).
+
+    `model` is None (and `error` set) when the stored log does not replay."""
+
+    case_id: UUID
+    pathway: str
+    created_at: datetime  # `at` of the genesis event: simulation time
+    events: list
+    model: CaseModel | None
+    error: str | None = None
+
+    @property
+    def patient_ref(self) -> str | None:
+        return self.events[0].payload.get("patient_ref") if self.events else None
+
+
 class CaseNotFound(KeyError):
     pass
 
@@ -87,6 +105,11 @@ class EventStore(Protocol):
         ...
 
     def list_cases(self, state: str | None = None) -> list[CaseSummary]: ...
+
+    def load_cases(self, pathway: Pathway, state: str | None = None) -> list[LoadedCase]:
+        """Every case of the pathway (optionally only those currently in `state`) with its log
+        and read model, ordered by (genesis time, case id). One batch read, not one per case."""
+        ...
 
     def iter_open_case_models(self, pathway: Pathway, only=None):
         """Yield (case_id, model | None, error | None) for every non-closed case of the pathway
@@ -177,6 +200,15 @@ class InMemoryEventStore:
             ]
         for cid, model in snapshot:
             yield cid, model, None
+
+    def load_cases(self, pathway: Pathway, state: str | None = None) -> list[LoadedCase]:
+        with self._lock:
+            out = [
+                LoadedCase(cid, c.pathway, c.events[0].at, list(c.events), c.model)
+                for cid, c in self._cases.items()
+                if c.pathway == pathway.name and (state is None or c.model.state == state)
+            ]
+        return sorted(out, key=lambda lc: (lc.created_at, str(lc.case_id)))
 
     def list_cases(self, state: str | None = None) -> list[CaseSummary]:
         with self._lock:

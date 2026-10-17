@@ -4,18 +4,19 @@ from uuid import UUID, uuid4
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, ConfigDict, Field
 
-from app import consent, evidence, notify, payloads, policy, users
+from app import consent, evidence, notify, payloads, policy, readmodel, users
+from app.calendar import default_calendar
 from app.auth import Identity, require_identity
 from app.clock import clock
 from app.events import (
     CASE_CREATED,
     CaseAlreadyExists,
     CaseNotFound,
-    CaseSummary,
     Event,
     EventIdConflict,
     EventStore,
     InMemoryEventStore,
+    LoadedCase,
     replay_model,
 )
 from app.pathway import Pathway
@@ -50,25 +51,7 @@ class PostEvent(BaseModel):
     event_id: UUID | None = None  # optional idempotency key for client retries
 
 
-def _event_json(e: Event) -> dict:
-    return {
-        "seq": e.seq,
-        "event_id": str(e.event_id),
-        "type": e.type,
-        "at": e.at.isoformat(),
-        "actor": e.actor,
-        "payload": e.payload,
-    }
-
-
-def _summary_json(c: CaseSummary) -> dict:
-    return {
-        "case_id": str(c.case_id),
-        "pathway": c.pathway,
-        "state": c.current_state,
-        "created_at": c.created_at.isoformat(),
-        "updated_at": c.updated_at.isoformat(),
-    }
+_event_json = readmodel.event_json
 
 
 def _actors_json(events, model) -> dict:
@@ -86,14 +69,18 @@ def _case_json(case_id: UUID) -> dict:
         raise CaseNotFound(str(case_id))
     events = store.events_for(case_id)
     model = replay_model(events, pathway)
+    row = readmodel.case_row(
+        LoadedCase(case_id, pathway.name, events[0].at, events, model), pathway, default_calendar()
+    )
     return {
+        # The worklist fields (owner as {actor, display_name, role}, due_at, ...) so a case page
+        # needs no second request; the keys below it are the case itself.
+        **row,
         "case_id": str(case_id),
         "state": state,
         # state, overdue, escalation_level, owner, consent_frozen, last_event_at, ... derived
         # by replaying the events above (see app.state_machine.CaseModel).
         "read_model": model.to_json(),
-        # The owner for the UI: {actor, display_name, role}. read_model.owner stays the actor.
-        "owner": users.resolve_actor(model.owner),
         "actors": _actors_json(events, model),
         "events": [_event_json(e) for e in events],
     }
@@ -119,8 +106,27 @@ def create_case(body: CreateCase) -> dict:
 
 
 @router.get("")
-def list_cases(state: str | None = None) -> list[dict]:
-    return [_summary_json(c) for c in store.list_cases(state)]
+def list_cases(
+    state: str | None = None,
+    owner: str | None = None,
+    overdue: bool | None = None,
+    provider: str | None = None,
+    flagged: bool | None = None,
+    identity: Identity = Depends(require_identity),
+) -> list[dict]:
+    """The worklist (A9): one row per case with the fields the web needs, in a stable order
+    (genesis time, then case id). Filters: `state`, `owner` (an actor, a user id or a display
+    name), `overdue`, `provider`, `flagged` (open watchdog flag). A patient sees only their own
+    cases; everyone else sees all."""
+    calendar = default_calendar()
+    rows = []
+    for lc in store.load_cases(pathway, state):
+        if identity.role == "patient" and (identity.patient_ref is None or lc.patient_ref != identity.patient_ref):
+            continue
+        row = readmodel.case_row(lc, pathway, calendar)
+        if row is not None and readmodel.matches(row, owner=owner, overdue=overdue, provider=provider, flagged=flagged):
+            rows.append(row)
+    return rows
 
 
 def _patient_ref(case_id: UUID) -> str | None:
@@ -195,6 +201,26 @@ def get_case(case_id: UUID, identity: Identity = Depends(require_identity)) -> d
         return _case_json(case_id)
     except CaseNotFound:
         raise HTTPException(404, "case not found")
+
+
+@router.get("/{case_id}/timeline")
+def case_timeline(case_id: UUID, identity: Identity = Depends(require_identity)) -> dict:
+    """The case's audit view (A9): every event in sequence plus the derived items (SLA clocks,
+    breaches, ladder rungs, handoff bounces, watchdog flags) in one list ordered by `at`.
+    Read-only: this path has no write route."""
+    try:
+        policy.authorize_case_access(identity, _patient_ref(case_id))
+    except CaseNotFound:
+        raise HTTPException(404, "case not found")
+    events = store.events_for(case_id)
+    if not events:
+        raise HTTPException(404, "case not found")
+    model = replay_model(events, pathway)
+    return {
+        "case_id": str(case_id),
+        **readmodel.timeline(events, pathway, default_calendar(), clock.now()),
+        "actors": _actors_json(events, model),
+    }
 
 
 @router.get("/{case_id}/notifications")

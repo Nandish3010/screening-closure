@@ -16,6 +16,9 @@ replay of the event log produces:
     last_handoff         outcome of the latest answered or bounced handoff (A5)
     consent_frozen       outreach is frozen (state is consent_withdrawn)
     last_event_at        `at` of the latest event, including annotations
+    last_activity_at     `at` of the latest event that is not a watchdog flag: the idle clock (A11)
+    watchdog_flag        {reason, idle_days, at} while a watchdog_flagged is the newest word on the
+                         case, None as soon as any other event arrives (A9, A11)
     resume_state         where the case returns to when consent is restored (side state only)
     clock_started_at     when the current state's SLA clock started: the event that entered the
                          state, or, for an SLA with `clock_start: handoff_accepted` (A13), the
@@ -103,6 +106,8 @@ class CaseModel:
     owner: str | None = None
     consent_frozen: bool = False
     last_event_at: datetime | None = None
+    last_activity_at: datetime | None = None
+    watchdog_flag: dict | None = None
     resume_state: str | None = None
     clock_started_at: datetime | None = None
     breach_due_at: datetime | None = None
@@ -128,6 +133,8 @@ class CaseModel:
             "owner": self.owner,
             "consent_frozen": self.consent_frozen,
             "last_event_at": iso(self.last_event_at),
+            "last_activity_at": iso(self.last_activity_at),
+            "watchdog_flag": dict(self.watchdog_flag) if self.watchdog_flag else None,
             "resume_state": self.resume_state,
             "clock_started_at": iso(self.clock_started_at),
             "breach_due_at": iso(self.breach_due_at),
@@ -149,7 +156,7 @@ def initial_model(pathway: Pathway) -> CaseModel:
 def genesis(model: CaseModel, event: Event) -> CaseModel:
     """The case_created marker starts the first state's SLA clock; it changes no state."""
     at = _aware(event.at)
-    return replace(model, last_event_at=at, clock_started_at=at)
+    return replace(model, last_event_at=at, last_activity_at=at, clock_started_at=at)
 
 
 def replay_model(events, pathway: Pathway) -> CaseModel:
@@ -419,6 +426,13 @@ def _finish(
     """Bookkeeping common to every accepted event: last_event_at, ownership, handoff, consent."""
     kind, payload, at = event.type, event.payload, _aware(event.at)
     out = replace(model, last_event_at=at)
+    if kind == "watchdog_flagged":
+        # A flag is not activity: the idle clock keeps running from the last real event.
+        out = replace(out, watchdog_flag={"reason": payload.get("reason"),
+                                          "idle_days": payload.get("idle_days"), "at": at.isoformat()})
+    else:
+        # Any other event is activity: the case is being looked at, so the flag clears.
+        out = replace(out, last_activity_at=at, watchdog_flag=None)
     if kind == "accept_ownership":
         out = replace(out, owner=event.actor, provider=payload.get("provider"))
     elif kind == "reassign":

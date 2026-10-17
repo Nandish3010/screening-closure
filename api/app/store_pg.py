@@ -15,6 +15,7 @@ from app.events import (
     CaseSummary,
     Event,
     EventIdConflict,
+    LoadedCase,
     StateCorruption,
 )
 from app.pathway import Pathway
@@ -162,6 +163,37 @@ class PostgresEventStore:
                     yield case_id, replay_model(by_case.get(case_id, []), pathway), None
                 except InvalidTransition as exc:
                     yield case_id, None, str(exc)
+
+    def load_cases(self, pathway: Pathway, state: str | None = None, chunk: int = 500) -> list[LoadedCase]:
+        sql = "SELECT id FROM cases WHERE pathway = %s"
+        params: list = [pathway.name]
+        if state is not None:
+            sql += " AND current_state = %s"
+            params.append(state)
+        with self._pool.connection() as conn:
+            ids = [r[0] for r in conn.execute(sql + " ORDER BY id", params).fetchall()]
+        out: list[LoadedCase] = []
+        for i in range(0, len(ids), chunk):
+            part = ids[i : i + chunk]
+            with self._pool.connection() as conn:
+                rows = conn.execute(
+                    f"SELECT case_id, {_EVENT_COLS} FROM events"
+                    " WHERE case_id = ANY(%s) ORDER BY case_id, seq",
+                    (part,),
+                ).fetchall()
+            by_case: dict[UUID, list[Event]] = {}
+            for row in rows:
+                by_case.setdefault(row[0], []).append(_event_from_row(row[0], row[1:]))
+            for case_id in part:
+                events = by_case.get(case_id, [])
+                if not events:
+                    continue
+                try:
+                    model, error = replay_model(events, pathway), None
+                except InvalidTransition as exc:
+                    model, error = None, str(exc)
+                out.append(LoadedCase(case_id, pathway.name, events[0].at, events, model, error))
+        return sorted(out, key=lambda lc: (lc.created_at, str(lc.case_id)))
 
     def current_state(self, case_id: UUID) -> str | None:
         with self._pool.connection() as conn:

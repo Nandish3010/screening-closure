@@ -259,7 +259,9 @@ def test_patient_may_only_act_on_their_own_case_and_only_three_event_types():
     assert client.get(f"/cases/{mine}", headers=pat).status_code == 200
     assert client.get(f"/cases/{theirs}", headers=pat).status_code == 404  # looks like unknown
     assert client.get(f"/cases/{uuid4()}", headers=pat).status_code == 404
-    assert client.get("/cases", headers=pat).status_code == 403
+    # a patient's list holds their own cases only (A9)
+    listed = client.get("/cases", headers=pat).json()
+    assert mine in [c["case_id"] for c in listed] and theirs not in [c["case_id"] for c in listed]
     assert post(theirs, "consent_updated", pat, {"withdrawn": True}).status_code == 404
     assert post(theirs, "callback_requested", pat).status_code == 404
     assert post(mine, "callback_requested", pat).status_code == 201
@@ -276,14 +278,13 @@ def test_patient_without_a_patient_ref_sees_no_case():
     assert client.get(f"/cases/{case_id}", headers=nobody).status_code == 404
 
 
-def test_staff_routes_by_role():
+def test_staff_and_patient_routes_by_role():
     for role in ("lab", "coordinator", "supervisor"):
         assert client.post("/cases", json={}, headers=H(role)).status_code == 201, role
     for role in ("primary_care_owner", "specialist_owner", "patient"):
         assert client.post("/cases", json={}, headers=H(role)).status_code == 403, role
     for role in ROLES:
-        want = 403 if role == "patient" else 200
-        assert client.get("/cases", headers=H(role)).status_code == want, role
+        assert client.get("/cases", headers=H(role)).status_code == 200, role  # patients: their own (A9)
 
 
 # -- service identity ----------------------------------------------------------------------

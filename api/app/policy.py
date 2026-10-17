@@ -34,7 +34,10 @@ ROUTE_POLICY: dict[tuple[str, str], object] = {
     ("GET", "/me"): ANY_IDENTITY,
     ("GET", "/pathways"): ANY_IDENTITY,
     ("POST", "/cases"): frozenset({LAB, COORD, SUPER}),
-    ("GET", "/cases"): STAFF,
+    # Staff see every case; a patient sees only their own (filtered in the handler, A9).
+    ("GET", "/cases"): ALL_USERS,
+    # The audit view of a case: same access as the case itself (patients: their own only).
+    ("GET", "/cases/{case_id}/timeline"): ALL_USERS,
     # Patients may read their own case only (checked in the handler).
     ("GET", "/cases/{case_id}"): ALL_USERS,
     # The notification log of a case: owners (of that case), coordinators, supervisors (A7).
