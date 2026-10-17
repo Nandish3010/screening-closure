@@ -235,3 +235,41 @@ class PostgresClockStore:
         """Remove the clock row (tests; the API never deletes its clock)."""
         with self._pool.connection() as conn:
             conn.execute("DELETE FROM sim_clock WHERE clock_id = %s", (self._clock_id,))
+
+
+class PostgresUserDirectory:
+    """The `users` table (migration 004): display names, kept out of the event log (A14)."""
+
+    def __init__(self, pool: ConnectionPool) -> None:
+        self._pool = pool
+        self._known: set[str] = set()  # ids written by this process: skips a write per request
+
+    def upsert(self, record) -> None:
+        with self._pool.connection() as conn:
+            conn.execute(
+                "INSERT INTO users (user_id, role, display_name, provider) VALUES (%s, %s, %s, %s)"
+                " ON CONFLICT (user_id) DO UPDATE SET role = EXCLUDED.role,"
+                " display_name = EXCLUDED.display_name, provider = EXCLUDED.provider,"
+                " updated_at = now()",
+                (record.user_id, record.role, record.display_name, record.provider),
+            )
+        self._known.add(record.user_id)
+
+    def get(self, user_id: str):
+        from app.users import UserRecord
+
+        with self._pool.connection() as conn:
+            row = conn.execute(
+                "SELECT user_id, role, display_name, provider FROM users WHERE user_id = %s",
+                (user_id,),
+            ).fetchone()
+        return UserRecord(*row) if row else None
+
+    def ensure(self, identity) -> None:
+        if identity.user_id in self._known:
+            return
+        if self.get(identity.user_id) is None:
+            from app.users import record_for
+
+            self.upsert(record_for(identity))
+        self._known.add(identity.user_id)

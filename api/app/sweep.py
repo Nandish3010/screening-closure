@@ -21,6 +21,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from uuid import UUID
 
+from app import payloads
 from app.calendar import WorkingCalendar
 from app.events import CaseNotFound, Event, EventIdConflict, EventStore
 from app.pathway import Pathway
@@ -232,6 +233,15 @@ def run_sweep(
                     or event.payload.get("bounced") is not True
                 ):
                     raise RuntimeError("scheduler planned a handoff_rejected that is not a bounce")
+                try:
+                    # Whatever the sweep plans must also pass the payload schema (A14), so a bug
+                    # here cannot put free text in the log. A planned event that does not is
+                    # reported and skipped, not allowed to stop the sweep for every other case.
+                    payloads.validate(event.type, event.payload)
+                except payloads.PayloadSchemaError as exc:
+                    result.errors.append(f"{case_id}: {exc}")
+                    log.error("case %s: planned %s refused by the payload schema: %s", case_id, event.type, exc)
+                    break
                 try:
                     store.append(event, pathway)
                 except InvalidTransition as exc:

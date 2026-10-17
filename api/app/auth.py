@@ -17,12 +17,18 @@ import hashlib
 import hmac
 import json
 import re
+import uuid
 from dataclasses import dataclass
 
 from fastapi import Depends, HTTPException
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
-from app.config import DEV_AUTH_SECRET_DEFAULT, SCHEDULER_TOKEN_DEFAULT, settings
+from app.config import (
+    DEV_AUTH_SECRET_DEFAULT,
+    SCHEDULER_TOKEN_DEFAULT,
+    WATCHDOG_TOKEN_DEFAULT,
+    settings,
+)
 
 USER_ROLES = (
     "lab",
@@ -33,6 +39,7 @@ USER_ROLES = (
     "supervisor",
 )
 SCHEDULER_ROLE = "scheduler"  # service role; only reachable with the service token
+WATCHDOG_ROLE = "watchdog"  # service role; may emit watchdog_flagged and nothing else (A11)
 # Names that can never be a user role, even by accident.
 AUTOMATED_ROLE_NAMES = ("system", "scheduler", "watchdog", "model")
 
@@ -40,6 +47,21 @@ NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9 ._@-]{0,63}$")  # no ":" so role:n
 PATIENT_REF_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9/._-]{0,99}$")
 PROVIDER_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9 ._@/-]{0,99}$")
 PROVIDER_ROLES = ("primary_care_owner", "specialist_owner")  # roles that act for a provider
+
+
+# Fixed namespace for opaque user ids (never change: ids would change and so would every
+# actor already written to the log).
+USER_ID_NAMESPACE = uuid.UUID("a2c1f0d4-8b6e-4c53-9f1a-5d7e3b2a9c60")
+USER_ID_LENGTH = 12  # hex digits of the uuid5: short, URL-safe, not derived from anything readable
+
+
+def opaque_user_id(role: str, name: str) -> str:
+    """The opaque id behind `role:user_id` actors (A14, ADR-019): uuid5 of role+name, short form.
+
+    The same person logging in twice as the same role gets the same id; the name itself is
+    written only to the `users` table (erasable), never to the event log.
+    """
+    return uuid.uuid5(USER_ID_NAMESPACE, f"{role}|{name}").hex[:USER_ID_LENGTH]
 
 
 class AuthError(Exception):
@@ -50,7 +72,7 @@ class AuthError(Exception):
 class Identity:
     kind: str  # "user" or "service"
     role: str
-    name: str
+    name: str  # the display name for a user (never written to the event log); the service name
     patient_ref: str | None = None
     # The provider (organisation) a clinician acts for. Referral handoffs are addressed to a
     # provider; a clinician may answer one addressed to theirs (A5). Defaults to the name.
@@ -61,13 +83,15 @@ class Identity:
         return self.provider or self.name
 
     @property
-    def actor(self) -> str:
-        """The string recorded as `actor` on events this identity causes."""
-        return f"system:{self.name}" if self.kind == "service" else f"{self.role}:{self.name}"
+    def user_id(self) -> str:
+        """The opaque id for a user (A14); a service is its own id (`system:<service>`)."""
+        return f"system:{self.name}" if self.kind == "service" else opaque_user_id(self.role, self.name)
 
     @property
-    def user_id(self) -> str:
-        return self.actor
+    def actor(self) -> str:
+        """The string recorded as `actor` on events this identity causes: `role:user_id` for
+        people (the id is opaque, A14), `system:<service>` for services."""
+        return self.user_id if self.kind == "service" else f"{self.role}:{self.user_id}"
 
 
 def _b64(raw: bytes) -> str:
@@ -141,6 +165,8 @@ def service_identity(token: str) -> Identity | None:
     """The identity for a configured service token, else None. Constant-time comparison."""
     if hmac.compare_digest(token.encode(), settings.scheduler_service_token.encode()):
         return Identity("service", SCHEDULER_ROLE, "scheduler")
+    if hmac.compare_digest(token.encode(), settings.watchdog_service_token.encode()):
+        return Identity("service", WATCHDOG_ROLE, "watchdog")
     return None
 
 
@@ -157,6 +183,8 @@ def assert_secure_config() -> None:
         problems.append("DEV_AUTH_SECRET is the built-in development default")
     if settings.scheduler_service_token == SCHEDULER_TOKEN_DEFAULT:
         problems.append("SCHEDULER_SERVICE_TOKEN is the built-in development default")
+    if settings.watchdog_service_token == WATCHDOG_TOKEN_DEFAULT:
+        problems.append("WATCHDOG_SERVICE_TOKEN is the built-in development default")
     if problems:
         raise RuntimeError(f"APP_ENV={settings.app_env!r}: " + "; ".join(problems))
 
@@ -170,9 +198,14 @@ def optional_identity(
     if creds is None:
         return None
     try:
-        return authenticate(creds.credentials)
+        identity = authenticate(creds.credentials)
     except AuthError:
         raise HTTPException(401, "invalid token", headers={"WWW-Authenticate": "Bearer"}) from None
+    if identity.kind == "user":
+        from app import users  # late: users imports this module
+
+        users.directory.ensure(identity)  # a valid token always has a display-name row
+    return identity
 
 
 def require_identity(identity: Identity | None = Depends(optional_identity)) -> Identity:

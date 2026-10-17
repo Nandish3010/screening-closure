@@ -2,7 +2,7 @@
 
 from uuid import uuid4
 
-from api_helpers import login_headers, make_client
+from api_helpers import actor_of, login_headers, make_client
 
 client = make_client()
 COORD = login_headers(client, "coordinator", "bea")
@@ -34,7 +34,7 @@ def test_case_lifecycle_and_response_shape():
     resp = post(case_id, first, LAB)
     assert resp.status_code == 201
     assert [e["seq"] for e in resp.json()["events"]] == [1, 2]
-    assert resp.json()["events"][1]["actor"] == "lab:lab one"  # derived from the identity
+    assert resp.json()["events"][1]["actor"] == actor_of("lab", "lab one")  # derived from the identity (opaque id, A14)
     got = client.get(f"/cases/{case_id}", headers=COORD).json()
     assert got["state"] == resp.json()["state"]
 
@@ -86,7 +86,7 @@ def test_case_json_carries_the_read_model():
     case_id = created["case_id"]
     post(case_id, "acknowledge", LAB)
     out = post(case_id, "accept_ownership", OWNER).json()
-    assert out["read_model"]["owner"] == "primary_care_owner:dr k"
+    assert out["read_model"]["owner"] == actor_of("primary_care_owner", "dr k")
     assert out["read_model"]["state"] == out["state"] == "owner_accepted"
 
 

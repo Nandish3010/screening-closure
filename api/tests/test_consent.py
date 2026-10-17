@@ -6,7 +6,7 @@ from uuid import uuid4
 
 import pytest
 
-from api_helpers import login_headers, make_client
+from api_helpers import APPROVED, DRAFTED, actor_of, login_headers, make_client
 from app.clock import clock
 from app.config import settings as app_settings
 from app.consent import channel_allowed, ensure_review_requested, review_event_id
@@ -247,7 +247,7 @@ def test_t_a24_patient_and_coordinator_may_change_consent_everyone_else_gets_403
     rm = case(cid)["read_model"]
     assert rm["consent"]["channel_sms"] is False and rm["consent"]["channel_whatsapp"] is False
     assert [(h["actor"], h["changes"]) for h in rm["consent_history"]] == [
-        ("patient:pat", {"channel_sms": False}), ("coordinator:bea", {"channel_whatsapp": False})]
+        (actor_of("patient", "pat"), {"channel_sms": False}), (actor_of("coordinator", "bea"), {"channel_whatsapp": False})]
 
 
 def test_t_a24_history_is_in_the_timeline_and_matches_the_derived_value():
@@ -278,7 +278,7 @@ def test_t_a23_withdrawal_freezes_outreach_and_flags_the_case_for_review():
     rm = body["read_model"]
     assert rm["consent_frozen"] is True and rm["review_reason"] == "consent_withdrawn"
     assert [(e["type"], e["actor"]) for e in body["events"][-2:]] == [
-        ("consent_updated", "patient:pat"), ("review_requested", "system:consent")]
+        ("consent_updated", actor_of("patient", "pat")), ("review_requested", "system:consent")]
     # it is on the human-review list
     listed = client.get("/cases", params={"state": "consent_withdrawn"}, headers=COORD).json()
     assert cid in [c["case_id"] for c in listed]
@@ -286,9 +286,9 @@ def test_t_a23_withdrawal_freezes_outreach_and_flags_the_case_for_review():
     n = len(case(cid)["events"])
     for type_, headers, payload in [
         ("contact_patient", PCO, {}),
-        ("message_drafted", COORD, {}),
-        ("message_drafted", PCO, {}),
-        ("message_approved", PCO, {}),
+        ("message_drafted", COORD, DRAFTED),
+        ("message_drafted", PCO, DRAFTED),
+        ("message_approved", PCO, APPROVED),
         ("handoff_requested", PCO, {"to_provider": "endo-1"}),
         ("handoff_requested", SUP, {"to_provider": "endo-1"}),
     ]:
@@ -297,7 +297,7 @@ def test_t_a23_withdrawal_freezes_outreach_and_flags_the_case_for_review():
     assert post(cid, "message_sent", PCO).status_code == 403  # nobody posts it
     assert len(case(cid)["events"]) == n
     # a human can still act on what matters: ask for a callback
-    assert post(cid, "callback_requested", PATIENT, {"reason": "consent_withdrawn"}).status_code == 201
+    assert post(cid, "callback_requested", PATIENT, {"reason": "wants_to_speak_to_clinician"}).status_code == 201
 
 
 def test_the_review_flag_cannot_be_posted_by_anyone():
@@ -324,4 +324,4 @@ def test_restoring_consent_unfreezes_and_clears_the_review():
     rm = r.json()["read_model"]
     assert rm["consent_frozen"] is False and rm["review_reason"] is None
     assert [e["type"] for e in r.json()["events"]].count("review_requested") == 1  # history stays
-    assert post(cid, "message_drafted", PCO).status_code == 201
+    assert post(cid, "message_drafted", PCO, DRAFTED).status_code == 201

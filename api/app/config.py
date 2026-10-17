@@ -12,6 +12,7 @@ _DEFAULT_CALENDAR = _REPO_ROOT / "config" / "calendar.yaml"
 # why app.auth.assert_secure_config refuses them when APP_ENV is not "dev".
 DEV_AUTH_SECRET_DEFAULT = "dev-only-insecure-secret-change-me"
 SCHEDULER_TOKEN_DEFAULT = "dev-only-scheduler-service-token"
+WATCHDOG_TOKEN_DEFAULT = "dev-only-watchdog-service-token"
 
 
 class Settings(BaseSettings):
@@ -31,6 +32,8 @@ class Settings(BaseSettings):
     # Static bearer tokens for the services. A service token maps to a fixed identity
     # (system:scheduler) and a fixed set of event types (app.policy.SERVICE_EVENT_POLICY).
     scheduler_service_token: str = SCHEDULER_TOKEN_DEFAULT
+    # The watchdog has its own token and may emit only `watchdog_flagged` (A11).
+    watchdog_service_token: str = WATCHDOG_TOKEN_DEFAULT
     # In compose this is overridden to /config/pathways/colorectal_fit.yaml
     pathway_path: str = str(_DEFAULT_PATHWAY)
     # Working-day calendar (weekend set, holidays, time zone). Compose sets /config/calendar.yaml.

@@ -16,6 +16,7 @@ import uuid
 from datetime import datetime
 from uuid import UUID
 
+from app import payloads
 from app.events import Event, EventStore
 from app.pathway import Pathway
 from app.state_machine import CONSENT_ACTOR, CaseModel
@@ -60,5 +61,6 @@ def ensure_review_requested(
         {"reason": "consent_withdrawn", "source_event_id": str(trigger_event_id)},
         review_event_id(trigger_event_id),
     )
+    payloads.validate(flag.type, flag.payload)
     store.append(flag, pathway)
     return flag

@@ -9,7 +9,7 @@ from uuid import uuid4
 
 import pytest
 
-from api_helpers import login_headers, make_client
+from api_helpers import APPROVED, DRAFT_ID, DRAFTED, login_headers, make_client
 from app import notify
 from app.clock import clock
 from app.config import settings as app_settings
@@ -62,13 +62,13 @@ def mock_send(store, cid, log, channel="sms", **kw):
 def test_a_message_is_logged_and_message_sent_is_written(no_network):
     store, log = InMemoryEventStore(), InMemoryNotificationLog()
     cid = make_case(store)
-    n = mock_send(store, cid, log, "whatsapp", language="ar", purpose="first_contact", draft_id="d-1")
+    n = mock_send(store, cid, log, "whatsapp", language="ar", purpose="first_contact", draft_id=DRAFT_ID)
     assert (n.status, n.reason, n.channel, n.language, n.purpose) == ("sent", None, "whatsapp", "ar", "first_contact")
     assert log.for_case(cid) == [n]
     [sent] = [e for e in store.events_for(cid) if e.type == "message_sent"]
     assert n.event_id == sent.event_id and sent.actor == "system:notifier"
     assert sent.payload == {"notification_id": str(n.id), "channel": "whatsapp", "language": "ar",
-                            "purpose": "first_contact", "draft_id": "d-1"}
+                            "purpose": "first_contact", "draft_id": DRAFT_ID}
     assert n.created_at == at(1) and n.body == "Please call the clinic."
     assert store.current_state(cid) == "patient_contacted"  # a message changes no state
 
@@ -275,8 +275,8 @@ def test_t_a23_after_a_withdrawal_over_http_no_outbound_row_exists(http_case, no
     rows = client.get(f"/cases/{cid}/notifications", headers=COORD).json()
     assert [x["status"] for x in rows] == ["sent"] + ["blocked_consent"] * 4
     assert [x for x in rows if x["status"] in ("sent", "queued") and x["created_at"] >= withdrawn_at] == []
-    for type_, h in [("message_drafted", COORD), ("message_approved", PCO)]:
-        r = client.post(f"/cases/{cid}/events", json={"type": type_}, headers=h)
+    for type_, h, payload in [("message_drafted", COORD, DRAFTED), ("message_approved", PCO, APPROVED)]:
+        r = client.post(f"/cases/{cid}/events", json={"type": type_, "payload": payload}, headers=h)
         assert r.status_code == 409
     listed = client.get("/cases", params={"state": "consent_withdrawn"}, headers=COORD).json()
     assert cid in [c["case_id"] for c in listed]

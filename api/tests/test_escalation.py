@@ -10,7 +10,7 @@ from uuid import uuid4
 
 import pytest
 
-from api_helpers import login_headers, make_client
+from api_helpers import actor_of, login_headers, make_client
 from app.calendar import WorkingCalendar
 from app.clock import clock
 from app.config import settings as app_settings
@@ -255,7 +255,7 @@ def test_escalation_and_acceptance_over_http(http_case):
     assert post(case_id, "escalation_accepted", OWNER).status_code == 403  # not the owner (nobody is)
     accepted = post(case_id, "escalation_accepted", SUP)
     assert accepted.status_code == 201
-    assert accepted.json()["events"][-1]["actor"] == "supervisor:sam"
+    assert accepted.json()["events"][-1]["actor"] == actor_of("supervisor", "sam")
     assert accepted.json()["read_model"]["escalation_accepted"] is True
 
     client.post("/clock/advance", json={"days": 14}, headers=SUP)

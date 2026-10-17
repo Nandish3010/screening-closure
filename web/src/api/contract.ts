@@ -21,6 +21,17 @@
  * re-logs-in once and retries when it gets a 401. A 404 from dev-login means "auth not
  * enabled" and the adapter carries on without a token. The mock adapter ignores all of this.
  *
+ * Identity (BACKEND, A14, ADR-019): dev-login returns `{token, token_type, user_id, role, display_name,
+ * patient_ref?, provider?}` and `GET /me` returns `{user_id, role, display_name, provider?}`. `user_id` is an
+ * opaque 12-hex slug (uuid5 of role + name), NOT the name. The event `actor` is `role:user_id` (for example
+ * `primary_care_owner:3f9a1c7b2d04`), or `system:<service>` for the scheduler, watchdog, notifier and intake.
+ * The UI never builds an actor string and never sends one (the API rejects `actor` in a body with 422); it
+ * shows names from `display_name`: the case routes return `owner` as `OwnerRef` and an `actors` map
+ * (actor -> OwnerRef) covering every actor in the log. Names exist only in the API's `users` table, never
+ * in the log. Payloads are strict (A14): a key that is not listed under "Payload conventions" is rejected
+ * with 422, `reason` fields take only the taxonomies, and `note` (at most 200 characters) is the one
+ * free-text field. Do not put patient identifiers or clinical detail in a note: the log cannot be erased.
+ *
  * All timestamps are ISO-8601 strings in SIMULATED time (the programme clock, not the
  * wall clock). The UI never calls `Date.now()` for business logic; it uses `sim_time`
  * from GET /metrics/closure (or `sim_time` echoed by the mock).
@@ -96,33 +107,43 @@ export type TransitionEvent = (typeof TRANSITION_EVENTS)[number];
  * Written by the backend (the UI only displays them):
  *  handoff_accepted    payload {} (optional {provider})               actor: "provider:<name>"
  *  handoff_rejected    payload {reason: HandoffRejectReason}          actor: "provider:<name>"
- *  message_drafted     payload {draft_id, provider, fallback_used, text_ar?, text_en?}
+ *  message_drafted     payload {draft_id, provider, fallback_used, prompt_hash, language}
  *                                                                     actor: "model:<provider>"
- *                      (written when POST /cases/{id}/drafts succeeds; include the texts so the UI
- *                      can show a still-pending draft after a reload. Without them the UI says
- *                      "draft text unavailable, request a new draft".)
+ *                      (written when POST /cases/{id}/drafts succeeds). BACKEND (A14): the event carries NO
+ *                      text. The draft text stays in the `drafts` table and the web reads it with
+ *                      GET /cases/{id}/drafts (route owned by the AI cut, D4; not in main yet). To show a
+ *                      still-pending draft after a reload the UI calls that route with the event's
+ *                      `draft_id`; if it is unavailable the UI says "draft text unavailable, request a
+ *                      new draft".)
  *  message_approved    payload {draft_id}                             actor: the approving human
  *                      (written when POST /drafts/{id}/approve succeeds; the approver is the actor)
  *  message_sent        payload {draft_id}                             actor: "system:<sender>"
  *                      (emitted by the backend AFTER message_approved. A message is never sent
  *                      without a preceding approval; the UI shows "approved, not sent yet" until it appears)
  *  mark_overdue        payload {state: string, due_at: string}        actor: "system:scheduler"
- *  watchdog_flagged    payload {reason: "idle"|"scheduler_down", idle_days?: number}
- *                                                                     actor: "watchdog"
+ *  watchdog_flagged    payload {reason: "idle"|"scheduler_down", idle_days?: number, last_activity_at?: string}
+ *                                                                     actor: "system:watchdog" (BACKEND, A11: only
+ *                      reason "idle" is written on a case; a dead scheduler is a system alert, GET /alerts)
  *  case_created        payload {patient_ref?}                         actor: "system:intake"
  *
  * Actor strings are `role:name` (`coordinator:amal`, `clinician:dr_ali`, `system:scheduler`,
  * `model:drafter`) or a bare `watchdog`. "Automated" means the role part is one of
  * system | model | watchdog | scheduler (see isAutomatedActor in lib/derive.ts).
  *
- * Payload conventions on transition events (the UI sends these):
- *  accept_ownership      {owner: string, owner_role?: string}
- *  contact_patient       {channel?: ContactChannel, draft_id?: string}
- *  patient_acknowledge   {lang: "en"|"ar"}
- *  book_confirmatory     {appointment_ref: string}
- *  complete_confirmatory {result_ref: string}                         (confirmatory result reference)
- *  clinician_review      {signed_by: string}
+ * Payload conventions on transition events (the UI sends these). BACKEND (A14): the API accepts exactly
+ * these keys per event type and nothing else (app/payloads.py is the authority; every human event also
+ * accepts `note?: string` of at most 200 characters):
+ *  accept_ownership      {provider?: string}                          (the owner is the caller; send no name)
+ *  contact_patient       {channel?: ContactChannel | "letter", draft_id?: string (uuid)}
+ *  patient_acknowledge   {lang?: "en"|"ar"}
+ *  book_confirmatory     {appointment_ref?: string}                   (an id like "Appointment/a1", no spaces)
+ *  complete_confirmatory {result_ref?: string}                        (confirmatory result reference)
+ *  clinician_review      {signed_by?: string}                         (your own actor or "Practitioner/<user_id>")
  *  close                 {evidence_ref: string, signed_by: string}   (REQUIRED by the engine)
+ *  reopen                {reason: "new_finding"|"evidence_inadequate"|"closed_in_error"|"patient_request"|"other"}
+ *  reassign              {owner: string ("role:user_id" of the new owner), provider?: string}
+ *  callback_requested    {reason?: "patient_does_not_understand"|"wants_to_speak_to_clinician"|"cannot_attend"|"other", lang?}
+ *  mark_lost_contact     {failed_attempts: number}
  */
 export type EventType = TransitionEvent | NonTransitionEvent;
 export type NonTransitionEvent =
@@ -184,13 +205,29 @@ export interface CaseEvent {
  * that ignores them still works. The UI computes "N days overdue" itself from `due_at` and
  * the simulated clock (`sim_time`); there is no `overdue_days` field any more.
  */
+/**
+ * A person or service behind an actor string (A14). BACKEND: the case routes resolve `owner` to this
+ * shape from the `users` table. Until the web adapter maps it, `CaseSummary.owner` below keeps the
+ * display name only (the adapter should read `owner.display_name`).
+ */
+export interface OwnerRef {
+  /** The actor string as written in the log: "role:user_id" or "system:<service>". */
+  actor: string;
+  display_name: string;
+  role: string;
+}
+
 export interface CaseSummary {
   case_id: string;
   pathway: string;
   state: CaseState | string;
   created_at: string;
   updated_at: string;
-  /** Name of the person who accepted ownership, or null when unowned. */
+  /**
+   * Name of the person who accepted ownership, or null when unowned.
+   * BACKEND (A9/A14): the API returns `owner` as `OwnerRef | null` (`{actor, display_name, role}`);
+   * the adapter shows `owner.display_name` and filters with `owner=<actor or user_id>`.
+   */
   owner: string | null;
   /** When the SLA for the current state expires (sim time). null when no SLA applies (e.g. closed). */
   due_at: string | null;
@@ -340,6 +377,8 @@ export const ROLES: Role[] = ["coordinator", "owner", "specialist", "clinician",
 export interface Me {
   role: Role;
   name: string;
+  /** BACKEND (A14): the API's `user_id` (opaque slug) and `display_name`; the adapter maps display_name to `name`. */
+  user_id?: string;
 }
 
 // ---------------------------------------------------------------------------------------

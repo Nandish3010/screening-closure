@@ -4,7 +4,7 @@ from uuid import UUID, uuid4
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, ConfigDict, Field
 
-from app import consent, notify, policy
+from app import consent, notify, payloads, policy, users
 from app.auth import Identity, require_identity
 from app.clock import clock
 from app.events import (
@@ -71,17 +71,30 @@ def _summary_json(c: CaseSummary) -> dict:
     }
 
 
+def _actors_json(events, model) -> dict:
+    """Display names for every actor in the log and the owner, resolved from the users table
+    (A14): the log holds only opaque `role:user_id` strings."""
+    actors = {e.actor for e in events}
+    if model.owner:
+        actors.add(model.owner)
+    return {a: users.resolve_actor(a) for a in sorted(actors)}
+
+
 def _case_json(case_id: UUID) -> dict:
     state = store.current_state(case_id)
     if state is None:
         raise CaseNotFound(str(case_id))
     events = store.events_for(case_id)
+    model = replay_model(events, pathway)
     return {
         "case_id": str(case_id),
         "state": state,
         # state, overdue, escalation_level, owner, consent_frozen, last_event_at, ... derived
         # by replaying the events above (see app.state_machine.CaseModel).
-        "read_model": replay_model(events, pathway).to_json(),
+        "read_model": model.to_json(),
+        # The owner for the UI: {actor, display_name, role}. read_model.owner stays the actor.
+        "owner": users.resolve_actor(model.owner),
+        "actors": _actors_json(events, model),
         "events": [_event_json(e) for e in events],
     }
 
@@ -90,8 +103,13 @@ def _case_json(case_id: UUID) -> dict:
 def create_case(body: CreateCase) -> dict:
     case_id = body.case_id or uuid4()
     payload = body.model_dump(exclude={"case_id"})
-    if payload.get("contact_valid") is None:
-        payload.pop("contact_valid", None)
+    for key in ("patient_ref", "result_ref", "contact_valid"):
+        if payload.get(key) is None:
+            payload.pop(key, None)
+    try:
+        payloads.validate(CASE_CREATED, payload)
+    except payloads.PayloadSchemaError as exc:
+        raise HTTPException(422, str(exc))
     genesis = Event(case_id, CASE_CREATED, clock.now(), "system:intake", payload)
     try:
         store.create_case(case_id, pathway.name, genesis, pathway.initial_state)
@@ -132,11 +150,12 @@ def post_event(
     extra = {"event_id": body.event_id} if body.event_id is not None else {}
     event = Event(case_id, body.type, at, identity.actor, body.payload, **extra)
     try:
+        payloads.validate(body.type, body.payload)  # free text cannot enter the log (A14)
         validate_payload(event, pathway)  # malformed payload: 422 before anything is written
         store.append(event, pathway)
     except CaseNotFound:
         raise HTTPException(404, "case not found")
-    except PayloadError as exc:
+    except (PayloadError, payloads.PayloadSchemaError) as exc:
         raise HTTPException(422, str(exc))
     except InvalidTransition as exc:
         raise HTTPException(409, str(exc))

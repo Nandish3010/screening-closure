@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, ConfigDict
 
-from app import auth
+from app import auth, users
 from app.auth import AuthError, Identity, require_identity
 from app.config import settings
 
@@ -26,7 +26,9 @@ def dev_login(body: DevLogin) -> dict:
     except AuthError as exc:
         status = 403 if body.role in auth.AUTOMATED_ROLE_NAMES else 422
         raise HTTPException(status, str(exc)) from exc
-    return {"token": token, "token_type": "bearer", **_me(auth.verify_token(token))}
+    identity = auth.verify_token(token)
+    users.record_login(identity)  # the display name goes to the users table, never to the log
+    return {"token": token, "token_type": "bearer", **_me(identity)}
 
 
 def _me(identity: Identity) -> dict:

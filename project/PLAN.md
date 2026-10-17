@@ -198,9 +198,9 @@ Everything below is a working contract for Cuts C and D. "Exists" means in the c
 | `POST /cases` | exists | `{case_id?, patient_ref?, result_ref?, contact_valid?}` (`contact_valid`: `false` = no valid contact details, or `{"sms": false}` per channel; kept in the genesis payload for the notification mock) | 201 with the case: `{case_id, state, read_model, events[]}`; 409 `CaseAlreadyExists` |
 | `GET /cases?state=` | exists | query `state` | list of `{case_id, pathway, state, created_at, updated_at}` |
 | `GET /cases/{id}` | exists | none | `{case_id, state, read_model, events[]}`; 404 if unknown |
-| `POST /auth/dev-login` | exists (A8) | `{role, name, patient_ref?, provider?}` (patient_ref only for role `patient`; provider only for `primary_care_owner` and `specialist_owner`, default: the name) | `{token, token_type: "bearer", user_id, role, display_name, patient_ref?}`; 403 for an automated role name, 422 for anything else invalid; 404 when `DEV_LOGIN_ENABLED=false` |
+| `POST /auth/dev-login` | exists (A8) | `{role, name, patient_ref?, provider?}` (patient_ref only for role `patient`; provider only for `primary_care_owner` and `specialist_owner`, default: the name) | `{token, token_type: "bearer", user_id, role, display_name, patient_ref?, provider?}`; `user_id` is an opaque 12-hex slug (A14); the name is stored only in the `users` table; 403 for an automated role name, 422 for anything else invalid; 404 when `DEV_LOGIN_ENABLED=false` |
 | `POST /cases/{id}/events` | exists | `{type, payload, at?, event_id?}` (no `actor`: 422 if present) | 201 with the case (same shape as `GET /cases/{id}`); 404; 409 for an invalid transition or an `event_id` used on another case |
-| `GET /me` | exists (A8) | bearer token | `{user_id, role, display_name, patient_ref?, provider?}`; `user_id` is `role:name` |
+| `GET /me` | exists (A8) | bearer token | `{user_id, role, display_name, patient_ref?, provider?}`; `user_id` is the opaque slug (uuid5 of role + name, short form, A14), and the actor recorded for this user is `role:user_id` |
 | `GET /cases?state&owner&overdue` | planned (A9) | query filters | list as above plus `owner`, `due_at`, `overdue`, and `risk_score` once D9 lands |
 | `GET /cases/{id}/notifications` | exists (A7) | none | list, oldest first, of `{id, case_id, channel, language, purpose, body, status, reason, event_id, created_at}`; `status` is `queued`, `sent`, `blocked_consent` or `blocked_contact`; `event_id` is the `message_sent` event (null unless `sent`). primary_care_owner / specialist_owner (their own case), coordinator, supervisor; 404 if unknown |
 | `GET /cases/{id}/timeline` | planned (A9) | none | read-only list of events with `seq, event_id, type, at, actor, payload` |
@@ -211,7 +211,7 @@ Everything below is a working contract for Cuts C and D. "Exists" means in the c
 | `POST /clock/reset` | exists (A3) | none | `{sim_time}` (the configured start); supervisor only |
 | `POST /scheduler/sweep` | exists (A3) | none | `{sim_time, cases_evaluated, mark_overdue, escalate, handoff_bounced, rejected, errors[]}`; the scheduler service token only |
 
-Event shape (all routes): `{seq, event_id, type, at, actor, payload}`. `event_id` is the idempotency key: a retry with the same id inserts once. `at` defaults to the sim clock, never the wall clock, and may not be later than the sim clock (422); backdating is allowed. `actor` is derived from the caller's identity (`role:name`, or `system:scheduler` for the scheduler service) and a client-supplied `actor` is rejected with 422. Errors are JSON with a `detail` string.
+Event shape (all routes): `{seq, event_id, type, at, actor, payload}`. `event_id` is the idempotency key: a retry with the same id inserts once. `at` defaults to the sim clock, never the wall clock, and may not be later than the sim clock (422); backdating is allowed. `actor` is derived from the caller's identity (`role:user_id` with an opaque `user_id`, A14, ADR-019; or `system:scheduler` for the scheduler service) and a client-supplied `actor` is rejected with 422. Errors are JSON with a `detail` string.
 
 Consent changes, callbacks and flags use `POST /cases/{id}/events`, not separate routes.
 
@@ -252,6 +252,38 @@ Final as of A2 (`config/pathways/colorectal_fit.yaml`, `api/app/state_machine.py
 | `message_sent` | A2 defines, A7 writes | `system:notifier`, only through `app.notify.send` after approval | annotation. Refused while consent is withdrawn |
 | `callback_requested` | A2 defines, C6 uses | patient | annotation: creates a human callback task; human only |
 | `watchdog_flagged` | A2 defines, A11 uses | watchdog | annotation: the case appears in "cases nobody is looking at" |
+
+**Payloads (A14, ADR-019; authority `api/app/payloads.py`).** The event log is immutable, so free text must not enter it. Every event type has a strict schema: a key that is not listed is rejected with 422 (nothing is written), string values must have the shape of an id or a code (not prose), `reason` fields take only their taxonomy, and the only free text is `note`, **at most 200 characters, on the events a person posts**. Staff must not put patient identifiers, names or clinical detail in a note (the log cannot be erased); a note is for a short operational remark such as "called twice, no answer". Display names live in the `users` table, draft text in the `drafts` table and message bodies in the `notifications` table; the log holds only their ids and hashes. In particular `message_drafted` carries `draft_id, provider, fallback_used, prompt_hash, language` and no text; the web reads the text with `GET /cases/{id}/drafts` (the drafts router belongs to the AI cut, D4, and is not in main yet; until it lands the UI shows "draft text unavailable").
+
+| Event type | Allowed payload keys (`?` = optional) | `note` |
+|---|---|---|
+| `case_created` | `patient_ref?`, `result_ref?`, `contact_valid?`, `pathway?` | no |
+| `acknowledge` | (none) | yes |
+| `accept_ownership` | `provider?` | yes |
+| `contact_patient` | `channel?`, `draft_id?` | yes |
+| `patient_acknowledge` | `lang?` | yes |
+| `book_confirmatory` | `appointment_ref?` | yes |
+| `complete_confirmatory` | `result_ref?` | yes |
+| `clinician_review` | `signed_by?` | yes |
+| `close` | `evidence_ref`, `signed_by` | yes |
+| `reopen` | `reason` | yes |
+| `mark_overdue` | `state`, `due_at`, `sla_event?`, `sla_working_days?` | no |
+| `escalate` | `rung`, `state`, `level?`, `target?`, `action?`, `due_at?`, `rung_due_at?` | yes |
+| `escalation_accepted` | `rung?` | yes |
+| `handoff_requested` | `to_provider` | yes |
+| `handoff_accepted` | `provider?` | yes |
+| `handoff_rejected` | `reason`, `bounced?`, `to_provider?`, `returned_to?`, `requested_at?`, `due_at?`, `working_days?` | yes |
+| `reassign` | `owner`, `provider?` | yes |
+| `consent_updated` | `channel_sms?`, `channel_whatsapp?`, `channel_phone?`, `channel_letter?`, `share_with_specialist?`, `withdrawn?` | yes |
+| `mark_lost_contact` | `failed_attempts` | yes |
+| `review_requested` | `reason`, `source_event_id` | no |
+| `message_drafted` | `draft_id`, `provider`, `fallback_used`, `prompt_hash`, `language` | no |
+| `message_approved` | `draft_id` | yes |
+| `message_sent` | `notification_id`, `channel`, `language`, `purpose`, `draft_id?` | no |
+| `callback_requested` | `reason?`, `lang?` | yes |
+| `watchdog_flagged` | `reason`, `idle_days?`, `last_activity_at?` | no |
+
+Taxonomies for `reason`: `reopen` takes `new_finding`, `evidence_inadequate`, `closed_in_error`, `patient_request`, `other`; `callback_requested` takes `patient_does_not_understand`, `wants_to_speak_to_clinician`, `cannot_attend`, `other`; `handoff_rejected` takes the pathway's four human reasons or the scheduler-only `timeout`; `watchdog_flagged` takes `idle`, `scheduler_down`; `review_requested` takes `consent_withdrawn`. `reassign.owner` and `handoff_rejected.returned_to` are actor strings (`role:user_id`). The in-process emitters (sweep, consent, notification mock) validate against the same schemas before they append. The schema is enforced at the API boundary and in those emitters; the pure state machine and the simulator are not bound by it.
 
 Heartbeats from the scheduler are not case events. Their storage is decided in A11.
 

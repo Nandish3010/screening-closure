@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import Depends, FastAPI
 
-from app import auth, notify, policy
+from app import auth, notify, policy, users
 from app.clock import clock
 from app.config import settings
 from app.events import InMemoryEventStore
@@ -29,17 +29,24 @@ async def lifespan(app: FastAPI):
     pool = None
     if database_url:
         from app.db import create_pool, run_migrations
-        from app.store_pg import PostgresClockStore, PostgresEventStore, PostgresNotificationLog
+        from app.store_pg import (
+            PostgresClockStore,
+            PostgresEventStore,
+            PostgresNotificationLog,
+            PostgresUserDirectory,
+        )
 
         pool = create_pool(database_url)
         run_migrations(pool)
         cases.store = PostgresEventStore(pool)
         notify.log = PostgresNotificationLog(pool)
+        users.directory = PostgresUserDirectory(pool)
         resumed = clock.bind(PostgresClockStore(pool, "main"))
         log.info("event store: postgres; sim clock resumed at %s", resumed.isoformat())
     else:
         cases.store = InMemoryEventStore()
         notify.log = notify.InMemoryNotificationLog()
+        users.directory = users.InMemoryUserDirectory()
         log.warning("event store: IN-MEMORY (DATABASE_URL not set); data is not durable")
     try:
         yield

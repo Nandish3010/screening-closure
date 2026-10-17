@@ -6,7 +6,7 @@ from uuid import uuid4
 
 import pytest
 
-from api_helpers import login_headers, make_client
+from api_helpers import actor_of, login_headers, make_client
 from app.calendar import WorkingCalendar
 from app.clock import clock
 from app.config import settings as app_settings
@@ -289,10 +289,10 @@ def model(cid):
 
 def test_t_a20_handoff_accept_over_http():
     cid = case_at("acked")
-    assert model(cid)["owner"] == "primary_care_owner:dr a"
+    assert model(cid)["owner"] == actor_of("primary_care_owner", "dr a")
     r = post(cid, "handoff_requested", PCO_A, {"to_provider": "endo-1"})
     assert r.status_code == 201
-    assert model(cid)["owner"] == "primary_care_owner:dr a"  # still A while pending
+    assert model(cid)["owner"] == actor_of("primary_care_owner", "dr a")  # still A while pending
     assert model(cid)["pending_handoff"]["to_provider"] == "endo-1"
     # not the provider it was sent to, not the owner: refused, nothing written
     before = len(client.get(f"/cases/{cid}", headers=COORD).json()["events"])
@@ -303,11 +303,11 @@ def test_t_a20_handoff_accept_over_http():
     r = post(cid, "handoff_accepted", SPEC_1)
     assert r.status_code == 201
     rm = r.json()["read_model"]
-    assert rm["owner"] == "specialist_owner:dr s1" and rm["provider"] == "endo-1"
+    assert rm["owner"] == actor_of("specialist_owner", "dr s1") and rm["provider"] == "endo-1"
     assert rm["pending_handoff"] is None and rm["state"] == "patient_acknowledged"
     events = r.json()["events"]
     assert [(e["type"], e["actor"]) for e in events[-2:]] == [
-        ("handoff_requested", "primary_care_owner:dr a"), ("handoff_accepted", "specialist_owner:dr s1")]
+        ("handoff_requested", actor_of("primary_care_owner", "dr a")), ("handoff_accepted", actor_of("specialist_owner", "dr s1"))]
     # the new owner can carry on; the old one is now out of scope
     assert post(cid, "book_confirmatory", PCO_A).status_code == 403
     assert post(cid, "book_confirmatory", SPEC_1, {"appointment_ref": "x"}).status_code == 201
@@ -320,7 +320,7 @@ def test_t_a21_each_reason_is_accepted(reason):
     r = post(cid, "handoff_rejected", SPEC_1, {"reason": reason})
     assert r.status_code == 201
     assert r.json()["state"] == "referral_rejected"
-    assert r.json()["read_model"]["owner"] == "primary_care_owner:dr a"  # ownership stays
+    assert r.json()["read_model"]["owner"] == actor_of("primary_care_owner", "dr a")  # ownership stays
     assert r.json()["events"][-1]["payload"]["reason"] == reason
 
 
@@ -341,13 +341,13 @@ def test_t_a21_a_rejected_referral_can_be_rerouted():
     assert post(cid, "handoff_requested", PCO_A, {"to_provider": "dr s2"}).status_code == 201
     r = post(cid, "handoff_accepted", SPEC_2)
     assert r.status_code == 201 and r.json()["state"] == "owner_accepted"
-    assert r.json()["read_model"]["owner"] == "specialist_owner:dr s2"
+    assert r.json()["read_model"]["owner"] == actor_of("specialist_owner", "dr s2")
     # or a supervisor reassigns
     cid = case_at("acked")
     post(cid, "handoff_requested", PCO_A, {"to_provider": "endo-1"})
     post(cid, "handoff_rejected", SPEC_1, {"reason": "capacity"})
-    r = post(cid, "reassign", SUP, {"owner": "primary_care_owner:dr b"})
-    assert r.status_code == 201 and r.json()["read_model"]["owner"] == "primary_care_owner:dr b"
+    r = post(cid, "reassign", SUP, {"owner": actor_of("primary_care_owner", "dr b")})
+    assert r.status_code == 201 and r.json()["read_model"]["owner"] == actor_of("primary_care_owner", "dr b")
 
 
 def test_a_bad_payload_is_a_422_and_a_bad_transition_a_409():

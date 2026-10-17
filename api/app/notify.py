@@ -24,6 +24,7 @@ from datetime import datetime
 from typing import Protocol
 from uuid import UUID
 
+from app import payloads
 from app.clock import clock
 from app.consent import CHANNELS, channel_allowed
 from app.events import CaseNotFound, Event
@@ -112,6 +113,7 @@ def emit_message_sent(store, pathway, case_id: UUID, notification_id: UUID, chan
         payload["draft_id"] = draft_id
     event = Event(case_id, "message_sent", at, NOTIFIER_ACTOR, payload,
                   uuid.uuid5(NOTIFY_NAMESPACE, str(notification_id)))
+    payloads.validate(event.type, event.payload)
     store.append(event, pathway)  # InvalidTransition if the case cannot take it (e.g. closed)
     return event
 

@@ -13,10 +13,17 @@ from fastapi.testclient import TestClient
 from app import auth, policy
 from app.config import settings
 from app.routers import cases
-from api_helpers import ROLES, login_headers, make_client
+from api_helpers import ROLES, actor_of, login_headers, make_client, user_id_of
 
 client = make_client()
-SIGNED = {"evidence_ref": "DiagnosticReport/1", "signed_by": "Practitioner/9"}
+EVIDENCE = "DiagnosticReport/1"
+
+
+def signed(role="specialist_owner", name=None):
+    """A close payload signed as the logged-in clinician (A15): signed_by is their own identity."""
+    return {"evidence_ref": EVIDENCE, "signed_by": f"Practitioner/{user_id_of(role, name or f'test {role}')}"}
+
+
 SPEC_PROVIDER = "test specialist_owner"  # a clinician's default provider is their login name
 
 
@@ -48,7 +55,8 @@ def event_count(case_id):
 def test_each_role_gets_the_expected_me(role):
     h = H(role, "Some Name")
     me = client.get("/me", headers=h).json()
-    assert me == {"user_id": f"{role}:Some Name", "role": role, "display_name": "Some Name"}
+    assert me == {"user_id": user_id_of(role, "Some Name"), "role": role, "display_name": "Some Name"}
+    assert "Some Name" not in me["user_id"]  # opaque (A14)
 
 
 def test_patient_me_includes_patient_ref():
@@ -135,6 +143,9 @@ def test_insecure_defaults_refuse_to_start_outside_dev(monkeypatch):
     with pytest.raises(RuntimeError, match="SCHEDULER_SERVICE_TOKEN"):
         auth.assert_secure_config()
     monkeypatch.setattr(settings, "scheduler_service_token", "y" * 40)
+    with pytest.raises(RuntimeError, match="WATCHDOG_SERVICE_TOKEN"):
+        auth.assert_secure_config()
+    monkeypatch.setattr(settings, "watchdog_service_token", "z" * 40)
     auth.assert_secure_config()
 
 
@@ -149,7 +160,7 @@ def test_actor_is_derived_from_identity_and_a_body_actor_is_rejected():
     assert event_count(case_id) == before
     ok = post(case_id, "acknowledge", H("lab", "lab one"))
     assert ok.status_code == 201
-    assert ok.json()["events"][-1]["actor"] == "lab:lab one"
+    assert ok.json()["events"][-1]["actor"] == actor_of("lab", "lab one")
 
 
 def test_events_cannot_be_dated_after_the_simulation_clock():
@@ -205,7 +216,7 @@ def test_wrong_role_gets_403_and_writes_nothing(type_, wrong_role):
     walk(case_id, 9)  # clinician_reviewed: close is otherwise valid
     before = event_count(case_id)
     r = post(case_id, type_, H(wrong_role, patient_ref="Patient/1" if wrong_role == "patient" else None),
-             SIGNED if type_ == "close" else {})
+             signed() if type_ == "close" else {})
     assert r.status_code == 403, r.text
     assert event_count(case_id) == before
 
@@ -213,15 +224,18 @@ def test_wrong_role_gets_403_and_writes_nothing(type_, wrong_role):
 def test_owner_can_close_with_evidence_and_the_actor_is_recorded():
     case_id = new_case()
     walk(case_id, 9)
-    r = post(case_id, "close", H("specialist_owner"), SIGNED)
+    r = post(case_id, "close", H("specialist_owner"), signed())
     assert r.status_code == 201 and r.json()["state"] == "closed"
-    assert r.json()["events"][-1]["actor"] == "specialist_owner:test specialist_owner"
+    assert r.json()["events"][-1]["actor"] == actor_of("specialist_owner")
 
 
-def test_close_without_evidence_is_still_409_for_an_allowed_role():
+def test_close_without_evidence_is_refused_for_an_allowed_role_and_writes_nothing():
+    # 422 from the payload schema (A14); the state machine's own guard (409) is tested directly.
     case_id = new_case()
     walk(case_id, 9)
-    assert post(case_id, "close", H("specialist_owner"), {}).status_code == 409
+    before = event_count(case_id)
+    assert post(case_id, "close", H("specialist_owner"), {}).status_code == 422
+    assert event_count(case_id) == before
 
 
 def test_unlisted_event_types_cannot_be_posted_by_anyone():
@@ -281,7 +295,7 @@ def test_scheduler_service_token_maps_to_system_scheduler_and_its_event_types():
     assert me["user_id"] == "system:scheduler" and me["role"] == "scheduler"
     case_id = new_case()
     assert post(case_id, "acknowledge", sched).status_code == 403
-    assert post(case_id, "close", sched, SIGNED).status_code == 403
+    assert post(case_id, "close", sched, signed()).status_code == 403
     assert client.get("/cases", headers=sched).status_code == 403
     assert client.post("/cases", json={}, headers=sched).status_code == 403
     allowed = {t for t, roles in policy.EVENT_POLICY.items() if "scheduler" in roles}
