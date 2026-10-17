@@ -10,6 +10,11 @@ def test_stage_order_matches_the_brief():
     assert names[:8] == ["test", "test-db", "web-test", "web-build", "evaluate-check",
                          "docs-check", "tracker-lint", "test-security"]
     assert "load-check" in names and "test-tools" in names
+    assert names[-3:] == ["review-packs-check", "test-review-packs", "web-e2e"]
+
+
+def test_summarise_playwright():
+    assert rc.summarise("  2 skipped\n  33 passed (12.5s)\n") == "playwright 33 passed"
 
 
 def test_summarise_pytest_vitest_and_markers():

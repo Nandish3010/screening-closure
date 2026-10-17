@@ -79,3 +79,25 @@ def test_cli_exit_codes(tmp_path, capsys):
 def test_real_docs_links_and_tables_are_clean():
     errors = [f for f in dc.run(REPO_ROOT, include_readme=True) if f.kind != "todo"]
     assert errors == [], "\n".join(map(str, errors))
+
+
+def test_matrix_must_list_exactly_the_event_policy_types(tmp_path):
+    policy = 'EVENT_POLICY = {\n    "acknowledge": 1,\n    "close": 2,\n}\nOTHER = {\n    "x": 1,\n}\n'
+    matrix = "## Events\n\n| Event |\n|---|\n| `case_created` |\n| `acknowledge` |\n| `message_rejected` (planned, A16) |\n"
+    root = make(tmp_path, {"api/app/policy.py": policy, "docs/governance/decision-matrix.md": matrix})
+    errors = dc.run(root)
+    assert kinds(errors) == ["matrix"] and "'close'" in errors[0].message
+    (root / "docs/governance/decision-matrix.md").write_text(matrix + "| `close` |\n| `stray` |\n", encoding="utf-8")
+    errors = dc.run(root)
+    assert kinds(errors) == ["matrix"] and "'stray'" in errors[0].message
+
+
+def test_hazards_need_ratings_a_control_and_known_test_ids(tmp_path):
+    head = "| ID | Hazard | Cause | Likelihood | Impact | Control | Test | Residual | Owner |\n|---|---|---|---|---|---|---|---|---|\n"
+    ok = "| HZ-01 | h | c | M | H | a control | T-A1 built | M | e |\n"
+    bad = "| HZ-02 | h | c | X | H | | T-Z99 and nothing | M | e |\n"
+    root = make(tmp_path, {"docs/governance/hazard-log.md": head + ok + bad,
+                           "project/TEST-CASES.md": "| T-A1 | a |\n"})
+    errors = dc.run(root)
+    assert kinds(errors) == ["hazard"] * 3
+    assert all("HZ-02" in f.message for f in errors)

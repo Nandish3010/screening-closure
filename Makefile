@@ -127,7 +127,7 @@ web-e2e:
 # ---- Cut F: hardening, reproducibility, `make check` (F1, F6, F9) ----------------------------------
 # `make check` runs, in order and stopping at the first failure: test, test-db (skipped loudly if
 # Postgres on :5433 is down), web-test, web-build, evaluate-check, docs-check, tracker-lint,
-# test-security, test-tools and a reduced load check. Each stage is its own target. Run every stage
+# test-security, test-tools, a reduced load check, review-packs-check, test-review-packs and web-e2e. Each stage is its own target. Run every stage
 # even after a failure (for reporting): `make check CHECK_KEEP_GOING=1`.
 check:
 	$(PY) tools/check/run_check.py $(if $(CHECK_KEEP_GOING),--keep-going)

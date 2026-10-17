@@ -14,6 +14,10 @@ Stages (each is a make target, so each can be run on its own):
     test-tools    the cross-cutting tests in tests/ (scanner, linters, load harness)
     load-check    sweep over 1,000 seeded cases (F6; full sizes are `make test-load`);
                   SKIPPED loudly if Postgres on :5433 is unreachable
+    review-packs-check  the committed reviewer packs equal a fresh build (E10)
+    test-review-packs   the reviewer-pack tests (T-E17)
+    web-e2e       Playwright suite against the mock adapter: closure flow in English and Arabic,
+                  axe and PWA checks (C11; needs `npx playwright install chromium` once)
 
 A skipped stage is printed as a boxed warning and counted separately; it is not a pass.
 `--keep-going` (or CHECK_KEEP_GOING=1) runs every stage even after a failure, for reporting;
@@ -68,8 +72,12 @@ STAGES = [
     Stage("test-security"),
     Stage("test-tools"),
     Stage("load-check", needs_pg=True),
+    Stage("review-packs-check"),
+    Stage("test-review-packs"),
+    Stage("web-e2e", web=True),
 ]
 
+PLAYWRIGHT_RE = re.compile(r"^(\d+ passed)(?: \([\d.]+m?s\))?$")
 PYTEST_RE = re.compile(r"=+ (.*(?:passed|failed|error).*) in [\d.]+s.*=+|^(\d+ (?:passed|failed).*) in [\d.]+s")
 VITEST_RE = re.compile(r"Tests\s+(.*)")
 MARKER_RE = re.compile(r"^(?:[\w-]+): (?:PASS|FAIL)\b.*$")
@@ -80,6 +88,7 @@ def summarise(output: str) -> str:
     lines = [ln.strip() for ln in output.splitlines() if ln.strip()]
     pytest_lines = [m.group(1) or m.group(2) for ln in lines if (m := PYTEST_RE.search(ln))]
     markers = [ln for ln in lines if MARKER_RE.match(ln)]
+    playwright = [m.group(1) for ln in lines if (m := PLAYWRIGHT_RE.match(ln))]
     parts: list[str] = []
     if pytest_lines:
         parts.append(" + ".join(pytest_lines) if len(pytest_lines) > 1 else pytest_lines[-1])
@@ -88,6 +97,8 @@ def summarise(output: str) -> str:
         if m and "passed" in m.group(1):
             parts.append("vitest " + m.group(1).strip())
             break
+    if playwright and not pytest_lines:
+        parts.append("playwright " + playwright[-1])
     if markers:
         parts.append(markers[-1])
     if not parts:

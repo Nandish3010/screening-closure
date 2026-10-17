@@ -302,3 +302,40 @@ def test_t_a33_the_actor_names_in_fhir_are_the_only_place_a_person_s_name_appear
     assert actor_of("primary_care_owner", "Dr Proj A").split(":")[1] in json.dumps(fake.of_type("Provenance"))
     assert "Dr Proj A" not in json.dumps(fake.of_type("Provenance"))  # the log-side records stay opaque
     assert "Dr Proj A" in json.dumps(fake.of_type("Practitioner"))  # the erasable FHIR store holds the name
+
+
+def test_t_d5_a_draft_and_its_approval_are_projected_as_provenance(stack, monkeypatch):
+    """T-D5, FHIR half: `message_drafted` (agent: the model) and `message_approved` (agent: the
+    approving owner) each become a Provenance on the case's Task, and approval fills the draft's
+    approver and time. The approval goes through `append(..., within=...)` on the projecting store."""
+    from app.ai.draft_store import InMemoryDraftStore
+    from app.routers import drafts
+
+    monkeypatch.setattr(drafts, "store", InMemoryDraftStore())
+    fake, projector, store = stack
+    coord, lab = login("coordinator", "fp coord"), login("lab", "fp lab")
+    pco = login("primary_care_owner", "Dr Proj A")
+    cid = client.post("/cases", json={"patient_ref": "Patient/p-1", "result_ref": "DiagnosticReport/r-1"},
+                      headers=coord).json()["case_id"]
+    post(cid, "acknowledge", lab)
+    post(cid, "accept_ownership", pco)
+    body = {"purpose": "result_notification", "channel": "sms", "language": "en"}
+    r = client.post(f"/cases/{cid}/drafts", json=body, headers=coord)
+    assert r.status_code == 201, r.text
+    draft_id = r.json()["draft_id"]
+    approved = client.post(f"/drafts/{draft_id}/approve", headers=pco)
+    assert approved.status_code == 200, approved.text
+
+    events = {e.type: e for e in store.events_for(UUID(cid))}
+    prov = {p["entity"][0]["what"]["identifier"]["value"]: p for p in fake.of_type("Provenance")}
+    for type_ in ("message_drafted", "message_approved", "message_sent"):
+        p = prov[str(events[type_].event_id)]
+        assert p["activity"]["coding"][0]["code"] == type_
+        assert f"Task/task-{cid}" in [t["reference"] for t in p["target"]]
+    approver = actor_of("primary_care_owner", "Dr Proj A")
+    assert events["message_drafted"].actor == "model:template" and events["message_approved"].actor == approver
+    assert prov[str(events["message_approved"].event_id)]["agent"][0]["who"] == {
+        "reference": f"Practitioner/{approver.split(':')[1]}"}
+    row = drafts.draft_store().get(UUID(draft_id))
+    assert row.approved_by == approver and row.approved_at is not None
+    assert "text" not in events["message_drafted"].payload  # the log and the FHIR side carry no draft text

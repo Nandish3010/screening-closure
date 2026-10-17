@@ -93,3 +93,16 @@ def test_abstentions_are_persisted_and_counted_in_the_metric(client, pool, monke
     assert [r[0] for r in rows] == [False, True, False]
     assert rows[1][1] == outs[1]["abstention_reason"] and rows[1][2] == rows[1][3]
     assert rows[0][1] is None and rows[0][2] is None
+
+
+def test_the_rate_appears_in_get_metrics_closure(client, monkeypatch):
+    """T-D15: GET /metrics/closure carries the same abstention counts as GET /metrics/abstention
+    (both read the drafts table; the closure route returns `rate` null only when there are no attempts)."""
+    monkeypatch.setenv("LLM_PROVIDER", "template")
+    cid = owned_case(client)
+    draft(client, cid)
+    closure = client.get("/metrics/closure", headers=H(client, "coordinator")).json()["abstention"]
+    own = metric(client)
+    assert closure is not None and closure["attempts"] >= 1
+    assert (closure["attempts"], closure["abstentions"]) == (own["attempts"], own["abstentions"])
+    assert closure["rate"] == pytest.approx(closure["abstentions"] / closure["attempts"])
