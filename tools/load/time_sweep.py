@@ -44,13 +44,14 @@ import seed_cases as sc  # noqa: E402
 
 from app.db import create_pool  # noqa: E402
 from app.store_pg import PostgresEventStore  # noqa: E402
-from app.sweep import make_sweep_executor, run_sweep, run_sweep_parallel  # noqa: E402
+from app.sweep import SweepResult, run_sweep  # noqa: E402
 
 REPO_ROOT = sc.REPO_ROOT
 DEFAULT_SIZES = (1_000, 10_000, 100_000)
 TARGET_100K_SECONDS = 5.0
 CHECK_SIZE = 1_000
-DEFAULT_WORKERS = min(os.cpu_count() or 1, 10)
+ROUTE_DEFAULT_WORKERS = min(4, os.cpu_count() or 1)  # what the API uses without SWEEP_WORKERS (A17)
+DEFAULT_WORKERS = sorted({ROUTE_DEFAULT_WORKERS, min(os.cpu_count() or 1, 10)})
 CHECK_BUDGET_SECONDS = 5.0  # generous for 1k (the 100k target is also 5 s); catches only gross regressions
 BASELINE_PATH = REPO_ROOT / "tools/load/baseline.json"
 
@@ -123,6 +124,49 @@ class SizeResult:
         return self.cases_evaluated / self.wall_seconds if self.wall_seconds else 0.0
 
 
+class RouteSweep:
+    """The sharded sweep exactly as the scheduler service triggers it: `POST /scheduler/sweep` on the
+    FastAPI app (A17), with the API's store pointed at the load database and `SWEEP_WORKERS=workers`.
+    The worker pool is started before the clock, as in a running API after its first sweep. The
+    timing includes the route, the service-token check and the JSON response (in process, no socket)."""
+
+    def __init__(self, url: str, pathway, pool, workers: int) -> None:
+        from fastapi.testclient import TestClient
+
+        from app.clock import clock
+        from app.config import settings
+        from app.main import app
+        from app.routers import cases, scheduler
+
+        self._clock, self._cases, self._scheduler = clock, cases, scheduler
+        self._saved = (cases.store, cases.pathway)
+        os.environ["SWEEP_WORKERS"] = str(workers)
+        scheduler.reset_pool()
+        scheduler.get_pool().warm()
+        cases.store, cases.pathway = PostgresEventStore(pool), pathway
+        clock.reset()
+        clock.advance(days=(sc.SWEEP_NOW - clock.now()).total_seconds() / 86400)
+        assert clock.now() == sc.SWEEP_NOW
+        self.client = TestClient(app)
+        self.headers = {"Authorization": f"Bearer {settings.scheduler_service_token}"}
+
+    def sweep(self) -> SweepResult:
+        resp = self.client.post("/scheduler/sweep", headers=self.headers)
+        assert resp.status_code == 200, resp.text
+        body = resp.json()
+        assert body["workers"] > 1, "the route did not use the sharded sweep"
+        out = SweepResult(sim_time=body["sim_time"])
+        for key in ("cases_evaluated", "mark_overdue", "escalate", "handoff_bounced", "rejected"):
+            setattr(out, key, body[key])
+        out.errors = body["errors"]
+        return out
+
+    def close(self) -> None:
+        self._scheduler.reset_pool()
+        self._cases.store, self._cases.pathway = self._saved
+        self._clock.reset()
+
+
 def scalar(url: str, query: str):
     import psycopg
 
@@ -140,12 +184,12 @@ def run_size(size: int, scenario: str, profile: bool = False, workers: int = 1, 
         store = TimedStore(PostgresEventStore(pool))
         events_before = scalar(url, "SELECT count(*) FROM events")
         profiler = cProfile.Profile() if profile else None
-        executor = make_sweep_executor(workers) if workers > 1 else None  # started before the clock
+        route = RouteSweep(url, pathway, pool, workers) if workers > 1 else None  # worker pool started before the clock
         t0 = time.perf_counter()
         if profiler:
             profiler.enable()
-        if workers > 1:
-            result = run_sweep_parallel(url, pathway, calendar, sc.SWEEP_NOW, workers=workers, executor=executor)
+        if route:
+            result = route.sweep()
         else:
             result = run_sweep(store, pathway, calendar, sc.SWEEP_NOW)
         if profiler:
@@ -156,8 +200,8 @@ def run_size(size: int, scenario: str, profile: bool = False, workers: int = 1, 
             pstats.Stats(profiler).sort_stats("cumulative").print_stats(25)
 
         t1 = time.perf_counter()
-        if workers > 1:
-            again = run_sweep_parallel(url, pathway, calendar, sc.SWEEP_NOW, workers=workers, executor=executor)
+        if route:
+            again = route.sweep()
         else:
             again = run_sweep(PostgresEventStore(pool), pathway, calendar, sc.SWEEP_NOW)
         resweep = time.perf_counter() - t1
@@ -180,8 +224,8 @@ def run_size(size: int, scenario: str, profile: bool = False, workers: int = 1, 
                            "HAVING max(seq) <> count(*)) t")
         if gaps:
             problems.append(f"{gaps} case logs have a gap in seq")
-        if executor:
-            executor.shutdown()
+        if route:
+            route.close()
         return SizeResult(
             size=size, scenario=scenario, workers=workers, cases_evaluated=result.cases_evaluated, events_before=events_before,
             event_rows_read=events_before, emitted=emitted, expected_emitted=stats.expected_emitted,
@@ -258,14 +302,15 @@ def render_markdown(results: list[SizeResult], spec: dict[str, str], extra: list
     daily = [r for r in results if r.scenario == "daily"]
     single = [r for r in daily if r.workers == 1]
     big1 = next((r for r in daily if r.size == 100_000 and r.workers == 1), None)
-    bigp = next((r for r in daily if r.size == 100_000 and r.workers > 1), None)
+    bigs = [r for r in daily if r.size == 100_000 and r.workers > 1]
     verdict = ""
     if big1:
-        verdict = (f"**Target: the 100,000-case sweep under {TARGET_100K_SECONDS:g} s. Single process: {fmt(big1.wall_seconds)} s "
-                   f"({'met' if big1.wall_seconds <= TARGET_100K_SECONDS else 'not met'}).")
-        if bigp:
-            verdict += (f" Sharded over {bigp.workers} worker processes: {fmt(bigp.wall_seconds)} s "
-                        f"({'met' if bigp.wall_seconds <= TARGET_100K_SECONDS else 'not met'}).")
+        met = lambda r: "met" if r.wall_seconds <= TARGET_100K_SECONDS else "not met"  # noqa: E731
+        verdict = (f"**Target: the 100,000-case sweep under {TARGET_100K_SECONDS:g} s. Single process (`SWEEP_WORKERS=1`): "
+                   f"{fmt(big1.wall_seconds)} s ({met(big1)}).")
+        for bigp in bigs:
+            default = " (the API default)" if bigp.workers == ROUTE_DEFAULT_WORKERS else ""
+            verdict += f" Through `POST /scheduler/sweep` with {bigp.workers} workers{default}: {fmt(bigp.wall_seconds)} s ({met(bigp)})."
         verdict += "**"
     lines = [
         "# Scheduler sweep load test",
@@ -280,8 +325,10 @@ def render_markdown(results: list[SizeResult], spec: dict[str, str], extra: list
         "freshly seeded `closure_load` database, against the real Postgres store. Scenario `daily`: the previous sweep ran one "
         "working day earlier, so the timed sweep emits only the breaches and escalation rungs that became due since then. "
         "Cases are spread over the eleven open states (main chain plus consent withdrawn, referral rejected and lost contact); "
-        "about 40% are already overdue. Workers 1 is `run_sweep` (what the scheduler route calls today); workers N is "
-        "`run_sweep_parallel`, N processes each sweeping a disjoint slice of the cases.",
+        "about 40% are already overdue. Workers 1 is `run_sweep` in one process (`SWEEP_WORKERS=1`); workers N is "
+        "`POST /scheduler/sweep` on the FastAPI app (A17) with `SWEEP_WORKERS=N`: the route's warm long-lived pool of N processes, "
+        "each sweeping a disjoint slice of the cases. The route's default is min(4, cpus). Route timings include the "
+        "service-token check and the JSON response, in process (no socket).",
         "",
         "| Open cases | Workers | Sweep wall time (s) | Events emitted | Rows/sec (cases evaluated) | Event rows read | Re-sweep wall time (s) |",
         "|---|---|---|---|---|---|---|",
@@ -338,7 +385,8 @@ def render_markdown(results: list[SizeResult], spec: dict[str, str], extra: list
         "`COPY`. Every log is produced by the engine's own state machine and replayed once at seeding time. It refuses to "
         "touch any database not named `closure_load*`; the dev database is never used.",
         "- `tools/load/time_sweep.py` times the sweep with a fixed sweep time (2026-03-10 08:00 UTC, a Tuesday), the real "
-        "`PostgresEventStore` and the UAE working-day calendar. Seed 20261017, so the data and the emitted-event counts are "
+        "`PostgresEventStore` and the UAE working-day calendar; with Workers 1 by calling `run_sweep`, with more workers by "
+        "calling `POST /scheduler/sweep` on the FastAPI app (`RouteSweep`, `SWEEP_WORKERS=N`, pool started before the clock). Seed 20261017, so the data and the emitted-event counts are "
         "reproducible; wall times vary with the machine. Postgres runs in Docker on the same machine, so every statement pays "
         "a local network hop.",
         "- After each sweep it asserts: emitted events equal the pure planner's expectation; no errors or rejected events; a "
@@ -377,8 +425,9 @@ def report(r: SizeResult) -> None:
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--sizes", default=",".join(map(str, DEFAULT_SIZES)))
-    ap.add_argument("--workers", type=int, default=DEFAULT_WORKERS,
-                    help="also run the sharded sweep with this many processes (0 or 1: single process only)")
+    ap.add_argument("--workers", default=",".join(map(str, DEFAULT_WORKERS)),
+                    help="also run the sharded sweep through POST /scheduler/sweep with each of these SWEEP_WORKERS "
+                         "values (comma-separated; 0 or 1: single process only)")
     ap.add_argument("--backlog-sizes", default="1000,10000", help="sizes also run in the cold-start scenario (full runs only)")
     ap.add_argument("--check", action="store_true", help=f"reduced run for `make check`: {CHECK_SIZE} cases, no files written")
     ap.add_argument("--budget", type=float, default=None, help="--check: fail if the sweep takes longer than this many seconds")
@@ -394,11 +443,12 @@ def main(argv: list[str] | None = None) -> int:
         print(f"dropped {sc.LOAD_DB}")
         return 0
     if not sc.pg_reachable():
-        print("Postgres is not reachable on localhost:5433; start it with `docker compose up -d postgres`", file=sys.stderr)
+        print(f"Postgres is not reachable at {sc.admin_url().rsplit('@', 1)[-1]} (LOAD_PG_ADMIN_URL); "
+              "start it with `docker compose up -d postgres`", file=sys.stderr)
         return 2
 
     sizes = [CHECK_SIZE] if args.check else [int(s) for s in args.sizes.split(",") if s]
-    worker_modes = [1] + ([2] if args.check else [args.workers] if args.workers > 1 else [])
+    worker_modes = [1] + ([2] if args.check else [w for w in (int(x) for x in args.workers.split(",") if x) if w > 1])
     results: list[SizeResult] = []
     extra: list[SizeResult] = []
     rc = 0

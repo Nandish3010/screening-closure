@@ -65,6 +65,8 @@ services:
       FHIR_VERIFY_EVIDENCE: "true"
       # Project every event to HAPI (Task, ServiceRequest, Appointment, Communication, Consent, Provenance; A12).
       FHIR_PROJECTION: "true"
+      # Sweep worker processes behind POST /scheduler/sweep (A17); empty = min(4, cpus), 1 = single process.
+      SWEEP_WORKERS: ${SWEEP_WORKERS:-}
     volumes:
       - ./config:/config:ro
     depends_on:
