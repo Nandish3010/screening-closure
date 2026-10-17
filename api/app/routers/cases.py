@@ -14,6 +14,7 @@ from app.events import (
     EventIdConflict,
     EventStore,
     InMemoryEventStore,
+    replay_model,
 )
 from app.pathway import Pathway
 from app.state_machine import InvalidTransition
@@ -67,10 +68,14 @@ def _case_json(case_id: UUID) -> dict:
     state = store.current_state(case_id)
     if state is None:
         raise CaseNotFound(str(case_id))
+    events = store.events_for(case_id)
     return {
         "case_id": str(case_id),
         "state": state,
-        "events": [_event_json(e) for e in store.events_for(case_id)],
+        # state, overdue, escalation_level, owner, consent_frozen, last_event_at, ... derived
+        # by replaying the events above (see app.state_machine.CaseModel).
+        "read_model": replay_model(events, pathway).to_json(),
+        "events": [_event_json(e) for e in events],
     }
 
 

@@ -15,9 +15,13 @@ from typing import Protocol
 from uuid import UUID, uuid4
 
 from app.pathway import Pathway
-from app.state_machine import apply
-
-CASE_CREATED = "case_created"  # genesis marker; does not change state
+from app.state_machine import (  # noqa: F401  (CASE_CREATED and replay_model are re-exported)
+    CASE_CREATED,
+    CaseModel,
+    genesis,
+    replay_model,
+    step,
+)
 
 
 @dataclass(frozen=True)
@@ -78,23 +82,22 @@ class EventStore(Protocol):
 
     def current_state(self, case_id: UUID) -> str | None: ...
 
+    def read_model(self, case_id: UUID, pathway: Pathway) -> CaseModel | None:
+        """The read model (state, overdue, escalation_level, owner...) derived by replay."""
+        ...
+
     def list_cases(self, state: str | None = None) -> list[CaseSummary]: ...
 
 
 def replay(events, pathway: Pathway) -> str:
     """Deterministically fold events into a state, starting from the pathway's initial state."""
-    state = pathway.initial_state
-    for ev in events:
-        if ev.type == CASE_CREATED:
-            continue
-        state = apply(state, ev, pathway)
-    return state
+    return replay_model(events, pathway).state
 
 
 @dataclass
 class _Case:
     pathway: str
-    state: str
+    model: CaseModel
     created_at: datetime
     updated_at: datetime
     events: list[Event] = field(default_factory=list)
@@ -120,7 +123,7 @@ class InMemoryEventStore:
                 raise EventIdConflict(str(genesis_event.event_id))
             self._cases[case_id] = _Case(
                 pathway_name,
-                initial_state,
+                genesis(CaseModel(state=initial_state), genesis_event),
                 genesis_event.at,
                 genesis_event.at,
                 [dataclasses.replace(genesis_event, seq=1)],
@@ -135,14 +138,14 @@ class InMemoryEventStore:
             owner = self._event_ids.get(event.event_id)
             if owner is not None:
                 if owner == event.case_id:
-                    return case.state
+                    return case.model.state
                 raise EventIdConflict(str(event.event_id))
-            new_state = apply(case.state, event, pathway)  # raises InvalidTransition
+            new_model = step(case.model, event, pathway)  # raises InvalidTransition
             case.events.append(dataclasses.replace(event, seq=len(case.events) + 1))
-            case.state = new_state
+            case.model = new_model
             case.updated_at = event.at
             self._event_ids[event.event_id] = event.case_id
-            return new_state
+            return new_model.state
 
     def events_for(self, case_id: UUID) -> list[Event]:
         with self._lock:
@@ -152,12 +155,17 @@ class InMemoryEventStore:
     def current_state(self, case_id: UUID) -> str | None:
         with self._lock:
             case = self._cases.get(case_id)
-            return case.state if case else None
+            return case.model.state if case else None
+
+    def read_model(self, case_id: UUID, pathway: Pathway) -> CaseModel | None:
+        with self._lock:
+            case = self._cases.get(case_id)
+            return case.model if case else None
 
     def list_cases(self, state: str | None = None) -> list[CaseSummary]:
         with self._lock:
             return [
-                CaseSummary(cid, c.pathway, c.state, c.created_at, c.updated_at)
+                CaseSummary(cid, c.pathway, c.model.state, c.created_at, c.updated_at)
                 for cid, c in self._cases.items()
-                if state is None or c.state == state
+                if state is None or c.model.state == state
             ]

@@ -1,5 +1,5 @@
 pathway: colorectal_fit
-version: 0.1
+version: 0.2
 description: Positive FIT result through confirmatory colonoscopy to documented closure
 states:
   - result_received
@@ -11,14 +11,17 @@ states:
   - confirmatory_completed
   - clinician_reviewed
   - closed
+# Side states genuinely change the path (who may act next), so they are real states with
+# transitions. `overdue` and `escalated` are deliberately NOT states: a case can be overdue
+# AND in patient_contacted, so they are flags derived by replay (read model: `overdue`,
+# `escalation_level`). See ADR-011.
 side_states:
-  - overdue
-  - escalated
   - referral_rejected
   - consent_withdrawn
-  - reopened
   - lost_contact
+  - reopened
 transitions:
+  # Main path (the closure guard lives on the last row: evidence AND a human sign-off).
   - {from: result_received, event: acknowledge, to: acknowledged}
   - {from: acknowledged, event: accept_ownership, to: owner_accepted}
   - {from: owner_accepted, event: contact_patient, to: patient_contacted}
@@ -27,6 +30,46 @@ transitions:
   - {from: confirmatory_booked, event: complete_confirmatory, to: confirmatory_completed}
   - {from: confirmatory_completed, event: clinician_review, to: clinician_reviewed}
   - {from: clinician_reviewed, event: close, to: closed, requires: [evidence_ref, signed_by]}
+  # Referral rejected: ownership goes back to the referrer. Re-routed by an accepted handoff
+  # or a supervisor/coordinator reassignment; both return the case to owner_accepted.
+  - {from: [patient_acknowledged, confirmatory_booked], event: handoff_rejected, to: referral_rejected, requires: [reason]}
+  - {from: referral_rejected, event: handoff_accepted, to: owner_accepted}
+  - {from: referral_rejected, event: reassign, to: owner_accepted, requires: [owner]}
+  # Consent withdrawn: from any open state, outreach is frozen. The prior state is remembered
+  # by replay (read model `resume_state`, never taken from the client) and restored on
+  # re-consent.
+  - {from: any_open, event: consent_updated, when: {withdrawn: true}, to: consent_withdrawn}
+  - {from: consent_withdrawn, event: consent_updated, when: {withdrawn: false}, to: resume_state}
+  # Lost contact: after N failed attempts (ADR-011: N=3 is an assumption pending clinician review).
+  - {from: patient_contacted, event: mark_lost_contact, to: lost_contact, min: {failed_attempts: 3}}
+  - {from: lost_contact, event: contact_patient, to: patient_contacted}
+  # Reopen: a human, with a reason, sends a closed case back for clinician review. It can only
+  # reach `closed` again through a fresh `close` with evidence and a sign-off.
+  - {from: closed, event: reopen, to: reopened, requires: [reason]}
+  - {from: reopened, event: clinician_review, to: clinician_reviewed}
+# Events that annotate a case without changing its main state. Allowed in every open state
+# (never in `closed`). Effects on the read model (overdue, escalation_level, owner, ...) are
+# defined in api/app/state_machine.py. None of these may close a case (loader-validated).
+annotations:
+  - mark_overdue
+  - escalate
+  - escalation_accepted
+  - handoff_requested
+  - handoff_accepted
+  - consent_updated
+  - message_drafted
+  - message_approved
+  - message_sent
+  - callback_requested
+  - watchdog_flagged
+# Events an automated actor (system:, scheduler, watchdog, model:) may never emit.
+human_only_events:
+  - escalation_accepted
+  - handoff_accepted
+  - consent_updated
+  - message_approved
+  - callback_requested
+  - reopen
 slas_working_days:
   acknowledge: 2
   accept_ownership: 2
@@ -35,8 +78,11 @@ slas_working_days:
   book_confirmatory: 14
   complete_confirmatory: 45
   clinician_review: 5
+# A rung is emitted `after_breach_days` working days after the due date; the next rung is
+# only valid after the previous one (no skipping). A human in `accepted_by` accepts a rung
+# with `escalation_accepted`, which stops further rungs for that breach (ADR-014).
 escalation_ladder:
-  - {after_breach_days: 0, notify: owner, action: reminder}
-  - {after_breach_days: 3, notify: owner_supervisor, action: escalate}
-  - {after_breach_days: 7, notify: programme_coordinator, action: escalate}
+  - {rung: reminder, after_breach_days: 0, notify: owner, target: owner, action: reminder, accepted_by: [primary_care_owner, specialist_owner]}
+  - {rung: supervisor, after_breach_days: 3, notify: owner_supervisor, target: supervisor, action: escalate, accepted_by: [supervisor]}
+  - {rung: coordinator, after_breach_days: 7, notify: programme_coordinator, target: coordinator, action: escalate, accepted_by: [coordinator]}
 closure_rule: "A case may only enter `closed` via the `close` event carrying evidence_ref and signed_by. No automated actor may emit `close`."

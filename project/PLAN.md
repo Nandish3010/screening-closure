@@ -187,7 +187,7 @@ Times are local (IST). The tickets in each milestone are tagged in the Notes col
 
 ## 6. Integration contracts
 
-Everything below is a working contract for Cuts C and D. "Exists" means in the code today (`api/app/routers/cases.py`, `api/app/main.py`); "planned" names the ticket that adds it. Shapes marked "proposed" are the starting point and are finalised, and this section updated, by the owning ticket.
+Everything below is a working contract for Cuts C and D. "Exists" means in the code today (`api/app/routers/cases.py`, `api/app/main.py`); "planned" names the ticket that adds it. Shapes marked "proposed" are the starting point and are finalised, and this section updated, by the owning ticket. The event vocabulary below is final (A2).
 
 ### Routes
 
@@ -195,10 +195,10 @@ Everything below is a working contract for Cuts C and D. "Exists" means in the c
 |---|---|---|---|
 | `GET /health` | exists | none | `{status, sim_time}` |
 | `GET /pathways` | exists | none | the pathway config as parsed from YAML |
-| `POST /cases` | exists | `{case_id?, patient_ref?, result_ref?}` | 201 with the case: `{case_id, state, events[]}`; 409 `CaseAlreadyExists` |
+| `POST /cases` | exists | `{case_id?, patient_ref?, result_ref?}` | 201 with the case: `{case_id, state, read_model, events[]}`; 409 `CaseAlreadyExists` |
 | `GET /cases?state=` | exists | query `state` | list of `{case_id, pathway, state, created_at, updated_at}` |
-| `GET /cases/{id}` | exists | none | `{case_id, state, events[]}`; 404 if unknown |
-| `POST /cases/{id}/events` | exists | `{type, actor, payload, at?, event_id?}` | 201 with the case; 404; 409 for an invalid transition or an `event_id` used on another case |
+| `GET /cases/{id}` | exists | none | `{case_id, state, read_model, events[]}`; 404 if unknown |
+| `POST /cases/{id}/events` | exists | `{type, actor, payload, at?, event_id?}` | 201 with the case (same shape as `GET /cases/{id}`); 404; 409 for an invalid transition or an `event_id` used on another case |
 | `GET /me` | planned (A8) | identity token | `{user_id, role, display_name}` |
 | `GET /cases?state&owner&overdue` | planned (A9) | query filters | list as above plus `owner`, `due_at`, `overdue`, and `risk_score` once D9 lands |
 | `GET /cases/{id}/timeline` | planned (A9) | none | read-only list of events with `seq, event_id, type, at, actor, payload` |
@@ -213,30 +213,57 @@ Consent changes, callbacks and flags use `POST /cases/{id}/events`, not separate
 
 ### Event types
 
-| Type | Status | Emitted by (proposed) | Effect (proposed, final in A2) |
-|---|---|---|---|
-| `case_created` | exists | system intake | genesis marker, no state change |
-| `acknowledge` | exists | lab | `result_received` to `acknowledged` |
-| `accept_ownership` | exists | primary_care_owner | `acknowledged` to `owner_accepted` |
-| `contact_patient` | exists | primary_care_owner | `owner_accepted` to `patient_contacted` |
-| `patient_acknowledge` | exists | patient | `patient_contacted` to `patient_acknowledged` |
-| `book_confirmatory` | exists | specialist_owner or primary_care_owner | `patient_acknowledged` to `confirmatory_booked` |
-| `complete_confirmatory` | exists | specialist_owner | `confirmatory_booked` to `confirmatory_completed` |
-| `clinician_review` | exists | owner role acting as the clinician | `confirmatory_completed` to `clinician_reviewed` |
-| `close` | exists | a human clinician; requires `evidence_ref` and `signed_by`; automated actors refused | `clinician_reviewed` to `closed` |
-| `overdue` | planned (A3) | scheduler | enters the `overdue` side state for the current transition |
-| `escalated` | planned (A4) | scheduler | enters `escalated`; payload names the rung and target role; needs a human to accept |
-| `handoff_requested` | planned (A5) | current owner | ownership pending, no state change |
-| `handoff_accepted` | planned (A5) | receiving owner | ownership changes |
-| `handoff_rejected` | planned (A5) | receiving owner, or scheduler on bounce | enters `referral_rejected`; payload `reason` from the taxonomy |
-| `consent_updated` | planned (A6) | patient, or coordinator recording the patient's instruction | withdrawal enters `consent_withdrawn` and freezes outreach |
-| `message_drafted` | planned (A2 defines, D4 uses) | model or template actor | no state change |
-| `message_approved` | planned (A2 defines, D5 uses) | owner role | no state change |
-| `message_sent` | planned (A2 defines, D5 uses) | system, only after approval | no state change |
-| `callback_requested` | planned (A2 defines, C6 uses) | patient | creates a human callback task, no state change |
-| `watchdog_flagged` | planned (A11) | watchdog | no state change; case appears in "cases nobody is looking at" |
+Final as of A2 (`config/pathways/colorectal_fit.yaml`, `api/app/state_machine.py`). "State change" rows are transitions; "annotation" rows are accepted in any open state (never in `closed`) and leave the state alone. Automated actors (`system:`, `scheduler`, `watchdog`, `model:`) can never emit a human-only event; the emitter column says who is expected to, and A8 enforces it per route.
 
-Heartbeats from the scheduler are not case events. Their storage is decided in A11. The event type for a human accepting an escalation rung is decided in A4 and added here.
+| Type | Status | Emitted by | Effect |
+|---|---|---|---|
+| `case_created` | exists | system intake | genesis marker; starts the first SLA clock; no state change |
+| `acknowledge` | exists | lab | state change: `result_received` to `acknowledged` |
+| `accept_ownership` | exists | primary_care_owner | state change: `acknowledged` to `owner_accepted`; `owner` becomes the actor |
+| `contact_patient` | exists | primary_care_owner | state change: `owner_accepted` to `patient_contacted`, or `lost_contact` back to `patient_contacted` |
+| `patient_acknowledge` | exists | patient | state change: `patient_contacted` to `patient_acknowledged` |
+| `book_confirmatory` | exists | specialist_owner or primary_care_owner | state change: `patient_acknowledged` to `confirmatory_booked` |
+| `complete_confirmatory` | exists | specialist_owner | state change: `confirmatory_booked` to `confirmatory_completed` |
+| `clinician_review` | exists | owner role acting as the clinician | state change: `confirmatory_completed` to `clinician_reviewed`, or `reopened` to `clinician_reviewed` |
+| `close` | exists | a human clinician | state change: `clinician_reviewed` to `closed`; requires `evidence_ref` and `signed_by`; automated actors refused |
+| `reopen` | A2 | a human clinician | state change: `closed` to `reopened`; requires `reason`; human only. The case can only reach `closed` again through `clinician_review` and a fresh `close` |
+| `mark_overdue` | A2 defines, A3 emits | scheduler | annotation: sets `overdue` for the current state. Payload `{state, due_at}`; refused unless `state` is the case's state, that state has an SLA, `due_at` is in the past on the event's `at`, and the case is not already overdue |
+| `escalate` | A2 defines, A4 emits | scheduler; or coordinator/supervisor by hand | annotation: raises `escalation_level` by exactly one. Payload `{rung, state, target?}`; refused unless overdue, rungs in ladder order (never skipped or repeated), and no human has accepted the latest rung |
+| `escalation_accepted` | A2 defines, A4 uses | a human whose role is in the rung's `accepted_by` | annotation: sets `escalation_accepted`; stops further rungs for this breach. Human only |
+| `handoff_requested` | A2 defines, A5 uses | current owner | annotation: ownership pending |
+| `handoff_accepted` | A2 defines, A5 uses | receiving owner | annotation: `owner` becomes the actor. From `referral_rejected` it is the re-route: state change to `owner_accepted`. Human only |
+| `handoff_rejected` | A2 defines, A5 uses | receiving owner, or scheduler on bounce | state change: `patient_acknowledged` or `confirmatory_booked` to `referral_rejected`; requires `reason` (A5 adds the taxonomy) |
+| `reassign` | A2 | supervisor or coordinator | state change: `referral_rejected` to `owner_accepted`; requires `owner`, which becomes the new owner |
+| `consent_updated` | A2 defines, A6 uses | patient, or coordinator recording the patient's instruction | `withdrawn: true` from any open state: state change to `consent_withdrawn` (outreach frozen, prior state remembered). `withdrawn: false` from `consent_withdrawn`: state change back to the prior state. Anything else: annotation. Human only |
+| `mark_lost_contact` | A2 | owner, coordinator or supervisor | state change: `patient_contacted` to `lost_contact`; requires `failed_attempts` of at least 3 |
+| `message_drafted` | A2 defines, D4 uses | model or template actor | annotation |
+| `message_approved` | A2 defines, D5 uses | owner role | annotation; human only |
+| `message_sent` | A2 defines, D5 uses | system, only after approval | annotation |
+| `callback_requested` | A2 defines, C6 uses | patient | annotation: creates a human callback task; human only |
+| `watchdog_flagged` | A2 defines, A11 uses | watchdog | annotation: the case appears in "cases nobody is looking at" |
+
+Heartbeats from the scheduler are not case events. Their storage is decided in A11.
+
+### Read model
+
+Every case route that returns a case includes `read_model`, derived by replaying the events (never stored separately, ADR-002):
+
+```json
+{
+  "state": "patient_contacted",
+  "overdue": true,
+  "escalation_level": 1,
+  "escalation_accepted": false,
+  "owner": "primary_care_owner:dr_k",
+  "consent_frozen": false,
+  "last_event_at": "2026-01-19T08:00:00+00:00",
+  "resume_state": null,
+  "clock_started_at": "2026-01-08T08:00:00+00:00",
+  "breach_due_at": "2026-01-19T08:00:00+00:00"
+}
+```
+
+`state` is a main or side state. `overdue` and `escalation_level` are flags, not states, so a case can be overdue and in `patient_contacted` (ADR-011). They reset when the state changes, except for a consent-withdrawn excursion, which keeps them. `resume_state` is set only while in `consent_withdrawn` and is derived by replay, never taken from the client. `clock_started_at` is when the current state's SLA clock started; `breach_due_at` is set with `overdue`. Cut C can rely on the first six keys; the last four are extras for the timeline.
 
 ### Roles (proposed, final in A8 and checked against the decision matrix in E5)
 

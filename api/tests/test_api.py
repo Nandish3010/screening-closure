@@ -58,3 +58,32 @@ def test_client_supplied_case_id_is_idempotent_and_conflicts_on_reuse():
     assert second.status_code == 409
     assert "CaseAlreadyExists" in second.json()["detail"]
     assert len(client.get("/cases").json()) >= 1
+
+
+def test_case_json_carries_the_read_model():
+    created = client.post("/cases", json={}).json()
+    model = created["read_model"]
+    assert set(model) >= {"state", "overdue", "escalation_level", "owner", "consent_frozen", "last_event_at"}
+    assert model["state"] == created["state"] == "result_received"
+    assert model["overdue"] is False and model["escalation_level"] == 0
+    assert model["owner"] is None and model["consent_frozen"] is False
+    assert model["last_event_at"] == created["events"][0]["at"]
+
+    case_id = created["case_id"]
+    client.post(f"/cases/{case_id}/events", json={"type": "acknowledge", "actor": "lab:l"})
+    out = client.post(f"/cases/{case_id}/events",
+                      json={"type": "accept_ownership", "actor": "primary_care_owner:k"}).json()
+    assert out["read_model"]["owner"] == "primary_care_owner:k"
+    assert out["read_model"]["state"] == out["state"] == "owner_accepted"
+
+
+def test_side_state_events_over_http():
+    case_id = client.post("/cases", json={}).json()["case_id"]
+    post = lambda t, a, p=None: client.post(  # noqa: E731
+        f"/cases/{case_id}/events", json={"type": t, "actor": a, "payload": p or {}})
+    assert post("consent_updated", "patient:p", {"withdrawn": True}).json()["state"] == "consent_withdrawn"
+    assert post("acknowledge", "lab:l").status_code == 409  # frozen: nothing but consent moves it
+    assert post("watchdog_flagged", "watchdog").status_code == 201  # annotations still land
+    assert post("consent_updated", "system:scheduler", {"withdrawn": False}).status_code == 409
+    back = post("consent_updated", "patient:p", {"withdrawn": False}).json()
+    assert back["state"] == "result_received" and back["read_model"]["consent_frozen"] is False

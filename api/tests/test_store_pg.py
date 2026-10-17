@@ -77,12 +77,12 @@ def count_events(pool, case_id):
 def test_happy_path_to_closed(store, pool):
     case_id = new_case(store)
     assert store.current_state(case_id) == PATHWAY.initial_state
-    for t in PATHWAY.transitions:
+    for t in PATHWAY.main_transitions:
         assert store.append(ev(case_id, t.event), PATHWAY) == t.to_state
     assert store.current_state(case_id) == "closed"
     assert cases_state(pool, case_id) == "closed"
     events = store.events_for(case_id)
-    assert [e.seq for e in events] == list(range(1, len(PATHWAY.transitions) + 2))
+    assert [e.seq for e in events] == list(range(1, len(PATHWAY.main_transitions) + 2))
     assert events[0].type == CASE_CREATED
     assert replay(events, PATHWAY) == "closed"
     assert [c.case_id for c in store.list_cases("closed")].count(case_id) == 1
@@ -131,7 +131,7 @@ def test_event_id_reuse_on_other_case_is_a_conflict(store, pool):
 
 def test_automated_actor_cannot_close(store, pool):
     case_id = new_case(store)
-    for t in PATHWAY.transitions[:-1]:
+    for t in PATHWAY.main_transitions[:-1]:
         store.append(ev(case_id, t.event), PATHWAY)
     before = store.current_state(case_id)
     with pytest.raises(InvalidTransition):
@@ -203,6 +203,7 @@ def test_postgres_replay_matches_in_memory_fold(store, pool, events):
         except InvalidTransition:
             pass
         assert pg_result == mem_result  # accepts and rejects the same events
+        assert store.read_model(case_id, PATHWAY) == memory.read_model(case_id, PATHWAY)
 
     expected_state, applied = fold(events)
     pg_events = store.events_for(case_id)
@@ -211,6 +212,47 @@ def test_postgres_replay_matches_in_memory_fold(store, pool, events):
     assert replay(pg_events, PATHWAY) == expected_state
     assert cases_state(pool, case_id) == expected_state == store.current_state(case_id)
     assert store.current_state(case_id) == memory.current_state(case_id)
+
+
+def test_side_states_flags_and_read_model_persist_through_replay(store, pool):
+    from datetime import timedelta
+
+    case_id = new_case(store)
+
+    def send(type_, actor, payload=None, day=0, hours=0):
+        at = AT + timedelta(days=day, hours=hours)
+        return store.append(Event(case_id, type_, at, actor, payload or {}), PATHWAY)
+
+    send("acknowledge", "lab:l", day=1)
+    send("accept_ownership", "primary_care_owner:k", day=2)
+    send("contact_patient", "primary_care_owner:k", day=3)
+    due = (AT + timedelta(days=10)).isoformat()
+    send("mark_overdue", "system:scheduler", {"state": "patient_contacted", "due_at": due}, day=11)
+    send("escalate", "system:scheduler", {"rung": "reminder", "state": "patient_contacted"}, day=11)
+    assert send("consent_updated", "patient:p", {"withdrawn": True}, day=12) == "consent_withdrawn"
+    assert cases_state(pool, case_id) == "consent_withdrawn"
+    model = store.read_model(case_id, PATHWAY)
+    assert model.consent_frozen and model.resume_state == "patient_contacted" and model.overdue
+    assert send("consent_updated", "patient:p", {"withdrawn": False}, day=13) == "patient_contacted"
+    model = store.read_model(case_id, PATHWAY)
+    assert (model.state, model.overdue, model.escalation_level) == ("patient_contacted", True, 1)
+    assert model.owner == "primary_care_owner:k"
+    assert model.last_event_at == AT + timedelta(days=13)
+    # an invalid annotation leaves no row
+    before = count_events(pool, case_id)
+    with pytest.raises(InvalidTransition):
+        send("escalate", "system:scheduler", {"rung": "coordinator", "state": "patient_contacted"}, day=14)
+    assert count_events(pool, case_id) == before
+    # progress resolves the breach; a closed case can be reopened by a human with a reason
+    for t in ("patient_acknowledge", "book_confirmatory", "complete_confirmatory", "clinician_review"):
+        send(t, "primary_care_owner:k", day=15)
+    assert not store.read_model(case_id, PATHWAY).overdue
+    assert send("close", "primary_care_owner:k", SIGNED, day=16) == "closed"
+    with pytest.raises(InvalidTransition):
+        send("reopen", "system:scheduler", {"reason": "x"}, day=17)
+    assert send("reopen", "primary_care_owner:k", {"reason": "amended report"}, day=17) == "reopened"
+    assert cases_state(pool, case_id) == "reopened"
+    assert replay(store.events_for(case_id), PATHWAY) == "reopened"
 
 
 def test_migration_runner_is_idempotent(pool):

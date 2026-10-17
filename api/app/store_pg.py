@@ -16,10 +16,9 @@ from app.events import (
     Event,
     EventIdConflict,
     StateCorruption,
-    replay,
 )
 from app.pathway import Pathway
-from app.state_machine import InvalidTransition, apply
+from app.state_machine import CaseModel, InvalidTransition, replay_model, step
 
 _EVENT_COLS = "seq, event_id, type, at, actor, payload"
 _INSERT_EVENT = (
@@ -102,18 +101,18 @@ class PostgresEventStore:
             rows = cur.fetchall()
             history = [_event_from_row(event.case_id, r) for r in rows]
             try:
-                replayed = replay(history, pathway)
+                replayed = replay_model(history, pathway)
             except InvalidTransition as exc:
                 raise StateCorruption(
                     f"case {event.case_id}: stored log does not replay: {exc}"
                 ) from exc
-            if replayed != stored_state:
+            if replayed.state != stored_state:
                 raise StateCorruption(
                     f"case {event.case_id}: cases.current_state={stored_state!r} "
-                    f"but replay gives {replayed!r}"
+                    f"but replay gives {replayed.state!r}"
                 )
 
-            new_state = apply(replayed, event, pathway)  # InvalidTransition -> rollback
+            new_state = step(replayed, event, pathway).state  # InvalidTransition -> rollback
 
             next_seq = (rows[-1][0] if rows else 0) + 1
             _insert_event(cur, event, next_seq)
@@ -129,6 +128,10 @@ class PostgresEventStore:
                 f"SELECT {_EVENT_COLS} FROM events WHERE case_id = %s ORDER BY seq", (case_id,)
             ).fetchall()
         return [_event_from_row(case_id, r) for r in rows]
+
+    def read_model(self, case_id: UUID, pathway: Pathway) -> CaseModel | None:
+        events = self.events_for(case_id)
+        return replay_model(events, pathway) if events else None
 
     def current_state(self, case_id: UUID) -> str | None:
         with self._pool.connection() as conn:
