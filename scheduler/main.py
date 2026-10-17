@@ -70,9 +70,10 @@ def main() -> None:
         if summary is not None:
             last_ok = time.time()  # wall-clock-ok: liveness heartbeat only
             log.info(
-                "sweep sim_time=%s evaluated=%s mark_overdue=%s escalate=%s rejected=%s errors=%s",
+                "sweep sim_time=%s evaluated=%s mark_overdue=%s escalate=%s handoff_bounced=%s rejected=%s errors=%s",
                 summary["sim_time"], summary["cases_evaluated"], summary["mark_overdue"],
-                summary["escalate"], summary["rejected"], len(summary["errors"]),
+                summary["escalate"], summary.get("handoff_bounced", 0), summary["rejected"],
+                len(summary["errors"]),
             )
         write_heartbeat(summary, last_ok)
         time.sleep(INTERVAL_SECONDS)

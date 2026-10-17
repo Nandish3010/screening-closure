@@ -4,7 +4,7 @@ from uuid import UUID, uuid4
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, ConfigDict, Field
 
-from app import policy
+from app import consent, notify, policy
 from app.auth import Identity, require_identity
 from app.clock import clock
 from app.events import (
@@ -19,7 +19,7 @@ from app.events import (
     replay_model,
 )
 from app.pathway import Pathway
-from app.state_machine import InvalidTransition
+from app.state_machine import InvalidTransition, PayloadError, validate_payload
 
 router = APIRouter(prefix="/cases", tags=["cases"])
 
@@ -35,6 +35,9 @@ class CreateCase(BaseModel):
     case_id: UUID | None = None
     patient_ref: str | None = None  # TODO: FHIR Patient reference
     result_ref: str | None = None  # TODO: FHIR DiagnosticReport reference
+    # Known contact problem (A7): false = no valid contact details, or {"sms": false} per channel.
+    # The notification mock refuses to "send" on a flagged channel. Absent = no known problem.
+    contact_valid: bool | dict[str, bool] | None = None
 
 
 class PostEvent(BaseModel):
@@ -87,6 +90,8 @@ def _case_json(case_id: UUID) -> dict:
 def create_case(body: CreateCase) -> dict:
     case_id = body.case_id or uuid4()
     payload = body.model_dump(exclude={"case_id"})
+    if payload.get("contact_valid") is None:
+        payload.pop("contact_valid", None)
     genesis = Event(case_id, CASE_CREATED, clock.now(), "system:intake", payload)
     try:
         store.create_case(case_id, pathway.name, genesis, pathway.initial_state)
@@ -114,6 +119,11 @@ def post_event(
     if store.current_state(case_id) is None:
         raise HTTPException(404, "case not found")
     policy.authorize_case_access(identity, _patient_ref(case_id))
+    if identity.role in policy.OWNER_SCOPED:
+        model = store.read_model(case_id, pathway)
+        if model is None:
+            raise HTTPException(404, "case not found")
+        policy.authorize_owner_scope(identity, body.type, model)
     at = body.at or clock.now()
     if at.tzinfo is None:
         at = at.replace(tzinfo=UTC)
@@ -122,13 +132,19 @@ def post_event(
     extra = {"event_id": body.event_id} if body.event_id is not None else {}
     event = Event(case_id, body.type, at, identity.actor, body.payload, **extra)
     try:
+        validate_payload(event, pathway)  # malformed payload: 422 before anything is written
         store.append(event, pathway)
     except CaseNotFound:
         raise HTTPException(404, "case not found")
+    except PayloadError as exc:
+        raise HTTPException(422, str(exc))
     except InvalidTransition as exc:
         raise HTTPException(409, str(exc))
     except EventIdConflict:
         raise HTTPException(409, "event_id already used by another case")
+    if body.type == "consent_updated":
+        # Withdrawal freezes outreach and flags the case for human review (system:consent).
+        consent.ensure_review_requested(store, pathway, case_id, event.event_id, at)
     return _case_json(case_id)
 
 
@@ -139,3 +155,13 @@ def get_case(case_id: UUID, identity: Identity = Depends(require_identity)) -> d
         return _case_json(case_id)
     except CaseNotFound:
         raise HTTPException(404, "case not found")
+
+
+@router.get("/{case_id}/notifications")
+def case_notifications(case_id: UUID, identity: Identity = Depends(require_identity)) -> list[dict]:
+    """The case's notification log (A7), oldest first. Owners see only their own cases."""
+    model = store.read_model(case_id, pathway)
+    if model is None:
+        raise HTTPException(404, "case not found")
+    policy.authorize_owner_scope(identity, "view_notifications", model)
+    return [n.to_json() for n in notify.log.for_case(case_id)]

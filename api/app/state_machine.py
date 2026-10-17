@@ -9,6 +9,11 @@ replay of the event log produces:
     escalation_level     rungs of the escalation ladder emitted for the current breach
     escalation_accepted  a human accepted the latest rung (no further rungs for this breach)
     owner                actor of the latest accept_ownership / handoff_accepted / reassign
+    provider             the provider the owner acts for (set by handoff_accepted, or by
+                         accept_ownership / reassign when the payload names one)
+    pending_handoff      an unanswered handoff request {to_provider, requested_by, from_owner,
+                         requested_at}; ownership changes only when it is accepted (A5)
+    last_handoff         outcome of the latest answered or bounced handoff (A5)
     consent_frozen       outreach is frozen (state is consent_withdrawn)
     last_event_at        `at` of the latest event, including annotations
     resume_state         where the case returns to when consent is restored (side state only)
@@ -21,7 +26,7 @@ patient_contacted (ADR-011). Side states that change the path are real states.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
@@ -33,12 +38,44 @@ if TYPE_CHECKING:  # avoid a circular import; events.py imports this module
 CASE_CREATED = "case_created"  # genesis marker; does not change state
 CONSENT_WITHDRAWN = "consent_withdrawn"
 
+# Consent ledger (A6). Keys a `consent_updated` payload may carry (all booleans, any subset).
+CONSENT_KEYS = (
+    "channel_sms",
+    "channel_whatsapp",
+    "channel_phone",
+    "channel_letter",
+    "share_with_specialist",
+    "withdrawn",
+)
+# Programme default before the patient says anything: contact on every channel and sharing
+# with the specialist are allowed (opt-out model; ADR-017). Nothing has been recorded yet.
+DEFAULT_CONSENT = {
+    "channel_sms": True,
+    "channel_whatsapp": True,
+    "channel_phone": True,
+    "channel_letter": True,
+    "share_with_specialist": True,
+    "withdrawn": False,
+}
+# Events refused while consent is withdrawn (outreach and handing the patient to someone new).
+CONSENT_FROZEN_EVENTS = frozenset(
+    {"contact_patient", "message_drafted", "message_approved", "message_sent", "handoff_requested"}
+)
+CONSENT_ACTOR = "system:consent"  # emits review_requested, and nothing else
+REVIEW_REASONS = ("consent_withdrawn",)
+SCHEDULER_ACTOR_NAME = "system:scheduler"
+NOTIFIER_ACTOR = "system:notifier"  # the notification mock: the only actor that writes message_sent
+
 # Actor prefixes that denote automation (scheduler, watchdog, drafting model...).
 AUTOMATED_ACTOR_PREFIXES = ("system:", "scheduler", "watchdog", "model:")
 
 
 class InvalidTransition(Exception):
     pass
+
+
+class PayloadError(InvalidTransition):
+    """The event's payload is malformed (the API answers 422; a store answers like any refusal)."""
 
 
 def is_automated(actor: str) -> bool:
@@ -66,6 +103,14 @@ class CaseModel:
     resume_state: str | None = None
     clock_started_at: datetime | None = None
     breach_due_at: datetime | None = None
+    provider: str | None = None
+    pending_handoff: dict | None = None
+    last_handoff: dict | None = None
+    # Consent ledger (A6): current values, and every change in order (append-only by replay).
+    consent: dict = field(default_factory=lambda: {**DEFAULT_CONSENT, "updated_at": None, "updated_by": None})
+    consent_history: tuple = ()
+    review_reason: str | None = None  # human review flag (consent withdrawal), set by review_requested
+    review_requested_at: datetime | None = None
 
     def to_json(self) -> dict:
         def iso(dt):
@@ -82,6 +127,13 @@ class CaseModel:
             "resume_state": self.resume_state,
             "clock_started_at": iso(self.clock_started_at),
             "breach_due_at": iso(self.breach_due_at),
+            "provider": self.provider,
+            "pending_handoff": dict(self.pending_handoff) if self.pending_handoff else None,
+            "last_handoff": dict(self.last_handoff) if self.last_handoff else None,
+            "consent": dict(self.consent),
+            "consent_history": [dict(h) for h in self.consent_history],
+            "review_reason": self.review_reason,
+            "review_requested_at": iso(self.review_requested_at),
         }
 
 
@@ -107,13 +159,14 @@ def step(model: CaseModel, event: Event, pathway: Pathway) -> CaseModel:
     """Return the new read model, or raise InvalidTransition. Never mutates anything."""
     if event.type in pathway.human_only_events and is_automated(event.actor):
         raise InvalidTransition(f"event {event.type!r} requires a human actor")
+    _precheck(model, event, pathway)
 
     candidates = pathway.transitions_for(model.state, event.type)
     chosen = next((t for t in candidates if t.matches(event.payload)), None)
     if chosen is not None:
-        return _finish(_transition(model, event, pathway, chosen), event)
+        return _finish(_transition(model, event, pathway, chosen), event, model)
     if event.type in pathway.annotations and model.state in pathway.open_states:
-        return _finish(_annotate(model, event, pathway), event)
+        return _finish(_annotate(model, event, pathway), event, model)
     if candidates:
         raise InvalidTransition(
             f"event {event.type!r} from state {model.state!r}: payload does not satisfy "
@@ -253,11 +306,131 @@ _ANNOTATION_RULES = {
 }
 
 
-def _finish(model: CaseModel, event: Event) -> CaseModel:
-    """Bookkeeping common to every accepted event: last_event_at and the owner."""
-    owner = model.owner
-    if event.type in ("accept_ownership", "handoff_accepted"):
-        owner = event.actor
-    elif event.type == "reassign":
-        owner = str(event.payload["owner"])
-    return replace(model, last_event_at=_aware(event.at), owner=owner)
+# -- payload validation and the handoff / consent / freeze rules (A5, A6) ------------------
+
+
+def validate_payload(event: Event, pathway: Pathway) -> None:
+    """Raise PayloadError if the event's payload is malformed for its type. Pure; the API calls
+    it first so a malformed payload is a 422, and `step` calls it again so no store can skip it."""
+    payload, actor, kind = event.payload, event.actor, event.type
+    if kind == "handoff_requested":
+        provider = payload.get("to_provider")
+        if not isinstance(provider, str) or not provider.strip():
+            raise PayloadError("handoff_requested needs a non-empty string 'to_provider'")
+    elif kind == "handoff_rejected":
+        reason = payload.get("reason")
+        if reason == pathway.handoff_bounce_reason:
+            if actor != SCHEDULER_ACTOR_NAME or payload.get("bounced") is not True:
+                raise PayloadError(
+                    f"reason {reason!r} is reserved for the scheduler's bounce "
+                    "(actor system:scheduler with bounced: true)"
+                )
+        else:
+            if actor == SCHEDULER_ACTOR_NAME:
+                raise PayloadError(
+                    f"the scheduler may only reject a handoff with reason "
+                    f"{pathway.handoff_bounce_reason!r}"
+                )
+            if reason not in pathway.handoff_reject_reasons:
+                raise PayloadError(
+                    f"handoff_rejected reason must be one of {list(pathway.handoff_reject_reasons)}, "
+                    f"got {reason!r}"
+                )
+    elif kind == "handoff_accepted":
+        provider = payload.get("provider")
+        if provider is not None and (not isinstance(provider, str) or not provider.strip()):
+            raise PayloadError("handoff_accepted 'provider', if given, must be a non-empty string")
+    elif kind == "consent_updated":
+        given = [k for k in CONSENT_KEYS if k in payload]
+        if not given:
+            raise PayloadError(f"consent_updated needs at least one of {list(CONSENT_KEYS)}")
+        bad = [k for k in given if not isinstance(payload[k], bool)]
+        if bad:
+            raise PayloadError(f"consent_updated values must be booleans: {bad}")
+    elif kind == "review_requested":
+        if payload.get("reason") not in REVIEW_REASONS:
+            raise PayloadError(f"review_requested reason must be one of {list(REVIEW_REASONS)}")
+
+
+def _precheck(model: CaseModel, event: Event, pathway: Pathway) -> None:
+    kind, actor = event.type, event.actor
+    # Only the consent service may flag a review, and it may flag nothing else.
+    if kind == "review_requested" and actor != CONSENT_ACTOR:
+        raise InvalidTransition(f"review_requested is emitted only by {CONSENT_ACTOR!r}")
+    if actor == CONSENT_ACTOR and kind != "review_requested":
+        raise InvalidTransition(f"{CONSENT_ACTOR!r} may only emit review_requested")
+    validate_payload(event, pathway)
+    # A message is "sent" only by the notification mock, after the approval gate (T-D1).
+    if kind == "message_sent" and actor != NOTIFIER_ACTOR:
+        raise InvalidTransition(f"message_sent is written only by {NOTIFIER_ACTOR!r}, not {actor!r}")
+    # Consent withdrawn freezes outreach, and handing the patient to someone new (T-A23).
+    if model.consent_frozen and kind in CONSENT_FROZEN_EVENTS:
+        raise InvalidTransition(
+            f"consent withdrawn: {kind!r} is refused while the patient's consent is withdrawn; "
+            "a human must review the case"
+        )
+    pending = model.pending_handoff
+    if kind == "handoff_requested":
+        if model.owner is None:
+            raise InvalidTransition("handoff_requested: the case has no owner to hand over from")
+        if pending is not None:
+            raise InvalidTransition(
+                f"a handoff to {pending['to_provider']!r} is already pending; "
+                "it must be answered or bounce first"
+            )
+    elif kind in ("handoff_accepted", "handoff_rejected"):
+        if pending is None:
+            raise InvalidTransition(f"{kind}: there is no pending handoff request")
+        if kind == "handoff_accepted" and actor in (pending["requested_by"], pending["from_owner"]):
+            raise InvalidTransition("a handoff cannot be accepted by the party that requested it")
+
+
+def _consent_after(model: CaseModel, event: Event, was_frozen: bool) -> CaseModel:
+    changes = {k: event.payload[k] for k in CONSENT_KEYS if k in event.payload}
+    at = _aware(event.at)
+    consent = {**model.consent, **changes, "updated_at": at.isoformat(), "updated_by": event.actor}
+    consent["withdrawn"] = model.state == CONSENT_WITHDRAWN  # the state is the authority
+    history = (
+        *model.consent_history,
+        {"at": at.isoformat(), "actor": event.actor, "changes": changes},
+    )
+    out = replace(model, consent=consent, consent_history=history)
+    if was_frozen and not consent["withdrawn"]:  # consent restored: the review flag is moot
+        out = replace(out, review_reason=None, review_requested_at=None)
+    return out
+
+
+def _finish(model: CaseModel, event: Event, before: CaseModel | None = None) -> CaseModel:
+    """Bookkeeping common to every accepted event: last_event_at, ownership, handoff, consent."""
+    kind, payload, at = event.type, event.payload, _aware(event.at)
+    out = replace(model, last_event_at=at)
+    if kind == "accept_ownership":
+        out = replace(out, owner=event.actor, provider=payload.get("provider"))
+    elif kind == "reassign":
+        out = replace(out, owner=str(payload["owner"]), provider=payload.get("provider"),
+                      pending_handoff=None)
+    elif kind == "handoff_requested":
+        out = replace(out, pending_handoff={
+            "to_provider": payload["to_provider"].strip(),
+            "requested_by": event.actor,
+            "from_owner": model.owner,
+            "requested_at": at.isoformat(),
+        })
+    elif kind == "handoff_accepted":
+        pending = (before or model).pending_handoff
+        provider = (payload.get("provider") or pending["to_provider"]).strip()
+        out = replace(out, owner=event.actor, provider=provider, pending_handoff=None,
+                      last_handoff={"outcome": "accepted", "to_provider": pending["to_provider"],
+                                    "by": event.actor, "at": at.isoformat()})
+    elif kind == "handoff_rejected":
+        pending = (before or model).pending_handoff
+        out = replace(out, pending_handoff=None, last_handoff={
+            "outcome": "rejected", "reason": payload["reason"],
+            "bounced": payload.get("bounced") is True, "to_provider": pending["to_provider"],
+            "by": event.actor, "at": at.isoformat(),
+        })
+    elif kind == "consent_updated":
+        out = _consent_after(out, event, (before or model).consent_frozen)
+    elif kind == "review_requested":
+        out = replace(out, review_reason=payload["reason"], review_requested_at=at)
+    return out

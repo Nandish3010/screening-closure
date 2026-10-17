@@ -182,6 +182,33 @@ class PostgresEventStore:
         return [CaseSummary(*r) for r in rows]
 
 
+class PostgresNotificationLog:
+    """The `notifications` table (migration 003): an append-only log, never a delivery."""
+
+    _COLS = "id, case_id, channel, language, purpose, body, status, reason, event_id, created_at"
+
+    def __init__(self, pool: ConnectionPool) -> None:
+        self._pool = pool
+
+    def add(self, n) -> None:
+        with self._pool.connection() as conn:
+            conn.execute(
+                f"INSERT INTO notifications ({self._COLS}) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
+                (n.id, n.case_id, n.channel, n.language, n.purpose, n.body, n.status, n.reason,
+                 n.event_id, n.created_at),
+            )
+
+    def for_case(self, case_id: UUID) -> list:
+        from app.notify import Notification
+
+        with self._pool.connection() as conn:
+            rows = conn.execute(
+                f"SELECT {self._COLS} FROM notifications WHERE case_id = %s ORDER BY seq",
+                (case_id,),
+            ).fetchall()
+        return [Notification(*r) for r in rows]
+
+
 class PostgresClockStore:
     """Persists a SimClock in the `sim_clock` table (migration 002), one row per clock_id."""
 

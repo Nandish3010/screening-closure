@@ -189,3 +189,73 @@ Architecture decision records, one per decision. Add new entries at the end with
 - "Who was told, when, and who took it" is answered from the timeline alone: `escalate` rows, then `escalation_accepted` with its actor.
 - A rung accepted by the wrong person is refused by the engine (409), not just hidden in the UI.
 - The notification text for a rung (A7) hangs off the `escalate` event; the event names here are what Cut C and the decision matrix (E5) should use.
+
+## ADR-015: Integration tests use their own database, `closure_test`
+
+**Context.** `make test-db` ran against the dev database. Every integration test creates cases and events that nothing can delete (the log is append-only by trigger), so after a few dozen runs the dev database held about 1,200 test cases next to the seeded cohort, and the demo worklist, the sweep and the metrics all saw them.
+
+**Decision.**
+- The compose postgres holds a second database, `closure_test`, owned by the same role. A fresh volume gets it from `docker/postgres-init/10-create-test-db.sh` (mounted into `docker-entrypoint-initdb.d`); `make test-db` creates it with the same SQL if it is missing, which covers volumes made before this change. One server, two databases: no extra container, and HAPI keeps using `closure`.
+- `make test-db` sets `DATABASE_URL=postgresql://closure:closure_dev_password@localhost:5433/closure_test` (override with `TEST_DATABASE_URL`). `make test-db-reset` drops and recreates it, empty; the test session migrates it again.
+- The guard lives in `api/tests/conftest.py` (`pytest_collection_finish`): if any selected test is marked `integration` and `DATABASE_URL` is set, the database name must end in `_test`, otherwise the session aborts with exit code 3 and a message naming the database and the fix. The rule is "marked as a test database" rather than "not named closure", so a typo or a staging URL fails closed. A session-scoped fixture runs the migrations on the test database.
+- `make reset` wipes the dev stack, including the polluted test cases and the cohort; `make demo-seed` rebuilds the cohort. The dev database now holds only the seeded cohort.
+
+**Consequences.**
+- T-F2 is checked by a unit test of the guard, a real pytest subprocess pointed at the dev URL that must abort, an integration test asserting `current_database()` ends in `_test`, and a before/after row count of the dev database around `make test-db` (unchanged).
+- The unit suite (`make test`) is unaffected; with `DATABASE_URL` unset nothing here runs.
+- Running `pytest -m integration` by hand with the dev URL now fails on purpose.
+
+## ADR-016: Referral handoff: ownership moves only on acceptance; the scheduler bounces silence
+
+**Context.** A referral that nobody answers is how a positive result gets lost: the referrer thinks it is handled, the receiver never saw it. The contract has to say who owns the case at every moment, what an answer looks like, and what happens when there is none. A8 also left every clinician able to act on every case, which makes "who owns it" decorative.
+
+**Decision.**
+- `handoff_requested {to_provider}` (the owner, or a supervisor for them) records a pending request in the read model (`pending_handoff`) and changes nothing else. `handoff_accepted` by a clinician (human only; not the requester, not the owner it came from) makes the accepter the `owner`, sets `provider`, and clears the request. `handoff_rejected {reason}` clears it; ownership stays with the referrer. Both answers need a pending request, so an unsolicited acceptance cannot take over a case. One request may be pending at a time. A request needs an owner to hand over from.
+- Taxonomy: `capacity`, `wrong_service`, `missing_info`, `patient_declined` (YAML `handoff_reject_reasons`). Anything else is a payload error: HTTP 422, nothing written. `timeout` is a fifth reason that only `system:scheduler` may use, with `bounced: true`; a human using it is a 422, and the scheduler using any other reason is a 422. This is the one `handoff_rejected` the scheduler is allowed to emit.
+- The rejection moves the case to `referral_rejected` only from the referral states (`patient_acknowledged`, `confirmatory_booked`), as before. From any other open state it is an annotation that clears the request and leaves the state alone (so a bounce in `consent_withdrawn` cannot lose the remembered resume state). Both are logged with their reason.
+- The bounce: the sweep plans `handoff_rejected {reason: timeout, bounced: true}` when sim time is strictly after `requested_at + handoff_response_working_days` working days (YAML, 3; the simulator's `handoff.response_sla_working_days` is also 3). The event id is a uuid5 of (case, request time), so repeated and concurrent sweeps insert it once, and answering first makes the sweep plan nothing. A bounce comes alone in a plan and the sweep re-plans from the new model, because a bounce can change the state.
+- Escalation of a bounce: `referral_rejected` now has an SLA, `reassign: 2` working days (a state's SLA is the SLA of its outgoing event; both `reassign` and `handoff_accepted` leave it). The bounce starts that clock, so an un-rerouted case goes overdue and walks the existing ladder (reminder to the owner, supervisor, coordinator). No second mechanism.
+- Per-owner scoping, in the API layer (`policy.authorize_owner_scope`): a `primary_care_owner` or `specialist_owner` acts only on a case whose `owner` is their `role:name`, except `accept_ownership` on an unowned case and `handoff_accepted` / `handoff_rejected` on a case whose pending request names their provider. A clinician's provider is a login claim (`provider`, default their name), because the identity had no organisation. Supervisors, coordinators, lab and patients are not owner-scoped.
+
+**Consequences.**
+- Passing a case to a specialist is now three events (request, accept, then the specialist acts), not an implicit change of hands. Existing tests that had a second clinician act on a case they did not own were rewritten to go through the handoff.
+- A clinician who is not the owner now gets 403 where they used to get 409 or success (for example `close` on a case nobody owns yet). 403 is the right answer: the call is outside their scope before it is a question of state.
+- The simulator is unaffected: it logs handoffs itself and validates only the main chain through `apply`.
+- Limits: the provider claim is a dev-login convenience (a real deployment takes it from the identity provider); `handoff_accepted` does not check that the accepter's role is `specialist_owner` (the policy allows both clinician roles, so a referral to a primary care provider works).
+- The new rules apply on replay. A log written before A5 to A7 that has, say, a `handoff_accepted` with no request, or a `message_sent` from another actor, no longer replays (the sweep reports it under `errors`, and an append to it is refused as corruption). That is acceptable before release; `make reset` and `make demo-seed` rebuild the dev database, and the seeded cohort only contains `case_created` events.
+- Web mirror: `web/src/lib/pathway.ts` mirrors SLAs; the new `reassign: 2` row for `referral_rejected` is for Cut C to pick up.
+
+## ADR-017: Consent is an append-only ledger by replay; withdrawal freezes outreach in the engine
+
+**Context.** Patients must be able to say which channels may contact them, whether their data may go to the specialist, and "stop". A withdrawal that only hides buttons in the UI is not a withdrawal: the same API serves the coordinator app, the scheduler and (soon) the message approval path. We also need the history, not just the latest setting: who changed what, when, on whose instruction.
+
+**Decision.**
+- `consent_updated` carries any subset of six booleans: `channel_sms`, `channel_whatsapp`, `channel_phone`, `channel_letter`, `share_with_specialist`, `withdrawn`. The ledger is the event log itself. `read_model.consent` is the current value, `read_model.consent_history` is every change in order (`{at, actor, changes}`), both derived by replay (ADR-002); nothing is stored separately. A payload with no known key, or a non-boolean value (`1`, `"true"`, `null`), is a payload error (422). Unknown extra keys are tolerated and ignored.
+- Defaults before the patient says anything: every channel allowed and sharing allowed (`updated_at` null tells a reader nothing was recorded). This is an opt-out model, an assumption for the clinician and consent reviews (H1) rather than a legal position; the alternative (nothing allowed until recorded) would make the notification mock refuse every message for the whole seeded cohort.
+- `withdrawn: true` is the existing transition into `consent_withdrawn` (ADR-011). `consent.withdrawn` always equals "state is consent_withdrawn" (the state is the authority), and `consent_frozen` is that same fact.
+- The freeze is enforced in the state machine, not in the router: while frozen, `contact_patient`, `message_drafted`, `message_approved`, `message_sent` and `handoff_requested` are refused with a message that starts "consent withdrawn" (HTTP 409 from the API, `InvalidTransition` from any store). It does not stop `callback_requested`, escalation, `watchdog_flagged` or channel changes, and it does not stop a human re-recording consent.
+- Human review flag: when the API accepts a `consent_updated` that leaves the case frozen with no review flagged, it appends `review_requested {reason: consent_withdrawn, source_event_id}` as actor `system:consent`. The new event type is an annotation; no route can post it (EVENT_POLICY is empty for it) and the state machine accepts it only from `system:consent`, and `system:consent` may emit nothing else. The event id derives from the withdrawing event, so a client retry heals a flag that failed to write and never doubles it. The flag is two appends, not one transaction: if the second fails the withdrawal stands and is frozen (the safe side), the request errors, and the retry completes the flag. The flag clears (`review_reason` null) when consent is restored; the event stays in the log.
+- Who may change consent: the patient on their own case and the coordinator recording the patient's instruction (existing event policy); every other role gets 403. Consent updates after closure are not modelled.
+- Not decided here: the web client currently sends `{channel, share_with_specialist}` (web/src/api/contract.ts); the backend contract is the six booleans above, so the client needs to send `channel_*` flags.
+
+**Consequences.**
+- T-A24: history and derived value come from the same replay, so they cannot disagree; the append-only trigger on `events` makes the history tamper-evident.
+- T-A23: nothing can be drafted, approved or sent for a frozen case by any caller; the notification mock (A7) also checks consent itself, so the guarantee does not rest on one layer.
+- A frozen case has a reviewer-visible flag and sits in `consent_withdrawn`, which `GET /cases?state=consent_withdrawn` lists. The SLA clock keeps running (ADR-011); a breach is detected once the case resumes.
+
+## ADR-018: The notification mock is the only outbound path, and it is a log
+
+**Context.** The product must show that a message reaches a patient only after a human approved it, and that the system honours consent. The demo runs offline and uses synthetic data, so nothing may actually be sent. The same code path has to be the one D5 (approval) uses, so that "no other path to `message_sent`" is a fact about the code, not a convention.
+
+**Decision.**
+- `app/notify.py` has one entry point, `send(case_id, channel, language, purpose, body, ...)`, a Python function (no route). It reads the case's read model and, in order: refuses if consent is withdrawn or that channel is switched off (`blocked_consent`, reason says which), refuses if the case's `case_created` payload flags the contact invalid (`contact_valid: false`, or a per-channel map; `blocked_contact`), otherwise appends `message_sent` from `system:notifier` and logs the row as `sent`. It imports no module that can open a connection (an AST test enforces that, and a socket-blocking fixture proves it at run time).
+- `message_sent` has an empty route policy (nobody can POST it) and the state machine refuses it from any actor but `system:notifier`; it is also refused while consent is withdrawn, so a forged call fails twice. `emit_message_sent` is a separate function in the same module for D5 if it needs the event without a log row; it carries the same actor.
+- Table `notifications` (migration 003): id, case_id, channel, language, purpose, body, status, reason, event_id, created_at (simulation time), append-only by trigger like `events`. Status is `queued | sent | blocked_consent | blocked_contact`. A CHECK ties `status = 'sent'` to having a `message_sent` event; `event_id` names that event but is not a foreign key (the event is always written first, and a foreign key would make `TRUNCATE events` fail on the constraint before the append-only trigger can refuse it, which the existing integration test checks). `queued` is reserved for an approved-but-undelivered message and nothing writes it today, because the mock delivers at once.
+- Blocked attempts are logged with their reason but write no event: nothing was sent, and the log is where a reviewer sees the refusal. This departs from the T-A25 wording "a withdrawn channel produces no row"; the intent (no outbound record) holds because only `sent` rows are outbound, and the test cases now say so.
+- Two writes, not one transaction: `message_sent` is appended first, then the row. If the second fails the audit trail has the event and the log lacks the row (the safe side for a regulator), and the exception reaches the caller. A single transaction would need the notification table inside the event store's connection; not worth it for a mock.
+- `GET /cases/{id}/notifications` returns the log for owners (their own case only, as for events), coordinators and supervisors; patients and lab do not see it.
+- The contact validity flag can be set when the case is created (`POST /cases {contact_valid}`). Marking a number wrong after creation is not modelled.
+
+**Consequences.**
+- T-A25 and the notification half of T-A23 are checked against both the in-memory log and Postgres.
+- D5 only needs `notify.send(...)` after `message_approved`; the gate itself (an approved draft exists) is D5's.
