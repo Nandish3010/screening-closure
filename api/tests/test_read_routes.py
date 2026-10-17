@@ -308,6 +308,34 @@ def test_t_a28_a_flag_is_cleared_by_the_next_event(backend):
     assert next(r for r in listing() if r["case_id"] == cid)["watchdog_flagged"] is None
 
 
+def test_t_f4_a_backdated_event_is_accepted_flagged_in_the_timeline_and_counted_in_the_read_model(backend):
+    """ADR-027: an event whose `at` is earlier than the previous event's is accepted (ordered by seq), shown as
+    a `backdated` derived item, and counted in the read model; the sim-clock ceiling still holds."""
+    cid = new_case("Patient/rr-bd")
+    pco = login("primary_care_owner", "Dr Backdate")
+    clock.advance(days=3)
+    assert post(cid, "acknowledge", LAB).status_code == 201
+    assert detail(cid)["read_model"]["backdated_events"] == 0
+    assert not [i for i in timeline(cid)["items"] if i["kind"] == "backdated"]
+    behind = (clock.now() - timedelta(days=2)).isoformat()
+    r = client.post(f"/cases/{cid}/events", json={"type": "accept_ownership", "payload": {}, "at": behind}, headers=pco)
+    assert r.status_code == 201, r.text
+    d = detail(cid)
+    assert d["read_model"]["backdated_events"] == 1 and d["state"] == "owner_accepted"
+    items = timeline(cid)["items"]
+    (item,) = [i for i in items if i["kind"] == "backdated"]
+    events = cases.store.events_for(UUID(cid))
+    assert item["event_id"] == str(events[-1].event_id) and item["event_type"] == "accept_ownership"
+    assert item["previous_event_id"] == str(events[-2].event_id) and item["behind_seconds"] == 2 * 86400
+    assert item["at"] == events[-1].at.isoformat() and item["previous_at"] == events[-2].at.isoformat()
+    assert [e.seq for e in events] == [1, 2, 3]  # the log order is the insertion order
+    ahead = (clock.now() + timedelta(seconds=1)).isoformat()
+    r = client.post(f"/cases/{cid}/events", json={"type": "contact_patient", "payload": {}, "at": ahead}, headers=pco)
+    assert r.status_code == 422  # a future `at` is still refused
+    assert detail(cid)["read_model"]["backdated_events"] == 1
+    assert next(r for r in listing() if r["case_id"] == cid)  # the worklist row is unchanged in shape
+
+
 def test_t_a28_the_confirmatory_clock_is_shown_starting_at_referral_acceptance(backend):
     cid = new_case("Patient/rr-ref")
     pco = login("primary_care_owner", "Dr Ref A")

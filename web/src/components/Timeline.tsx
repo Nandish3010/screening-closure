@@ -142,6 +142,17 @@ export function Timeline({ items, drafts = [] }: { items: TimelineItem[]; drafts
             </li>
           );
         }
+        if (it.kind === "backdated") {
+          return (
+            <li key={itemKey(it, i)} className="tl tl-backdated muted" data-kind="backdated" data-testid="tl-backdated">
+              <div className="tl-head"><strong>Backdated entry</strong><time>{fmtDateTime(it.at)}</time></div>
+              <div>
+                {it.event_type ? `${EVENT_LABEL[it.event_type] ?? titleCase(it.event_type)} was` : "An event was"} recorded with a time earlier than the entry before it
+                {it.previous_at ? ` (${fmtDateTime(it.previous_at)})` : ""}. It is kept in the order it was recorded.
+              </div>
+            </li>
+          );
+        }
         if (it.kind !== "event") return null;
         if (it.type === "watchdog_flagged" && watchdogAt.has(it.at)) return null; // shown once, as the derived item
         if (it.type === "handoff_rejected" && it.payload.bounced === true && bounceAt.has(it.at)) return null;

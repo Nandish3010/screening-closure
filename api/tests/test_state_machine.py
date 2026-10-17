@@ -443,7 +443,33 @@ def test_read_model_shape_and_values():
         "consent_history": [],
         "review_reason": None,
         "review_requested_at": None,
+        "backdated_events": 0,
     }
+
+
+# ---- T-F4 / ADR-027: a backdated event is accepted and counted ----------------------------------------------
+
+
+def test_adr_027_an_event_dated_before_the_previous_one_is_accepted_and_counted():
+    m = start_model()
+    m = step(m, make_event("acknowledge", "lab:l", {}, AT + timedelta(days=3)), PATHWAY)
+    assert m.backdated_events == 0
+    m = step(m, make_event("accept_ownership", OWNER, {}, AT + timedelta(days=1)), PATHWAY)  # two days behind
+    assert m.state == "owner_accepted" and m.owner == OWNER and m.backdated_events == 1
+    assert m.last_event_at == AT + timedelta(days=1)  # "previous" is always the event just before
+    m = step(m, make_event("contact_patient", OWNER, {}, AT + timedelta(days=2)), PATHWAY)  # later than the backdated one
+    assert m.backdated_events == 1
+    m = step(m, make_event("patient_acknowledge", "patient:p", {}, AT + timedelta(days=2)), PATHWAY)  # equal: not backdated
+    assert m.backdated_events == 1 and m.to_json()["backdated_events"] == 1
+
+
+def test_adr_027_the_first_event_after_creation_is_never_backdated_against_nothing_and_replay_is_deterministic():
+    events = [make_event(CASE_CREATED, "system:intake", {}, AT + timedelta(days=5)),
+              make_event("acknowledge", "lab:l", {}, AT + timedelta(days=4)),  # before the creation event
+              make_event("accept_ownership", OWNER, {}, AT + timedelta(days=3))]
+    a = replay_model(events, PATHWAY)
+    b = replay_model(list(events), PATHWAY)
+    assert a == b and a.backdated_events == 2
 
 
 def test_a_case_can_be_overdue_and_patient_contacted():

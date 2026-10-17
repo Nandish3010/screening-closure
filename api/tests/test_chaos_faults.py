@@ -271,20 +271,29 @@ def test_t_f4_an_event_dated_after_the_sim_clock_is_refused_and_changes_nothing(
         assert log_hash(events_of(inner, cid)) == before_log and model_hash(events_of(inner, cid)) == before_model
 
 
-def test_t_f4_a_backdated_event_is_ordered_by_sequence_and_replays_deterministically():
-    """The API does not refuse an event dated before the previous one (the sim clock can be reset
-    for the demo): the log is ordered by `seq`, never by `at`, so insertion order is the only order
-    and the replay is a pure function of it. Recorded as a finding: T-F4 asks for refused or flagged."""
+def test_t_f4_a_backdated_event_is_accepted_flagged_and_replays_deterministically():
+    """ADR-027: the API accepts an event dated before the previous one (the sim clock can be reset for the demo)
+    but flags it: the timeline gets a `backdated` item and the read model counts it. The log is ordered by `seq`,
+    never by `at`, so insertion order is the only order and the replay is a pure function of it."""
     inner = InMemoryEventStore()
     with world(inner) as client:
         cid = new_case(client)
         clock.advance(days=3)
         assert post(client, cid, "acknowledge", "lab").status_code == 201
+        before = replay_model(events_of(inner, cid), PATHWAY)
+        assert before.backdated_events == 0
         resp = post(client, cid, "accept_ownership", "primary_care_owner", at=clock.now() - timedelta(days=2))
         events = events_of(inner, cid)
         assert resp.status_code == 201
         assert [e.seq for e in events] == [1, 2, 3]
         assert events[2].at < events[1].at  # accepted out of time order, kept in insertion order
+        # flagged: counted in the read model (the API's and a fresh replay's) ...
+        assert resp.json()["read_model"]["backdated_events"] == 1
+        assert replay_model(events, PATHWAY).backdated_events == 1
+        # ... and shown on the timeline, exactly once
+        tl = client.get(f"/cases/{cid}/timeline", headers=login_headers(client, "coordinator", "chaos coordinator")).json()
+        flagged = [i for i in tl["items"] if i["kind"] == "backdated"]
+        assert [i["event_id"] for i in flagged] == [str(events[2].event_id)]
         # replay is a pure function of the log in sequence order: repeated replays and the store's own model agree
         assert model_hash(events) == model_hash(events_of(inner, cid))
         assert replay_model(events, PATHWAY).to_json() == inner.read_model(UUID(cid), PATHWAY).to_json()

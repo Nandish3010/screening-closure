@@ -402,3 +402,19 @@ The model provider for drafting is bound by the same order. If no in-country, ap
 - Nothing in this ADR claims that any provider or cloud is acceptable. It records the order in which we would ask.
 - If ADHICS V2 or a DoH decision changes the rule, this ADR is superseded by a new one.
 - Malaffi connectivity is independent of this order and stays optional in the pilot (`docs/governance/malaffi-adapter-plan.md`).
+
+## ADR-027: A backdated event is accepted and flagged, not refused
+
+**Context.** T-F4 (clock skew) asked that events with times before the last event or far in the future be "refused or flagged". An event `at` in the future is already refused: the events route returns 422 when `at` is later than the simulation clock, and the scheduler takes its time from the API, not from the caller (F3, `test_chaos_faults.py`). An event dated before the previous one is the other half. The sim clock can be reset for the demo (`POST /clock/reset`), a client can be slow to deliver an event that happened earlier, and the pathway already contains legitimate cases (a result recorded after the colonoscopy it describes). The log is ordered by `seq`, assigned at insertion, never by `at`, and a replay is a pure function of that order, so an out-of-order `at` cannot corrupt the state. Refusing it would drop a real clinical fact.
+
+**Decision.**
+- Accept an event whose `at` is earlier than the previous event's `at` (the event just before it in `seq` order, whatever its type), but flag it. Equal times are not backdated.
+- The flag is derived, not stored (the log is append-only and the event is not edited): the case timeline gets a derived item `kind: "backdated"` with `event_id`, `event_type`, `at`, `previous_event_id`, `previous_at` and `behind_seconds`, and the read model carries `backdated_events`, the count of such events (`CaseModel.backdated_events`, computed in `state_machine._finish`).
+- An `at` later than the simulation clock stays refused (422). No other check changes.
+- The flag changes nothing else: not the state, the SLA clocks (which read `at` as before), the escalation ladder or the watchdog. Nobody is blamed by it; it is for the reviewer who reads the timeline or audits the log.
+
+**Consequences.**
+- Replays are unchanged in every field except the new counter, and are still deterministic (`test_chaos_faults.py::test_t_f4_a_backdated_event_is_accepted_flagged_and_replays_deterministically`; `test_state_machine.py` ADR-027 tests; `test_read_routes.py::test_t_f4_a_backdated_event_is_accepted_flagged_in_the_timeline_and_counted_in_the_read_model`).
+- The comparison is with the previous event only: a sequence at 10, 5, 7 flags the 5 and not the 7. This keeps the timeline item and the count identical by construction.
+- The simulator's cases use the same state machine and may carry a nonzero counter; no result reads it.
+- A dashboard or audit report can list cases with `backdated_events > 0`. None is built.

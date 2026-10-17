@@ -408,7 +408,9 @@ export interface PostEventBody {
  * due_at, clock_start`), `sla_breached` (`at` = the due date, `detected_at` = when the sweep wrote it;
  * the type below calls it `sla_breach`), `escalation` (`rung, level, target_role, after_breach_days,
  * accepted, accepted_at, accepted_by`), `handoff_bounce` (`to_provider, returned_to, requested_at, reason`)
- * and `watchdog_flag` (`reason, idle_days, cleared_at`). `actors` maps each actor string to
+ * `watchdog_flag` (`reason, idle_days, cleared_at`) and `backdated` (`event_id, event_type, previous_at,
+ * behind_seconds`: an event accepted with an `at` before the previous event's, ADR-027; the case read model
+ * also carries `backdated_events`, the count). `actors` maps each actor string to
  * `{actor, display_name, role}`. The older `sla_breach` / `escalation` shapes below are the mock's. The UI also derives SLA clocks, handoffs, consent state and
  * AI-draft provenance, overdue and watchdog markers from the `event` items alone, so a timeline with only events
  * degrades gracefully.
@@ -417,7 +419,7 @@ export interface PostEventBody {
  * the UI shows the derived item once.
  */
 export type TimelineItem =
-  | TimelineEvent | TimelineSlaStarted | TimelineSlaBreached | TimelineEscalation | TimelineBounce | TimelineWatchdog;
+  | TimelineEvent | TimelineSlaStarted | TimelineSlaBreached | TimelineEscalation | TimelineBounce | TimelineWatchdog | TimelineBackdated;
 
 export interface TimelineEvent extends CaseEvent {
   kind: "event";
@@ -463,6 +465,16 @@ export interface TimelineWatchdog {
   at: string;
   reason?: WatchdogReason | string;
   idle_days?: number;
+}
+
+/** T-F4, ADR-027: an event accepted with an `at` earlier than the previous event's. Derived by the API, never stored. */
+export interface TimelineBackdated {
+  kind: "backdated";
+  at: string;
+  event_id?: string;
+  event_type?: string;
+  previous_at?: string;
+  behind_seconds?: number;
 }
 
 export interface CaseTimeline {

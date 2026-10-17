@@ -13,6 +13,7 @@ from app.calendar import WorkingCalendar
 from app.events import Event, LoadedCase
 from app.pathway import Pathway
 from app.state_machine import CASE_CREATED, CaseModel, genesis, initial_model, step
+from app.state_machine import _aware as _utc
 from app.sweep import due_at_for
 
 
@@ -105,8 +106,9 @@ def timeline(
     Items (`kind`): `event` (the raw log row), `sla_started` (a state's SLA clock began; `at` is
     the clock start, which is the referral acceptance for the confirmatory SLA), `sla_breached`
     (`at` is the due date, `detected_at` when the sweep recorded it), `escalation` (a ladder rung),
-    `handoff_bounce` (the scheduler returned an unanswered referral) and `watchdog_flag` (idle
-    case; `cleared_at` once anything else happened). Derived items are computed from the log, not
+    `handoff_bounce` (the scheduler returned an unanswered referral), `watchdog_flag` (idle
+    case; `cleared_at` once anything else happened) and `backdated` (T-F4, ADR-027: an event accepted
+    with an `at` earlier than the previous event's; `behind_seconds` says by how much). Derived items are computed from the log, not
     stored. Ties are broken by the source event's position, the event first.
     """
     sortable: list[tuple[datetime, int, int, dict]] = []
@@ -118,10 +120,19 @@ def timeline(
     last_sla: tuple | None = None
     open_flag: dict | None = None
     last_escalation: dict | None = None
+    previous: Event | None = None
     for ev in events:
         seq = ev.seq or 0
         model = genesis(model, ev) if ev.type == CASE_CREATED else step(model, ev, pathway)
         add(ev.at, seq, 0, {"kind": "event", **event_json(ev)})
+        if previous is not None and _utc(ev.at) < _utc(previous.at):
+            # T-F4 / ADR-027: accepted out of time order, ordered by seq in the log, flagged here.
+            add(ev.at, seq, 1, {
+                "kind": "backdated", "at": iso(ev.at), "event_id": str(ev.event_id), "event_type": ev.type,
+                "previous_event_id": str(previous.event_id), "previous_at": iso(previous.at),
+                "behind_seconds": int((_utc(previous.at) - _utc(ev.at)).total_seconds()),
+            })
+        previous = ev
 
         if open_flag is not None and ev.type != "watchdog_flagged":
             open_flag["cleared_at"] = ev.at.isoformat()

@@ -25,6 +25,8 @@ replay of the event log produces:
                          latest referral acceptance when there was one
     referral_accepted_at `at` of the latest handoff_accepted (A13), None before any
     breach_due_at        the due date of the open breach (set with overdue)
+    backdated_events     how many accepted events had an `at` earlier than the previous event's `at`
+                         (T-F4, ADR-027): accepted and ordered by `seq`, never refused, but counted
 
 `overdue` and `escalation_level` are flags, not states, because a case can be overdue AND in
 patient_contacted (ADR-011). Side states that change the path are real states.
@@ -122,6 +124,7 @@ class CaseModel:
     consent_history: tuple = ()
     review_reason: str | None = None  # human review flag (consent withdrawal), set by review_requested
     review_requested_at: datetime | None = None
+    backdated_events: int = 0  # T-F4, ADR-027: accepted events dated before the one just before them
 
     def to_json(self) -> dict:
         def iso(dt):
@@ -148,6 +151,7 @@ class CaseModel:
             "consent_history": [dict(h) for h in self.consent_history],
             "review_reason": self.review_reason,
             "review_requested_at": iso(self.review_requested_at),
+            "backdated_events": self.backdated_events,
         }
 
 
@@ -430,7 +434,11 @@ def _finish(
 ) -> CaseModel:
     """Bookkeeping common to every accepted event: last_event_at, ownership, handoff, consent."""
     kind, payload, at = event.type, event.payload, _aware(event.at)
-    out = replace(model, last_event_at=at)
+    # T-F4 / ADR-027: an event dated before the previous one is accepted (the log is ordered by seq, not by
+    # `at`) but counted, and the timeline shows it. The comparison is with the previous event's own `at`.
+    previous = (before or model).last_event_at
+    backdated = previous is not None and at < previous
+    out = replace(model, last_event_at=at, backdated_events=model.backdated_events + (1 if backdated else 0))
     if kind == "watchdog_flagged":
         # A flag is not activity: the idle clock keeps running from the last real event.
         out = replace(out, watchdog_flag={"reason": payload.get("reason"),
