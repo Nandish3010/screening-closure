@@ -8,3 +8,4 @@ Line format: `YYYY-MM-DD HH:MM TZ | ticket | agent | what was done | commit`. Ti
 2026-10-17 23:03 IST | M0-2 | unrecorded | Persistence: Postgres append-only event log, transactional append with in-transaction transition check, migrations, integration tests | 9b635af
 2026-10-17 23:52 IST | M0-3 | unrecorded | Synthea cohort pipeline: containerised generation, HAPI loader, seeded FIT results, `make demo-seed` | 971c3f1
 2026-10-18 00:03 IST | planning | claude | Created project/ with PLAN, TRACKER, TEST-CASES, DECISIONS and this log (69 planned tickets, 112 test cases) | see commit "project: plan, tracker, test cases, decisions log"
+2026-10-18 00:12 IST | A1 | claude (Sonnet 5.5, for Fable 5.1) | Working-day calendar: UAE default Mon-Fri, weekend/holidays/time zone from config/calendar.yaml, add_working_days / is_working_day / working_days_between; holiday list empty by design (ADR-009); T-A12, T-A13 (41 tests) | b8577c3
