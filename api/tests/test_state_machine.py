@@ -110,14 +110,18 @@ def check_step(prev: CaseModel, ev: Event, new: CaseModel) -> None:
     # (d) flags
     if not prev.overdue and new.overdue:
         assert ev.type == "mark_overdue" and new.state == prev.state
+    # a new obligation resets the breach: a state change, or (A13) a referral acceptance while the
+    # state's SLA runs from the referral
+    restarted = new.state != prev.state or (
+        ev.type == "handoff_accepted" and PATHWAY.state_clock_start(new.state) == "handoff_accepted")
     if prev.overdue and not new.overdue:
-        assert new.state != prev.state
+        assert restarted
     if new.escalation_level > prev.escalation_level:
         assert ev.type == "escalate" and prev.overdue
         assert new.escalation_level == prev.escalation_level + 1
         assert not prev.escalation_accepted
     if new.escalation_level < prev.escalation_level:
-        assert new.state != prev.state and new.escalation_level == 0
+        assert restarted and new.escalation_level == 0
     if new.escalation_level:
         assert new.overdue
     if new.escalation_accepted and not prev.escalation_accepted:
