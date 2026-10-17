@@ -37,6 +37,8 @@ ROUTE_POLICY: dict[tuple[str, str], object] = {
     ("GET", "/cases"): STAFF,
     # Patients may read their own case only (checked in the handler).
     ("GET", "/cases/{case_id}"): ALL_USERS,
+    # The notification log of a case: owners (of that case), coordinators, supervisors (A7).
+    ("GET", "/cases/{case_id}/notifications"): frozenset({PCO, SPEC, COORD, SUPER}),
     # Every role may try; EVENT_POLICY decides per event type.
     ("POST", "/cases/{case_id}/events"): ALL_USERS | SCHEDULER,
     # Demo clock: supervisor only.

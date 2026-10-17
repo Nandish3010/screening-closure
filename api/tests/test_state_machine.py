@@ -710,7 +710,7 @@ ANNOTATIONS_WITHOUT_RULES = [
 )
 def test_annotations_are_allowed_in_any_open_state_without_changing_it(state, type_):
     model = dataclasses.replace(start_model(), state=state)
-    actor = "supervisor:su"
+    actor = "system:notifier" if type_ == "message_sent" else "supervisor:su"
     payload = {"withdrawn": False} if type_ == "consent_updated" else {}
     if state == "consent_withdrawn" and type_ == "consent_updated":
         payload = {"withdrawn": True}  # (False would be the resume transition)
@@ -840,7 +840,7 @@ def test_real_config_loads_every_documented_event():
         "mark_overdue", "escalate", "escalation_accepted", "handoff_requested",
         "handoff_accepted", "handoff_rejected", "consent_updated", "message_drafted",
         "message_approved", "message_sent", "callback_requested", "watchdog_flagged",
-        "reopen", "mark_lost_contact", "reassign",
+        "reopen", "mark_lost_contact", "reassign", "review_requested",
     }
     assert expected <= set(PATHWAY.event_types)
     assert PATHWAY.sla_for_state("patient_contacted") == ("patient_acknowledge", 7)

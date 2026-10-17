@@ -4,7 +4,7 @@ from uuid import UUID, uuid4
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, ConfigDict, Field
 
-from app import consent, policy
+from app import consent, notify, policy
 from app.auth import Identity, require_identity
 from app.clock import clock
 from app.events import (
@@ -35,6 +35,9 @@ class CreateCase(BaseModel):
     case_id: UUID | None = None
     patient_ref: str | None = None  # TODO: FHIR Patient reference
     result_ref: str | None = None  # TODO: FHIR DiagnosticReport reference
+    # Known contact problem (A7): false = no valid contact details, or {"sms": false} per channel.
+    # The notification mock refuses to "send" on a flagged channel. Absent = no known problem.
+    contact_valid: bool | dict[str, bool] | None = None
 
 
 class PostEvent(BaseModel):
@@ -87,6 +90,8 @@ def _case_json(case_id: UUID) -> dict:
 def create_case(body: CreateCase) -> dict:
     case_id = body.case_id or uuid4()
     payload = body.model_dump(exclude={"case_id"})
+    if payload.get("contact_valid") is None:
+        payload.pop("contact_valid", None)
     genesis = Event(case_id, CASE_CREATED, clock.now(), "system:intake", payload)
     try:
         store.create_case(case_id, pathway.name, genesis, pathway.initial_state)
@@ -150,3 +155,13 @@ def get_case(case_id: UUID, identity: Identity = Depends(require_identity)) -> d
         return _case_json(case_id)
     except CaseNotFound:
         raise HTTPException(404, "case not found")
+
+
+@router.get("/{case_id}/notifications")
+def case_notifications(case_id: UUID, identity: Identity = Depends(require_identity)) -> list[dict]:
+    """The case's notification log (A7), oldest first. Owners see only their own cases."""
+    model = store.read_model(case_id, pathway)
+    if model is None:
+        raise HTTPException(404, "case not found")
+    policy.authorize_owner_scope(identity, "view_notifications", model)
+    return [n.to_json() for n in notify.log.for_case(case_id)]

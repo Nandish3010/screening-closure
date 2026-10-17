@@ -195,13 +195,14 @@ Everything below is a working contract for Cuts C and D. "Exists" means in the c
 |---|---|---|---|
 | `GET /health` | exists | none | `{status, sim_time}` |
 | `GET /pathways` | exists | none | the pathway config as parsed from YAML |
-| `POST /cases` | exists | `{case_id?, patient_ref?, result_ref?}` | 201 with the case: `{case_id, state, read_model, events[]}`; 409 `CaseAlreadyExists` |
+| `POST /cases` | exists | `{case_id?, patient_ref?, result_ref?, contact_valid?}` (`contact_valid`: `false` = no valid contact details, or `{"sms": false}` per channel; kept in the genesis payload for the notification mock) | 201 with the case: `{case_id, state, read_model, events[]}`; 409 `CaseAlreadyExists` |
 | `GET /cases?state=` | exists | query `state` | list of `{case_id, pathway, state, created_at, updated_at}` |
 | `GET /cases/{id}` | exists | none | `{case_id, state, read_model, events[]}`; 404 if unknown |
 | `POST /auth/dev-login` | exists (A8) | `{role, name, patient_ref?, provider?}` (patient_ref only for role `patient`; provider only for `primary_care_owner` and `specialist_owner`, default: the name) | `{token, token_type: "bearer", user_id, role, display_name, patient_ref?}`; 403 for an automated role name, 422 for anything else invalid; 404 when `DEV_LOGIN_ENABLED=false` |
 | `POST /cases/{id}/events` | exists | `{type, payload, at?, event_id?}` (no `actor`: 422 if present) | 201 with the case (same shape as `GET /cases/{id}`); 404; 409 for an invalid transition or an `event_id` used on another case |
 | `GET /me` | exists (A8) | bearer token | `{user_id, role, display_name, patient_ref?, provider?}`; `user_id` is `role:name` |
 | `GET /cases?state&owner&overdue` | planned (A9) | query filters | list as above plus `owner`, `due_at`, `overdue`, and `risk_score` once D9 lands |
+| `GET /cases/{id}/notifications` | exists (A7) | none | list, oldest first, of `{id, case_id, channel, language, purpose, body, status, reason, event_id, created_at}`; `status` is `queued`, `sent`, `blocked_consent` or `blocked_contact`; `event_id` is the `message_sent` event (null unless `sent`). primary_care_owner / specialist_owner (their own case), coordinator, supervisor; 404 if unknown |
 | `GET /cases/{id}/timeline` | planned (A9) | none | read-only list of events with `seq, event_id, type, at, actor, payload` |
 | `GET /metrics/closure` | planned (A10) | none | `{p50_days, p90_days, open_by_age_bucket, breaches_by_provider, bottleneck_by_transition, abstention_rate, sim_time}` (proposed) |
 | `POST /cases/{id}/drafts` | planned (D4) | `{purpose, language, channel}` (proposed) | `{draft_id, case_id, text, provider, used_fallback, status, provenance_ref}` |
@@ -319,11 +320,11 @@ Who may post which event type through `POST /cases/{id}/events` (a missing type 
 | `escalation_accepted` | primary_care_owner, specialist_owner, supervisor, coordinator (the state machine also requires the actor's role to be in the rung's `accepted_by`) |
 | `mark_overdue`, `watchdog_flagged` | scheduler |
 | `review_requested` | nobody (the API emits it itself as `system:consent` when consent is withdrawn) |
-| `message_sent` | nobody (only the approval-gated send path in D5 writes it) |
+| `message_sent` | nobody over HTTP. Only `app.notify.send` (A7) writes it, as `system:notifier`; the state machine refuses any other actor, so D5's approval gate calls `notify.send(case_id, channel, language, purpose, body)` and there is no other path |
 
 **Owner scoping (A5).** A `primary_care_owner` or `specialist_owner` may post an event only on a case they own (`read_model.owner` equals their `role:name`). Exceptions: `accept_ownership` on a case with no owner, and `handoff_accepted` / `handoff_rejected` on a case whose `pending_handoff.to_provider` equals the caller's provider (login `provider`, default the name). Anything else is 403 and nothing is written. Supervisors, coordinators, lab and patients are not owner-scoped (patients stay limited to their own case). Hand a case on with `handoff_requested` and let the receiver accept before they act on it.
 
-Other routes: `POST /cases` lab, coordinator, supervisor; `GET /cases` every user role except patient; `GET /cases/{id}` every user role (patients: own case only); `GET /pathways` and `GET /me` any valid identity; clock control supervisor only (A3).
+Other routes: `GET /cases/{id}/notifications` primary_care_owner and specialist_owner (own case only), coordinator, supervisor; `POST /cases` lab, coordinator, supervisor; `GET /cases` every user role except patient; `GET /cases/{id}` every user role (patients: own case only); `GET /pathways` and `GET /me` any valid identity; clock control supervisor only (A3).
 
 Whether a coordinator may ever sign off, and which roles count as "clinician", is a question for the clinician review (H1).
 

@@ -222,6 +222,7 @@ Architecture decision records, one per decision. Add new entries at the end with
 - A clinician who is not the owner now gets 403 where they used to get 409 or success (for example `close` on a case nobody owns yet). 403 is the right answer: the call is outside their scope before it is a question of state.
 - The simulator is unaffected: it logs handoffs itself and validates only the main chain through `apply`.
 - Limits: the provider claim is a dev-login convenience (a real deployment takes it from the identity provider); `handoff_accepted` does not check that the accepter's role is `specialist_owner` (the policy allows both clinician roles, so a referral to a primary care provider works).
+- The new rules apply on replay. A log written before A5 to A7 that has, say, a `handoff_accepted` with no request, or a `message_sent` from another actor, no longer replays (the sweep reports it under `errors`, and an append to it is refused as corruption). That is acceptable before release; `make reset` and `make demo-seed` rebuild the dev database, and the seeded cohort only contains `case_created` events.
 - Web mirror: `web/src/lib/pathway.ts` mirrors SLAs; the new `reassign: 2` row for `referral_rejected` is for Cut C to pick up.
 
 ## ADR-017: Consent is an append-only ledger by replay; withdrawal freezes outreach in the engine
@@ -241,3 +242,20 @@ Architecture decision records, one per decision. Add new entries at the end with
 - T-A24: history and derived value come from the same replay, so they cannot disagree; the append-only trigger on `events` makes the history tamper-evident.
 - T-A23: nothing can be drafted, approved or sent for a frozen case by any caller; the notification mock (A7) also checks consent itself, so the guarantee does not rest on one layer.
 - A frozen case has a reviewer-visible flag and sits in `consent_withdrawn`, which `GET /cases?state=consent_withdrawn` lists. The SLA clock keeps running (ADR-011); a breach is detected once the case resumes.
+
+## ADR-018: The notification mock is the only outbound path, and it is a log
+
+**Context.** The product must show that a message reaches a patient only after a human approved it, and that the system honours consent. The demo runs offline and uses synthetic data, so nothing may actually be sent. The same code path has to be the one D5 (approval) uses, so that "no other path to `message_sent`" is a fact about the code, not a convention.
+
+**Decision.**
+- `app/notify.py` has one entry point, `send(case_id, channel, language, purpose, body, ...)`, a Python function (no route). It reads the case's read model and, in order: refuses if consent is withdrawn or that channel is switched off (`blocked_consent`, reason says which), refuses if the case's `case_created` payload flags the contact invalid (`contact_valid: false`, or a per-channel map; `blocked_contact`), otherwise appends `message_sent` from `system:notifier` and logs the row as `sent`. It imports no module that can open a connection (an AST test enforces that, and a socket-blocking fixture proves it at run time).
+- `message_sent` has an empty route policy (nobody can POST it) and the state machine refuses it from any actor but `system:notifier`; it is also refused while consent is withdrawn, so a forged call fails twice. `emit_message_sent` is a separate function in the same module for D5 if it needs the event without a log row; it carries the same actor.
+- Table `notifications` (migration 003): id, case_id, channel, language, purpose, body, status, reason, event_id, created_at (simulation time), append-only by trigger like `events`. Status is `queued | sent | blocked_consent | blocked_contact`. A CHECK ties `status = 'sent'` to having a `message_sent` event; `event_id` names that event but is not a foreign key (the event is always written first, and a foreign key would make `TRUNCATE events` fail on the constraint before the append-only trigger can refuse it, which the existing integration test checks). `queued` is reserved for an approved-but-undelivered message and nothing writes it today, because the mock delivers at once.
+- Blocked attempts are logged with their reason but write no event: nothing was sent, and the log is where a reviewer sees the refusal. This departs from the T-A25 wording "a withdrawn channel produces no row"; the intent (no outbound record) holds because only `sent` rows are outbound, and the test cases now say so.
+- Two writes, not one transaction: `message_sent` is appended first, then the row. If the second fails the audit trail has the event and the log lacks the row (the safe side for a regulator), and the exception reaches the caller. A single transaction would need the notification table inside the event store's connection; not worth it for a mock.
+- `GET /cases/{id}/notifications` returns the log for owners (their own case only, as for events), coordinators and supervisors; patients and lab do not see it.
+- The contact validity flag can be set when the case is created (`POST /cases {contact_valid}`). Marking a number wrong after creation is not modelled.
+
+**Consequences.**
+- T-A25 and the notification half of T-A23 are checked against both the in-memory log and Postgres.
+- D5 only needs `notify.send(...)` after `message_approved`; the gate itself (an approved draft exists) is D5's.

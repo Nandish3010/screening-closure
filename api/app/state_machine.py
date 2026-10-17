@@ -64,6 +64,7 @@ CONSENT_FROZEN_EVENTS = frozenset(
 CONSENT_ACTOR = "system:consent"  # emits review_requested, and nothing else
 REVIEW_REASONS = ("consent_withdrawn",)
 SCHEDULER_ACTOR_NAME = "system:scheduler"
+NOTIFIER_ACTOR = "system:notifier"  # the notification mock: the only actor that writes message_sent
 
 # Actor prefixes that denote automation (scheduler, watchdog, drafting model...).
 AUTOMATED_ACTOR_PREFIXES = ("system:", "scheduler", "watchdog", "model:")
@@ -359,6 +360,9 @@ def _precheck(model: CaseModel, event: Event, pathway: Pathway) -> None:
     if actor == CONSENT_ACTOR and kind != "review_requested":
         raise InvalidTransition(f"{CONSENT_ACTOR!r} may only emit review_requested")
     validate_payload(event, pathway)
+    # A message is "sent" only by the notification mock, after the approval gate (T-D1).
+    if kind == "message_sent" and actor != NOTIFIER_ACTOR:
+        raise InvalidTransition(f"message_sent is written only by {NOTIFIER_ACTOR!r}, not {actor!r}")
     # Consent withdrawn freezes outreach, and handing the patient to someone new (T-A23).
     if model.consent_frozen and kind in CONSENT_FROZEN_EVENTS:
         raise InvalidTransition(
