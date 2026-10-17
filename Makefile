@@ -1,4 +1,4 @@
-.PHONY: test-demo test-e2e-live demo-scenario demo-snapshot demo-restore demo-reset check docs-check tracker-lint test-security test-tools test-load load-check up down logs test test-db test-db-create test-db-reset test-chaos synthea demo-seed demo-seed-clean evaluate simulate evaluate-check reset web-install web-dev web-build web-test web-e2e test-e2e review-packs review-packs-check test-review-packs
+.PHONY: test-demo test-e2e-live demo-scenario demo-snapshot demo-restore demo-reset demo-kill-scheduler check docs-check tracker-lint test-security test-tools test-load load-check up down logs test test-db test-db-create test-db-reset test-chaos synthea demo-seed demo-seed-clean evaluate simulate evaluate-check reset web-install web-dev web-build web-test web-e2e test-e2e review-packs review-packs-check test-review-packs
 
 up:
 	docker compose up -d --build
@@ -145,6 +145,10 @@ demo-reset:
 # returns exactly the snapshot's state in under 30 s. Drives docker and leaves the demo state reset (about 4 minutes).
 test-demo:
 	PYTHONPATH=api $(PY) -m pytest tools/demo/tests -q -m live -s
+
+# F11 rehearsal: stop the scheduler, wait for the dashboard alert, restart it, check no event was lost.
+demo-kill-scheduler:
+	$(PY) tools/demo/kill_scheduler.py
 
 # ---- Cut F: hardening, reproducibility, `make check` (F1, F6, F9) ----------------------------------
 # `make check` runs, in order and stopping at the first failure: test, test-db (skipped loudly if
