@@ -17,7 +17,10 @@ replay of the event log produces:
     consent_frozen       outreach is frozen (state is consent_withdrawn)
     last_event_at        `at` of the latest event, including annotations
     resume_state         where the case returns to when consent is restored (side state only)
-    clock_started_at     when the current state's SLA clock started
+    clock_started_at     when the current state's SLA clock started: the event that entered the
+                         state, or, for an SLA with `clock_start: handoff_accepted` (A13), the
+                         latest referral acceptance when there was one
+    referral_accepted_at `at` of the latest handoff_accepted (A13), None before any
     breach_due_at        the due date of the open breach (set with overdue)
 
 `overdue` and `escalation_level` are flags, not states, because a case can be overdue AND in
@@ -30,7 +33,7 @@ from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
-from app.pathway import RESUME_STATE, Pathway, Transition
+from app.pathway import CLOCK_HANDOFF_ACCEPTED, RESUME_STATE, Pathway, Transition
 
 if TYPE_CHECKING:  # avoid a circular import; events.py imports this module
     from app.events import Event
@@ -103,6 +106,7 @@ class CaseModel:
     resume_state: str | None = None
     clock_started_at: datetime | None = None
     breach_due_at: datetime | None = None
+    referral_accepted_at: datetime | None = None
     provider: str | None = None
     pending_handoff: dict | None = None
     last_handoff: dict | None = None
@@ -127,6 +131,7 @@ class CaseModel:
             "resume_state": self.resume_state,
             "clock_started_at": iso(self.clock_started_at),
             "breach_due_at": iso(self.breach_due_at),
+            "referral_accepted_at": iso(self.referral_accepted_at),
             "provider": self.provider,
             "pending_handoff": dict(self.pending_handoff) if self.pending_handoff else None,
             "last_handoff": dict(self.last_handoff) if self.last_handoff else None,
@@ -164,9 +169,9 @@ def step(model: CaseModel, event: Event, pathway: Pathway) -> CaseModel:
     candidates = pathway.transitions_for(model.state, event.type)
     chosen = next((t for t in candidates if t.matches(event.payload)), None)
     if chosen is not None:
-        return _finish(_transition(model, event, pathway, chosen), event, model)
+        return _finish(_transition(model, event, pathway, chosen), event, model, pathway)
     if event.type in pathway.annotations and model.state in pathway.open_states:
-        return _finish(_annotate(model, event, pathway), event, model)
+        return _finish(_annotate(model, event, pathway), event, model, pathway)
     if candidates:
         raise InvalidTransition(
             f"event {event.type!r} from state {model.state!r}: payload does not satisfy "
@@ -221,9 +226,17 @@ def _transition(model: CaseModel, event: Event, pathway: Pathway, t: Transition)
             escalation_level=0,
             escalation_accepted=False,
             breach_due_at=None,
-            clock_started_at=_aware(event.at),
+            clock_started_at=_sla_clock_start(pathway, target, _aware(event.at), model.referral_accepted_at),
         )
     return new
+
+
+def _sla_clock_start(pathway: Pathway, state: str, entry_at: datetime, referral_at: datetime | None):
+    """Where the SLA for `state` starts counting (A13): state entry, or the latest referral
+    acceptance for an SLA with `clock_start: handoff_accepted` (state entry if none)."""
+    if referral_at is not None and pathway.state_clock_start(state) == CLOCK_HANDOFF_ACCEPTED:
+        return referral_at
+    return entry_at
 
 
 # -- annotations ------------------------------------------------------------------------
@@ -400,7 +413,9 @@ def _consent_after(model: CaseModel, event: Event, was_frozen: bool) -> CaseMode
     return out
 
 
-def _finish(model: CaseModel, event: Event, before: CaseModel | None = None) -> CaseModel:
+def _finish(
+    model: CaseModel, event: Event, before: CaseModel | None = None, pathway: Pathway | None = None
+) -> CaseModel:
     """Bookkeeping common to every accepted event: last_event_at, ownership, handoff, consent."""
     kind, payload, at = event.type, event.payload, _aware(event.at)
     out = replace(model, last_event_at=at)
@@ -420,8 +435,15 @@ def _finish(model: CaseModel, event: Event, before: CaseModel | None = None) -> 
         pending = (before or model).pending_handoff
         provider = (payload.get("provider") or pending["to_provider"]).strip()
         out = replace(out, owner=event.actor, provider=provider, pending_handoff=None,
+                      referral_accepted_at=at,
                       last_handoff={"outcome": "accepted", "to_provider": pending["to_provider"],
                                     "by": event.actor, "at": at.isoformat()})
+        if (pathway is not None and out.state in pathway.open_states
+                and pathway.state_clock_start(out.state) == CLOCK_HANDOFF_ACCEPTED):
+            # A referral accepted while the state's SLA runs from acceptance restarts that
+            # clock: a new obligation, like a state change (A13, ADR-020).
+            out = replace(out, clock_started_at=at, overdue=False, escalation_level=0,
+                          escalation_accepted=False, breach_due_at=None)
     elif kind == "handoff_rejected":
         pending = (before or model).pending_handoff
         out = replace(out, pending_handoff=None, last_handoff={

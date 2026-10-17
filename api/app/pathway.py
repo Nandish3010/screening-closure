@@ -20,6 +20,11 @@ import yaml
 
 ANY_OPEN = "any_open"
 RESUME_STATE = "resume_state"
+# Where an SLA clock may start (A13): the event that entered the state, or the latest referral
+# acceptance (`handoff_accepted`) with a fallback to state entry.
+CLOCK_STATE_ENTRY = "state_entry"
+CLOCK_HANDOFF_ACCEPTED = "handoff_accepted"
+CLOCK_STARTS = (CLOCK_STATE_ENTRY, CLOCK_HANDOFF_ACCEPTED)
 
 
 class PathwayError(ValueError):
@@ -68,6 +73,8 @@ class Pathway:
     handoff_response_working_days: int = 3
     handoff_reject_reasons: tuple[str, ...] = ()
     handoff_bounce_reason: str = "timeout"
+    # SLA event -> clock start. Absent means CLOCK_STATE_ENTRY (A13).
+    sla_clock_start: dict[str, str] = field(default_factory=dict)
     raw: dict = field(default_factory=dict, compare=False, repr=False)
 
     @property
@@ -123,6 +130,16 @@ class Pathway:
             if t.from_state == state and t.event in self.slas_working_days:
                 return t.event, self.slas_working_days[t.event]
         return None
+
+    def clock_start_for(self, sla_event: str) -> str:
+        """Where the SLA for `sla_event` starts counting: `state_entry` (default) or
+        `handoff_accepted` (the latest referral acceptance, else state entry)."""
+        return self.sla_clock_start.get(sla_event, CLOCK_STATE_ENTRY)
+
+    def state_clock_start(self, state: str) -> str:
+        """Clock start of the SLA that applies to `state` (`state_entry` if it has none)."""
+        sla = self.sla_for_state(state)
+        return self.clock_start_for(sla[0]) if sla else CLOCK_STATE_ENTRY
 
     def rung(self, name: str) -> EscalationRung | None:
         return next((r for r in self.escalation_ladder if r.rung == name), None)
@@ -189,6 +206,7 @@ def load_pathway(path: str | Path) -> Pathway:
             handoff_response_working_days=raw.get("handoff_response_working_days", 3),
             handoff_reject_reasons=tuple(raw.get("handoff_reject_reasons", [])),
             handoff_bounce_reason=raw.get("handoff_bounce_reason", "timeout"),
+            sla_clock_start=dict(raw.get("sla_clock_start") or {}),
             raw=raw,
         )
     except KeyError as exc:
@@ -217,6 +235,12 @@ def _validate(pw: Pathway) -> None:
     for ev in pw.slas_working_days:
         if ev not in events:
             raise PathwayError(f"SLA references unknown event {ev!r}")
+
+    for ev, start in pw.sla_clock_start.items():
+        if ev not in pw.slas_working_days:
+            raise PathwayError(f"sla_clock_start references an event with no SLA: {ev!r}")
+        if start not in CLOCK_STARTS:
+            raise PathwayError(f"sla_clock_start for {ev!r} must be one of {list(CLOCK_STARTS)}, got {start!r}")
 
     # Closure guard at config level: only the main-path state before the terminal may close,
     # and the row must demand both evidence and a sign-off. No side state reaches `closed`.

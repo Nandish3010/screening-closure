@@ -259,3 +259,18 @@ Architecture decision records, one per decision. Add new entries at the end with
 **Consequences.**
 - T-A25 and the notification half of T-A23 are checked against both the in-memory log and Postgres.
 - D5 only needs `notify.send(...)` after `message_approved`; the gate itself (an approved draft exists) is D5's.
+
+## ADR-020: Every open state has a timer, and the confirmatory SLA runs from referral acceptance
+
+**Context.** Two gaps in the first SLA table (assumptions L12 and L13). `close` had no SLA, so a case that had been clinician-reviewed but not signed off could sit for ever without going overdue; the simulator papered over it with its own 3-working-day sign-off SLA that the engine did not have. And the 31-working-day colonoscopy target was counted from the `confirmatory_booked` state, while the DoH standard counts it from referral, so a case booked late could meet our SLA and still miss the national measure.
+
+**Decision.**
+- `slas_working_days.close: 3` in the pathway YAML. `clinician_reviewed` now has a timer, a breach, and a ladder like every other open state. 3 is the value the simulator already assumed (`orchestration.signoff_sla_working_days`); it is still a design choice for the clinician review (H1), and because the engine now reads it from the YAML the simulator's `setdefault` is a no-op.
+- A per-SLA clock start, in a separate YAML map so `slas_working_days` stays a plain event-to-days map for the simulator and the web mirror: `sla_clock_start: {complete_confirmatory: handoff_accepted}`. The default is `state_entry` (the event that entered the state). `handoff_accepted` means the latest `handoff_accepted` on the case, whichever state it happened in, and falls back to state entry when no handoff was ever accepted (a case with no formal referral keeps the old behaviour). The loader refuses a value outside `{state_entry, handoff_accepted}` and a key with no SLA.
+- Read model: `clock_started_at` is now the effective start of the current state's SLA clock (it equals the entry time for every SLA but the confirmatory one); `referral_accepted_at` is new. The sweep is unchanged: `due_at_for` already counts working days from `clock_started_at`, so `breach_due_at` (taken from the `mark_overdue` payload) follows.
+- A `handoff_accepted` that arrives while the current state's SLA runs from acceptance restarts the clock and clears `overdue`, `escalation_level`, `escalation_accepted` and `breach_due_at`: a new obligation, the same rule as a state change (ADR-011). The earlier `mark_overdue` and `escalate` events stay in the log.
+- The simulator keeps arming the confirmatory timer on entering the step, because it models no referral acceptance at booking: that is the "no handoff occurred" fallback, so its numbers do not change. Only the pathway hash recorded in `results.json` changes with the YAML.
+
+**Consequences.**
+- Any handoff counts as a referral, including a primary-care to primary-care transfer; the effect is to start the clock early, which is the conservative side. The next ticket that models the specialist referral explicitly (a role or reason on the handoff) can narrow it.
+- T-A34 and T-A35 test the rule. The assumption table entries L12 (no `close` SLA) and L13 (clock start) are closed by this change; those documents live on the docs branch and are updated at merge.

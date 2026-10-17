@@ -25,7 +25,12 @@ export const SIDE_TRANSITIONS: Transition[] = [
   { from: "reopened", event: "accept_ownership", to: "owner_accepted" },
 ];
 
-/** Working days allowed to perform the event (slas_working_days in the YAML). */
+/**
+ * Working days allowed to perform the event (slas_working_days in the YAML). Each clock starts when the
+ * state is entered, except complete_confirmatory (31), which the API counts from the latest referral
+ * acceptance (`sla_clock_start` in the YAML, A13). The UI takes due dates from the API (`due_at`), not
+ * from this table, so it is data only.
+ */
 export const SLA_WORKING_DAYS: Record<string, number> = {
   acknowledge: 2,
   accept_ownership: 2,
@@ -34,6 +39,8 @@ export const SLA_WORKING_DAYS: Record<string, number> = {
   book_confirmatory: 14,
   complete_confirmatory: 31,
   clinician_review: 5,
+  close: 3, // sign-off after review (A13)
+  reassign: 2, // re-route of a rejected or bounced referral (A5)
 };
 
 /** escalation_ladder from the pathway YAML, in the event vocabulary (`escalate {rung, target_role}`). */

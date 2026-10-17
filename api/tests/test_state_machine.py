@@ -423,6 +423,7 @@ def test_read_model_shape_and_values():
         "consent_frozen": False,
         "last_event_at": (AT + timedelta(days=3)).isoformat(),
         "resume_state": None,
+        "referral_accepted_at": None,
         "clock_started_at": (AT + timedelta(days=3)).isoformat(),
         "breach_due_at": None,
         "provider": None,

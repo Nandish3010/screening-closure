@@ -80,7 +80,14 @@ slas_working_days:
   book_confirmatory: 14
   complete_confirmatory: 31   # DoH IFHAS KPI: colonoscopy within 31 working days of referral (docs/evidence.md section 8)
   clinician_review: 5
+  close: 3            # sign-off after clinician review (A13): without it a reviewed case could never go overdue (L12)
   reassign: 2         # a rejected or bounced referral (referral_rejected) must be re-routed within 2 working days (A5)
+# Where each SLA clock starts (A13, ADR-020). Default `state_entry`: the event that entered the state.
+# `handoff_accepted`: the latest referral acceptance on the case, falling back to state entry when
+# no handoff was ever accepted. complete_confirmatory is measured from referral acceptance, as the
+# DoH standard measures it (colonoscopy within 31 working days of referral), not from booking.
+sla_clock_start:
+  complete_confirmatory: handoff_accepted
 # A rung is emitted `after_breach_days` working days after the due date; the next rung is
 # only valid after the previous one (no skipping). A human in `accepted_by` accepts a rung
 # with `escalation_accepted`, which stops further rungs for that breach (ADR-014).

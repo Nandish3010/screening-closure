@@ -271,6 +271,7 @@ Every case route that returns a case includes `read_model`, derived by replaying
   "resume_state": null,
   "clock_started_at": "2026-01-08T08:00:00+00:00",
   "breach_due_at": "2026-01-19T08:00:00+00:00",
+  "referral_accepted_at": null,
   "consent": {"channel_sms": true, "channel_whatsapp": true, "channel_phone": true, "channel_letter": true, "share_with_specialist": true, "withdrawn": false, "updated_at": null, "updated_by": null},
   "consent_history": [{"at": "2026-01-06T09:00:00+00:00", "actor": "patient:pat", "changes": {"channel_sms": false}}],
   "review_reason": null,
@@ -281,7 +282,7 @@ Every case route that returns a case includes `read_model`, derived by replaying
 }
 ```
 
-`state` is a main or side state. `overdue` and `escalation_level` are flags, not states, so a case can be overdue and in `patient_contacted` (ADR-011). They reset when the state changes, except for a consent-withdrawn excursion, which keeps them. `resume_state` is set only while in `consent_withdrawn` and is derived by replay, never taken from the client. `clock_started_at` is when the current state's SLA clock started; `breach_due_at` is set with `overdue`. Cut C can rely on the first six keys; `clock_started_at` and `breach_due_at` are extras for the timeline.
+`state` is a main or side state. `overdue` and `escalation_level` are flags, not states, so a case can be overdue and in `patient_contacted` (ADR-011). They reset when the state changes, except for a consent-withdrawn excursion, which keeps them. `resume_state` is set only while in `consent_withdrawn` and is derived by replay, never taken from the client. `clock_started_at` is when the current state's SLA clock started (state entry, except for the confirmatory SLA, which runs from the latest `handoff_accepted` when there was one: `sla_clock_start` in the YAML, A13, ADR-020; `referral_accepted_at` is that acceptance, null before any); `breach_due_at` is set with `overdue`. Cut C can rely on the first six keys; `clock_started_at` and `breach_due_at` are extras for the timeline.
 
 Consent (A6, ADR-017): `consent` is the current value, derived by replaying every `consent_updated` in order over the programme defaults (everything allowed until the patient says otherwise; `updated_at` is null until then); `consent_history` lists every change, oldest first, as `{at, actor, changes}`. `consent_frozen` is true exactly while `consent.withdrawn` is true (state `consent_withdrawn`); while frozen the API answers 409 "consent withdrawn" to `contact_patient`, `message_drafted`, `message_approved`, `message_sent` and `handoff_requested`. `review_reason` is `consent_withdrawn` from the moment the API flags the withdrawal until consent is restored; `GET /cases?state=consent_withdrawn` is the human-review list.
 
