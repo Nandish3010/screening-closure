@@ -115,3 +115,5 @@ These need a person. They start after the autonomous phase and carry their own d
 | H4 | Record the backup demo video and the 3-minute submission video | E9 | todo | T-E15 | Before 14 Nov |
 | H5 | Fresh-clone run on a second machine | F12 | todo | T-F13 | Before 14 Nov |
 | H6 | Confirm registration (closes 10 Nov), re-check submission form against the requirements shared at registration, submit | E12 | todo | - | Registration by 10 Nov; submit by 18 Nov |
+
+H6 notes: the "replace the provisional judging criteria" part of H6 is done (official six criteria in PLAN.md section 1, commit "project: official judging criteria"). Still open under H6: confirm registration, re-check the submission form against the requirements shared at registration, and submit.

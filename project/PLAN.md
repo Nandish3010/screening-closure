@@ -12,16 +12,16 @@ We are building autonomously with AI agents from 17 October until 18 October 22:
 
 ### Judging criteria and the one thing we show for each
 
-> **Provisional.** The official six criteria were not in the files this plan was written from (the brief says the full submission requirements are shared after registration). The six rows below are working criteria derived from the documentation sections the brief asks for. Replace the left column with the official wording and re-check the right column when the requirements are in hand. This is task H6 in TRACKER.md.
+The six official criteria, as published on the event page. The right-hand column is the one thing we put in front of the judge for each.
 
-| # | Criterion (working) | The one thing we show |
+| # | Criterion (official) | The one thing we show |
 |---|---|---|
-| 1 | Problem and impact | A published loss-to-follow-up figure for abnormal screening results, then a synthetic positive FIT that today's process would lose, caught and closed live. |
-| 2 | Technical soundness and architecture | The closure-invariant property test running: thousands of random event sequences, no closure without evidence and a human sign-off. |
-| 3 | Responsible AI and governance | A drafted message that cannot leave until the owner approves it, with its Provenance (prompt, draft, approver, timestamp) on screen next to the automated-vs-human decision matrix. |
-| 4 | Evidence and evaluation | `make evaluate` regenerating the baseline-versus-orchestrated table with confidence intervals and every parameter's source, run in front of the judge, with one parameter changed. |
-| 5 | Usability and inclusion | The patient PWA in Arabic (right-to-left, grade-6 wording) where "I don't understand this" creates a callback task for a human. |
-| 6 | Scalability and pilot readiness | The 90-day pilot plan with cost per case, next to the measured scheduler sweep over 100,000 open cases. |
+| 1 | Health impact and clinical relevance | A published loss-to-follow-up figure for abnormal screening results, then a synthetic positive FIT that today's process would lose, caught, escalated to a named human and closed with a clinician's sign-off live. |
+| 2 | Technical depth and architecture | The closure-invariant property test running: thousands of random event sequences over the full event vocabulary, no closure without evidence and a human sign-off, next to the append-only event log that replays to the same state. |
+| 3 | Working solution and demonstration quality | The seeded 7-minute scenario run end to end from one command and reset in one command, with the scheduler killed on stage and the watchdog raising the alert, on the running stack with no network. |
+| 4 | Responsible AI, safety and data governance | A drafted message that cannot leave until the owner approves it, with its Provenance (prompt, draft, approver, timestamp) on screen next to the automated-vs-human decision matrix, the hazard log and the synthetic-data declaration. |
+| 5 | Scalability and deployment readiness | The measured scheduler sweep over 100,000 open cases, the FHIR R4 projection and the Malaffi adapter plan (stated as a target), and a stack that comes up on a fresh clone with one command. |
+| 6 | Commercial viability and path to pilot | The 90-day pilot plan (one programme, two or three providers, shadow mode first) with cost per case from a script with a visible inputs file, and `make evaluate` regenerating the baseline-versus-orchestrated table with one parameter changed. |
 
 ## 2. Six moats
 
