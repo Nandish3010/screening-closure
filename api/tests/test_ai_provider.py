@@ -56,7 +56,10 @@ def test_env_value_is_case_and_space_insensitive(monkeypatch):
 
 
 @pytest.mark.parametrize("name", ["azure_openai", "jais"])
-def test_unimplemented_providers_are_unavailable(name):
+def test_model_providers_are_unavailable_by_default(name, monkeypatch, tmp_path):
+    """Network off and an empty cache (a hit would not raise): the draft cannot be made."""
+    monkeypatch.setenv("LLM_CACHE_DIR", str(tmp_path))
+    monkeypatch.delenv("LLM_NETWORK_ENABLED", raising=False)
     p = get_provider(name)
     assert isinstance(p, Provider)
     with pytest.raises(ProviderUnavailable):

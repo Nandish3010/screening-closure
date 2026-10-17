@@ -267,14 +267,19 @@ def test_provider_failure_falls_back_without_raising(exc, reason):
     assert log.records()[0].reason == reason
 
 
-def test_stub_providers_fall_back():
+def test_model_providers_fall_back_by_default(monkeypatch, tmp_path):
+    """Default config: replay mode with an empty cache is a cache miss; network off otherwise."""
     from app.ai.provider import get_provider
 
-    for name in ("azure_openai", "jais"):
-        log = AbstentionLog()
-        res = draft_with_fallback(make_req(), get_provider(name), log)
-        assert res.fallback_used and res.abstention_reason == "provider_unavailable"
-        assert log.records()[0].provider == name
+    monkeypatch.setenv("LLM_CACHE_DIR", str(tmp_path))
+    monkeypatch.delenv("LLM_NETWORK_ENABLED", raising=False)
+    for mode, reason in (("replay", "cache_miss"), ("off", "provider_unavailable")):
+        monkeypatch.setenv("LLM_CACHE_MODE", mode)
+        for name in ("azure_openai", "jais"):
+            log = AbstentionLog()
+            res = draft_with_fallback(make_req(), get_provider(name), log)
+            assert res.fallback_used and res.abstention_reason == reason
+            assert log.records()[0].provider == name
 
 
 def test_wrong_language_result_object_is_invalid():

@@ -2,7 +2,9 @@
 
 A provider turns a `DraftRequest` into a `DraftResult` (text for a human owner to approve).
 `template` is the default and needs no network. `azure_openai` and `jais` are registered names
-that resolve to a stub raising `ProviderUnavailable` until D7 implements them.
+that resolve to the HTTP adapters in `app.ai.adapters` (D7), wrapped by the output cache
+(`app.ai.cache`, D6). Network is off by default, so they raise `ProviderUnavailable` unless a
+cached output exists or `LLM_NETWORK_ENABLED=true`.
 
 Data minimisation: a `DraftRequest` carries only what a message needs. It never carries
 clinical findings beyond the fixed phrase "screening test found blood", and no patient name,
@@ -40,6 +42,10 @@ PROVIDER_NAMES: tuple[str, ...] = ("template", "azure_openai", "jais")
 
 class ProviderUnavailable(Exception):
     """The provider cannot produce a draft now (not configured, offline, timed out, errored)."""
+
+
+class CacheMiss(ProviderUnavailable):
+    """Replay mode found no recorded output for this prompt (D6). Counted as abstention `cache_miss`."""
 
 
 class UnknownProvider(ValueError):
@@ -105,9 +111,23 @@ class Provider(Protocol):
 
 _LANGUAGE_NAMES = {"ar": "Arabic", "en": "English"}
 
+# The system message a model-backed provider sends (D7). Together with `build_prompt` it is the
+# whole instruction, so `prompt_hash` covers both and the `prompts` table stores both.
+SYSTEM_PROMPT = (
+    "You write one short message from a screening programme to a patient. A human care owner "
+    "reads and approves it before anything is sent. "
+    "Never diagnose, never name or hint at any disease, never give medical advice and never "
+    "reassure. State only that the screening test found blood and what the next step is. "
+    "Use plain language at about a grade-6 reading level. "
+    "Write only in the language the user message asks for. "
+    "Use exactly the care owner name, next step and appointment date given in the user message, "
+    "word for word, and invent no other names, dates, numbers or links. "
+    "Reply with the message text only: no title, no quotation marks, no notes."
+)
+
 
 def build_prompt(req: DraftRequest) -> str:
-    """The instruction a model-backed provider sends, and the input to `prompt_hash`.
+    """The user message a model-backed provider sends, and (with `SYSTEM_PROMPT`) the input to `prompt_hash`.
 
     Deterministic for a given request. Template providers do not send it anywhere, but they
     hash it so every draft has the same kind of Provenance reference.
@@ -131,8 +151,14 @@ def build_prompt(req: DraftRequest) -> str:
     return "\n".join(lines)
 
 
+def full_prompt(req: DraftRequest) -> str:
+    """The exact text that `prompt_hash` covers: system message, a separator line, user message."""
+    return f"{SYSTEM_PROMPT}\n---\n{build_prompt(req)}"
+
+
 def prompt_hash(req: DraftRequest) -> str:
-    return hashlib.sha256(build_prompt(req).encode("utf-8")).hexdigest()
+    """SHA-256 of `full_prompt`. An auditor reproduces it from the stored system and user texts."""
+    return hashlib.sha256(full_prompt(req).encode("utf-8")).hexdigest()
 
 
 class TemplateProvider:
@@ -168,26 +194,27 @@ class TemplateProvider:
         )
 
 
-class _UnavailableProvider:
-    """Placeholder for a provider that D7 has not implemented yet."""
+def _azure_openai() -> Provider:
+    from app.ai import adapters, cache  # lazy: adapters imports this module
 
-    def __init__(self, name: str) -> None:
-        self.name = name
-        self.model_id = "unavailable"
+    return cache.CachingProvider(adapters.AzureOpenAIProvider())
 
-    def draft(self, req: DraftRequest) -> DraftResult:
-        raise ProviderUnavailable(f"provider {self.name!r} is not implemented yet (D7)")
+
+def _jais() -> Provider:
+    from app.ai import adapters, cache
+
+    return cache.CachingProvider(adapters.JaisProvider())
 
 
 _REGISTRY: dict[str, Callable[[], Provider]] = {
     "template": TemplateProvider,
-    "azure_openai": lambda: _UnavailableProvider("azure_openai"),
-    "jais": lambda: _UnavailableProvider("jais"),
+    "azure_openai": _azure_openai,
+    "jais": _jais,
 }
 
 
 def register_provider(name: str, factory: Callable[[], Provider]) -> None:
-    """Replace or add a provider factory (D7 registers the real adapters here)."""
+    """Replace or add a provider factory (tests use this to plug in fakes)."""
     _REGISTRY[name] = factory
 
 

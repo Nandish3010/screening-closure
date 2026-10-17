@@ -23,6 +23,7 @@ import yaml
 from app.ai.provider import (
     CHANNEL_MAX_CHARS,
     DraftRequest,
+    CacheMiss,
     DraftResult,
     ProviderUnavailable,
     Provider,
@@ -55,6 +56,7 @@ PROVIDER_UNAVAILABLE = "provider_unavailable"
 PROVIDER_ERROR = "provider_error"
 VALIDATION_FAILED = "validation_failed"
 INVALID_RESULT = "invalid_result"
+CACHE_MISS = "cache_miss"  # replay mode had no recorded output (D6)
 
 ARABIC_MIN_RATIO = 0.8
 LATIN_MIN_RATIO = 0.9
@@ -308,6 +310,8 @@ def draft_with_fallback(
     reason: str | None = None
     try:
         result = provider.draft(req)
+    except CacheMiss:  # before ProviderUnavailable: CacheMiss is a subclass
+        reason = CACHE_MISS
     except ProviderUnavailable:
         reason = PROVIDER_UNAVAILABLE
     except Exception as exc:  # noqa: BLE001 - any provider failure must fall back
