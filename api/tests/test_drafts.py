@@ -3,13 +3,15 @@
 The Postgres half (rows, prompts, triggers) is in test_drafts_pg.py.
 """
 
+import dataclasses
 import hashlib
+import json
 from uuid import UUID
 
 import pytest
 
 from api_helpers import ROLES, actor_of, login_headers, make_client, user_id_of
-from app import policy
+from app import payloads, policy
 from app.ai import provider as prov
 from app.ai.draft_store import InMemoryDraftStore
 from app.ai.provider import SYSTEM_PROMPT, DraftResult
@@ -151,10 +153,14 @@ def test_message_drafted_event_is_an_annotation_by_the_model_actor():
     out = create(cid).json()
     e = events(cid)[-1]
     assert e.type == "message_drafted" and e.actor == "model:template"
+    # The strict A14 schema and docs/governance/ai-boundary.md: ids and hashes, never the draft text.
     assert e.payload == {
-        "draft_id": out["draft_id"], "text_ar": None, "text_en": out["text"],
-        "provider": "template", "fallback_used": False, "prompt_hash": out["prompt_hash"],
+        "draft_id": out["draft_id"], "provider": "template", "fallback_used": False,
+        "prompt_hash": out["prompt_hash"], "language": "en",
     }
+    assert set(e.payload) == set(payloads.allowed_keys("message_drafted"))
+    payloads.validate(e.type, e.payload)
+    assert out["text"] not in json.dumps(e.payload)
     after = client.get(f"/cases/{cid}", headers=H("coordinator")).json()
     assert after["state"] == state_before["state"]  # drafting never moves a case
     assert after["read_model"]["owner"] == state_before["read_model"]["owner"]
@@ -397,3 +403,21 @@ def test_a_model_actor_still_cannot_post_anything_else():
     assert all(
         e.type == "message_drafted" for e in events(cid) if is_automated(e.actor) and e.actor.startswith("model:")
     )
+
+
+def test_the_draft_route_refuses_a_payload_the_strict_schema_would_refuse(monkeypatch):
+    """T-A36 / ai-boundary: the route goes through payloads.validate, so a provider name outside the
+    allowed shape (or any extra key) is refused with nothing written, not stored in the log."""
+    cid = owned_case()
+    n_events = len(events(cid))
+    n_drafts = len(drafts.store.list_for_case(UUID(cid)))
+    real = drafts.draft_with_fallback
+
+    def bad_provider(req, provider):
+        result = real(req, provider)
+        return dataclasses.replace(result, provider="not a valid provider name!")
+
+    monkeypatch.setattr(drafts, "draft_with_fallback", bad_provider)
+    r = create(cid)
+    assert r.status_code == 503
+    assert len(events(cid)) == n_events and len(drafts.store.list_for_case(UUID(cid))) == n_drafts

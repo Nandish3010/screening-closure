@@ -120,13 +120,14 @@ describe("drafts", () => {
     expect(d2.sent_at).toBeUndefined();
     expect(d3).toMatchObject({ status: "rejected", rejection_reason: "tone" });
   });
-  it("rebuilds a draft the API did not return from its message_drafted event, using old-style text if present", () => {
+  it("rebuilds a draft the API did not return from its message_drafted event, which never carries text", () => {
     const evs = [
-      ev("message_drafted", "model:template", { draft_id: "old", provider: "p", fallback_used: true, text_ar: "عربي" }),
+      // text in an event payload is ignored: the log holds ids and hashes only (A14, ai-boundary.md)
+      ev("message_drafted", "model:template", { draft_id: "old", provider: "p", fallback_used: true, language: "ar", text_ar: "عربي" }),
       ev("message_drafted", "model:template", { draft_id: "new", provider: "p", fallback_used: false, prompt_hash: "abc", language: "en" }),
     ];
     const [old, fresh] = draftViews([], evs);
-    expect(old).toMatchObject({ draft_id: "old", language: "ar", text: "عربي", fallback_used: true, status: "pending" });
+    expect(old).toMatchObject({ draft_id: "old", language: "ar", text: "", text_ar: null, fallback_used: true, status: "pending" });
     expect(fresh).toMatchObject({ draft_id: "new", text: "", prompt_hash: "abc" }); // no text anywhere: the panel says unavailable
   });
 });

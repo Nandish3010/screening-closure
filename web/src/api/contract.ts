@@ -134,8 +134,7 @@ export type TransitionEvent = (typeof TRANSITION_EVENTS)[number];
  *                      text. The draft text stays in the `drafts` table and the web reads it with
  *                      GET /cases/{id}/drafts (D4, live). To show a still-pending draft after a reload the
  *                      UI calls that route with the event's `draft_id`; if it is unavailable the UI says
- *                      "draft text unavailable, request a new draft". An older backend that still puts
- *                      text_ar / text_en in the payload is tolerated.)
+ *                      "draft text unavailable, request a new draft". Text in a payload is ignored.)
  *  review_requested    payload {reason: "consent_withdrawn", source_event_id}
  *                                                                     actor: "system:consent"
  *                      (the API adds it when consent is withdrawn; the case is then on the human-review list)

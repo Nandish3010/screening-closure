@@ -556,8 +556,8 @@ export interface DraftView extends DraftRecord {
 
 /**
  * Drafts for the review panel. `GET /cases/{id}/drafts` is the source (the timeline events carry no text);
- * drafts the API did not return (an older backend, a role that may not list them) are rebuilt from the
- * `message_drafted` events, including any text an older payload still carries.
+ * drafts the API did not return (a role that may not list them) are rebuilt from the `message_drafted` events,
+ * which carry no text, so the panel shows "draft text unavailable".
  */
 export function draftViews(records: DraftRecord[], events: CaseEvent[]): DraftView[] {
   const byId = new Map(records.map((r) => [r.draft_id, r]));
@@ -565,13 +565,12 @@ export function draftViews(records: DraftRecord[], events: CaseEvent[]): DraftVi
     if (ev.type !== "message_drafted") continue;
     const id = String(ev.payload.draft_id);
     if (byId.has(id)) continue;
-    const lang: Lang = ev.payload.language === "ar" || typeof ev.payload.text_ar === "string" ? "ar" : "en";
-    const text_ar = typeof ev.payload.text_ar === "string" ? ev.payload.text_ar : null;
-    const text_en = typeof ev.payload.text_en === "string" ? ev.payload.text_en : null;
+    // The event carries no text (A14, ai-boundary.md); the text only ever comes from GET /cases/{id}/drafts.
+    const lang: Lang = ev.payload.language === "ar" ? "ar" : "en";
     byId.set(id, {
       draft_id: id, case_id: "", purpose: "", channel: "", language: lang,
-      text: (lang === "ar" ? text_ar : text_en) ?? text_en ?? text_ar ?? "",
-      text_ar, text_en,
+      text: "",
+      text_ar: null, text_en: null,
       provider: String(ev.payload.provider ?? "unknown"), fallback_used: Boolean(ev.payload.fallback_used),
       abstention_reason: typeof ev.payload.abstention_reason === "string" ? ev.payload.abstention_reason : null,
       prompt_hash: typeof ev.payload.prompt_hash === "string" ? ev.payload.prompt_hash : "",

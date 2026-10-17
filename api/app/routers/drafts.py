@@ -271,15 +271,19 @@ def create_draft(
         f"model:{result.provider}",
         {
             "draft_id": str(draft_id),
-            "text_ar": text_ar,
-            "text_en": text_en,
             "provider": result.provider,
             "fallback_used": result.fallback_used,
             "prompt_hash": digest,
+            "language": req.language,
         },
     )
     try:
+        # The strict A14 schema and docs/governance/ai-boundary.md: the log holds ids and hashes, never the text.
+        payloads.validate(event.type, event.payload)
         cases.store.append(event, cases.pathway)
+    except payloads.PayloadSchemaError as exc:  # a provider name outside the allowed shape; never a 500
+        log.error("message_drafted payload refused: %s", exc)
+        raise HTTPException(503, "drafting provider is misconfigured") from None
     except CaseNotFound:
         raise HTTPException(404, "case not found") from None
     except InvalidTransition as exc:

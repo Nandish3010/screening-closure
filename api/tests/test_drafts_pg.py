@@ -5,6 +5,7 @@ the shared dev database's seeded data is never disturbed.
 """
 
 import hashlib
+import json
 import os
 from datetime import UTC, datetime
 from uuid import UUID, uuid4
@@ -13,6 +14,7 @@ import psycopg
 import pytest
 
 from api_helpers import actor_of, login_headers, make_client
+from app import payloads
 from app.ai.draft_store import PostgresDraftStore, PromptRecord
 from app.ai.provider import SYSTEM_PROMPT
 from app.db import create_pool, run_migrations
@@ -93,6 +95,9 @@ def test_draft_row_prompt_row_and_event_are_all_written(client, pool):
     drafted = [e for e in events if e.type == "message_drafted"]
     assert len(drafted) == 2 and drafted[0].actor == "model:template"
     assert drafted[0].payload["draft_id"] == out["draft_id"]
+    # the log holds the pointer and the hash, never the text (strict A14 schema, ai-boundary.md)
+    assert set(drafted[0].payload) == set(payloads.allowed_keys("message_drafted"))
+    assert out["text"] not in json.dumps(drafted[0].payload)
     assert [d.draft_id for d in store.list_for_case(UUID(cid))] == [UUID(e.payload["draft_id"]) for e in drafted]
 
 
