@@ -1,4 +1,4 @@
-.PHONY: up down logs test test-db test-db-create test-db-reset synthea demo-seed demo-seed-clean evaluate simulate evaluate-check reset web-install web-dev web-build web-test web-e2e
+.PHONY: test-security up down logs test test-db test-db-create test-db-reset synthea demo-seed demo-seed-clean evaluate simulate evaluate-check reset web-install web-dev web-build web-test web-e2e
 
 up:
 	docker compose up -d --build
@@ -115,3 +115,9 @@ web-test:
 # Playwright e2e against a mock-adapter `vite preview` (needs `npx playwright install chromium` once).
 web-e2e:
 	cd web && npm run test:e2e
+
+# ---- Cut F ----------------------------------------------------------------------------------------
+# Secrets and repo hygiene (F9): token shapes, private keys, JWT-looking strings, password literals,
+# .env ignored and never in history, .env.example placeholders only. F7 and F8 add RBAC and PHI scans here.
+test-security:
+	$(PY) tools/check/secrets_scan.py
