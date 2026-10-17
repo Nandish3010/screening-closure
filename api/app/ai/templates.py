@@ -223,4 +223,20 @@ def reviewer_pack_markdown() -> str:
                     *[f"    {line}" for line in rendered.splitlines()],
                     "",
                 ]
+    from app.ai.validate import load_forbidden_phrases  # lazy: validate imports this package
+
+    out += [
+        "",
+        "## Forbidden phrases",
+        "",
+        "A model draft containing any of these is rejected and replaced by the template above. "
+        "The Arabic list is pending native-speaker review (H2); both lists pending clinician review (H1). "
+        "Please add anything missing.",
+    ]
+    for language, label in (("en", "English"), ("ar", "Arabic")):
+        out += ["", f"### {label}", "", "| id | category | phrase or pattern | why |", "|---|---|---|---|"]
+        for fp in (f for f in load_forbidden_phrases() if f.language == language):
+            why = " ".join(fp.rationale.split()).replace("|", "/")
+            src = fp.source.replace("|", "/")
+            out.append(f"| `{fp.id}` | {fp.category} | {src} | {why} |")
     return "\n".join(out).rstrip() + "\n"
