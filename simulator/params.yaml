@@ -1,10 +1,16 @@
-# Behaviour-simulator parameters. Every value is a placeholder: source TODO, status assumed.
-# fit_positivity_rate is read by simulator/generate_results.py.
-acknowledgement_delay_days:
+# Behaviour-simulator parameters. Every leaf is {value, source, status}; nothing is hard-coded in
+# simulator/sim/. Every value below is a placeholder: source TODO, status assumed, until the
+# literature-sourced values (simulator/params.proposed.yaml) are merged in.
+# Layer files at the CLI with repeated --params flags (later files override earlier keys).
+# fit_positivity_rate is also read by simulator/generate_results.py (keep it in block style).
+# Time is in days (calendar days unless a key says working_days). Probabilities are in [0, 1].
+
+# ---- original keys (kept as-is) -------------------------------------------------------------
+acknowledgement_delay_days:   # median days for the lab/practice to acknowledge a new result
   value: 2
   source: TODO
   status: assumed
-no_show_rate_by_channel:
+no_show_rate_by_channel:      # P(no-show to the colonoscopy appointment), before reminder effects
   sms:
     value: 0.30
     source: TODO
@@ -17,11 +23,12 @@ no_show_rate_by_channel:
     value: 0.40
     source: TODO
     status: assumed
-referral_rejection_rate:
+  whatsapp: {value: 0.25, source: TODO, status: assumed}
+referral_rejection_rate:      # P(receiving service rejects a referral attempt)
   value: 0.05
   source: TODO
   status: assumed
-wrong_contact_rate:
+wrong_contact_rate:           # P(patient's contact details are wrong/outdated at result time)
   value: 0.08
   source: TODO
   status: assumed
@@ -29,3 +36,151 @@ fit_positivity_rate:
   value: 0.07
   source: TODO (published FIT positivity ranges ~5-8%)
   status: assumed
+
+# ---- simulation and calendar ----------------------------------------------------------------
+simulation:
+  start_date: {value: "2026-01-05", source: TODO, status: assumed}      # must be a working day
+  intake_window_days: {value: 30, source: TODO, status: assumed}       # results arrive uniformly over this window
+calendar:
+  weekend_weekdays: {value: [5, 6], source: TODO, status: assumed}      # Mon=0 ... Sun=6
+  holidays: {value: [], source: TODO, status: assumed}                  # ISO dates that are non-working
+
+# ---- patients ---------------------------------------------------------------------------------
+patients:
+  language_share:
+    ar: {value: 0.45, source: TODO, status: assumed}
+    en: {value: 0.35, source: TODO, status: assumed}
+    other: {value: 0.20, source: TODO, status: assumed}
+  channel_share:              # patient's preferred contact channel
+    sms: {value: 0.40, source: TODO, status: assumed}
+    whatsapp: {value: 0.30, source: TODO, status: assumed}
+    phone: {value: 0.15, source: TODO, status: assumed}
+    letter: {value: 0.15, source: TODO, status: assumed}
+  provider_switch_prob: {value: 0.05, source: TODO, status: assumed}
+  responsiveness_sd: {value: 0.8, source: TODO, status: assumed}       # logit-scale spread of the latent responsiveness factor
+  consent_withdrawal_prob: {value: 0.02, source: TODO, status: assumed}
+  consent_withdrawal_window_days: {value: 90, source: TODO, status: assumed}
+  consent_withdrawal_declines_care_prob: {value: 0.30, source: TODO, status: assumed}
+  dropout_prob_per_lapse: {value: 0.15, source: TODO, status: assumed}  # P(disengage) after each unanswered contact or no-show
+
+# ---- staff behaviour (delays are lognormal: median * exp(sigma * z)) ------------------------
+staff:
+  delay_median_days:          # acknowledge uses acknowledgement_delay_days above
+    accept_ownership: {value: 1.0, source: TODO, status: assumed}
+    contact_patient: {value: 3.0, source: TODO, status: assumed}
+    book_confirmatory: {value: 4.0, source: TODO, status: assumed}
+    clinician_review: {value: 4.0, source: TODO, status: assumed}
+    close: {value: 2.0, source: TODO, status: assumed}
+  delay_sigma: {value: 0.8, source: TODO, status: assumed}
+  forget_prob: {value: 0.04, source: TODO, status: assumed}            # P(a staff step is never done unless prompted)
+
+# ---- patient response to outreach -----------------------------------------------------------
+patient_response:
+  response_rate_by_channel:   # P(patient acts on one outreach attempt) before modifiers
+    sms: {value: 0.70, source: TODO, status: assumed}
+    whatsapp: {value: 0.75, source: TODO, status: assumed}
+    phone: {value: 0.80, source: TODO, status: assumed}
+    letter: {value: 0.55, source: TODO, status: assumed}
+  response_delay_median_days:
+    sms: {value: 1.5, source: TODO, status: assumed}
+    whatsapp: {value: 1.0, source: TODO, status: assumed}
+    phone: {value: 0.5, source: TODO, status: assumed}
+    letter: {value: 6.0, source: TODO, status: assumed}
+  response_delay_sigma: {value: 0.9, source: TODO, status: assumed}
+  language_mismatch_multiplier: {value: 0.6, source: TODO, status: assumed}  # message not in the patient's language
+  staff_call_response_rate: {value: 0.65, source: TODO, status: assumed}     # human phone call from supervisor
+  coordinator_route_response_rate: {value: 0.70, source: TODO, status: assumed}
+  dropout_residual_multiplier: {value: 0.25, source: TODO, status: assumed}  # response multiplier for a dropped-out patient (digital)
+  human_dropout_residual_multiplier: {value: 0.60, source: TODO, status: assumed}
+  self_presentation_prob: {value: 0.10, source: TODO, status: assumed}       # patient eventually acts without being prompted
+  self_presentation_median_days: {value: 60, source: TODO, status: assumed}
+
+# ---- appointment ------------------------------------------------------------------------------
+appointment:
+  booking_lead_median_days: {value: 14, source: TODO, status: assumed}
+  booking_lead_sigma: {value: 0.5, source: TODO, status: assumed}
+  rebook_lead_median_days: {value: 7, source: TODO, status: assumed}
+  reminder_noshow_multiplier: {value: 0.70, source: TODO, status: assumed}   # per reminder delivered
+  reminder_days_before: {value: [7, 1], source: TODO, status: assumed}
+  max_attempts: {value: 3, source: TODO, status: assumed}                    # appointments before giving up (max 4)
+  responsiveness_noshow_shift: {value: 0.5, source: TODO, status: assumed}   # logit shift per unit responsiveness
+
+# ---- referral / handoff ------------------------------------------------------------------------
+handoff:
+  no_response_prob: {value: 0.04, source: TODO, status: assumed}             # receiving service never answers
+  rejection_reason_share:
+    capacity: {value: 0.35, source: TODO, status: assumed}
+    wrong_service: {value: 0.15, source: TODO, status: assumed}
+    missing_info: {value: 0.30, source: TODO, status: assumed}
+    patient_declined: {value: 0.20, source: TODO, status: assumed}
+  response_delay_median_days: {value: 2.0, source: TODO, status: assumed}
+  response_delay_sigma: {value: 0.7, source: TODO, status: assumed}
+  response_sla_working_days: {value: 3, source: TODO, status: assumed}       # orchestrated: unanswered referral bounces back
+  reroute_delay_median_days: {value: 2.0, source: TODO, status: assumed}
+  declined_reengage_prob: {value: 0.50, source: TODO, status: assumed}       # owner persuades a patient who declined
+  max_attempts: {value: 4, source: TODO, status: assumed}                    # referral attempts (max 5)
+  baseline_rejection_noticed_prob: {value: 0.40, source: TODO, status: assumed}
+  baseline_rejection_notice_median_days: {value: 21, source: TODO, status: assumed}
+
+# ---- baseline arm (today's process) -----------------------------------------------------------
+baseline:
+  channel_share:              # the single letter/SMS goes out on one of these
+    letter: {value: 0.50, source: TODO, status: assumed}
+    sms: {value: 0.50, source: TODO, status: assumed}
+  default_language: {value: "en", source: TODO, status: assumed}
+  noshow_self_rebook_prob: {value: 0.30, source: TODO, status: assumed}
+  noshow_self_rebook_median_days: {value: 30, source: TODO, status: assumed}
+
+# ---- orchestrated arm -------------------------------------------------------------------------
+orchestration:
+  reaction_delay_median_days: {value: 1.0, source: TODO, status: assumed}    # time to act after a reminder or escalation
+  reaction_delay_sigma: {value: 0.6, source: TODO, status: assumed}
+  escalation_effect_prob:     # P(staff act) per ladder rung, keyed by the pathway's notify role
+    owner: {value: 0.50, source: TODO, status: assumed}
+    owner_supervisor: {value: 0.85, source: TODO, status: assumed}
+    programme_coordinator: {value: 1.00, source: TODO, status: assumed}
+  contact_recovery_prob:      # P(a wrong contact is corrected), per ladder rung / on delivery failure
+    on_failure: {value: 0.40, source: TODO, status: assumed}
+    owner: {value: 0.25, source: TODO, status: assumed}
+    owner_supervisor: {value: 0.50, source: TODO, status: assumed}
+    programme_coordinator: {value: 0.70, source: TODO, status: assumed}
+  contact_recovery_delay_median_days: {value: 2.0, source: TODO, status: assumed}
+  delivery_failure_detect_days:
+    sms: {value: 0.25, source: TODO, status: assumed}
+    whatsapp: {value: 0.25, source: TODO, status: assumed}
+    phone: {value: 0.10, source: TODO, status: assumed}
+    letter: {value: 7.0, source: TODO, status: assumed}
+  ladder_exhausted_wait_working_days: {value: 5, source: TODO, status: assumed}
+  signoff_sla_working_days: {value: 3, source: TODO, status: assumed}        # `close` has no SLA in the pathway YAML
+  timer_miss_prob: {value: 0.02, source: TODO, status: assumed}              # scheduler silently fails to arm a timer
+  watchdog_idle_days: {value: 14, source: TODO, status: assumed}
+  watchdog_effect_prob: {value: 0.90, source: TODO, status: assumed}
+  watchdog_reaction_delay_days: {value: 2.0, source: TODO, status: assumed}
+  consent_review_delay_median_days: {value: 2.0, source: TODO, status: assumed}
+  transfer_reestablish_days: {value: 5.0, source: TODO, status: assumed}     # new owner takes over after a provider switch
+
+# ---- reopening after closure (both arms) ----------------------------------------------------
+reopen:
+  after_closure_prob: {value: 0.03, source: TODO, status: assumed}
+  lag_median_days: {value: 30, source: TODO, status: assumed}
+  lag_sigma: {value: 0.6, source: TODO, status: assumed}
+  resume_state: {value: owner_accepted, source: TODO, status: assumed}
+
+# ---- messy-case injection ---------------------------------------------------------------------
+# Wrong contact numbers use wrong_contact_rate; provider switches use patients.provider_switch_prob.
+messy:
+  rate_multiplier: {value: 1.0, source: TODO, status: assumed}               # scales the three rates below; 0 switches them off
+  duplicate_result_rate: {value: 0.06, source: TODO, status: assumed}
+  duplicate_delay_max_days: {value: 10, source: TODO, status: assumed}
+  conflicting_ack_rate: {value: 0.04, source: TODO, status: assumed}
+  consent_after_booking_rate: {value: 0.02, source: TODO, status: assumed}
+  switch_window_days: {value: 60, source: TODO, status: assumed}
+  baseline_switch_loss_prob: {value: 0.70, source: TODO, status: assumed}
+  baseline_switch_delay_days: {value: 30, source: TODO, status: assumed}
+  baseline_conflict_delay_days: {value: 10, source: TODO, status: assumed}
+
+# ---- metric definitions -----------------------------------------------------------------------
+metrics:
+  ltfu_idle_days: {value: 30, source: TODO, status: assumed}                 # unfinished and no progress this long = lost to follow-up
+  escalation_precision_window_working_days: {value: 5, source: TODO, status: assumed}
+  min_group_size: {value: 30, source: TODO, status: assumed}                 # smaller fairness groups are reported but excluded from max-gap
