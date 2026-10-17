@@ -8,3 +8,6 @@ Line format: `YYYY-MM-DD HH:MM TZ | ticket | agent | what was done | commit`. Ti
 2026-10-17 23:03 IST | M0-2 | unrecorded | Persistence: Postgres append-only event log, transactional append with in-transaction transition check, migrations, integration tests | 9b635af
 2026-10-17 23:52 IST | M0-3 | unrecorded | Synthea cohort pipeline: containerised generation, HAPI loader, seeded FIT results, `make demo-seed` | 971c3f1
 2026-10-18 00:03 IST | planning | claude | Created project/ with PLAN, TRACKER, TEST-CASES, DECISIONS and this log (69 planned tickets, 112 test cases) | see commit "project: plan, tracker, test cases, decisions log"
+2026-10-18 00:14 IST | E4 | claude (Fable 5.1, cut-e) | Design choices: eight-dimension comparison with one paragraph per row, "Where we do use a model and why it is safe" section; status review | c2898eb
+2026-10-18 00:14 IST | E3 | claude (Fable 5.1, cut-e) | Governance mapping (PDPL, health ICT law, ADHICS, DoH AI policy and Responsible AI Standard, Malaffi, hosting) with sources and access dates, plus Malaffi adapter plan (HL7 v2 boundary, FHIR to confirm); status review, many items to verify | 88232bb
+2026-10-18 00:14 IST | E7 | claude (Fable 5.1, cut-e) | Pilot plan, deterministic cost model script and assumed inputs; KPI targets K4/K5 from coordinator-relayed DoH IFHAS figures; status review | 717634b
