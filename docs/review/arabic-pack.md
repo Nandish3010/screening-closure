@@ -1,0 +1,417 @@
+# Arabic review pack (H2)
+
+> Generated file. Do not edit by hand. Regenerate with `make review-packs` (tools/review/build_packs.py).
+> Built from pathway `colorectal_fit` v0.2, template set v1, forbidden-phrase list v1.
+> For: a native Arabic speaker, 30 minutes
+> All data in this project is synthetic. Nothing here is clinical advice or a claim of real-world performance.
+
+## 0. How to use this pack in 30 minutes
+
+| Minutes | Section | What to do |
+|---|---|---|
+| 3 | 1 and 2 | Read what the texts are for and the rules they follow. |
+| 5 | 3 Conventions, terminology | Look at the terminology table: which wording should win? |
+| 12 | 4 and 5 The strings | Read each Arabic text beside its English. Mark what you would change. |
+| 5 | 6 Forbidden phrases | Is the Arabic list right and complete? |
+| 5 | 7 and 8 Checklist, feedback table | Tick the checklist and fill the feedback table. |
+
+There are 59 Arabic texts (every one is also in English, with the same ID) and 39 Arabic forbidden-phrase entries. Every Arabic text in the prototype's sources is in this pack. All of it was written by the engineering team and has not been reviewed by a native speaker. Please correct freely; suggest better wording in the feedback table.
+
+## 1. What these texts are for
+
+A patient in Abu Dhabi has had a screening stool test (FIT) and the result was positive. The next step is a colonoscopy. The texts below tell the patient, in Arabic or English, what the result means and what happens next, who in the care team is responsible, and let them say "I understand" or "I don't understand this" (a person will call).
+
+Hard rules the Arabic must keep:
+
+- The only clinical fact is that the screening test found blood. No diagnosis, no disease name, no "positive".
+- No reassurance ("don't worry"), no judgement of urgency, no advice beyond the next step. The care team contacts the patient.
+- Every message names the care owner and the next step.
+- A person approves every message before it is sent.
+
+## 2. Where each text appears and its limits
+
+| Source | Where | Reading level | Length limit |
+|---|---|---|---|
+| Patient page (IDs W01 to W39) | Web app at `/patient`, Arabic with right-to-left layout | About grade 6: short sentences, everyday words. | None on the page; short lines for a phone screen |
+| Messages (IDs T01 to T18) | SMS, WhatsApp or letter, chosen from the patient's preferred channel | About grade 6: short sentences, everyday words. | SMS 320, WhatsApp 600, letter 1200 characters |
+| Demo drafts (IDs D01 to D02) | Coordinator app, demo data only | About grade 6: short sentences, everyday words. | None |
+
+Placeholders in braces are filled in by the system: `{owner_name}` (the care owner, for example الدكتورة سارة خان), `{next_step}` (supplied in Arabic, default تنظير القولون), `{appointment_date}` (for example الثلاثاء 3 نوفمبر 2026), `{name}` and `{role}` on the patient page.
+
+## 3. Conventions in use
+
+**Right-to-left.** The patient page sets `lang="ar"` and `dir="rtl"` on the page and the document when Arabic is chosen (English: `ltr`). Layout uses logical properties (start and end, not left and right), and the font list includes Noto Sans Arabic. The care owner's name is wrapped in a first-strong isolate (U+2068 to U+2069) so a Latin name does not scramble the neighbouring Arabic. SMS, WhatsApp and letter templates are plain text with no direction marks: a Latin `{owner_name}` inside a right-to-left sentence may display out of order on some phones. Please check this on a device.
+
+**Digits.** Western digits (0 to 9) are used everywhere today, for example "الثلاثاء 3 نوفمبر 2026". Arabic-Indic digits (٠ to ٩) are not used in any text. The system converts them only when checking for personal data (a long run of digits is blocked in either form). Which style should patients see? The appointment-date formatter is not built, so this is still open.
+
+**Dates and names.** The sample date uses Gregorian month and weekday names in the Gulf style (نوفمبر, الثلاثاء), not the Levantine month names. Titles such as "الدكتورة" are part of the owner's name, supplied by the clinic.
+
+**Orthography we noticed.** The patient page and demo drafts write tanween as ـًا (for example تشخيصًا): 7 cases there against 0 of the other form. The templates write ـاً (for example دماً): 13 cases against 0 of the other form. The Arabic comma ، appears 19 times (letter greetings and closings); sentences end with a Latin full stop. Choose one convention.
+
+**Terminology we use today.** Counts are generated from the texts below. Where one idea has several wordings, please choose one.
+
+| Concept | Arabic wording in use, with the strings that contain it |
+|---|---|
+| colonoscopy | تنظير القولون : 2 strings (W07, D02) |
+| camera test (friendly term) | فحص بالكاميرا : 3 strings (W07, W12, W15)<br>الفحص بالكاميرا : 2 strings (W12, W15)<br>فحص متابعة بالكاميرا : 2 strings (D01, D02) |
+| screening test | فحص الكشف المبكر : 3 strings (T01, T02, T03) |
+| test (generic) | فحصك : 5 strings (W01, W04, W07, D01, D02)<br>الفحص : 7 strings (W12, W15, W17, T03, T04, T06, T08) |
+| care team | فريق الرعاية : 5 strings (W05, W11, W25, W27, W28)<br>فريق رعايتك : 18 strings (T01, T02, T03, T04, T05, T06, T07, T08 and 10 more)<br>فريق رعايتي : 1 string (W34) |
+| care coordinator | منسق الرعاية : 2 strings (W15, W22)<br>منسق رعاية : 1 string (W20) |
+| care owner (the responsible person) | المسؤول عن رعايتك : 18 strings (T01, T02, T03, T04, T05, T06, T07, T08 and 10 more)<br>المسؤول عن متابعة حالتك : 1 string (W19)<br>من يتابع حالتك : 1 string (W18) |
+| result | نتيجة : 3 strings (W01, W04, W10)<br>نتيجتك : 3 strings (W05, W06, W08)<br>نتيجتي : 1 string (W34) |
+| appointment | موعد : 9 strings (W16, T05, T07, T09, T10, T11, T12, D01 and 1 more) |
+
+## 4. Patient page strings, by screen section
+
+Source: `web/src/i18n/strings.ts` (catalogue and role labels). Mark any string you would change.
+
+### 4.1 Page frame and language
+
+Title, language switch and start page.
+
+| ID | English | Arabic | Where it appears |
+|---|---|---|---|
+| W01 | Your screening result | نتيجة فحصك | Main heading (h1) at the top of the patient page. |
+| W02 | Language | اللغة | Not shown. Used in the accessible label of the language button, as "Language: <other language>". |
+| W03 | العربية | English | Language button, top of the page. It names the other language in that language: the English column is the button on the English page, the Arabic column the button on the Arabic page. |
+| W04 | Your screening result | نتيجة فحصك | Heading of the app start page (/patient) when no case has been opened on this device. |
+| W05 | Open the link your care team sent you to see your result. You can add this page to your home screen. | افتح الرابط الذي أرسله لك فريق الرعاية لترى نتيجتك. يمكنك إضافة هذه الصفحة إلى الشاشة الرئيسية. | Text under that heading: how to open the result and add the page to the home screen. |
+
+### 4.2 What the result means
+
+The first thing the patient reads.
+
+| ID | English | Arabic | Where it appears |
+|---|---|---|---|
+| W06 | What your result means | ماذا تعني نتيجتك | Heading of the first section. |
+| W07 | Your screening test found blood. This does not mean you have cancer. The next step is a camera test called a colonoscopy. | أظهر فحصك وجود دم. هذا لا يعني أنك مصاب بالسرطان. الخطوة التالية هي فحص بالكاميرا اسمه تنظير القولون. | Large paragraph under the heading. The only statement about the result. |
+| W08 | This page is not a diagnosis. Your doctor will explain your result. | هذه الصفحة ليست تشخيصًا. سيشرح لك طبيبك نتيجتك. | Small grey line under the result. |
+
+### 4.3 Where you are now
+
+Four-step tracker.
+
+| ID | English | Arabic | Where it appears |
+|---|---|---|---|
+| W09 | Where you are now | أين أنت الآن | Heading of the progress section. |
+| W10 | Result received | وصلت النتيجة | Step 1 of the tracker. Current while the case is waiting to be acknowledged. |
+| W11 | Care team ready | فريق الرعاية جاهز | Step 2. Current from acknowledgement until the colonoscopy is booked. |
+| W12 | Camera test | الفحص بالكاميرا | Step 3. Current once the colonoscopy has been done. |
+| W13 | Doctor review | مراجعة الطبيب | Step 4. Current at clinician review and after. |
+
+### 4.4 What happens next
+
+Three numbered steps.
+
+| ID | English | Arabic | Where it appears |
+|---|---|---|---|
+| W14 | What happens next | ماذا سيحدث بعد ذلك | Heading of the next-steps section. |
+| W15 | A care coordinator will call you to book the camera test. | سيتصل بك منسق الرعاية لحجز الفحص بالكاميرا. | Numbered step 1. |
+| W16 | You will get a date and easy steps to get ready. | ستحصل على موعد وخطوات سهلة للتحضير. | Numbered step 2. |
+| W17 | A doctor will check the test and tell you what it means. | سيراجع الطبيب الفحص ويشرح لك معناه. | Numbered step 3. |
+
+### 4.5 Who is looking after you
+
+The named care owner.
+
+| ID | English | Arabic | Where it appears |
+|---|---|---|---|
+| W18 | Who is looking after you | من يتابع حالتك | Heading of the care-owner section. |
+| W19 | {name} ({role}) is looking after your care. You can ask them any question. | المسؤول عن متابعة حالتك:<br>{name} ({role}).<br>يمكنك طرح أي سؤال. | Large text under that heading. {name} is the owner's name (Latin or Arabic script), {role} the role from the role labels below. In Arabic the sentence is split over three lines so a Latin name does not scramble the line. |
+| W20 | A care coordinator will be chosen for you soon. | سنعيّن لك منسق رعاية قريبًا. | Shown instead of the line above while nobody has accepted the case. |
+| W21 | Primary care physician | طبيب الرعاية الأولية | Role shown in brackets after the owner's name in the line "Who is looking after you". The English role is the value stored in the case; unknown roles are shown as stored. |
+| W22 | Care coordinator | منسق الرعاية | Role shown in brackets after the owner's name in the line "Who is looking after you". The English role is the value stored in the case; unknown roles are shown as stored. |
+
+### 4.6 I understand / I don't understand
+
+The two buttons and their confirmations.
+
+| ID | English | Arabic | Where it appears |
+|---|---|---|---|
+| W23 | I understand | فهمت | Primary button. Disabled until the patient has been contacted. |
+| W24 | Thank you. We saved that you understand. | شكرًا لك. سجلنا أنك فهمت. | Green confirmation that replaces the button once the patient has acknowledged. |
+| W25 | You can tap this button after your care team has contacted you. | يمكنك الضغط على هذا الزر بعد أن يتواصل معك فريق الرعاية. | Hint under the disabled button. |
+| W26 | I don't understand this | لا أفهم هذا | Second button. Asks a person from the care team to call. |
+| W27 | Thank you. A person from your care team will call you. | شكرًا لك. سيتصل بك أحد أفراد فريق الرعاية. | Green confirmation after that button is pressed, or while a callback is pending. |
+| W28 | That did not work. Please try again or call your care team. | لم تنجح العملية. يرجى المحاولة مرة أخرى أو الاتصال بفريق الرعاية. | Red banner if either button fails. |
+
+### 4.7 Your choices (contact and sharing)
+
+Channel, sharing and their save status.
+
+| ID | English | Arabic | Where it appears |
+|---|---|---|---|
+| W29 | Your choices | اختياراتك | Heading of the choices section. |
+| W30 | How should we contact you? | كيف نتواصل معك؟ | Label of the contact-channel drop-down. |
+| W31 | Phone call | مكالمة هاتفية | Drop-down option. |
+| W32 | Text message | رسالة نصية | Drop-down option. |
+| W33 | WhatsApp | واتساب | Drop-down option. |
+| W34 | My care team may share my result with the specialist who will do my test. | أسمح لفريق رعايتي بمشاركة نتيجتي مع الأخصائي الذي سيجري فحصي. | Label of the check box that lets the care team share the result with the specialist. |
+| W35 | Saved | تم الحفظ | Status line under the choices after a successful save. |
+| W36 | We could not save this. Please try again. | لم نتمكن من الحفظ. يرجى المحاولة مرة أخرى. | Status line if saving the choices fails. |
+
+### 4.8 Loading, offline and errors
+
+System messages.
+
+| ID | English | Arabic | Where it appears |
+|---|---|---|---|
+| W37 | Loading... | جارٍ التحميل... | Shown instead of the page while the case loads. |
+| W38 | We could not load your information. Please try again. | لم نتمكن من تحميل معلوماتك. يرجى المحاولة مرة أخرى. | Shown if the case cannot be loaded and nothing is saved on the device. |
+| W39 | You are offline. This is the last information we saved. | أنت غير متصل بالإنترنت. هذه آخر معلومات حفظناها. | Banner above the result when the device is offline. The last saved information is shown. |
+
+## 5. Messages, by purpose
+
+Source: `api/app/ai/templates/ar.yaml` beside `en.yaml`. Each purpose has an SMS, a WhatsApp message and a letter; the reminder also has a version with the appointment date. The Arabic is the default draft and the fallback if a model draft is rejected. The "Chars" column is the length with the sample values.
+
+### 5.1 result_notification
+
+First message to the patient once a positive result has an accepted care owner.
+
+| ID | Channel | English | Arabic | Chars en / ar, limit |
+|---|---|---|---|---|
+| T01 | SMS | Your screening test found blood. The next step is {next_step}. Your care team will contact you. Your care owner is {owner_name}. | وجد فحص الكشف المبكر الذي أجريته دماً. الخطوة التالية هي {next_step}. سيتواصل معك فريق رعايتك. المسؤول عن رعايتك هو {owner_name}. | 130 / 136, 320 |
+| T02 | WhatsApp | Hello. This is a message from your care team.<br><br>Your screening test found blood.<br><br>The next step is {next_step}. Your care team will contact you to talk about it and to arrange it.<br><br>Your care owner is {owner_name}. | مرحباً، هذه رسالة من فريق رعايتك.<br><br>وجد فحص الكشف المبكر الذي أجريته دماً.<br><br>الخطوة التالية هي {next_step}. سيتواصل معك فريق رعايتك للحديث عنها وترتيبها.<br><br>المسؤول عن رعايتك هو {owner_name}. | 214 / 194, 600 |
+| T03 | Letter | Hello,<br><br>We are writing about the screening test you did recently. The test found blood.<br><br>The next step is {next_step}. Your care team will contact you to talk about it and to arrange it.<br><br>Your care owner is {owner_name}. This is the person in your care team who is responsible for your next step.<br><br>Kind regards,<br>Your care team | السلام عليكم،<br><br>نكتب إليك بخصوص فحص الكشف المبكر الذي أجريته مؤخراً. وجد الفحص دماً.<br><br>الخطوة التالية هي {next_step}. سيتواصل معك فريق رعايتك للحديث عنها وترتيبها.<br><br>المسؤول عن رعايتك هو {owner_name}. هو الشخص في فريق رعايتك المسؤول عن خطوتك التالية.<br><br>مع تحياتنا،<br>فريق رعايتك | 328 / 279, 1200 |
+
+### 5.2 reminder
+
+Reminder when the patient has not yet taken the next step. The dated variant is used once an appointment date exists.
+
+| ID | Channel | English | Arabic | Chars en / ar, limit |
+|---|---|---|---|---|
+| T04 | SMS | Reminder from your care team. The next step after your screening test is {next_step}. Your care team will contact you. Your care owner is {owner_name}. | تذكير من فريق رعايتك. الخطوة التالية بعد الفحص هي {next_step}. سيتواصل معك فريق رعايتك. المسؤول عن رعايتك هو {owner_name}. | 153 / 129, 320 |
+| T05 | SMS with date | Reminder from your care team. Your appointment is on {appointment_date}. The next step is {next_step}. Your care owner is {owner_name}. | تذكير من فريق رعايتك. موعدك في {appointment_date}. الخطوة التالية هي {next_step}. المسؤول عن رعايتك هو {owner_name}. | 142 / 127, 320 |
+| T06 | WhatsApp | Hello. This is a reminder from your care team.<br><br>The next step after your screening test is {next_step}. Your care team will contact you to arrange it.<br><br>Your care owner is {owner_name}. | مرحباً، هذا تذكير من فريق رعايتك.<br><br>الخطوة التالية بعد الفحص هي {next_step}. سيتواصل معك فريق رعايتك لترتيبها.<br><br>المسؤول عن رعايتك هو {owner_name}. | 186 / 152, 600 |
+| T07 | WhatsApp with date | Hello. This is a reminder from your care team.<br><br>Your appointment is on {appointment_date}. The next step is {next_step}.<br><br>Your care owner is {owner_name}. | مرحباً، هذا تذكير من فريق رعايتك.<br><br>موعدك في {appointment_date}. الخطوة التالية هي {next_step}.<br><br>المسؤول عن رعايتك هو {owner_name}. | 161 / 141, 600 |
+| T08 | Letter | Hello,<br><br>This is a reminder from your care team. After your screening test, the next step is {next_step}.<br><br>Your care team will contact you to arrange it. Your care owner is {owner_name}.<br><br>Kind regards,<br>Your care team | السلام عليكم،<br><br>هذا تذكير من فريق رعايتك. بعد الفحص، الخطوة التالية هي {next_step}.<br><br>سيتواصل معك فريق رعايتك لترتيبها. المسؤول عن رعايتك هو {owner_name}.<br><br>مع تحياتنا،<br>فريق رعايتك | 217 / 184, 1200 |
+| T09 | Letter with date | Hello,<br><br>This is a reminder from your care team. Your appointment is on {appointment_date}.<br><br>The next step is {next_step}. Your care owner is {owner_name}.<br><br>Kind regards,<br>Your care team | السلام عليكم،<br><br>هذا تذكير من فريق رعايتك. موعدك في {appointment_date}.<br><br>الخطوة التالية هي {next_step}. المسؤول عن رعايتك هو {owner_name}.<br><br>مع تحياتنا،<br>فريق رعايتك | 191 / 172, 1200 |
+
+### 5.3 appointment_confirmation
+
+Confirms a booked colonoscopy. Always carries the date.
+
+| ID | Channel | English | Arabic | Chars en / ar, limit |
+|---|---|---|---|---|
+| T10 | SMS | Your appointment is on {appointment_date}. The next step is {next_step}. Your care team will contact you with the details. Your care owner is {owner_name}. | تم تأكيد موعدك في {appointment_date}. الخطوة التالية هي {next_step}. سيتواصل معك فريق رعايتك بالتفاصيل. المسؤول عن رعايتك هو {owner_name}. | 162 / 149, 320 |
+| T11 | WhatsApp | Hello. This is a message from your care team.<br><br>Your appointment is on {appointment_date}. The next step is {next_step}.<br><br>Your care team will contact you with the details. Your care owner is {owner_name}. | مرحباً، هذه رسالة من فريق رعايتك.<br><br>تم تأكيد موعدك في {appointment_date}. الخطوة التالية هي {next_step}.<br><br>سيتواصل معك فريق رعايتك بالتفاصيل. المسؤول عن رعايتك هو {owner_name}. | 210 / 185, 600 |
+| T12 | Letter | Hello,<br><br>We are writing to confirm your appointment. It is on {appointment_date}.<br><br>The next step is {next_step}. Your care team will contact you with the details.<br><br>Your care owner is {owner_name}.<br><br>Kind regards,<br>Your care team | السلام عليكم،<br><br>نكتب إليك لتأكيد موعدك. الموعد في {appointment_date}.<br><br>الخطوة التالية هي {next_step}. سيتواصل معك فريق رعايتك بالتفاصيل.<br><br>المسؤول عن رعايتك هو {owner_name}.<br><br>مع تحياتنا،<br>فريق رعايتك | 232 / 207, 1200 |
+
+### 5.4 escalation_notice
+
+Tells the patient a more senior member of the care team has been told, so the next step is not delayed.
+
+| ID | Channel | English | Arabic | Chars en / ar, limit |
+|---|---|---|---|---|
+| T13 | SMS | We want to make sure your next step is not delayed. A senior member of your care team has been told. The next step is {next_step}. Your care owner is {owner_name}. Your care team will contact you. | نريد التأكد من أن خطوتك التالية لن تتأخر. تم إبلاغ أحد كبار أعضاء فريق رعايتك. الخطوة التالية هي {next_step}. المسؤول عن رعايتك هو {owner_name}. سيتواصل معك فريق رعايتك. | 198 / 176, 320 |
+| T14 | WhatsApp | Hello. This is a message from your care team.<br><br>We want to make sure your next step is not delayed. A senior member of your care team has been told.<br><br>The next step is {next_step}. Your care team will contact you. Your care owner is {owner_name}. | مرحباً، هذه رسالة من فريق رعايتك.<br><br>نريد التأكد من أن خطوتك التالية لن تتأخر. تم إبلاغ أحد كبار أعضاء فريق رعايتك.<br><br>الخطوة التالية هي {next_step}. سيتواصل معك فريق رعايتك. المسؤول عن رعايتك هو {owner_name}. | 246 / 212, 600 |
+| T15 | Letter | Hello,<br><br>We want to make sure your next step is not delayed. A senior member of your care team has been told.<br><br>The next step is {next_step}. Your care team will contact you. Your care owner is {owner_name}.<br><br>Kind regards,<br>Your care team | السلام عليكم،<br><br>نريد التأكد من أن خطوتك التالية لن تتأخر. تم إبلاغ أحد كبار أعضاء فريق رعايتك.<br><br>الخطوة التالية هي {next_step}. سيتواصل معك فريق رعايتك. المسؤول عن رعايتك هو {owner_name}.<br><br>مع تحياتنا،<br>فريق رعايتك | 237 / 217, 1200 |
+
+### 5.5 callback_ack
+
+Reply when the patient pressed "I don't understand this". A person will call.
+
+| ID | Channel | English | Arabic | Chars en / ar, limit |
+|---|---|---|---|---|
+| T16 | SMS | Thank you for telling us you need help to understand. A person from your care team will call you. The next step is {next_step}. Your care owner is {owner_name}. | شكراً لإخبارنا أنك تحتاج إلى مساعدة لفهم الرسالة. سيتصل بك أحد أفراد فريق رعايتك. الخطوة التالية هي {next_step}. المسؤول عن رعايتك هو {owner_name}. | 162 / 154, 320 |
+| T17 | WhatsApp | Hello. Thank you for telling us you need help to understand.<br><br>A person from your care team will call you to explain. The next step is {next_step}.<br><br>Your care owner is {owner_name}. | مرحباً، شكراً لإخبارنا أنك تحتاج إلى مساعدة لفهم الرسالة.<br><br>سيتصل بك أحد أفراد فريق رعايتك ليشرح لك. الخطوة التالية هي {next_step}.<br><br>المسؤول عن رعايتك هو {owner_name}. | 182 / 173, 600 |
+| T18 | Letter | Hello,<br><br>Thank you for telling us you need help to understand our message.<br><br>A person from your care team will call you to explain. The next step is {next_step}.<br><br>Your care owner is {owner_name}.<br><br>Kind regards,<br>Your care team | السلام عليكم،<br><br>شكراً لإخبارنا أنك تحتاج إلى مساعدة لفهم رسالتنا.<br><br>سيتصل بك أحد أفراد فريق رعايتك ليشرح لك. الخطوة التالية هي {next_step}.<br><br>المسؤول عن رعايتك هو {owner_name}.<br><br>مع تحياتنا،<br>فريق رعايتك | 225 / 205, 1200 |
+
+### 5.6 Demo draft texts (coordinator app)
+
+Draft text offered to the coordinator in the demo (mock) app, shown in both languages and stored in the `message_drafted` event. It stands in for a model or template draft. A person approves it before anything is "sent".
+
+| ID | English | Arabic | Where it appears |
+|---|---|---|---|
+| D01 | Hello. Your screening test needs a follow-up camera test. Please call us to book it. | مرحبًا. يحتاج فحصك إلى فحص متابعة بالكاميرا. يرجى الاتصال بنا لحجز الموعد. | Draft text offered to the coordinator in the demo (mock) app, shown in both languages and stored in the `message_drafted` event. It stands in for a model or template draft. A person approves it before anything is "sent". |
+| D02 | Hello. Your screening test needs a follow-up camera test called a colonoscopy. This is not a diagnosis. Please call us to book a time. | مرحبًا. يحتاج فحصك إلى فحص متابعة بالكاميرا اسمه تنظير القولون. هذا ليس تشخيصًا. يرجى الاتصال بنا لحجز موعد. | Draft text offered to the coordinator in the demo (mock) app, shown in both languages and stored in the `message_drafted` event. It stands in for a model or template draft. A person approves it before anything is "sent". |
+
+## 6. Arabic forbidden phrases
+
+A model-drafted message containing any of these is rejected and replaced by the template above, so the model can never write them. The list is a keyword filter, not a proof of safety; a person also approves every message. Each entry says why it is blocked.
+
+How matching works (from the header of `api/app/ai/forbidden_phrases.yaml`):
+
+> Forbidden phrases for model-drafted patient messages (D3).
+> 
+> A draft containing any of these is rejected and replaced by the template (an abstention).
+> Both lists are checked on every draft, whatever its language, so a language slip cannot
+> smuggle a phrase past the other list. Matching is case-insensitive. Arabic text is normalised
+> first (diacritics and tatweel removed, alef variants and final yeh folded) and a phrase also
+> matches with common prefixes (wa-, fa-, bi-, li-, ka-, al-) and pronoun/plural suffixes.
+> 
+> Entry fields:
+> id         stable name, appears in the abstention reason and in the metrics
+> phrase     literal phrase (whole word, spaces match any whitespace)   -- or --
+> regex      raw regular expression (English only; used for word stems)
+> category   diagnosis_statement | disease_term | positive_result_jargon | false_reassurance |
+> clinical_judgement | medication_or_treatment | advice
+> rationale  why the model must not say this
+> example    a short text containing the phrase; the tests check each entry rejects its example
+> 
+> TODO native-speaker review (H2) for the whole `ar` list. TODO clinician review (H1) for both.
+
+Entries are stored in normalised spelling (no diacritics, bare alef, final ي). The Phrase column shows what is stored; the Example column shows a natural sentence it catches.
+
+| Id | Category | Phrase (as stored) | English gloss | Why blocked | Example caught |
+|---|---|---|---|---|---|
+| `you_are_affected` | diagnosis_statement | انت مصاب | you are affected (by a disease) | States that the patient has a condition; only a clinician may say so. | أنت مصاب بمرض. |
+| `affected` | diagnosis_statement | مصاب | affected (by a disease) | Any statement that the patient is "affected" (with a disease) is a diagnosis statement. | قد تكون مصاباً. |
+| `diagnosis` | diagnosis_statement | تشخيص | diagnosis | The system diagnoses nothing. | هذا ليس تشخيصاً. |
+| `cancer` | disease_term | سرطان | cancer | Names the disease; a diagnosis statement and frightening in an automated message. | قد يكون سرطاناً. |
+| `tumour` | disease_term | ورم | tumour | Names a pathological finding. | وجدنا ورماً. |
+| `tumours_plural` | disease_term | اورام | tumours | Plural of tumour. | قد تكون أورام. |
+| `malignant` | disease_term | خبيث | malignant | Names a pathological finding. | الورم خبيث. |
+| `malignancy` | disease_term | خباثة | malignancy | Names a pathological finding. | هناك خباثة. |
+| `polyp` | disease_term | سليلة | polyp | Describes a finding the screening test cannot show. | قد تكون سليلة. |
+| `polyps_plural` | disease_term | سلائل | polyps | Plural of polyp. | هناك سلائل. |
+| `carcinoma` | disease_term | كارسينوما | carcinoma | Clinical terminology for disease. | كارسينوما محتملة. |
+| `positive` | positive_result_jargon | ايجابي | positive | "Positive" is read as "I have the disease". The message says only that the test found blood. | نتيجتك ايجابية. |
+| `do_not_worry` | false_reassurance | لا تقلق | do not worry (to a man) | Reassurance is a clinical judgement and may be false; it can also reduce action. | لا تقلق. |
+| `do_not_worry_f` | false_reassurance | لا تقلقي | do not worry (to a woman) | Feminine form of "do not worry". | لا تقلقي من ذلك. |
+| `no_need_to_worry` | false_reassurance | لا داعي للقلق | no need to worry | No need to worry. | لا داعي للقلق. |
+| `do_not_fear` | false_reassurance | لا تخف | do not be afraid | Reassurance. | لا تخف. |
+| `do_not_fear_alt` | false_reassurance | لا تخاف | do not be afraid (variant) | Reassurance. | لا تخاف. |
+| `nothing_to_worry_about` | false_reassurance | ما يدعو للقلق | nothing to worry about | Nothing to worry about. | لا يوجد ما يدعو للقلق. |
+| `all_fine` | false_reassurance | كل شيء بخير | everything is fine | Predicts an outcome the system cannot know. | كل شيء بخير. |
+| `you_will_be_fine` | false_reassurance | ستكون بخير | you will be fine | Predicts an outcome the system cannot know. | ستكون بخير. |
+| `not_dangerous` | false_reassurance | غير خطير | not dangerous | Minimises a result that has not been investigated yet. | الأمر غير خطير. |
+| `normal` | false_reassurance | طبيعي | normal | Calls a result normal, which is a clinical judgement. | الأمر طبيعي. |
+| `dangerous` | clinical_judgement | خطير | dangerous | Severity is a clinical judgement. | الحالة خطيرة. |
+| `urgent` | clinical_judgement | عاجل | urgent | Urgency is set by the pathway and the care team, not by the model. | الأمر عاجل. |
+| `emergency` | clinical_judgement | طارئ | emergency | Urgency is set by the pathway and the care team, not by the model. | هذه حالة طارئة. |
+| `medicine` | medication_or_treatment | دواء | medicine | Medication advice is outside the model's remit. | خذ الدواء. |
+| `medicines_plural` | medication_or_treatment | ادوية | medicines | Plural of medicine. | توقف عن الأدوية. |
+| `dose` | medication_or_treatment | جرعة | dose | Medication advice. | خذ جرعة واحدة. |
+| `pills` | medication_or_treatment | حبوب | pills | Medication advice. | خذ الحبوب. |
+| `laxative` | medication_or_treatment | ملين | laxative | Bowel preparation instructions belong to the care team. | خذ ملين الليلة. |
+| `treatment` | medication_or_treatment | علاج | treatment | Implies a treatment decision that has not been made. | سيبدأ العلاج قريباً. |
+| `surgery` | medication_or_treatment | جراحة | surgery | Implies a treatment decision that has not been made. | ستحتاج إلى جراحة. |
+| `chemotherapy` | medication_or_treatment | كيماوي | chemotherapy (colloquial) | Implies a treatment decision that has not been made. | العلاج الكيماوي. |
+| `you_must` | advice | يجب عليك | you must | Only "the next step is ...; your care team will contact you" is allowed as an instruction. | يجب عليك الصيام. |
+| `we_advise` | advice | ننصحك | we advise you | Advice beyond the next step is for the care team. | ننصحك بتجنب اللحوم. |
+| `you_should` | advice | ينبغي | it is fitting that / you should | Advice beyond the next step is for the care team. | ينبغي أن تتوقف عن الأكل. |
+| `you_need_to` | advice | عليك ان | you need to | Advice beyond the next step is for the care team. | عليك أن تصوم. |
+| `take` | advice | تناول | take / consume | Instructions to take or eat something are medical advice. | تناول الطعام الخفيف. |
+| `fasting` | advice | صيام | fasting | Preparation instructions belong to the care team. | يلزم صيام قبل الفحص. |
+
+Questions for you: (a) Does any entry block an ordinary, harmless sentence? For example طبيعي (normal), علاج (treatment) inside a longer word, تناول (take) in a plain sense, صيام (fasting) in a message about Ramadan opening hours. (b) What is missing? Candidates we have not added and you may consider: مرض (disease), حالة حرجة (critical condition), لا بأس (it is fine), expressions such as إن شاء الله خير or الله يشفيك that patients may find natural but that reassure or imply illness. Our suggestions only; none is in the list today.
+
+### Self-check on our own texts
+
+We ran the list over every Arabic text above. These texts contain a forbidden entry. The patient page and demo drafts are fixed text, not model output, so the rule does not apply to them today, but please say whether the word is acceptable there.
+
+| ID | Arabic | Matching entries |
+|---|---|---|
+| W07 | أظهر فحصك وجود دم. هذا لا يعني أنك مصاب بالسرطان. الخطوة التالية هي فحص بالكاميرا اسمه تنظير القولون. | `affected`, `cancer` |
+| W08 | هذه الصفحة ليست تشخيصًا. سيشرح لك طبيبك نتيجتك. | `diagnosis` |
+| D02 | مرحبًا. يحتاج فحصك إلى فحص متابعة بالكاميرا اسمه تنظير القولون. هذا ليس تشخيصًا. يرجى الاتصال بنا لحجز موعد. | `diagnosis` |
+
+## 7. Checklist
+
+- [ ] **Accuracy.** Does each Arabic text say what the English says, no more and no less? In particular: "the screening test found blood" and "this does not mean you have cancer".
+- [ ] **Register for Gulf Arabic readers.** Modern Standard Arabic, easy to read, no dialect. Is it natural for a reader in the UAE, neither stiff nor too colloquial? Greetings: "مرحباً" in SMS and WhatsApp, "السلام عليكم" in letters. Are they right for every patient, including non-Muslim readers of Arabic?
+- [ ] **Plain language.** Grade-6 reading level: short sentences, everyday words. Mark any word an ordinary reader might not know.
+- [ ] **No stigma, no fear.** Calm, respectful tone. Nothing blames the patient, nothing frightens, nothing minimises. Does any word carry a stigma in your community?
+- [ ] **Terminology: colonoscopy.** Is "تنظير القولون" the term patients know? Is "فحص بالكاميرا" (camera test) a helpful friendly term or confusing next to it? Which one should be used where?
+- [ ] **Terminology: screening.** "الكشف المبكر" in messages, "فحص" (test) on the page. Is one term better, and do patients tell the screening test apart from the colonoscopy?
+- [ ] **Terminology: care team and care owner.** "فريق الرعاية", "منسق الرعاية", "المسؤول عن رعايتك" and "من يتابع حالتك" are used. Choose one wording for each idea.
+- [ ] **Gender.** Second person is written in the masculine form by default. Is that acceptable for women, or is a neutral wording available? Words such as مصاب are blocked in model drafts anyway.
+- [ ] **Right-to-left display.** Open the patient page in Arabic (`/patient`, language button). Does the text read correctly with a Latin name in the owner line, with phone numbers and dates?
+- [ ] **Digits and dates.** Western digits (0 to 9) are used today. Prefer Arabic-Indic digits (٠ to ٩)? Are month and weekday names (for example نوفمبر, الثلاثاء) the ones used in the UAE?
+- [ ] **Orthography and punctuation.** Tanween is written two ways today (see section 3). Latin full stops and Arabic commas are mixed. Choose one convention.
+- [ ] **Length.** Does each message still fit its channel limit in your corrected wording (SMS 320, WhatsApp 600, letter 1200 characters)?
+- [ ] **Forbidden phrases.** Is the list in section 6 complete and does it block ordinary sentences by mistake? Add what is missing.
+
+## 8. Feedback table
+
+One row per text. Write keep or change; if change, write your Arabic wording and, if useful, why. The last rows cover the forbidden-phrase list (by category) and the checklist.
+
+| ID | What | Keep / change | Suggested Arabic | Comment |
+|---|---|---|---|---|
+| W01 | web: appTitle |  |  |  |
+| W02 | web: language |  |  |  |
+| W03 | web: switchTo |  |  |  |
+| W04 | web: homeTitle |  |  |  |
+| W05 | web: homeBody |  |  |  |
+| W06 | web: resultHeading |  |  |  |
+| W07 | web: resultBody |  |  |  |
+| W08 | web: notDiagnosis |  |  |  |
+| W09 | web: progressHeading |  |  |  |
+| W10 | web: progress[0] |  |  |  |
+| W11 | web: progress[1] |  |  |  |
+| W12 | web: progress[2] |  |  |  |
+| W13 | web: progress[3] |  |  |  |
+| W14 | web: nextHeading |  |  |  |
+| W15 | web: nextSteps[0] |  |  |  |
+| W16 | web: nextSteps[1] |  |  |  |
+| W17 | web: nextSteps[2] |  |  |  |
+| W18 | web: ownerHeading |  |  |  |
+| W19 | web: ownerLine |  |  |  |
+| W20 | web: ownerPending |  |  |  |
+| W21 | web: role:Primary care physician |  |  |  |
+| W22 | web: role:Care coordinator |  |  |  |
+| W23 | web: understand |  |  |  |
+| W24 | web: understandDone |  |  |  |
+| W25 | web: understandWait |  |  |  |
+| W26 | web: dontUnderstand |  |  |  |
+| W27 | web: callbackDone |  |  |  |
+| W28 | web: actionFailed |  |  |  |
+| W29 | web: consentHeading |  |  |  |
+| W30 | web: channelLabel |  |  |  |
+| W31 | web: channels.phone |  |  |  |
+| W32 | web: channels.sms |  |  |  |
+| W33 | web: channels.whatsapp |  |  |  |
+| W34 | web: shareLabel |  |  |  |
+| W35 | web: saved |  |  |  |
+| W36 | web: saveFailed |  |  |  |
+| W37 | web: loading |  |  |  |
+| W38 | web: loadError |  |  |  |
+| W39 | web: offline |  |  |  |
+| T01 | template: result_notification/sms |  |  |  |
+| T02 | template: result_notification/whatsapp |  |  |  |
+| T03 | template: result_notification/letter |  |  |  |
+| T04 | template: reminder/sms |  |  |  |
+| T05 | template: reminder/sms_with_date |  |  |  |
+| T06 | template: reminder/whatsapp |  |  |  |
+| T07 | template: reminder/whatsapp_with_date |  |  |  |
+| T08 | template: reminder/letter |  |  |  |
+| T09 | template: reminder/letter_with_date |  |  |  |
+| T10 | template: appointment_confirmation/sms |  |  |  |
+| T11 | template: appointment_confirmation/whatsapp |  |  |  |
+| T12 | template: appointment_confirmation/letter |  |  |  |
+| T13 | template: escalation_notice/sms |  |  |  |
+| T14 | template: escalation_notice/whatsapp |  |  |  |
+| T15 | template: escalation_notice/letter |  |  |  |
+| T16 | template: callback_ack/sms |  |  |  |
+| T17 | template: callback_ack/whatsapp |  |  |  |
+| T18 | template: callback_ack/letter |  |  |  |
+| D01 | draft: web/src/api/fixtures.ts |  |  |  |
+| D02 | draft: web/src/api/mockAdapter.ts |  |  |  |
+| F:diagnosis_statement | Forbidden phrases, category `diagnosis_statement` (3 entries: you_are_affected, affected, diagnosis) |  |  |  |
+| F:disease_term | Forbidden phrases, category `disease_term` (8 entries: cancer, tumour, tumours_plural, malignant, malignancy, polyp, polyps_plural, carcinoma) |  |  |  |
+| F:positive_result_jargon | Forbidden phrases, category `positive_result_jargon` (1 entries: positive) |  |  |  |
+| F:false_reassurance | Forbidden phrases, category `false_reassurance` (10 entries: do_not_worry, do_not_worry_f, no_need_to_worry, do_not_fear, do_not_fear_alt, nothing_to_worry_about, all_fine, you_will_be_fine, not_dangerous, normal) |  |  |  |
+| F:clinical_judgement | Forbidden phrases, category `clinical_judgement` (3 entries: dangerous, urgent, emergency) |  |  |  |
+| F:medication_or_treatment | Forbidden phrases, category `medication_or_treatment` (8 entries: medicine, medicines_plural, dose, pills, laxative, treatment, surgery, chemotherapy) |  |  |  |
+| F:advice | Forbidden phrases, category `advice` (6 entries: you_must, we_advise, you_should, you_need_to, take, fasting) |  |  |  |
+| F:add | Forbidden phrases to add |  |  |  |
+| C:Accuracy | Checklist: Accuracy |  |  |  |
+| C:Register for Gulf Arabic readers | Checklist: Register for Gulf Arabic readers |  |  |  |
+| C:Plain language | Checklist: Plain language |  |  |  |
+| C:No stigma, no fear | Checklist: No stigma, no fear |  |  |  |
+| C:Terminology: colonoscopy | Checklist: Terminology: colonoscopy |  |  |  |
+| C:Terminology: screening | Checklist: Terminology: screening |  |  |  |
+| C:Terminology: care team and care owner | Checklist: Terminology: care team and care owner |  |  |  |
+| C:Gender | Checklist: Gender |  |  |  |
+| C:Right-to-left display | Checklist: Right-to-left display |  |  |  |
+| C:Digits and dates | Checklist: Digits and dates |  |  |  |
+| C:Orthography and punctuation | Checklist: Orthography and punctuation |  |  |  |
+| C:Length | Checklist: Length |  |  |  |
+| C:Forbidden phrases | Checklist: Forbidden phrases |  |  |  |
+| X | Anything missing (texts, phrases, concepts) |  |  |  |
+
+Reviewer name: 
+
+Date:

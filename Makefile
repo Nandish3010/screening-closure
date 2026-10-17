@@ -115,3 +115,18 @@ web-test:
 # Playwright e2e against a mock-adapter `vite preview` (needs `npx playwright install chromium` once).
 web-e2e:
 	cd web && npm run test:e2e
+
+# ---- reviewer packs (E10) ------------------------------------------------------------------
+# Regenerates docs/review/clinician-pack.md and arabic-pack.md from the pathway YAML, the web
+# string catalogue, the message templates and the forbidden-phrase lists (pure Python: PyYAML only).
+.PHONY: review-packs review-packs-check test-review-packs
+review-packs:
+	$(PY) tools/review/build_packs.py
+
+# Fails if the committed packs differ from a fresh build.
+review-packs-check:
+	$(PY) tools/review/build_packs.py --check
+
+# T-E17: packs equal a fresh build and contain every string in the sources.
+test-review-packs:
+	$(PY) -m pytest tools/review/tests -q
