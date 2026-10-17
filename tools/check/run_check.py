@@ -38,6 +38,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 PG_HOST = os.environ.get("CHECK_PG_HOST", "localhost")
 PG_PORT = int(os.environ.get("CHECK_PG_PORT", "5433"))
+DEFAULT_KEEP_GOING = os.environ.get("CHECK_KEEP_GOING") == "1"
 
 
 def pg_reachable() -> bool:
@@ -113,7 +114,7 @@ def box(message: str) -> None:
 
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--keep-going", action="store_true", default=os.environ.get("CHECK_KEEP_GOING") == "1")
+    ap.add_argument("--keep-going", action="store_true", default=DEFAULT_KEEP_GOING)
     ap.add_argument("--only", default="")
     ap.add_argument("--skip", default="")
     args = ap.parse_args(argv)

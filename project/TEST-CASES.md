@@ -12,14 +12,14 @@ Types: unit, property (Hypothesis or equivalent, many generated inputs), integra
 | `make test-db` | exists | Postgres integration tests (stack up) against the separate `closure_test` database (F2, ADR-015); `make test-db-reset` recreates it. |
 | `make evaluate` | stub | Regenerates every documented number from a fixed seed. Built in B9. |
 | `make demo-seed` | exists | Synthea cohort to HAPI to FIT results to cases. |
-| `make check` | planned (F1) | Runs everything below at CI size, plus lint and the cross-reference check. |
+| `make check` | exists (F1) | Runs test, test-db, web-test, web-build, evaluate-check, docs-check, tracker-lint, test-security, test-tools and a 1k load check, stopping at the first failure; `CHECK_KEEP_GOING=1` runs all. |
 | `make test-chaos` | planned (F3) | Fault-injection tests, some need the compose stack. |
-| `make test-load` | planned (F6) | Full-size load sweep. |
-| `make test-security` | planned (F7) | RBAC matrix, PHI scans, secret scan. |
+| `make test-load` | exists (F6) | Sweep over 1k, 10k and 100k seeded cases in the throwaway `closure_load` database; writes docs/results/load.md. `make load-check` is the 1k size used by `make check`. |
+| `make test-security` | partial (F9 done; F7, F8 add RBAC and PHI scans) | Secret and repo hygiene scan today; RBAC matrix and PHI scans to come. |
 | `make test-e2e` | planned (C1 creates, C11 completes) | Playwright suite against the running stack. |
 | `make test-web` | planned (C1) | Frontend unit tests. |
 | `make test-offline` | planned (F10) | Demo with outbound network blocked. |
-| `make docs-check` | planned (F1 creates the skeleton; B10, E1, E2, E4 to E7 add checks) | Link, TODO, number and cross-reference checks on docs. |
+| `make docs-check` | partial (F1: links, tables, TODO; `make tracker-lint` is the cross-reference lint; B10, E1, E2, E4 to E7 add checks) | Link, TODO, number and cross-reference checks on docs. |
 | `make risk-report` | planned (D10) | Risk score calibration and reliability plot. |
 | `make demo-scenario`, `make demo-reset`, `make demo-kill-scheduler` | planned (E8, F11) | Scripted scenario, snapshot reset, scheduler-kill rehearsal. |
 
@@ -110,18 +110,18 @@ Thresholds marked "proposed" are starting points to be confirmed by the owning t
 |---|---|---|---|---|---|---|
 | T-D1 | LLM gate: no patient message is ever marked `message_sent` without a prior `message_approved` by a human owner, over random event sequences and API calls. | property | `make test` | No counterexample. | planned | D5 |
 | T-D2 | A `model:` actor can only produce `message_drafted`; any attempt to post a state-changing event as a model actor is refused. | unit | `make test` | Every pathway event type posted as `model:*` is rejected. | planned | D5 |
-| T-D3 | Template fallback on invalid model output: empty text, wrong language, over length, unfilled placeholders, or text that gives a diagnosis or clinical advice is replaced by the template and counted as an abstention. | unit | `make test` | Each bad-output fixture ends with the template text and an abstention record. | planned | D3 |
+| T-D3 | Template fallback on invalid model output: empty text, wrong language, over length, unfilled placeholders, or text that gives a diagnosis or clinical advice is replaced by the template and counted as an abstention. | unit | `make test` (api/tests/test_ai_validate.py::test_bad_model_output_falls_back_to_template, ::test_provider_failure_falls_back_without_raising) | Each bad-output fixture ends with the template text and an abstention record. | existing | D3 |
 | T-D4 | Template fallback when the provider is unavailable (timeout, connection refused, network disabled). | unit | `make test` (mocked HTTP) | Draft still produced from the template; no exception reaches the API caller. | planned | D7 |
 | T-D5 | Provenance recorded for every draft: prompt, draft, provider, approver and timestamp are stored and exposed as a FHIR Provenance. | integration | `make test-db` | Each `message_drafted` has a Provenance; approval fills approver and time. | planned | D4 |
-| T-D6 | Provider selection: `LLM_PROVIDER` accepts `template`, `azure_openai` and `jais`; the default is `template`; an unknown value stops startup with a clear error. | unit | `make test` | Right adapter chosen per value; unknown value fails fast. | planned | D1 |
+| T-D6 | Provider selection: `LLM_PROVIDER` accepts `template`, `azure_openai` and `jais`; the default is `template`; an unknown value stops startup with a clear error. | unit | `make test` (api/tests/test_ai_provider.py::test_default_is_template_provider, ::test_env_selects_provider, ::test_unknown_provider_fails_fast) | Right adapter chosen per value; unknown value fails fast. | existing | D1 |
 | T-D7 | Offline cache: cached outputs are used for the demo scenario with the network disabled; a cache miss falls back to the template and never calls the network. | integration | `make test-db` with a network-blocking fixture | Zero outbound connections; drafts identical to the cached ones. | planned | D6 |
-| T-D8 | Output validation rules: each rule (language match, length, required fields, forbidden diagnosis and advice phrases, no extra personal data) has a passing and a failing fixture. | unit | `make test` | Table of rules matches table of fixtures one to one. | planned | D3 |
+| T-D8 | Output validation rules: each rule (language match, length, required fields, forbidden diagnosis and advice phrases, no extra personal data) has a passing and a failing fixture. | unit | `make test` (api/tests/test_ai_validate.py::test_rule_table_matches_fixture_table, ::test_each_rule_has_a_failing_and_a_passing_fixture) | Table of rules matches table of fixtures one to one. | existing | D3 |
 | T-D9 | Risk score reliability on synthetic validation data: calibration error within tolerance and better than the base rate on the held-out set. | unit | `make test` (marked slow) and `make risk-report` | Expected calibration error at or below the tolerance set in D10 (proposed 0.05) and Brier score below the base-rate predictor. | planned | D10 |
 | T-D10 | The risk score only orders the worklist: shuffling or removing it changes list order only, with no change to any case state, escalation or closure. | property | `make test` | Scheduler and state outcomes identical with the score on, off or randomised. | planned | D9 |
 | T-D11 | Risk score training is deterministic: the same seed and data give identical coefficients. | unit | `make test` | Coefficient hash equal across two runs. | planned | D8 |
 | T-D12 | Reliability plot is produced by a make target and committed under docs/governance with the data it came from. | integration | `make risk-report` | PNG and JSON regenerate identically for the fixed seed. | planned | D10 |
 | T-D13 | Approval authority: only the case's current owner role can approve a draft; patient, lab and unrelated roles are refused. | unit | `make test` | Non-owner roles get HTTP 403 on `POST /drafts/{id}/approve`. | planned | D5 |
-| T-D14 | Templates: every message purpose, language (Arabic, English) and channel renders with all placeholders filled and no left-over braces. | unit | `make test` | Zero unfilled placeholders across the full matrix. | planned | D2 |
+| T-D14 | Templates: every message purpose, language (Arabic, English) and channel renders with all placeholders filled and no left-over braces. | unit | `make test` (api/tests/test_ai_templates.py::test_full_matrix_present, ::test_every_template_renders_and_fits) | Zero unfilled placeholders across the full matrix. | existing | D2 |
 | T-D15 | Abstention accounting: each fallback is recorded with a reason and aggregated into the automation abstention rate used by the evaluation. | integration | `make test-db` | Count of fallbacks equals the recorded abstentions; the rate appears in `GET /metrics/closure`. | planned | D11 |
 
 ## Cut E, Evidence, docs, demo
@@ -161,10 +161,10 @@ Thresholds marked "proposed" are starting points to be confirmed by the owning t
 | T-F9 | RBAC matrix: each of the six roles is denied on every route outside its scope, and any route with no policy fails the test. | integration | `make test-security` | Matrix generated from the OpenAPI route list; zero unexpected allows; zero routes without a policy. | planned | F7 |
 | T-F10 | No PHI in logs: run the demo scenario with marker values in names and phone numbers and scan all service logs. | integration | `make test-security` | Zero occurrences of the markers in logs. | planned | F8 |
 | T-F11 | No PHI in URLs: routes carry only opaque ids and no query string holds patient data; access logs contain none. | integration | `make test-security` | Route table review passes and access-log scan finds no markers. | planned | F8 |
-| T-F12 | Secrets out of the repo: a scan of tracked files and history finds no secret; `.env` is ignored and `.env.example` holds only local placeholders. | integration | `make test-security` | Zero findings. | planned | F9 |
+| T-F12 | Secrets out of the repo: a scan of tracked files and history finds no secret; `.env` is ignored and `.env.example` holds only local placeholders. | integration | `make test-security` (tools/check/secrets_scan.py; tests/test_secrets_scan.py) | Zero findings. | existing | F9 |
 | T-F13 | Fresh clone on a second machine: `git clone`, copy env file, `make up`, `make demo-seed`, `make evaluate` succeed, and `make evaluate` takes under two minutes. | manual | Human owner on a second machine; log in docs/results/fresh-clone.md | All commands succeed; timing recorded. | planned | F12, H5 |
 | T-F14 | Offline operation: the full stack runs the demo with outbound network blocked, using cached model outputs and the bundled cohort. | integration | `make test-offline` (compose network without egress) | Scenario completes; zero blocked-connection errors affect it. | planned | F10 |
 | T-F15 | Kill-the-scheduler rehearsal script passes three times in a row on one machine: stop, alarm within the target, restart, nothing lost. | chaos | `make demo-kill-scheduler` run three times | Three consecutive passes. | planned | F11 |
-| T-F16 | Cross-reference lint: every test ID used in TRACKER.md exists in TEST-CASES.md, and every ticket ID used in TEST-CASES.md exists in TRACKER.md. | unit | `make check` | No dangling reference in either direction. | planned | F1 |
+| T-F16 | Cross-reference lint: every test ID used in TRACKER.md exists in TEST-CASES.md, and every ticket ID used in TEST-CASES.md exists in TRACKER.md. | unit | `make tracker-lint` (tools/check/tracker_lint.py; tests/test_tracker_lint.py), also a stage of `make check` | No dangling reference in either direction. | existing | F1 |
 
 Total: 112 test cases.

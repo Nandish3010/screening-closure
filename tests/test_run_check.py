@@ -25,6 +25,8 @@ def test_unknown_stage_is_rejected(capsys):
 
 
 def test_failing_stage_fails_and_stops(monkeypatch, capsys):
+    monkeypatch.delenv("CHECK_KEEP_GOING", raising=False)
+    monkeypatch.setattr(rc, "DEFAULT_KEEP_GOING", False)
     calls = []
 
     def fake_run(cmd, env):
