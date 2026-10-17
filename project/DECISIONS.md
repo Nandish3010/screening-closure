@@ -190,6 +190,52 @@ Architecture decision records, one per decision. Add new entries at the end with
 - A rung accepted by the wrong person is refused by the engine (409), not just hidden in the UI.
 - The notification text for a rung (A7) hangs off the `escalate` event; the event names here are what Cut C and the decision matrix (E5) should use.
 
+## ADR-015: Erasure versus the append-only log: the log holds opaque ids only
+
+**Context.** The event log is append-only by design: database triggers reject `UPDATE`, `DELETE` and `TRUNCATE` on `events` (ADR-004), because an audit trail that can be edited is not credible. A data subject may ask for their personal data to be erased (a right described in secondary readings of the UAE PDPL, Federal Decree-Law 45 of 2021; whether the PDPL governs health data at all, and the minimum retention period for health records under Federal Law 2 of 2019, are both to verify, see `docs/governance/regulatory-mapping.md` items 1 and 2). Both cannot be satisfied if the log holds personal data. The regulatory mapping already named the option: keep direct identifiers in a separate erasable store and put only a pseudonymous key in events. This ADR makes that the rule.
+
+**Decision.**
+- The event log (`events`, `cases`) and the notifications store carry only opaque identifiers: case ids, event ids, FHIR resource references (for example `Patient/<system-assigned id>`, `DiagnosticReport/<id>`), draft ids and content hashes. They never carry names, phone numbers, addresses, national identifiers, MRNs, or free text about the patient. A FHIR reference in the log must be a system-assigned id, never a national identifier or MRN.
+- Personal data lives in two erasable places only: the FHIR store (the `Patient` resource and the resources that hang off it) and a contact table (channels, numbers, preferred language, and the rendered text of drafted and sent messages, keyed by case id). Message text is stored there, not in the log; the log carries the draft id and a hash of the text.
+- Erasure of a data subject is: delete the `Patient` resource and its dependent resources from the FHIR store (including expunge, because HAPI soft-deletes by default, to verify), delete the contact and message-text rows, and delete the id mapping from case to patient. The events remain. What remains identifies no one: case id, event types, timestamps, role-level actors, SLA flags.
+- Staff are also data subjects. The `actor` of an event should be `role:<opaque staff id>`, with names held in a staff directory that can be edited, not `role:<name>`.
+- Erasure is a human-run, logged procedure. It is recorded in an erasure register (request date, case ids, who performed it, what was deleted) that itself holds only opaque ids. Whether a human-only annotation event also marks the case as erased is left to the implementing ticket; it is not in the current vocabulary, so it is not in the decision matrix.
+- Retention comes first: where a retention duty applies to the clinical record, erasure may be refused or restricted for that period. The legal position is to verify before a pilot.
+
+**Consequences.**
+- Append-only (ADR-004) and erasure can both hold, because the immutable part contains nothing erasable.
+- "Cannot identify anyone" is a design target, not a proven property. A small pilot with few cases, exact timestamps and rare event sequences could let someone who knew when a patient was followed up single out a case. Whether that counts as anonymised is a legal question, to verify.
+- Backups and the HAPI database (shared with the case store, ADR-006) must be covered by the procedure; a restore must not resurrect erased data. Not designed yet.
+- The log must be checked for violations, not only designed against them. A scan for marker values in stored events and payloads extends the no-PHI-in-logs test (T-F10). No test enforces this rule today.
+
+**What the current code does not yet enforce** (also in the limitations table, `docs/assumptions-limitations.md`, rows L23 and L24):
+- `POST /cases/{id}/events` accepts any JSON object as `payload`. There is no per-event-type schema or allow-list, so `reason`, `evidence_ref`, `signed_by`, `owner` and any other key can hold names or free text, and they are stored forever.
+- The `actor` is `role:name`, and the name is whatever string was given at login (letters, digits, space, `.`, `_`, `@`, `-`). A patient or clinician who logs in with their real name has it written into every event they cause.
+- `signed_by` and `owner` carry a person's identifier chosen by the client.
+- Draft text is not stored yet (D4 is not built). When it is, output validation requires the care owner's name inside the text (`missing_owner_name`), so draft text contains a staff member's name and, in an outreach message, the fact that a screening test found blood. It must go to the contact table, not into the `message_drafted` payload.
+- The genesis event holds `patient_ref` and `result_ref` in its payload. They are references, which is allowed, but the id mapping is the log itself, so it cannot be deleted separately; erasure today would leave the reference pointing at a deleted `Patient`. This is acceptable only while the reference is an opaque system-assigned id.
+- No contact table, notifications table, erasure procedure or erasure register exists. No ticket owns them yet.
+
+**Status.** Accepted as the design rule. Implementation is not scheduled; a ticket for payload schemas, opaque actors and the erasure procedure should be added before any pilot.
+
+## ADR-016: Hosting order of preference under ADHICS CM 4.2
+
+**Context.** ADHICS v0.9 control CM 4.2 (category Basic) says a healthcare entity shall not use cloud services or infrastructure to store, process or share information that contains health information, shall ensure health information is not transmitted outside the UAE, and shall not share identified or de-identified health information with third parties unless authorised by the Abu Dhabi health sector regulator (`docs/governance/regulatory-mapping.md`, section 3). A US trade summary adds that DoH can grant case-by-case exceptions for cloud data-centre services. The current ADHICS version (V2, 2024) was not retrieved, so whether the rule is kept, relaxed or reworded is to verify. Federal Law 2 of 2019 adds a localisation rule for health data, and the DoH Responsible AI Standard asks that compute, storage, disaster recovery and remote access for development and support stay in the UAE (section 6 of the mapping). Azure UAE North and Core42 are documented as in-country options, but DoH acceptance of either for health information is not established.
+
+**Decision.** For any deployment that holds real patient data, host in this order of preference, and move to the next only when the earlier option is unavailable:
+1. **A provider-approved environment.** The participating provider's own data centre or private cloud, already approved for health information under the provider's own ADHICS compliance. This is the first choice because it adds no new cloud authorisation.
+2. **A DoH-authorised cloud.** A UAE-located cloud that DoH has authorised in writing for health information, using the exception route that CM 4.2 describes. Azure UAE North and Core42 Sovereign Public Cloud belong here, and only after that written authorisation exists. Disaster recovery, backups and remote administration must also be in the UAE.
+3. **Nothing else.** A cloud without DoH authorisation, any region outside the UAE, or a vendor-run tenancy that has not been approved by the provider, is not an option for real data. The synthetic prototype is exempt, because it holds no real data (`docs/data-provenance.md`); it can run on a laptop or any host.
+
+The model provider for drafting is bound by the same order. If no in-country, approved model host exists, the template fallback is used (ADR-007).
+
+**Consequences.**
+- The stack stays portable: containers, Postgres, and no cloud-managed service in the engine, so the same compose-derived deployment runs under option 1 or 2 (`docs/governance/regulatory-mapping.md`, section 6).
+- Option 1 shifts operations to the provider and may lengthen onboarding, since the provider's team must run the stack. The pilot plan therefore keeps hosting approval as a gate (G0) and lists "hosting not approved for health information" as a risk (`docs/pilot-plan.md`).
+- Nothing in this ADR claims that any provider or cloud is acceptable. It records the order in which we would ask.
+- If ADHICS V2 or a DoH decision changes the rule, this ADR is superseded by a new one.
+- Malaffi connectivity is independent of this order and stays optional in the pilot (`docs/governance/malaffi-adapter-plan.md`).
+
 ## ADR-015: Integration tests use their own database, `closure_test`
 
 **Context.** `make test-db` ran against the dev database. Every integration test creates cases and events that nothing can delete (the log is append-only by trigger), so after a few dozen runs the dev database held about 1,200 test cases next to the seeded cohort, and the demo worklist, the sweep and the metrics all saw them.

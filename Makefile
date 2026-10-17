@@ -1,4 +1,4 @@
-.PHONY: check docs-check tracker-lint test-security test-tools test-load load-check up down logs test test-db test-db-create test-db-reset test-chaos synthea demo-seed demo-seed-clean evaluate simulate evaluate-check reset web-install web-dev web-build web-test web-e2e
+.PHONY: check docs-check tracker-lint test-security test-tools test-load load-check up down logs test test-db test-db-create test-db-reset test-chaos synthea demo-seed demo-seed-clean evaluate simulate evaluate-check reset web-install web-dev web-build web-test web-e2e review-packs review-packs-check test-review-packs
 
 up:
 	docker compose up -d --build
@@ -160,3 +160,17 @@ test-load:
 # The 1k size only, with the same correctness assertions and no files written (part of `make check`).
 load-check:
 	PYTHONPATH=api $(PY) tools/load/time_sweep.py --check
+
+# ---- reviewer packs (E10) ------------------------------------------------------------------
+# Regenerates docs/review/clinician-pack.md and arabic-pack.md from the pathway YAML, the web
+# string catalogue, the message templates and the forbidden-phrase lists (pure Python: PyYAML only).
+review-packs:
+	$(PY) tools/review/build_packs.py
+
+# Fails if the committed packs differ from a fresh build.
+review-packs-check:
+	$(PY) tools/review/build_packs.py --check
+
+# T-E17: packs equal a fresh build and contain every string in the sources.
+test-review-packs:
+	$(PY) -m pytest tools/review/tests -q
