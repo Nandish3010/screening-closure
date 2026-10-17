@@ -40,11 +40,17 @@ test-db-reset:
 test-db: test-db-create
 	DATABASE_URL=$(TEST_DATABASE_URL) .venv/bin/pytest api/tests -q -m "integration and not chaos"
 
-# Chaos tests (T-A32): stop and start the scheduler container of the running stack and watch the
-# watchdog raise and clear its alert. Needs `make up` first and docker on the host; it writes no
-# cases. Until F3 adds the full chaos suite this runs only the tests marked `chaos`.
+# Chaos tests (F3, F4, F5; T-A32, T-F3 to T-F7), all marked `chaos`:
+#   * fault injection (api/tests/faults.py, honoured only when APP_ENV=test): duplicate delivery, clock skew,
+#     a store failure after the event insert;
+#   * the sweep killed part-way through 5,000 cases (SIGKILL, single process and sharded), rerun, exactly the
+#     planned events once;
+#   * garbage from the drafting model, and consent withdrawn between the approval and the send;
+#   * T-A32 (api/tests/test_chaos.py): stops and starts the scheduler container of the running stack and watches the
+#     watchdog raise and clear its alert. It skips itself when the stack is not up; the others need only Postgres on
+#     the compose stack (each creates and drops its own scratch database, never the dev one).
 test-chaos:
-	.venv/bin/pytest api/tests -q -s -m chaos
+	PYTHONPATH=$(CURDIR)/api DATABASE_URL=$(TEST_DATABASE_URL) .venv/bin/pytest api/tests -q -s -m chaos
 
 # Python for the simulator scripts: the project venv if present, else python3 (needs httpx).
 PY := $(shell [ -x .venv/bin/python ] && echo .venv/bin/python || echo python3)
