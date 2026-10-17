@@ -3,6 +3,7 @@
  * Sim "now" is fixed so every demo and test is deterministic.
  */
 import type { CaseEvent, ClosureMetrics } from "./contract";
+import { replayState, slaClock } from "../lib/derive";
 
 export const SIM_NOW = "2026-11-04T09:00:00.000Z";
 const DAY = 86_400_000;
@@ -40,17 +41,18 @@ function add(n: number, risk: number, createdDaysAgo: number, steps: Step[]) {
 add(1, 0.62, 95, [
   ["acknowledge", 94, "lab:Central Lab"],
   ["accept_ownership", 92, "coordinator:Maryam Al Suwaidi", LAYLA],
-  ["draft_generated", 91, "model:template-fallback", { draft_id: "d-seed-1", provider: "template-fallback", fallback_used: true,
+  ["message_drafted", 91, "model:template-fallback", { draft_id: "d-seed-1", provider: "template-fallback", fallback_used: true,
     text_en: "Hello. Your screening test needs a follow-up camera test. Please call us to book it.",
     text_ar: "مرحبًا. يحتاج فحصك إلى فحص متابعة بالكاميرا. يرجى الاتصال بنا لحجز الموعد." }],
-  ["draft_approved", 91, "coordinator:Maryam Al Suwaidi", { draft_id: "d-seed-1", approved_by: "Maryam Al Suwaidi" }],
+  ["message_approved", 91, "coordinator:Maryam Al Suwaidi", { draft_id: "d-seed-1" }],
+  ["message_sent", 91, "system:sender", { draft_id: "d-seed-1" }],
   ["contact_patient", 90, "coordinator:Maryam Al Suwaidi", { channel: "phone", draft_id: "d-seed-1" }],
   ["patient_acknowledge", 86, "patient:c0000001", { lang: "ar" }],
   ["consent_updated", 86, "patient:c0000001", { channel: "whatsapp", share_with_specialist: true }],
-  ["hand_off", 80, "coordinator:Maryam Al Suwaidi", { to_provider: "Al Noor Endoscopy Centre" }],
-  ["hand_off_rejected", 79, "provider:Al Noor Endoscopy Centre", { provider: "Al Noor Endoscopy Centre", reason: "No colonoscopy slots in the next 14 days." }],
-  ["hand_off", 78, "coordinator:Maryam Al Suwaidi", { to_provider: "Corniche Gastro Unit" }],
-  ["hand_off_accepted", 77, "provider:Corniche Gastro Unit", { provider: "Corniche Gastro Unit" }],
+  ["handoff_requested", 80, "coordinator:Maryam Al Suwaidi", { to_provider: "Al Noor Endoscopy Centre" }],
+  ["handoff_rejected", 79, "provider:Al Noor Endoscopy Centre", { reason: "capacity" }],
+  ["handoff_requested", 78, "coordinator:Maryam Al Suwaidi", { to_provider: "Corniche Gastro Unit" }],
+  ["handoff_accepted", 77, "provider:Corniche Gastro Unit", {}],
   ["book_confirmatory", 70, "specialist:Dr. Karim Nasser", { appointment_ref: "APPT-2026-0412" }],
   ["complete_confirmatory", 30, "specialist:Dr. Karim Nasser", { result_ref: "DiagnosticReport/colonoscopy-0001" }],
 ]);
@@ -59,6 +61,7 @@ add(2, 0.81, 40, [
   ["acknowledge", 39, "lab:Central Lab"],
   ["accept_ownership", 37, "coordinator:Maryam Al Suwaidi", SARA],
   ["contact_patient", 22, "coordinator:Maryam Al Suwaidi", { channel: "sms" }],
+  ["escalate", 5, "system:scheduler", { rung: "supervisor", target_role: "supervisor" }],
 ]);
 // 3. Owner accepted 16 days ago; patient contact (5 working days) overdue.
 add(3, 0.7, 25, [
@@ -115,9 +118,34 @@ add(11, 0.05, 80, [
 ]);
 // 12. Overdue not at all, but high risk: ordering tie-breaker demo (acknowledged, owner accepted today).
 add(12, 0.9, 4, [["acknowledge", 3, "lab:Central Lab"], ["accept_ownership", 0, "coordinator:Maryam Al Suwaidi", SARA]]);
+// 13. Owner accepted 12 days ago and nobody has touched it since: overdue, and the watchdog flagged it.
+add(13, 0.45, 14, [
+  ["acknowledge", 13, "lab:Central Lab"],
+  ["accept_ownership", 12, "coordinator:Maryam Al Suwaidi", OMAR],
+  ["watchdog_flagged", 1, "watchdog", { reason: "idle", idle_days: 11 }],
+]);
+// 14. Patient contacted, then withdrew consent: consent is frozen, no outreach until it is re-confirmed.
+add(14, 0.5, 9, [
+  ["acknowledge", 8, "lab:Central Lab"],
+  ["accept_ownership", 7, "coordinator:Maryam Al Suwaidi", OMAR],
+  ["contact_patient", 4, "coordinator:Maryam Al Suwaidi", { channel: "sms" }],
+  ["consent_updated", 2, "patient:c0000014", { channel: "sms", share_with_specialist: false, withdrawn: true }],
+]);
+
+/** The scheduler's `mark_overdue` for every seeded case whose SLA clock has already passed. */
+function withOverdueMarkers(events: CaseEvent[]): CaseEvent[] {
+  const clock = slaClock(events, replayState(events), SIM_NOW);
+  if (!clock.due_at || new Date(SIM_NOW) <= new Date(clock.due_at)) return events;
+  const marked: CaseEvent[] = [
+    ...events,
+    { seq: 0, type: "mark_overdue", at: clock.due_at, actor: "system:scheduler", payload: { state: replayState(events), due_at: clock.due_at } },
+  ];
+  marked.sort((a, b) => a.at.localeCompare(b.at)); // stable: same-instant events keep their order
+  return marked.map((e, i) => ({ ...e, seq: i + 1 }));
+}
 
 export function seedEvents(): Record<string, CaseEvent[]> {
-  return structuredClone(Object.fromEntries(defs.map((d) => [d.id, d.events])));
+  return structuredClone(Object.fromEntries(defs.map((d) => [d.id, withOverdueMarkers(d.events)])));
 }
 
 export const SEED_METRICS: Omit<ClosureMetrics, "sim_time"> = {

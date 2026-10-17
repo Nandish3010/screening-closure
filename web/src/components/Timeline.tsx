@@ -1,7 +1,8 @@
 import type { TimelineItem } from "../api/contract";
-import { NOTIFY_LABEL } from "../lib/pathway";
+import { RUNG_LABEL, handoffReasonLabel } from "../lib/pathway";
 import { fmtDateTime, titleCase } from "../lib/format";
-import { itemKey } from "../lib/derive";
+import { isAutomatedActor, itemKey } from "../lib/derive";
+import { WATCHDOG_TEXT, watchdogDetail } from "./WatchdogMarker";
 
 const EVENT_LABEL: Record<string, string> = {
   case_created: "Positive result received",
@@ -13,23 +14,42 @@ const EVENT_LABEL: Record<string, string> = {
   complete_confirmatory: "Confirmatory result recorded",
   clinician_review: "Clinician reviewed",
   close: "Case closed (signed)",
-  hand_off: "Hand-off requested",
-  hand_off_accepted: "Hand-off accepted",
-  hand_off_rejected: "Hand-off rejected",
+  handoff_requested: "Hand-off requested",
+  handoff_accepted: "Hand-off accepted",
+  handoff_rejected: "Hand-off rejected",
   escalate: "Escalated",
+  escalation_accepted: "Escalation accepted by a human",
   callback_requested: "Patient asked for a call-back",
   consent_updated: "Consent updated",
-  draft_generated: "AI draft generated",
-  draft_approved: "Draft approved by a human",
+  message_drafted: "AI draft generated",
+  message_approved: "Draft approved by a human",
+  message_sent: "Message sent to the patient",
+  mark_overdue: "Marked overdue by the scheduler",
+  watchdog_flagged: WATCHDOG_TEXT,
+  mark_lost_contact: "Marked as lost contact",
+  reopen: "Case reopened by a clinician",
 };
 
 const SKIP_PAYLOAD = new Set(["text_en", "text_ar"]);
 
-function payloadSummary(p: Record<string, unknown>): string {
+function payloadSummary(type: string, p: Record<string, unknown>): string {
   return Object.entries(p)
     .filter(([k]) => !SKIP_PAYLOAD.has(k))
-    .map(([k, v]) => `${k.replace(/_/g, " ")}: ${typeof v === "object" ? JSON.stringify(v) : String(v)}`)
+    .map(([k, v]) => {
+      const shown = type === "handoff_rejected" && k === "reason" ? handoffReasonLabel(String(v)) : typeof v === "object" ? JSON.stringify(v) : String(v);
+      return `${k.replace(/_/g, " ")}: ${shown}`;
+    })
     .join(" · ");
+}
+
+/** "Automated" chip for scheduler, watchdog, model and system actors. */
+export function ActorTag({ actor }: { actor: string }) {
+  return (
+    <>
+      <span className="mono">{actor}</span>
+      {isAutomatedActor(actor) && <> <span className="chip chip-auto" data-testid="automated-chip">automated</span></>}
+    </>
+  );
 }
 
 export function Timeline({ items }: { items: TimelineItem[] }) {
@@ -47,24 +67,27 @@ export function Timeline({ items }: { items: TimelineItem[] }) {
         if (it.kind === "escalation") {
           return (
             <li key={itemKey(it, i)} className="tl tl-escalation">
-              <div className="tl-head"><strong>Escalation ladder: {it.action}</strong><time>{fmtDateTime(it.at)}</time></div>
+              <div className="tl-head"><strong>Escalation ladder: {it.rung}</strong><time>{fmtDateTime(it.at)}</time></div>
               <div>
-                Notify {NOTIFY_LABEL[it.notify] ?? it.notify} after {it.after_breach_days} days of breach.
-                {it.action === "escalate" && (it.accepted ? " A human accepted it." : " Waiting for a human to accept.")}
+                Notify {RUNG_LABEL[it.rung] ?? it.target_role} after {it.after_breach_days} days of breach.
+                {it.rung !== "reminder" && (it.accepted ? " A human accepted it." : " Waiting for a human to accept.")}
               </div>
             </li>
           );
         }
-        const automated = /^(system:|scheduler|watchdog|model:)/.test(it.actor);
+        const cls = it.type === "handoff_rejected" ? "tl-rejected" : it.type === "watchdog_flagged" ? "tl-watchdog" : it.type === "mark_overdue" ? "tl-overdue" : "";
         return (
-          <li key={itemKey(it, i)} className={`tl tl-event ${it.type === "hand_off_rejected" ? "tl-rejected" : ""}`}>
+          <li key={itemKey(it, i)} className={`tl tl-event ${cls}`} data-event-type={it.type}>
             <div className="tl-head">
-              <strong>{EVENT_LABEL[it.type] ?? titleCase(it.type)}</strong>
+              <strong>{it.type === "watchdog_flagged" && <span aria-hidden="true">&#9888; </span>}{EVENT_LABEL[it.type] ?? titleCase(it.type)}</strong>
               <time>{fmtDateTime(it.at)}</time>
             </div>
+            {it.type === "watchdog_flagged" && (
+              <div>{watchdogDetail({ reason: it.payload.reason === "scheduler_down" ? "scheduler_down" : "idle", idle_days: typeof it.payload.idle_days === "number" ? it.payload.idle_days : undefined })}</div>
+            )}
             <div className="muted">
-              #{it.seq} · {it.actor}{automated ? " (automated)" : ""}
-              {Object.keys(it.payload).length > 0 && <> · {payloadSummary(it.payload)}</>}
+              #{it.seq} · <ActorTag actor={it.actor} />
+              {Object.keys(it.payload).length > 0 && <> · {payloadSummary(it.type, it.payload)}</>}
             </div>
           </li>
         );

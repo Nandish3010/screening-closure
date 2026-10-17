@@ -1,6 +1,7 @@
 import type { DraftView } from "../lib/derive";
 import { fmtDateTime } from "../lib/format";
 import { ActionButton } from "./ActionButton";
+import { ActorTag } from "./Timeline";
 
 /** AI drafts with provenance. The model drafts; a human approves; nothing is "sent" before approval. */
 export function DraftsPanel({
@@ -29,7 +30,7 @@ export function DraftsPanel({
               <span className="chip chip-ai">AI draft</span>{" "}
               Provider: <strong>{d.provider}</strong>
               {d.fallback_used && <> · <span className="chip">template fallback used</span></>}
-              {" "}· generated {fmtDateTime(d.generated_at)} by {d.generated_by}
+              {" "}· generated {fmtDateTime(d.generated_at)} by <ActorTag actor={d.generated_by} />
             </p>
             {d.text_en || d.text_ar ? (
               <div className="draft-text">
@@ -40,7 +41,12 @@ export function DraftsPanel({
               <p className="muted">Draft text unavailable. Request a new draft.</p>
             )}
             {d.approved_by ? (
-              <p className="chip chip-ok" data-testid={`approved-${d.draft_id}`}>Approved by {d.approved_by} · {fmtDateTime(d.approved_at)}</p>
+              <p>
+                <span className="chip chip-ok" data-testid={`approved-${d.draft_id}`}>Approved by {d.approved_by} · {fmtDateTime(d.approved_at)}</span>{" "}
+                {d.sent_at
+                  ? <span className="chip chip-ok" data-testid={`sent-${d.draft_id}`}>Sent {fmtDateTime(d.sent_at)}</span>
+                  : <span className="chip" data-testid={`unsent-${d.draft_id}`}>Approved, not sent yet</span>}
+              </p>
             ) : (
               <ActionButton primary testId={`approve-${d.draft_id}`} busy={busy} disabledReason={canApprove ? null : approveWhy ?? "Not allowed."} onClick={() => onApprove(d.draft_id)}>
                 Approve draft

@@ -26,7 +26,9 @@ test("coordinator: overdue case -> escalate -> request draft -> approve -> clini
   await expect(page).toHaveURL(new RegExp(OVERDUE_CASE));
   await expect(page.getByTestId("sla-clock")).toContainText("overdue");
   await expect(page.getByTestId("timeline")).toContainText("SLA breached");
-  await expect(page.getByTestId("rejections")).toContainText("No colonoscopy slots");
+  await expect(page.getByTestId("rejections")).toContainText("No capacity");
+  // Automated actors carry a chip; the scheduler marked this case overdue.
+  await expect(page.getByTestId("timeline").locator('li[data-event-type="mark_overdue"]').getByTestId("automated-chip")).toBeVisible();
 
   // Escalate
   await page.getByTestId("escalate").click();
@@ -40,6 +42,9 @@ test("coordinator: overdue case -> escalate -> request draft -> approve -> clini
   await expect(draft.locator('[dir="rtl"]')).toContainText("تنظير القولون");
   await draft.getByRole("button", { name: "Approve draft" }).click();
   await expect(page.getByTestId(/^approved-d-mock-/)).toContainText("Approved by Maryam Al Suwaidi");
+  // The backend sends the message only after the approval (message_approved, then message_sent).
+  await expect(page.getByTestId(/^sent-d-mock-/)).toContainText("Sent");
+  await expect(page.getByTestId("timeline")).toContainText("Message sent to the patient");
 
   // Coordinators cannot sign off: the button explains why.
   await expect(page.getByTestId("signoff")).toBeDisabled();
@@ -61,6 +66,38 @@ test("coordinator: overdue case -> escalate -> request draft -> approve -> clini
   // Back on the worklist the case is gone from "open".
   await page.getByRole("link", { name: /Worklist/ }).click();
   await expect(page.getByTestId("worklist-row").first()).not.toContainText("c0000001");
+});
+
+test("watchdog: the worklist and the case page say nobody is looking at it", async ({ page }) => {
+  await page.goto("/coordinator");
+  const flagged = page.getByTestId("worklist-row").filter({ has: page.getByTestId("watchdog-marker") });
+  await expect(flagged).toHaveCount(1);
+  await expect(flagged).toContainText("Nobody is looking at this");
+  await flagged.getByRole("link").click();
+  await expect(page.getByTestId("watchdog-banner")).toContainText("Nobody is looking at this");
+  const item = page.getByTestId("timeline").locator('li[data-event-type="watchdog_flagged"]');
+  await expect(item).toHaveClass(/tl-watchdog/);
+  await expect(item.getByTestId("automated-chip")).toBeVisible();
+  // A human acting on the case clears the flag.
+  await page.getByTestId("accept-ownership").or(page.getByTestId("mark-lost-contact")).first().click();
+  await expect(page.getByTestId("watchdog-banner")).toHaveCount(0);
+});
+
+test("reopen: only a clinician can reopen a closed case, with a reason", async ({ page }) => {
+  await page.goto("/coordinator");
+  await page.getByLabel("State").selectOption("closed");
+  await page.getByTestId("worklist-row").first().getByRole("link").click();
+  await expect(page.locator("h1")).toContainText("Closed");
+  await expect(page.getByTestId("reopen")).toBeDisabled();
+  await expect(page.getByTestId("reopen-why")).toContainText("clinician");
+  await page.getByLabel("Switch role").selectOption("clinician");
+  await expect(page.getByTestId("reopen")).toBeDisabled();
+  await page.getByLabel("Reason for reopening").fill("New finding on the colonoscopy report");
+  await expect(page.getByTestId("reopen")).toBeEnabled();
+  await page.getByTestId("reopen").click();
+  await expect(page.getByTestId("flash")).toContainText("reopened");
+  await expect(page.locator("h1")).toContainText("Reopened");
+  await expect(page.getByTestId("timeline")).toContainText("Case reopened by a clinician");
 });
 
 test("patient: acknowledge, Arabic RTL, call-back request, consent", async ({ page }) => {

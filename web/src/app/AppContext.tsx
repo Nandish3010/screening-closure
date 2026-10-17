@@ -19,7 +19,7 @@ export interface AppState {
 
 const Ctx = createContext<AppState | null>(null);
 
-function readRole(): Role | null {
+export function readRole(): Role | null {
   try {
     const r = localStorage.getItem(ROLE_KEY) as Role | null;
     return r && ROLES.includes(r) ? r : null;
@@ -32,6 +32,12 @@ export function AppProvider({ api, children, initialRole }: { api: ApiClient; ch
   const [role, setRoleState] = useState<Role>(initialRole ?? readRole() ?? "coordinator");
   const [me, setMe] = useState<Me | null>(null);
   const [simTime, setSimTime] = useState<string | null>(null);
+
+  // Log in as the chosen role (http: POST /auth/dev-login, then the bearer token rides on every request;
+  // mock: no-op). Runs on mount and on every role switch; the adapter makes requests wait for it.
+  useEffect(() => {
+    api.login(role, DEFAULT_NAMES[role]).catch(() => undefined);
+  }, [api, role]);
 
   useEffect(() => {
     let live = true;
@@ -68,7 +74,7 @@ export function AppProvider({ api, children, initialRole }: { api: ApiClient; ch
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
 
-const DEFAULT_NAMES: Record<Role, string> = {
+export const DEFAULT_NAMES: Record<Role, string> = {
   coordinator: "Maryam Al Suwaidi",
   owner: "Dr. Layla Haddad",
   specialist: "Dr. Karim Nasser",
@@ -93,7 +99,10 @@ export const PERMISSIONS = {
   draft: ["coordinator", "owner"],
   approve: ["coordinator", "owner"],
   recordResult: ["coordinator", "owner", "specialist"],
+  acceptEscalation: ["coordinator", "owner"],
+  markLostContact: ["coordinator", "owner"],
   signOff: ["clinician"],
+  reopen: ["clinician"],
 } as const satisfies Record<string, Role[]>;
 
 export function can(role: Role, action: keyof typeof PERMISSIONS): boolean {

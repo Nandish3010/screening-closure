@@ -4,7 +4,9 @@ import { useApp } from "../app/AppContext";
 import type { CaseSummary } from "../api/contract";
 import { MAIN_STATES } from "../api/contract";
 import { DEFAULT_FILTERS, UNOWNED, ownersOf, worklist, type WorklistFilters } from "../lib/worklist";
-import { fmtDate, shortId, titleCase } from "../lib/format";
+import { fmtDate, fmtDateTime, shortId, titleCase } from "../lib/format";
+import { overdueInfo } from "../lib/derive";
+import { WatchdogMarker } from "../components/WatchdogMarker";
 
 export function StatePill({ state }: { state: string }) {
   return <span className={`pill pill-${state}`}>{titleCase(state)}</span>;
@@ -24,7 +26,12 @@ export function CoordinatorPage() {
     };
   }, [api, simTime]);
 
-  const rows = useMemo(() => (cases ? worklist(cases, filters) : []), [cases, filters]);
+  // "Now" for overdue days: the sim clock; if it is unavailable, the newest event on any case.
+  const now = useMemo(
+    () => simTime ?? (cases ?? []).reduce<string | null>((m, c) => (m === null || c.last_event_at > m ? c.last_event_at : m), null),
+    [simTime, cases],
+  );
+  const rows = useMemo(() => (cases ? worklist(cases, filters, now) : []), [cases, filters, now]);
   const owners = useMemo(() => ownersOf(cases ?? []), [cases]);
   const set = (p: Partial<WorklistFilters>) => setFilters((f) => ({ ...f, ...p }));
 
@@ -64,23 +71,30 @@ export function CoordinatorPage() {
           <div className="table-wrap">
             <table className="worklist" data-testid="worklist">
               <thead>
-                <tr><th>Case</th><th>State</th><th>Owner</th><th>SLA due</th><th>Overdue</th><th>Risk</th></tr>
+                <tr><th>Case</th><th>State</th><th>Owner</th><th>Due</th><th>Overdue</th><th>Escalation</th><th>Flags</th><th>Last activity</th><th>Risk</th></tr>
               </thead>
               <tbody>
                 {rows.map((c) => {
-                  const od = c.overdue_days ?? 0;
+                  const od = overdueInfo(c, now);
                   return (
-                    <tr key={c.case_id} data-testid="worklist-row" className={od > 0 ? "row-overdue" : ""}>
+                    <tr key={c.case_id} data-testid="worklist-row" className={`${od.overdue ? "row-overdue" : ""} ${c.watchdog_flagged ? "row-watchdog" : ""}`.trim()}>
                       <td data-label="Case"><Link to={`/coordinator/${c.case_id}`}>{shortId(c.case_id)}</Link></td>
                       <td data-label="State"><StatePill state={c.state} /></td>
                       <td data-label="Owner">{c.owner ?? <span className="muted">Unowned</span>}</td>
-                      <td data-label="SLA due">{fmtDate(c.sla_due_at)}</td>
-                      <td data-label="Overdue">{od > 0 ? <span className="chip chip-bad">{od} day{od === 1 ? "" : "s"}</span> : <span className="muted">-</span>}</td>
+                      <td data-label="Due">{fmtDate(c.due_at)}</td>
+                      <td data-label="Overdue">{od.overdue ? <span className="chip chip-bad">{od.days > 0 ? `${od.days} day${od.days === 1 ? "" : "s"}` : "overdue"}</span> : <span className="muted">-</span>}</td>
+                      <td data-label="Escalation">{c.escalation_level > 0 ? <span className="chip chip-warn" title={`Escalation level ${c.escalation_level} of 3`}>Level {c.escalation_level}</span> : <span className="muted">-</span>}</td>
+                      <td data-label="Flags">
+                        {c.watchdog_flagged && <WatchdogMarker flag={c.watchdog_flagged} compact />}
+                        {c.consent_frozen && <span className="chip chip-warn" title="Patient consent is frozen: do not contact the patient">Consent frozen</span>}
+                        {!c.watchdog_flagged && !c.consent_frozen && <span className="muted">-</span>}
+                      </td>
+                      <td data-label="Last activity">{fmtDateTime(c.last_event_at)}</td>
                       <td data-label="Risk"><RiskBar value={c.risk_score} /></td>
                     </tr>
                   );
                 })}
-                {rows.length === 0 && <tr><td colSpan={6}>No cases match these filters.</td></tr>}
+                {rows.length === 0 && <tr><td colSpan={9}>No cases match these filters.</td></tr>}
               </tbody>
             </table>
           </div>

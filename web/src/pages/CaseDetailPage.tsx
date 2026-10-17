@@ -1,20 +1,23 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { can, useApp } from "../app/AppContext";
-import type { CaseDetail, CaseTimeline, ContactChannel, TimelineItem } from "../api/contract";
+import type { CaseDetail, CaseTimeline, ContactChannel, EscalationRung, TimelineItem } from "../api/contract";
 import { ApiError, PROVIDERS } from "../api/contract";
 import { ActionButton } from "../components/ActionButton";
 import { DraftsPanel } from "../components/DraftsPanel";
 import { SignOffPanel } from "../components/SignOffPanel";
 import { Timeline } from "../components/Timeline";
-import { consentState, drafts as draftsOf, handoffs, hasCallbackPending, rejectionReasons } from "../lib/derive";
+import {
+  consentState, drafts as draftsOf, handoffs, hasCallbackPending, lostContact, overdueInfo, pendingEscalation, rejectionReasons,
+} from "../lib/derive";
 import { fmtDateTime, titleCase } from "../lib/format";
-import { ESCALATION_LADDER, NOTIFY_LABEL } from "../lib/pathway";
+import { ESCALATION_LADDER, RUNG_LABEL, handoffReasonLabel } from "../lib/pathway";
+import { WatchdogMarker, watchdogDetail } from "../components/WatchdogMarker";
 import { RiskBar, StatePill } from "./CoordinatorPage";
 
 export function CaseDetailPage() {
   const { caseId = "" } = useParams();
-  const { api, role, actor, actorName, refreshSim } = useApp();
+  const { api, role, actor, actorName, refreshSim, simTime } = useApp();
   const [detail, setDetail] = useState<CaseDetail | null>(null);
   const [timeline, setTimeline] = useState<CaseTimeline | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -23,8 +26,8 @@ export function CaseDetailPage() {
 
   // Local form state
   const [provider, setProvider] = useState<string>(PROVIDERS[0]);
-  const [note, setNote] = useState("");
-  const [notify, setNotify] = useState("owner_supervisor");
+  const [rung, setRung] = useState<EscalationRung>("supervisor");
+  const [reopenReason, setReopenReason] = useState("");
   const [channel, setChannel] = useState<ContactChannel>("phone");
   const [appointment, setAppointment] = useState("");
   const [resultRef, setResultRef] = useState("");
@@ -69,6 +72,8 @@ export function CaseDetailPage() {
   const handoffList = useMemo(() => handoffs(events), [events]);
   const rejections = useMemo(() => rejectionReasons(events), [events]);
   const consent = useMemo(() => consentState(events), [events]);
+  const pendingEsc = useMemo(() => pendingEscalation(events), [events]);
+  const lost = useMemo(() => lostContact(events), [events]);
 
   if (!detail) {
     return (
@@ -82,12 +87,16 @@ export function CaseDetailPage() {
   const { state } = detail;
   const breach = timeline?.items.find((i): i is Extract<TimelineItem, { kind: "sla_breach" }> => i.kind === "sla_breach");
   const closed = state === "closed";
-  const od = detail.overdue_days ?? 0;
+  const od = overdueInfo(detail, timeline?.sim_time ?? simTime);
+  const frozen = detail.consent_frozen;
+  const frozenWhy = frozen ? "Patient consent is frozen. Do not contact the patient until consent is re-confirmed." : null;
+  const watchdog = detail.watchdog_flagged ?? null;
   const why = (action: Parameters<typeof can>[1], who: string) =>
     can(role, action) ? null : `Your role (${role}) cannot do this. Switch the role to ${who}.`;
   const closedWhy = closed ? "This case is closed." : null;
   const ownerRole = role === "owner" ? "Primary care physician" : "Care coordinator";
-  const escalateRungs = ESCALATION_LADDER.filter((r) => r.action === "escalate");
+  const escalateRungs = ESCALATION_LADDER.filter((r) => r.rung !== "reminder");
+  const rungTarget = ESCALATION_LADDER.find((r) => r.rung === rung)?.target_role ?? rung;
   const pendingApprovedDraft = draftList.find((d) => d.approved_by);
 
   return (
@@ -97,23 +106,33 @@ export function CaseDetailPage() {
 
       <dl className="facts">
         <div><dt>Owner</dt><dd>{detail.owner ?? "Unowned"}</dd></div>
-        <div><dt>SLA clock</dt><dd data-testid="sla-clock">{closed ? "Closed" : detail.sla_due_at ? <>Due {fmtDateTime(detail.sla_due_at)}{od > 0 ? <> · <span className="chip chip-bad">{od} day{od === 1 ? "" : "s"} overdue</span></> : " · on track"}</> : "No SLA for this step"}</dd></div>
+        <div><dt>SLA clock</dt><dd data-testid="sla-clock">{closed ? "Closed" : detail.due_at ? <>Due {fmtDateTime(detail.due_at)}{od.overdue ? <> · <span className="chip chip-bad">{od.days > 0 ? `${od.days} day${od.days === 1 ? "" : "s"} overdue` : "overdue"}</span></> : " · on track"}</> : "No SLA for this step"}</dd></div>
+        <div><dt>Escalation</dt><dd data-testid="escalation-level">{detail.escalation_level > 0 ? <>Level {detail.escalation_level} of 3{pendingEsc ? " · waiting for a human to accept" : ""}</> : "None"}</dd></div>
         <div><dt>Risk (orders list only)</dt><dd><RiskBar value={detail.risk_score} /></dd></div>
-        <div><dt>Consent</dt><dd data-testid="consent-state">{consent.updated_at ? <>Contact by {consent.channel}; {consent.share_with_specialist ? "may share with specialist" : "sharing with specialist not allowed"} <span className="muted">(updated {fmtDateTime(consent.updated_at)})</span></> : "Not recorded yet"}</dd></div>
+        <div><dt>Consent</dt><dd data-testid="consent-state">{frozen && <><span className="chip chip-warn">Frozen</span>{" "}</>}{consent.updated_at ? <>Contact by {consent.channel}; {consent.share_with_specialist ? "may share with specialist" : "sharing with specialist not allowed"} <span className="muted">(updated {fmtDateTime(consent.updated_at)})</span></> : "Not recorded yet"}</dd></div>
       </dl>
 
-      {od > 0 && !closed && (
-        <p className="banner banner-bad" role="status">
-          This case is {od} day{od === 1 ? "" : "s"} past its SLA{breach ? ` (${titleCase(breach.sla)})` : ""}. See the timeline for the escalation ladder.
+      {watchdog && !closed && (
+        <p className="banner banner-watchdog" role="alert" data-testid="watchdog-banner">
+          <WatchdogMarker flag={watchdog} /> {watchdogDetail(watchdog)} Someone needs to take it.
         </p>
       )}
+      {od.overdue && !closed && (
+        <p className="banner banner-bad" role="status">
+          This case is {od.days > 0 ? `${od.days} day${od.days === 1 ? "" : "s"}` : "now"} past its SLA{breach ? ` (${titleCase(breach.sla)})` : ""}. See the timeline for the escalation ladder.
+        </p>
+      )}
+      {frozen && !closed && (
+        <p className="banner banner-warn" role="status" data-testid="consent-frozen-banner">Patient consent is frozen. Contacting the patient and sending messages are disabled until consent is re-confirmed.</p>
+      )}
+      {lost && !closed && <p className="banner banner-warn" role="status" data-testid="lost-contact-banner">This case is marked as lost contact. Recording a new patient contact clears it.</p>}
       {hasCallbackPending(events) && (
         <p className="banner banner-warn" role="status" data-testid="callback-banner">The patient asked for a call-back ("I don't understand this"). Please phone them.</p>
       )}
       {rejections.length > 0 && (
         <section className="banner banner-warn" aria-label="Hand-off rejections" data-testid="rejections">
           <strong>Hand-off rejected</strong>
-          <ul>{rejections.map((r, i) => <li key={i}>{r.provider}: {r.reason} <span className="muted">({fmtDateTime(r.at)})</span></li>)}</ul>
+          <ul>{rejections.map((r, i) => <li key={i}>{r.provider}: {handoffReasonLabel(r.reason)} <span className="muted">({fmtDateTime(r.at)})</span></li>)}</ul>
         </section>
       )}
       {error && <p className="banner banner-bad" role="alert">{error}</p>}
@@ -128,7 +147,7 @@ export function CaseDetailPage() {
                 Acknowledge result
               </ActionButton>
             )}
-            {state === "acknowledged" && (
+            {(state === "acknowledged" || state === "reopened") && (
               <ActionButton primary testId="accept-ownership" busy={busy} disabledReason={why("accept", "coordinator or owner")} onClick={() => act(() => post("accept_ownership", { owner: actorName, owner_role: ownerRole }), "You now own this case.")}>
                 Accept ownership
               </ActionButton>
@@ -140,7 +159,7 @@ export function CaseDetailPage() {
                     <option value="phone">Phone call</option><option value="sms">Text message</option><option value="whatsapp">WhatsApp</option>
                   </select>
                 </label>
-                <ActionButton primary testId="contact-patient" busy={busy} disabledReason={why("contact", "coordinator or owner")} onClick={() => act(() => post("contact_patient", { channel, ...(pendingApprovedDraft ? { draft_id: pendingApprovedDraft.draft_id } : {}) }), "Patient contact recorded.")}>
+                <ActionButton primary testId="contact-patient" busy={busy} disabledReason={frozenWhy ?? why("contact", "coordinator or owner")} onClick={() => act(() => post("contact_patient", { channel, ...(pendingApprovedDraft ? { draft_id: pendingApprovedDraft.draft_id } : {}) }), "Patient contact recorded.")}>
                   Record patient contacted
                 </ActionButton>
                 <p className="muted">{pendingApprovedDraft ? "An approved draft will be linked to this contact." : "Tip: request and approve a draft message first."}</p>
@@ -176,8 +195,30 @@ export function CaseDetailPage() {
                 }
               />
             )}
-            {closed && <p>This case is closed. The audit trail below is final.</p>}
+            {closed && <p>This case is closed. The audit trail below is final unless a clinician reopens it.</p>}
+            {state === "reopened" && <p className="muted">This case was reopened by a clinician. A new owner needs to accept it.</p>}
+            {!closed && (
+              <ActionButton testId="mark-lost-contact" busy={busy} disabledReason={lost ? "Already marked as lost contact." : why("markLostContact", "coordinator or owner")} onClick={() => act(() => post("mark_lost_contact", {}), "Marked as lost contact.")}>
+                Mark patient as lost contact
+              </ActionButton>
+            )}
           </section>
+
+          {closed && (
+            <section className="panel" aria-labelledby="reopen-h" data-testid="reopen-panel">
+              <h3 id="reopen-h">Reopen case</h3>
+              <p className="muted">Only a clinician can reopen a closed case. The reason goes on the audit trail.</p>
+              <label className="field"><span>Reason for reopening</span><input value={reopenReason} onChange={(e) => setReopenReason(e.target.value)} placeholder="New finding on the colonoscopy report" /></label>
+              <ActionButton
+                testId="reopen"
+                busy={busy}
+                disabledReason={why("reopen", "clinician") ?? (reopenReason.trim() ? null : "Enter the reason for reopening first.")}
+                onClick={() => act(async () => { await post("reopen", { reason: reopenReason.trim() }); setReopenReason(""); }, "Case reopened.")}
+              >
+                Reopen case
+              </ActionButton>
+            </section>
+          )}
 
           <section className="panel" aria-labelledby="ho-h">
             <h3 id="ho-h">Hand off to provider</h3>
@@ -186,13 +227,13 @@ export function CaseDetailPage() {
                 {PROVIDERS.map((p) => <option key={p}>{p}</option>)}
               </select>
             </label>
-            <ActionButton testId="hand-off" busy={busy} disabledReason={closedWhy ?? why("handOff", "coordinator or owner")} onClick={() => act(() => post("hand_off", { to_provider: provider }), "Hand-off requested.")}>
+            <ActionButton testId="hand-off" busy={busy} disabledReason={closedWhy ?? why("handOff", "coordinator or owner")} onClick={() => act(() => post("handoff_requested", { to_provider: provider }), "Hand-off requested.")}>
               Request hand-off
             </ActionButton>
             {handoffList.length > 0 && (
               <ul className="plain">
                 {handoffList.map((h, i) => (
-                  <li key={i}>{h.provider}: <span className={`chip ${h.status === "rejected" ? "chip-bad" : h.status === "accepted" ? "chip-ok" : ""}`}>{h.status}</span>{h.reason ? ` - ${h.reason}` : ""}</li>
+                  <li key={i}>{h.provider}: <span className={`chip ${h.status === "rejected" ? "chip-bad" : h.status === "accepted" ? "chip-ok" : ""}`}>{h.status}</span>{h.reason ? ` - ${handoffReasonLabel(h.reason)}` : ""}</li>
                 ))}
               </ul>
             )}
@@ -201,23 +242,30 @@ export function CaseDetailPage() {
           <section className="panel" aria-labelledby="esc-h">
             <h3 id="esc-h">Escalate</h3>
             <label className="field"><span>Escalate to</span>
-              <select value={notify} onChange={(e) => setNotify(e.target.value)}>
-                {escalateRungs.map((r) => <option key={r.notify} value={r.notify}>{NOTIFY_LABEL[r.notify]} (after {r.after_breach_days} days)</option>)}
+              <select value={rung} onChange={(e) => setRung(e.target.value as EscalationRung)}>
+                {escalateRungs.map((r) => <option key={r.rung} value={r.rung}>{RUNG_LABEL[r.rung]} (after {r.after_breach_days} days)</option>)}
               </select>
             </label>
-            <label className="field"><span>Note (optional)</span><input value={note} onChange={(e) => setNote(e.target.value)} /></label>
-            <ActionButton testId="escalate" busy={busy} disabledReason={closedWhy ?? why("escalate", "coordinator or owner")} onClick={() => act(() => post("escalate", { notify, ...(note.trim() ? { note: note.trim() } : {}) }), `Escalated to ${NOTIFY_LABEL[notify]}.`)}>
+            <ActionButton testId="escalate" busy={busy} disabledReason={closedWhy ?? why("escalate", "coordinator or owner")} onClick={() => act(() => post("escalate", { rung, target_role: rungTarget }), `Escalated to ${RUNG_LABEL[rung]}.`)}>
               Escalate
             </ActionButton>
+            {pendingEsc && !closed && (
+              <div data-testid="pending-escalation">
+                <p className="muted">Escalated to {RUNG_LABEL[pendingEsc.rung as EscalationRung] ?? pendingEsc.rung} on {fmtDateTime(pendingEsc.at)}. Waiting for a human to accept it.</p>
+                <ActionButton testId="accept-escalation" busy={busy} disabledReason={why("acceptEscalation", "coordinator or owner")} onClick={() => act(() => post("escalation_accepted", { rung: pendingEsc.rung }), "Escalation accepted.")}>
+                  Accept escalation
+                </ActionButton>
+              </div>
+            )}
           </section>
 
           <DraftsPanel
             drafts={draftList}
             busy={busy}
-            canRequest={!closed && can(role, "draft")}
-            canApprove={can(role, "approve")}
-            requestWhy={closedWhy ?? why("draft", "coordinator or owner")}
-            approveWhy={why("approve", "coordinator or owner")}
+            canRequest={!closed && !frozen && can(role, "draft")}
+            canApprove={!frozen && can(role, "approve")}
+            requestWhy={closedWhy ?? frozenWhy ?? why("draft", "coordinator or owner")}
+            approveWhy={frozenWhy ?? why("approve", "coordinator or owner")}
             onRequest={() => act(() => api.requestDraft(caseId, actor), "Draft generated. A human must approve it before it is used.")}
             onApprove={(id) => act(() => api.approveDraft(id, actorName), "Draft approved.")}
           />

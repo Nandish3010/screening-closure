@@ -28,22 +28,37 @@ make web-e2e            # Playwright (headless, mock adapter via `vite preview`)
 - **mock**: the whole API in the browser, seeded from `src/api/fixtures.ts` (12 synthetic cases, sim clock fixed at 2026-11-04 09:00 UTC). It mirrors the engine's rules (state transitions, closure needs `evidence_ref` + `signed_by`, no automated closer) and persists to `localStorage`, so the coordinator and patient views in two tabs see each other. Header button "Reset demo" restores the seed. This is the offline demo fallback.
 - **http**: the real API at `VITE_API_URL` (default `http://localhost:8000`):
   `VITE_API_ADAPTER=http VITE_API_URL=http://localhost:8000 npm run dev`.
-  Endpoints that the backend has not shipped yet degrade: `/me` 404 -> coordinator, `/cases/{id}/timeline` 404 -> events from `GET /cases/{id}`, SLA fields borrowed from the `GET /cases` row. Drafts and metrics need the pending endpoints. The API needs CORS for the web origin when run from a different port.
+  Endpoints that the backend has not shipped yet degrade: `/me` 404 -> coordinator, `/cases/{id}/timeline` 404 -> events from `GET /cases/{id}`, `POST /auth/dev-login` 404 -> no token. Read-model fields a row lacks (`owner`, `due_at`, `overdue`, `escalation_level`, `consent_frozen`, `last_event_at`) get safe defaults, or are derived from the event log on `GET /cases/{id}`. Drafts and metrics need the pending endpoints. The API needs CORS for the web origin (including the `Authorization` header) when run from a different port.
+
+### Auth (http adapter)
+
+The backend requires `Authorization: Bearer <token>`. The token comes from `POST /auth/dev-login {role, name}` (response `{access_token, token_type}`; `{token}` is also accepted). The http adapter logs in before the first render (as the remembered role, default coordinator), **again on every role switch in the header**, and once more if a request gets a 401 (then it retries that request once). Requests issued during a switch wait for the new token. The names used are the demo users in `AppContext.tsx` (`DEFAULT_NAMES`); the actor string posted with events is `role:name`. The mock adapter ignores auth (`login` is a no-op).
 
 No external network calls at runtime: fonts are bundled (Noto Sans Arabic via `@fontsource`, bundled by Vite), everything else is the system font stack.
 
 ## The contract
 
-`src/api/contract.ts` is the single source of truth: every request/response shape, the event vocabulary, payload conventions, and `BACKEND:` notes. Both adapters implement `ApiClient`. Key points for the backend:
+`src/api/contract.ts` is the single source of truth: every request/response shape, the event vocabulary, payload conventions, and `BACKEND:` notes. Both adapters implement `ApiClient`. Key points for the backend (event names and payloads follow the engine's canonical vocabulary, ticket A2):
 
-- Events the UI posts that are **not** state transitions (`hand_off`, `hand_off_accepted|rejected`, `escalate`, `callback_requested`, `consent_updated`, `draft_generated`, `draft_approved`) must be appended without changing state. Today the engine answers 409 to any non-transition event.
-- `POST /cases/{id}/drafts` and `POST /drafts/{id}/approve` should also write `draft_generated` / `draft_approved` events so provenance appears in the timeline; include the draft texts in the `draft_generated` payload.
-- `GET /cases?owner=&overdue=true` and the extra summary fields (`owner`, `sla_due_at`, `overdue_days`, `risk_score`). The UI re-filters and re-sorts client side, so a backend that ignores the filters still works.
+- **Events the UI posts** that are not main-path transitions must be appended without changing state: `handoff_requested {to_provider}`, `escalate {rung: reminder|supervisor|coordinator, target_role}`, `escalation_accepted {rung}` (payload not specified in the ticket; the UI sends the rung), `callback_requested`, `consent_updated`, `mark_lost_contact {}`, and `reopen {reason}` (clinician only, closed cases only).
+- **Events the backend writes** and the UI only displays: `handoff_accepted`, `handoff_rejected {reason: capacity|wrong_service|missing_info|patient_declined}`, `message_drafted {draft_id, provider, fallback_used, text_ar, text_en}`, `message_approved {draft_id}` followed by `message_sent {draft_id}`, `mark_overdue {state, due_at}`, `watchdog_flagged {reason: idle|scheduler_down, idle_days?}`. `POST /cases/{id}/drafts` writes `message_drafted` (with the texts, so a pending draft survives a reload); `POST /drafts/{id}/approve` writes `message_approved`, then the backend emits `message_sent`. The UI says "approved, not sent yet" until `message_sent` arrives.
+- **Read model** on `GET /cases` and `GET /cases/{id}`: `owner`, `due_at` (was `sla_due_at`), `overdue` (bool), `escalation_level` (0-3), `consent_frozen` (bool), `last_event_at`, optional `risk_score`. `overdue_days` is gone: the UI computes it from `due_at` and the sim clock. `GET /cases?owner=&overdue=true` filters are optional (the UI re-filters and re-sorts client side).
+- **Asked of the backend, not in the A2 list**: an optional `watchdog_flagged: {reason, idle_days?, at}` on the `GET /cases` rows, so the worklist can show the red "Nobody is looking at this" marker. Without it the worklist shows no marker; the case page derives it from the events either way.
+- **Actors** are `role:name` (`coordinator:amal`, `clinician:dr_ali`, `system:scheduler`, `model:drafter`) or a bare `watchdog`. `system`, `model`, `watchdog` and `scheduler` are shown with an "automated" chip. Only the clinician role can sign off or reopen; no automated actor can close.
 - Sign-off posts `clinician_review` (only if the case is still at `confirmatory_completed`) then `close` with `{evidence_ref, signed_by}`.
+
+### What the UI shows for the new vocabulary
+
+- **Overdue**: the worklist and case page use `overdue` + `due_at`. If a server omits `overdue`, `GET /cases/{id}` derives it from the latest `mark_overdue` that no later state change has superseded.
+- **Watchdog**: `watchdog_flagged` renders as a red "Nobody is looking at this" chip in the worklist, a banner on the case page and a red timeline entry. It clears when a state change or a human event follows.
+- **Escalation**: `escalation_level` shows as "Level N" in the worklist. An `escalate` stays "waiting for a human" until `escalation_accepted`; the case page has an Accept escalation button (coordinator/owner).
+- **Consent frozen**: chip in the worklist, banner on the case page; "Record patient contacted" and the draft buttons are disabled with the reason. (The mock freezes consent on a `consent_updated` with `withdrawn: true`; against the real backend `consent_frozen` is authoritative.)
+- **Reopen**: shown on closed cases only; enabled for the clinician role and needs a reason. **Mark lost contact**: coordinator/owner, any open case.
+- **Hand-off rejections** show the taxonomy reason as a label ("No capacity (no slot in time)"); an unknown code is shown as-is.
 
 ## Roles
 
-Header role switcher (coordinator / owner / specialist / clinician / patient): `GET /me` gives the default, the demo override is stored in `localStorage` (`sc.role`). Permissions are a UI mirror in `src/app/AppContext.tsx` (`PERMISSIONS`); disabled actions always say why. Only the clinician role can sign off. Real RBAC is a backend concern.
+Header role switcher (coordinator / owner / specialist / clinician / patient): `GET /me` gives the default, the demo override is stored in `localStorage` (`sc.role`) and switching logs in again (see Auth). Permissions are a UI mirror in `src/app/AppContext.tsx` (`PERMISSIONS`); disabled actions always say why. Only the clinician role can sign off. Real RBAC is a backend concern.
 
 ## Patient page, i18n and RTL
 
@@ -60,7 +75,7 @@ Header role switcher (coordinator / owner / specialist / clinician / patient): `
 
 ## Tests
 
-- `tests/` (Vitest + RTL, jsdom): mock and http adapters, worklist sort/filter, sign-off gating, Arabic toggle (`dir=rtl`, strings swap), `callback_requested`, acknowledge, consent, offline fallback, coordinator actions (escalate -> draft -> approve), i18n completeness.
-- `e2e/flows.spec.ts` (Playwright): overdue case -> escalate -> request draft -> approve -> clinician sign-off; patient flow; dashboard + badge on every page; PWA manifest + offline reload.
+- `tests/` (Vitest + RTL, jsdom): mock and http adapters, worklist sort/filter (days overdue computed from `due_at`), derivations (actors, overdue marker, watchdog, escalation, drafts, hand-offs), http auth (login, token swap on role switch, 401 retry), sign-off gating, Arabic toggle (`dir=rtl`, strings swap), `callback_requested`, acknowledge, consent, offline fallback, coordinator actions (escalate -> draft -> approve -> sent, accept escalation, watchdog and automated chips, frozen consent, mark lost contact, reopen), i18n completeness.
+- `e2e/flows.spec.ts` (Playwright): overdue case -> escalate -> request draft -> approve -> sent -> clinician sign-off; watchdog marker; clinician-only reopen; patient flow; dashboard + badge on every page; PWA manifest + offline reload.
 - Playwright does not need a download if a Chromium headless shell is already in `~/Library/Caches/ms-playwright` (`playwright.config.ts` picks the newest one; override with `PW_CHROMIUM_PATH`). Otherwise `npx playwright install chromium`.
 - Screenshots: `SCREENSHOTS=1 npx playwright test e2e/screenshots.spec.ts` writes `web/screenshots/` (light and dark).

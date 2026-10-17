@@ -1,33 +1,89 @@
-/** HTTP adapter: the real API at VITE_API_URL. Degrades gracefully where endpoints are still PENDING. */
+/** HTTP adapter: the real API at VITE_API_URL, with bearer-token auth from POST /auth/dev-login. */
 import type {
   ApiClient, CaseDetail, CaseEvent, CaseListParams, CaseSummary, CaseTimeline, ClosureMetrics, Draft,
-  DraftApproval, Me, PostEventBody, TimelineItem,
+  DraftApproval, Me, PostEventBody, Role, TimelineItem,
 } from "./contract";
 import { ApiError } from "./contract";
+import { completeDetail, completeSummary } from "../lib/derive";
 
 export function createHttpAdapter(baseUrl: string, fetchImpl: typeof fetch = (...a) => fetch(...a)): ApiClient {
   const base = baseUrl.replace(/\/+$/, "");
 
-  async function request<T>(path: string, init?: RequestInit): Promise<T> {
-    let res: Response;
+  // ---- Auth state: the identity we last asked to be, its token, and the login in flight ----
+  let identity: { role: Role; name: string } | null = null;
+  let token: string | null = null;
+  let pendingLogin: Promise<void> | null = null;
+
+  async function send(path: string, init: RequestInit | undefined, bearer: string | null): Promise<Response> {
     try {
-      res = await fetchImpl(`${base}${path}`, {
+      return await fetchImpl(`${base}${path}`, {
         ...init,
-        headers: { Accept: "application/json", ...(init?.body ? { "Content-Type": "application/json" } : {}), ...init?.headers },
+        headers: {
+          Accept: "application/json",
+          ...(init?.body ? { "Content-Type": "application/json" } : {}),
+          ...(bearer ? { Authorization: `Bearer ${bearer}` } : {}),
+          ...init?.headers,
+        },
       });
     } catch (e) {
       throw new ApiError(0, `Network error: ${(e as Error).message}`);
     }
-    if (!res.ok) {
-      let msg = res.statusText;
-      try {
-        const j = await res.json();
-        msg = typeof j.detail === "string" ? j.detail : JSON.stringify(j.detail ?? j);
-      } catch {
-        /* keep statusText */
-      }
-      throw new ApiError(res.status, msg);
+  }
+
+  async function failure(res: Response): Promise<ApiError> {
+    let msg = res.statusText;
+    try {
+      const j = await res.json();
+      msg = typeof j.detail === "string" ? j.detail : JSON.stringify(j.detail ?? j);
+    } catch {
+      /* keep statusText */
     }
+    return new ApiError(res.status, msg);
+  }
+
+  /** POST /auth/dev-login. A 404 means the backend has no auth: carry on without a token. */
+  async function devLogin(who: { role: Role; name: string }): Promise<string | null> {
+    const res = await send("/auth/dev-login", { method: "POST", body: JSON.stringify(who) }, null);
+    if (res.status === 404) return null;
+    if (!res.ok) throw await failure(res);
+    const j = (await res.json()) as { access_token?: string; token?: string };
+    return j.access_token ?? j.token ?? null;
+  }
+
+  function login(role: Role, name: string): Promise<void> {
+    if (identity && identity.role === role && identity.name === name && (token || pendingLogin)) return pendingLogin ?? Promise.resolve();
+    const who = { role, name };
+    identity = who;
+    token = null;
+    const p = devLogin(who).then((t) => {
+      if (identity === who) token = t; // ignore a login that a newer role switch has superseded
+    });
+    pendingLogin = p;
+    const clear = () => {
+      if (pendingLogin === p) pendingLogin = null;
+    };
+    p.then(clear, () => {
+      clear();
+      if (identity === who) identity = null; // allow a retry
+    });
+    return p;
+  }
+
+  async function request<T>(path: string, init?: RequestInit, retried = false): Promise<T> {
+    // Requests wait for a login in flight so a role switch never races a request.
+    if (pendingLogin) await pendingLogin.catch(() => undefined);
+    const used = token;
+    const res = await send(path, init, used);
+    if (res.status === 401 && identity && !retried) {
+      // Token expired or rejected: log in again once and retry.
+      if (token === used) {
+        const who = identity;
+        identity = null;
+        await login(who.role, who.name);
+      } else if (pendingLogin) await pendingLogin.catch(() => undefined);
+      return request<T>(path, init, true);
+    }
+    if (!res.ok) throw await failure(res);
     return (await res.json()) as T;
   }
 
@@ -38,14 +94,17 @@ export function createHttpAdapter(baseUrl: string, fetchImpl: typeof fetch = (..
     return s ? `?${s}` : "";
   }
 
-  const listCases = (params: CaseListParams = {}) =>
-    request<CaseSummary[]>(
-      `/cases${qs({ state: params.state, owner: params.owner, overdue: params.overdue ? "true" : undefined })}`,
-    );
+  const listCases = async (params: CaseListParams = {}) =>
+    (
+      await request<CaseSummary[]>(
+        `/cases${qs({ state: params.state, owner: params.owner, overdue: params.overdue ? "true" : undefined })}`,
+      )
+    ).map(completeSummary);
 
   return {
     adapter: "http",
     health: () => request("/health"),
+    login,
     async me(): Promise<Me> {
       try {
         return await request<Me>("/me");
@@ -56,17 +115,7 @@ export function createHttpAdapter(baseUrl: string, fetchImpl: typeof fetch = (..
     },
     listCases,
     async getCase(id): Promise<CaseDetail> {
-      const d = await request<CaseDetail>(`/cases/${encodeURIComponent(id)}`);
-      if (d.sla_due_at === undefined) {
-        // The live GET /cases/{id} has no SLA fields yet: borrow them from the list row.
-        try {
-          const row = (await listCases()).find((c) => c.case_id === id);
-          if (row) return { ...d, owner: row.owner, sla_due_at: row.sla_due_at, overdue_days: row.overdue_days, risk_score: row.risk_score };
-        } catch {
-          /* optional */
-        }
-      }
-      return d;
+      return completeDetail(await request<CaseDetail>(`/cases/${encodeURIComponent(id)}`));
     },
     async getTimeline(id): Promise<CaseTimeline> {
       try {
@@ -79,9 +128,11 @@ export function createHttpAdapter(baseUrl: string, fetchImpl: typeof fetch = (..
         return { case_id: id, sim_time: d.events.at(-1)?.at ?? new Date().toISOString(), items };
       }
     },
-    postEvent(id, body: PostEventBody) {
+    async postEvent(id, body: PostEventBody) {
       const withKey = { event_id: globalThis.crypto?.randomUUID?.(), ...body, payload: body.payload ?? {} };
-      return request<CaseDetail>(`/cases/${encodeURIComponent(id)}/events`, { method: "POST", body: JSON.stringify(withKey) });
+      return completeDetail(
+        await request<CaseDetail>(`/cases/${encodeURIComponent(id)}/events`, { method: "POST", body: JSON.stringify(withKey) }),
+      );
     },
     requestDraft(id, requestedBy) {
       return request<Draft>(`/cases/${encodeURIComponent(id)}/drafts`, {

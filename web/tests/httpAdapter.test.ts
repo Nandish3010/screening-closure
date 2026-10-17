@@ -24,7 +24,7 @@ describe("http adapter", () => {
     expect(calls.map((c) => c.url)).toEqual(["http://api.test/cases?state=closed&owner=Sara&overdue=true", "http://api.test/cases"]);
   });
   it("posts events with a generated event_id and JSON body", async () => {
-    const detail = { case_id: "c1", state: "acknowledged", events: [], sla_due_at: null };
+    const detail = { case_id: "c1", state: "acknowledged", events: [], due_at: null };
     const { fn, calls } = fakeFetch({ "POST /cases/c1/events": { body: detail } });
     const api = createHttpAdapter("http://api.test", fn);
     const out = await api.postEvent("c1", { type: "acknowledge", actor: "coordinator:m" });
@@ -54,13 +54,24 @@ describe("http adapter", () => {
     expect(tl.items).toHaveLength(1);
     expect(tl.items[0]).toMatchObject({ kind: "event", type: "case_created" });
   });
-  it("getCase borrows SLA fields from the list row when the detail lacks them", async () => {
-    const { fn } = fakeFetch({
-      "GET /cases/c1": { body: { case_id: "c1", state: "acknowledged", events: [] } },
-      "GET /cases": { body: [{ case_id: "c1", state: "acknowledged", owner: "Sara", sla_due_at: "2026-11-01T00:00:00Z", overdue_days: 3, risk_score: 0.5 }] },
-    });
-    const d = await createHttpAdapter("http://api.test", fn).getCase("c1");
-    expect(d).toMatchObject({ owner: "Sara", overdue_days: 3 });
+  it("getCase passes the A2 read-model fields through and derives missing ones from the events", async () => {
+    const full = { case_id: "c1", state: "acknowledged", events: [], owner: "Sara", due_at: "2026-11-01T00:00:00Z", overdue: true, escalation_level: 2, consent_frozen: true, last_event_at: "2026-10-30T00:00:00Z" };
+    const bare = {
+      case_id: "c2", state: "owner_accepted", updated_at: "2026-10-05T00:00:00Z",
+      events: [
+        { seq: 1, type: "accept_ownership", at: "2026-10-01T00:00:00Z", actor: "coordinator:amal", payload: { owner: "Amal" } },
+        { seq: 2, type: "mark_overdue", at: "2026-10-04T00:00:00Z", actor: "system:scheduler", payload: { state: "owner_accepted", due_at: "2026-10-04T00:00:00Z" } },
+      ],
+    };
+    const { fn } = fakeFetch({ "GET /cases/c1": { body: full }, "GET /cases/c2": { body: bare } });
+    const api = createHttpAdapter("http://api.test", fn);
+    expect(await api.getCase("c1")).toMatchObject({ owner: "Sara", due_at: "2026-11-01T00:00:00Z", overdue: true, escalation_level: 2, consent_frozen: true });
+    expect(await api.getCase("c2")).toMatchObject({ owner: "Amal", due_at: null, overdue: true, escalation_level: 0, consent_frozen: false, last_event_at: "2026-10-04T00:00:00Z" });
+  });
+  it("listCases fills defaults on rows that lack the new fields", async () => {
+    const { fn } = fakeFetch({ "GET /cases": { body: [{ case_id: "c1", state: "acknowledged", created_at: "a", updated_at: "b" }] } });
+    const [row] = await createHttpAdapter("http://api.test", fn).listCases();
+    expect(row).toMatchObject({ owner: null, due_at: null, overdue: false, escalation_level: 0, consent_frozen: false, last_event_at: "b" });
   });
   it("uses the draft and metrics endpoints from the contract", async () => {
     const { fn, calls } = fakeFetch({
@@ -74,5 +85,85 @@ describe("http adapter", () => {
     expect((await api.closureMetrics()).p50_days).toBe(1);
     expect(JSON.parse(String(calls[0].init?.body))).toEqual({ requested_by: "m" });
     expect(JSON.parse(String(calls[1].init?.body))).toEqual({ approved_by: "m" });
+  });
+});
+
+describe("http adapter: auth", () => {
+  const tokenFor: Record<string, string> = { coordinator: "tok-coord", clinician: "tok-clin" };
+
+  /** A tiny fake backend: dev-login mints a token per role, everything else requires the bearer token. */
+  function authedFetch(opts: { devLogin404?: boolean; expireOnce?: boolean } = {}) {
+    const calls: { url: string; method: string; auth: string | null; body?: string }[] = [];
+    let expired = !!opts.expireOnce;
+    const fn = vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
+      const path = String(url).replace("http://api.test", "");
+      const headers = (init?.headers ?? {}) as Record<string, string>;
+      const auth = headers.Authorization ?? null;
+      const method = init?.method ?? "GET";
+      calls.push({ url: path, method, auth, body: init?.body as string | undefined });
+      if (path === "/auth/dev-login") {
+        if (opts.devLogin404) return new Response("{}", { status: 404 });
+        const { role } = JSON.parse(String(init?.body));
+        return new Response(JSON.stringify({ access_token: tokenFor[role], token_type: "bearer" }), { status: 200 });
+      }
+      if (expired && auth) {
+        expired = false;
+        return new Response(JSON.stringify({ detail: "token expired" }), { status: 401 });
+      }
+      if (!auth) return new Response(JSON.stringify({ detail: "Not authenticated" }), { status: 401 });
+      return new Response(JSON.stringify(path === "/me" ? { role: "x", name: "y" } : []), { status: 200 });
+    });
+    return { fn: fn as unknown as typeof fetch, calls };
+  }
+
+  it("logs in with {role, name} and attaches the bearer token to later requests", async () => {
+    const { fn, calls } = authedFetch();
+    const api = createHttpAdapter("http://api.test", fn);
+    await api.login("coordinator", "amal");
+    await api.listCases();
+    expect(calls[0]).toMatchObject({ url: "/auth/dev-login", method: "POST", auth: null });
+    expect(JSON.parse(calls[0].body!)).toEqual({ role: "coordinator", name: "amal" });
+    expect(calls[1]).toMatchObject({ url: "/cases", auth: "Bearer tok-coord" });
+  });
+  it("swaps the token on a role switch, and a request issued during the switch waits for the new token", async () => {
+    const { fn, calls } = authedFetch();
+    const api = createHttpAdapter("http://api.test", fn);
+    await api.login("coordinator", "amal");
+    void api.login("clinician", "dr_ali"); // not awaited on purpose
+    await api.listCases();
+    expect(calls.at(-1)).toMatchObject({ url: "/cases", auth: "Bearer tok-clin" });
+    expect(calls.filter((c) => c.url === "/auth/dev-login")).toHaveLength(2);
+  });
+  it("does not log in twice for the same identity", async () => {
+    const { fn, calls } = authedFetch();
+    const api = createHttpAdapter("http://api.test", fn);
+    await api.login("coordinator", "amal");
+    await api.login("coordinator", "amal");
+    expect(calls.filter((c) => c.url === "/auth/dev-login")).toHaveLength(1);
+  });
+  it("re-logs-in once and retries when a request gets a 401", async () => {
+    const { fn, calls } = authedFetch({ expireOnce: true });
+    const api = createHttpAdapter("http://api.test", fn);
+    await api.login("coordinator", "amal");
+    await expect(api.listCases()).resolves.toEqual([]);
+    expect(calls.map((c) => c.url)).toEqual(["/auth/dev-login", "/cases", "/auth/dev-login", "/cases"]);
+    expect(calls[3].auth).toBe("Bearer tok-coord");
+  });
+  it("surfaces a persistent 401 instead of looping", async () => {
+    const { fn, calls } = authedFetch();
+    const api = createHttpAdapter("http://api.test", fn); // never logged in -> no identity -> no retry
+    await expect(api.listCases()).rejects.toMatchObject({ status: 401 });
+    expect(calls).toHaveLength(1);
+  });
+  it("carries on without a token when the backend has no dev-login (404)", async () => {
+    const { fn, calls } = authedFetch({ devLogin404: true });
+    const api = createHttpAdapter("http://api.test", fn);
+    await expect(api.login("coordinator", "amal")).resolves.toBeUndefined();
+    await api.listCases().catch(() => undefined);
+    expect(calls[1].auth).toBeNull();
+  });
+  it("fails the login promise on a real dev-login error", async () => {
+    const fn = (async () => new Response(JSON.stringify({ detail: "bad role" }), { status: 422 })) as unknown as typeof fetch;
+    await expect(createHttpAdapter("http://api.test", fn).login("coordinator", "")).rejects.toMatchObject({ status: 422 });
   });
 });
