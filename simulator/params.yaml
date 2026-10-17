@@ -1,0 +1,26 @@
+# Behaviour-simulator parameters. Every value is a placeholder: source TODO, status assumed.
+acknowledgement_delay_days:
+  value: 2
+  source: TODO
+  status: assumed
+no_show_rate_by_channel:
+  sms:
+    value: 0.30
+    source: TODO
+    status: assumed
+  phone_call:
+    value: 0.20
+    source: TODO
+    status: assumed
+  letter:
+    value: 0.40
+    source: TODO
+    status: assumed
+referral_rejection_rate:
+  value: 0.05
+  source: TODO
+  status: assumed
+wrong_contact_rate:
+  value: 0.08
+  source: TODO
+  status: assumed

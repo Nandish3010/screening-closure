@@ -1,0 +1,42 @@
+pathway: colorectal_fit
+version: 0.1
+description: Positive FIT result through confirmatory colonoscopy to documented closure
+states:
+  - result_received
+  - acknowledged
+  - owner_accepted
+  - patient_contacted
+  - patient_acknowledged
+  - confirmatory_booked
+  - confirmatory_completed
+  - clinician_reviewed
+  - closed
+side_states:
+  - overdue
+  - escalated
+  - referral_rejected
+  - consent_withdrawn
+  - reopened
+  - lost_contact
+transitions:
+  - {from: result_received, event: acknowledge, to: acknowledged}
+  - {from: acknowledged, event: accept_ownership, to: owner_accepted}
+  - {from: owner_accepted, event: contact_patient, to: patient_contacted}
+  - {from: patient_contacted, event: patient_acknowledge, to: patient_acknowledged}
+  - {from: patient_acknowledged, event: book_confirmatory, to: confirmatory_booked}
+  - {from: confirmatory_booked, event: complete_confirmatory, to: confirmatory_completed}
+  - {from: confirmatory_completed, event: clinician_review, to: clinician_reviewed}
+  - {from: clinician_reviewed, event: close, to: closed, requires: [evidence_ref, signed_by]}
+slas_working_days:
+  acknowledge: 2
+  accept_ownership: 2
+  contact_patient: 5
+  patient_acknowledge: 7
+  book_confirmatory: 14
+  complete_confirmatory: 45
+  clinician_review: 5
+escalation_ladder:
+  - {after_breach_days: 0, notify: owner, action: reminder}
+  - {after_breach_days: 3, notify: owner_supervisor, action: escalate}
+  - {after_breach_days: 7, notify: programme_coordinator, action: escalate}
+closure_rule: "A case may only enter `closed` via the `close` event carrying evidence_ref and signed_by. No automated actor may emit `close`."

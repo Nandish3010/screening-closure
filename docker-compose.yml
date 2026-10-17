@@ -1,0 +1,83 @@
+# Runs fully offline on a laptop. No external network calls at demo time.
+name: screening-closure
+
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-closure}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-closure_dev_password}
+      POSTGRES_DB: ${POSTGRES_DB:-closure}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      # Runs once, on first init of an empty data volume (append-only events table).
+      - ./api/migrations:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks: [closure]
+
+  # HAPI FHIR R4. Deliberately uses HAPI's default embedded H2 database (no
+  # dependency on the postgres service) to avoid datasource config pain in Week 1.
+  # TODO: point HAPI at postgres if FHIR data must survive `make reset`.
+  fhir:
+    image: hapiproject/hapi:latest
+    ports:
+      - "8080:8080"
+    environment:
+      hapi.fhir.fhir_version: R4
+    networks: [closure]
+
+  api:
+    build: ./api
+    ports:
+      - "8000:8000"
+    env_file: .env
+    environment:
+      PATHWAY_PATH: /config/pathways/colorectal_fit.yaml
+    volumes:
+      - ./config:/config:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=2)"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks: [closure]
+
+  scheduler:
+    build: ./scheduler
+    env_file: .env
+    environment:
+      API_URL: http://api:8000
+      HEARTBEAT_PATH: /heartbeat/scheduler.json
+    volumes:
+      - heartbeat:/heartbeat
+    depends_on:
+      api:
+        condition: service_healthy
+    networks: [closure]
+
+  watchdog:
+    build: ./watchdog
+    env_file: .env
+    environment:
+      API_URL: http://api:8000
+      HEARTBEAT_PATH: /heartbeat/scheduler.json
+    volumes:
+      - heartbeat:/heartbeat:ro
+    depends_on:
+      api:
+        condition: service_healthy
+    networks: [closure]
+
+volumes:
+  pgdata:
+  heartbeat:
+
+networks:
+  closure:

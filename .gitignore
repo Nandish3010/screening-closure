@@ -1,0 +1,17 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+.hypothesis/
+*.egg-info/
+
+# Node
+node_modules/
+dist/
+
+# Env / secrets
+.env
+
+# OS
+.DS_Store
