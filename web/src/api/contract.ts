@@ -141,6 +141,9 @@ export type TransitionEvent = (typeof TRANSITION_EVENTS)[number];
  *  message_approved    payload {draft_id}                             actor: the approving human
  *                      (written only by POST /drafts/{id}/approve; the approver is the actor. It cannot
  *                      be posted to POST /cases/{id}/events: 403 for every role)
+ *  message_rejected    payload {draft_id, reason: RejectReason}       actor: the rejecting human
+ *                      (A16; written only by POST /drafts/{id}/reject, never postable: 403 for every role.
+ *                      The reason is a fixed taxonomy; the note for `other_with_note` stays on the draft row)
  *  message_sent        payload {draft_id, notification_id, channel, language, purpose}
  *                                                                     actor: "system:notifier"
  *                      (emitted by the backend AFTER message_approved. A message is never sent
@@ -189,6 +192,7 @@ export type NonTransitionEvent =
   | "consent_updated"
   | "message_drafted"
   | "message_approved"
+  | "message_rejected"
   | "message_sent"
   | "mark_overdue"
   | "watchdog_flagged"
@@ -571,19 +575,32 @@ export interface DraftApproval {
 }
 export type BlockedReason = "consent" | "contact" | "case_state";
 
+/** Fixed taxonomy for `POST /drafts/{id}/reject` and `message_rejected.reason` (A16). */
+export const REJECT_REASONS = ["inaccurate", "tone", "wrong_language", "not_needed", "other_with_note"] as const;
+export type RejectReason = (typeof REJECT_REASONS)[number];
+/** Longest note the API takes (every free-text field is capped at 200 characters, A14). */
+export const REJECT_NOTE_MAX = 200;
+
 /**
- * POST /drafts/{draft_id}/reject   body: {reason: string}  (1-500 characters)
+ * POST /drafts/{draft_id}/reject   body: {reason: RejectReason, note?: string}
  * -> 200 DraftRejection. Same roles and ownership rule as approve; allowed on a frozen case.
- * BACKEND: recorded on the draft row only (rejected_at/rejected_by/rejection_reason, also listed
- * by GET /cases/{id}/drafts). No event is written: `message_rejected` is not in the vocabulary yet
- * (ticket A16), so the timeline shows nothing for a rejection. 409 if the draft already has a
- * decision.
+ * BACKEND (A16): in one transaction the draft row gets rejected_at/rejected_by/rejection_reason and the log gets
+ * `message_rejected {draft_id, reason}` (actor: the rejecting human), so the rejection shows on the timeline.
+ * `note` is required with `other_with_note` (at most 200 characters) and refused (422) with any other reason; it is
+ * kept on the draft row only, as "other_with_note: <note>" in `rejection_reason`, never in the event.
+ * 422 for a reason outside the taxonomy (free text is not accepted); 409 if the draft already has a decision or the
+ * case is closed.
  */
+export interface DraftRejectBody {
+  reason: RejectReason;
+  note?: string;
+}
 export interface DraftRejection {
   draft_id: string;
   rejected_by: string;
   rejected_at: string;
-  reason: string;
+  reason: RejectReason;
+  note?: string | null;
 }
 
 // ---------------------------------------------------------------------------------------
@@ -716,7 +733,7 @@ export interface ApiClient {
   requestDraft(caseId: string, body: DraftRequestBody): Promise<Draft>;
   listDrafts(caseId: string): Promise<DraftRecord[]>;
   approveDraft(draftId: string): Promise<DraftApproval>;
-  rejectDraft(draftId: string, reason: string): Promise<DraftRejection>;
+  rejectDraft(draftId: string, body: DraftRejectBody): Promise<DraftRejection>;
   closureMetrics(): Promise<ClosureMetrics>;
   /** GET /alerts: active and cleared platform alerts (scheduler down). */
   listAlerts(): Promise<Alert[]>;

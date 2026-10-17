@@ -1,6 +1,6 @@
 import { useId, useState } from "react";
-import type { BlockedReason, DraftApproval, DraftChannel, DraftPurpose, DraftRequestBody, Lang } from "../api/contract";
-import { DRAFT_CHANNELS, DRAFT_PURPOSES } from "../api/contract";
+import type { BlockedReason, DraftApproval, DraftChannel, DraftPurpose, DraftRejectBody, DraftRequestBody, Lang, RejectReason } from "../api/contract";
+import { DRAFT_CHANNELS, DRAFT_PURPOSES, REJECT_NOTE_MAX, REJECT_REASONS } from "../api/contract";
 import type { DraftView } from "../lib/derive";
 import { actorName } from "../lib/derive";
 import { fmtDateTime } from "../lib/format";
@@ -14,6 +14,24 @@ const PURPOSE_LABEL: Record<DraftPurpose, string> = {
 };
 const CHANNEL_LABEL: Record<DraftChannel, string> = { sms: "Text message (SMS)", whatsapp: "WhatsApp", letter: "Letter" };
 const LANG_LABEL: Record<Lang, string> = { en: "English", ar: "Arabic (العربية)" };
+
+/** The fixed reasons for rejecting a draft (A16). `other_with_note` takes a note; no other reason does. */
+export const REJECT_LABEL: Record<RejectReason, string> = {
+  inaccurate: "Inaccurate",
+  tone: "Wrong tone",
+  wrong_language: "Wrong language",
+  not_needed: "Not needed",
+  other_with_note: "Other (add a note)",
+};
+
+/** `rejection_reason` on a draft is the taxonomy code, or `other_with_note: <note>`; show it readably. */
+export function rejectionText(stored: string | null): string {
+  if (!stored) return "";
+  const [code, ...rest] = stored.split(": ");
+  const label = REJECT_LABEL[code as RejectReason];
+  if (!label) return stored; // an older free-text reason is shown as it was written
+  return rest.length ? `${code === "other_with_note" ? "Other" : label}: ${rest.join(": ")}` : label;
+}
 
 /** Why a draft is not sent after approval (the approve answer's `blocked_reason`). */
 export const BLOCKED_TEXT: Record<BlockedReason, string> = {
@@ -52,7 +70,7 @@ export function DraftsPanel({
   busy?: boolean;
   onRequest: (body: DraftRequestBody) => void;
   onApprove: (draftId: string) => void;
-  onReject: (draftId: string, reason: string) => void;
+  onReject: (draftId: string, body: DraftRejectBody) => void;
   requestWhy?: string | null;
   /** Why the acting user cannot approve or reject (role or ownership). Shown once, inline. */
   decideWhy?: string | null;
@@ -63,7 +81,7 @@ export function DraftsPanel({
   const [purpose, setPurpose] = useState<DraftPurpose>("result_notification");
   const [channel, setChannel] = useState<DraftChannel>("sms");
   const [language, setLanguage] = useState<Lang | null>(null);
-  const [reasons, setReasons] = useState<Record<string, string>>({});
+  const [rejects, setRejects] = useState<Record<string, { reason: RejectReason | ""; note: string }>>({});
   const lang = language ?? defaultLanguage;
   const pendingCount = drafts.filter((d) => d.status === "pending").length;
 
@@ -107,7 +125,11 @@ export function DraftsPanel({
 
       <ul className="drafts">
         {drafts.map((d) => {
-          const reason = reasons[d.draft_id] ?? "";
+          const pick = rejects[d.draft_id] ?? { reason: "", note: "" };
+          const needsNote = pick.reason === "other_with_note";
+          const rejectReady = pick.reason !== "" && (!needsNote || pick.note.trim() !== "");
+          const setPick = (next: Partial<{ reason: RejectReason | ""; note: string }>) =>
+            setRejects((r) => ({ ...r, [d.draft_id]: { ...pick, ...next } }));
           const outcome = outcomes[d.draft_id];
           const blocked = outcome?.blocked_reason ?? null;
           const dir = d.language === "ar" ? "rtl" : "ltr";
@@ -154,7 +176,7 @@ export function DraftsPanel({
               )}
               {d.status === "rejected" && (
                 <p>
-                  <span className="chip chip-bad" data-testid={`rejected-${d.draft_id}`}>Rejected by {actorName(d.rejected_by ?? "") || d.rejected_by}: {d.rejection_reason}</span>
+                  <span className="chip chip-bad" data-testid={`rejected-${d.draft_id}`}>Rejected by {actorName(d.rejected_by ?? "") || d.rejected_by}: {rejectionText(d.rejection_reason)}</span>
                   <span className="muted"> {d.rejected_at ? fmtDateTime(d.rejected_at) : ""} Nothing was sent.</span>
                 </p>
               )}
@@ -173,19 +195,25 @@ export function DraftsPanel({
                   </button>
                   {canDecide && approveWhy && <span className="why" data-testid={`approve-${d.draft_id}-why`}>{approveWhy}</span>}
                   <label className="field"><span>Reason for rejecting</span>
-                    <input value={reason} disabled={!canDecide} onChange={(e) => setReasons((r) => ({ ...r, [d.draft_id]: e.target.value }))} maxLength={500} />
+                    <select value={pick.reason} disabled={!canDecide} onChange={(e) => setPick({ reason: e.target.value as RejectReason | "", note: e.target.value === "other_with_note" ? pick.note : "" })}>
+                      <option value="">Choose a reason</option>
+                      {REJECT_REASONS.map((r) => <option key={r} value={r}>{REJECT_LABEL[r]}</option>)}
+                    </select>
+                  </label>
+                  <label className="field"><span>Note (only for Other)</span>
+                    <input value={pick.note} disabled={!canDecide || !needsNote} onChange={(e) => setPick({ note: e.target.value })} maxLength={REJECT_NOTE_MAX} />
                   </label>
                   <button
                     type="button"
                     className="btn"
                     data-testid={`reject-${d.draft_id}`}
-                    disabled={!canDecide || !reason.trim() || busy}
+                    disabled={!canDecide || !rejectReady || busy}
                     aria-describedby={!canDecide ? noteId : undefined}
-                    onClick={() => onReject(d.draft_id, reason.trim())}
+                    onClick={() => pick.reason && onReject(d.draft_id, needsNote ? { reason: pick.reason, note: pick.note.trim() } : { reason: pick.reason })}
                   >
                     Reject draft
                   </button>
-                  {canDecide && !reason.trim() && <span className="why" data-testid={`reject-${d.draft_id}-why`}>Enter the reason for rejecting this draft first.</span>}
+                  {canDecide && !rejectReady && <span className="why" data-testid={`reject-${d.draft_id}-why`}>{needsNote ? "Add a note for this reason first." : "Choose the reason for rejecting this draft first."}</span>}
                 </div>
               )}
             </li>

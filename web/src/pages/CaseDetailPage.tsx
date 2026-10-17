@@ -430,7 +430,7 @@ export function CaseDetailPage() {
               },
               (r) => (r.sent === false ? `Draft approved but blocked: ${r.blocked_reason ?? "not sent"}. Nothing was sent.` : "Draft approved and sent."),
             )}
-            onReject={(id, reason) => act(() => api.rejectDraft(id, reason), "Draft rejected. Nothing was sent.")}
+            onReject={(id, body) => act(() => api.rejectDraft(id, body), "Draft rejected. Nothing was sent.")}
           />
         </div>
 

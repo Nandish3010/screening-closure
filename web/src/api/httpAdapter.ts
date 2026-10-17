@@ -245,10 +245,11 @@ export function createHttpAdapter(baseUrl: string, fetchImpl: typeof fetch = (..
       // No body: the approver is the bearer token's identity.
       return request<DraftApproval>(`/drafts/${encodeURIComponent(draftId)}/approve`, { method: "POST" });
     },
-    rejectDraft(draftId, reason) {
+    rejectDraft(draftId, body) {
+      // {reason, note?}: the reason is the fixed taxonomy; the note goes only with other_with_note (A16).
       return request<DraftRejection>(`/drafts/${encodeURIComponent(draftId)}/reject`, {
         method: "POST",
-        body: JSON.stringify({ reason }),
+        body: JSON.stringify(body.note ? { reason: body.reason, note: body.note } : { reason: body.reason }),
       });
     },
     async listAlerts(): Promise<Alert[]> {

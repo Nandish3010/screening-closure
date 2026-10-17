@@ -25,6 +25,7 @@ const EVENT_LABEL: Record<string, string> = {
   review_requested: "Flagged for human review (consent withdrawn)",
   message_drafted: "AI draft generated",
   message_approved: "Draft approved by a human",
+  message_rejected: "Draft rejected by a human",
   message_sent: "Message sent to the patient",
   mark_overdue: "Marked overdue by the scheduler",
   watchdog_flagged: WATCHDOG_TEXT,

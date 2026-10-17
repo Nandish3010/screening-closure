@@ -81,19 +81,22 @@ describe("http adapter", () => {
       "GET /cases/c1/drafts": { body: [{ ...draft, case_id: "c1" }] },
       "POST /drafts/d1/approve": { body: { draft_id: "d1", approved_by: "primary_care_owner:m", approved_at: "t", sent: false, blocked_reason: "consent", notification_id: "n1" } },
       "POST /drafts/d2/reject": { body: { draft_id: "d2", rejected_by: "primary_care_owner:m", rejected_at: "t", reason: "tone" } },
+      "POST /drafts/d3/reject": { body: { draft_id: "d3", rejected_by: "primary_care_owner:m", rejected_at: "t", reason: "other_with_note", note: "wrong clinic" } },
       "GET /metrics/closure": { body: { p50_days: 1, p90_days: 2, open_by_age_bucket: {}, breaches_by_provider: [], bottleneck_by_transition: [], sim_time: "t" } },
     });
     const api = createHttpAdapter("http://api.test", fn);
     expect((await api.requestDraft("c1", { purpose: "reminder", channel: "whatsapp", language: "ar" })).draft_id).toBe("d1");
     expect((await api.listDrafts("c1"))[0].case_id).toBe("c1");
     expect(await api.approveDraft("d1")).toMatchObject({ sent: false, blocked_reason: "consent" });
-    expect((await api.rejectDraft("d2", "tone")).reason).toBe("tone");
+    expect((await api.rejectDraft("d2", { reason: "tone" })).reason).toBe("tone");
+    expect(await api.rejectDraft("d3", { reason: "other_with_note", note: "wrong clinic" })).toMatchObject({ reason: "other_with_note", note: "wrong clinic" });
     expect((await api.closureMetrics()).p50_days).toBe(1);
-    // body {purpose, channel, language}: no requested_by (422); approve has no body at all; reject has {reason}
+    // body {purpose, channel, language}: no requested_by (422); approve has no body at all; reject has {reason, note?} (A16)
     expect(JSON.parse(String(calls[0].init?.body))).toEqual({ purpose: "reminder", channel: "whatsapp", language: "ar" });
     expect(calls[2].init?.body).toBeUndefined();
     expect(calls[2].init?.method).toBe("POST");
     expect(JSON.parse(String(calls[3].init?.body))).toEqual({ reason: "tone" });
+    expect(JSON.parse(String(calls[4].init?.body))).toEqual({ reason: "other_with_note", note: "wrong clinic" });
   });
   it("sends flagged=true, and degrades GET /alerts 404 to no alerts", async () => {
     const { fn, calls } = fakeFetch({ "GET /cases?flagged=true": { body: [] }, "GET /alerts": { body: [{ kind: "scheduler_down", since: "t", cleared_at: null }] } });

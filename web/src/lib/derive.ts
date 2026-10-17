@@ -416,7 +416,7 @@ export function completeDetail(raw: CaseDetail): CaseDetail {
 /** Events that annotate the log without moving the case (engine: accepted on any non-closed case). */
 export const ANNOTATION_EVENTS = [
   "handoff_requested", "handoff_accepted", "handoff_rejected", "escalate", "escalation_accepted",
-  "callback_requested", "consent_updated", "message_drafted", "message_approved", "message_sent",
+  "callback_requested", "consent_updated", "message_drafted", "message_approved", "message_rejected", "message_sent",
   "mark_overdue", "watchdog_flagged", "mark_lost_contact", "review_requested",
 ];
 
@@ -449,7 +449,7 @@ export function validateAppend(events: CaseEvent[], type: string, actor: string,
   const frozen = consentOf(events).withdrawn;
 
   if (!ctx.internal) {
-    if (["message_approved", "message_sent", "review_requested"].includes(type)) {
+    if (["message_approved", "message_rejected", "message_sent", "review_requested"].includes(type)) {
       throw new ApiError(403, `nobody may post '${type}' through the events route`);
     }
     if (isOwnerScopedActor(actor)) {

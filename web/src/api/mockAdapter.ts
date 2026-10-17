@@ -10,7 +10,7 @@ import type {
   Alert, ApiClient, CaseDetail, CaseEvent, CaseListParams, CaseSummary, CaseTimeline, ClosureMetrics, ConfirmatoryResult, Draft, DraftApproval,
   DraftRecord, DraftRejection, DraftRequestBody, Me, PostEventBody, Role, TimelineItem,
 } from "./contract";
-import { ApiError, BACKEND_ROLE, OWNER_SCOPED_ROLES, ROLES } from "./contract";
+import { ApiError, BACKEND_ROLE, OWNER_SCOPED_ROLES, REJECT_NOTE_MAX, REJECT_REASONS, ROLES } from "./contract";
 import { FIXTURE_RISK, SEED_ALERTS, SEED_METRICS, SIM_NOW, seedDrafts, seedEvents } from "./fixtures";
 import { PROVIDER_CLINICIANS, ROLE_NAMES, ROLE_PROVIDERS, backendActor } from "./identities";
 import { ESCALATION_LADDER } from "../lib/pathway";
@@ -343,21 +343,29 @@ export function createMockAdapter(storage: Pick<Storage, "getItem" | "setItem" |
       save(db);
       return { ...base, sent: true, blocked_reason: null, notification_id: notificationId };
     },
-    async rejectDraft(draftId, reason): Promise<DraftRejection> {
+    async rejectDraft(draftId, body): Promise<DraftRejection> {
       const db = load();
       const d = db.drafts[draftId];
       if (!d) throw new ApiError(404, "draft not found");
       authorizeDecision(db, d.case_id, "reject");
-      const trimmed = (reason ?? "").trim();
-      if (!trimmed || trimmed.length > 500) throw new ApiError(422, "reason must be 1-500 characters");
+      // Mirrors RejectDraft in api/app/routers/drafts.py (A16): a fixed taxonomy, a note only with other_with_note.
+      if (!(REJECT_REASONS as readonly string[]).includes(body?.reason)) {
+        throw new ApiError(422, `reason must be one of ${JSON.stringify(REJECT_REASONS)}`);
+      }
+      const note = (body.note ?? "").trim() || null;
+      if (note && note.length > REJECT_NOTE_MAX) throw new ApiError(422, `note must be at most ${REJECT_NOTE_MAX} characters`);
+      if (body.reason === "other_with_note" && !note) throw new ApiError(422, "reason other_with_note needs a note");
+      if (body.reason !== "other_with_note" && note) throw new ApiError(422, "a note is only taken with reason other_with_note");
       if (d.approved_at) throw new ApiError(409, "draft is already approved");
       if (d.rejected_at) throw new ApiError(409, "draft is already rejected");
-      // Recorded on the draft row only: the event vocabulary has no message_rejected yet (A16).
-      d.rejected_at = nextAt(db);
-      d.rejected_by = actor();
-      d.rejection_reason = trimmed;
+      const who = actor();
+      // One step, like the API: message_rejected {draft_id, reason} in the log (the note stays on the draft row) and the decision on the draft.
+      append(db, d.case_id, "message_rejected", who, { draft_id: draftId, reason: body.reason }, { internal: true });
+      d.rejected_at = must(db, d.case_id).at(-1)!.at;
+      d.rejected_by = who;
+      d.rejection_reason = note ? `${body.reason}: ${note}` : body.reason;
       save(db);
-      return { draft_id: draftId, rejected_by: d.rejected_by, rejected_at: d.rejected_at, reason: trimmed };
+      return { draft_id: draftId, rejected_by: who, rejected_at: d.rejected_at, reason: body.reason, note };
     },
     async closureMetrics(): Promise<ClosureMetrics> {
       return { ...SEED_METRICS, sim_time: SIM_NOW };

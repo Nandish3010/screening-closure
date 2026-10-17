@@ -68,7 +68,7 @@ describe("Case detail actions", () => {
     expect(evs.at(-1)?.actor).toBe("system:notifier");
   });
 
-  it("rejecting a draft needs a reason, writes no event and removes the approve button", async () => {
+  it("rejecting a draft needs a reason from the list, writes message_rejected and removes the approve button", async () => {
     const user = userEvent.setup();
     const { api } = renderWithApp(<CaseDetailPage />, { role: "owner", route: `/coordinator/${DEMO_OVERDUE_CASE_ID}`, path: "/coordinator/:caseId" });
     await screen.findByTestId("request-draft");
@@ -76,13 +76,15 @@ describe("Case detail actions", () => {
     const draftItem = await screen.findByTestId(/^draft-d-mock/);
     const reject = within(draftItem).getByRole("button", { name: /reject draft/i });
     expect(reject).toBeDisabled();
-    await user.type(within(draftItem).getByLabelText(/reason for rejecting/i), "Wrong tone for this patient");
+    await user.selectOptions(within(draftItem).getByLabelText(/reason for rejecting/i), "tone");
     expect(reject).toBeEnabled();
     const before = (await api.getCase(DEMO_OVERDUE_CASE_ID)).events.length;
     await user.click(reject);
-    await waitFor(() => expect(screen.getByTestId(/^rejected-d-mock/)).toHaveTextContent(/Wrong tone for this patient/));
+    await waitFor(() => expect(screen.getByTestId(/^rejected-d-mock/)).toHaveTextContent(/Wrong tone/));
     expect(within(screen.getByTestId(/^draft-d-mock/)).queryByRole("button", { name: /approve draft/i })).toBeNull();
-    expect((await api.getCase(DEMO_OVERDUE_CASE_ID)).events).toHaveLength(before);
+    const after = (await api.getCase(DEMO_OVERDUE_CASE_ID)).events;
+    expect(after).toHaveLength(before + 1);
+    expect(after.at(-1)).toMatchObject({ type: "message_rejected", payload: { reason: "tone" } });
   });
 
   it("shows hand-off rejection reasons", async () => {

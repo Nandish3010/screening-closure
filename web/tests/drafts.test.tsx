@@ -135,7 +135,7 @@ describe("C10: approving and rejecting", () => {
     expect(await within(item).findByTestId(/^blocked-d-mock/)).toHaveTextContent("Approved but blocked: contact");
   });
 
-  it("reject needs a reason; the draft shows who rejected it and why, and nothing is sent", async () => {
+  it("reject needs a reason from the list; the draft shows who rejected it and why, and nothing is sent", async () => {
     const user = userEvent.setup();
     const { api } = openCase(DEMO_OVERDUE_CASE_ID, "owner");
     await user.click(await screen.findByTestId("request-draft"));
@@ -143,12 +143,35 @@ describe("C10: approving and rejecting", () => {
     const reject = within(item).getByRole("button", { name: /reject draft/i });
     expect(reject).toBeDisabled();
     expect(within(item).getByTestId(/^reject-d-mock-\d+-why$/)).toHaveTextContent(/reason/i);
-    await user.type(within(item).getByLabelText("Reason for rejecting"), "Too formal for this patient");
+    const select = within(item).getByLabelText("Reason for rejecting") as HTMLSelectElement;
+    expect([...select.options].map((o) => o.value)).toEqual(["", "inaccurate", "tone", "wrong_language", "not_needed", "other_with_note"]);
+    await user.selectOptions(select, "wrong_language");
     await user.click(reject);
-    await waitFor(() => expect(within(item).getByTestId(/^rejected-d-mock/)).toHaveTextContent(/Rejected by Dr\. Layla Haddad: Too formal for this patient/));
+    await waitFor(() => expect(within(item).getByTestId(/^rejected-d-mock/)).toHaveTextContent(/Rejected by Dr\. Layla Haddad: Wrong language/));
     expect(within(item).queryByRole("button", { name: /approve draft/i })).toBeNull();
     expect(item).toHaveTextContent(/Nothing was sent/);
-    expect((await api.listDrafts(DEMO_OVERDUE_CASE_ID)).at(-1)).toMatchObject({ rejection_reason: "Too formal for this patient" });
+    expect((await api.listDrafts(DEMO_OVERDUE_CASE_ID)).at(-1)).toMatchObject({ rejection_reason: "wrong_language" });
+    expect((await api.getCase(DEMO_OVERDUE_CASE_ID)).events.at(-1)).toMatchObject({ type: "message_rejected", payload: { reason: "wrong_language" } });
+  });
+
+  it("the note box is only for Other: it is disabled otherwise, and Other cannot be sent without a note", async () => {
+    const user = userEvent.setup();
+    const { api } = openCase(DEMO_OVERDUE_CASE_ID, "owner");
+    await user.click(await screen.findByTestId("request-draft"));
+    const item = await newDraft();
+    const note = within(item).getByLabelText(/^Note/) as HTMLInputElement;
+    const reject = within(item).getByRole("button", { name: /reject draft/i });
+    expect(note).toBeDisabled();
+    await user.selectOptions(within(item).getByLabelText("Reason for rejecting"), "other_with_note");
+    expect(note).toBeEnabled();
+    expect(reject).toBeDisabled();
+    expect(within(item).getByTestId(/^reject-d-mock-\d+-why$/)).toHaveTextContent(/note/i);
+    await user.type(note, "Names the wrong clinic");
+    expect(reject).toBeEnabled();
+    await user.click(reject);
+    await waitFor(() => expect(within(item).getByTestId(/^rejected-d-mock/)).toHaveTextContent(/Rejected by Dr\. Layla Haddad: Other: Names the wrong clinic/));
+    expect((await api.getCase(DEMO_OVERDUE_CASE_ID)).events.at(-1)).toMatchObject({ type: "message_rejected", payload: { reason: "other_with_note" } });
+    expect((await api.getCase(DEMO_OVERDUE_CASE_ID)).events.at(-1)!.payload).not.toHaveProperty("note");
   });
 
   it("a coordinator sees ONE inline explanation of why they cannot approve; both buttons are disabled and linked to it", async () => {
@@ -180,7 +203,7 @@ describe("C10: approving and rejecting", () => {
     const item = await screen.findByTestId(`draft-${d.draft_id}`);
     expect(within(item).getByRole("button", { name: /approve draft/i })).toBeDisabled();
     expect(within(item).getByTestId(`approve-${d.draft_id}-why`)).toHaveTextContent(/consent is frozen/i);
-    await user.type(within(item).getByLabelText("Reason for rejecting"), "consent withdrawn");
+    await user.selectOptions(within(item).getByLabelText("Reason for rejecting"), "not_needed");
     expect(within(item).getByRole("button", { name: /reject draft/i })).toBeEnabled();
   });
 });

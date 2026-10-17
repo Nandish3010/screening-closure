@@ -188,7 +188,7 @@ describe("mock adapter: drafts and the approval gate (D4, D5)", () => {
     const d = await api.requestDraft(DEMO_PATIENT_CASE_ID, request);
     const before = (await api.getCase(DEMO_PATIENT_CASE_ID)).events.length;
     await expect(api.approveDraft(d.draft_id)).rejects.toMatchObject({ status: 403 });
-    await expect(api.rejectDraft(d.draft_id, "no")).rejects.toMatchObject({ status: 403 });
+    await expect(api.rejectDraft(d.draft_id, { reason: "not_needed" })).rejects.toMatchObject({ status: 403 });
     expect((await api.getCase(DEMO_PATIENT_CASE_ID)).events).toHaveLength(before);
   });
 
@@ -210,7 +210,7 @@ describe("mock adapter: drafts and the approval gate (D4, D5)", () => {
     expect(evs.at(-1)).toMatchObject({ actor: "system:notifier", payload: { draft_id: d.draft_id, channel: "sms", language: "en", purpose: "result_notification", notification_id: ap.notification_id } });
     expect((await api.listDrafts(DEMO_OVERDUE_CASE_ID)).at(-1)).toMatchObject({ approved_by: OWNER, rejected_at: null });
     await expect(api.approveDraft(d.draft_id)).rejects.toMatchObject({ status: 409 });
-    await expect(api.rejectDraft(d.draft_id, "late")).rejects.toMatchObject({ status: 409 });
+    await expect(api.rejectDraft(d.draft_id, { reason: "tone" })).rejects.toMatchObject({ status: 409 });
     await expect(api.approveDraft("missing")).rejects.toMatchObject({ status: 404 });
   });
 
@@ -224,16 +224,37 @@ describe("mock adapter: drafts and the approval gate (D4, D5)", () => {
     expect(types).toEqual(["message_drafted", "message_approved"]);
   });
 
-  it("reject: reason required (422), recorded on the draft, no event, then 409 on a second decision", async () => {
+  it("reject (A16): a reason from the taxonomy (422 otherwise), message_rejected in the log, the note only on the draft, then 409 on a second decision", async () => {
     await api.login("owner", "Dr. Layla Haddad", ROLE_PROVIDERS.owner);
     const d = await api.requestDraft(DEMO_OVERDUE_CASE_ID, request);
     const before = (await api.getCase(DEMO_OVERDUE_CASE_ID)).events.length;
-    await expect(api.rejectDraft(d.draft_id, "   ")).rejects.toMatchObject({ status: 422 });
-    const rej = await api.rejectDraft(d.draft_id, "Wrong tone");
-    expect(rej).toMatchObject({ draft_id: d.draft_id, rejected_by: OWNER, reason: "Wrong tone" });
-    expect((await api.getCase(DEMO_OVERDUE_CASE_ID)).events).toHaveLength(before);
-    expect((await api.listDrafts(DEMO_OVERDUE_CASE_ID)).at(-1)).toMatchObject({ rejected_by: OWNER, rejection_reason: "Wrong tone", approved_at: null });
+    for (const bad of [
+      { reason: "   " }, { reason: "Wrong tone for this patient" }, { reason: "other_with_note" }, { reason: "other_with_note", note: "  " },
+      { reason: "tone", note: "a note needs other_with_note" }, { reason: "other_with_note", note: "x".repeat(201) },
+    ]) {
+      await expect(api.rejectDraft(d.draft_id, bad as never)).rejects.toMatchObject({ status: 422 });
+    }
+    expect((await api.getCase(DEMO_OVERDUE_CASE_ID)).events).toHaveLength(before); // nothing written by a refused call
+    const rej = await api.rejectDraft(d.draft_id, { reason: "tone" });
+    expect(rej).toMatchObject({ draft_id: d.draft_id, rejected_by: OWNER, reason: "tone", note: null });
+    const evs = (await api.getCase(DEMO_OVERDUE_CASE_ID)).events;
+    expect(evs).toHaveLength(before + 1);
+    expect(evs.at(-1)).toMatchObject({ type: "message_rejected", actor: OWNER, payload: { draft_id: d.draft_id, reason: "tone" } });
+    expect(Object.keys(evs.at(-1)!.payload).sort()).toEqual(["draft_id", "reason"]); // no note, no text in the event
+    expect((await api.listDrafts(DEMO_OVERDUE_CASE_ID)).at(-1)).toMatchObject({ rejected_by: OWNER, rejection_reason: "tone", approved_at: null });
     await expect(api.approveDraft(d.draft_id)).rejects.toMatchObject({ status: 409 });
+  });
+
+  it("reject with other_with_note keeps the note on the draft row, not in the event", async () => {
+    await api.login("owner", "Dr. Layla Haddad", ROLE_PROVIDERS.owner);
+    const d = await api.requestDraft(DEMO_OVERDUE_CASE_ID, request);
+    await expect(api.rejectDraft(d.draft_id, { reason: "other_with_note", note: " wrong clinic named " })).resolves.toMatchObject({ reason: "other_with_note", note: "wrong clinic named" });
+    expect((await api.getCase(DEMO_OVERDUE_CASE_ID)).events.at(-1)).toMatchObject({ type: "message_rejected", payload: { draft_id: d.draft_id, reason: "other_with_note" } });
+    expect((await api.listDrafts(DEMO_OVERDUE_CASE_ID)).at(-1)).toMatchObject({ rejection_reason: "other_with_note: wrong clinic named" });
+  });
+
+  it("message_rejected cannot be posted through the events route (403 for every role)", async () => {
+    await expect(api.postEvent(DEMO_PATIENT_CASE_ID, { type: "message_rejected", actor: "coordinator:m", payload: { draft_id: "x", reason: "tone" } })).rejects.toMatchObject({ status: 403 });
   });
 
   it("409 when outreach is frozen (consent withdrawn) or the case is closed, and for an appointment confirmation without a date", async () => {
@@ -248,7 +269,7 @@ describe("mock adapter: drafts and the approval gate (D4, D5)", () => {
     const d = await api.requestDraft(DEMO_OVERDUE_CASE_ID, request);
     await api.postEvent(DEMO_OVERDUE_CASE_ID, { type: "consent_updated", actor: "patient:x", payload: { withdrawn: true } });
     await expect(api.approveDraft(d.draft_id)).rejects.toMatchObject({ status: 409 });
-    await expect(api.rejectDraft(d.draft_id, "consent withdrawn")).resolves.toMatchObject({ reason: "consent withdrawn" });
+    await expect(api.rejectDraft(d.draft_id, { reason: "not_needed" })).resolves.toMatchObject({ reason: "not_needed" });
   });
 });
 

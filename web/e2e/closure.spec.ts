@@ -88,9 +88,10 @@ test("a rejected draft keeps a reason, writes nothing to the patient, and the te
   await page.getByTestId("request-draft").click();
   const draft = page.getByTestId(/^draft-d-mock-/);
   await expect(draft.getByRole("button", { name: "Reject draft" })).toBeDisabled();
-  await draft.getByLabel("Reason for rejecting").fill("Wrong tone for this patient");
+  await draft.getByLabel("Reason for rejecting").selectOption("tone");
   await draft.getByRole("button", { name: "Reject draft" }).click();
-  await expect(page.getByTestId(/^rejected-d-mock-/)).toContainText("Rejected by Dr. Layla Haddad: Wrong tone for this patient");
+  await expect(page.getByTestId(/^rejected-d-mock-/)).toContainText("Rejected by Dr. Layla Haddad: Wrong tone");
+  await expect(page.getByTestId("timeline").locator('li[data-event-type="message_rejected"]')).toHaveCount(1); // A16: on the timeline
   await expect(page.getByTestId("timeline").locator('li[data-event-type="message_approved"]')).toHaveCount(1); // only the seeded one
   await expect(page.getByTestId("timeline").locator('li[data-event-type="message_sent"]')).toHaveCount(1);
   // Rejecting does not stop the owner asking for another draft.
@@ -134,7 +135,7 @@ test("a frozen draft cannot be approved by its owner, but can be rejected", asyn
   await page.goto(`/coordinator/${OVERDUE_CASE}`);
   await expect(page.getByTestId(/^approve-d-mock-\d+$/)).toBeDisabled();
   await expect(page.getByTestId(/^approve-d-mock-\d+-why$/)).toContainText("consent is frozen");
-  await page.getByLabel("Reason for rejecting").fill("Patient withdrew consent");
+  await page.getByLabel("Reason for rejecting").selectOption("not_needed");
   await expect(page.getByRole("button", { name: "Reject draft" })).toBeEnabled();
 });
 
