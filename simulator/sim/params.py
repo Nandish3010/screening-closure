@@ -21,6 +21,8 @@ from typing import Any
 import yaml
 
 LEAF_KEYS = ("value", "source", "status")
+OPTIONAL_LEAF_KEYS = ("notes",)  # free text; ignored by the simulator
+WEEKDAYS = {"mon": 0, "tue": 1, "wed": 2, "thu": 3, "fri": 4, "sat": 5, "sun": 6}
 
 
 class ParamError(ValueError):
@@ -37,6 +39,7 @@ class Param:
     value: Any
     source: str
     status: str
+    notes: str = ""
 
 
 def _walk(node: Any, prefix: str, out: dict[str, Param], origin: str) -> None:
@@ -46,7 +49,7 @@ def _walk(node: Any, prefix: str, out: dict[str, Param], origin: str) -> None:
         missing = [k for k in LEAF_KEYS if k not in node]
         if missing:
             raise ParamError(f"{origin}: parameter {prefix!r} is missing {', '.join(missing)}")
-        extra = [k for k in node if k not in LEAF_KEYS]
+        extra = [k for k in node if k not in LEAF_KEYS and k not in OPTIONAL_LEAF_KEYS]
         if extra:
             raise ParamError(f"{origin}: parameter {prefix!r} mixes value/source/status with child keys {extra}")
         for k in ("source", "status"):
@@ -55,7 +58,7 @@ def _walk(node: Any, prefix: str, out: dict[str, Param], origin: str) -> None:
                 raise ParamError(f"{origin}: parameter {prefix!r} has an empty or non-text {k!r}")
         if node["value"] is None:
             raise ParamError(f"{origin}: parameter {prefix!r} has a null value")
-        out[prefix] = Param(prefix, node["value"], node["source"].strip(), node["status"].strip())
+        out[prefix] = Param(prefix, node["value"], node["source"].strip(), node["status"].strip(), str(node.get("notes") or "").strip())
         return
     for k, child in node.items():
         _walk(child, f"{prefix}.{k}" if prefix else str(k), out, origin)
@@ -164,6 +167,13 @@ def _share(params: Params, prefix: str) -> tuple[tuple[str, float], ...]:
     return tuple((k, float(g[k]) / total) for k in sorted(g))
 
 
+def _weekend(working_week: dict) -> tuple[int, ...]:
+    try:
+        return tuple(sorted(WEEKDAYS[str(d).strip().lower()[:3]] for d in working_week["weekend"]))
+    except (KeyError, TypeError) as exc:
+        raise ParamError("working_week.weekend must list weekday names such as [Sat, Sun]") from exc
+
+
 def _fgroup(params: Params, prefix: str) -> dict[str, float]:
     return {k: float(v) for k, v in params.group(prefix).items()}
 
@@ -174,6 +184,15 @@ class ModelParams:
     start_date: str
     intake_window_days: float
     weekend_weekdays: tuple[int, ...]
+    followup_target_working_days: int
+    delay_harm_threshold_days: float
+    dna_rate: float
+    sms_reminder_effect: float
+    completion_targets: dict[str, float]
+    integrated_reference: dict[str, float]
+    time_to_colonoscopy_median_days: float
+    time_to_colonoscopy_iqr_days: tuple[float, float]
+    navigation_effect: float
     holidays: tuple[str, ...]
     # patients
     language_share: tuple[tuple[str, float], ...]
@@ -185,6 +204,7 @@ class ModelParams:
     consent_withdrawal_window_days: float
     consent_withdrawal_declines_care_prob: float
     dropout_prob_per_lapse: float
+    refusal_prob: float
     # staff
     staff_delay_median: dict[str, float]
     staff_delay_sigma: float
@@ -205,7 +225,6 @@ class ModelParams:
     booking_lead_median_days: float
     booking_lead_sigma: float
     rebook_lead_median_days: float
-    reminder_noshow_multiplier: float
     reminder_days_before: tuple[float, ...]
     appointment_max_attempts: int
     responsiveness_noshow_shift: float
@@ -270,7 +289,19 @@ class ModelParams:
         mp = cls(
             start_date=p.str("simulation.start_date"),
             intake_window_days=p.float("simulation.intake_window_days"),
-            weekend_weekdays=tuple(int(x) for x in p.list("calendar.weekend_weekdays")),
+            weekend_weekdays=_weekend(p.get("working_week")),
+            followup_target_working_days=p.int("followup_target_working_days"),
+            delay_harm_threshold_days=p.float("delay_harm_threshold_days"),
+            dna_rate=p.float("dna_rate"),
+            sms_reminder_effect=p.float("sms_reminder_effect"),
+            completion_targets={"90": p.float("colonoscopy_completion_3m"), "180": p.float("colonoscopy_completion_6m"),
+                                "360": p.float("colonoscopy_completion_12m")},
+            integrated_reference={"90": p.float("colonoscopy_completion_3m_integrated_ref"),
+                                  "180": p.float("colonoscopy_completion_6m_integrated_ref"),
+                                  "360": p.float("colonoscopy_completion_12m_integrated_ref")},
+            time_to_colonoscopy_median_days=p.float("time_to_colonoscopy_median_days"),
+            time_to_colonoscopy_iqr_days=tuple(float(x) for x in p.list("time_to_colonoscopy_iqr_days")),  # type: ignore[arg-type]
+            navigation_effect=p.float("navigation_effect"),
             holidays=tuple(str(x) for x in p.list("calendar.holidays")),
             language_share=_share(p, "patients.language_share"),
             channel_share=_share(p, "patients.channel_share"),
@@ -281,6 +312,7 @@ class ModelParams:
             consent_withdrawal_window_days=p.float("patients.consent_withdrawal_window_days"),
             consent_withdrawal_declines_care_prob=p.float("patients.consent_withdrawal_declines_care_prob"),
             dropout_prob_per_lapse=p.float("patients.dropout_prob_per_lapse"),
+            refusal_prob=p.float("patients.refusal_prob"),
             staff_delay_median={
                 **_fgroup(p, "staff.delay_median_days"),
                 "acknowledge": p.float("acknowledgement_delay_days"),
@@ -301,7 +333,6 @@ class ModelParams:
             booking_lead_median_days=p.float("appointment.booking_lead_median_days"),
             booking_lead_sigma=p.float("appointment.booking_lead_sigma"),
             rebook_lead_median_days=p.float("appointment.rebook_lead_median_days"),
-            reminder_noshow_multiplier=p.float("appointment.reminder_noshow_multiplier"),
             reminder_days_before=tuple(float(x) for x in p.list("appointment.reminder_days_before")),
             appointment_max_attempts=p.int("appointment.max_attempts"),
             responsiveness_noshow_shift=p.float("appointment.responsiveness_noshow_shift"),
@@ -361,10 +392,10 @@ class ModelParams:
 
         for name in (
             "wrong_contact_rate provider_switch_prob consent_withdrawal_prob "
-            "consent_withdrawal_declines_care_prob dropout_prob_per_lapse staff_forget_prob "
+            "consent_withdrawal_declines_care_prob dropout_prob_per_lapse refusal_prob staff_forget_prob "
             "language_mismatch_multiplier staff_call_response_rate coordinator_route_response_rate "
             "dropout_residual_multiplier human_dropout_residual_multiplier self_presentation_prob "
-            "reminder_noshow_multiplier handoff_no_response_prob referral_rejection_rate "
+            "sms_reminder_effect dna_rate handoff_no_response_prob referral_rejection_rate "
             "declined_reengage_prob baseline_rejection_noticed_prob noshow_self_rebook_prob timer_miss_prob "
             "watchdog_effect_prob reopen_prob duplicate_result_rate conflicting_ack_rate "
             "consent_after_booking_rate baseline_switch_loss_prob"

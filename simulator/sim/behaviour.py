@@ -44,7 +44,7 @@ class Latents:
         "u_h", "u_reason", "z_h", "u_notice", "z_notice", "u_declined", "z_reroute", "u_drop",
         "u_self", "z_self", "u_consent", "u_consent_when", "u_consent_declines", "z_consent_review",
         "u_reopen", "z_reopen", "u_timer", "u_watch", "z_watch", "u_bchannel",
-        "u_switch_loss", "u_switch_rej", "z_switch", "u_switch_reason", "z_review",
+        "u_switch_loss", "u_switch_rej", "z_switch", "u_switch_reason", "z_review", "u_refuse",
     )
 
 
@@ -81,6 +81,7 @@ def draw_latents(seed: int, key: str) -> Latents:
     L.u_bchannel = r()
     L.u_switch_loss, L.u_switch_rej, L.z_switch, L.u_switch_reason = r(), r(), g(0, 1), r()
     L.z_review = g(0, 1)
+    L.u_refuse = r()
     return L
 
 
@@ -143,9 +144,14 @@ class Behaviour:
         return lognormal(self.mp.self_presentation_median_days, self.mp.response_delay_sigma, lat.z_self)
 
     # ---- appointments ----------------------------------------------------------------------
-    def no_show(self, p: Patient, lat: Latents, a: int, channel: str, reminders: int) -> bool:
+    def no_show(self, p: Patient, lat: Latents, a: int, channel: str, reminders: int, managed: bool) -> bool:
+        """Baseline: the published non-attendance for the channel used (no reminders). Managed
+        (orchestrated): the no-reminder rate `dna_rate` reduced by `sms_reminder_effect` per reminder."""
         mp = self.mp
-        base = mp.no_show_rate[channel] * (mp.reminder_noshow_multiplier ** reminders)
+        if managed:
+            base = mp.dna_rate * (1.0 - mp.sms_reminder_effect) ** reminders
+        else:
+            base = mp.no_show_rate[channel]
         prob = shift_logit(base, -mp.responsiveness_noshow_shift * p.responsiveness)
         return lat.u_noshow[a] < prob
 
