@@ -13,4 +13,5 @@ if _API not in sys.path:
     sys.path.insert(0, _API)
 
 DEFAULT_PARAMS = REPO_ROOT / "simulator" / "params.yaml"
+DEFAULT_CONSERVATIVE = REPO_ROOT / "simulator" / "params.conservative.yaml"
 DEFAULT_PATHWAY = REPO_ROOT / "config" / "pathways" / "colorectal_fit.yaml"

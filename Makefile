@@ -56,7 +56,9 @@ EVAL_DAYS ?= 360
 PARAMS ?= simulator/params.yaml
 PARAM_FLAGS := $(foreach f,$(PARAMS),--params $(f))
 
-# Regenerates docs/results/results.json and results.md (every number in the docs) from the seed.
+# Regenerates docs/results/results.json and results.md (every number in the docs) from the seed, for BOTH scenarios:
+# upper_range (PARAMS, default simulator/params.yaml) and literature_anchored (the same stack plus the overlay
+# simulator/params.conservative.yaml; the overlay may only touch the orchestrated arm, evaluate refuses otherwise).
 # Change a parameter in simulator/params.yaml (or layer a file: make evaluate PARAMS="simulator/params.yaml my.yaml").
 evaluate:
 	$(SIMENV) $(PY) -m simulator.sim.cli evaluate --reps $(REPS) --cases $(CASES) --days $(EVAL_DAYS) --seed $(SEED) $(PARAM_FLAGS) --out-dir docs/results

@@ -1,0 +1,65 @@
+# Literature-anchored overlay (ticket B12). Layer it OVER simulator/params.yaml:
+#   python -m simulator.sim.cli evaluate ... --params simulator/params.yaml --conservative-params simulator/params.conservative.yaml
+# (`make evaluate` does this automatically and reports both scenarios.)
+#
+# Purpose: params.yaml gives the upper-range scenario, which shows what the orchestration MECHANISMS can do when every
+# case gets them and every escalation works as assumed (orchestrated/baseline completion ratio about 1.6 at 180 days).
+# Published navigation programmes report a pooled risk ratio of 1.27 (J Gen Intern Med 2026, docs/evidence.md section 5).
+# This file caps the orchestrated arm's behavioural effects at literature levels. It overrides only keys read by the
+# orchestrated arm, and the BASELINE ARM IS UNCHANGED: evaluate checks that every replication's baseline event log hash is
+# identical in both scenarios and refuses to write results otherwise.
+#
+# Every key below records its upper-range value in `notes` and its source in `source`. Keys not listed are inherited.
+# Status vocabulary as in params.yaml (sourced | sourced-adjacent | calibrated | assumed).
+
+# 1. SMS reminder effect at the lower bound of its published range.
+#    Used only for the orchestrated arm's no-show probability (baseline no-shows come from no_show_rate_by_channel).
+sms_reminder_effect:
+  value: 0.0
+  source: "Lower bound of the sensitivity range in docs/evidence.md section 4: Mahmud et al., JAMA Netw Open 2021 (753 patients, nine text messages, no effect on attendance with good prep, 53.1% vs 54.4%, P=.73). https://doi.org/10.1001/jamanetworkopen.2020.34553"
+  status: sourced-adjacent
+  notes: "Upper-range value 0.25 (Lam et al. 2021, relative reduction 11.9% -> 8.9%). At 0 the orchestrated arm's no-show is the no-reminder rate dna_rate (0.119) for every patient, which is above the baseline's 0.089 for SMS and phone patients (those baseline rates already embed Lam's SMS arm); the scenario therefore slightly understates orchestrated attendance for them. Left as is: we do not re-estimate the baseline."
+
+# 2. Patient navigation effect (RR 1.27) applied to completion propensity.
+#    Reach = the share of orchestrated-arm cases that actually get the orchestrated process; the rest follow today's process.
+#    This is the intention-to-treat reading of the pooled risk ratio: a programme's average effect is diluted by the cases it
+#    does not touch. It is calibrated so that completion(orchestrated) / completion(baseline) at 180 days equals navigation_effect.
+orchestration:
+  programme_reach:
+    value: 0.50
+    source: "Calibrated so the orchestrated/baseline completion ratio at 180 days equals navigation_effect = 1.27 (pooled RR 1.27, 95% CI 1.10-1.46, 8 navigation studies, moderate certainty, J Gen Intern Med 2026, PMID 42618855, https://doi.org/10.1007/s11606-026-10706-x; 12-month RCT: 55.1% vs 42.1%, Annals 2025, https://pmc.ncbi.nlm.nih.gov/articles/PMC13007779/). Procedure and fitted ratios: docs/results/results.md."
+    status: calibrated
+    notes: "Upper-range value 1.0 (every case reached). Re-fit with the procedure in simulator/README.md if the baseline parameters change. Cases outside the reach are handled exactly as in the baseline arm (same random numbers), so they carry no owner, no timers, no escalation and can be lost silently."
+
+  # 3. No extra benefit from escalation beyond re-contact. The upper range lets the supervisor and coordinator rungs act
+  #    more often and recover more wrong contacts than the first rung (owner reminder / re-contact). Here every rung is
+  #    capped at the first rung's value. No study measures escalation beyond re-contact (docs/evidence.md, Gaps).
+  escalation_effect_prob:
+    owner_supervisor:
+      value: 0.50
+      source: "Capped at orchestration.escalation_effect_prob.owner (0.50): no published evidence that escalating to a supervisor adds anything beyond re-contacting the owner (docs/evidence.md, Gaps)."
+      status: assumed
+      notes: "Upper-range value 0.85."
+    programme_coordinator:
+      value: 0.50
+      source: "Capped at orchestration.escalation_effect_prob.owner (0.50): no published evidence that escalating to a coordinator adds anything beyond re-contacting the owner (docs/evidence.md, Gaps)."
+      status: assumed
+      notes: "Upper-range value 1.00."
+  contact_recovery_prob:
+    owner_supervisor:
+      value: 0.25
+      source: "Capped at orchestration.contact_recovery_prob.owner (0.25): a supervisor's call recovers no more wrong contacts than the owner's re-contact."
+      status: assumed
+      notes: "Upper-range value 0.50."
+    programme_coordinator:
+      value: 0.25
+      source: "Capped at orchestration.contact_recovery_prob.owner (0.25): the coordinator's alternate route recovers no more wrong contacts than the owner's re-contact."
+      status: assumed
+      notes: "Upper-range value 0.70."
+
+patient_response:
+  human_dropout_residual_multiplier:
+    value: 0.25
+    source: "Capped at patient_response.dropout_residual_multiplier (0.25): a human call does not re-engage a disengaged patient better than a digital re-contact."
+    status: assumed
+    notes: "Upper-range value 0.60."

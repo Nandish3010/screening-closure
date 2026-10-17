@@ -44,7 +44,7 @@ class Latents:
         "u_h", "u_reason", "z_h", "u_notice", "z_notice", "u_declined", "z_reroute", "u_drop",
         "u_self", "z_self", "u_consent", "u_consent_when", "u_consent_declines", "z_consent_review",
         "u_reopen", "z_reopen", "u_timer", "u_watch", "z_watch", "u_bchannel",
-        "u_switch_loss", "u_switch_rej", "z_switch", "u_switch_reason", "z_review", "u_refuse",
+        "u_switch_loss", "u_switch_rej", "z_switch", "u_switch_reason", "z_review", "u_refuse", "u_reach",
     )
 
 
@@ -82,6 +82,7 @@ def draw_latents(seed: int, key: str) -> Latents:
     L.u_switch_loss, L.u_switch_rej, L.z_switch, L.u_switch_reason = r(), r(), g(0, 1), r()
     L.z_review = g(0, 1)
     L.u_refuse = r()
+    L.u_reach = r()  # drawn last so every earlier draw (and every existing result) is unchanged
     return L
 
 

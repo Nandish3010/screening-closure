@@ -9,7 +9,7 @@ import sys
 import time
 from pathlib import Path
 
-from . import REPO_ROOT
+from . import DEFAULT_CONSERVATIVE, REPO_ROOT
 from .engine import ARMS
 from .evaluate import evaluate, write_results
 from .invariants import check_case_log, check_consent
@@ -36,7 +36,7 @@ def _cmd_run(args) -> int:
             bad = []
             for c in res.cases:
                 bad += [f"case {c.p.key}: {m}" for m in check_case_log(c.log, ctx.pathway)]
-                if arm == "orchestrated":
+                if arm == "orchestrated" and c.orch:
                     bad += [f"case {c.p.key}: {m}" for m in check_consent(c.log)]
             info["invariant_violations"] = len(bad)
             if bad:
@@ -59,7 +59,8 @@ def _cmd_run(args) -> int:
 def _cmd_evaluate(args) -> int:
     t0 = time.perf_counter()
     ctx = load_context(args.params, args.pathway)
-    result = evaluate(args.reps, args.cases, args.days, args.seed, args.params, args.pathway, args.bootstrap, args.jobs)
+    overlay = [] if args.no_conservative else (args.conservative_params or [DEFAULT_CONSERVATIVE])
+    result = evaluate(args.reps, args.cases, args.days, args.seed, args.params, args.pathway, args.bootstrap, args.jobs, overlay)
     jpath, mpath = write_results(result, Path(args.out_dir), ctx)
     print(f"wrote {jpath} and {mpath} in {time.perf_counter() - t0:.1f}s")
     return 0
@@ -82,6 +83,10 @@ def main(argv: list[str] | None = None) -> int:
     e = sub.add_parser("evaluate", parents=[common], help="replicated evaluation -> results.json + results.md")
     e.add_argument("--reps", type=int, default=20)
     e.add_argument("--days", type=int, default=360, help="follow-up days per case (360 covers the 12-month metrics)")
+    e.add_argument("--conservative-params", action="append", default=None,
+                   help="overlay layered on the --params stack to define the literature-anchored scenario "
+                        "(repeatable; default simulator/params.conservative.yaml)")
+    e.add_argument("--no-conservative", action="store_true", help="evaluate the upper-range scenario only")
     e.add_argument("--bootstrap", type=int, default=1000)
     e.add_argument("--jobs", type=int, default=min(8, os.cpu_count() or 1), help="worker processes (never changes results)")
     e.add_argument("--out-dir", default=str(REPO_ROOT / "docs" / "results"))

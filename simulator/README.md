@@ -20,16 +20,19 @@ From the repo root (no database, no network, no extra dependencies beyond `pyyam
 make test                      # unit + property tests (api and simulator)
 make simulate                  # one orchestrated run: 2,000 cases x 120 days, invariants checked on every case log
 make simulate ARM=baseline     # the baseline arm
-make evaluate                  # 20 replications x 2 arms x 2,000 cases x 360 days -> docs/results/results.{json,md}
+make evaluate                  # 20 replications x 2 arms x 2 scenarios x 2,000 cases x 360 days -> docs/results/results.{json,md}
 make evaluate-check            # evaluate twice into temp dirs (once multi-process, once single) and diff results.json
 
 python -m simulator.sim.cli run --arm orchestrated --cases 2000 --days 120 --seed 20261017
 python -m simulator.sim.cli evaluate --reps 20
+python -m simulator.sim.cli evaluate --no-conservative    # upper-range scenario only
 ```
 
 `run` prints the event-log SHA-256, event count, runtime and the metrics; `--verify` re-checks the closure rule and
 the consent invariant on every case; `--events FILE` writes the event log as JSON lines (`{arm}` in the name is replaced).
 Variables for `make`: `SEED`, `CASES`, `REPS`, `ARM`, `SIM_DAYS`, `EVAL_DAYS`, `PARAMS`.
+
+`evaluate` reports two scenarios against one baseline, see [Scenarios](#scenarios-upper-range-and-literature-anchored).
 
 ## The model
 
@@ -68,6 +71,8 @@ outcomes, so changing a parameter never re-draws anything and differences betwee
 | Idle cases | nobody notices | watchdog flags any open case with no events for N days (ignores a confirmed future appointment) and the coordinator acts |
 | Scheduler faults | n/a | `orchestration.timer_miss_prob`: the scheduler silently fails to arm a timer; only the watchdog catches it |
 | Closure | clinician closes if and when someone remembers | same rule, enforced: `close` needs `evidence_ref`, `signed_by` and a human actor; the scheduler/watchdog can never close; sign-off has an SLA and a ladder |
+
+In the literature-anchored scenario only a share of orchestrated-arm cases (`orchestration.programme_reach`) get the right-hand column; the rest follow the left-hand column.
 
 Pathway events (`acknowledge`, `accept_ownership`, `contact_patient`, `patient_acknowledge`, `book_confirmatory`,
 `complete_confirmatory`, `clinician_review`, `close`) go through `app.state_machine.apply`. Side events (`overdue`,
@@ -115,7 +120,7 @@ Not modelled (deliberately, or not yet):
 Every parameter lives in [`params.yaml`](params.yaml) as `{value, source, status[, notes]}`. Nothing is hard-coded in
 `simulator/sim/`. Statuses: `sourced` and `sourced-adjacent` (from public documents; caveats and sources in each leaf and in
 `docs/evidence.md`), `calibrated` (tuned so the baseline reproduces the Mohl 2023 completion curve; each leaf records its previous
-placeholder), `assumed` (no public source, `source: TODO`). Loading validates that every leaf has all three fields (a missing
+placeholder), `assumed` (no public source, `source: "assumed, no public source"`). Loading validates that every leaf has all three fields (a missing
 `source` is rejected), and warns once with the number of `assumed` parameters. The full table with sources is printed in
 `docs/results/results.md`.
 
@@ -134,18 +139,55 @@ provenance and benchmarks reported in `results.md`, not simulator inputs. `gener
 The baseline arm's completion (43% / 51% / 56% at 90 / 180 / 360 days, Mohl 2023) was reproduced by adjusting placeholder
 parameters only (marked `calibrated`): outreach response rates, staff delays and forgetting, booking lead time, the share
 of patients who eventually act unprompted, and the baseline's rejection-noticing and self-rebooking rates. `results.md` states how
-close the baseline gets. The orchestrated arm was not tuned; it lands near the actively managed Kaiser reference (Corley 2017)
+close the baseline gets. The upper-range orchestrated arm was not tuned; it lands near the actively managed Kaiser reference (Corley 2017)
 because the same placeholders leave few patients unreachable once a human chases them. Its size relative to the baseline
-(about 1.6x at 180 days) is larger than the 1.27 risk ratio for patient navigation, so treat the gap as an upper-range illustration.
+(about 1.6x at 180 days) is larger than the 1.27 risk ratio for patient navigation, so it is the mechanism ceiling, not an expected
+effect: quote the literature-anchored scenario below.
+
+### Scenarios: upper range and literature anchored
+
+`make evaluate` runs the same cohorts through the same baseline arm and two versions of the orchestrated arm.
+
+| | `upper_range` | `literature_anchored` |
+|---|---|---|
+| Parameters | `params.yaml` (plus any `PARAMS` layers) | the same stack with [`params.conservative.yaml`](params.conservative.yaml) layered on top |
+| Question it answers | what the orchestration mechanisms can do if every case gets them and every escalation works as assumed | what the orchestrated arm achieves if its behavioural effects are held to published levels |
+| Orchestrated / baseline completion at 180 days | about 1.6 | 1.27 (the pooled navigation risk ratio), by calibration |
+| Use | mechanism ceiling and sensitivity | **the scenario to quote** |
+
+The overlay caps three things, each documented with its source and its upper-range value in the file: the SMS reminder effect at the
+lower bound of its published range (0, Mahmud 2021); escalation rungs above the first (supervisor, coordinator) set equal to the first
+rung (owner re-contact) for staff action, contact recovery and re-engagement of disengaged patients; and the overall completion effect,
+via `orchestration.programme_reach`.
+
+**Programme reach** is the share of orchestrated-arm cases that actually get the orchestrated process (owner, timers, ladder, consent
+ledger, watchdog); the remaining cases follow today's baseline rules inside the same engine, with the same random numbers. It is the
+intention-to-treat reading of a risk ratio: a programme's average effect is diluted by the cases it does not touch. It is the only
+orchestrated-arm quantity that is fitted rather than taken from a source: it is set so that the completion ratio at 180 days equals
+`navigation_effect` (1.27). Side effect, stated in `results.md`: the unreached cases can be lost silently, so `silent_loss_rate` is not
+zero in this scenario. Reach is a calibration device for the average effect, not a forecast of how many cases a programme would miss.
+
+**Re-fitting reach.** If baseline parameters change, rerun `make evaluate`, read the literature-anchored completion ratio at 180 days
+in `results.md` (calibration section), and adjust `orchestration.programme_reach` in `params.conservative.yaml` until it equals
+`navigation_effect` (completion is close to linear in reach: new reach = reach x (target - 1) / (ratio - 1)). `test_sim_scenarios.py`
+fails if the committed ratio drifts more than 0.03 from the target.
+
+**Same baseline, enforced.** The overlay may only override keys that the orchestrated arm reads. `evaluate` compares every
+replication's baseline event-log hash across the scenarios and refuses to write results if they differ. `--no-conservative` skips the
+second scenario; `--conservative-params FILE` (repeatable) replaces the overlay.
 
 ## How results are reproduced
 
 `evaluate` derives one seed per replication from the base seed (`uuid5(seed, "replication", i)`), builds one cohort per replication and
-runs both arms on it. Metrics are averaged over replications; 95% CIs are percentile bootstrap intervals over replications
+runs both arms on it, once per scenario. Metrics are averaged over replications; 95% CIs are percentile bootstrap intervals over replications
 (1,000 resamples, seeded), and the arm difference is paired by replication. `docs/results/results.json` has sorted keys, floats
 rounded to 6 places, and no timestamps, paths or timings; it records the seed, a hash of the effective parameters, a hash of the
-pathway YAML, the git commit and the per-replication event-log hashes. `make evaluate-check` proves the same inputs give the same bytes
-(including across process counts). `results.md` additionally carries a `generated_at` line.
+pathway YAML, the git commit and the per-replication event-log hashes. Its top-level `meta`, `arms`, `difference`, `per_replication` and
+`parameters` describe the upper-range scenario (unchanged from before the second scenario existed); `scenarios.upper_range` and
+`scenarios.literature_anchored` hold both side by side (each with `arms`, `difference`, `per_replication`, its parameter hash and,
+for the literature-anchored one, the list of `overrides`). `make evaluate-check` proves the same inputs give the same bytes
+(including across process counts). `results.md` additionally carries a `generated_at` line. Wall time: about 10 s on 10 cores (two
+scenarios, 20 replications); `evaluate-check` runs the second pass single-process, about a minute.
 
 ## Layout
 
@@ -159,11 +201,12 @@ simulator/sim/engine.py     discrete-event engine, both arms
 simulator/sim/invariants.py independent closure-rule and consent checks
 simulator/sim/metrics.py    case records and metrics
 simulator/sim/scenario.py   hand-built five-case scenario with hand-computed expected metrics
-simulator/sim/evaluate.py   replications, bootstrap, results.json
+simulator/params.conservative.yaml  overlay defining the literature-anchored scenario
+simulator/sim/evaluate.py   replications, scenarios, bootstrap, results.json
 simulator/sim/report.py     results.md
 simulator/sim/runner.py     loading and running helpers
 simulator/sim/cli.py        python -m simulator.sim.cli run | evaluate
-simulator/tests/test_sim_*  determinism, calendar, closure-rule property test, metric arithmetic, params validation, evaluate reproducibility
+simulator/tests/test_sim_*  determinism, calendar, closure-rule property test, metric arithmetic, params validation, evaluate reproducibility, scenarios and programme reach
 ```
 
 ## Cohort pipeline (`make demo-seed`)

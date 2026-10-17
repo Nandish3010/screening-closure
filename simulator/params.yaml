@@ -4,7 +4,7 @@
 #     evidence in docs/evidence.md on main); sources and caveats are in each leaf.
 #   calibrated: a placeholder tuned so the BASELINE arm reproduces the Mohl 2023 completion curve
 #     (see docs/results/results.md for how close it gets).
-#   assumed: no checkable public source (source: TODO).
+#   assumed: no checkable public source (source: "assumed, no public source").
 # Layer files at the CLI with repeated --params flags (later files override earlier keys).
 # fit_positivity_rate is read by simulator/generate_results.py (keep it in block style).
 # Time is in days (calendar days unless a key says working_days). Probabilities are in [0, 1].
@@ -192,29 +192,29 @@ malaffi_integration_assumption:
 # ======================================================================================
 # ---- simulation and calendar ----------------------------------------------------------------
 simulation:
-  start_date: {value: "2026-01-05", source: TODO, status: assumed}      # must be a working day
-  intake_window_days: {value: 30, source: TODO, status: assumed}       # results arrive uniformly over this window
+  start_date: {value: "2026-01-05", source: "assumed, no public source", status: assumed}      # must be a working day
+  intake_window_days: {value: 30, source: "assumed, no public source", status: assumed}       # results arrive uniformly over this window
 calendar:
-  holidays: {value: [], source: TODO, status: assumed}                  # ISO dates that are non-working
+  holidays: {value: [], source: "assumed, no public source", status: assumed}                  # ISO dates that are non-working
 
 # ---- patients ---------------------------------------------------------------------------------
 patients:
   language_share:
-    ar: {value: 0.45, source: TODO, status: assumed}
-    en: {value: 0.35, source: TODO, status: assumed}
-    other: {value: 0.20, source: TODO, status: assumed}
+    ar: {value: 0.45, source: "assumed, no public source", status: assumed}
+    en: {value: 0.35, source: "assumed, no public source", status: assumed}
+    other: {value: 0.20, source: "assumed, no public source", status: assumed}
   channel_share:              # patient's preferred contact channel
-    sms: {value: 0.40, source: TODO, status: assumed}
-    whatsapp: {value: 0.30, source: TODO, status: assumed}
-    phone: {value: 0.15, source: TODO, status: assumed}
-    letter: {value: 0.15, source: TODO, status: assumed}
-  provider_switch_prob: {value: 0.05, source: TODO, status: assumed}
-  responsiveness_sd: {value: 0.8, source: TODO, status: assumed}       # logit-scale spread of the latent responsiveness factor
-  consent_withdrawal_prob: {value: 0.02, source: TODO, status: assumed}
-  consent_withdrawal_window_days: {value: 90, source: TODO, status: assumed}
-  consent_withdrawal_declines_care_prob: {value: 0.30, source: TODO, status: assumed}
+    sms: {value: 0.40, source: "assumed, no public source", status: assumed}
+    whatsapp: {value: 0.30, source: "assumed, no public source", status: assumed}
+    phone: {value: 0.15, source: "assumed, no public source", status: assumed}
+    letter: {value: 0.15, source: "assumed, no public source", status: assumed}
+  provider_switch_prob: {value: 0.05, source: "assumed, no public source", status: assumed}
+  responsiveness_sd: {value: 0.8, source: "assumed, no public source", status: assumed}       # logit-scale spread of the latent responsiveness factor
+  consent_withdrawal_prob: {value: 0.02, source: "assumed, no public source", status: assumed}
+  consent_withdrawal_window_days: {value: 90, source: "assumed, no public source", status: assumed}
+  consent_withdrawal_declines_care_prob: {value: 0.30, source: "assumed, no public source", status: assumed}
   refusal_prob: {value: 0.12, source: "Calibrated to reproduce the Mohl 2023 baseline completion curve (see docs/results/results.md); placeholder was 0.12, no public source", status: calibrated}            # P(patient will not have the colonoscopy whatever is done)
-  dropout_prob_per_lapse: {value: 0.15, source: TODO, status: assumed}  # P(disengage) after each unanswered contact or no-show
+  dropout_prob_per_lapse: {value: 0.15, source: "assumed, no public source", status: assumed}  # P(disengage) after each unanswered contact or no-show
 
 # ---- staff behaviour (delays are lognormal: median * exp(sigma * z)) ------------------------
 staff:
@@ -222,9 +222,9 @@ staff:
     accept_ownership: {value: 2, source: "Calibrated to reproduce the Mohl 2023 baseline completion curve (see docs/results/results.md); placeholder was 1.0, no public source", status: calibrated}
     contact_patient: {value: 5, source: "Calibrated to reproduce the Mohl 2023 baseline completion curve (see docs/results/results.md); placeholder was 3.0, no public source", status: calibrated}
     book_confirmatory: {value: 6, source: "Calibrated to reproduce the Mohl 2023 baseline completion curve (see docs/results/results.md); placeholder was 4.0, no public source", status: calibrated}
-    clinician_review: {value: 4.0, source: TODO, status: assumed}
-    close: {value: 2.0, source: TODO, status: assumed}
-  delay_sigma: {value: 0.8, source: TODO, status: assumed}
+    clinician_review: {value: 4.0, source: "assumed, no public source", status: assumed}
+    close: {value: 2.0, source: "assumed, no public source", status: assumed}
+  delay_sigma: {value: 0.8, source: "assumed, no public source", status: assumed}
   forget_prob: {value: 0.015, source: "Calibrated to reproduce the Mohl 2023 baseline completion curve (see docs/results/results.md); placeholder was 0.04, no public source", status: calibrated}            # P(a staff step is never done unless prompted)
 
 # ---- patient response to outreach -----------------------------------------------------------
@@ -235,16 +235,16 @@ patient_response:
     phone: {value: 0.95, source: "Calibrated to reproduce the Mohl 2023 baseline completion curve (see docs/results/results.md); placeholder was 0.80, no public source", status: calibrated}
     letter: {value: 0.85, source: "Calibrated to reproduce the Mohl 2023 baseline completion curve (see docs/results/results.md); placeholder was 0.55, no public source", status: calibrated}
   response_delay_median_days:
-    sms: {value: 1.5, source: TODO, status: assumed}
-    whatsapp: {value: 1.0, source: TODO, status: assumed}
-    phone: {value: 0.5, source: TODO, status: assumed}
-    letter: {value: 6.0, source: TODO, status: assumed}
-  response_delay_sigma: {value: 0.9, source: TODO, status: assumed}
+    sms: {value: 1.5, source: "assumed, no public source", status: assumed}
+    whatsapp: {value: 1.0, source: "assumed, no public source", status: assumed}
+    phone: {value: 0.5, source: "assumed, no public source", status: assumed}
+    letter: {value: 6.0, source: "assumed, no public source", status: assumed}
+  response_delay_sigma: {value: 0.9, source: "assumed, no public source", status: assumed}
   language_mismatch_multiplier: {value: 0.8, source: "Calibrated to reproduce the Mohl 2023 baseline completion curve (see docs/results/results.md); placeholder was 0.6, no public source", status: calibrated}  # message not in the patient's language
-  staff_call_response_rate: {value: 0.65, source: TODO, status: assumed}     # human phone call from supervisor
-  coordinator_route_response_rate: {value: 0.70, source: TODO, status: assumed}
-  dropout_residual_multiplier: {value: 0.25, source: TODO, status: assumed}  # response multiplier for a dropped-out patient (digital)
-  human_dropout_residual_multiplier: {value: 0.60, source: TODO, status: assumed}
+  staff_call_response_rate: {value: 0.65, source: "assumed, no public source", status: assumed}     # human phone call from supervisor
+  coordinator_route_response_rate: {value: 0.70, source: "assumed, no public source", status: assumed}
+  dropout_residual_multiplier: {value: 0.25, source: "assumed, no public source", status: assumed}  # response multiplier for a dropped-out patient (digital)
+  human_dropout_residual_multiplier: {value: 0.60, source: "assumed, no public source", status: assumed}
   self_presentation_prob: {value: 0.38, source: "Calibrated to reproduce the Mohl 2023 baseline completion curve (see docs/results/results.md); placeholder was 0.10, no public source", status: calibrated}       # patient eventually acts without being prompted
   self_presentation_median_days: {value: 120, source: "Calibrated to reproduce the Mohl 2023 baseline completion curve (see docs/results/results.md); placeholder was 60, no public source", status: calibrated}
 
@@ -252,87 +252,88 @@ patient_response:
 appointment:
   booking_lead_median_days: {value: 24, source: "Calibrated to reproduce the Mohl 2023 baseline completion curve (see docs/results/results.md); placeholder was 14, no public source", status: calibrated}
   booking_lead_sigma: {value: 0.6, source: "Calibrated to reproduce the Mohl 2023 baseline completion curve (see docs/results/results.md); placeholder was 0.5, no public source", status: calibrated}
-  rebook_lead_median_days: {value: 7, source: TODO, status: assumed}
-  reminder_days_before: {value: [7, 1], source: TODO, status: assumed}
-  max_attempts: {value: 3, source: TODO, status: assumed}                    # appointments before giving up (max 4)
-  responsiveness_noshow_shift: {value: 0.5, source: TODO, status: assumed}   # logit shift per unit responsiveness
+  rebook_lead_median_days: {value: 7, source: "assumed, no public source", status: assumed}
+  reminder_days_before: {value: [7, 1], source: "assumed, no public source", status: assumed}
+  max_attempts: {value: 3, source: "assumed, no public source", status: assumed}                    # appointments before giving up (max 4)
+  responsiveness_noshow_shift: {value: 0.5, source: "assumed, no public source", status: assumed}   # logit shift per unit responsiveness
 
 # ---- referral / handoff ------------------------------------------------------------------------
 handoff:
-  no_response_prob: {value: 0.04, source: TODO, status: assumed}             # receiving service never answers
+  no_response_prob: {value: 0.04, source: "assumed, no public source", status: assumed}             # receiving service never answers
   rejection_reason_share:
-    capacity: {value: 0.35, source: TODO, status: assumed}
-    wrong_service: {value: 0.15, source: TODO, status: assumed}
-    missing_info: {value: 0.30, source: TODO, status: assumed}
-    patient_declined: {value: 0.20, source: TODO, status: assumed}
-  response_delay_median_days: {value: 2.0, source: TODO, status: assumed}
-  response_delay_sigma: {value: 0.7, source: TODO, status: assumed}
-  response_sla_working_days: {value: 3, source: TODO, status: assumed}       # orchestrated: unanswered referral bounces back
-  reroute_delay_median_days: {value: 2.0, source: TODO, status: assumed}
-  declined_reengage_prob: {value: 0.50, source: TODO, status: assumed}       # owner persuades a patient who declined
-  max_attempts: {value: 4, source: TODO, status: assumed}                    # referral attempts (max 5)
+    capacity: {value: 0.35, source: "assumed, no public source", status: assumed}
+    wrong_service: {value: 0.15, source: "assumed, no public source", status: assumed}
+    missing_info: {value: 0.30, source: "assumed, no public source", status: assumed}
+    patient_declined: {value: 0.20, source: "assumed, no public source", status: assumed}
+  response_delay_median_days: {value: 2.0, source: "assumed, no public source", status: assumed}
+  response_delay_sigma: {value: 0.7, source: "assumed, no public source", status: assumed}
+  response_sla_working_days: {value: 3, source: "assumed, no public source", status: assumed}       # orchestrated: unanswered referral bounces back
+  reroute_delay_median_days: {value: 2.0, source: "assumed, no public source", status: assumed}
+  declined_reengage_prob: {value: 0.50, source: "assumed, no public source", status: assumed}       # owner persuades a patient who declined
+  max_attempts: {value: 4, source: "assumed, no public source", status: assumed}                    # referral attempts (max 5)
   baseline_rejection_noticed_prob: {value: 0.55, source: "Calibrated to reproduce the Mohl 2023 baseline completion curve (see docs/results/results.md); placeholder was 0.40, no public source", status: calibrated}
-  baseline_rejection_notice_median_days: {value: 21, source: TODO, status: assumed}
+  baseline_rejection_notice_median_days: {value: 21, source: "assumed, no public source", status: assumed}
 
 # ---- baseline arm (today's process) -----------------------------------------------------------
 baseline:
   channel_share:              # the single letter/SMS goes out on one of these
-    letter: {value: 0.50, source: TODO, status: assumed}
-    sms: {value: 0.50, source: TODO, status: assumed}
-  default_language: {value: "en", source: TODO, status: assumed}
+    letter: {value: 0.50, source: "assumed, no public source", status: assumed}
+    sms: {value: 0.50, source: "assumed, no public source", status: assumed}
+  default_language: {value: "en", source: "assumed, no public source", status: assumed}
   noshow_self_rebook_prob: {value: 0.45, source: "Calibrated to reproduce the Mohl 2023 baseline completion curve (see docs/results/results.md); placeholder was 0.30, no public source", status: calibrated}
-  noshow_self_rebook_median_days: {value: 30, source: TODO, status: assumed}
+  noshow_self_rebook_median_days: {value: 30, source: "assumed, no public source", status: assumed}
 
 # ---- orchestrated arm -------------------------------------------------------------------------
 orchestration:
-  reaction_delay_median_days: {value: 1.0, source: TODO, status: assumed}    # time to act after a reminder or escalation
-  reaction_delay_sigma: {value: 0.6, source: TODO, status: assumed}
+  reaction_delay_median_days: {value: 1.0, source: "assumed, no public source", status: assumed}    # time to act after a reminder or escalation
+  reaction_delay_sigma: {value: 0.6, source: "assumed, no public source", status: assumed}
   escalation_effect_prob:     # P(staff act) per ladder rung, keyed by the pathway's notify role
-    owner: {value: 0.50, source: TODO, status: assumed}
-    owner_supervisor: {value: 0.85, source: TODO, status: assumed}
-    programme_coordinator: {value: 1.00, source: TODO, status: assumed}
+    owner: {value: 0.50, source: "assumed, no public source", status: assumed}
+    owner_supervisor: {value: 0.85, source: "assumed, no public source", status: assumed}
+    programme_coordinator: {value: 1.00, source: "assumed, no public source", status: assumed}
   contact_recovery_prob:      # P(a wrong contact is corrected), per ladder rung / on delivery failure
-    on_failure: {value: 0.40, source: TODO, status: assumed}
-    owner: {value: 0.25, source: TODO, status: assumed}
-    owner_supervisor: {value: 0.50, source: TODO, status: assumed}
-    programme_coordinator: {value: 0.70, source: TODO, status: assumed}
-  contact_recovery_delay_median_days: {value: 2.0, source: TODO, status: assumed}
+    on_failure: {value: 0.40, source: "assumed, no public source", status: assumed}
+    owner: {value: 0.25, source: "assumed, no public source", status: assumed}
+    owner_supervisor: {value: 0.50, source: "assumed, no public source", status: assumed}
+    programme_coordinator: {value: 0.70, source: "assumed, no public source", status: assumed}
+  contact_recovery_delay_median_days: {value: 2.0, source: "assumed, no public source", status: assumed}
   delivery_failure_detect_days:
-    sms: {value: 0.25, source: TODO, status: assumed}
-    whatsapp: {value: 0.25, source: TODO, status: assumed}
-    phone: {value: 0.10, source: TODO, status: assumed}
-    letter: {value: 7.0, source: TODO, status: assumed}
-  ladder_exhausted_wait_working_days: {value: 5, source: TODO, status: assumed}
-  signoff_sla_working_days: {value: 3, source: TODO, status: assumed}        # `close` has no SLA in the pathway YAML
-  timer_miss_prob: {value: 0.02, source: TODO, status: assumed}              # scheduler silently fails to arm a timer
-  watchdog_idle_days: {value: 14, source: TODO, status: assumed}
-  watchdog_effect_prob: {value: 0.90, source: TODO, status: assumed}
-  watchdog_reaction_delay_days: {value: 2.0, source: TODO, status: assumed}
-  consent_review_delay_median_days: {value: 2.0, source: TODO, status: assumed}
-  transfer_reestablish_days: {value: 5.0, source: TODO, status: assumed}     # new owner takes over after a provider switch
+    sms: {value: 0.25, source: "assumed, no public source", status: assumed}
+    whatsapp: {value: 0.25, source: "assumed, no public source", status: assumed}
+    phone: {value: 0.10, source: "assumed, no public source", status: assumed}
+    letter: {value: 7.0, source: "assumed, no public source", status: assumed}
+  ladder_exhausted_wait_working_days: {value: 5, source: "assumed, no public source", status: assumed}
+  signoff_sla_working_days: {value: 3, source: "assumed, no public source", status: assumed}        # `close` has no SLA in the pathway YAML
+  timer_miss_prob: {value: 0.02, source: "assumed, no public source", status: assumed}              # scheduler silently fails to arm a timer
+  programme_reach: {value: 1.0, source: "Design choice, not evidence: the upper-range scenario assumes every case in the orchestrated arm receives the orchestrated process. simulator/params.conservative.yaml lowers it (literature-anchored scenario)", status: assumed, notes: "Share of orchestrated-arm cases that actually get the orchestrated process (named owner, timers, ladder, consent ledger, watchdog); the rest follow today's baseline process. 1.0 = the mechanism ceiling."}
+  watchdog_idle_days: {value: 14, source: "assumed, no public source", status: assumed}
+  watchdog_effect_prob: {value: 0.90, source: "assumed, no public source", status: assumed}
+  watchdog_reaction_delay_days: {value: 2.0, source: "assumed, no public source", status: assumed}
+  consent_review_delay_median_days: {value: 2.0, source: "assumed, no public source", status: assumed}
+  transfer_reestablish_days: {value: 5.0, source: "assumed, no public source", status: assumed}     # new owner takes over after a provider switch
 
 # ---- reopening after closure (both arms) ----------------------------------------------------
 reopen:
-  after_closure_prob: {value: 0.03, source: TODO, status: assumed}
-  lag_median_days: {value: 30, source: TODO, status: assumed}
-  lag_sigma: {value: 0.6, source: TODO, status: assumed}
-  resume_state: {value: owner_accepted, source: TODO, status: assumed}
+  after_closure_prob: {value: 0.03, source: "assumed, no public source", status: assumed}
+  lag_median_days: {value: 30, source: "assumed, no public source", status: assumed}
+  lag_sigma: {value: 0.6, source: "assumed, no public source", status: assumed}
+  resume_state: {value: owner_accepted, source: "assumed, no public source", status: assumed}
 
 # ---- messy-case injection ---------------------------------------------------------------------
 # Wrong contact numbers use wrong_contact_rate; provider switches use patients.provider_switch_prob.
 messy:
-  rate_multiplier: {value: 1.0, source: TODO, status: assumed}               # scales the three rates below; 0 switches them off
-  duplicate_result_rate: {value: 0.06, source: TODO, status: assumed}
-  duplicate_delay_max_days: {value: 10, source: TODO, status: assumed}
-  conflicting_ack_rate: {value: 0.04, source: TODO, status: assumed}
-  consent_after_booking_rate: {value: 0.02, source: TODO, status: assumed}
-  switch_window_days: {value: 60, source: TODO, status: assumed}
-  baseline_switch_loss_prob: {value: 0.70, source: TODO, status: assumed}
-  baseline_switch_delay_days: {value: 30, source: TODO, status: assumed}
-  baseline_conflict_delay_days: {value: 10, source: TODO, status: assumed}
+  rate_multiplier: {value: 1.0, source: "assumed, no public source", status: assumed}               # scales the three rates below; 0 switches them off
+  duplicate_result_rate: {value: 0.06, source: "assumed, no public source", status: assumed}
+  duplicate_delay_max_days: {value: 10, source: "assumed, no public source", status: assumed}
+  conflicting_ack_rate: {value: 0.04, source: "assumed, no public source", status: assumed}
+  consent_after_booking_rate: {value: 0.02, source: "assumed, no public source", status: assumed}
+  switch_window_days: {value: 60, source: "assumed, no public source", status: assumed}
+  baseline_switch_loss_prob: {value: 0.70, source: "assumed, no public source", status: assumed}
+  baseline_switch_delay_days: {value: 30, source: "assumed, no public source", status: assumed}
+  baseline_conflict_delay_days: {value: 10, source: "assumed, no public source", status: assumed}
 
 # ---- metric definitions -----------------------------------------------------------------------
 metrics:
-  ltfu_idle_days: {value: 30, source: TODO, status: assumed}                 # unfinished and no progress this long = lost to follow-up
-  escalation_precision_window_working_days: {value: 5, source: TODO, status: assumed}
-  min_group_size: {value: 30, source: TODO, status: assumed}                 # smaller fairness groups are reported but excluded from max-gap
+  ltfu_idle_days: {value: 30, source: "assumed, no public source", status: assumed}                 # unfinished and no progress this long = lost to follow-up
+  escalation_precision_window_working_days: {value: 5, source: "assumed, no public source", status: assumed}
+  min_group_size: {value: 30, source: "assumed, no public source", status: assumed}                 # smaller fairness groups are reported but excluded from max-gap
