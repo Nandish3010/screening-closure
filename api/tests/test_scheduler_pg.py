@@ -183,3 +183,86 @@ def test_no_test_clock_rows_are_left_behind(pool):
     with pool.connection() as conn:
         ids = {r[0] for r in conn.execute("SELECT clock_id FROM sim_clock").fetchall()}
     assert not any(i.startswith("test-") for i in ids)
+
+
+# -- escalation ladder on Postgres (T-A18, T-A19) --------------------------------------------------------
+
+
+def utc(m, d, hh=8, mm=0):
+    return datetime(2026, m, d, hh, mm, tzinfo=UTC)
+
+
+def rungs(store, case_id):
+    return [e.payload["rung"] for e in events_of(store, case_id, "escalate")]
+
+
+def test_ladder_fires_in_order_once_each_at_the_working_day_offsets(store, pool):
+    case_id = new_case(store)  # acknowledge due Wed 7 Jan 08:00Z
+    only = [case_id]
+    for now, expected in [
+        (utc(1, 7, 9), ["reminder"]),
+        (utc(1, 12, 7, 59), ["reminder"]),
+        (utc(1, 12, 8), ["reminder", "supervisor"]),
+        (utc(1, 16, 7, 59), ["reminder", "supervisor"]),
+        (utc(1, 16, 8), ["reminder", "supervisor", "coordinator"]),
+    ]:
+        run_sweep(store, PATHWAY, UAE, now, only=only)
+        assert rungs(store, case_id) == expected, now
+    timeline = [e.type for e in store.events_for(case_id)]
+    assert timeline == ["case_created", "mark_overdue", "escalate", "escalate", "escalate"]
+    assert [e.payload["target"] for e in events_of(store, case_id, "escalate")] == [
+        "owner", "supervisor", "coordinator"
+    ]
+    assert [e.at for e in events_of(store, case_id, "escalate")] == [
+        utc(1, 7, 9), utc(1, 12, 8), utc(1, 16, 8)
+    ]
+
+
+def test_concurrent_sweeps_after_a_long_outage_emit_each_rung_once(store):
+    case_id = new_case(store)
+    barrier = threading.Barrier(8)
+    errors = []
+
+    def worker():
+        barrier.wait()
+        try:
+            run_sweep(store, PATHWAY, UAE, utc(3, 1), only=[case_id])
+        except Exception as exc:  # pragma: no cover
+            errors.append(exc)
+
+    threads = [threading.Thread(target=worker) for _ in range(8)]
+    [t.start() for t in threads]
+    [t.join() for t in threads]
+    assert errors == []
+    assert rungs(store, case_id) == ["reminder", "supervisor", "coordinator"]
+    assert len(events_of(store, case_id, "mark_overdue")) == 1
+    assert [e.seq for e in store.events_for(case_id)] == [1, 2, 3, 4, 5]
+
+
+def test_a_human_in_the_target_role_stops_the_ladder_and_nothing_else_can(store, pool):
+    case_id = new_case(store)
+    store.append(Event(case_id, "acknowledge", utc(1, 5, 9), "lab:l"), PATHWAY)
+    store.append(Event(case_id, "accept_ownership", utc(1, 5, 10), "primary_care_owner:k"), PATHWAY)
+    # owner_accepted awaits contact_patient: 5 working days from Mon 5th 10:00Z = Mon 12th 10:00Z
+    run_sweep(store, PATHWAY, UAE, utc(1, 15, 11), only=[case_id])  # +3 working days after the breach
+    assert rungs(store, case_id) == ["reminder", "supervisor"]
+    model = store.read_model(case_id, PATHWAY)
+    assert model.owner == "primary_care_owner:k"
+
+    with pool.connection() as conn:
+        before = conn.execute("SELECT count(*) FROM events WHERE case_id=%s", (case_id,)).fetchone()[0]
+    from app.state_machine import InvalidTransition
+
+    for actor in ("system:scheduler", "watchdog", "coordinator:co", "primary_care_owner:k"):
+        with pytest.raises(InvalidTransition):
+            store.append(Event(case_id, "escalation_accepted", utc(1, 15, 12), actor, {}), PATHWAY)
+    with pool.connection() as conn:
+        after = conn.execute("SELECT count(*) FROM events WHERE case_id=%s", (case_id,)).fetchone()[0]
+    assert after == before  # refused acceptances leave no row
+
+    store.append(Event(case_id, "escalation_accepted", utc(1, 15, 12), "supervisor:sam", {}), PATHWAY)
+    run_sweep(store, PATHWAY, UAE, utc(4, 1), only=[case_id])
+    assert rungs(store, case_id) == ["reminder", "supervisor"]  # the coordinator rung never fires
+    after_model = store.read_model(case_id, PATHWAY)
+    assert after_model.escalation_accepted and after_model.escalation_level == 2
+    assert after_model.owner == "primary_care_owner:k" and after_model.state == "owner_accepted"

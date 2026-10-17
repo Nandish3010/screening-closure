@@ -1,4 +1,4 @@
-"""Scheduler SLA sweep: find breaches and emit `mark_overdue` (A3), then walk the ladder (A4).
+"""Scheduler SLA sweep: find breaches, emit `mark_overdue` (A3) and walk the escalation ladder (A4).
 
 The planner (`plan_case`) is a pure function of (case model, pathway, calendar, now). It never
 reads a clock and never produces anything but `mark_overdue` / `escalate` events from
@@ -80,7 +80,51 @@ def plan_case(
                 sweep_event_id(case_id, model.state, due, "mark_overdue"),
             )
         )
+    if not model.escalation_accepted:
+        planned.extend(_plan_rungs(case_id, model, pathway, calendar, now, due))
     return planned
+
+
+def _plan_rungs(
+    case_id: UUID,
+    model: CaseModel,
+    pathway: Pathway,
+    calendar: WorkingCalendar,
+    now: datetime,
+    due: datetime,
+) -> list[Event]:
+    """The escalation rungs now due for this breach, in ladder order, none skipped.
+
+    A rung is due `after_breach_days` working days after the due date (0 = at the breach).
+    Rungs already emitted (`escalation_level`) are not planned again. A human accepting a
+    rung (`escalation_accepted`) stops the ladder for this breach; the caller checks that.
+    """
+    rungs = []
+    for level, rung in enumerate(pathway.escalation_ladder, start=1):
+        if level <= model.escalation_level:
+            continue
+        rung_due = _utc(calendar.add_working_days(due, rung.after_breach_days))
+        if now < rung_due:
+            break  # later rungs are due even later
+        rungs.append(
+            Event(
+                case_id,
+                "escalate",
+                now,
+                SCHEDULER_ACTOR,
+                {
+                    "rung": rung.rung,
+                    "level": level,
+                    "target": rung.target,
+                    "action": rung.action,
+                    "state": model.state,
+                    "due_at": due.isoformat(),
+                    "rung_due_at": rung_due.isoformat(),
+                },
+                sweep_event_id(case_id, model.state, due, f"escalate:{rung.rung}"),
+            )
+        )
+    return rungs
 
 
 @dataclass

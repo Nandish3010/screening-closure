@@ -173,3 +173,19 @@ Architecture decision records, one per decision. Add new entries at the end with
 - The sweep reads and replays every open case on each pass (chunked, bounded memory); F6 measures whether that needs an index or a materialised due-date column.
 - Integration tests pass `only=` so a sweep against the shared dev database touches only the test's own cases.
 - Rewinding the clock with `reset` leaves earlier overdue events in the append-only log; `make reset` is the way to start a clean demo.
+
+## ADR-014: Escalation rungs are `escalate` events; a human accepts one with `escalation_accepted`
+
+**Context.** The ladder (reminder at the breach, supervisor after 3 working days, programme coordinator after 7) must never run away from a human who has taken responsibility, and an escalation by itself must not move work: "every rung needs a human to accept". The tracker left the name of the acceptance event to A4, and the earlier draft called the rung event `escalated`.
+
+**Decision.**
+- A rung is an `escalate` event with `rung` (`reminder`, `supervisor`, `coordinator`), `level`, `target` (`owner`, `supervisor`, `coordinator`), emitted by the scheduler or by hand by a coordinator or supervisor. The state machine raises `escalation_level` by exactly one and refuses a skipped, repeated or unknown rung, a rung on a case that is not overdue, and any rung after an accepted one. Event ids are `uuid5(case, state, due date, "escalate:<rung>")`, so each rung is emitted once per breach however often or concurrently the sweep runs.
+- The acceptance event is named `escalation_accepted`. It is human-only and the actor's role must be in the rung's `accepted_by` list in the YAML (owner roles for the reminder, `supervisor` for the supervisor rung, `coordinator` for the coordinator rung). It may carry `rung`, which must name the latest rung. It sets `escalation_accepted` in the read model, which stops further rungs for that breach. It changes neither ownership nor state: taking the problem on is a separate, deliberate act (`accept_ownership`, `reassign`, or simply progressing the case).
+- Timing: a rung is due `after_breach_days` working days after the case's due date, evaluated on the working-day calendar; the sweep emits it when sim time is at or after that instant. All due rungs are emitted in order in one sweep, so a scheduler that was down catches up without skipping. An unanswered rung moves to the next one only through this timing.
+- A new obligation (any state change except a consent-withdrawn excursion) starts with a clean ladder: the flags reset and the next breach has new event ids.
+- The regulator rung is on the cut line and is not built; the ladder in the YAML has three rungs and the loader checks they are unique and non-decreasing in time.
+
+**Consequences.**
+- "Who was told, when, and who took it" is answered from the timeline alone: `escalate` rows, then `escalation_accepted` with its actor.
+- A rung accepted by the wrong person is refused by the engine (409), not just hidden in the UI.
+- The notification text for a rung (A7) hangs off the `escalate` event; the event names here are what Cut C and the decision matrix (E5) should use.

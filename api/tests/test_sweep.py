@@ -89,23 +89,30 @@ def test_nothing_is_planned_until_the_due_time_has_passed():
     assert plan_case(CASE, m, PATHWAY, UAE, due - timedelta(hours=1)) == []
     assert plan_case(CASE, m, PATHWAY, UAE, due) == []  # exactly at the due time is not late
     planned = plan_case(CASE, m, PATHWAY, UAE, due + timedelta(minutes=1))
-    assert [e.type for e in planned] == ["mark_overdue"]
+    # the breach itself, then the breach+0 reminder rung (A4); the later rungs are not due yet
+    assert [e.type for e in planned] == ["mark_overdue", "escalate"]
     ev = planned[0]
     assert ev.actor == SCHEDULER_ACTOR and ev.at == due + timedelta(minutes=1)
     assert ev.payload["state"] == "result_received"
     assert ev.payload["due_at"] == due.isoformat()
     assert ev.payload["sla_event"] == "acknowledge" and ev.payload["sla_working_days"] == 2
-    step(m, ev, PATHWAY)  # the state machine accepts what the planner plans
+    for e in planned:  # the state machine accepts what the planner plans, in order
+        m = step(m, e, PATHWAY)
+    assert m.overdue and m.escalation_level == 1
 
 
 def test_an_overdue_case_is_not_planned_again():
     m = start_model()
     due = due_at_for(m, PATHWAY, UAE)
     now = due + timedelta(days=1)
-    (ev,) = plan_case(CASE, m, PATHWAY, UAE, now)
-    m2 = step(m, ev, PATHWAY)
-    assert m2.overdue
-    assert plan_case(CASE, m2, PATHWAY, UAE, now + timedelta(days=30)) == []
+    m2 = m
+    for ev in plan_case(CASE, m, PATHWAY, UAE, now):
+        m2 = step(m2, ev, PATHWAY)
+    assert m2.overdue and m2.escalation_level == 1
+    assert plan_case(CASE, m2, PATHWAY, UAE, now) == []
+    # much later only the remaining rungs are planned; never another mark_overdue
+    later = plan_case(CASE, m2, PATHWAY, UAE, now + timedelta(days=30))
+    assert [e.payload["rung"] for e in later] == ["supervisor", "coordinator"]
 
 
 def test_event_ids_are_deterministic_and_distinct_per_breach():
@@ -194,7 +201,8 @@ def test_sweep_survives_a_concurrent_writer():
     store, (cid,) = make_store([])
     stale = store.read_model(cid, PATHWAY)
     store.append(Event(cid, "acknowledge", at(1), "lab:l"), PATHWAY)
-    (ev,) = plan_case(cid, stale, PATHWAY, UAE, at(3))
+    ev = plan_case(cid, stale, PATHWAY, UAE, at(3))[0]
+    assert ev.type == "mark_overdue"
     with pytest.raises(InvalidTransition):
         store.append(ev, PATHWAY)  # names result_received but the case moved on
     assert count(store, cid, "mark_overdue") == 0
