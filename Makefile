@@ -1,4 +1,4 @@
-.PHONY: check docs-check tracker-lint test-security test-tools test-load load-check up down logs test test-db test-db-create test-db-reset test-chaos synthea demo-seed demo-seed-clean evaluate simulate evaluate-check reset web-install web-dev web-build web-test web-e2e test-e2e review-packs review-packs-check test-review-packs
+.PHONY: check docs-check tracker-lint test-security rbac-matrix test-tools test-load load-check up down logs test test-db test-db-create test-db-reset test-chaos synthea demo-seed demo-seed-clean evaluate simulate evaluate-check reset web-install web-dev web-build web-test web-e2e test-e2e review-packs review-packs-check test-review-packs
 
 up:
 	docker compose up -d --build
@@ -148,10 +148,18 @@ docs-check:
 tracker-lint:
 	$(PY) tools/check/tracker_lint.py
 
-# Secrets and repo hygiene (F9): token shapes, private keys, JWT-looking strings, password literals,
-# .env ignored and never in history, .env.example placeholders only. F7 and F8 add RBAC and PHI scans here.
+# Security gates, none of which needs the stack: secrets and repo hygiene (F9: token shapes, private keys, JWT-looking
+# strings, password literals, .env ignored and never in history, .env.example placeholders only); the RBAC matrix
+# (F7, T-F9: every route and event type against every role, own case and other case, probed on the app and compared
+# with the policy tables; a route without a policy decision fails; docs/governance/rbac-matrix.md must equal a fresh
+# render, `make rbac-matrix` rewrites it). F8 adds the PHI scans.
 test-security:
 	$(PY) tools/check/secrets_scan.py
+	PYTHONPATH=api $(PY) tools/check/rbac_matrix.py --check
+	PYTHONPATH=api $(PY) -m pytest tests/test_rbac_matrix.py -q
+
+rbac-matrix:
+	PYTHONPATH=api $(PY) tools/check/rbac_matrix.py --write
 
 # Cross-cutting tests in tests/ (scanner, linters, load harness). PYTHONPATH=api makes a git worktree
 # test its own api/ rather than the checkout the venv was installed from.
