@@ -1,4 +1,4 @@
-.PHONY: test-security up down logs test test-db test-db-create test-db-reset synthea demo-seed demo-seed-clean evaluate simulate evaluate-check reset web-install web-dev web-build web-test web-e2e
+.PHONY: check docs-check tracker-lint test-security test-tools test-load load-check up down logs test test-db test-db-create test-db-reset synthea demo-seed demo-seed-clean evaluate simulate evaluate-check reset web-install web-dev web-build web-test web-e2e
 
 up:
 	docker compose up -d --build
@@ -116,8 +116,39 @@ web-test:
 web-e2e:
 	cd web && npm run test:e2e
 
-# ---- Cut F ----------------------------------------------------------------------------------------
+# ---- Cut F: hardening, reproducibility, `make check` (F1, F6, F9) ----------------------------------
+# `make check` runs, in order and stopping at the first failure: test, test-db (skipped loudly if
+# Postgres on :5433 is down), web-test, web-build, evaluate-check, docs-check, tracker-lint,
+# test-security, test-tools and a reduced load check. Each stage is its own target. Run every stage
+# even after a failure (for reporting): `make check CHECK_KEEP_GOING=1`.
+check:
+	$(PY) tools/check/run_check.py $(if $(CHECK_KEEP_GOING),--keep-going)
+
+# Broken relative links and ragged tables in docs/ and project/ (README.md too), and any TODO in docs/
+# outside lines carrying an H1/H2 review marker.
+docs-check:
+	$(PY) tools/check/docs_check.py --readme
+
+# Every T-ID in TRACKER.md is in TEST-CASES.md and vice versa; done rows cite commits that exist;
+# milestone counts match the rows; LOG.md is chronological.
+tracker-lint:
+	$(PY) tools/check/tracker_lint.py
+
 # Secrets and repo hygiene (F9): token shapes, private keys, JWT-looking strings, password literals,
 # .env ignored and never in history, .env.example placeholders only. F7 and F8 add RBAC and PHI scans here.
 test-security:
 	$(PY) tools/check/secrets_scan.py
+
+# Cross-cutting tests in tests/ (scanner, linters, load harness). PYTHONPATH=api makes a git worktree
+# test its own api/ rather than the checkout the venv was installed from.
+test-tools:
+	PYTHONPATH=api $(PY) -m pytest tests -q
+
+# Scheduler sweep over 1k / 10k / 100k seeded open cases in a throwaway `closure_load` database on the
+# compose Postgres (:5433); rewrites docs/results/load.md. KEEP_LOAD_DB=1 keeps the database.
+test-load:
+	PYTHONPATH=api $(PY) tools/load/time_sweep.py
+
+# The 1k size only, with the same correctness assertions and no files written (part of `make check`).
+load-check:
+	PYTHONPATH=api $(PY) tools/load/time_sweep.py --check
