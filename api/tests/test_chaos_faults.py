@@ -413,7 +413,7 @@ def test_t_f4_a_store_failure_after_the_insert_leaves_one_event_and_a_retry_heal
         events = events_of(inner, cid)
         assert [e.type for e in events].count("accept_ownership") == 1  # the event is in the log, once
         assert f"Provenance/prov-{key}" not in fake.resources  # but it was never projected ...
-        assert queue.count() == 0  # ... and nothing queued it (see the xfail below)
+        assert queue.count() == 1  # ... but it is queued (F3-1), and no client retry is needed for the projection
         assert set(fake.resources) == projected_before
         # the client retries with the same event id: no second event, and the projection catches up
         retry = post(client, cid, "accept_ownership", "primary_care_owner", event_id=key)
@@ -423,9 +423,9 @@ def test_t_f4_a_store_failure_after_the_insert_leaves_one_event_and_a_retry_heal
         assert f"Provenance/prov-{key}" in fake.resources
 
 
-@pytest.mark.xfail(strict=True, reason="finding F3-1: an event that commits and then fails before ProjectingStore.project() "
-                                         "is neither projected nor queued; only a client retry heals it (fhir_projection.py, Cut A)")
 def test_t_f4_a_committed_event_whose_store_call_failed_is_queued_for_projection_without_a_retry(monkeypatch):
+    """F3-1 (fixed): the event committed, the store raised before ProjectingStore.project() ran. The retry row
+    is queued without any client retry, and draining the queue projects the event."""
     inner = InMemoryEventStore()
     store, fake, queue, _ = projecting_stack(monkeypatch, inner, "fail_after_insert=1")
     with world(store) as client:
@@ -433,7 +433,44 @@ def test_t_f4_a_committed_event_whose_store_call_failed_is_queued_for_projection
         key = uuid4()
         assert post(client, cid, "acknowledge", "lab", event_id=key).status_code == 500
         assert len(events_of(inner, cid)) == 2
-        assert queue.count() == 1 or f"Provenance/prov-{key}" in fake.resources
+        assert queue.count() == 1
+        assert f"Provenance/prov-{key}" not in fake.resources
+        out = store.projector.drain()
+        assert out["projected"] == 1 and out["still_queued"] == 0
+        assert f"Provenance/prov-{key}" in fake.resources
+
+
+def test_t_f4_a_rejected_append_queues_nothing(monkeypatch):
+    """Only an event that is in the log is queued: a refused transition (409) leaves no retry row."""
+    inner = InMemoryEventStore()
+    store, fake, queue, _ = projecting_stack(monkeypatch, inner, "fail_after_insert=99")
+    with world(store) as client:
+        cid = new_case(client)
+        assert post(client, cid, "accept_ownership", "primary_care_owner").status_code == 409  # not acknowledged yet
+        assert queue.count() == 0 and len(events_of(inner, cid)) == 1
+
+
+def test_t_f4_when_the_log_cannot_be_read_after_a_failed_append_the_event_is_queued_anyway(monkeypatch):
+    """The connection died: the answer to the commit never came and the log cannot be read to tell. Queue
+    speculatively; a drain that finds the event absent drops the row, one that finds it projects it."""
+    inner = InMemoryEventStore()
+    store, fake, queue, faulty = projecting_stack(monkeypatch, inner, "fail_after_insert=1")
+    with world(store) as client:
+        cid = new_case(client)
+        key = uuid4()
+        real = faulty.events_for
+
+        def flaky(case_id):
+            if faulty.injected:  # the check right after the injected failure
+                raise RuntimeError("log unreadable")
+            return real(case_id)
+
+        faulty.events_for = flaky  # type: ignore[method-assign]
+        assert post(client, cid, "acknowledge", "lab", event_id=key).status_code == 500
+        faulty.events_for = real  # type: ignore[method-assign]
+        assert queue.count() == 1
+        assert store.projector.drain()["still_queued"] == 0
+        assert f"Provenance/prov-{key}" in fake.resources
 
 
 def test_t_f4_a_store_failure_before_the_insert_writes_nothing(monkeypatch):
@@ -463,6 +500,7 @@ def test_t_f4_the_same_store_failure_against_postgres(monkeypatch):
                 with pool.connection() as conn:
                     n = conn.execute("SELECT count(*) FROM events WHERE event_id = %s", (key,)).fetchone()[0]
                 assert n == 1
+                assert queue.count() == 1  # F3-1: queued for projection without any client retry
                 assert post(client, cid, "acknowledge", "lab", event_id=key).status_code == 201
                 with pool.connection() as conn:
                     n = conn.execute("SELECT count(*) FROM events WHERE event_id = %s", (key,)).fetchone()[0]

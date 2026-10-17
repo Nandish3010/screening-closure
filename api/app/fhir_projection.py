@@ -542,21 +542,63 @@ class ProjectingStore:
             self.append_many = self._append_many
 
     def create_case(self, case_id, pathway_name, genesis_event, initial_state):
-        self._inner.create_case(case_id, pathway_name, genesis_event, initial_state)
+        try:
+            self._inner.create_case(case_id, pathway_name, genesis_event, initial_state)
+        except BaseException:
+            self._queue_if_committed(case_id, [genesis_event])
+            raise
         self.projector.project(case_id, genesis_event)
 
     def append(self, event, pathway, *, within=None):
-        state = self._inner.append(event, pathway, within=within)
+        try:
+            state = self._inner.append(event, pathway, within=within)
+        except BaseException:
+            self._queue_if_committed(event.case_id, [event])
+            raise
         self.projector.project(event.case_id, event)
         return state
 
     def _append_many(self, events, pathway, *, within=None):
         """The sweep's batched append (F6), offered only when the inner store has one. Projects
         every event of the batch after the commit (idempotent by event id, so a retry is harmless)."""
-        state = self._inner.append_many(events, pathway, within=within)
+        try:
+            state = self._inner.append_many(events, pathway, within=within)
+        except BaseException:
+            for event in events:
+                self._queue_if_committed(event.case_id, [event])
+            raise
         for event in events:
             self.projector.project(event.case_id, event)
         return state
+
+    def _queue_if_committed(self, case_id, events) -> None:
+        """F3-1: the inner store raised. If the event nevertheless committed (the store failed after the
+        insert, the connection dropped while the commit's answer was on its way back), nothing would ever
+        project it, so queue it for the retry loop before the error goes on to the caller. A rejected
+        append (invalid transition, unknown case, id conflict) wrote nothing and queues nothing. When the
+        log cannot be read to tell, queue anyway: draining an event that is not in the log just drops the
+        row. Never raises: the original error is the one the caller must see."""
+        try:
+            try:
+                logged = {e.event_id for e in self._inner.events_for(case_id)}
+            except Exception:  # cannot tell: queue speculatively
+                logged = {e.event_id for e in events}
+            for event in events:
+                if event.event_id in logged:
+                    self._enqueue(event, case_id)
+        except Exception:  # pragma: no cover - the original error takes precedence
+            log.exception("FHIR projection: could not check whether a failed append committed")
+
+    def _enqueue(self, event, case_id) -> None:
+        last: Exception | None = None
+        for _ in range(2):  # its own retry: the queue is the only thing standing between this event and HAPI
+            try:
+                self.projector.queue.add(event.event_id, case_id, "append raised after the insert; queued by ProjectingStore")
+                log.warning("FHIR projection of event %s queued: the store call failed after the insert", event.event_id)
+                return
+            except Exception as exc:  # noqa: BLE001
+                last = exc
+        log.error("FHIR projection queue unavailable (%s); event %s will not be projected until a rebuild", last, event.event_id)
 
     def __getattr__(self, name):
         return getattr(self._inner, name)
