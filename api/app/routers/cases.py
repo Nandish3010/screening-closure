@@ -1,9 +1,11 @@
-from datetime import datetime
+from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
-from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel, Field
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel, ConfigDict, Field
 
+from app import policy
+from app.auth import Identity, require_identity
 from app.clock import clock
 from app.events import (
     CASE_CREATED,
@@ -36,8 +38,10 @@ class CreateCase(BaseModel):
 
 
 class PostEvent(BaseModel):
+    # `actor` is derived from the caller's identity (A8). Sending it is an error, not a hint.
+    model_config = ConfigDict(extra="forbid")
+
     type: str
-    actor: str
     payload: dict = Field(default_factory=dict)
     at: datetime | None = None  # defaults to the sim clock
     event_id: UUID | None = None  # optional idempotency key for client retries
@@ -96,10 +100,27 @@ def list_cases(state: str | None = None) -> list[dict]:
     return [_summary_json(c) for c in store.list_cases(state)]
 
 
+def _patient_ref(case_id: UUID) -> str | None:
+    """The patient the case belongs to, from its genesis event (None if unknown)."""
+    events = store.events_for(case_id)
+    return events[0].payload.get("patient_ref") if events else None
+
+
 @router.post("/{case_id}/events", status_code=201)
-def post_event(case_id: UUID, body: PostEvent) -> dict:
+def post_event(
+    case_id: UUID, body: PostEvent, identity: Identity = Depends(require_identity)
+) -> dict:
+    policy.authorize_event(identity, body.type)
+    if store.current_state(case_id) is None:
+        raise HTTPException(404, "case not found")
+    policy.authorize_case_access(identity, _patient_ref(case_id))
+    at = body.at or clock.now()
+    if at.tzinfo is None:
+        at = at.replace(tzinfo=UTC)
+    if at > clock.now():
+        raise HTTPException(422, "event time cannot be later than the simulation clock")
     extra = {"event_id": body.event_id} if body.event_id is not None else {}
-    event = Event(case_id, body.type, body.at or clock.now(), body.actor, body.payload, **extra)
+    event = Event(case_id, body.type, at, identity.actor, body.payload, **extra)
     try:
         store.append(event, pathway)
     except CaseNotFound:
@@ -112,8 +133,9 @@ def post_event(case_id: UUID, body: PostEvent) -> dict:
 
 
 @router.get("/{case_id}")
-def get_case(case_id: UUID) -> dict:
+def get_case(case_id: UUID, identity: Identity = Depends(require_identity)) -> dict:
     try:
+        policy.authorize_case_access(identity, _patient_ref(case_id))
         return _case_json(case_id)
     except CaseNotFound:
         raise HTTPException(404, "case not found")

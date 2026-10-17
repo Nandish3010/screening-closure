@@ -2,12 +2,14 @@ import logging
 import os
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 
+from app import auth, policy
 from app.clock import clock
 from app.config import settings
 from app.events import InMemoryEventStore
 from app.pathway import load_pathway
+from app.routers import auth as auth_router
 from app.routers import cases
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s:     %(name)s: %(message)s")
@@ -19,6 +21,7 @@ cases.pathway = pathway
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    auth.assert_secure_config()
     # Read the process environment (not .env/settings): a stray .env must never silently
     # switch a local run onto a database. Unset means the in-memory store.
     database_url = os.environ.get("DATABASE_URL")
@@ -41,7 +44,14 @@ async def lifespan(app: FastAPI):
             pool.close()
 
 
-app = FastAPI(title="Screening Closure Engine", version="0.1.0", lifespan=lifespan)
+# Every route passes through the policy table; a route without an entry is refused.
+app = FastAPI(
+    title="Screening Closure Engine",
+    version="0.1.0",
+    lifespan=lifespan,
+    dependencies=[Depends(policy.enforce_route_policy)],
+)
+app.include_router(auth_router.router)
 app.include_router(cases.router)
 
 

@@ -6,6 +6,9 @@ answers 409 CaseAlreadyExists for a case that is already there, which is reporte
 "already created" rather than as an error.
 
   API_URL   default http://localhost:8000
+
+The API requires a bearer token (A8). The script logs in once as the dev role `coordinator`
+via POST /auth/dev-login (development only; the token is never written to disk).
 """
 
 from __future__ import annotations
@@ -32,6 +35,27 @@ CASE_NAMESPACE = uuid.UUID("0b8e6d5a-3c1f-4a52-8a77-9d4e2f6b1c33")
 
 def case_id_for(report_id: str) -> str:
     return str(uuid.uuid5(CASE_NAMESPACE, f"DiagnosticReport/{report_id}"))
+
+
+def dev_login(client: httpx.Client, api: str, role: str = "coordinator", name: str = "simulator") -> None:
+    """Obtain a dev token and attach it to every later request. Retries like create_case."""
+    delay = 1.0
+    for attempt in range(1, 6):
+        try:
+            resp = client.post(f"{api}/auth/dev-login", json={"role": role, "name": name})
+        except httpx.TransportError as exc:
+            err = f"{type(exc).__name__}: {exc}"
+        else:
+            if resp.status_code == 200:
+                client.headers["Authorization"] = f"Bearer {resp.json()['token']}"
+                return
+            if resp.status_code < 500:
+                raise RuntimeError(f"dev login refused: HTTP {resp.status_code}: {resp.text[:200]}")
+            err = f"HTTP {resp.status_code}"
+        if attempt == 5:
+            raise RuntimeError(f"dev login gave up after 5 attempts: {err}")
+        time.sleep(delay)
+        delay *= 2
 
 
 def create_case(client: httpx.Client, api: str, entry: dict) -> str:
@@ -76,6 +100,11 @@ def main(argv: list[str] | None = None) -> int:
 
     created = exists = failed = 0
     with httpx.Client(timeout=30.0) as client:
+        try:
+            dev_login(client, api)
+        except RuntimeError as exc:
+            log.error("%s", exc)
+            return 1
         for entry in results:
             try:
                 if create_case(client, api, entry) == "created":

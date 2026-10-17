@@ -198,8 +198,9 @@ Everything below is a working contract for Cuts C and D. "Exists" means in the c
 | `POST /cases` | exists | `{case_id?, patient_ref?, result_ref?}` | 201 with the case: `{case_id, state, read_model, events[]}`; 409 `CaseAlreadyExists` |
 | `GET /cases?state=` | exists | query `state` | list of `{case_id, pathway, state, created_at, updated_at}` |
 | `GET /cases/{id}` | exists | none | `{case_id, state, read_model, events[]}`; 404 if unknown |
-| `POST /cases/{id}/events` | exists | `{type, actor, payload, at?, event_id?}` | 201 with the case (same shape as `GET /cases/{id}`); 404; 409 for an invalid transition or an `event_id` used on another case |
-| `GET /me` | planned (A8) | identity token | `{user_id, role, display_name}` |
+| `POST /auth/dev-login` | exists (A8) | `{role, name, patient_ref?}` (patient_ref only for role `patient`) | `{token, token_type: "bearer", user_id, role, display_name, patient_ref?}`; 403 for an automated role name, 422 for anything else invalid; 404 when `DEV_LOGIN_ENABLED=false` |
+| `POST /cases/{id}/events` | exists | `{type, payload, at?, event_id?}` (no `actor`: 422 if present) | 201 with the case (same shape as `GET /cases/{id}`); 404; 409 for an invalid transition or an `event_id` used on another case |
+| `GET /me` | exists (A8) | bearer token | `{user_id, role, display_name, patient_ref?}`; `user_id` is `role:name` |
 | `GET /cases?state&owner&overdue` | planned (A9) | query filters | list as above plus `owner`, `due_at`, `overdue`, and `risk_score` once D9 lands |
 | `GET /cases/{id}/timeline` | planned (A9) | none | read-only list of events with `seq, event_id, type, at, actor, payload` |
 | `GET /metrics/closure` | planned (A10) | none | `{p50_days, p90_days, open_by_age_bucket, breaches_by_provider, bottleneck_by_transition, abstention_rate, sim_time}` (proposed) |
@@ -207,9 +208,15 @@ Everything below is a working contract for Cuts C and D. "Exists" means in the c
 | `POST /drafts/{id}/approve` | planned (D5) | none | `{draft_id, status, approved_by, approved_at}` (proposed) |
 | clock control (advance, reset) | planned (A3) | e.g. `{days}` or `{hours}`; route names proposed | `{sim_time}`; supervisor role only |
 
-Event shape (all routes): `{seq, event_id, type, at, actor, payload}`. `event_id` is the idempotency key: a retry with the same id inserts once. `at` defaults to the sim clock, never the wall clock. Errors are JSON with a `detail` string. After A8 the `actor` field is derived from the caller's identity and a client-supplied `actor` is ignored or rejected.
+Event shape (all routes): `{seq, event_id, type, at, actor, payload}`. `event_id` is the idempotency key: a retry with the same id inserts once. `at` defaults to the sim clock, never the wall clock, and may not be later than the sim clock (422); backdating is allowed. `actor` is derived from the caller's identity (`role:name`, or `system:scheduler` for the scheduler service) and a client-supplied `actor` is rejected with 422. Errors are JSON with a `detail` string.
 
 Consent changes, callbacks and flags use `POST /cases/{id}/events`, not separate routes.
+
+**Authentication and authorisation (A8, ADR-012; the note for Cut C).**
+- Every route except `GET /health` and `POST /auth/dev-login` needs `Authorization: Bearer <token>`. Missing or invalid token: 401. Valid token, wrong role: 403 and nothing is written. A route that has no entry in `api/app/policy.py` is refused for everyone (403).
+- Web login flow: `POST /auth/dev-login {role, name}` (patients also send `patient_ref`, the `Patient/<id>` whose case they own), keep the returned `token` in memory, send it as the bearer header, call `GET /me` for the role to drive what the UI shows. Tokens do not expire in development. Logging in as `system`, `scheduler`, `watchdog` or `model` is refused: automated actors cannot authenticate as users.
+- Per event type, the roles that may post it are in `api/app/policy.py` (`EVENT_POLICY`) and summarised below. The UI should hide actions the role cannot take, but the API is the authority; the state machine can still answer 409 for an allowed role in the wrong state.
+- Patients see only their own case: `GET /cases/{id}` and `POST /cases/{id}/events` return 404 for any case whose genesis `patient_ref` is not theirs (indistinguishable from an unknown case). `GET /cases` is staff-only until A9 adds the patient's own list.
 
 ### Event types
 
@@ -265,16 +272,39 @@ Every case route that returns a case includes `read_model`, derived by replaying
 
 `state` is a main or side state. `overdue` and `escalation_level` are flags, not states, so a case can be overdue and in `patient_contacted` (ADR-011). They reset when the state changes, except for a consent-withdrawn excursion, which keeps them. `resume_state` is set only while in `consent_withdrawn` and is derived by replay, never taken from the client. `clock_started_at` is when the current state's SLA clock started; `breach_due_at` is set with `overdue`. Cut C can rely on the first six keys; the last four are extras for the timeline.
 
-### Roles (proposed, final in A8 and checked against the decision matrix in E5)
+### Roles
+
+Final as of A8. Authority is `api/app/policy.py`; the decision matrix in E5 is checked against it.
 
 | Role | Purpose |
 |---|---|
-| `lab` | Reports and acknowledges screening results for the cases it originated. |
-| `primary_care_owner` | Accepts ownership, contacts the patient (via approved messages), hands off, and can sign off as the responsible clinician. |
-| `specialist_owner` | Accepts referrals, books and completes the confirmatory test, and can sign off as the responsible clinician. |
-| `coordinator` | Sees the worklist and dashboard, takes callback tasks, accepts the top escalation rung. Cannot sign off a closure. |
+| `lab` | Reports and acknowledges screening results; creates cases. |
+| `primary_care_owner` | Accepts ownership, contacts the patient (via approved messages), hands off, approves messages, and signs off as the responsible clinician. |
+| `specialist_owner` | Accepts referrals, books and completes the confirmatory test, and signs off as the responsible clinician. |
+| `coordinator` | Sees the worklist and dashboard, records the patient's instructions (acknowledge, consent, callback), escalates and reassigns, accepts the coordinator rung. Cannot sign off a closure. |
 | `patient` | Sees only their own case, acknowledges, controls consent, requests a callback. |
-| `supervisor` | Accepts escalations for their owners, controls the demo clock. |
+| `supervisor` | Accepts the supervisor rung, accepts ownership on behalf of an owner, reassigns, controls the demo clock. Cannot sign off a closure. |
+| `scheduler` (service) | Not a user role. Authenticates with the scheduler service token as `system:scheduler`; may emit only `mark_overdue`, `escalate` and `watchdog_flagged`. |
+
+Who may post which event type through `POST /cases/{id}/events` (a missing type is refused for everyone):
+
+| Event type | Roles |
+|---|---|
+| `acknowledge` | lab, coordinator, supervisor |
+| `accept_ownership` | primary_care_owner, specialist_owner, supervisor |
+| `contact_patient`, `mark_lost_contact` | primary_care_owner, specialist_owner, coordinator, supervisor |
+| `patient_acknowledge`, `callback_requested`, `consent_updated` | patient (own case), coordinator |
+| `book_confirmatory`, `message_drafted` | primary_care_owner, specialist_owner, coordinator |
+| `complete_confirmatory` | specialist_owner |
+| `clinician_review`, `close`, `reopen`, `message_approved`, `handoff_accepted`, `handoff_rejected` | primary_care_owner, specialist_owner |
+| `handoff_requested` | primary_care_owner, specialist_owner, supervisor |
+| `reassign` | supervisor, coordinator |
+| `escalate` | scheduler, coordinator, supervisor |
+| `escalation_accepted` | primary_care_owner, specialist_owner, supervisor, coordinator (the state machine also requires the actor's role to be in the rung's `accepted_by`) |
+| `mark_overdue`, `watchdog_flagged` | scheduler |
+| `message_sent` | nobody (only the approval-gated send path in D5 writes it) |
+
+Other routes: `POST /cases` lab, coordinator, supervisor; `GET /cases` every user role except patient; `GET /cases/{id}` every user role (patients: own case only); `GET /pathways` and `GET /me` any valid identity; clock control supervisor only (A3).
 
 Whether a coordinator may ever sign off, and which roles count as "clinician", is a question for the clinician review (H1).
 

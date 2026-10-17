@@ -137,3 +137,21 @@ Architecture decision records, one per decision. Add new entries at the end with
 - `GET /pathways` now serves the richer YAML (`any_open`, `to: resume_state`, `when`, `min`), which is expanded by the loader; clients that read the raw YAML should use the loaded transitions instead.
 - Consent events after closure are not modelled (a closed case accepts only `reopen`).
 - The audit trail shows `mark_overdue`/`escalate` as events with timestamps, so "why is this case overdue" is answered by the timeline alone.
+
+## ADR-012: Identity from signed dev tokens; default-deny policy tables
+
+**Context.** Until A8 the caller named its own `actor` in the request body, so any client could post `close` as a clinician. The closure guard stops automated actors by name, which is only meaningful if names cannot be forged. We also need roles for the interfaces (Cut C) and a story for the regulator: who was allowed to do what, enforced by code rather than by the UI.
+
+**Decision.**
+- Identity is established per request from a bearer token; the event `actor` is `role:name` derived from it. A body that carries `actor` is rejected (422). The only roles a token can carry are the six user roles; `system`, `scheduler`, `watchdog` and `model` cannot authenticate as users, even with a validly signed token.
+- Development login (`POST /auth/dev-login {role, name}`) issues an HMAC-SHA256-signed token using `DEV_AUTH_SECRET`. The default secret exists only for local development: with `APP_ENV` other than `dev` the API refuses to start while the secret or the scheduler service token is still the built-in default. `DEV_LOGIN_ENABLED=false` removes the login route. Tokens do not expire, because the API never reads the wall clock (T-A17); a production deployment replaces `app/auth.py` with an OIDC verifier that yields the same `Identity`.
+- The scheduler authenticates with a static service token (`SCHEDULER_SERVICE_TOKEN`), is `system:scheduler`, and may emit only `mark_overdue`, `escalate` and `watchdog_flagged`.
+- Authorisation lives in `api/app/policy.py` as two default-deny tables: route (method + path template, enforced by an app-wide dependency) and event type (enforced in the event route). A route or event type with no entry is refused, and a test compares the table with the OpenAPI route list so a new route without a decision fails the build. The state machine still decides whether an event is valid; the policy decides who may try.
+- Patients are limited to their own case (matched on the genesis `patient_ref`) and to `patient_acknowledge`, `consent_updated` and `callback_requested`. A patient asking for someone else's case gets 404, the same as for an unknown case.
+- Extra hardening beyond the sketch: an event's `at` may not be later than the simulation clock. Without it a user could post an event dated in the future and push an SLA deadline out of reach, which is exactly the silent failure the product exists to prevent.
+
+**Consequences.**
+- T-A26 and the F7 RBAC matrix test can be generated from the tables.
+- Roles are coarse (no per-organisation scoping: any `primary_care_owner` may act on any case). Scoping owners to their own cases comes with the A5 ownership model and is listed in the limitations table.
+- `/docs` and `/openapi.json` stay open in development.
+- The dev token is a convenience, not an authentication mechanism; the submission must say so.
