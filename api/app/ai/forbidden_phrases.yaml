@@ -1,0 +1,316 @@
+# Forbidden phrases for model-drafted patient messages (D3).
+#
+# A draft containing any of these is rejected and replaced by the template (an abstention).
+# Both lists are checked on every draft, whatever its language, so a language slip cannot
+# smuggle a phrase past the other list. Matching is case-insensitive. Arabic text is normalised
+# first (diacritics and tatweel removed, alef variants and final yeh folded) and a phrase also
+# matches with common prefixes (wa-, fa-, bi-, li-, ka-, al-) and pronoun/plural suffixes.
+#
+# Entry fields:
+#   id         stable name, appears in the abstention reason and in the metrics
+#   phrase     literal phrase (whole word, spaces match any whitespace)   -- or --
+#   regex      raw regular expression (English only; used for word stems)
+#   category   diagnosis_statement | disease_term | positive_result_jargon | false_reassurance |
+#              clinical_judgement | medication_or_treatment | advice
+#   rationale  why the model must not say this
+#   example    a short text containing the phrase; the tests check each entry rejects its example
+#
+# TODO native-speaker review (H2) for the whole `ar` list. TODO clinician review (H1) for both.
+version: 1
+
+en:
+  - id: you_have
+    phrase: "you have"
+    category: diagnosis_statement
+    rationale: >-
+      "You have ..." is the grammar of a diagnosis. The only statement the message may make about
+      the result is that the screening test found blood.
+    example: "You have a problem that we need to look at."
+  - id: you_have_got
+    regex: "you(?:'|’)?ve got|you have got"
+    category: diagnosis_statement
+    rationale: Same as "you have"; informal form.
+    example: "You've got something that needs a test."
+  - id: you_are_ill
+    regex: "you are (?:ill|sick|unwell|affected|positive)|you(?:'|’)re (?:ill|sick|unwell|affected|positive)"
+    category: diagnosis_statement
+    rationale: States a condition of the patient, which only a clinician may do.
+    example: "You are unwell and need a test."
+  - id: diagnos
+    regex: "diagnos\\w*"
+    category: diagnosis_statement
+    rationale: The system diagnoses nothing; any use of the word implies that it did or will.
+    example: "This is not a diagnosis."
+  - id: cancer
+    regex: "cancer\\w*"
+    category: disease_term
+    rationale: >-
+      Naming the disease in an automated message is a diagnosis statement and can frighten a
+      patient before a clinician has spoken to them. A screening result is not a cancer finding.
+    example: "This could be cancer."
+  - id: tumour
+    regex: "tumou?rs?"
+    category: disease_term
+    rationale: Names a pathological finding. Not for an automated message.
+    example: "We found a tumour."
+  - id: malignant
+    regex: "malignan\\w*"
+    category: disease_term
+    rationale: Names a pathological finding. Not for an automated message.
+    example: "The test shows it is malignant."
+  - id: carcinoma_neoplasm
+    regex: "carcinoma\\w*|neoplas\\w*|adenoma\\w*|oncolog\\w*"
+    category: disease_term
+    rationale: Clinical terminology for disease; not allowed in patient messages from the model.
+    example: "You will see the oncology team."
+  - id: polyp_lesion
+    regex: "polyps?|lesions?|growths?"
+    category: disease_term
+    rationale: Describes a finding the screening test cannot show.
+    example: "It may be a polyp."
+  - id: positive_for
+    regex: "positive for|tested positive|test is positive|positive result"
+    category: positive_result_jargon
+    rationale: >-
+      "Positive" is read by many patients as "I have the disease". The message says only that the
+      test found blood.
+    example: "A positive result came back."
+  - id: do_not_worry
+    regex: "(?:do not|don(?:'|’)t) (?:worry|be worried|be alarmed|panic)|no need to (?:worry|panic)|nothing to (?:worry|be worried)"
+    category: false_reassurance
+    rationale: >-
+      Reassurance is a clinical judgement and may be false. It also makes patients less likely to
+      act on the next step.
+    example: "Do not worry about this."
+  - id: probably_nothing
+    regex: "(?:probably|likely|just|only) nothing|not serious|nothing serious|not a big deal|no cause for concern|nothing to be concerned|rest assured"
+    category: false_reassurance
+    rationale: Minimises a result that has not been investigated yet.
+    example: "It is probably nothing."
+  - id: be_fine
+    regex: "(?:will|should) be (?:fine|ok|okay|alright|all right)|everything is (?:fine|ok|okay)|all clear|(?:is|are) normal"
+    category: false_reassurance
+    rationale: Predicts an outcome the system cannot know.
+    example: "You will be fine."
+  - id: clinical_judgement
+    regex: "urgent\\w*|serious\\w*|dangerous|life[- ]threatening|emergency|critical"
+    category: clinical_judgement
+    rationale: >-
+      Urgency and severity are clinical judgements. Timing is set by the pathway SLAs and the
+      care team, not by the model.
+    example: "This is urgent."
+  - id: medication
+    regex: "medicat\\w*|medicine\\w*|prescri\\w*|dose\\w*|dosage|tablets?|pills?|aspirin|ibuprofen|antibiotic\\w*|laxative\\w*|supplement\\w*"
+    category: medication_or_treatment
+    rationale: Medication advice is outside the model's remit and can cause harm (for example before a colonoscopy).
+    example: "Take aspirin until then."
+  - id: treatment
+    regex: "treatment\\w*|therapy|surgery|surgical|chemo\\w*|radiotherapy|cure\\w*"
+    category: medication_or_treatment
+    rationale: Implies a treatment decision that has not been made.
+    example: "Treatment will start soon."
+  - id: advice_verbs
+    regex: "you should|you must|you need to|you have to|we advise|we recommend|i recommend|it is recommended|recommended that|make sure you|be sure to|avoid eating|stop taking|fasting|diet\\b"
+    category: advice
+    rationale: >-
+      The only instruction allowed is "the next step is ...; your care team will contact you".
+      Everything else (preparation, diet, behaviour) is for the care team.
+    example: "You should stop eating red meat."
+
+ar:
+  - id: you_are_affected
+    phrase: "انت مصاب"
+    category: diagnosis_statement
+    rationale: States that the patient has a condition; only a clinician may say so.
+    example: "أنت مصاب بمرض."
+  - id: affected
+    phrase: "مصاب"
+    category: diagnosis_statement
+    rationale: Any statement that the patient is "affected" (with a disease) is a diagnosis statement.
+    example: "قد تكون مصاباً."
+  - id: diagnosis
+    phrase: "تشخيص"
+    category: diagnosis_statement
+    rationale: The system diagnoses nothing.
+    example: "هذا ليس تشخيصاً."
+  - id: cancer
+    phrase: "سرطان"
+    category: disease_term
+    rationale: Names the disease; a diagnosis statement and frightening in an automated message.
+    example: "قد يكون سرطاناً."
+  - id: tumour
+    phrase: "ورم"
+    category: disease_term
+    rationale: Names a pathological finding.
+    example: "وجدنا ورماً."
+  - id: tumours_plural
+    phrase: "اورام"
+    category: disease_term
+    rationale: Plural of tumour.
+    example: "قد تكون أورام."
+  - id: malignant
+    phrase: "خبيث"
+    category: disease_term
+    rationale: Names a pathological finding.
+    example: "الورم خبيث."
+  - id: malignancy
+    phrase: "خباثة"
+    category: disease_term
+    rationale: Names a pathological finding.
+    example: "هناك خباثة."
+  - id: polyp
+    phrase: "سليلة"
+    category: disease_term
+    rationale: Describes a finding the screening test cannot show.
+    example: "قد تكون سليلة."
+  - id: polyps_plural
+    phrase: "سلائل"
+    category: disease_term
+    rationale: Plural of polyp.
+    example: "هناك سلائل."
+  - id: carcinoma
+    phrase: "كارسينوما"
+    category: disease_term
+    rationale: Clinical terminology for disease.
+    example: "كارسينوما محتملة."
+  - id: positive
+    phrase: "ايجابي"
+    category: positive_result_jargon
+    rationale: >-
+      "Positive" is read as "I have the disease". The message says only that the test found blood.
+    example: "نتيجتك ايجابية."
+  - id: do_not_worry
+    phrase: "لا تقلق"
+    category: false_reassurance
+    rationale: Reassurance is a clinical judgement and may be false; it can also reduce action.
+    example: "لا تقلق."
+  - id: do_not_worry_f
+    phrase: "لا تقلقي"
+    category: false_reassurance
+    rationale: Feminine form of "do not worry".
+    example: "لا تقلقي من ذلك."
+  - id: no_need_to_worry
+    phrase: "لا داعي للقلق"
+    category: false_reassurance
+    rationale: "No need to worry."
+    example: "لا داعي للقلق."
+  - id: do_not_fear
+    phrase: "لا تخف"
+    category: false_reassurance
+    rationale: Reassurance.
+    example: "لا تخف."
+  - id: do_not_fear_alt
+    phrase: "لا تخاف"
+    category: false_reassurance
+    rationale: Reassurance.
+    example: "لا تخاف."
+  - id: nothing_to_worry_about
+    phrase: "ما يدعو للقلق"
+    category: false_reassurance
+    rationale: "Nothing to worry about."
+    example: "لا يوجد ما يدعو للقلق."
+  - id: all_fine
+    phrase: "كل شيء بخير"
+    category: false_reassurance
+    rationale: Predicts an outcome the system cannot know.
+    example: "كل شيء بخير."
+  - id: you_will_be_fine
+    phrase: "ستكون بخير"
+    category: false_reassurance
+    rationale: Predicts an outcome the system cannot know.
+    example: "ستكون بخير."
+  - id: not_dangerous
+    phrase: "غير خطير"
+    category: false_reassurance
+    rationale: Minimises a result that has not been investigated yet.
+    example: "الأمر غير خطير."
+  - id: normal
+    phrase: "طبيعي"
+    category: false_reassurance
+    rationale: Calls a result normal, which is a clinical judgement.
+    example: "الأمر طبيعي."
+  - id: dangerous
+    phrase: "خطير"
+    category: clinical_judgement
+    rationale: Severity is a clinical judgement.
+    example: "الحالة خطيرة."
+  - id: urgent
+    phrase: "عاجل"
+    category: clinical_judgement
+    rationale: Urgency is set by the pathway and the care team, not by the model.
+    example: "الأمر عاجل."
+  - id: emergency
+    phrase: "طارئ"
+    category: clinical_judgement
+    rationale: Urgency is set by the pathway and the care team, not by the model.
+    example: "هذه حالة طارئة."
+  - id: medicine
+    phrase: "دواء"
+    category: medication_or_treatment
+    rationale: Medication advice is outside the model's remit.
+    example: "خذ الدواء."
+  - id: medicines_plural
+    phrase: "ادوية"
+    category: medication_or_treatment
+    rationale: Plural of medicine.
+    example: "توقف عن الأدوية."
+  - id: dose
+    phrase: "جرعة"
+    category: medication_or_treatment
+    rationale: Medication advice.
+    example: "خذ جرعة واحدة."
+  - id: pills
+    phrase: "حبوب"
+    category: medication_or_treatment
+    rationale: Medication advice.
+    example: "خذ الحبوب."
+  - id: laxative
+    phrase: "ملين"
+    category: medication_or_treatment
+    rationale: Bowel preparation instructions belong to the care team.
+    example: "خذ ملين الليلة."
+  - id: treatment
+    phrase: "علاج"
+    category: medication_or_treatment
+    rationale: Implies a treatment decision that has not been made.
+    example: "سيبدأ العلاج قريباً."
+  - id: surgery
+    phrase: "جراحة"
+    category: medication_or_treatment
+    rationale: Implies a treatment decision that has not been made.
+    example: "ستحتاج إلى جراحة."
+  - id: chemotherapy
+    phrase: "كيماوي"
+    category: medication_or_treatment
+    rationale: Implies a treatment decision that has not been made.
+    example: "العلاج الكيماوي."
+  - id: you_must
+    phrase: "يجب عليك"
+    category: advice
+    rationale: Only "the next step is ...; your care team will contact you" is allowed as an instruction.
+    example: "يجب عليك الصيام."
+  - id: we_advise
+    phrase: "ننصحك"
+    category: advice
+    rationale: Advice beyond the next step is for the care team.
+    example: "ننصحك بتجنب اللحوم."
+  - id: you_should
+    phrase: "ينبغي"
+    category: advice
+    rationale: Advice beyond the next step is for the care team.
+    example: "ينبغي أن تتوقف عن الأكل."
+  - id: you_need_to
+    phrase: "عليك ان"
+    category: advice
+    rationale: Advice beyond the next step is for the care team.
+    example: "عليك أن تصوم."
+  - id: take
+    phrase: "تناول"
+    category: advice
+    rationale: Instructions to take or eat something are medical advice.
+    example: "تناول الطعام الخفيف."
+  - id: fasting
+    phrase: "صيام"
+    category: advice
+    rationale: Preparation instructions belong to the care team.
+    example: "يلزم صيام قبل الفحص."
