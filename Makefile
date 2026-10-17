@@ -1,4 +1,4 @@
-.PHONY: up down logs test test-db synthea demo-seed demo-seed-clean evaluate reset
+.PHONY: up down logs test test-db synthea demo-seed demo-seed-clean evaluate reset web-install web-dev web-build web-test web-e2e
 
 up:
 	docker compose up -d --build
@@ -54,3 +54,20 @@ reset:
 # Generates the synthetic cohort inside a container (never on the host). Output: data/synthea/out/fhir/
 synthea:
 	docker compose --profile tools run --rm synthea
+
+# Web app (Vite + React + TS, web/). Adapter: VITE_API_ADAPTER=mock (default) or http (VITE_API_URL).
+web-install:
+	cd web && npm install
+
+web-dev:
+	cd web && npm run dev
+
+web-build:
+	cd web && npm run build
+
+web-test:
+	cd web && npm test
+
+# Playwright e2e against a mock-adapter `vite preview` (needs `npx playwright install chromium` once).
+web-e2e:
+	cd web && npm run test:e2e
