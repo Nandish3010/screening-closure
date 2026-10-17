@@ -29,6 +29,7 @@ scheduler/         SLA sweep loop (stub) + heartbeat
 watchdog/          silent-failure watchdog (stub)
 simulator/         synthetic cohort pipeline (load, FIT results, cases) + simulator parameters
 tools/synthea/     containerised Synthea runner (make synthea)
+tools/demo/        demo scenario, snapshot and one-click reset, kill-the-scheduler rehearsal (see tools/demo/README.md)
 web/               Vite + React PWA (not scaffolded yet)
 docs/              data provenance, design choices, assumptions and limitations
 ```

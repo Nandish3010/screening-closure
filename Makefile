@@ -1,4 +1,4 @@
-.PHONY: test-e2e-live check docs-check tracker-lint test-security test-tools test-load load-check up down logs test test-db test-db-create test-db-reset test-chaos synthea demo-seed demo-seed-clean evaluate simulate evaluate-check reset web-install web-dev web-build web-test web-e2e test-e2e review-packs review-packs-check test-review-packs
+.PHONY: test-demo test-e2e-live demo-scenario demo-snapshot demo-restore demo-reset check docs-check tracker-lint test-security test-tools test-load load-check up down logs test test-db test-db-create test-db-reset test-chaos synthea demo-seed demo-seed-clean evaluate simulate evaluate-check reset web-install web-dev web-build web-test web-e2e test-e2e review-packs review-packs-check test-review-packs
 
 up:
 	docker compose up -d --build
@@ -124,6 +124,28 @@ web-test:
 web-e2e:
 	cd web && npm run test:e2e
 
+# ---- E8: the demo scenario, one-click reset and the kill-the-scheduler rehearsal (tools/demo/, README there) ------------
+# The scripted 7-minute story for one named synthetic patient, through the API: `make demo-scenario [UNTIL=<step>]`.
+demo-scenario:
+	$(PY) tools/demo/scenario.py $(if $(UNTIL),--until $(UNTIL))
+
+# Save the current database (cases, events, drafts, notifications, the sim clock AND HAPI's FHIR data) as the demo
+# snapshot, on a clean seeded stack: `make reset && make demo-seed && make demo-snapshot`.
+demo-snapshot:
+	tools/demo/snapshot.sh save
+
+demo-restore:
+	tools/demo/snapshot.sh restore
+
+# One click: restore the snapshot, reset the sim clock, check the state hash equals the snapshot's (about 25 s).
+demo-reset:
+	tools/demo/snapshot.sh reset
+
+# T-E9 and T-E10 against the running stack: the scenario end to end and identical after a reset, and the reset
+# returns exactly the snapshot's state in under 30 s. Drives docker and leaves the demo state reset (about 4 minutes).
+test-demo:
+	PYTHONPATH=api $(PY) -m pytest tools/demo/tests -q -m live -s
+
 # ---- Cut F: hardening, reproducibility, `make check` (F1, F6, F9) ----------------------------------
 # `make check` runs, in order and stopping at the first failure: test, test-db (skipped loudly if
 # Postgres on :5433 is down), web-test, web-build, evaluate-check, docs-check, tracker-lint,
@@ -150,7 +172,7 @@ test-security:
 # Cross-cutting tests in tests/ (scanner, linters, load harness). PYTHONPATH=api makes a git worktree
 # test its own api/ rather than the checkout the venv was installed from.
 test-tools:
-	PYTHONPATH=api $(PY) -m pytest tests -q
+	PYTHONPATH=api $(PY) -m pytest tests tools/demo/tests -q -m "not live"
 
 # Scheduler sweep over 1k / 10k / 100k seeded open cases in a throwaway `closure_load` database on the
 # compose Postgres (:5433); rewrites docs/results/load.md. KEEP_LOAD_DB=1 keeps the database.

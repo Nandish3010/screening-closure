@@ -1,0 +1,88 @@
+# Demo tooling (E8)
+
+Everything the 7-minute GITEX demo needs to start from a known state, run the same story every time, and go back to the start in one command. All data is synthetic.
+
+| Command | What it does |
+|---|---|
+| `make demo-snapshot` | Save the current database as the demo snapshot. Do it once on a clean, seeded stack: `make reset && make demo-seed && make demo-snapshot`. |
+| `make demo-reset` | One click: restore the snapshot, reset the simulation clock, and check that the state hash equals the snapshot's. |
+| `make demo-restore` | The restore alone, without the clock reset and the hash check. |
+| `make demo-scenario [UNTIL=<step>]` | Run the scripted story for the named patient through the API, optionally up to and including one step. |
+| `make demo-kill-scheduler [RUNS=3]` | The F11 rehearsal: stop the scheduler, wait for the alert, restart it, check no event was lost. |
+| `make test-demo` | T-E9 and T-E10 against the running stack (about 4 minutes; leaves the demo reset). |
+| `python3 tools/demo/create_colonoscopy_report.py --case-id ... --patient-ref Patient/...` | Create the colonoscopy `Procedure` and `DiagnosticReport` for a case in HAPI without going through the API. |
+
+## The named patient
+
+`scenario.py` picks the demo patient deterministically: the first positive FIT in seed order, which is the first row of `data/results/manifest.json` (`simulator/generate_results.py`), and its case id is the same uuid5 `simulator/create_cases.py` gave it. The display name is the patient's Synthea name read from HAPI, with Synthea's numeric suffixes removed. With the committed seed (`20261017`, 300 patients, ages 40-75) that is **Anisha Kyoko Roberts** (`Patient/10242`), case `158a089f-9ee9-5ddb-ab0b-7b02bda8d7dc`. A different seed or population gives a different patient and the script follows; `make demo-scenario` prints who it picked.
+
+## The scenario
+
+`python3 tools/demo/scenario.py --list` prints the steps with what each does. Every step is an ordinary API call by one of the demo logins (the same names as the web's role switcher); a supervisor moves the clock, and the scheduler sweep is called directly after each move so the result does not depend on when the scheduler container wakes up. Timings are from a full run on the development stack (28 events in the case, 13 s in total; the clock moves are the slow steps because every open case is swept).
+
+| # | Step (`--until` value) | What happens | Sim time after | Wall time |
+|---|---|---|---|---|
+| 1 | `result_received` | The positive FIT of the named patient is in; the case has no owner. | 5 Jan 08:00 | 0.0 s |
+| 2 | `acknowledged` | The lab acknowledges the result. | 5 Jan 08:00 | 0.9 s |
+| 3 | `owner_accepted` | Dr. Layla Haddad (primary care) accepts ownership. | 5 Jan 08:00 | 0.3 s |
+| 4 | `patient_unreachable` | She phones the patient; nobody answers, so the patient never acknowledges. | 5 Jan 08:00 | 0.3 s |
+| 5 | `overdue` | The clock passes the 7-working-day SLA: the scheduler marks the case overdue and sends rung 1 (reminder to the owner). | 14 Jan 09:00 | 7.7 s |
+| 6 | `escalation_supervisor` | Three working days later, rung 2: the supervisor is notified. | 19 Jan 09:00 | 1.7 s |
+| 7 | `escalation_coordinator` | Seven working days after the breach, rung 3: the programme coordinator is notified. | 23 Jan 09:00 | 0.1 s |
+| 8 | `escalation_accepted` | The coordinator accepts rung 3. | 23 Jan 09:00 | 0.1 s |
+| 9 | `draft_sent` | An Arabic reminder is drafted for the patient; the owner approves it and it is sent. | 23 Jan 09:00 | 0.3 s |
+| 10 | `patient_acknowledged` | The patient taps "I understand" on the PWA. | 23 Jan 09:00 | 0.1 s |
+| 11 | `handoff_rejected` | The owner asks Al Noor Endoscopy Centre; they decline for capacity. Ownership stays with the referrer. | 23 Jan 09:00 | 0.2 s |
+| 12 | `handoff_bounced` | The owner asks Marina Digestive Health, who never answer; three working days later the scheduler bounces the request. | 28 Jan 10:00 | 0.3 s |
+| 13 | `reassigned` | The coordinator re-routes the case back to the owner. | 28 Jan 10:00 | 0.1 s |
+| 14 | `handoff_accepted` | The owner asks Corniche Gastro Unit; Dr. Karim Nasser accepts and becomes the owner. | 28 Jan 10:00 | 0.2 s |
+| 15 | `patient_reacknowledged` | The new owner phones the patient, who acknowledges again (a re-routed referral goes back through contact). | 28 Jan 10:00 | 0.2 s |
+| 16 | `booked` | The colonoscopy is booked, 14 days out. | 28 Jan 10:00 | 0.1 s |
+| 17 | `colonoscopy_done` | The clock advances to the appointment day. | 11 Feb 09:00 | 0.0 s |
+| 18 | `result_recorded` | The specialist records the colonoscopy: a `Procedure` and `DiagnosticReport` are created in HAPI and the case is told the result exists. | 11 Feb 09:00 | 0.2 s |
+| 19 | `clinician_review` | The clinician reviews and signs as themselves (`Practitioner/<own id>`). | 11 Feb 09:00 | 0.1 s |
+| 20 | `closed` | The clinician closes the case with the `Procedure` as evidence. | 11 Feb 09:00 | 0.1 s |
+
+Two things differ from the one-line version of the story in the demo script, because the engine says so:
+
+- **Acceptance stops the ladder** (ADR-014). A supervisor can accept rung 2 only before rung 3 exists, so showing all three rungs means the last one is accepted by its own target, the coordinator. The supervisor's role in the demo is moving the clock.
+- **A re-routed referral goes back to `owner_accepted`**, so the new owner contacts the patient and the patient acknowledges again before the booking (steps 15 and 16).
+
+To rehearse the live part of the demo, stop the scripted part where the live part begins and carry on in the browser: `make demo-reset && make demo-scenario UNTIL=patient_acknowledged`, then switch roles in the web app (`make web-dev` with `VITE_API_ADAPTER=http`) from there. The web's supervisor role has an "Advance clock (days)" control in the header for the clock moves.
+
+### Determinism (T-E9)
+
+Event ids are uuid5 of the case and the step, every clock move lands on an exact whole hour computed with the same working-day calendar as the sweep, and the scheduler sweep is called directly. At the end the script prints a hash of the case's event log (type, time, actor, payload; the random draft and notification ids replaced by a placeholder). After `make demo-reset` two runs print the same hash:
+
+```
+EVENT LOG HASH cada77e1cf81a6fd96c9e2699f6900bb4c3b2c8e60d088e07bde071a2f493e2e
+```
+
+The script refuses to run unless the clock is at its start and the case is at `result_received`; run `make demo-reset` first.
+
+## Snapshot and reset (T-E10)
+
+HAPI stores its data in the same Postgres database as the cases, so one copy of that database is the whole demo state: cases, events, drafts, notifications, the simulation clock and the FHIR resources. `snapshot.sh` makes the copy as a Postgres template copy (`CREATE DATABASE closure_snapshot TEMPLATE closure STRATEGY FILE_COPY`), a file-level copy inside the server: a 3 GB database in 4 to 8 seconds, where `pg_dump` and `pg_restore` take many minutes. The event log is append-only (triggers forbid UPDATE and DELETE), so "undo the demo" can only mean replacing the database.
+
+The API, scheduler, watchdog and HAPI are stopped around the copy (Postgres will not copy a database someone is connected to, the API keeps the clock in memory and rereads it when it starts, and HAPI must not keep caches or preallocated resource ids from before the restore; it is killed rather than stopped since its database is about to be replaced).
+
+`make demo-reset` runs `snapshot.sh reset`: restore, `POST /clock/reset`, then compare the **state fingerprint** with the one stored at snapshot time (`data/demo-snapshot.fingerprint`). The fingerprint has the counts and md5 of cases, events, drafts and notifications, the sim clock, and the number of live FHIR resources per type; heartbeats, alerts and the users directory are left out because they change by themselves. Measured on the development machine:
+
+| | Seconds |
+|---|---|
+| stop the services | 1.5 |
+| copy the database | 4 to 8 |
+| the API answers again | about 13 |
+| HAPI answers again (a JVM; depends on how busy the machine is) | 29 to 42 |
+
+The demo is usable once the API answers (about 13 s); HAPI is needed by the colonoscopy step and the closure evidence check, long after. `snapshot.sh` waits for HAPI too before it returns, so the next command is safe.
+
+The snapshot lives in the compose volume: it survives `make down` and `make up`, not `make reset`. After `make reset && make demo-seed`, take a new one with `make demo-snapshot`. `snapshot.sh status` says whether one exists, `snapshot.sh hash` prints the fingerprint of the running database, `snapshot.sh refresh` rewrites the stored fingerprint from the snapshot database.
+
+## Kill the scheduler (F11)
+
+`make demo-kill-scheduler RUNS=3` runs the on-stage moment, three times if asked: record the event log (count and a hash of every event id in order), stop the scheduler container, wait for the watchdog's `scheduler_down` alert (the dashboard banner reads the same alert; the limit is 90 s), check that the API still answers, start the scheduler, wait for the alert to clear, and require that the log is unchanged (same count, same ids in the same order, nothing lost or duplicated). It writes no events itself.
+
+## The colonoscopy result
+
+`POST /cases/{id}/confirmatory-result` (the case owner only, no body) creates a synthetic colonoscopy `Procedure` (SNOMED 73761001) and `DiagnosticReport` in HAPI for the case's patient, and returns their references. The ids are deterministic (`Procedure/colonoscopy-<case id>`), so recording twice is idempotent. `evidence_ref` in the answer is the Procedure: it is what `complete_confirmatory.result_ref` and `close.evidence_ref` take, and `close` checks it against HAPI. The web has the "Record colonoscopy result" button on it; `create_colonoscopy_report.py` does the same from the command line.
