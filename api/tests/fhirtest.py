@@ -48,3 +48,62 @@ def put_tagged(resource: dict):
 
 def get(ref: str):
     return request("GET", ref)
+
+
+# ---- a fake FHIR server for the unit tests -----------------------------------------------------------------
+
+
+class FakeFhirClient:
+    """Stands in for HAPI: stores what a transaction PUTs, resolves references against what it
+    holds (HAPI enforces referential integrity, so this does too) and can be switched off."""
+
+    def __init__(self, existing=()):
+        from app.fhir_projection import FhirError
+
+        self._error = FhirError
+        self.resources: dict[str, dict] = {}
+        self.existing = set(existing)
+        self.down = False
+        self.refuse: str | None = None  # a message: answer every transaction with HTTP 4xx
+        self.transactions = 0
+        self.exists_calls: list[str] = []
+
+    def exists(self, ref: str) -> bool:
+        self.exists_calls.append(ref)
+        if self.down:
+            raise self._error("HAPI unreachable: fake")
+        return ref in self.existing or ref in self.resources
+
+    def transaction(self, bundle: dict) -> None:
+        self.transactions += 1
+        if self.down:
+            raise self._error("HAPI unreachable: fake")
+        if self.refuse:
+            raise self._error(f"HAPI answered HTTP 400: {self.refuse}")
+        assert bundle["type"] == "transaction"
+        incoming = {}
+        for entry in bundle["entry"]:
+            res = entry["resource"]
+            assert entry["request"] == {"method": "PUT", "url": f"{res['resourceType']}/{res['id']}"}
+            incoming[f"{res['resourceType']}/{res['id']}"] = res
+        known = set(self.resources) | set(incoming) | self.existing
+        for ref, res in incoming.items():
+            for target in _references(res):
+                if target not in known:
+                    raise self._error(f"HAPI answered HTTP 400: HAPI-1094: Resource {target} not found, specified in {ref}")
+        self.resources.update(incoming)
+
+    def of_type(self, resource_type: str) -> list[dict]:
+        return [r for r in self.resources.values() if r["resourceType"] == resource_type]
+
+
+def _references(node):
+    if isinstance(node, dict):
+        ref = node.get("reference")
+        if isinstance(ref, str) and "/" in ref and not ref.startswith("#"):
+            yield ref
+        for value in node.values():
+            yield from _references(value)
+    elif isinstance(node, list):
+        for item in node:
+            yield from _references(item)

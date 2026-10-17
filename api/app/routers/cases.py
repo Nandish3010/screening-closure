@@ -4,8 +4,9 @@ from uuid import UUID, uuid4
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, ConfigDict, Field
 
-from app import consent, evidence, notify, payloads, policy, readmodel, users
+from app import consent, evidence, fhir_projection, notify, payloads, policy, readmodel, users
 from app.calendar import default_calendar
+from app.config import settings as app_settings
 from app.auth import Identity, require_identity
 from app.clock import clock
 from app.events import (
@@ -220,6 +221,24 @@ def case_timeline(case_id: UUID, identity: Identity = Depends(require_identity))
         "case_id": str(case_id),
         **readmodel.timeline(events, pathway, default_calendar(), clock.now()),
         "actors": _actors_json(events, model),
+    }
+
+
+@router.get("/{case_id}/fhir")
+def case_fhir(case_id: UUID, identity: Identity = Depends(require_identity)) -> dict:
+    """The FHIR resources the projection writes for this case (A12): their ids, computed from the
+    log, plus how many events are still waiting in the retry queue. Owners see only their own case."""
+    model = store.read_model(case_id, pathway)
+    if model is None:
+        raise HTTPException(404, "case not found")
+    policy.authorize_owner_scope(identity, "view_fhir", model)
+    projector = getattr(store, "projector", None)
+    return {
+        "case_id": str(case_id),
+        "projection_enabled": projector is not None,
+        "fhir_base_url": app_settings.fhir_base_url,
+        "events_waiting": projector.queue.count(case_id) if projector is not None else 0,
+        **fhir_projection.case_resource_ids(pathway, default_calendar(), case_id, store.events_for(case_id)),
     }
 
 

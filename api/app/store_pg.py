@@ -370,3 +370,38 @@ class PostgresOpsStore:
         with self._pool.connection() as conn:
             rows = conn.execute(sql + " ORDER BY id DESC LIMIT %s", (limit,)).fetchall()
         return [Alert(*r) for r in rows]
+
+
+class PostgresProjectionQueue:
+    """Retry queue for the FHIR projection (migration 006): ids and the last error, no clinical data."""
+
+    def __init__(self, pool: ConnectionPool) -> None:
+        self._pool = pool
+
+    def add(self, event_id: UUID, case_id: UUID, error: str) -> None:
+        with self._pool.connection() as conn:
+            conn.execute(
+                "INSERT INTO fhir_projection_queue (event_id, case_id, last_error) VALUES (%s, %s, %s)"
+                " ON CONFLICT (event_id) DO UPDATE SET attempts = fhir_projection_queue.attempts + 1,"
+                " last_error = EXCLUDED.last_error, last_attempt_at = now()",
+                (event_id, case_id, error),
+            )
+
+    def pending(self, limit: int = 100) -> list:
+        with self._pool.connection() as conn:
+            rows = conn.execute(
+                "SELECT event_id, case_id, attempts FROM fhir_projection_queue ORDER BY queued_at, event_id LIMIT %s",
+                (limit,),
+            ).fetchall()
+        return [(r[0], r[1], r[2]) for r in rows]
+
+    def remove(self, event_id: UUID) -> None:
+        with self._pool.connection() as conn:
+            conn.execute("DELETE FROM fhir_projection_queue WHERE event_id = %s", (event_id,))
+
+    def count(self, case_id: UUID | None = None) -> int:
+        sql, params = "SELECT count(*) FROM fhir_projection_queue", ()
+        if case_id is not None:
+            sql, params = sql + " WHERE case_id = %s", (case_id,)
+        with self._pool.connection() as conn:
+            return int(conn.execute(sql, params).fetchone()[0])

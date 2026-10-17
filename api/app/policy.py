@@ -43,6 +43,8 @@ ROUTE_POLICY: dict[tuple[str, str], object] = {
     ("GET", "/cases/{case_id}"): ALL_USERS,
     # The notification log of a case: owners (of that case), coordinators, supervisors (A7).
     ("GET", "/cases/{case_id}/notifications"): frozenset({PCO, SPEC, COORD, SUPER}),
+    # The FHIR resources projected for a case (A12): owners (own case), coordinators, supervisors.
+    ("GET", "/cases/{case_id}/fhir"): frozenset({PCO, SPEC, COORD, SUPER}),
     # Every role may try; EVENT_POLICY decides per event type.
     ("POST", "/cases/{case_id}/events"): ALL_USERS | SCHEDULER | WATCHDOG,
     # Closure metrics for the dashboard (A10).

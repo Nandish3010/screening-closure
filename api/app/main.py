@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import Depends, FastAPI
 
-from app import auth, evidence, notify, ops, policy, users
+from app import auth, evidence, fhir_projection, notify, ops, policy, users
 from app.clock import clock
 from app.config import settings
 from app.events import InMemoryEventStore
@@ -56,9 +56,19 @@ async def lifespan(app: FastAPI):
         users.directory = users.InMemoryUserDirectory()
         ops.store = ops.InMemoryOpsStore()
         log.warning("event store: IN-MEMORY (DATABASE_URL not set); data is not durable")
+    if settings.fhir_projection:
+        from app.calendar import default_calendar
+
+        cases.store = fhir_projection.wrap_store(cases.store, settings, pathway, default_calendar(), pool)
+        log.info("FHIR projection is ON: events are written to %s", settings.fhir_base_url)
+    else:
+        log.warning("FHIR projection is OFF (FHIR_PROJECTION is not true)")
     try:
         yield
     finally:
+        projector = getattr(cases.store, "projector", None)
+        if projector is not None:
+            projector.stop()
         if pool is not None:
             pool.close()
 

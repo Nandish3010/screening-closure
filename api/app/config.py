@@ -40,6 +40,10 @@ class Settings(BaseSettings):
     # Compose sets it to true; unit tests use a fake verifier instead.
     fhir_verify_evidence: bool = False
     fhir_timeout_seconds: float = 5.0
+    # FHIR projection of the event stream to HAPI (A12, ADR-024). Compose turns it on; unit tests and
+    # no-docker runs leave it off.
+    fhir_projection: bool = False
+    fhir_projection_drain_seconds: float = 20.0
     # Working-day calendar (weekend set, holidays, time zone). Compose sets /config/calendar.yaml.
     calendar_path: str = str(_DEFAULT_CALENDAR)
 
