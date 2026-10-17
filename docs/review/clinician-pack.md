@@ -117,11 +117,12 @@ Events are the facts the system records. The "who" column follows the authorisat
 | `review_requested` | Flag the case for human review (used when consent is withdrawn). | The system itself; nobody can post it | annotation |  |
 | `message_drafted` | A message draft is prepared (by a template or a language model) for a person to approve. | Care owner, coordinator, model drafting provider | annotation |  |
 | `message_approved` | A person approves a draft. Nothing is sent without this. | Care owner (human only) | annotation | yes |
+| `message_rejected` | A person rejects a draft, giving a reason from a fixed list. Nothing is sent. | Care owner (human only) | annotation | yes |
 | `message_sent` | The message is sent through the notification mock. | The approval-gated send path only; nobody can post it | annotation |  |
 | `callback_requested` | The patient asks for a person to call because they do not understand. | Patient, coordinator (human only) | annotation | yes |
 | `watchdog_flagged` | The watchdog flags a case that has been idle too long. | Watchdog / scheduler | annotation |  |
 
-Events listed as human only in the configuration: `escalation_accepted`, `handoff_accepted`, `consent_updated`, `message_approved`, `callback_requested`, `reopen`. Also: no automated actor may emit `close` (checked separately by the state machine).
+Events listed as human only in the configuration: `escalation_accepted`, `handoff_accepted`, `consent_updated`, `message_approved`, `message_rejected`, `callback_requested`, `reopen`. Also: no automated actor may emit `close` (checked separately by the state machine).
 
 ## 5. Time limits (SLAs)
 

@@ -36,6 +36,9 @@ REVIEW_REASONS = ("consent_withdrawn",)
 # handoff_rejected: the human taxonomy is in the pathway YAML (handoff_reject_reasons) and is
 # enforced by the state machine; this model only requires a short code, so the YAML stays the
 # single source for it.
+# message_rejected (A16): why a human refused an AI-drafted message. `other_with_note` carries its note on
+# the draft row (erasable), never in the log.
+MESSAGE_REJECT_REASONS = ("inaccurate", "tone", "wrong_language", "not_needed", "other_with_note")
 CHANNELS = ("sms", "whatsapp", "phone", "letter")
 LANGUAGES = ("en", "ar")
 
@@ -219,6 +222,14 @@ class MessageApproved(_Human):
     draft_id: Uuid
 
 
+class MessageRejected(_Payload):
+    """A human refused a draft (A16). Reason from the fixed taxonomy and no text: the note for
+    `other_with_note` lives on the draft row, like the draft text."""
+
+    draft_id: Uuid
+    reason: Literal["inaccurate", "tone", "wrong_language", "not_needed", "other_with_note"]
+
+
 class MessageSent(_Payload):
     notification_id: Uuid
     channel: Literal["sms", "whatsapp", "phone", "letter"]
@@ -261,6 +272,7 @@ SCHEMAS: dict[str, type[BaseModel]] = {
     "review_requested": ReviewRequested,
     "message_drafted": MessageDrafted,
     "message_approved": MessageApproved,
+    "message_rejected": MessageRejected,
     "message_sent": MessageSent,
     "callback_requested": CallbackRequested,
     "watchdog_flagged": WatchdogFlagged,

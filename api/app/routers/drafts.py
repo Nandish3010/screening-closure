@@ -17,7 +17,7 @@ Routes (roles in `app.policy.ROUTE_POLICY`, registered below so a missing entry 
 * `POST /cases/{id}/drafts`        primary_care_owner, specialist_owner, coordinator, supervisor
 * `GET  /cases/{id}/drafts`        same roles
 * `POST /drafts/{id}/approve`      primary_care_owner, specialist_owner (the case's owner), supervisor
-* `POST /drafts/{id}/reject`       same roles; body {reason}
+* `POST /drafts/{id}/reject`       same roles; body {reason, note?} (reason from the A16 taxonomy)
 * `GET  /metrics/abstention`       coordinator, supervisor
 """
 
@@ -25,12 +25,13 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime
+from typing import Literal
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 
-from app import metrics_abstention, notify, policy, users
+from app import metrics_abstention, notify, payloads, policy, users
 from app.ai.draft_store import (
     DraftAlreadyDecided,
     DraftNotFound,
@@ -105,17 +106,32 @@ class CreateDraft(BaseModel):
 
 
 class RejectDraft(BaseModel):
+    """A16: the reason is one of the fixed taxonomy (it goes into the log as `message_rejected`).
+    `other_with_note` needs a note, any other reason takes none; the note is kept on the draft row
+    (erasable), never in the event."""
+
     model_config = ConfigDict(extra="forbid")
 
-    reason: str
+    reason: Literal["inaccurate", "tone", "wrong_language", "not_needed", "other_with_note"]
+    note: str | None = None
 
-    @field_validator("reason")
+    @field_validator("note")
     @classmethod
-    def _reason(cls, value: str) -> str:
+    def _note(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
         value = value.strip()
-        if not value or len(value) > 500:
-            raise ValueError("reason must be 1-500 characters")
-        return value
+        if len(value) > payloads.NOTE_MAX_LENGTH:
+            raise ValueError(f"note must be at most {payloads.NOTE_MAX_LENGTH} characters")
+        return value or None
+
+    @model_validator(mode="after")
+    def _note_matches_reason(self) -> "RejectDraft":
+        if self.reason == "other_with_note" and self.note is None:
+            raise ValueError("reason other_with_note needs a note")
+        if self.reason != "other_with_note" and self.note is not None:
+            raise ValueError("a note is only taken with reason other_with_note")
+        return self
 
 
 # ---------------------------------------------------------------- building the request
@@ -399,15 +415,38 @@ def approve_draft(draft_id: UUID, identity: Identity = Depends(require_identity)
 def reject_draft(
     draft_id: UUID, body: RejectDraft, identity: Identity = Depends(require_identity)
 ) -> dict:
-    """Reject a draft with a reason. Recorded on the draft row only: the event vocabulary has no
-    `message_rejected` yet (ticket A16). Allowed on a frozen case (it can only stop outreach)."""
-    draft, _model = _decidable(draft_id, identity)
+    """Reject a draft with a reason from the taxonomy (A16).
+
+    One transaction (Postgres) or one critical section (in-memory) records the rejection on the
+    draft and appends `message_rejected {draft_id, reason}` as the rejecting human, so neither
+    exists without the other and the rejection shows on the case timeline. Allowed on a frozen
+    case (it can only stop outreach); a closed case takes no annotation, so it answers 409.
+    """
+    draft, model = _decidable(draft_id, identity)
+    if model.state not in cases.pathway.open_states:
+        raise HTTPException(409, "the case is closed: nothing to reject")
     now = clock.now()
+    stored_reason = body.reason if body.note is None else f"{body.reason}: {body.note}"
+    event = Event(draft.case_id, "message_rejected", now, identity.actor,
+                  {"draft_id": str(draft_id), "reason": body.reason})
+    drafts_db = draft_store()
     try:
-        draft_store().reject(draft_id, identity.actor, now, body.reason)
+        payloads.validate(event.type, event.payload)
+        cases.store.append(
+            event, cases.pathway,
+            within=lambda cur: drafts_db.reject(draft_id, identity.actor, now, stored_reason, cur=cur),
+        )
+    except payloads.PayloadSchemaError as exc:  # cannot happen with a validated body; never a 500
+        raise HTTPException(422, str(exc)) from None
+    except CaseNotFound:
+        raise HTTPException(404, "case not found") from None
     except DraftNotFound:
         raise HTTPException(404, "draft not found") from None
-    except DraftAlreadyDecided:
+    except DraftAlreadyDecided:  # lost a race with another decision: nothing was written
         raise HTTPException(409, "draft already has a decision") from None
-    return {"draft_id": str(draft_id), "rejected_by": identity.actor,
-            "rejected_at": now.isoformat(), "reason": body.reason}
+    except InvalidTransition as exc:
+        raise HTTPException(409, str(exc)) from None
+    except EventIdConflict:
+        raise HTTPException(409, "event id conflict") from None
+    return {"draft_id": str(draft_id), "rejected_by": identity.actor, "rejected_at": now.isoformat(),
+            "reason": body.reason, "note": body.note}
