@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useApp } from "../app/AppContext";
-import type { CaseDetail, ContactChannel, Lang } from "../api/contract";
+import type { CaseDetail, ConsentChanges, Lang } from "../api/contract";
 import { DEMO_PATIENT_CASE_ID } from "../api/fixtures";
 import { DIR, STRINGS, roleLabel } from "../i18n/strings";
-import { consentState, currentOwner, hasCallbackPending, patientLang } from "../lib/derive";
+import { consentOf, currentOwner, hasCallbackPending, patientLang } from "../lib/derive";
 import { stateIndex } from "../lib/pathway";
 
 const LAST_KEY = "sc.patient.last";
@@ -144,9 +144,10 @@ export function PatientView({ caseId }: { caseId: string }) {
   const onCallback = async () =>
     setNotice((await post("callback_requested", { reason: "patient_does_not_understand", lang })) ? "callback" : "failed");
 
-  const consent = detail ? consentState(detail.events) : null;
-  const saveConsent = async (channel: ContactChannel, share: boolean) =>
-    setNotice((await post("consent_updated", { channel, share_with_specialist: share })) ? "saved" : "saveFailed");
+  const consent = detail ? (detail.consent ?? consentOf(detail.events)) : null;
+  /** Partial updates: only what the patient just changed is sent (A6). */
+  const saveConsent = async (changes: ConsentChanges) =>
+    setNotice((await post("consent_updated", changes)) ? "saved" : "saveFailed");
 
   const toggle = (
     <button type="button" className="btn lang-toggle" onClick={() => setLang(lang === "en" ? "ar" : "en")} lang={lang === "en" ? "ar" : "en"} aria-label={`${t.language}: ${t.switchTo}`}>
@@ -231,23 +232,42 @@ export function PatientView({ caseId }: { caseId: string }) {
 
       <section aria-labelledby="p-consent">
         <h2 id="p-consent">{t.consentHeading}</h2>
-        <label className="field">
-          <span>{t.channelLabel}</span>
-          <select
-            value={consent?.channel ?? "phone"}
-            onChange={(e) => void saveConsent(e.target.value as ContactChannel, consent?.share_with_specialist ?? false)}
-          >
-            {(["phone", "sms", "whatsapp"] as const).map((c) => <option key={c} value={c}>{t.channels[c]}</option>)}
-          </select>
-        </label>
+        {consent?.withdrawn && <p className="banner banner-warn" role="status" data-testid="consent-withdrawn">{t.withdrawnNotice}</p>}
+        <fieldset className="choices">
+          <legend>{t.channelLabel}</legend>
+          {(["sms", "whatsapp", "phone", "letter"] as const).map((c) => (
+            <label key={c} className="check">
+              <input
+                type="checkbox"
+                checked={consent?.[`channel_${c}`] ?? true}
+                onChange={(e) => void saveConsent({ [`channel_${c}`]: e.target.checked })}
+                disabled={busy}
+              />
+              <span>{t.channels[c]}</span>
+            </label>
+          ))}
+        </fieldset>
         <label className="check">
           <input
             type="checkbox"
-            checked={consent?.share_with_specialist ?? false}
-            onChange={(e) => void saveConsent(consent?.channel ?? "phone", e.target.checked)}
+            checked={consent?.share_with_specialist ?? true}
+            onChange={(e) => void saveConsent({ share_with_specialist: e.target.checked })}
+            disabled={busy}
           />
           <span>{t.shareLabel}</span>
         </label>
+        {consent?.withdrawn ? (
+          <button type="button" className="btn btn-xl" onClick={() => void saveConsent({ withdrawn: false })} disabled={busy} data-testid="consent-resume">
+            {t.resumeButton}
+          </button>
+        ) : (
+          <>
+            <p className="muted">{t.withdrawHint}</p>
+            <button type="button" className="btn btn-xl" onClick={() => void saveConsent({ withdrawn: true })} disabled={busy} data-testid="consent-withdraw">
+              {t.withdrawButton}
+            </button>
+          </>
+        )}
         <p className="muted" role="status" aria-live="polite">
           {notice === "saved" ? t.saved : notice === "saveFailed" ? t.saveFailed : ""}
         </p>

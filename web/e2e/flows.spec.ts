@@ -13,7 +13,7 @@ test.beforeEach(async ({ page }) => {
   });
 });
 
-test("coordinator: overdue case -> escalate -> request draft -> approve -> clinician sign-off", async ({ page }) => {
+test("coordinator escalates and requests a draft; the owner approves it; the owner signs off", async ({ page }) => {
   await page.goto("/coordinator");
   await expect(page.getByTestId("sim-badge")).toContainText("SIMULATED TIME: 2026-11-04");
 
@@ -35,28 +35,24 @@ test("coordinator: overdue case -> escalate -> request draft -> approve -> clini
   await expect(page.getByTestId("flash")).toContainText("Escalated");
   await expect(page.getByTestId("timeline")).toContainText("Escalated");
 
-  // Request a draft, then approve it
+  // The coordinator can request a draft but not approve it.
   await page.getByTestId("request-draft").click();
   const draft = page.getByTestId(/^draft-d-mock-/);
   await expect(draft).toContainText("AI draft");
-  await expect(draft.locator('[dir="rtl"]')).toContainText("تنظير القولون");
+  await expect(draft.getByRole("button", { name: "Approve draft" })).toBeDisabled();
+
+  // The case owner approves; the backend sends only after the approval (message_approved, then message_sent).
+  await page.getByLabel("Switch role").selectOption("owner");
   await draft.getByRole("button", { name: "Approve draft" }).click();
-  await expect(page.getByTestId(/^approved-d-mock-/)).toContainText("Approved by Maryam Al Suwaidi");
-  // The backend sends the message only after the approval (message_approved, then message_sent).
+  await expect(page.getByTestId(/^approved-d-mock-/)).toContainText("Approved by Dr. Layla Haddad");
   await expect(page.getByTestId(/^sent-d-mock-/)).toContainText("Sent");
   await expect(page.getByTestId("timeline")).toContainText("Message sent to the patient");
 
-  // Coordinators cannot sign off: the button explains why.
-  await expect(page.getByTestId("signoff")).toBeDisabled();
-  await expect(page.getByTestId("signoff-why")).toContainText("Only a clinician");
-
-  // Switch to clinician; still disabled until evidence + signer are present.
-  await page.getByLabel("Switch role").selectOption("clinician");
-  await expect(page.getByTestId("signoff-why")).not.toContainText("Only a clinician");
+  // Sign-off needs evidence and a signer.
   await expect(page.getByTestId("signoff")).toBeDisabled();
   await page.getByLabel("Evidence reference").fill("DiagnosticReport/colonoscopy-0001");
   await expect(page.getByTestId("signoff")).toBeDisabled();
-  await page.getByLabel("Signed by").fill("Dr. Huda Rahman");
+  await page.getByLabel("Signed by").fill("Dr. Layla Haddad");
   await expect(page.getByTestId("signoff")).toBeEnabled();
   await page.getByTestId("signoff").click();
 
@@ -75,7 +71,7 @@ test("watchdog: the worklist and the case page say nobody is looking at it", asy
   await expect(flagged).toContainText("Nobody is looking at this");
   await flagged.getByRole("link").click();
   await expect(page.getByTestId("watchdog-banner")).toContainText("Nobody is looking at this");
-  const item = page.getByTestId("timeline").locator('li[data-event-type="watchdog_flagged"]');
+  const item = page.getByTestId("timeline").locator('li[data-kind="watchdog"]');
   await expect(item).toHaveClass(/tl-watchdog/);
   await expect(item.getByTestId("automated-chip")).toBeVisible();
   // A human acting on the case clears the flag.
@@ -115,7 +111,7 @@ test("patient: acknowledge, Arabic RTL, call-back request, consent", async ({ pa
   await expect(page.getByTestId("patient-root")).toHaveAttribute("dir", "ltr");
 
   // Consent
-  await page.getByLabel("How should we contact you?").selectOption("whatsapp");
+  await page.getByRole("checkbox", { name: "Text message" }).uncheck();
   await expect(page.getByText("Saved")).toBeVisible();
 
   // "I don't understand" asks for a call-back
@@ -129,7 +125,8 @@ test("patient: acknowledge, Arabic RTL, call-back request, consent", async ({ pa
   // The coordinator now sees the call-back and the consent on the case.
   await page.goto(`/coordinator/${PATIENT_CASE}`);
   await expect(page.getByTestId("callback-banner")).toBeVisible();
-  await expect(page.getByTestId("consent-state")).toContainText("whatsapp");
+  await expect(page.getByTestId("consent-state")).toContainText("WhatsApp");
+  await expect(page.getByTestId("consent-state")).not.toContainText("text messages");
   await expect(page.getByTestId("timeline")).toContainText("Patient acknowledged");
 });
 

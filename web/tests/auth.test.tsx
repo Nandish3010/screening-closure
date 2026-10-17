@@ -11,9 +11,10 @@ describe("role switch logs in", () => {
     const login = vi.fn(async () => undefined);
     const api = { ...createMockAdapter(null), login };
     renderWithApp(<Header />, { api, role: "coordinator" });
-    await waitFor(() => expect(login).toHaveBeenCalledWith("coordinator", "Maryam Al Suwaidi"));
+    await waitFor(() => expect(login).toHaveBeenCalledWith("coordinator", "Maryam Al Suwaidi", undefined));
     await user.selectOptions(screen.getByLabelText("Switch role"), "clinician");
-    await waitFor(() => expect(login).toHaveBeenLastCalledWith("clinician", "Dr. Huda Rahman"));
+    // Clinician logins send the provider they act for (A5), so they can answer handoffs addressed to it.
+    await waitFor(() => expect(login).toHaveBeenLastCalledWith("clinician", "Dr. Huda Rahman", "Marina Digestive Health"));
     expect(login).toHaveBeenCalledTimes(2);
   });
 

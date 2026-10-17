@@ -14,12 +14,19 @@
  * Vocabulary: the event names and payloads below are the backend's canonical vocabulary
  * (ticket A2). Nothing in the web client uses any other spelling.
  *
- * Auth (BACKEND): every request except `GET /health` and `POST /auth/dev-login` carries
- * `Authorization: Bearer <token>`. The token comes from `POST /auth/dev-login {role, name}`
- * -> `{access_token: string, token_type: "bearer"}` (the adapter also accepts `{token}`).
- * The http adapter logs in at start-up and again on every role switch in the header, and
- * re-logs-in once and retries when it gets a 401. A 404 from dev-login means "auth not
- * enabled" and the adapter carries on without a token. The mock adapter ignores all of this.
+ * Auth (BACKEND, A8): every request except `GET /health` and `POST /auth/dev-login` carries
+ * `Authorization: Bearer <token>`. The token comes from `POST /auth/dev-login {role, name, provider?}`
+ * -> `{token, token_type: "bearer", user_id, role, display_name, provider?}` (`user_id` is `role:name`;
+ * the adapter also accepts `{access_token}`). `role` is a BACKEND role (see BACKEND_ROLE below: the
+ * UI's "owner" logs in as `primary_care_owner`, "specialist" as `specialist_owner`, "clinician" as
+ * `primary_care_owner`). `provider` is sent for the owner roles only (the organisation the clinician
+ * acts for; it decides which handoff requests they may answer). The http adapter logs in at start-up
+ * and again on every role switch in the header, and re-logs-in once and retries when it gets a 401.
+ * A 404 from dev-login means "auth not enabled" and the adapter carries on without a token. The mock
+ * adapter keeps the same session (so it can enforce who may approve a draft) but needs no token.
+ *
+ * The actor of every event is the bearer token's identity (`role:name`); `POST /cases/{id}/events`
+ * answers 422 to a body that contains `actor`, so the http adapter never sends one.
  *
  * All timestamps are ISO-8601 strings in SIMULATED time (the programme clock, not the
  * wall clock). The UI never calls `Date.now()` for business logic; it uses `sim_time`
@@ -79,7 +86,14 @@ export type TransitionEvent = (typeof TRANSITION_EVENTS)[number];
  * case (and `reopen` on a closed one) and append them without a main-path transition.
  *
  * Posted by the UI (a human or the patient):
- *  handoff_requested   payload {to_provider: string}                  actor: coordinator/owner
+ *  handoff_requested   payload {to_provider: string}                  actor: the case owner (or a
+ *                      supervisor). Sets `pending_handoff`; ownership moves only when the provider accepts.
+ *                      A clinician who is NOT the owner is refused (403, owner scoping, A5). The UI offers
+ *                      them "request handoff to my provider" (to_provider = their own provider) and shows
+ *                      "waiting for acceptance" from `pending_handoff`: a GUESS that the backend will let
+ *                      that one request through (today it is a 403 and the UI shows the engine's reason).
+ *  reassign            payload {owner: string}                        actor: coordinator or supervisor,
+ *                      only from `referral_rejected` (a rejected or bounced referral); owner becomes `owner`.
  *  escalate            payload {rung: EscalationRung, target_role: string}
  *                                                                     actor: a human (the scheduler
  *                                                                     also emits it: "system:scheduler")
@@ -87,20 +101,31 @@ export type TransitionEvent = (typeof TRANSITION_EVENTS)[number];
  *                      no payload for it; the UI sends the rung it accepts, the backend may ignore it.
  *  callback_requested  payload {reason: "patient_does_not_understand", lang: "en"|"ar"}
  *                                                                     actor: "patient:<case_id>"
- *  consent_updated     payload {channel: ContactChannel, share_with_specialist: boolean}
- *                                                                     actor: "patient:<case_id>"
- *  reopen              payload {reason: string}                       actor: "clinician:<name>" ONLY,
- *                      only on a closed case. The UI shows the resulting `state` the backend returns.
- *  mark_lost_contact   payload {} (none specified)                    actor: coordinator/owner
+ *  consent_updated     payload: any non-empty subset of the booleans {channel_sms, channel_whatsapp,
+ *                      channel_phone, channel_letter, share_with_specialist, withdrawn} (partial updates;
+ *                      anything else is 422). `withdrawn: true` freezes outreach, the API then adds
+ *                      `review_requested`; `withdrawn: false` restores. actor: patient (own case) or the
+ *                      coordinator recording the patient's instruction.
+ *  reopen              payload {reason: string}                       actor: a clinician (owner role)
+ *                      ONLY, only on a closed case. The UI shows the resulting `state` the backend returns.
+ *  mark_lost_contact   payload {} (none specified; the engine also wants failed_attempts >= 3, which the UI
+ *                      cannot know: an engine refusal is shown verbatim)    actor: coordinator/owner
  *
  * Written by the backend (the UI only displays them):
- *  handoff_accepted    payload {} (optional {provider})               actor: "provider:<name>"
- *  handoff_rejected    payload {reason: HandoffRejectReason}          actor: "provider:<name>"
- *  message_drafted     payload {draft_id, provider, fallback_used, text_ar?, text_en?}
+ *  handoff_accepted    payload {} (optional {provider})               actor: the accepting clinician
+ *                      (`primary_care_owner:<name>` / `specialist_owner:<name>`); they become the owner.
+ *  handoff_rejected    payload {reason: HandoffRejectReason | "timeout", bounced?: true}
+ *                      actor: the receiving clinician, or `system:scheduler` for a bounce (`reason:
+ *                      "timeout"`, `bounced: true`, no answer in 3 working days). Moves the case to
+ *                      `referral_rejected` from patient_acknowledged / confirmatory_booked.
+ *  message_drafted     payload {draft_id, provider, fallback_used, prompt_hash, language}
  *                                                                     actor: "model:<provider>"
- *                      (written when POST /cases/{id}/drafts succeeds; include the texts so the UI
- *                      can show a still-pending draft after a reload. Without them the UI says
- *                      "draft text unavailable, request a new draft".)
+ *                      (written when POST /cases/{id}/drafts succeeds. It carries NO text: the UI loads
+ *                      the text through GET /cases/{id}/drafts. An older backend that still puts
+ *                      text_ar / text_en in the payload is tolerated.)
+ *  review_requested    payload {reason: "consent_withdrawn", source_event_id}
+ *                                                                     actor: "system:consent"
+ *                      (the API adds it when consent is withdrawn; the case is then on the human-review list)
  *  message_approved    payload {draft_id}                             actor: the approving human
  *                      (written only by POST /drafts/{id}/approve; the approver is the actor. It cannot
  *                      be posted to POST /cases/{id}/events: 403 for every role)
@@ -114,12 +139,13 @@ export type TransitionEvent = (typeof TRANSITION_EVENTS)[number];
  *                                                                     actor: "watchdog"
  *  case_created        payload {patient_ref?}                         actor: "system:intake"
  *
- * Actor strings are `role:name` (`coordinator:amal`, `clinician:dr_ali`, `system:scheduler`,
- * `model:drafter`) or a bare `watchdog`. "Automated" means the role part is one of
+ * Actor strings are `role:name` with a BACKEND role (`coordinator:amal`, `primary_care_owner:dr_ali`,
+ * `specialist_owner:dr_s`, `system:scheduler`, `model:template`, `system:notifier`, `system:consent`) or a
+ * bare `watchdog`. "Automated" means the role part is one of
  * system | model | watchdog | scheduler (see isAutomatedActor in lib/derive.ts).
  *
  * Payload conventions on transition events (the UI sends these):
- *  accept_ownership      {owner: string, owner_role?: string}
+ *  accept_ownership      {owner_role?: string}                       (the owner IS the actor; the UI also sends no name)
  *  contact_patient       {channel?: ContactChannel, draft_id?: string}
  *  patient_acknowledge   {lang: "en"|"ar"}
  *  book_confirmatory     {appointment_ref: string}
@@ -143,6 +169,8 @@ export type NonTransitionEvent =
   | "mark_overdue"
   | "watchdog_flagged"
   | "mark_lost_contact"
+  | "reassign"
+  | "review_requested"
   | "reopen";
 
 /** Fixed taxonomy for `handoff_rejected.reason`. */
@@ -162,7 +190,9 @@ export interface WatchdogFlag {
   at: string;
 }
 
-export type ContactChannel = "phone" | "sms" | "whatsapp";
+export type ContactChannel = "phone" | "sms" | "whatsapp" | "letter";
+/** Channels a draft can be written for (`POST /cases/{id}/drafts`). */
+export type DraftChannel = "sms" | "whatsapp" | "letter";
 export type Lang = "en" | "ar";
 
 // ---------------------------------------------------------------------------------------
@@ -180,12 +210,66 @@ export interface CaseEvent {
 }
 
 /**
- * GET /cases?state=&owner=&overdue=true   (read model from ticket A2)
+ * The owner as the read model reports it. BACKEND (A14, in progress): `{actor, display_name, role}`.
+ * Today `owner` is the actor string (`primary_care_owner:Dr Sara Khan`) or, in the old mock, a bare name.
+ * The adapters accept both and normalise: `CaseSummary.owner` is always the display name (or null) and
+ * `owner_actor` / `owner_role` carry the rest, so the UI never branches on the wire shape.
+ */
+export interface OwnerObject {
+  actor: string;
+  display_name: string;
+  role: string;
+}
+export type RawOwner = string | OwnerObject | null;
+
+/** Consent as the read model reports it (A6): everything allowed until the patient says otherwise. */
+export interface Consent {
+  channel_sms: boolean;
+  channel_whatsapp: boolean;
+  channel_phone: boolean;
+  channel_letter: boolean;
+  share_with_specialist: boolean;
+  withdrawn: boolean;
+  updated_at?: string | null;
+  updated_by?: string | null;
+}
+export const CONSENT_KEYS = [
+  "channel_sms", "channel_whatsapp", "channel_phone", "channel_letter", "share_with_specialist", "withdrawn",
+] as const;
+export type ConsentKey = (typeof CONSENT_KEYS)[number];
+/** A `consent_updated` payload: any non-empty subset of the six booleans. */
+export type ConsentChanges = Partial<Record<ConsentKey, boolean>>;
+export interface ConsentHistoryEntry {
+  at: string;
+  actor: string;
+  changes: ConsentChanges;
+}
+
+/** `pending_handoff` on the read model while a request is unanswered, else null (A5). */
+export interface PendingHandoff {
+  to_provider: string;
+  requested_by: string;
+  from_owner: string | null;
+  requested_at: string;
+}
+/** `last_handoff`: the latest answer. A scheduler bounce has `reason: "timeout"`, `bounced: true`. */
+export interface LastHandoff {
+  outcome: "accepted" | "rejected";
+  to_provider: string;
+  by: string;
+  at: string;
+  reason?: string;
+  bounced?: boolean;
+}
+
+/**
+ * GET /cases?state=&owner=&overdue=true&flagged=true   (read model from tickets A2, A9, A11)
  *
- * BACKEND: `owner` filters on exact owner name; `overdue=true` keeps only rows with
- * `overdue: true`. The UI re-applies the filters and the sort on the client, so a backend
- * that ignores them still works. The UI computes "N days overdue" itself from `due_at` and
- * the simulated clock (`sim_time`); there is no `overdue_days` field any more.
+ * BACKEND: `owner` filters on exact owner name; `overdue=true` keeps only rows with `overdue: true`;
+ * `flagged=true` keeps only rows with an open `watchdog_flagged`. The UI re-applies the filters and the
+ * sort on the client, so a backend that ignores them still works. The UI computes "N days overdue"
+ * itself from `due_at` and the simulated clock (`sim_time`); there is no `overdue_days` field any more.
+ * The real `GET /cases/{id}` nests these fields under `read_model`; the http adapter lifts them.
  */
 export interface CaseSummary {
   case_id: string;
@@ -193,24 +277,31 @@ export interface CaseSummary {
   state: CaseState | string;
   created_at: string;
   updated_at: string;
-  /** Name of the person who accepted ownership, or null when unowned. */
+  /** Display name of the owner, or null when unowned (normalised from RawOwner by the adapters). */
   owner: string | null;
+  /** Actor string of the owner (`primary_care_owner:Dr Sara Khan`) when the wire gave one. */
+  owner_actor?: string | null;
+  /** Role label of the owner when the wire gave one (A14). */
+  owner_role?: string | null;
   /** When the SLA for the current state expires (sim time). null when no SLA applies (e.g. closed). */
   due_at: string | null;
   /** True once `due_at` has passed in sim time (the scheduler's `mark_overdue`). */
   overdue: boolean;
   /** 0 = none, 1 = reminder, 2 = supervisor, 3 = coordinator (highest rung reached in this state). */
   escalation_level: 0 | 1 | 2 | 3;
-  /** True while patient consent is frozen: nobody may contact the patient until it is re-confirmed. */
+  /** True while patient consent is frozen (withdrawn): nobody may contact the patient until it is restored. */
   consent_frozen: boolean;
   /** Timestamp of the newest event on the case. */
   last_event_at: string;
   /**
-   * ASK to the backend (not in the A2 list): the open watchdog flag, if any, so the worklist can
-   * show "nobody is looking at this" without fetching every case. Optional; when absent the
-   * worklist simply shows no marker, and the case page derives it from the events.
+   * ASK to the backend (A11): the open watchdog flag, if any, so the worklist and the dashboard can show
+   * "nobody is looking at this" without fetching every case. null / absent = not flagged.
    */
   watchdog_flagged?: WatchdogFlag | null;
+  /** The provider the current owner acts for (set by an accepted handoff). */
+  provider?: string | null;
+  pending_handoff?: PendingHandoff | null;
+  last_handoff?: LastHandoff | null;
   /** 0..1 loss-to-follow-up risk. Optional. ONLY used to order the worklist; never acts. */
   risk_score?: number;
 }
@@ -219,19 +310,27 @@ export interface CaseListParams {
   state?: string;
   owner?: string;
   overdue?: boolean;
+  /** Only cases with an open watchdog flag ("cases nobody is looking at"). */
+  flagged?: boolean;
 }
 
-/** GET /cases/{id}: the summary fields plus the full event log. */
+/** GET /cases/{id}: the summary fields plus consent, review state and the full event log. */
 export interface CaseDetail extends Omit<CaseSummary, "pathway" | "created_at" | "updated_at"> {
   pathway?: string;
   created_at?: string;
   updated_at?: string;
+  /** A6: current consent (defaults: everything allowed, not withdrawn). */
+  consent?: Consent;
+  consent_history?: ConsentHistoryEntry[];
+  /** `consent_withdrawn` while the case is on the human-review list, else null. */
+  review_reason?: string | null;
   events: CaseEvent[];
 }
 
 /** Body of POST /cases/{id}/events (LIVE). Returns the updated CaseDetail (201). */
 export interface PostEventBody {
   type: EventType | string;
+  /** Mock only. The backend derives the actor from the bearer token and rejects a body that has one. */
   actor: string;
   payload?: Record<string, unknown>;
   /** Optional idempotency key; the UI always sends one so retries are safe. */
@@ -239,31 +338,46 @@ export interface PostEventBody {
 }
 
 // ---------------------------------------------------------------------------------------
-// Timeline  (PENDING)
+// Timeline  (PENDING, A9)
 // ---------------------------------------------------------------------------------------
 
 /**
  * GET /cases/{id}/timeline -> { case_id, sim_time, items: TimelineItem[] }
  *
- * BACKEND: items are sorted by `at` ascending. `kind: "event"` items are the raw log
- * rows; `sla_breach` and `escalation` items are derived by the scheduler / SLA sweep
- * and interleaved by time. The UI also derives SLA clocks, handoffs, consent state and
- * AI-draft provenance, overdue and watchdog markers from the `event` items alone, so a timeline with only events
- * degrades gracefully.
+ * BACKEND: items are sorted by `at` ascending and every item has `kind` and `at`. `kind: "event"` items
+ * are the raw log rows. The others are derived and interleaved by time:
+ *   sla_started   {at, sla, due_at}                       the SLA clock of the current state started
+ *   sla_breached  {at, sla, due_at, breach_days?}         it ran out (`at` = due_at)
+ *   escalation    {at, rung, target_role?, target?, after_breach_days?, accepted?}
+ *   bounce        {at, to_provider, reason?}              the scheduler bounced an unanswered handoff
+ *   watchdog      {at, reason, idle_days?}                the watchdog flagged the case
+ * The field names beyond `kind` and `at` are a GUESS (the A9 ticket is not merged): every renderer treats
+ * them as optional. `sla_breach` (the old spelling) is still rendered. The UI also derives SLA clocks,
+ * handoffs, consent state, overdue and watchdog markers from the `event` items alone, so a timeline with
+ * only events degrades gracefully. When both a derived `bounce` / `watchdog` item and the underlying event
+ * exist at the same `at`, the UI shows the derived item once.
  */
-export type TimelineItem = TimelineEvent | TimelineSlaBreach | TimelineEscalation;
+export type TimelineItem =
+  | TimelineEvent | TimelineSlaStarted | TimelineSlaBreached | TimelineEscalation | TimelineBounce | TimelineWatchdog;
 
 export interface TimelineEvent extends CaseEvent {
   kind: "event";
 }
 
-export interface TimelineSlaBreach {
-  kind: "sla_breach";
+export interface TimelineSlaStarted {
+  kind: "sla_started";
   at: string;
   /** SLA key from the pathway YAML, e.g. "clinician_review". */
   sla: string;
-  due_at: string;
-  breach_days: number;
+  due_at?: string;
+}
+
+export interface TimelineSlaBreached {
+  kind: "sla_breached" | "sla_breach";
+  at: string;
+  sla: string;
+  due_at?: string;
+  breach_days?: number;
 }
 
 export interface TimelineEscalation {
@@ -272,10 +386,24 @@ export interface TimelineEscalation {
   /** The ladder rung, same vocabulary as the `escalate` event. */
   rung: EscalationRung;
   /** Who is addressed, e.g. "owner", "supervisor", "coordinator". */
-  target_role: string;
-  after_breach_days: number;
+  target_role?: string;
+  after_breach_days?: number;
   /** True once a human accepted it (`escalation_accepted`); undefined for the plain reminder rung. */
   accepted?: boolean;
+}
+
+export interface TimelineBounce {
+  kind: "bounce";
+  at: string;
+  to_provider?: string;
+  reason?: string;
+}
+
+export interface TimelineWatchdog {
+  kind: "watchdog";
+  at: string;
+  reason?: WatchdogReason | string;
+  idle_days?: number;
 }
 
 export interface CaseTimeline {
@@ -285,39 +413,65 @@ export interface CaseTimeline {
 }
 
 // ---------------------------------------------------------------------------------------
-// AI drafts  (PENDING)  - governed edge: the model drafts, a human approves.
+// AI drafts  (D4, D5) - governed edge: the model drafts, a human approves.
 // ---------------------------------------------------------------------------------------
 
+export const DRAFT_PURPOSES = ["result_notification", "reminder", "appointment_confirmation"] as const;
+export type DraftPurpose = (typeof DRAFT_PURPOSES)[number];
+export const DRAFT_CHANNELS: DraftChannel[] = ["sms", "whatsapp", "letter"];
+
 /**
- * POST /cases/{id}/drafts   body: {purpose, channel, language}   (see DraftRequestBody)
- * -> 201 Draft. BACKEND (D4): also appends a `message_drafted` event (see vocabulary above).
- * The requester is the bearer token's identity, never a body field: `requested_by` is a 422.
- *   purpose   "result_notification" | "reminder" | "appointment_confirmation"
- *   channel   "sms" | "whatsapp" | "letter"
- *   language  "en" | "ar"
- * The real response also carries `language`, `text`, `abstention_reason` and `prompt_hash`;
- * `text_ar` / `text_en` hold the text in the requested language and are null in the other.
- * 409 when the case is closed or its outreach is frozen (consent withdrawn).
- * `fallback_used` is true when the deterministic template was used instead of the model.
+ * POST /cases/{id}/drafts   body: DraftRequestBody {purpose, channel, language}
+ * -> 201 Draft. The requester is the bearer token's identity, never a body field (`requested_by` is a 422).
+ * Roles: owners, coordinator, supervisor. 409 when the case is closed, its outreach is frozen (consent
+ * withdrawn), or `appointment_confirmation` is asked for without a booked appointment date.
+ * `text` is the draft in the requested `language`; `text_ar` / `text_en` hold it in that language and are
+ * null in the other. `fallback_used` is true when the deterministic template was used instead of the model;
+ * `abstention_reason` says why the model abstained (null when it did not). `prompt_hash` identifies the exact
+ * prompt that produced the draft (the prompt itself is stored for audit).
+ * BACKEND (D4): also appends `message_drafted {draft_id, provider, fallback_used, prompt_hash, language}`
+ * as `model:<provider>`; the event carries no text.
  */
 export interface Draft {
   draft_id: string;
-  text_ar: string;
-  text_en: string;
+  text: string;
+  text_ar: string | null;
+  text_en: string | null;
+  language: Lang;
   provider: string;
   fallback_used: boolean;
+  abstention_reason: string | null;
+  prompt_hash: string;
 }
 
-/** Body of POST /cases/{id}/drafts (the final shape; the Api method still passes `requestedBy`). */
 export interface DraftRequestBody {
-  purpose: "result_notification" | "reminder" | "appointment_confirmation";
-  channel: "sms" | "whatsapp" | "letter";
-  language: "en" | "ar";
+  purpose: DraftPurpose;
+  channel: DraftChannel;
+  language: Lang;
 }
 
 /**
- * POST /drafts/{draft_id}/approve   NO body (the approver is the bearer token's identity; an
- * `approved_by` field is ignored)
+ * GET /cases/{id}/drafts -> DraftRecord[] (oldest first). Same roles as POST /cases/{id}/drafts.
+ * The only place the draft text lives after the request: the timeline and the drafts panel load it here.
+ * `approved_*` / `rejected_*` are null until a decision. Whether an approved draft was actually sent is NOT
+ * here: `message_sent {draft_id}` on the timeline says so, and the approve response says why not.
+ */
+export interface DraftRecord extends Draft {
+  case_id: string;
+  purpose: DraftPurpose | string;
+  channel: DraftChannel | string;
+  model_id?: string | null;
+  created_by: string;
+  created_at: string;
+  approved_at: string | null;
+  approved_by: string | null;
+  rejected_at: string | null;
+  rejected_by: string | null;
+  rejection_reason: string | null;
+}
+
+/**
+ * POST /drafts/{draft_id}/approve   NO body (the approver is the bearer token's identity)
  * -> 200 DraftApproval. BACKEND (D5): in one transaction sets approved_at/approved_by on the draft
  * and appends `message_approved {draft_id}` (actor: the approver); then the notification mock is
  * called, which appends `message_sent {draft_id, notification_id, channel, language, purpose}`
@@ -334,17 +488,17 @@ export interface DraftRequestBody {
  * (GET /cases/{id}/notifications has the detail). When `sent` is true, `blocked_reason` is null.
  * `approved_by` is the actor string, e.g. "primary_care_owner:Dr Sara Khan"; `approved_at` is
  * simulation time. `sent`, `blocked_reason` and `notification_id` are always present from the
- * backend (optional here only so the mock adapter keeps compiling; the UI should treat a missing
- * `sent` as true).
+ * backend (optional here only so older fixtures keep compiling; the UI treats a missing `sent` as true).
  */
 export interface DraftApproval {
   draft_id: string;
   approved_by: string;
   approved_at: string;
   sent?: boolean;
-  blocked_reason?: "consent" | "contact" | "case_state" | null;
+  blocked_reason?: BlockedReason | null;
   notification_id?: string | null;
 }
+export type BlockedReason = "consent" | "contact" | "case_state";
 
 /**
  * POST /drafts/{draft_id}/reject   body: {reason: string}  (1-500 characters)
@@ -352,7 +506,7 @@ export interface DraftApproval {
  * BACKEND: recorded on the draft row only (rejected_at/rejected_by/rejection_reason, also listed
  * by GET /cases/{id}/drafts). No event is written: `message_rejected` is not in the vocabulary yet
  * (ticket A16), so the timeline shows nothing for a rejection. 409 if the draft already has a
- * decision. Not yet on the Api interface below (Cut C adds `rejectDraft` with the review UI, C10).
+ * decision.
  */
 export interface DraftRejection {
   draft_id: string;
@@ -362,7 +516,7 @@ export interface DraftRejection {
 }
 
 // ---------------------------------------------------------------------------------------
-// Metrics  (PENDING)
+// Metrics and alerts  (PENDING)
 // ---------------------------------------------------------------------------------------
 
 export type AgeBucket = "0-30" | "31-60" | "61-90" | "90+";
@@ -378,20 +532,52 @@ export interface ClosureMetrics {
   sim_time: string;
 }
 
+/**
+ * GET /alerts -> Alert[] (A11). The watchdog raises `scheduler_down` when the scheduler's heartbeat has been
+ * missing for 60 seconds and clears it (`cleared_at`) when heartbeats resume. An alert with
+ * `cleared_at: null` is active: the dashboard shows the stale-scheduler banner. `since` and `cleared_at` are
+ * ISO-8601 (sim time). Roles: GUESS, any staff role.
+ */
+export interface Alert {
+  kind: "scheduler_down" | string;
+  since: string;
+  cleared_at: string | null;
+}
+
 // ---------------------------------------------------------------------------------------
-// Identity  (PENDING)
+// Identity
 // ---------------------------------------------------------------------------------------
 
+/** The UI's roles. They map onto the backend's roles (api/app/auth.py USER_ROLES) by BACKEND_ROLE. */
 export type Role = "coordinator" | "owner" | "specialist" | "clinician" | "patient";
 export const ROLES: Role[] = ["coordinator", "owner", "specialist", "clinician", "patient"];
 
 /**
- * GET /me -> {role, name}: the identity behind the bearer token. The header's role switcher is a
- * demo override: switching calls `login(role, name)` (POST /auth/dev-login) and the adapter swaps tokens.
+ * UI role -> backend role used for `POST /auth/dev-login`. The backend has no separate "clinician": sign-off
+ * is done by the owner roles, so the UI's clinician is a second `primary_care_owner` (Dr Huda Rahman).
+ */
+export const BACKEND_ROLE: Record<Role, string> = {
+  coordinator: "coordinator",
+  owner: "primary_care_owner",
+  specialist: "specialist_owner",
+  clinician: "primary_care_owner",
+  patient: "patient",
+};
+/** Roles that act only on cases they own (A5 owner scoping): the clinician roles. */
+export const OWNER_SCOPED_ROLES: readonly Role[] = ["owner", "specialist", "clinician"];
+
+/**
+ * GET /me -> `{user_id, role, display_name, patient_ref?, provider?}`; the adapter folds that into `Me`.
+ * The header's role switcher is a demo override: switching calls `login(role, name)`
+ * (POST /auth/dev-login) and the adapter swaps tokens.
  */
 export interface Me {
   role: Role;
   name: string;
+  /** `role:name` as the backend knows the caller; the actor of everything they post. */
+  user_id?: string;
+  /** The provider the caller acts for (owner roles). */
+  provider?: string;
 }
 
 // ---------------------------------------------------------------------------------------
@@ -403,21 +589,28 @@ export interface ApiClient {
   readonly adapter: "mock" | "http";
   health(): Promise<{ status: string }>;
   /**
-   * Switch identity. http: POST /auth/dev-login {role, name}, keep the bearer token and attach it
-   * to every later request (requests wait for a login in flight). mock: no-op, it ignores auth.
+   * Switch identity. http: POST /auth/dev-login {role (backend role), name, provider?}, keep the bearer
+   * token and attach it to every later request (requests wait for a login in flight). `provider` is sent
+   * for the owner roles. mock: remembers the identity (it decides who may approve a draft), needs no token.
    */
-  login(role: Role, name: string): Promise<void>;
+  login(role: Role, name: string, provider?: string): Promise<void>;
   me(): Promise<Me>;
   listCases(params?: CaseListParams): Promise<CaseSummary[]>;
   getCase(caseId: string): Promise<CaseDetail>;
   getTimeline(caseId: string): Promise<CaseTimeline>;
   /** Returns the updated case. Rejects with ApiError(status 409) on an invalid transition. */
   postEvent(caseId: string, body: PostEventBody): Promise<CaseDetail>;
-  requestDraft(caseId: string, requestedBy: string): Promise<Draft>;
-  approveDraft(draftId: string, approvedBy: string): Promise<DraftApproval>;
+  requestDraft(caseId: string, body: DraftRequestBody): Promise<Draft>;
+  listDrafts(caseId: string): Promise<DraftRecord[]>;
+  approveDraft(draftId: string): Promise<DraftApproval>;
+  rejectDraft(draftId: string, reason: string): Promise<DraftRejection>;
   closureMetrics(): Promise<ClosureMetrics>;
+  /** GET /alerts: active and cleared platform alerts (scheduler down). */
+  listAlerts(): Promise<Alert[]>;
   /** Mock only: restore the seeded fixtures. No-op for http. */
   resetDemo?(): Promise<void>;
+  /** Mock only: raise or clear the scheduler-down alert so the dashboard banner can be demonstrated. */
+  setSchedulerDown?(down: boolean): Promise<void>;
 }
 
 export class ApiError extends Error {

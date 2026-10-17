@@ -1,6 +1,7 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
+import type { Role } from "../src/api/contract";
 import { DEMO_OVERDUE_CASE_ID } from "../src/api/fixtures";
 import { STRINGS } from "../src/i18n/strings";
 import { CaseDetailPage } from "../src/pages/CaseDetailPage";
@@ -8,7 +9,7 @@ import { CoordinatorPage } from "../src/pages/CoordinatorPage";
 import { renderWithApp } from "./helpers";
 
 const cid = (n: number) => `c${String(n).padStart(7, "0")}-0000-4000-8000-${String(n).padStart(12, "0")}`;
-const openCase = (n: number, role?: "coordinator" | "clinician" | "specialist") =>
+const openCase = (n: number, role?: Role) =>
   renderWithApp(<CaseDetailPage />, { role, route: `/coordinator/${cid(n)}`, path: "/coordinator/:caseId" });
 
 describe("Coordinator worklist", () => {
@@ -26,7 +27,7 @@ describe("Coordinator worklist", () => {
 });
 
 describe("Case detail actions", () => {
-  it("escalate, request draft and approve each post through the client and show provenance", async () => {
+  it("a coordinator escalates and requests a draft, sees its provenance and text, but cannot approve it", async () => {
     const user = userEvent.setup();
     const { api } = renderWithApp(<CaseDetailPage />, { route: `/coordinator/${DEMO_OVERDUE_CASE_ID}`, path: "/coordinator/:caseId" });
     await screen.findByTestId("escalate");
@@ -35,17 +36,51 @@ describe("Case detail actions", () => {
     await user.click(screen.getByTestId("request-draft"));
     const draftItem = await screen.findByTestId(/^draft-d-mock/);
     expect(draftItem).toHaveTextContent(/AI draft/);
-    expect(draftItem).toHaveTextContent(/template fallback/);
-    expect(within(draftItem).getByText(/تنظير القولون/).closest("p")).toHaveAttribute("dir", "rtl");
-    await user.click(within(draftItem).getByRole("button", { name: /approve draft/i }));
-    await waitFor(() => expect(screen.getByTestId(/^approved-d-mock/)).toHaveTextContent(/Approved by Maryam/));
-    const types = (await api.getCase(DEMO_OVERDUE_CASE_ID)).events.slice(-4).map((e) => e.type);
-    expect(types).toEqual(["escalate", "message_drafted", "message_approved", "message_sent"]);
-    // The backend's message_sent follows the approval; the panel says so.
+    expect(draftItem).toHaveTextContent(/colonoscopy/);
+    // The event carries no text: the timeline loads it from GET /cases/{id}/drafts.
+    const tl = screen.getByTestId("timeline");
+    const drafted = [...tl.querySelectorAll('li[data-event-type="message_drafted"]')] as HTMLElement[];
+    expect(within(drafted.at(-1)!).getByText(/colonoscopy/)).toBeInTheDocument();
+    const approve = within(draftItem).getByRole("button", { name: /approve draft/i });
+    expect(approve).toBeDisabled();
+    expect(within(draftItem).getByTestId(/^approve-d-mock-\d+-why$/)).toHaveTextContent(/cannot do this/i);
+    const types = (await api.getCase(DEMO_OVERDUE_CASE_ID)).events.slice(-2).map((e) => e.type);
+    expect(types).toEqual(["escalate", "message_drafted"]);
     const all = (await api.getCase(DEMO_OVERDUE_CASE_ID)).events;
-    expect(all.at(-1)?.type).toBe("message_sent");
-    expect(screen.getByTestId(/^sent-d-mock/)).toHaveTextContent(/Sent/);
     expect(all.find((e) => e.type === "escalate" && e.actor.startsWith("coordinator:"))?.payload).toEqual({ rung: "supervisor", target_role: "supervisor" });
+    expect(all.at(-1)?.payload).not.toHaveProperty("text_en");
+  });
+
+  it("the case owner approves a draft: message_approved by the owner, then the backend's message_sent", async () => {
+    const user = userEvent.setup();
+    const { api } = renderWithApp(<CaseDetailPage />, { role: "owner", route: `/coordinator/${DEMO_OVERDUE_CASE_ID}`, path: "/coordinator/:caseId" });
+    await screen.findByTestId("request-draft");
+    await user.click(screen.getByTestId("request-draft"));
+    const draftItem = await screen.findByTestId(/^draft-d-mock/);
+    await user.click(within(draftItem).getByRole("button", { name: /approve draft/i }));
+    await waitFor(() => expect(screen.getByTestId(/^approved-d-mock/)).toHaveTextContent(/Approved by Dr\. Layla Haddad/));
+    expect(screen.getByTestId(/^sent-d-mock/)).toHaveTextContent(/Sent/);
+    const evs = (await api.getCase(DEMO_OVERDUE_CASE_ID)).events;
+    expect(evs.slice(-3).map((e) => e.type)).toEqual(["message_drafted", "message_approved", "message_sent"]);
+    expect(evs.at(-2)?.actor).toBe("primary_care_owner:Dr. Layla Haddad");
+    expect(evs.at(-1)?.actor).toBe("system:notifier");
+  });
+
+  it("rejecting a draft needs a reason, writes no event and removes the approve button", async () => {
+    const user = userEvent.setup();
+    const { api } = renderWithApp(<CaseDetailPage />, { role: "owner", route: `/coordinator/${DEMO_OVERDUE_CASE_ID}`, path: "/coordinator/:caseId" });
+    await screen.findByTestId("request-draft");
+    await user.click(screen.getByTestId("request-draft"));
+    const draftItem = await screen.findByTestId(/^draft-d-mock/);
+    const reject = within(draftItem).getByRole("button", { name: /reject draft/i });
+    expect(reject).toBeDisabled();
+    await user.type(within(draftItem).getByLabelText(/reason for rejecting/i), "Wrong tone for this patient");
+    expect(reject).toBeEnabled();
+    const before = (await api.getCase(DEMO_OVERDUE_CASE_ID)).events.length;
+    await user.click(reject);
+    await waitFor(() => expect(screen.getByTestId(/^rejected-d-mock/)).toHaveTextContent(/Wrong tone for this patient/));
+    expect(within(screen.getByTestId(/^draft-d-mock/)).queryByRole("button", { name: /approve draft/i })).toBeNull();
+    expect((await api.getCase(DEMO_OVERDUE_CASE_ID)).events).toHaveLength(before);
   });
 
   it("shows hand-off rejection reasons", async () => {
@@ -124,7 +159,7 @@ describe("Case detail: vocabulary and markers", () => {
   it("frozen consent also blocks recording a patient contact", async () => {
     // Case 14 is at patient_contacted, so exercise the owner_accepted button via a case that is frozen there.
     const api = (await import("../src/api/mockAdapter")).createMockAdapter(null);
-    await api.postEvent(cid(3), { type: "consent_updated", actor: "patient:c3", payload: { channel: "sms", share_with_specialist: false, withdrawn: true } });
+    await api.postEvent(cid(3), { type: "consent_updated", actor: "patient:c3", payload: { withdrawn: true } });
     renderWithApp(<CaseDetailPage />, { api, route: `/coordinator/${cid(3)}`, path: "/coordinator/:caseId" });
     const btn = await screen.findByTestId("contact-patient");
     expect(btn).toBeDisabled();
@@ -140,11 +175,90 @@ describe("Case detail: vocabulary and markers", () => {
   });
 });
 
+describe("Hand-off: pending, bounced, owner scoping (A5)", () => {
+  it("a bounced hand-off is shown distinctly from a rejection, with the 3-day wording and the re-route action", async () => {
+    const user = userEvent.setup();
+    const { api } = openCase(15);
+    const banner = await screen.findByTestId("handoff-bounced");
+    expect(banner).toHaveTextContent(/bounced: no response/i);
+    expect(banner).toHaveTextContent(/Marina Digestive Health did not answer in 3 working days/);
+    expect(screen.queryByTestId("rejections")).toBeNull(); // not listed as an ordinary rejection
+    expect(within(screen.getByTestId("timeline")).getByTestId("tl-bounce")).toHaveTextContent(/no response/i);
+    await user.click(screen.getByTestId("reassign"));
+    await waitFor(() => expect(screen.getByTestId("flash")).toHaveTextContent(/re-routed/i));
+    expect((await api.getCase(cid(15))).state).toBe("owner_accepted");
+    expect(screen.queryByTestId("handoff-bounced")).toBeNull();
+  });
+
+  it("an ordinary rejection is not called a bounce", async () => {
+    openCase(1);
+    expect(await screen.findByTestId("rejections")).toHaveTextContent(/No capacity/);
+    expect(screen.queryByTestId("handoff-bounced")).toBeNull();
+  });
+
+  it("a clinician who does not own the case is routed through 'request handoff to my provider' and then sees 'waiting for acceptance'", async () => {
+    const user = userEvent.setup();
+    const { api } = openCase(1, "clinician");
+    expect(await screen.findByTestId("handoff-not-owner")).toHaveTextContent(/do not own this case.*Dr\. Layla Haddad/i);
+    expect(screen.queryByTestId("hand-off")).toBeNull();
+    const btn = screen.getByTestId("request-my-provider");
+    expect(btn).toHaveTextContent("Marina Digestive Health");
+    await user.click(btn);
+    const waiting = await screen.findByTestId("handoff-waiting");
+    expect(waiting).toHaveTextContent(/Waiting for acceptance/);
+    expect(waiting).toHaveTextContent(/Marina Digestive Health/);
+    expect(screen.getByTestId("handoff-pending")).toHaveTextContent(/Dr\. Layla Haddad stays responsible/);
+    const d = await api.getCase(DEMO_OVERDUE_CASE_ID);
+    expect(d.pending_handoff).toMatchObject({ to_provider: "Marina Digestive Health", requested_by: "primary_care_owner:Dr. Huda Rahman" });
+    expect(d.owner).toBe("Dr. Layla Haddad");
+  });
+
+  it("the owner requests a hand-off from the provider list and waits for acceptance when the provider has not answered", async () => {
+    const { api } = openCase(16, "owner");
+    expect(await screen.findByTestId("handoff-pending")).toHaveTextContent(/Corniche Gastro Unit/);
+    expect(screen.getByTestId("handoff-waiting")).toBeInTheDocument();
+    expect(screen.queryByTestId("accept-handoff")).toBeNull(); // the requester cannot accept their own request
+    expect((await api.getCase(cid(16))).pending_handoff).not.toBeNull();
+  });
+
+  it("the clinician at the receiving provider can accept a pending hand-off and becomes the owner", async () => {
+    const user = userEvent.setup();
+    const { api } = openCase(16, "specialist");
+    await user.click(await screen.findByTestId("accept-handoff"));
+    await waitFor(() => expect(screen.queryByTestId("handoff-waiting")).toBeNull());
+    expect(screen.getByTestId("handoff-accepted")).toHaveTextContent(/Accepted.*Corniche Gastro Unit/);
+    expect(screen.getByTestId("owner")).toHaveTextContent("Dr. Karim Nasser");
+    expect((await api.getCase(cid(16))).owner_actor).toBe("specialist_owner:Dr. Karim Nasser");
+  });
+
+  it("the worklist shows owner and provider, pending and bounced hand-offs, and filters flagged cases", async () => {
+    const user = userEvent.setup();
+    renderWithApp(<CoordinatorPage />);
+    const rows = await screen.findAllByTestId("worklist-row");
+    const rowFor = (n: number) => rows.find((r) => within(r).queryByRole("link")?.getAttribute("href") === `/coordinator/${cid(n)}`)!;
+    expect(rowFor(15)).toHaveTextContent("Hand-off bounced");
+    expect(rowFor(16)).toHaveTextContent("Hand-off pending");
+    expect(rowFor(9)).toHaveTextContent("Dr. Karim Nasser");
+    expect(rowFor(9)).toHaveTextContent("Corniche Gastro Unit");
+    await user.click(screen.getByLabelText(/Flagged only/));
+    const flagged = screen.getAllByTestId("worklist-row");
+    expect(flagged).toHaveLength(1);
+    expect(within(flagged[0]).getByTestId("watchdog-marker")).toBeInTheDocument();
+  });
+});
+
 describe("Reopen (clinician only, closed cases only)", () => {
   it("is not offered on an open case", async () => {
     openCase(1, "clinician");
     await screen.findByTestId("signoff");
     expect(screen.queryByTestId("reopen-panel")).toBeNull();
+  });
+
+  it("is refused for a clinician who does not own the closed case, with the reason", async () => {
+    renderWithApp(<CaseDetailPage />, { role: "owner", route: `/coordinator/${cid(11)}`, path: "/coordinator/:caseId" });
+    const btn = await screen.findByTestId("reopen");
+    expect(btn).toBeDisabled();
+    expect(screen.getByTestId("reopen-why")).toHaveTextContent(/do not own this case.*Dr\. Huda Rahman/i);
   });
 
   it("is disabled for a coordinator, with the reason", async () => {
@@ -156,7 +270,7 @@ describe("Reopen (clinician only, closed cases only)", () => {
 
   it("a clinician must give a reason; then the case is reopened through the client", async () => {
     const user = userEvent.setup();
-    const { api } = openCase(11, "clinician");
+    const { api } = openCase(11, "clinician"); // Dr. Huda Rahman signed and owns this case
     const btn = await screen.findByTestId("reopen");
     expect(btn).toBeDisabled();
     expect(screen.getByTestId("reopen-why")).toHaveTextContent(/reason/i);
@@ -166,9 +280,10 @@ describe("Reopen (clinician only, closed cases only)", () => {
     await waitFor(() => expect(screen.getByTestId("flash")).toHaveTextContent(/reopened/i));
     const d = await api.getCase(cid(11));
     expect(d.state).toBe("reopened");
-    expect(d.events.at(-1)).toMatchObject({ type: "reopen", actor: expect.stringMatching(/^clinician:/), payload: { reason: "New finding on the report" } });
+    expect(d.events.at(-1)).toMatchObject({ type: "reopen", actor: "primary_care_owner:Dr. Huda Rahman", payload: { reason: "New finding on the report" } });
     expect(screen.queryByTestId("reopen-panel")).toBeNull();
-    expect(screen.getByTestId("accept-ownership")).toBeInTheDocument();
+    // A reopened case goes back to clinician review (YAML: reopened --clinician_review--> clinician_reviewed).
+    expect(screen.getByTestId("signoff")).toBeInTheDocument();
   });
 });
 

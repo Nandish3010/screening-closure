@@ -34,8 +34,12 @@ export interface PatientStrings {
   callbackDone: string;
   consentHeading: string;
   channelLabel: string;
-  channels: { phone: string; sms: string; whatsapp: string };
+  channels: { phone: string; sms: string; whatsapp: string; letter: string };
   shareLabel: string;
+  withdrawButton: string;
+  withdrawHint: string;
+  withdrawnNotice: string;
+  resumeButton: string;
   saved: string;
   saveFailed: string;
   actionFailed: string;
@@ -72,9 +76,13 @@ export const STRINGS: Record<Lang, PatientStrings> = {
     dontUnderstand: "I don't understand this",
     callbackDone: "Thank you. A person from your care team will call you.",
     consentHeading: "Your choices",
-    channelLabel: "How should we contact you?",
-    channels: { phone: "Phone call", sms: "Text message", whatsapp: "WhatsApp" },
+    channelLabel: "How may we contact you?",
+    channels: { phone: "Phone call", sms: "Text message", whatsapp: "WhatsApp", letter: "Letter" },
     shareLabel: "My care team may share my result with the specialist who will do my test.",
+    withdrawButton: "Stop all contact",
+    withdrawHint: "If you stop contact, your care team will not message or call you. A person will check your case.",
+    withdrawnNotice: "You asked us to stop contact. We will not message or call you. A person on your care team will check your case.",
+    resumeButton: "You may contact me again",
     saved: "Saved",
     saveFailed: "We could not save this. Please try again.",
     actionFailed: "That did not work. Please try again or call your care team.",
@@ -109,9 +117,13 @@ export const STRINGS: Record<Lang, PatientStrings> = {
     dontUnderstand: "لا أفهم هذا",
     callbackDone: "شكرًا لك. سيتصل بك أحد أفراد فريق الرعاية.",
     consentHeading: "اختياراتك",
-    channelLabel: "كيف نتواصل معك؟",
-    channels: { phone: "مكالمة هاتفية", sms: "رسالة نصية", whatsapp: "واتساب" },
+    channelLabel: "كيف يمكننا التواصل معك؟",
+    channels: { phone: "مكالمة هاتفية", sms: "رسالة نصية", whatsapp: "واتساب", letter: "رسالة مكتوبة" },
     shareLabel: "أسمح لفريق رعايتي بمشاركة نتيجتي مع الأخصائي الذي سيجري فحصي.",
+    withdrawButton: "أوقفوا كل تواصل",
+    withdrawHint: "إذا أوقفت التواصل، فلن يرسل لك فريق الرعاية رسائل ولن يتصل بك. سيراجع أحد الأشخاص حالتك.",
+    withdrawnNotice: "طلبت إيقاف التواصل. لن نرسل لك رسائل ولن نتصل بك. سيراجع أحد أفراد فريق الرعاية حالتك.",
+    resumeButton: "يمكنكم التواصل معي مرة أخرى",
     saved: "تم الحفظ",
     saveFailed: "لم نتمكن من الحفظ. يرجى المحاولة مرة أخرى.",
     actionFailed: "لم تنجح العملية. يرجى المحاولة مرة أخرى أو الاتصال بفريق الرعاية.",
