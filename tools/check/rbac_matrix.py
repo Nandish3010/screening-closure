@@ -82,6 +82,8 @@ SCOPE_RULES: dict[tuple[str, str], frozenset[str]] = {
     ("POST", "/cases/{case_id}/drafts"): frozenset({"owner"}),
     # Reading the drafts of a case is open to the roles that may draft (the approval is what is owner-scoped).
     ("GET", "/cases/{case_id}/drafts"): frozenset(),
+    # Recording the colonoscopy result is the owning clinician's act (decision-matrix.md, E8 route).
+    ("POST", "/cases/{case_id}/confirmatory-result"): frozenset({"owner"}),
     ("POST", "/drafts/{draft_id}/approve"): frozenset({"owner"}),
     ("POST", "/drafts/{draft_id}/reject"): frozenset({"owner"}),
 }
@@ -89,18 +91,10 @@ SCOPE_RULES: dict[tuple[str, str], frozenset[str]] = {
 # Observed behaviour that differs from SCOPE_RULES, with the finding that explains it. The run fails if a
 # listed cell is no longer observed as written (the gap was fixed: delete the entry) or any other cell differs.
 # key: (method, path, role, scope, event_type or "") -> observed letter
-KNOWN_GAPS: dict[tuple[str, str, str, str, str], str] = {
-    ("POST", "/cases/{case_id}/drafts", "primary_care_owner", "other", ""): "A",
-    ("POST", "/cases/{case_id}/drafts", "specialist_owner", "other", ""): "A",
-}
-GAP_NOTES = [
-    "G-1  `POST /cases/{case_id}/drafts`: the route gate admits `primary_care_owner` and `specialist_owner` but the handler "
-    "(`api/app/routers/drafts.py`, `create_draft`) never applies owner scoping, so a clinician can create a draft on a case "
-    "they do not own. decision-matrix.md says \"a clinician only on a case they own\". The harm is bounded: a draft is only "
-    "text, it appends `message_drafted` (an annotation) and nothing is sent without `approve`, which is owner-scoped (cells "
-    "`S` above). Fix in `create_draft` with `policy.authorize_owner_scope(identity, \"create_draft\", model)`, then delete "
-    "the entries from `KNOWN_GAPS` in `tools/check/rbac_matrix.py`.",
-]
+# G-1 (POST /cases/{id}/drafts without owner scoping) was fixed on main at the M4/M5 integration; the matrix now
+# shows `S` for a clinician on another's case and this list is empty.
+KNOWN_GAPS: dict[tuple[str, str, str, str, str], str] = {}
+GAP_NOTES: list[str] = []
 
 
 def actor_for(role: str, name: str) -> str:
@@ -206,7 +200,7 @@ BODIES = {
     ("POST", "/clock/advance"): {"days": 0.001},
     ("POST", "/scheduler/heartbeat"): {"sweep_ok": True},
     ("POST", "/cases/{case_id}/drafts"): {"purpose": "result_notification", "channel": "sms", "language": "en"},
-    ("POST", "/drafts/{draft_id}/reject"): {"reason": "rbac probe"},
+    ("POST", "/drafts/{draft_id}/reject"): {"reason": "not_needed"},
 }
 
 
@@ -447,7 +441,7 @@ def render(result: Result) -> str:
         f"- {len(policy.EVENT_POLICY)} event types in `EVENT_POLICY`, plus one unknown type that must be refused for every role.",
         f"- {result.probes} role, route and scope combinations probed with real requests; "
         f"{len(result.problems)} differ from the policy tables{' (listed below)' if result.problems else ''}; "
-        f"{len(result.gaps_seen)} are the documented gap{'s' if len(result.gaps_seen) != 1 else ''} G-1.",
+        f"{len(result.gaps_seen)} are documented gaps (see Findings).",
         "",
     ]
     return "\n".join(lines)

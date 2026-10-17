@@ -24,8 +24,9 @@ Every cell is what the running API did, not what the policy table says: the scri
 | `GET /cases` | U | A | A | A | A | A | A | R | R |
 | `POST /cases` | U | A | R | R | A | R | A | R | R |
 | `GET /cases/{case_id}` | U | A | A | A | A | A/S | A | R | R |
+| `POST /cases/{case_id}/confirmatory-result` | U | R | A/S | A/S | R | R | R | R | R |
 | `GET /cases/{case_id}/drafts` | U | R | A | A | A | R | A | R | R |
-| `POST /cases/{case_id}/drafts` | U | R | A\* | A\* | A | R | A | R | R |
+| `POST /cases/{case_id}/drafts` | U | R | A/S | A/S | A | R | A | R | R |
 | `POST /cases/{case_id}/events` (the event rows below decide) | U | A | A | A | A | A | A | A | A |
 | `GET /cases/{case_id}/fhir` | U | R | A/S | A/S | A | R | A | R | R |
 | `GET /cases/{case_id}/notifications` | U | R | A/S | A/S | A | R | A | R | R |
@@ -70,6 +71,7 @@ The route admits every role and both service tokens; the event policy then decid
 | `mark_overdue` | U | R | R | R | R | R | R | A | R |
 | `message_approved` | U | R | R | R | R | R | R | R | R |
 | `message_drafted` | U | R | A/S | A/S | A | R | R | R | R |
+| `message_rejected` | U | R | R | R | R | R | R | R | R |
 | `message_sent` | U | R | R | R | R | R | R | R | R |
 | `patient_acknowledge` | U | R | R | R | A | A/S | R | R | R |
 | `reassign` | U | R | R | R | A | R | A | R | R |
@@ -85,6 +87,7 @@ Routes that name a case or a draft, with the scope rule the matrix enforces (dec
 | Route | Scope rule |
 |---|---|
 | `GET /cases/{case_id}` | a patient only for their own case |
+| `POST /cases/{case_id}/confirmatory-result` | a clinician only for a case they own |
 | `GET /cases/{case_id}/drafts` | none (the role gate is the whole rule) |
 | `POST /cases/{case_id}/drafts` | a clinician only for a case they own |
 | `POST /cases/{case_id}/events` | a patient only for their own case; a clinician only for a case they own |
@@ -96,10 +99,10 @@ Routes that name a case or a draft, with the scope rule the matrix enforces (dec
 
 ## Findings
 
-- G-1  `POST /cases/{case_id}/drafts`: the route gate admits `primary_care_owner` and `specialist_owner` but the handler (`api/app/routers/drafts.py`, `create_draft`) never applies owner scoping, so a clinician can create a draft on a case they do not own. decision-matrix.md says "a clinician only on a case they own". The harm is bounded: a draft is only text, it appends `message_drafted` (an annotation) and nothing is sent without `approve`, which is owner-scoped (cells `S` above). Fix in `create_draft` with `policy.authorize_owner_scope(identity, "create_draft", model)`, then delete the entries from `KNOWN_GAPS` in `tools/check/rbac_matrix.py`.
+None.
 
 ## What was checked
 
-- 24 routes in the OpenAPI document, 24 entries in `ROUTE_POLICY`: every route has a decision and no decision is stale.
-- 24 event types in `EVENT_POLICY`, plus one unknown type that must be refused for every role.
-- 531 role, route and scope combinations probed with real requests; 0 differ from the policy tables; 2 are the documented gaps G-1.
+- 25 routes in the OpenAPI document, 25 entries in `ROUTE_POLICY`: every route has a decision and no decision is stale.
+- 25 event types in `EVENT_POLICY`, plus one unknown type that must be refused for every role.
+- 555 role, route and scope combinations probed with real requests; 0 differ from the policy tables; 0 are documented gaps (see Findings).

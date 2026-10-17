@@ -14,7 +14,7 @@ accepts `message_sent` only from `system:notifier`.
 
 Routes (roles in `app.policy.ROUTE_POLICY`, registered below so a missing entry fails closed):
 
-* `POST /cases/{id}/drafts`        primary_care_owner, specialist_owner, coordinator, supervisor
+* `POST /cases/{id}/drafts`        primary_care_owner, specialist_owner (the case's owner), coordinator, supervisor
 * `GET  /cases/{id}/drafts`        same roles
 * `POST /drafts/{id}/approve`      primary_care_owner, specialist_owner (the case's owner), supervisor
 * `POST /drafts/{id}/reject`       same roles; body {reason, note?} (reason from the A16 taxonomy)
@@ -185,6 +185,9 @@ def build_request(case_id: UUID, body: CreateDraft, identity: Identity) -> Draft
     model = cases.store.read_model(case_id, cases.pathway)
     if model is None:
         raise HTTPException(404, "case not found")
+    # G-1: like every other owner action, a clinician drafts only on a case they own (coordinator and
+    # supervisor are not owner-scoped). Checked before the 409 states so a non-owner learns nothing from them.
+    policy.authorize_owner_scope(identity, "create_draft", model)
     if model.consent_frozen:
         raise HTTPException(409, "outreach is frozen: the patient has withdrawn consent")
     if model.state == cases.pathway.terminal_state:

@@ -89,9 +89,43 @@ def test_routes_have_policy_entries_with_the_right_roles():
 
 @pytest.mark.parametrize("role", ALLOWED)
 def test_allowed_roles_can_draft(role):
-    cid = owned_case()
-    r = create(cid, role=role)
+    # a clinician drafts on a case they own; coordinator and supervisor on any case (G-1)
+    cid = owned_case(role=role) if role in ("primary_care_owner", "specialist_owner") else owned_case()
+    r = create(cid, role=role, name="Dr Sara Khan" if role in ("primary_care_owner", "specialist_owner") else None)
     assert r.status_code == 201, r.text
+
+
+@pytest.mark.parametrize("role", ["primary_care_owner", "specialist_owner"])
+def test_g1_a_clinician_who_does_not_own_the_case_cannot_draft_and_nothing_is_written(role):
+    cid = owned_case("Dr Sara Khan")
+    before = len(events(cid))
+    r = create(cid, role=role, name="Dr Someone Else")
+    assert r.status_code == 403 and "may only act on cases they own" in r.json()["detail"]
+    assert len(events(cid)) == before and drafts.store.list_for_case(UUID(cid)) == []
+    # the owner, of either clinician role, still can
+    assert create(cid, role="primary_care_owner", name="Dr Sara Khan").status_code == 201
+
+
+@pytest.mark.parametrize("role", ["primary_care_owner", "specialist_owner"])
+def test_g1_a_clinician_cannot_draft_on_a_case_with_no_owner_yet(role):
+    cid = new_case()
+    assert create(cid, role=role, name="Dr Sara Khan").status_code == 403
+    assert drafts.store.list_for_case(UUID(cid)) == []
+    assert create(cid, role="coordinator").status_code == 201  # not owner-scoped
+
+
+@pytest.mark.parametrize("role", ["coordinator", "supervisor"])
+def test_g1_coordinator_and_supervisor_draft_on_any_case(role):
+    cid = owned_case("Dr Sara Khan")
+    assert create(cid, role=role, name="Not The Owner").status_code == 201
+
+
+def test_g1_the_scope_check_comes_before_the_409_states():
+    """A non-owner clinician gets 403 on a frozen case too, not a 409 that would reveal its state."""
+    cid = owned_case("Dr Sara Khan")
+    post_event(cid, "consent_updated", "coordinator", {"withdrawn": True})
+    assert create(cid, role="primary_care_owner", name="Dr Someone Else").status_code == 403
+    assert create(cid, role="primary_care_owner", name="Dr Sara Khan").status_code == 409
 
 
 @pytest.mark.parametrize("role", FORBIDDEN)

@@ -93,3 +93,10 @@ def test_removing_the_patient_own_case_rule_is_caught(monkeypatch):
 def test_a_known_gap_that_is_fixed_must_be_removed(monkeypatch):
     monkeypatch.setattr(m, "KNOWN_GAPS", {**m.KNOWN_GAPS, ("GET", "/cases/{case_id}/fhir", "primary_care_owner", "other", ""): "A"})
     assert any("known gap is no longer observed" in p for p in m.run().problems)
+
+
+def test_g1_clinicians_are_owner_scoped_on_create_draft(result):
+    """G-1 (fixed): no documented gaps remain, and a clinician on another's case is denied by scope (S)."""
+    assert m.KNOWN_GAPS == {} and m.GAP_NOTES == [] and result.gaps_seen == []
+    cell = result.route_cells[("POST", "/cases/{case_id}/drafts", "primary_care_owner")]
+    assert cell.text() == "A/S"
