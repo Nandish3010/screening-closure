@@ -9,3 +9,4 @@ Line format: `YYYY-MM-DD HH:MM TZ | ticket | agent | what was done | commit`. Ti
 2026-10-17 23:52 IST | M0-3 | unrecorded | Synthea cohort pipeline: containerised generation, HAPI loader, seeded FIT results, `make demo-seed` | 971c3f1
 2026-10-18 00:03 IST | planning | claude | Created project/ with PLAN, TRACKER, TEST-CASES, DECISIONS and this log (69 planned tickets, 112 test cases) | see commit "project: plan, tracker, test cases, decisions log"
 2026-10-18 00:13 IST | D1 | claude (cut-d) | provider interface, TemplateProvider, LLM_PROVIDER registry with stubs for azure_openai and jais (18 tests) | c67bedd
+2026-10-18 00:13 IST | D2 | claude (cut-d) | ar/en templates, loader with load-time checks, reviewer pack generator (44 tests) | ba762ab
