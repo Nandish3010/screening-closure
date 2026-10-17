@@ -12,6 +12,8 @@ dependencies = [
   "uvicorn[standard]>=0.29",
   "pydantic-settings>=2.2",
   "pyyaml>=6.0",
+  "psycopg[binary]>=3.2",
+  "psycopg-pool>=3.2",
 ]
 
 [project.optional-dependencies]
@@ -26,3 +28,6 @@ include = ["app*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = [
+  "integration: needs a running Postgres (set DATABASE_URL); run with `make test-db`",
+]

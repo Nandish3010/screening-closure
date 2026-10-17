@@ -14,7 +14,11 @@ make up
 curl localhost:8000/health
 ```
 
-Runs fully offline on a laptop. Run the closure-invariant property test with `make test`.
+Runs fully offline on a laptop. Run the closure-invariant property test and the other unit tests with `make test` (no database needed). Run the Postgres integration tests with `make test-db` (needs the stack up: `make up`; postgres is published on host port 5433).
+
+## Persistence
+
+Cases are stored in Postgres. The `events` table is append-only (triggers reject UPDATE, DELETE and TRUNCATE) and is the source of truth. Appending an event is one transaction: the case row is locked, the stored log is replayed and checked against `cases.current_state`, the new event is validated by the state machine, and only then are the event row and the new state written, so an invalid transition leaves nothing behind and concurrent writers cannot both win. `cases.current_state` is a derived read model, never trusted without replay. Every event carries an `event_id`; retrying a request with the same `event_id` inserts once. Schema changes are applied at API startup by an in-app migration runner (`api/migrations/*.sql`, recorded in `schema_migrations`). Without `DATABASE_URL` the API falls back to a non-durable in-memory store.
 
 ## Repo layout
 
@@ -32,7 +36,7 @@ Services (docker compose): postgres 16, HAPI FHIR R4, api, scheduler, watchdog.
 
 ## Status
 
-Week 1 skeleton: structure, configuration, wiring, stubs, and the closure-invariant property test. Postgres persistence, FHIR mapping, SLA evaluation, the simulator, and the web app are TODO.
+Week 1 skeleton: structure, configuration, wiring, stubs, the closure-invariant property test, and Postgres persistence. FHIR mapping, SLA evaluation, the simulator, and the web app are TODO.
 
 ## Docs
 

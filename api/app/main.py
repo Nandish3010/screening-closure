@@ -1,16 +1,47 @@
-import dataclasses
+import logging
+import os
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
 from app.clock import clock
 from app.config import settings
+from app.events import InMemoryEventStore
 from app.pathway import load_pathway
 from app.routers import cases
+
+logging.basicConfig(level=logging.INFO, format="%(levelname)s:     %(name)s: %(message)s")
+log = logging.getLogger("app.main")
 
 pathway = load_pathway(settings.pathway_path)
 cases.pathway = pathway
 
-app = FastAPI(title="Screening Closure Engine", version="0.1.0")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Read the process environment (not .env/settings): a stray .env must never silently
+    # switch a local run onto a database. Unset means the in-memory store.
+    database_url = os.environ.get("DATABASE_URL")
+    pool = None
+    if database_url:
+        from app.db import create_pool, run_migrations
+        from app.store_pg import PostgresEventStore
+
+        pool = create_pool(database_url)
+        run_migrations(pool)
+        cases.store = PostgresEventStore(pool)
+        log.info("event store: postgres")
+    else:
+        cases.store = InMemoryEventStore()
+        log.warning("event store: IN-MEMORY (DATABASE_URL not set); data is not durable")
+    try:
+        yield
+    finally:
+        if pool is not None:
+            pool.close()
+
+
+app = FastAPI(title="Screening Closure Engine", version="0.1.0", lifespan=lifespan)
 app.include_router(cases.router)
 
 

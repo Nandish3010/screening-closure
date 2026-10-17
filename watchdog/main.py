@@ -2,7 +2,8 @@
 
 Checks (both TODO beyond the heartbeat):
   1. TODO: flag open cases with no events for WATCHDOG_IDLE_DAYS (sim clock).
-  2. Flag the scheduler itself if its heartbeat is older than 60 seconds (wall clock).
+  2. Flag the scheduler itself if its heartbeat is older than 60 seconds (wall clock), or
+     missing once the watchdog has been up for 60 seconds (before that: "warming up").
 """
 
 import json
@@ -19,6 +20,10 @@ HEARTBEAT_PATH = Path(os.environ.get("HEARTBEAT_PATH", "/tmp/scheduler.json"))
 IDLE_DAYS = int(os.environ.get("WATCHDOG_IDLE_DAYS", "7"))
 INTERVAL_SECONDS = int(os.environ.get("WATCHDOG_INTERVAL_SECONDS", "15"))
 HEARTBEAT_MAX_AGE_SECONDS = 60
+# The scheduler starts at about the same time; give it a grace period before treating
+# a missing heartbeat as a failure. The staleness check applies from the first read.
+WARMUP_SECONDS = 60
+STARTED_AT = time.monotonic()
 
 
 def check_scheduler_heartbeat() -> None:
@@ -26,6 +31,11 @@ def check_scheduler_heartbeat() -> None:
         beat = json.loads(HEARTBEAT_PATH.read_text())
         age = time.time() - beat["wall_ts"]
     except (FileNotFoundError, ValueError, KeyError):
+        uptime = time.monotonic() - STARTED_AT
+        if uptime < WARMUP_SECONDS:
+            log.info("warming up (%.0fs of %ss): no scheduler heartbeat yet at %s",
+                     uptime, WARMUP_SECONDS, HEARTBEAT_PATH)
+            return
         log.error("ALERT scheduler heartbeat missing or unreadable at %s", HEARTBEAT_PATH)
         return
     if age > HEARTBEAT_MAX_AGE_SECONDS:

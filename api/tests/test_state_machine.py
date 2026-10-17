@@ -5,6 +5,7 @@
 (b) Replaying the same events twice yields identical state.
 """
 
+import dataclasses
 from datetime import UTC, datetime
 from uuid import uuid4
 
@@ -13,7 +14,7 @@ from hypothesis import given, settings
 from hypothesis import strategies as st
 
 from app.config import settings as app_settings
-from app.events import CASE_CREATED, Event, EventStore, replay
+from app.events import CASE_CREATED, Event, InMemoryEventStore, replay
 from app.pathway import PathwayError, load_pathway
 from app.state_machine import InvalidTransition, apply
 
@@ -96,11 +97,17 @@ def test_replay_is_deterministic(events):
     _, applied = fold(events)
     assert replay(applied, PATHWAY) == replay(applied, PATHWAY)
 
-    store = EventStore()
+    store = InMemoryEventStore()
+    case_id = uuid4()
+    store.create_case(
+        case_id, PATHWAY.name, Event(case_id, CASE_CREATED, AT, "system:intake"),
+        PATHWAY.initial_state,
+    )
     for ev in applied:
-        store.append(ev)
-    if applied:
-        assert store.replay(CASE, PATHWAY) == store.replay(CASE, PATHWAY) == fold(applied)[0]
+        store.append(dataclasses.replace(ev, case_id=case_id), PATHWAY)
+    expected = fold(applied)[0]
+    assert store.current_state(case_id) == expected
+    assert replay(store.events_for(case_id), PATHWAY) == expected
 
 
 def test_every_pathway_transition_is_reachable_in_order():

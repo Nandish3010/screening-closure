@@ -1,12 +1,18 @@
-"""Append-only event log. State is never stored, only derived by replay.
+"""Append-only event log. The event log is the source of truth; state is derived by replay.
 
-TODO: persist to Postgres (table DDL in migrations/001_events.sql) and make
-event handling idempotent (idempotency key per event).
+`cases.current_state` in Postgres is a read model derived from the log and re-verified
+against a replay on every append. Two stores implement the same `EventStore` protocol:
+`InMemoryEventStore` (unit tests, no-docker runs) and `PostgresEventStore` (app.store_pg).
 """
 
+from __future__ import annotations
+
+import dataclasses
+import threading
 from dataclasses import dataclass, field
 from datetime import datetime
-from uuid import UUID
+from typing import Protocol
+from uuid import UUID, uuid4
 
 from app.pathway import Pathway
 from app.state_machine import apply
@@ -21,31 +27,58 @@ class Event:
     at: datetime
     actor: str
     payload: dict = field(default_factory=dict)
+    # Idempotency key: appending the same event_id to a case twice inserts once.
+    event_id: UUID = field(default_factory=uuid4)
+    # Position in the case's log (1-based, gap-free). Assigned by the store on append.
+    seq: int | None = field(default=None, compare=False)
+
+
+@dataclass(frozen=True)
+class CaseSummary:
+    case_id: UUID
+    pathway: str
+    current_state: str
+    created_at: datetime
+    updated_at: datetime
 
 
 class CaseNotFound(KeyError):
     pass
 
 
-class EventStore:
-    """In-memory placeholder. Only append() and read access; no update, no delete."""
+class CaseAlreadyExists(Exception):
+    pass
 
-    def __init__(self) -> None:
-        self._events: dict[UUID, list[Event]] = {}
 
-    def append(self, event: Event) -> None:
-        self._events.setdefault(event.case_id, []).append(event)
+class EventIdConflict(Exception):
+    """The event_id is already used by an event on a different case."""
 
-    def events(self, case_id: UUID) -> tuple[Event, ...]:
-        if case_id not in self._events:
-            raise CaseNotFound(str(case_id))
-        return tuple(self._events[case_id])
 
-    def case_ids(self) -> list[UUID]:
-        return list(self._events)
+class StateCorruption(Exception):
+    """The stored current_state disagrees with a replay of the event log."""
 
-    def replay(self, case_id: UUID, pathway: Pathway) -> str:
-        return replay(self.events(case_id), pathway)
+
+class EventStore(Protocol):
+    def create_case(
+        self, case_id: UUID, pathway_name: str, genesis_event: Event, initial_state: str
+    ) -> None:
+        """Create a case and write its genesis event (seq 1) atomically."""
+        ...
+
+    def append(self, event: Event, pathway: Pathway) -> str:
+        """Validate the event against the state machine and append it atomically.
+
+        Returns the new state. Raises CaseNotFound, InvalidTransition (nothing written),
+        EventIdConflict or StateCorruption. A repeated event_id on the same case is a
+        no-op that returns the current state.
+        """
+        ...
+
+    def events_for(self, case_id: UUID) -> list[Event]: ...
+
+    def current_state(self, case_id: UUID) -> str | None: ...
+
+    def list_cases(self, state: str | None = None) -> list[CaseSummary]: ...
 
 
 def replay(events, pathway: Pathway) -> str:
@@ -58,4 +91,73 @@ def replay(events, pathway: Pathway) -> str:
     return state
 
 
-store = EventStore()
+@dataclass
+class _Case:
+    pathway: str
+    state: str
+    created_at: datetime
+    updated_at: datetime
+    events: list[Event] = field(default_factory=list)
+
+
+class InMemoryEventStore:
+    """Process-local store with the same semantics as the Postgres one (no durability)."""
+
+    def __init__(self) -> None:
+        self._lock = threading.Lock()
+        self._cases: dict[UUID, _Case] = {}
+        self._event_ids: dict[UUID, UUID] = {}  # event_id -> case_id
+
+    def create_case(
+        self, case_id: UUID, pathway_name: str, genesis_event: Event, initial_state: str
+    ) -> None:
+        if genesis_event.type != CASE_CREATED or genesis_event.case_id != case_id:
+            raise ValueError("genesis_event must be a case_created event for this case")
+        with self._lock:
+            if case_id in self._cases:
+                raise CaseAlreadyExists(str(case_id))
+            if genesis_event.event_id in self._event_ids:
+                raise EventIdConflict(str(genesis_event.event_id))
+            self._cases[case_id] = _Case(
+                pathway_name,
+                initial_state,
+                genesis_event.at,
+                genesis_event.at,
+                [dataclasses.replace(genesis_event, seq=1)],
+            )
+            self._event_ids[genesis_event.event_id] = case_id
+
+    def append(self, event: Event, pathway: Pathway) -> str:
+        with self._lock:
+            case = self._cases.get(event.case_id)
+            if case is None:
+                raise CaseNotFound(str(event.case_id))
+            owner = self._event_ids.get(event.event_id)
+            if owner is not None:
+                if owner == event.case_id:
+                    return case.state
+                raise EventIdConflict(str(event.event_id))
+            new_state = apply(case.state, event, pathway)  # raises InvalidTransition
+            case.events.append(dataclasses.replace(event, seq=len(case.events) + 1))
+            case.state = new_state
+            case.updated_at = event.at
+            self._event_ids[event.event_id] = event.case_id
+            return new_state
+
+    def events_for(self, case_id: UUID) -> list[Event]:
+        with self._lock:
+            case = self._cases.get(case_id)
+            return list(case.events) if case else []
+
+    def current_state(self, case_id: UUID) -> str | None:
+        with self._lock:
+            case = self._cases.get(case_id)
+            return case.state if case else None
+
+    def list_cases(self, state: str | None = None) -> list[CaseSummary]:
+        with self._lock:
+            return [
+                CaseSummary(cid, c.pathway, c.state, c.created_at, c.updated_at)
+                for cid, c in self._cases.items()
+                if state is None or c.state == state
+            ]
