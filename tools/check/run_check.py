@@ -14,6 +14,8 @@ Stages (each is a make target, so each can be run on its own):
     test-tools    the cross-cutting tests in tests/ (scanner, linters, load harness)
     load-check    sweep over 1,000 seeded cases (F6; full sizes are `make test-load`);
                   SKIPPED loudly if Postgres on :5433 is unreachable
+    risk-check    the committed risk score (model.json, docs/results/risk/, the generated blocks of
+                  docs/governance/risk-score-card.md) equal a fresh retrain from the seed (D8, D10, T-D12)
     review-packs-check  the committed reviewer packs equal a fresh build (E10)
     test-review-packs   the reviewer-pack tests (T-E17)
     web-e2e       Playwright suite against the mock adapter: closure flow in English and Arabic,
@@ -72,6 +74,7 @@ STAGES = [
     Stage("test-security"),
     Stage("test-tools"),
     Stage("load-check", needs_pg=True),
+    Stage("risk-check"),
     Stage("review-packs-check"),
     Stage("test-review-packs"),
     Stage("web-e2e", web=True),

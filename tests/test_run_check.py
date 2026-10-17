@@ -10,7 +10,8 @@ def test_stage_order_matches_the_brief():
     assert names[:8] == ["test", "test-db", "web-test", "web-build", "evaluate-check",
                          "docs-check", "tracker-lint", "test-security"]
     assert "load-check" in names and "test-tools" in names
-    assert names[-3:] == ["review-packs-check", "test-review-packs", "web-e2e"]
+    assert names[-4:] == ["risk-check", "review-packs-check", "test-review-packs", "web-e2e"]
+    assert names.index("load-check") < names.index("risk-check")
 
 
 def test_summarise_playwright():

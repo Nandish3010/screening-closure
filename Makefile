@@ -1,4 +1,4 @@
-.PHONY: test-demo test-e2e-live demo-scenario demo-snapshot demo-restore demo-reset demo-kill-scheduler check docs-check tracker-lint test-security test-tools test-load load-check up down logs test test-db test-db-create test-db-reset test-chaos synthea demo-seed demo-seed-clean evaluate simulate evaluate-check reset web-install web-dev web-build web-test web-e2e test-e2e review-packs review-packs-check test-review-packs test-phi-logs rbac-matrix test-offline fresh-clone
+.PHONY: test-demo test-e2e-live demo-scenario demo-snapshot demo-restore demo-reset demo-kill-scheduler check docs-check tracker-lint test-security test-tools test-load load-check up down logs test test-db test-db-create test-db-reset test-chaos synthea demo-seed demo-seed-clean evaluate simulate evaluate-check reset web-install web-dev web-build web-test web-e2e test-e2e review-packs review-packs-check test-review-packs test-phi-logs rbac-matrix test-offline fresh-clone risk-report risk-check
 
 up:
 	docker compose up -d --build
@@ -159,7 +159,7 @@ demo-kill-scheduler:
 # ---- Cut F: hardening, reproducibility, `make check` (F1, F6, F9) ----------------------------------
 # `make check` runs, in order and stopping at the first failure: test, test-db (skipped loudly if
 # Postgres on :5433 is down), web-test, web-build, evaluate-check, docs-check, tracker-lint,
-# test-security, test-tools, a reduced load check, review-packs-check, test-review-packs and web-e2e. Each stage is its own target. Run every stage
+# test-security, test-tools, a reduced load check, risk-check, review-packs-check, test-review-packs and web-e2e. Each stage is its own target. Run every stage
 # even after a failure (for reporting): `make check CHECK_KEEP_GOING=1`.
 check:
 	$(PY) tools/check/run_check.py $(if $(CHECK_KEEP_GOING),--keep-going)
@@ -223,6 +223,17 @@ test-load:
 # The 1k size only, with the same correctness assertions and no files written (part of `make check`).
 load-check:
 	PYTHONPATH=api $(PY) tools/load/time_sweep.py --check
+
+# ---- risk score (D8, D10) ------------------------------------------------------------------
+# Retrains the loss-to-follow-up risk score from the seed on the simulator data and rewrites api/app/risk/model.json,
+# docs/results/risk/ (risk.json, training.md, calibration.svg) and the generated blocks of docs/governance/risk-score-card.md.
+# Pure Python, no database, about a minute. Two runs on the same inputs write identical bytes (T-D11).
+risk-report:
+	$(SIMENV) $(PY) -m simulator.sim.export_training
+
+# Fails if any of those committed files differs from a fresh retrain (T-D12); part of `make check`.
+risk-check:
+	$(SIMENV) $(PY) -m simulator.sim.export_training --check
 
 # ---- reviewer packs (E10) ------------------------------------------------------------------
 # Regenerates docs/review/clinician-pack.md and arabic-pack.md from the pathway YAML, the web
