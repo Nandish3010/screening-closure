@@ -34,7 +34,9 @@ services:
     build: ./api
     ports:
       - "8000:8000"
-    env_file: .env
+    env_file:
+      - path: .env
+        required: false
     environment:
       PATHWAY_PATH: /config/pathways/colorectal_fit.yaml
     volumes:
@@ -51,7 +53,9 @@ services:
 
   scheduler:
     build: ./scheduler
-    env_file: .env
+    env_file:
+      - path: .env
+        required: false
     environment:
       API_URL: http://api:8000
       HEARTBEAT_PATH: /heartbeat/scheduler.json
@@ -64,7 +68,9 @@ services:
 
   watchdog:
     build: ./watchdog
-    env_file: .env
+    env_file:
+      - path: .env
+        required: false
     environment:
       API_URL: http://api:8000
       HEARTBEAT_PATH: /heartbeat/scheduler.json
