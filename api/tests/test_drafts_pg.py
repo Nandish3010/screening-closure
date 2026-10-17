@@ -12,7 +12,7 @@ from uuid import UUID, uuid4
 import psycopg
 import pytest
 
-from api_helpers import login_headers, make_client
+from api_helpers import actor_of, login_headers, make_client
 from app.ai.draft_store import PostgresDraftStore, PromptRecord
 from app.ai.provider import SYSTEM_PROMPT
 from app.db import create_pool, run_migrations
@@ -80,7 +80,7 @@ def test_draft_row_prompt_row_and_event_are_all_written(client, pool):
         " FROM drafts WHERE draft_id = %s", (out["draft_id"],))
     assert row[0] == UUID(cid) and row[1:4] == ("result_notification", "sms", "en")
     assert row[4] == out["text"] and row[5] == "template" and row[7] is False
-    assert row[8] is None and row[9] is None and row[11] == "coordinator:Maryam"
+    assert row[8] is None and row[9] is None and row[11] == actor_of("coordinator", "Maryam")
     assert row[13] is None and row[14] is None
     store = drafts.draft_store()
     prompt = store.get_prompt(out["prompt_hash"])

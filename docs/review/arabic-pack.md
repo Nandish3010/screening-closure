@@ -15,7 +15,7 @@
 | 5 | 6 Forbidden phrases | Is the Arabic list right and complete? |
 | 5 | 7 and 8 Checklist, feedback table | Tick the checklist and fill the feedback table. |
 
-There are 59 Arabic texts (every one is also in English, with the same ID) and 39 Arabic forbidden-phrase entries. Every Arabic text in the prototype's sources is in this pack. All of it was written by the engineering team and has not been reviewed by a native speaker. Please correct freely; suggest better wording in the feedback table.
+There are 65 Arabic texts (every one is also in English, with the same ID) and 39 Arabic forbidden-phrase entries. Every Arabic text in the prototype's sources is in this pack. All of it was written by the engineering team and has not been reviewed by a native speaker. Please correct freely; suggest better wording in the feedback table.
 
 ## 1. What these texts are for
 
@@ -32,9 +32,9 @@ Hard rules the Arabic must keep:
 
 | Source | Where | Reading level | Length limit |
 |---|---|---|---|
-| Patient page (IDs W01 to W39) | Web app at `/patient`, Arabic with right-to-left layout | About grade 6: short sentences, everyday words. | None on the page; short lines for a phone screen |
+| Patient page (IDs W01 to W44) | Web app at `/patient`, Arabic with right-to-left layout | About grade 6: short sentences, everyday words. | None on the page; short lines for a phone screen |
 | Messages (IDs T01 to T18) | SMS, WhatsApp or letter, chosen from the patient's preferred channel | About grade 6: short sentences, everyday words. | SMS 320, WhatsApp 600, letter 1200 characters |
-| Demo drafts (IDs D01 to D02) | Coordinator app, demo data only | About grade 6: short sentences, everyday words. | None |
+| Demo drafts (IDs D01 to D03) | Coordinator app, demo data only | About grade 6: short sentences, everyday words. | None |
 
 Placeholders in braces are filled in by the system: `{owner_name}` (the care owner, for example الدكتورة سارة خان), `{next_step}` (supplied in Arabic, default تنظير القولون), `{appointment_date}` (for example الثلاثاء 3 نوفمبر 2026), `{name}` and `{role}` on the patient page.
 
@@ -46,20 +46,20 @@ Placeholders in braces are filled in by the system: `{owner_name}` (the care own
 
 **Dates and names.** The sample date uses Gregorian month and weekday names in the Gulf style (نوفمبر, الثلاثاء), not the Levantine month names. Titles such as "الدكتورة" are part of the owner's name, supplied by the clinic.
 
-**Orthography we noticed.** The patient page and demo drafts write tanween as ـًا (for example تشخيصًا): 7 cases there against 0 of the other form. The templates write ـاً (for example دماً): 13 cases against 0 of the other form. The Arabic comma ، appears 19 times (letter greetings and closings); sentences end with a Latin full stop. Choose one convention.
+**Orthography we noticed.** The patient page and demo drafts write tanween as ـًا (for example تشخيصًا): 9 cases there against 0 of the other form. The templates write ـاً (for example دماً): 13 cases against 0 of the other form. The Arabic comma ، appears 20 times (letter greetings and closings); sentences end with a Latin full stop. Choose one convention.
 
 **Terminology we use today.** Counts are generated from the texts below. Where one idea has several wordings, please choose one.
 
 | Concept | Arabic wording in use, with the strings that contain it |
 |---|---|
-| colonoscopy | تنظير القولون : 2 strings (W07, D02) |
-| camera test (friendly term) | فحص بالكاميرا : 3 strings (W07, W12, W15)<br>الفحص بالكاميرا : 2 strings (W12, W15)<br>فحص متابعة بالكاميرا : 2 strings (D01, D02) |
+| colonoscopy | تنظير القولون : 2 strings (W07, D01) |
+| camera test (friendly term) | فحص بالكاميرا : 3 strings (W07, W12, W15)<br>الفحص بالكاميرا : 2 strings (W12, W15)<br>فحص متابعة بالكاميرا : 1 string (D01) |
 | screening test | فحص الكشف المبكر : 3 strings (T01, T02, T03) |
 | test (generic) | فحصك : 5 strings (W01, W04, W07, D01, D02)<br>الفحص : 7 strings (W12, W15, W17, T03, T04, T06, T08) |
-| care team | فريق الرعاية : 5 strings (W05, W11, W25, W27, W28)<br>فريق رعايتك : 18 strings (T01, T02, T03, T04, T05, T06, T07, T08 and 10 more)<br>فريق رعايتي : 1 string (W34) |
+| care team | فريق الرعاية : 7 strings (W05, W11, W25, W27, W28, W37, W38)<br>فريق رعايتك : 18 strings (T01, T02, T03, T04, T05, T06, T07, T08 and 10 more)<br>فريق رعايتي : 1 string (W35) |
 | care coordinator | منسق الرعاية : 2 strings (W15, W22)<br>منسق رعاية : 1 string (W20) |
 | care owner (the responsible person) | المسؤول عن رعايتك : 18 strings (T01, T02, T03, T04, T05, T06, T07, T08 and 10 more)<br>المسؤول عن متابعة حالتك : 1 string (W19)<br>من يتابع حالتك : 1 string (W18) |
-| result | نتيجة : 3 strings (W01, W04, W10)<br>نتيجتك : 3 strings (W05, W06, W08)<br>نتيجتي : 1 string (W34) |
+| result | نتيجة : 3 strings (W01, W04, W10)<br>نتيجتك : 3 strings (W05, W06, W08)<br>نتيجتي : 1 string (W35) |
 | appointment | موعد : 9 strings (W16, T05, T07, T09, T10, T11, T12, D01 and 1 more) |
 
 ## 4. Patient page strings, by screen section
@@ -143,13 +143,18 @@ Channel, sharing and their save status.
 | ID | English | Arabic | Where it appears |
 |---|---|---|---|
 | W29 | Your choices | اختياراتك | Heading of the choices section. |
-| W30 | How should we contact you? | كيف نتواصل معك؟ | Label of the contact-channel drop-down. |
-| W31 | Phone call | مكالمة هاتفية | Drop-down option. |
-| W32 | Text message | رسالة نصية | Drop-down option. |
-| W33 | WhatsApp | واتساب | Drop-down option. |
-| W34 | My care team may share my result with the specialist who will do my test. | أسمح لفريق رعايتي بمشاركة نتيجتي مع الأخصائي الذي سيجري فحصي. | Label of the check box that lets the care team share the result with the specialist. |
-| W35 | Saved | تم الحفظ | Status line under the choices after a successful save. |
-| W36 | We could not save this. Please try again. | لم نتمكن من الحفظ. يرجى المحاولة مرة أخرى. | Status line if saving the choices fails. |
+| W30 | How may we contact you? | كيف يمكننا التواصل معك؟ | Legend of the group of contact-channel check boxes. Each box is on unless the patient turned it off (an opt-out default); changing one saves at once. |
+| W31 | Phone call | مكالمة هاتفية | Label of the check box for phone calls. |
+| W32 | Text message | رسالة نصية | Label of the check box for text messages. |
+| W33 | WhatsApp | واتساب | Label of the check box for WhatsApp messages. |
+| W34 | Letter | رسالة مكتوبة | Label of the check box for letters. |
+| W35 | My care team may share my result with the specialist who will do my test. | أسمح لفريق رعايتي بمشاركة نتيجتي مع الأخصائي الذي سيجري فحصي. | Label of the check box that lets the care team share the result with the specialist. |
+| W36 | Stop all contact | أوقفوا كل تواصل | Button under the choices. Withdraws all consent to contact at once: the case is frozen for outreach and a person is asked to review it. Hidden after withdrawal. |
+| W37 | If you stop contact, your care team will not message or call you. A person will check your case. | إذا أوقفت التواصل، فلن يرسل لك فريق الرعاية رسائل ولن يتصل بك. سيراجع أحد الأشخاص حالتك. | Small grey text above that button. It says what stopping contact means and that a person will check the case. |
+| W38 | You asked us to stop contact. We will not message or call you. A person on your care team will check your case. | طلبت إيقاف التواصل. لن نرسل لك رسائل ولن نتصل بك. سيراجع أحد أفراد فريق الرعاية حالتك. | Yellow banner at the top of the choices section after the patient has stopped all contact. |
+| W39 | You may contact me again | يمكنكم التواصل معي مرة أخرى | Replaces the stop button after withdrawal. Pressing it records that the patient may be contacted again. |
+| W40 | Saved | تم الحفظ | Status line under the choices after a successful save. |
+| W41 | We could not save this. Please try again. | لم نتمكن من الحفظ. يرجى المحاولة مرة أخرى. | Status line if saving the choices fails. |
 
 ### 4.8 Loading, offline and errors
 
@@ -157,9 +162,9 @@ System messages.
 
 | ID | English | Arabic | Where it appears |
 |---|---|---|---|
-| W37 | Loading... | جارٍ التحميل... | Shown instead of the page while the case loads. |
-| W38 | We could not load your information. Please try again. | لم نتمكن من تحميل معلوماتك. يرجى المحاولة مرة أخرى. | Shown if the case cannot be loaded and nothing is saved on the device. |
-| W39 | You are offline. This is the last information we saved. | أنت غير متصل بالإنترنت. هذه آخر معلومات حفظناها. | Banner above the result when the device is offline. The last saved information is shown. |
+| W42 | Loading... | جارٍ التحميل... | Shown instead of the page while the case loads. |
+| W43 | We could not load your information. Please try again. | لم نتمكن من تحميل معلوماتك. يرجى المحاولة مرة أخرى. | Shown if the case cannot be loaded and nothing is saved on the device. |
+| W44 | You are offline. This is the last information we saved. | أنت غير متصل بالإنترنت. هذه آخر معلومات حفظناها. | Banner above the result when the device is offline. The last saved information is shown. |
 
 ## 5. Messages, by purpose
 
@@ -224,8 +229,9 @@ Draft text offered to the coordinator in the demo (mock) app, shown in both lang
 
 | ID | English | Arabic | Where it appears |
 |---|---|---|---|
-| D01 | Hello. Your screening test needs a follow-up camera test. Please call us to book it. | مرحبًا. يحتاج فحصك إلى فحص متابعة بالكاميرا. يرجى الاتصال بنا لحجز الموعد. | Draft text offered to the coordinator in the demo (mock) app, shown in both languages and stored in the `message_drafted` event. It stands in for a model or template draft. A person approves it before anything is "sent". |
-| D02 | Hello. Your screening test needs a follow-up camera test called a colonoscopy. This is not a diagnosis. Please call us to book a time. | مرحبًا. يحتاج فحصك إلى فحص متابعة بالكاميرا اسمه تنظير القولون. هذا ليس تشخيصًا. يرجى الاتصال بنا لحجز موعد. | Draft text offered to the coordinator in the demo (mock) app, shown in both languages and stored in the `message_drafted` event. It stands in for a model or template draft. A person approves it before anything is "sent". |
+| D01 | Hello. Your screening test needs a follow-up camera test called a colonoscopy. This is not a diagnosis. Please call us to book a time. | مرحبًا. يحتاج فحصك إلى فحص متابعة بالكاميرا اسمه تنظير القولون. هذا ليس تشخيصًا. يرجى الاتصال بنا لحجز موعد. | Draft text offered to the coordinator in the demo (mock) app, shown in both languages and stored in the `message_drafted` event. It stands in for a model or template draft. A person approves it before anything is "sent". |
+| D02 | Hello. This is a reminder to call us about your screening follow-up. This is not a diagnosis. We are here to help. | مرحبًا. هذا تذكير بالاتصال بنا بخصوص متابعة فحصك. هذا ليس تشخيصًا. نحن هنا لمساعدتك. | Draft text offered to the coordinator in the demo (mock) app, shown in both languages and stored in the `message_drafted` event. It stands in for a model or template draft. A person approves it before anything is "sent". |
+| D03 | Hello. Your follow-up appointment is booked. Please arrive on time and call us if you cannot come. | مرحبًا. تم حجز موعد المتابعة. يرجى الحضور في الوقت المحدد والاتصال بنا إذا لم تتمكن من الحضور. | Draft text offered to the coordinator in the demo (mock) app, shown in both languages and stored in the `message_drafted` event. It stands in for a model or template draft. A person approves it before anything is "sent". |
 
 ## 6. Arabic forbidden phrases
 
@@ -306,7 +312,8 @@ We ran the list over every Arabic text above. These texts contain a forbidden en
 |---|---|---|
 | W07 | أظهر فحصك وجود دم. هذا لا يعني أنك مصاب بالسرطان. الخطوة التالية هي فحص بالكاميرا اسمه تنظير القولون. | `affected`, `cancer` |
 | W08 | هذه الصفحة ليست تشخيصًا. سيشرح لك طبيبك نتيجتك. | `diagnosis` |
-| D02 | مرحبًا. يحتاج فحصك إلى فحص متابعة بالكاميرا اسمه تنظير القولون. هذا ليس تشخيصًا. يرجى الاتصال بنا لحجز موعد. | `diagnosis` |
+| D01 | مرحبًا. يحتاج فحصك إلى فحص متابعة بالكاميرا اسمه تنظير القولون. هذا ليس تشخيصًا. يرجى الاتصال بنا لحجز موعد. | `diagnosis` |
+| D02 | مرحبًا. هذا تذكير بالاتصال بنا بخصوص متابعة فحصك. هذا ليس تشخيصًا. نحن هنا لمساعدتك. | `diagnosis` |
 
 ## 7. Checklist
 
@@ -363,12 +370,17 @@ One row per text. Write keep or change; if change, write your Arabic wording and
 | W31 | web: channels.phone |  |  |  |
 | W32 | web: channels.sms |  |  |  |
 | W33 | web: channels.whatsapp |  |  |  |
-| W34 | web: shareLabel |  |  |  |
-| W35 | web: saved |  |  |  |
-| W36 | web: saveFailed |  |  |  |
-| W37 | web: loading |  |  |  |
-| W38 | web: loadError |  |  |  |
-| W39 | web: offline |  |  |  |
+| W34 | web: channels.letter |  |  |  |
+| W35 | web: shareLabel |  |  |  |
+| W36 | web: withdrawButton |  |  |  |
+| W37 | web: withdrawHint |  |  |  |
+| W38 | web: withdrawnNotice |  |  |  |
+| W39 | web: resumeButton |  |  |  |
+| W40 | web: saved |  |  |  |
+| W41 | web: saveFailed |  |  |  |
+| W42 | web: loading |  |  |  |
+| W43 | web: loadError |  |  |  |
+| W44 | web: offline |  |  |  |
 | T01 | template: result_notification/sms |  |  |  |
 | T02 | template: result_notification/whatsapp |  |  |  |
 | T03 | template: result_notification/letter |  |  |  |
@@ -387,8 +399,9 @@ One row per text. Write keep or change; if change, write your Arabic wording and
 | T16 | template: callback_ack/sms |  |  |  |
 | T17 | template: callback_ack/whatsapp |  |  |  |
 | T18 | template: callback_ack/letter |  |  |  |
-| D01 | draft: web/src/api/fixtures.ts |  |  |  |
+| D01 | draft: web/src/api/mockAdapter.ts |  |  |  |
 | D02 | draft: web/src/api/mockAdapter.ts |  |  |  |
+| D03 | draft: web/src/api/mockAdapter.ts |  |  |  |
 | F:diagnosis_statement | Forbidden phrases, category `diagnosis_statement` (3 entries: you_are_affected, affected, diagnosis) |  |  |  |
 | F:disease_term | Forbidden phrases, category `disease_term` (8 entries: cancer, tumour, tumours_plural, malignant, malignancy, polyp, polyps_plural, carcinoma) |  |  |  |
 | F:positive_result_jargon | Forbidden phrases, category `positive_result_jargon` (1 entries: positive) |  |  |  |

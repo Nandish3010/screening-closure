@@ -299,12 +299,27 @@ def load_web_catalogue() -> tuple[dict[str, str], dict[str, str], dict[str, str]
 
 
 def load_mock_drafts() -> list[tuple[str, str, str]]:
-    """(file, text_en, text_ar) for each demo draft in the web mock data."""
-    pat = re.compile(r'text_en:\s*"((?:[^"\\]|\\.)*)",\s*text_ar:\s*"((?:[^"\\]|\\.)*)"')
+    """(file, text_en, text_ar) for each demo draft text in the web mock.
+
+    The mock adapter keeps one text per language and purpose in `DRAFT_TEXT = { en: {purpose: ...},
+    ar: {purpose: ...} }`; the pairs are matched by purpose. (Before the C-fix the texts were
+    `text_en`/`text_ar` pairs in the fixtures; those two English-only seed drafts are no longer read.)
+    """
     out = []
     for path in MOCK_DRAFT_FILES:
-        for m in pat.finditer(path.read_text(encoding="utf-8")):
-            out.append((str(path.relative_to(ROOT)), json.loads(f'"{m.group(1)}"'), json.loads(f'"{m.group(2)}"')))
+        src = path.read_text(encoding="utf-8")
+        m = re.search(r"const DRAFT_TEXT\b[^=]*=\s*\{(.*?)\n\};", src, re.S)
+        if not m:
+            continue
+        block = m.group(1)
+        langs = {}
+        for lm in re.finditer(r"\b(en|ar):\s*\{(.*?)\n  \},?", block, re.S):
+            langs[lm.group(1)] = dict(
+                (k, json.loads(f'"{v}"'))
+                for k, v in re.findall(r'(\w+):\s*"((?:[^"\\]|\\.)*)"', lm.group(2))
+            )
+        for purpose, en_text in langs.get("en", {}).items():
+            out.append((str(path.relative_to(ROOT)), en_text, langs["ar"][purpose]))
     return out
 
 
@@ -383,6 +398,7 @@ SLA_STEP_GLOSS = {
     "book_confirmatory": "The colonoscopy is booked.",
     "complete_confirmatory": "The colonoscopy is done.",
     "clinician_review": "A clinician reviews the outcome.",
+    "close": "A clinician signs off the closure with evidence (a report or procedure on file).",
     "reassign": "A rejected or bounced referral is given a new owner.",
 }
 
@@ -479,11 +495,16 @@ WEB_CONTEXT: dict[str, tuple[str, str]] = {
     "callbackDone": ("actions", "Green confirmation after that button is pressed, or while a callback is pending."),
     "actionFailed": ("actions", "Red banner if either button fails."),
     "consentHeading": ("consent", "Heading of the choices section."),
-    "channelLabel": ("consent", "Label of the contact-channel drop-down."),
-    "channels.phone": ("consent", "Drop-down option."),
-    "channels.sms": ("consent", "Drop-down option."),
-    "channels.whatsapp": ("consent", "Drop-down option."),
+    "channelLabel": ("consent", "Legend of the group of contact-channel check boxes. Each box is on unless the patient turned it off (an opt-out default); changing one saves at once."),
+    "channels.phone": ("consent", "Label of the check box for phone calls."),
+    "channels.sms": ("consent", "Label of the check box for text messages."),
+    "channels.whatsapp": ("consent", "Label of the check box for WhatsApp messages."),
+    "channels.letter": ("consent", "Label of the check box for letters."),
     "shareLabel": ("consent", "Label of the check box that lets the care team share the result with the specialist."),
+    "withdrawButton": ("consent", "Button under the choices. Withdraws all consent to contact at once: the case is frozen for outreach and a person is asked to review it. Hidden after withdrawal."),
+    "withdrawHint": ("consent", "Small grey text above that button. It says what stopping contact means and that a person will check the case."),
+    "withdrawnNotice": ("consent", "Yellow banner at the top of the choices section after the patient has stopped all contact."),
+    "resumeButton": ("consent", "Replaces the stop button after withdrawal. Pressing it records that the patient may be contacted again."),
     "saved": ("consent", "Status line under the choices after a successful save."),
     "saveFailed": ("consent", "Status line if saving the choices fails."),
     "loading": ("status", "Shown instead of the page while the case loads."),
@@ -600,6 +621,9 @@ def sla_rows(pw: dict) -> list[dict]:
             starts += " (result received from the laboratory)"
         elif entering:
             starts += " (after " + ", ".join(f"`{e}`" for e in entering) + ")"
+        if pw.get("sla_clock_start", {}).get(event) == "handoff_accepted":
+            starts = ("the latest referral acceptance (`handoff_accepted`) on the case, or, if no referral was "
+                      f"accepted, when the case enters `{state}`")
         if event in chain:
             cumulative += days
         rows.append({"event": event, "state": state, "days": days, "starts": starts,
@@ -831,7 +855,7 @@ def clinician_pack() -> str:
 
     # ---- 5
     out += ["## 5. Time limits (SLAs)", "",
-            "Each step has a limit in working days. The clock starts when the case enters the state, and a case is late when time is strictly after the due date. Counting uses the working week above. Time limits are design choices unless stated: only the 31 working days for the colonoscopy has a public anchor.", ""]
+            "Each step has a limit in working days. The clock starts when the case enters the state (one step starts at referral acceptance, see the table), and a case is late when time is strictly after the due date. Counting uses the working week above. Time limits are design choices unless stated: only the 31 working days for the colonoscopy has a public anchor.", ""]
     rows = []
     for r in slas:
         rows.append([f"`{r['event']}`", r["gloss"], f"`{r['state']}`", r["starts"], r["days"],
@@ -842,7 +866,12 @@ def clinician_pack() -> str:
     out += [
         "**DoH 31-working-day KPI.** The UAE National Guideline for Colorectal Cancer Screening and Diagnosis (3rd edition, 2022, prepared by a task force that included DoH Abu Dhabi; Appendix 2) sets, for follow-up colonoscopy after a positive FIT, a target of **within 31 working days of referral**, in more than 90% of cases (acceptable) and more than 95% (desirable). The same guideline is inconsistent: clause 12.5.2 says 15 working days, Appendix 3 says 31 days. The IFHAS standard (DoH, V10, July 2025) requires referral to secondary care within 15 working days of releasing results. Sources are listed in `docs/evidence.md` section 8; the register marks them as read from the primary source (check marker P).", "",
         f"Our `complete_confirmatory` limit is **{k} working days**" + (", the same figure as the KPI." if k == 31 else ", which differs from the 31-working-day KPI.")
-        + f" Three differences matter (question {qn(qs, 'kpi')}): (1) the KPI is a share of cases, ours is a limit on each case; (2) our clock starts when the booking is recorded, the KPI counts from referral; (3) adding every full allowance, the colonoscopy can be as late as {total} working days after the result and still meet every one of our limits. There is no limit on `close`, so a case can sit at `clinician_reviewed` without breaching.", "",
+        + f" Three differences matter (question {qn(qs, 'kpi')}): (1) the KPI is a share of cases, ours is a limit on each case; (2) "
+        + ("our clock starts at the latest referral acceptance, the closest event we record to the KPI's referral date, and falls back to state entry when no referral was accepted;"
+           if pw.get("sla_clock_start", {}).get("complete_confirmatory") == "handoff_accepted"
+           else "our clock starts when the booking is recorded, the KPI counts from referral;")
+        + f" (3) adding every full allowance, the colonoscopy can be as late as {total} working days after the result and still meet every one of our limits. " + (f"`close` has its own limit of {pw['slas_working_days']['close']} working days after clinician review, so a reviewed case can go overdue."
+              if "close" in pw["slas_working_days"] else "There is no limit on `close`, so a case can sit at `clinician_reviewed` without breaching."), "",
         "The same working-day arithmetic applies to the referral response time and the escalation offsets below.", "",
     ]
 

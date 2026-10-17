@@ -14,7 +14,7 @@ from uuid import UUID, uuid4
 import psycopg
 import pytest
 
-from api_helpers import login_headers, make_client
+from api_helpers import actor_of, login_headers, make_client
 from app import notify
 from app.ai.draft_store import DraftAlreadyDecided, PostgresDraftStore
 from app.ai.provider import SYSTEM_PROMPT
@@ -34,7 +34,7 @@ pytestmark = [
 PATHWAY = load_pathway(app_settings.pathway_path)
 BODY = {"purpose": "result_notification", "channel": "sms", "language": "en"}
 OWNER = "Dr Sara Khan"
-OWNER_ACTOR = f"primary_care_owner:{OWNER}"
+OWNER_ACTOR = actor_of("primary_care_owner", OWNER)  # A14: opaque id in the actor
 
 
 @pytest.fixture(scope="module")
@@ -133,7 +133,7 @@ def test_provenance_survives_the_whole_flow(client, pool):
     ((system_prompt, prompt_text),) = q(pool, "SELECT system_prompt, prompt_text FROM prompts WHERE prompt_hash = %s", (prompt_hash,))
     assert system_prompt == SYSTEM_PROMPT
     assert hashlib.sha256((system_prompt + "\n---\n" + prompt_text).encode()).hexdigest() == prompt_hash
-    assert created_by == "coordinator:Maryam" and approved_by == OWNER_ACTOR
+    assert created_by == actor_of("coordinator", "Maryam") and approved_by == OWNER_ACTOR
     ((_a, drafted),) = event_rows(pool, cid, "message_drafted")
     assert drafted["prompt_hash"] == prompt_hash and drafted["draft_id"] == did
     (event_at,) = q(pool, "SELECT at FROM events WHERE case_id = %s AND type = 'message_approved'", (cid,))[0]

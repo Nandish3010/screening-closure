@@ -116,7 +116,7 @@ def test_every_english_patient_string_is_in_the_clinician_pack():
 
 def test_web_catalogue_has_the_same_keys_in_both_languages():
     en, ar, role_en, role_ar, direction = bp.load_web_catalogue()
-    assert list(en) == list(ar) and len(en) == 37
+    assert list(en) == list(ar) and len(en) == 42
     assert set(role_en) == set(role_ar)
     assert direction == {"en": "ltr", "ar": "rtl"}
 

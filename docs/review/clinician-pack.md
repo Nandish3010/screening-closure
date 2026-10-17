@@ -50,7 +50,7 @@ stateDiagram-v2
     patient_acknowledged --> confirmatory_booked : book_confirmatory, 14 wd
     confirmatory_booked --> confirmatory_completed : complete_confirmatory, 31 wd
     confirmatory_completed --> clinician_reviewed : clinician_review, 5 wd
-    clinician_reviewed --> closed : close, needs evidence_ref and signed_by
+    clinician_reviewed --> closed : close, 3 wd, needs evidence_ref and signed_by
     patient_acknowledged --> referral_rejected : handoff_rejected, needs reason
     confirmatory_booked --> referral_rejected : handoff_rejected, needs reason
     referral_rejected --> owner_accepted : handoff_accepted
@@ -83,7 +83,7 @@ Overdue and escalated are not states. A case can be overdue and in any state, so
 | `patient_acknowledged` | main path | The patient has confirmed they understood (tapped "I understand" or told the coordinator). The colonoscopy can now be booked. | `book_confirmatory` (Care owner, coordinator)<br>`handoff_rejected` (Receiving clinician; scheduler (timeout only))<br>`consent_updated` with withdrawal (patient or coordinator) moves the case to `consent_withdrawn` | 14 working days to `book_confirmatory` |
 | `confirmatory_booked` | main path | A confirmatory colonoscopy appointment is booked. If the booking went through a referral to another provider, that provider has accepted it. | `complete_confirmatory` (Specialist owner)<br>`handoff_rejected` (Receiving clinician; scheduler (timeout only))<br>`consent_updated` with withdrawal (patient or coordinator) moves the case to `consent_withdrawn` | 31 working days to `complete_confirmatory` |
 | `confirmatory_completed` | main path | The specialist has recorded that the colonoscopy was done. Findings are not yet reviewed. | `clinician_review` (Primary care owner, specialist owner)<br>`consent_updated` with withdrawal (patient or coordinator) moves the case to `consent_withdrawn` | 5 working days to `clinician_review` |
-| `clinician_reviewed` | main path | A clinician has reviewed the colonoscopy outcome. The case can now be closed, but only with evidence and a signature. | `close` (Primary care owner, specialist owner (never automated))<br>`consent_updated` with withdrawal (patient or coordinator) moves the case to `consent_withdrawn` | no time limit |
+| `clinician_reviewed` | main path | A clinician has reviewed the colonoscopy outcome. The case can now be closed, but only with evidence and a signature. | `close` (Primary care owner, specialist owner (never automated))<br>`consent_updated` with withdrawal (patient or coordinator) moves the case to `consent_withdrawn` | 3 working days to `close` |
 | `closed` | main path | The loop is closed. Only possible with an evidence reference and a named clinician's sign-off. No automated actor can do this. | `reopen` (Primary care owner, specialist owner (human only)) | no time limit |
 | `referral_rejected` | side state | The receiving provider turned the referral down, or did not answer in time. The reason is recorded and the case must be re-routed. | `handoff_accepted` (Receiving clinician (human only))<br>`reassign` (Coordinator, supervisor)<br>`consent_updated` with withdrawal (patient or coordinator) moves the case to `consent_withdrawn` | 2 working days to `reassign` |
 | `consent_withdrawn` | side state | The patient withdrew consent. Outreach stops, the case is flagged for a person to review, and the earlier state is remembered so it can be restored. | `consent_updated` restoring consent (patient or coordinator) returns the case to the state it was in | no time limit |
@@ -125,7 +125,7 @@ Events listed as human only in the configuration: `escalation_accepted`, `handof
 
 ## 5. Time limits (SLAs)
 
-Each step has a limit in working days. The clock starts when the case enters the state, and a case is late when time is strictly after the due date. Counting uses the working week above. Time limits are design choices unless stated: only the 31 working days for the colonoscopy has a public anchor.
+Each step has a limit in working days. The clock starts when the case enters the state (one step starts at referral acceptance, see the table), and a case is late when time is strictly after the due date. Counting uses the working week above. Time limits are design choices unless stated: only the 31 working days for the colonoscopy has a public anchor.
 
 | Step (event) | What must happen | State where the clock runs | Clock starts when | Working days allowed | Latest, counted from the result if every step uses its full allowance |
 |---|---|---|---|---|---|
@@ -134,13 +134,14 @@ Each step has a limit in working days. The clock starts when the case enters the
 | `contact_patient` | The patient is contacted with the result. | `owner_accepted` | the case enters `owner_accepted` (after `accept_ownership`, `handoff_accepted`, `reassign`) | 5 | 9 |
 | `patient_acknowledge` | The patient confirms they understood. | `patient_contacted` | the case enters `patient_contacted` (after `contact_patient`) | 7 | 16 |
 | `book_confirmatory` | The colonoscopy is booked. | `patient_acknowledged` | the case enters `patient_acknowledged` (after `patient_acknowledge`) | 14 | 30 |
-| `complete_confirmatory` | The colonoscopy is done. | `confirmatory_booked` | the case enters `confirmatory_booked` (after `book_confirmatory`) | 31 | 61 |
+| `complete_confirmatory` | The colonoscopy is done. | `confirmatory_booked` | the latest referral acceptance (`handoff_accepted`) on the case, or, if no referral was accepted, when the case enters `confirmatory_booked` | 31 | 61 |
 | `clinician_review` | A clinician reviews the outcome. | `confirmatory_completed` | the case enters `confirmatory_completed` (after `complete_confirmatory`) | 5 | 66 |
+| `close` | A clinician signs off the closure with evidence (a report or procedure on file). | `clinician_reviewed` | the case enters `clinician_reviewed` (after `clinician_review`) | 3 | 69 |
 | `reassign` | A rejected or bounced referral is given a new owner. | `referral_rejected` | the case enters `referral_rejected` (after `handoff_rejected`) | 2 | not on the main path |
 
 **DoH 31-working-day KPI.** The UAE National Guideline for Colorectal Cancer Screening and Diagnosis (3rd edition, 2022, prepared by a task force that included DoH Abu Dhabi; Appendix 2) sets, for follow-up colonoscopy after a positive FIT, a target of **within 31 working days of referral**, in more than 90% of cases (acceptable) and more than 95% (desirable). The same guideline is inconsistent: clause 12.5.2 says 15 working days, Appendix 3 says 31 days. The IFHAS standard (DoH, V10, July 2025) requires referral to secondary care within 15 working days of releasing results. Sources are listed in `docs/evidence.md` section 8; the register marks them as read from the primary source (check marker P).
 
-Our `complete_confirmatory` limit is **31 working days**, the same figure as the KPI. Three differences matter (question 4): (1) the KPI is a share of cases, ours is a limit on each case; (2) our clock starts when the booking is recorded, the KPI counts from referral; (3) adding every full allowance, the colonoscopy can be as late as 61 working days after the result and still meet every one of our limits. There is no limit on `close`, so a case can sit at `clinician_reviewed` without breaching.
+Our `complete_confirmatory` limit is **31 working days**, the same figure as the KPI. Three differences matter (question 4): (1) the KPI is a share of cases, ours is a limit on each case; (2) our clock starts at the latest referral acceptance, the closest event we record to the KPI's referral date, and falls back to state entry when no referral was accepted; (3) adding every full allowance, the colonoscopy can be as late as 61 working days after the result and still meet every one of our limits. `close` has its own limit of 3 working days after clinician review, so a reviewed case can go overdue.
 
 The same working-day arithmetic applies to the referral response time and the escalation offsets below.
 
@@ -182,7 +183,7 @@ A case is handed to another provider with `handoff_requested`. Ownership moves o
 
 ## 9. What the patient reads (English)
 
-59 English strings in three places. The reading-level target is grade 6. Arabic versions are reviewed separately (H2); the IDs below match the Arabic pack. Placeholders in braces are filled in: {owner_name} (the care owner), {next_step} (default "a colonoscopy"), {appointment_date} (for example "Tuesday 3 November 2026"), {name} and {role} on the patient page.
+65 English strings in three places. The reading-level target is grade 6. Arabic versions are reviewed separately (H2); the IDs below match the Arabic pack. Placeholders in braces are filled in: {owner_name} (the care owner), {next_step} (default "a colonoscopy"), {appointment_date} (for example "Tuesday 3 November 2026"), {name} and {role} on the patient page.
 
 ### 9.1 The patient page (web)
 
@@ -251,21 +252,26 @@ Shown in the installed app or browser at `/patient`. Source: `web/src/i18n/strin
 | ID | English text | Where it appears |
 |---|---|---|
 | W29 | Your choices | Heading of the choices section. |
-| W30 | How should we contact you? | Label of the contact-channel drop-down. |
-| W31 | Phone call | Drop-down option. |
-| W32 | Text message | Drop-down option. |
-| W33 | WhatsApp | Drop-down option. |
-| W34 | My care team may share my result with the specialist who will do my test. | Label of the check box that lets the care team share the result with the specialist. |
-| W35 | Saved | Status line under the choices after a successful save. |
-| W36 | We could not save this. Please try again. | Status line if saving the choices fails. |
+| W30 | How may we contact you? | Legend of the group of contact-channel check boxes. Each box is on unless the patient turned it off (an opt-out default); changing one saves at once. |
+| W31 | Phone call | Label of the check box for phone calls. |
+| W32 | Text message | Label of the check box for text messages. |
+| W33 | WhatsApp | Label of the check box for WhatsApp messages. |
+| W34 | Letter | Label of the check box for letters. |
+| W35 | My care team may share my result with the specialist who will do my test. | Label of the check box that lets the care team share the result with the specialist. |
+| W36 | Stop all contact | Button under the choices. Withdraws all consent to contact at once: the case is frozen for outreach and a person is asked to review it. Hidden after withdrawal. |
+| W37 | If you stop contact, your care team will not message or call you. A person will check your case. | Small grey text above that button. It says what stopping contact means and that a person will check the case. |
+| W38 | You asked us to stop contact. We will not message or call you. A person on your care team will check your case. | Yellow banner at the top of the choices section after the patient has stopped all contact. |
+| W39 | You may contact me again | Replaces the stop button after withdrawal. Pressing it records that the patient may be contacted again. |
+| W40 | Saved | Status line under the choices after a successful save. |
+| W41 | We could not save this. Please try again. | Status line if saving the choices fails. |
 
 **Loading, offline and errors.** System messages.
 
 | ID | English text | Where it appears |
 |---|---|---|
-| W37 | Loading... | Shown instead of the page while the case loads. |
-| W38 | We could not load your information. Please try again. | Shown if the case cannot be loaded and nothing is saved on the device. |
-| W39 | You are offline. This is the last information we saved. | Banner above the result when the device is offline. The last saved information is shown. |
+| W42 | Loading... | Shown instead of the page while the case loads. |
+| W43 | We could not load your information. Please try again. | Shown if the case cannot be loaded and nothing is saved on the device. |
+| W44 | You are offline. This is the last information we saved. | Banner above the result when the device is offline. The last saved information is shown. |
 
 Not in the catalogue (hard-coded in `web/src/pages/PatientPage.tsx`): a "Demo case" link on the start page and the accessible label "Actions". They are demo scaffolding and not part of this review.
 
@@ -322,8 +328,9 @@ Two draft texts in the demo data of the coordinator app. They stand in for a mod
 
 | ID | English text | Where it appears |
 |---|---|---|
-| D01 | Hello. Your screening test needs a follow-up camera test. Please call us to book it. | Draft text offered to the coordinator in the demo (mock) app, shown in both languages and stored in the `message_drafted` event. It stands in for a model or template draft. A person approves it before anything is "sent". |
-| D02 | Hello. Your screening test needs a follow-up camera test called a colonoscopy. This is not a diagnosis. Please call us to book a time. | Draft text offered to the coordinator in the demo (mock) app, shown in both languages and stored in the `message_drafted` event. It stands in for a model or template draft. A person approves it before anything is "sent". |
+| D01 | Hello. Your screening test needs a follow-up camera test called a colonoscopy. This is not a diagnosis. Please call us to book a time. | Draft text offered to the coordinator in the demo (mock) app, shown in both languages and stored in the `message_drafted` event. It stands in for a model or template draft. A person approves it before anything is "sent". |
+| D02 | Hello. This is a reminder to call us about your screening follow-up. This is not a diagnosis. We are here to help. | Draft text offered to the coordinator in the demo (mock) app, shown in both languages and stored in the `message_drafted` event. It stands in for a model or template draft. A person approves it before anything is "sent". |
+| D03 | Hello. Your follow-up appointment is booked. Please arrive on time and call us if you cannot come. | Draft text offered to the coordinator in the demo (mock) app, shown in both languages and stored in the `message_drafted` event. It stands in for a model or template draft. A person approves it before anything is "sent". |
 
 ### 9.4 A check we ran on our own wording
 
@@ -333,7 +340,8 @@ The forbidden-phrase list in section 10 applies to model drafts. We ran it over 
 |---|---|---|
 | W07 | Your screening test found blood. This does not mean you have cancer. The next step is a camera test called a colonoscopy. | `you_have`, `cancer` |
 | W08 | This page is not a diagnosis. Your doctor will explain your result. | `diagnos` |
-| D02 | Hello. Your screening test needs a follow-up camera test called a colonoscopy. This is not a diagnosis. Please call us to book a time. | `diagnos` |
+| D01 | Hello. Your screening test needs a follow-up camera test called a colonoscopy. This is not a diagnosis. Please call us to book a time. | `diagnos` |
+| D02 | Hello. This is a reminder to call us about your screening follow-up. This is not a diagnosis. We are here to help. | `diagnos` |
 
 ## 10. Words the system never lets a model write
 
@@ -419,8 +427,9 @@ For each row write keep or change and, if you change it, say what you would do. 
 | SLA:contact_patient | Time limit `contact_patient`: 5 working days, clock starts when the case enters `owner_accepted` |  |  |
 | SLA:patient_acknowledge | Time limit `patient_acknowledge`: 7 working days, clock starts when the case enters `patient_contacted` |  |  |
 | SLA:book_confirmatory | Time limit `book_confirmatory`: 14 working days, clock starts when the case enters `patient_acknowledged` |  |  |
-| SLA:complete_confirmatory | Time limit `complete_confirmatory`: 31 working days, clock starts when the case enters `confirmatory_booked` |  |  |
+| SLA:complete_confirmatory | Time limit `complete_confirmatory`: 31 working days, clock starts when the latest referral acceptance |  |  |
 | SLA:clinician_review | Time limit `clinician_review`: 5 working days, clock starts when the case enters `confirmatory_completed` |  |  |
+| SLA:close | Time limit `close`: 3 working days, clock starts when the case enters `clinician_reviewed` |  |  |
 | SLA:reassign | Time limit `reassign`: 2 working days, clock starts when the case enters `referral_rejected` |  |  |
 | L:reminder | Rung `reminder` at 0 working days after the due date |  |  |
 | L:supervisor | Rung `supervisor` at 3 working days after the due date |  |  |
@@ -438,14 +447,14 @@ For each row write keep or change and, if you change it, say what you would do. 
 | W:next | Patient page: What happens next (W14 to W17) |  |  |
 | W:owner | Patient page: Who is looking after you (W18 to W22) |  |  |
 | W:actions | Patient page: I understand / I don't understand (W23 to W28) |  |  |
-| W:consent | Patient page: Your choices (contact and sharing) (W29 to W36) |  |  |
-| W:status | Patient page: Loading, offline and errors (W37 to W39) |  |  |
+| W:consent | Patient page: Your choices (contact and sharing) (W29 to W41) |  |  |
+| W:status | Patient page: Loading, offline and errors (W42 to W44) |  |  |
 | M:result_notification | Message `result_notification` (T01 to T03) |  |  |
 | M:reminder | Message `reminder` (T04 to T09) |  |  |
 | M:appointment_confirmation | Message `appointment_confirmation` (T10 to T12) |  |  |
 | M:escalation_notice | Message `escalation_notice` (T13 to T15) |  |  |
 | M:callback_ack | Message `callback_ack` (T16 to T18) |  |  |
-| D | Demo draft texts (D01 to D02) |  |  |
+| D | Demo draft texts (D01 to D03) |  |  |
 | F:diagnosis_statement | Forbidden-phrase category `diagnosis_statement` |  |  |
 | F:disease_term | Forbidden-phrase category `disease_term` |  |  |
 | F:positive_result_jargon | Forbidden-phrase category `positive_result_jargon` |  |  |
