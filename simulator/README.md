@@ -107,7 +107,8 @@ claims, scheduler timer faults and the watchdog backstop, reopening after closur
 
 Not modelled (deliberately, or not yet):
 - Shared capacity: endoscopy slots, staff workload and queueing. Cases are independent, so the orchestrated arm's extra
-  escalations cost nothing here. The escalation volume is reported (`escalations_per_100_cases`) so the pilot can size it.
+  escalations cost nothing here: about 99 escalations per 100 cases in the upper-range scenario, so every gain reported is before capacity
+  constraints. The volume is reported (`escalations_per_100_cases`) so the pilot can size it; a capacity model is future work.
 - Clinical content: findings, pathology, bowel-prep failure, surveillance. Closure means "documented outcome with evidence and a human sign-off".
 - Informed refusal as a closure outcome: the pathway YAML has no such exit, so refusers stay open and are flagged `lost_contact`.
 - The AI drafting layer. Every message is `draft_source: template`; the abstention rate is a placeholder hook.

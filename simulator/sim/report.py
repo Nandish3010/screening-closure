@@ -458,5 +458,22 @@ def render_markdown(res: dict) -> str:
 
 
 def capacity_caveat(res: dict) -> str:
-    """Filled in by ticket B13."""
-    return ""
+    """Prominent caveat: the model charges nothing for escalations (ticket B13)."""
+    up = _m(res, ORCHESTRATED, "escalations_per_100_cases", UPPER)
+    if not up:
+        return ""
+    txt = f"about {up['mean']:.0f} escalations per 100 cases in the upper-range scenario"
+    if _has(res, LITERATURE):
+        lit = _m(res, ORCHESTRATED, "escalations_per_100_cases", LITERATURE)
+        if lit:
+            txt += f" ({lit['mean']:.0f} in the literature-anchored one)"
+    return "\n".join([
+        "## Capacity caveat: escalations cost nothing in this model",
+        "",
+        f"**Every gain above is a gain before capacity constraints.** Cases are independent in the simulator: there are no shared endoscopy "
+        f"slots, no staff workload and no queueing, and a supervisor or coordinator acts on an escalation with a fixed probability however "
+        f"many others are open. The orchestrated arm raises {txt}, roughly one for every case. A real programme needs people and "
+        f"colonoscopy slots to work them, and the completion and time gains would shrink if they are not there. A capacity model (staff "
+        f"time per escalation, slot supply, queueing) is future work; until it exists, use `escalations_per_100_cases` to size a pilot "
+        f"rather than the completion gains. Definitions: [`metrics.md`](metrics.md).",
+    ])
