@@ -155,3 +155,21 @@ Architecture decision records, one per decision. Add new entries at the end with
 - Roles are coarse (no per-organisation scoping: any `primary_care_owner` may act on any case). Scoping owners to their own cases comes with the A5 ownership model and is listed in the limitations table.
 - `/docs` and `/openapi.json` stay open in development.
 - The dev token is a convenience, not an authentication mechanism; the submission must say so.
+
+## ADR-013: The sweep runs next to the event store; the scheduler is its heartbeat
+
+**Context.** The scheduler must find every breached SLA on the simulation clock, emit `mark_overdue` once per breach, and never close a case. It is also the thing we kill on stage, so it must be a separate process with its own heartbeat. The load target (100,000 open cases, F6) rules out shipping every case's history to a client over HTTP on every sweep.
+
+**Decision.**
+- The sweep logic is a pure planner plus a runner in `api/app/sweep.py`. The planner takes (case read model, pathway, calendar, now) and returns events; it never reads a clock. The scheduler service calls `POST /scheduler/sweep` every interval with its service token (identity `system:scheduler`; the route is closed to every other caller) and writes the heartbeat. Killing the scheduler stops the sweeps and the heartbeat, which is what the watchdog (A11) checks.
+- Due dates: the SLA of the case's current state (PLAN section 6, ADR-011) counted in working days from the event that entered the state (`clock_started_at` in the read model, which the replay sets). A case is late when sim time is strictly after the due time.
+- Exactly once per breach: the event id is `uuid5(namespace, case | state | due_at | kind)`. A repeated or concurrent sweep re-plans the same id and the store treats it as a no-op; the state machine independently refuses a second `mark_overdue` for a case that is already overdue. If the planned event is refused because another writer moved the case first, the sweep counts it as `rejected` and re-plans on the next pass.
+- The sim clock lives in `app/clock.py`, persisted in the `sim_clock` table (migration 002, one row per `clock_id`, the API uses `main`) so an API restart keeps the simulated date. It only moves forward through `advance`; `reset` is the single explicit rewind. Time is cached in process and the store is read only at start-up, so the API is single-replica by design here.
+- `POST /clock/advance` and `POST /clock/reset` are supervisor-only. No code in `api/app` or `scheduler/` reads the wall clock for a decision; an AST test enforces it, with the two heartbeat timestamps as the only marked exceptions.
+- The heartbeat file is refreshed every loop, even when the sweep fails, and says whether the last sweep succeeded (`sweep_ok`, `last_ok_wall_ts`), so a live-but-useless scheduler is visible to A11.
+
+**Consequences.**
+- The scheduler container stays standard-library only and never touches the database or the calendar config.
+- The sweep reads and replays every open case on each pass (chunked, bounded memory); F6 measures whether that needs an index or a materialised due-date column.
+- Integration tests pass `only=` so a sweep against the shared dev database touches only the test's own cases.
+- Rewinding the clock with `reset` leaves earlier overdue events in the append-only log; `make reset` is the way to start a clean demo.

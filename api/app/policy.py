@@ -39,6 +39,11 @@ ROUTE_POLICY: dict[tuple[str, str], object] = {
     ("GET", "/cases/{case_id}"): ALL_USERS,
     # Every role may try; EVENT_POLICY decides per event type.
     ("POST", "/cases/{case_id}/events"): ALL_USERS | SCHEDULER,
+    # Demo clock: supervisor only.
+    ("POST", "/clock/advance"): frozenset({SUPER}),
+    ("POST", "/clock/reset"): frozenset({SUPER}),
+    # The scheduler service's periodic sweep.
+    ("POST", "/scheduler/sweep"): SCHEDULER,
 }
 
 # event type -> roles allowed to emit it via POST /cases/{id}/events

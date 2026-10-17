@@ -133,6 +133,36 @@ class PostgresEventStore:
         events = self.events_for(case_id)
         return replay_model(events, pathway) if events else None
 
+    def iter_open_case_models(self, pathway: Pathway, only=None, chunk: int = 500):
+        """Yield (case_id, model | None, error | None) for every non-closed case of the pathway.
+
+        `only` restricts the sweep to those case ids. Cases are replayed in chunks so memory
+        stays bounded; a log that does not replay yields (case_id, None, error).
+        """
+        sql = "SELECT id FROM cases WHERE pathway = %s AND current_state <> %s"
+        params: list = [pathway.name, pathway.terminal_state]
+        if only is not None:
+            sql += " AND id = ANY(%s)"
+            params.append(list(only))
+        with self._pool.connection() as conn:
+            ids = [r[0] for r in conn.execute(sql + " ORDER BY id", params).fetchall()]
+        for i in range(0, len(ids), chunk):
+            part = ids[i : i + chunk]
+            with self._pool.connection() as conn:
+                rows = conn.execute(
+                    f"SELECT case_id, {_EVENT_COLS} FROM events"
+                    " WHERE case_id = ANY(%s) ORDER BY case_id, seq",
+                    (part,),
+                ).fetchall()
+            by_case: dict[UUID, list[Event]] = {}
+            for row in rows:
+                by_case.setdefault(row[0], []).append(_event_from_row(row[0], row[1:]))
+            for case_id in part:
+                try:
+                    yield case_id, replay_model(by_case.get(case_id, []), pathway), None
+                except InvalidTransition as exc:
+                    yield case_id, None, str(exc)
+
     def current_state(self, case_id: UUID) -> str | None:
         with self._pool.connection() as conn:
             row = conn.execute(
@@ -150,3 +180,31 @@ class PostgresEventStore:
         with self._pool.connection() as conn:
             rows = conn.execute(sql, params).fetchall()
         return [CaseSummary(*r) for r in rows]
+
+
+class PostgresClockStore:
+    """Persists a SimClock in the `sim_clock` table (migration 002), one row per clock_id."""
+
+    def __init__(self, pool: ConnectionPool, clock_id: str = "main") -> None:
+        self._pool = pool
+        self._clock_id = clock_id
+
+    def load(self):
+        with self._pool.connection() as conn:
+            row = conn.execute(
+                "SELECT now_at FROM sim_clock WHERE clock_id = %s", (self._clock_id,)
+            ).fetchone()
+        return row[0] if row else None
+
+    def save(self, start, now) -> None:
+        with self._pool.connection() as conn:
+            conn.execute(
+                "INSERT INTO sim_clock (clock_id, start_at, now_at) VALUES (%s, %s, %s)"
+                " ON CONFLICT (clock_id) DO UPDATE SET now_at = EXCLUDED.now_at",
+                (self._clock_id, start, now),
+            )
+
+    def delete(self) -> None:
+        """Remove the clock row (tests; the API never deletes its clock)."""
+        with self._pool.connection() as conn:
+            conn.execute("DELETE FROM sim_clock WHERE clock_id = %s", (self._clock_id,))

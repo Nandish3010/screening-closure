@@ -206,7 +206,9 @@ Everything below is a working contract for Cuts C and D. "Exists" means in the c
 | `GET /metrics/closure` | planned (A10) | none | `{p50_days, p90_days, open_by_age_bucket, breaches_by_provider, bottleneck_by_transition, abstention_rate, sim_time}` (proposed) |
 | `POST /cases/{id}/drafts` | planned (D4) | `{purpose, language, channel}` (proposed) | `{draft_id, case_id, text, provider, used_fallback, status, provenance_ref}` |
 | `POST /drafts/{id}/approve` | planned (D5) | none | `{draft_id, status, approved_by, approved_at}` (proposed) |
-| clock control (advance, reset) | planned (A3) | e.g. `{days}` or `{hours}`; route names proposed | `{sim_time}`; supervisor role only |
+| `POST /clock/advance` | exists (A3) | `{days?, hours?}`, each >= 0, at least one > 0 (else 422); the clock never moves backwards | `{sim_time}`; supervisor only; persisted in the `sim_clock` table |
+| `POST /clock/reset` | exists (A3) | none | `{sim_time}` (the configured start); supervisor only |
+| `POST /scheduler/sweep` | exists (A3) | none | `{sim_time, cases_evaluated, mark_overdue, escalate, rejected, errors[]}`; the scheduler service token only |
 
 Event shape (all routes): `{seq, event_id, type, at, actor, payload}`. `event_id` is the idempotency key: a retry with the same id inserts once. `at` defaults to the sim clock, never the wall clock, and may not be later than the sim clock (422); backdating is allowed. `actor` is derived from the caller's identity (`role:name`, or `system:scheduler` for the scheduler service) and a client-supplied `actor` is rejected with 422. Errors are JSON with a `detail` string.
 
@@ -234,7 +236,7 @@ Final as of A2 (`config/pathways/colorectal_fit.yaml`, `api/app/state_machine.py
 | `clinician_review` | exists | owner role acting as the clinician | state change: `confirmatory_completed` to `clinician_reviewed`, or `reopened` to `clinician_reviewed` |
 | `close` | exists | a human clinician | state change: `clinician_reviewed` to `closed`; requires `evidence_ref` and `signed_by`; automated actors refused |
 | `reopen` | A2 | a human clinician | state change: `closed` to `reopened`; requires `reason`; human only. The case can only reach `closed` again through `clinician_review` and a fresh `close` |
-| `mark_overdue` | A2 defines, A3 emits | scheduler | annotation: sets `overdue` for the current state. Payload `{state, due_at}`; refused unless `state` is the case's state, that state has an SLA, `due_at` is in the past on the event's `at`, and the case is not already overdue |
+| `mark_overdue` | A3 (emitted by the sweep) | scheduler | annotation: sets `overdue` for the current state. Payload `{state, due_at}`; refused unless `state` is the case's state, that state has an SLA, `due_at` is in the past on the event's `at`, and the case is not already overdue |
 | `escalate` | A2 defines, A4 emits | scheduler; or coordinator/supervisor by hand | annotation: raises `escalation_level` by exactly one. Payload `{rung, state, target?}`; refused unless overdue, rungs in ladder order (never skipped or repeated), and no human has accepted the latest rung |
 | `escalation_accepted` | A2 defines, A4 uses | a human whose role is in the rung's `accepted_by` | annotation: sets `escalation_accepted`; stops further rungs for this breach. Human only |
 | `handoff_requested` | A2 defines, A5 uses | current owner | annotation: ownership pending |

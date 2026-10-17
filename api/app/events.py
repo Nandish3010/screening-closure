@@ -88,6 +88,11 @@ class EventStore(Protocol):
 
     def list_cases(self, state: str | None = None) -> list[CaseSummary]: ...
 
+    def iter_open_case_models(self, pathway: Pathway, only=None):
+        """Yield (case_id, model | None, error | None) for every non-closed case of the pathway
+        (optionally only those in `only`). Used by the scheduler sweep."""
+        ...
+
 
 def replay(events, pathway: Pathway) -> str:
     """Deterministically fold events into a state, starting from the pathway's initial state."""
@@ -161,6 +166,17 @@ class InMemoryEventStore:
         with self._lock:
             case = self._cases.get(case_id)
             return case.model if case else None
+
+    def iter_open_case_models(self, pathway: Pathway, only=None):
+        only = set(only) if only is not None else None
+        with self._lock:
+            snapshot = [
+                (cid, c.model) for cid, c in self._cases.items()
+                if c.pathway == pathway.name and c.model.state != pathway.terminal_state
+                and (only is None or cid in only)
+            ]
+        for cid, model in snapshot:
+            yield cid, model, None
 
     def list_cases(self, state: str | None = None) -> list[CaseSummary]:
         with self._lock:
