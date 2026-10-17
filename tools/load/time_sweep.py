@@ -298,7 +298,7 @@ def fmt(x: float, places: int = 2) -> str:
     return f"{x:,.{places}f}"
 
 
-def render_markdown(results: list[SizeResult], spec: dict[str, str], extra: list[SizeResult]) -> str:
+def render_markdown(results: list[SizeResult], spec: dict[str, str], extra: list[SizeResult], commit: str | None = None) -> str:
     daily = [r for r in results if r.scenario == "daily"]
     single = [r for r in daily if r.workers == 1]
     big1 = next((r for r in daily if r.size == 100_000 and r.workers == 1), None)
@@ -402,7 +402,7 @@ def render_markdown(results: list[SizeResult], spec: dict[str, str], extra: list
     ]
     for k, v in spec.items():
         lines.append(f"| {k} | {v} |")
-    lines += ["| commit | " + git_commit() + " |", ""]
+    lines += ["| commit | " + (commit or git_commit()) + " |", ""]
     return "\n".join(lines)
 
 
@@ -436,7 +436,18 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--json-out", default=None, help="default: next to --out as load.json")
     ap.add_argument("--no-write", action="store_true")
     ap.add_argument("--drop", action="store_true", help="drop the load database and exit")
+    ap.add_argument("--render-json", default=None, metavar="LOAD_JSON",
+                    help="re-render the Markdown from a previous run's load.json (no database, no timing) and exit; "
+                         "used after editing tools/load/baseline.json notes")
     args = ap.parse_args(argv)
+
+    if args.render_json:
+        data = json.loads(Path(args.render_json).read_text())
+        mk = lambda rows: [SizeResult(**{k: v for k, v in r.items()}) for r in rows]  # noqa: E731
+        out = Path(args.out)
+        out.write_text(render_markdown(mk(data["results"]), data["machine"], mk(data["cold_start"]), data.get("commit")), encoding="utf-8")
+        print(f"rendered {out} from {args.render_json} (measured at commit {data.get('commit')})")
+        return 0
 
     if args.drop:
         sc.drop_database()
