@@ -6,7 +6,7 @@ from app.events import Event
 from app.state_machine import InvalidTransition, apply
 from simulator.sim.calendar import WorkingCalendar
 from simulator.sim.engine import ARMS, BASELINE, ORCHESTRATED
-from simulator.sim.invariants import check_case_log, check_consent
+from simulator.sim.invariants import check_case_log, check_consent, stateful_events
 from simulator.sim.patients import make_cohort, make_patient
 from simulator.sim.runner import make_patients, metrics_of, run_arm
 
@@ -104,7 +104,7 @@ def test_every_case_is_in_a_state_consistent_with_its_log(ctx):
         for ev in c.log:
             if ev.type == "reopened":
                 state = ev.payload["resume_state"]
-            elif ev.type in pw.event_types:
+            elif ev.type in stateful_events(pw):
                 state = apply(state, ev, pw)
         assert state == c.state
 

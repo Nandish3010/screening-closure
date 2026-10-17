@@ -14,14 +14,26 @@ from app.events import CASE_CREATED
 from app.pathway import Pathway
 from app.state_machine import AUTOMATED_ACTOR_PREFIXES, InvalidTransition, apply
 
-OVERLAY_NO_STATE_CHANGE = None  # overlay events are anything the pathway has no transition for
+OVERLAY_NO_STATE_CHANGE = None  # overlay events are anything outside the pathway's main chain
+
+
+def stateful_events(pathway: Pathway) -> frozenset[str]:
+    """Event types the simulator validates through `apply`: the forward chain of the pathway.
+
+    The engine's pathway also defines side-state transitions and annotation events (handoff_*,
+    consent_updated, message_sent, watchdog_flagged...). The simulator logs its own typed overlay
+    events under some of the same names with its own payloads and models side flows itself, so
+    those are kept outside `apply` (the API's property tests cover the engine's side states).
+    `close` is in the chain, so the closure guard is always exercised.
+    """
+    return frozenset(t.event for t in pathway.main_transitions)
 
 
 def check_case_log(events: Sequence, pathway: Pathway) -> list[str]:
     """Return a list of violations (empty = the log is valid)."""
     problems: list[str] = []
     terminal = pathway.terminal_state
-    pathway_events = set(pathway.event_types)
+    pathway_events = stateful_events(pathway)
     state = pathway.initial_state
     closed_open = False  # between a close and the next reopened
     for ev in events:

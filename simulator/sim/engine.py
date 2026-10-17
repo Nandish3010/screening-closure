@@ -161,7 +161,9 @@ class Engine:
         self.states = pathway.states
         self.idx_booked = self.states.index("confirmatory_booked")
         self.next_event: dict[str, str] = {}
-        for t in pathway.transitions:
+        # The forward chain only: side-state transitions (referral_rejected, consent_withdrawn,
+        # lost_contact, reopened) are modelled by the engine's own sub-flows, not as awaited steps.
+        for t in pathway.main_transitions:
             self.next_event.setdefault(t.from_state, t.event)
         unknown = [e for e in self.next_event.values() if e not in STEP_KIND]
         if unknown:
