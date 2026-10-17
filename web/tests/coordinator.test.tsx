@@ -36,14 +36,16 @@ describe("Case detail actions", () => {
     await user.click(screen.getByTestId("request-draft"));
     const draftItem = await screen.findByTestId(/^draft-d-mock/);
     expect(draftItem).toHaveTextContent(/AI draft/);
-    expect(draftItem).toHaveTextContent(/colonoscopy/);
+    // The patient answered in Arabic, so the draft form defaults to Arabic and the text is right-to-left.
+    expect(within(draftItem).getByText(/تنظير القولون/).closest("p")).toHaveAttribute("dir", "rtl");
     // The event carries no text: the timeline loads it from GET /cases/{id}/drafts.
     const tl = screen.getByTestId("timeline");
     const drafted = [...tl.querySelectorAll('li[data-event-type="message_drafted"]')] as HTMLElement[];
-    expect(within(drafted.at(-1)!).getByText(/colonoscopy/)).toBeInTheDocument();
+    expect(within(drafted.at(-1)!).getByText(/تنظير القولون/)).toBeInTheDocument();
     const approve = within(draftItem).getByRole("button", { name: /approve draft/i });
     expect(approve).toBeDisabled();
-    expect(within(draftItem).getByTestId(/^approve-d-mock-\d+-why$/)).toHaveTextContent(/cannot do this/i);
+    expect(within(screen.getByTestId("drafts-panel")).getByTestId("decide-why")).toHaveTextContent(/only the case owner can approve or reject.*cannot do this/i);
+    expect(approve).toHaveAccessibleDescription(/only the case owner/i);
     const types = (await api.getCase(DEMO_OVERDUE_CASE_ID)).events.slice(-2).map((e) => e.type);
     expect(types).toEqual(["escalate", "message_drafted"]);
     const all = (await api.getCase(DEMO_OVERDUE_CASE_ID)).events;

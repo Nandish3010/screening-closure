@@ -11,7 +11,7 @@ import { SignOffPanel } from "../components/SignOffPanel";
 import { Timeline } from "../components/Timeline";
 import {
   actorName as actorNameOf, allowedChannels, consentOf, draftViews, handoffs, hasCallbackPending, lostContact, overdueInfo,
-  pendingEscalation, rejectionReasons,
+  patientLang, pendingEscalation, rejectionReasons,
 } from "../lib/derive";
 import { fmtDateTime, titleCase } from "../lib/format";
 import { ESCALATION_LADDER, HANDOFF_RESPONSE_WORKING_DAYS, RUNG_LABEL, handoffReasonLabel } from "../lib/pathway";
@@ -383,13 +383,14 @@ export function CaseDetailPage() {
             outcomes={outcomes}
             busy={busy}
             canRequest={!closed && !frozen && can(role, "draft")}
+            defaultLanguage={patientLang(events) ?? "en"}
             canDecide={can(role, "decideDraft") && !scopeWhy}
             requestWhy={closedWhy ?? frozenWhy ?? why("draft", "coordinator or owner")}
             decideWhy={why("decideDraft", "owner, specialist or clinician (the case owner)", true)}
             approveWhy={frozenWhy ?? closedWhy}
-            onRequest={() => act(
-              () => api.requestDraft(caseId, { purpose: "result_notification", channel: "sms", language: "en" }),
-              "Draft generated. A human must approve it before it is used.",
+            onRequest={(body) => act(
+              () => api.requestDraft(caseId, body),
+              "Draft generated. The case owner must approve it before anything is sent.",
             )}
             onApprove={(id) => act(
               async () => {

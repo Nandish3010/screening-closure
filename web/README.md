@@ -59,6 +59,10 @@ No external network calls at runtime: fonts are bundled (Noto Sans Arabic via `@
 - **Reopen**: shown on closed cases only; enabled for the clinician role and needs a reason. **Mark lost contact**: coordinator/owner, any open case.
 - **Hand-off rejections** show the taxonomy reason as a label ("No capacity (no slot in time)"); an unknown code is shown as-is.
 
+### Draft review (C10)
+
+The "Patient message drafts" panel on the case page: a request form (purpose, channel, language; the language defaults to the one the patient last answered in), then one card per draft from `GET /cases/{id}/drafts`: provider and the "template fallback used" badge, the abstention reason in plain words (the raw code stays in the tooltip), the short prompt hash (full hash in the tooltip), who generated it, the text in its own language and direction, and the status: waiting for the owner, **Approved by X** with **Sent** or **Approved but blocked: consent | contact | case_state** (from the approve answer; after a reload, an approved draft with no `message_sent` says "Approved, no message sent yet"), or **Rejected by X: reason**. Rejecting needs a reason (1-500 characters) and writes no event. A coordinator can request but not decide: the panel says so once, inline, and links both buttons to that note. A clinician who does not own the case is told who does. While consent is frozen the request and the approval are disabled with the reason; rejecting stays possible.
+
 ## Roles
 
 Header role switcher (coordinator / owner / specialist / clinician / patient): `GET /me` gives the default, the demo override is stored in `localStorage` (`sc.role`) and switching logs in again (see Auth). Permissions are a UI mirror in `src/app/AppContext.tsx` (`PERMISSIONS`); disabled actions always say why. Only the clinician role can sign off. Real RBAC is a backend concern.

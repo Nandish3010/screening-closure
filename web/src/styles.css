@@ -187,3 +187,9 @@ table.worklist { width: 100%; border-collapse: collapse; background: var(--surfa
 .tl-draft { margin: 0.3rem 0; padding: 0.4rem 0.6rem; background: var(--bg); border-radius: 6px; border-inline-start: 3px solid var(--warn); }
 .choices { border: 0; padding: 0; margin: 0 0 0.75rem; display: grid; gap: 0.4rem; }
 .choices legend { padding: 0; margin-bottom: 0.3rem; }
+.draft-form { border: 1px solid var(--border); border-radius: 8px; padding: 0.5rem 0.8rem 0.8rem; margin: 0.5rem 0 1rem; }
+.draft-form legend { font-weight: 600; padding: 0 0.3rem; }
+.draft-form .row { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0.6rem; }
+.decision { display: grid; gap: 0.4rem; justify-items: start; margin-top: 0.5rem; }
+.decision .field { align-self: stretch; }
+.mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
