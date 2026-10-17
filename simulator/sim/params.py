@@ -255,6 +255,7 @@ class ModelParams:
     ladder_exhausted_wait_working_days: int
     signoff_sla_working_days: int
     timer_miss_prob: float
+    programme_reach: float
     watchdog_idle_days: float
     watchdog_effect_prob: float
     watchdog_reaction_delay_days: float
@@ -360,6 +361,7 @@ class ModelParams:
             ladder_exhausted_wait_working_days=p.int("orchestration.ladder_exhausted_wait_working_days"),
             signoff_sla_working_days=p.int("orchestration.signoff_sla_working_days"),
             timer_miss_prob=p.float("orchestration.timer_miss_prob"),
+            programme_reach=p.float("orchestration.programme_reach"),
             watchdog_idle_days=p.float("orchestration.watchdog_idle_days"),
             watchdog_effect_prob=p.float("orchestration.watchdog_effect_prob"),
             watchdog_reaction_delay_days=p.float("orchestration.watchdog_reaction_delay_days"),
@@ -397,7 +399,7 @@ class ModelParams:
             "dropout_residual_multiplier human_dropout_residual_multiplier self_presentation_prob "
             "sms_reminder_effect dna_rate handoff_no_response_prob referral_rejection_rate "
             "declined_reengage_prob baseline_rejection_noticed_prob noshow_self_rebook_prob timer_miss_prob "
-            "watchdog_effect_prob reopen_prob duplicate_result_rate conflicting_ack_rate "
+            "watchdog_effect_prob programme_reach reopen_prob duplicate_result_rate conflicting_ack_rate "
             "consent_after_booking_rate baseline_switch_loss_prob"
         ).split():
             prob(name, getattr(self, name))

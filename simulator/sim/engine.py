@@ -9,6 +9,11 @@ same patients, the same pre-drawn random numbers (see behaviour.py) and the same
                 handoff accept/reject/bounce, consent-aware outreach, an idle-case watchdog, and
                 human-gated closure.
 
+Programme reach (`orchestration.programme_reach`, 1.0 in params.yaml): in the orchestrated arm only this share of
+cases (a per-patient latent, so the same patients in every scenario) gets the orchestrated process; the others follow
+the baseline rules inside the same engine. The literature-anchored scenario lowers it to hold the average effect to the
+published navigation risk ratio. At 1.0 every case is reached and the event log is identical to the engine without it.
+
 Pathway events are validated through `app.state_machine.apply` against the `app.pathway.Pathway`
 loaded from the YAML (the same code the API uses). Side events (overdue, escalated, handoff_*,
 consent_updated, watchdog_flagged, lost_contact, reopened and the other bookkeeping events) are
@@ -75,11 +80,13 @@ class Case:
         "consent_ok", "withdrawn", "declined_care", "dropped_out", "lapses", "resp_idx", "rec_idx", "h_idx",
         "h_cur", "hstate", "appt_idx", "appt_t", "pending_appt", "reminders", "awaiting_patient", "sub",
         "timer_n", "watch_n", "watch_armed", "last_act", "extra_delay", "abandoned", "reopened", "round",
-        "bchannel", "lost_reasons", "booked_once", "last_flag",
+        "bchannel", "lost_reasons", "booked_once", "last_flag", "orch",
     )
 
-    def __init__(self, p: Patient, lat: Latents, msy: MessyPlan, end: float, initial_state: str, bchannel: str, refuses: bool = False):
+    def __init__(self, p: Patient, lat: Latents, msy: MessyPlan, end: float, initial_state: str, bchannel: str,
+                 refuses: bool = False, orch: bool = False):
         self.p, self.lat, self.msy = p, lat, msy
+        self.orch = orch  # True: this case gets the orchestrated process; False: today's process (baseline rules)
         self.t0 = p.arrival_t
         self.end = end
         self.state = initial_state
@@ -151,7 +158,7 @@ class Engine:
         if arm not in ARMS:
             raise ValueError(f"arm must be one of {ARMS}")
         self.arm = arm
-        self.orch = arm == ORCHESTRATED
+        self.orch = arm == ORCHESTRATED  # arm default; a case follows it only if it is within the programme reach (see Case.orch)
         self.mp, self.pw, self.cal = mp, pathway, cal
         self.beh = Behaviour(mp)
         self.days = float(follow_up_days)
@@ -201,8 +208,11 @@ class Engine:
         for p in patients:
             lat = draw_latents(self.seed, p.key)
             msy = draw_messy(self.seed, p, self.mp)
+            # Programme reach: in the orchestrated arm only this share of cases actually receives the orchestrated
+            # process; the rest follow today's process (baseline rules). 1.0 (upper range) = every case.
+            reached = self.orch and lat.u_reach < self.mp.programme_reach
             c = Case(p, lat, msy, p.arrival_t + self.days, self.pw.initial_state, self.beh.baseline_channel(lat),
-                     lat.u_refuse < self.mp.refusal_prob)
+                     lat.u_refuse < self.mp.refusal_prob, reached)
             cases.append(c)
             self.schedule(c.t0, "start", c)
         heap = self.heap
@@ -248,7 +258,7 @@ class Engine:
         )
         if ev.type != "watchdog_flagged":
             c.last_act = t
-            if self.orch and not c.watch_armed:
+            if c.orch and not c.watch_armed:
                 c.watch_armed = True
                 self.schedule(t + self.mp.watchdog_idle_days, "watch", c)
 
@@ -283,7 +293,7 @@ class Engine:
         c.sub = None
         if ev is None:
             return
-        if self.orch:
+        if c.orch:
             self.arm_sla(c, t, ev)
         kind = STEP_KIND[ev]
         if kind == "staff":
@@ -351,7 +361,7 @@ class Engine:
     def accept_ownership(self, c: Case, t: float) -> None:
         i = c.p.idx
         m = c.msy
-        if self.orch:
+        if c.orch:
             owner = f"owner:pcp-{i % 7}"
             c.owner = owner
             self.advance(c, t, "accept_ownership", owner, {"owner": owner})
@@ -419,7 +429,7 @@ class Engine:
         if reason in c.lost_reasons:
             return
         c.lost_reasons.append(reason)
-        self.emit(c, t, "lost_contact", "scheduler" if self.orch else "system:intake", {"reason": reason})
+        self.emit(c, t, "lost_contact", "scheduler" if c.orch else "system:intake", {"reason": reason})
 
     def on_watch(self, c: Case, t: float, token, data) -> None:
         c.watch_armed = False
@@ -468,7 +478,7 @@ class Engine:
 
     def send_outreach(self, c: Case, t: float, kind: str, role: str | None = None) -> None:
         mp = self.mp
-        if self.orch:
+        if c.orch:
             if not c.consent_ok:
                 self.counters["blocked_messages"] += 1
                 self.emit(c, t, "message_blocked", "system:messaging", {"kind": kind, "reason": "consent_withdrawn"})
@@ -481,7 +491,7 @@ class Engine:
         self.emit(c, t, "message_sent", actor, {"kind": kind, "channel": channel, "language": lang, "draft_source": "template"})
         if not c.contact_ok:
             self.lapse(c)
-            if self.orch:
+            if c.orch:
                 if kind in HUMAN_KINDS:
                     self.try_recovery(c, t, role or "owner_supervisor")
                 else:
@@ -544,14 +554,14 @@ class Engine:
         c.h_idx += 1
         c.h_cur = h
         c.hstate = "pending"
-        who = f"owner:pcp-{c.p.idx % 7}" if self.orch else f"staff:referrals-{c.p.idx % 3}"
+        who = f"owner:pcp-{c.p.idx % 7}" if c.orch else f"staff:referrals-{c.p.idx % 3}"
         self.emit(c, t, "handoff_requested", who, {"attempt": h, "to": f"endoscopy-{h}"})
         outcome = self.beh.handoff_outcome(c.lat.u_h[h])
         if outcome != "none":
             reason = self.beh.rejection_reason(c.lat.u_reason[h]) if outcome == "reject" else None
             at = self.cal.next_working_t(t + self.beh.handoff_delay(c.lat.z_h[h]))
             self.schedule(at, "h_resp", c, c.token, (h, outcome, reason))
-        if self.orch:
+        if c.orch:
             self.schedule(self.cal.add_working_days_t(t, self.mp.handoff_sla_working_days), "h_timeout", c, c.token, h)
 
     def on_h_resp(self, c: Case, t: float, token, data) -> None:
@@ -562,7 +572,7 @@ class Engine:
             self.emit(c, t, "handoff_accepted", f"endoscopy:unit-{h}", {"attempt": h})
             lead = self.beh.lead_days(c.lat, c.appt_idx, False)
             c.pending_appt = self.cal.next_working_t(t + lead)
-            who = f"owner:pcp-{c.p.idx % 7}" if self.orch else f"staff:referrals-{c.p.idx % 3}"
+            who = f"owner:pcp-{c.p.idx % 7}" if c.orch else f"staff:referrals-{c.p.idx % 3}"
             self.advance(c, t, "book_confirmatory", who, {"appointment_on": self.cal.date_of(c.pending_appt).isoformat()})
             if c.msy.consent_after_booking_lag is not None and not c.booked_once:
                 self.schedule(t + c.msy.consent_after_booking_lag, "consent", c, None, "after_booking")
@@ -571,7 +581,7 @@ class Engine:
         c.hstate = "bounced"
         self.emit(c, t, "handoff_rejected", f"endoscopy:unit-{h}", {"attempt": h, "reason": reason})
         lat = c.lat
-        if self.orch:
+        if c.orch:
             if reason == "patient_declined":
                 if lat.u_declined[h] < self.mp.declined_reengage_prob and c.consent_ok:
                     self.schedule(self.cal.next_working_t(t + self.beh.reroute_delay(lat.z_reroute[h])), "h_retry", c, c.token)
@@ -612,7 +622,7 @@ class Engine:
         c.appt_t = appt_t
         c.reminders = 0
         self.schedule(appt_t, "appt", c, c.token, a)
-        if self.orch:
+        if c.orch:
             for d in self.mp.reminder_days_before:
                 tr = appt_t - d
                 if tr > t:
@@ -635,8 +645,8 @@ class Engine:
             return
         c.appt_idx = a + 1
         c.appt_t = None
-        channel = c.p.channel if self.orch else c.bchannel
-        attends = not c.declined_care and not self.beh.no_show(c.p, c.lat, a, channel, c.reminders, self.orch)
+        channel = c.p.channel if c.orch else c.bchannel
+        attends = not c.declined_care and not self.beh.no_show(c.p, c.lat, a, channel, c.reminders, c.orch)
         if attends:
             self.advance(c, t, "complete_confirmatory", "endoscopy:unit",
                          {"appointment": a, "evidence_ref": f"procedure-{c.p.key}-{a}"})
@@ -644,7 +654,7 @@ class Engine:
         self.emit(c, t, "appointment_missed", "endoscopy:unit", {"appointment": a})
         self.lapse(c)
         more = (a + 1) < min(A_POOL, self.mp.appointment_max_attempts) and not c.declined_care
-        if self.orch:
+        if c.orch:
             self.emit(c, t, "overdue", "scheduler", {"reason": "missed_appointment", "step": c.step})
             if more:
                 c.token += 1  # a new sub-flow: the old SLA timer and rungs no longer apply
@@ -680,7 +690,7 @@ class Engine:
     def on_dup(self, c: Case, t: float, token, data) -> None:
         if c.abandoned or c.state == self.terminal:
             return
-        if self.orch:
+        if c.orch:
             self.emit(c, t, "duplicate_result_merged", "system:dedup", {"matched": True})
         else:
             self.emit(c, t, "duplicate_result_received", "lab:second", {"new_work_item": True})
@@ -698,7 +708,7 @@ class Engine:
             self.emit(c, t, "provider_switched", "patient:" + c.p.key, {"applies": False})
             return
         lat = c.lat
-        if self.orch:
+        if c.orch:
             self.emit(c, t, "provider_switched", "patient:" + c.p.key, {"applies": True})
             who = f"owner:pcp-{c.p.idx % 7}"
             self.emit(c, t, "handoff_requested", who, {"kind": "transfer", "to": "provider-new"})
@@ -738,7 +748,7 @@ class Engine:
             return
         c.withdrawn = True
         c.declined_care = c.declined_care or c.lat.u_consent_declines < self.mp.consent_withdrawal_declines_care_prob
-        if self.orch:
+        if c.orch:
             c.consent_ok = False
             self.emit(c, t, "consent_updated", f"patient:{c.p.key}",
                       {"status": "withdrawn", "scope": "outreach", "flagged_for_review": True, "source": source})
