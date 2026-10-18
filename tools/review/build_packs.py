@@ -421,6 +421,7 @@ FORBIDDEN_CATEGORY_GLOSS = {
     "diagnosis_statement": "Saying or implying the patient has a condition.",
     "disease_term": "Naming a disease or a finding the screening test cannot show.",
     "positive_result_jargon": "Calling the result \"positive\".",
+    "result_disclosure": "Stating or hinting at what the screening found (\"found blood\", \"positive result\", \"abnormal\"). IFHAS: abnormal results are communicated with the participant present.",
     "false_reassurance": "Telling the patient not to worry or that all is well.",
     "clinical_judgement": "Judging urgency or severity.",
     "medication_or_treatment": "Mentioning medicines, doses, treatment or surgery.",
@@ -432,7 +433,12 @@ AR_FORBIDDEN_GLOSS = {
     "you_are_affected": "you are affected (by a disease)", "affected": "affected (by a disease)",
     "diagnosis": "diagnosis", "cancer": "cancer", "tumour": "tumour", "tumours_plural": "tumours",
     "malignant": "malignant", "malignancy": "malignancy", "polyp": "polyp", "polyps_plural": "polyps",
-    "carcinoma": "carcinoma", "positive": "positive", "do_not_worry": "do not worry (to a man)",
+    "carcinoma": "carcinoma", "positive": "positive",
+    "found_blood": "found blood", "found_blood_we": "we found blood", "blood_presence": "presence of blood",
+    "blood_in_stool": "blood in the stool", "occult_blood": "hidden (occult) blood", "occult_blood_def": "the hidden (occult) blood",
+    "positive_result": "positive (medical sense)", "abnormal_result": "not normal", "abnormal_alt": "abnormal / atypical",
+    "result_shows_test": "the test showed", "result_shows_result": "the result showed", "result_shows_your": "your result showed",
+    "found_by_test": "the test found", "found_by_test_def": "the test found (with the article)", "do_not_worry": "do not worry (to a man)",
     "do_not_worry_f": "do not worry (to a woman)", "no_need_to_worry": "no need to worry",
     "do_not_fear": "do not be afraid", "do_not_fear_alt": "do not be afraid (variant)",
     "nothing_to_worry_about": "nothing to worry about", "all_fine": "everything is fine",
@@ -475,8 +481,8 @@ WEB_CONTEXT: dict[str, tuple[str, str]] = {
     "homeTitle": ("frame", "Heading of the app start page (/patient) when no case has been opened on this device."),
     "homeBody": ("frame", "Text under that heading: how to open the result and add the page to the home screen."),
     "resultHeading": ("result", "Heading of the first section."),
-    "resultBody": ("result", "Large paragraph under the heading. The only statement about the result."),
-    "notDiagnosis": ("result", "Small grey line under the result."),
+    "resultBody": ("result", "Large paragraph under the heading. It says the result is ready and that the care team needs to talk with the patient. It states no finding."),
+    "explainInPerson": ("result", "Line under the paragraph: the care team explains the result in person or by phone (IFHAS: abnormal results are given with the participant present)."),
     "progressHeading": ("progress", "Heading of the progress section."),
     "progress[0]": ("progress", "Step 1 of the tracker. Current while the case is waiting to be acknowledged."),
     "progress[1]": ("progress", "Step 2. Current from acknowledgement until the colonoscopy is booked."),
@@ -489,7 +495,7 @@ WEB_CONTEXT: dict[str, tuple[str, str]] = {
     "ownerHeading": ("owner", "Heading of the care-owner section."),
     "ownerLine": ("owner", "Large text under that heading. {name} is the owner's name (Latin or Arabic script), {role} the role from the role labels below. In Arabic the sentence is split over three lines so a Latin name does not scramble the line."),
     "ownerPending": ("owner", "Shown instead of the line above while nobody has accepted the case."),
-    "understand": ("actions", "Primary button. Disabled until the patient has been contacted."),
+    "understand": ("actions", "Primary button (one tap: the patient has read the message and asks the care team to contact them). Disabled until the patient has been contacted."),
     "understandWait": ("actions", "Hint under the disabled button."),
     "understandDone": ("actions", "Green confirmation that replaces the button once the patient has acknowledged."),
     "dontUnderstand": ("actions", "Second button. Asks a person from the care team to call."),
@@ -522,9 +528,9 @@ MOCK_WHERE = (
 
 # purpose -> (who receives it and when). The sending flow (D5) is not built yet, so this is the intended use.
 PURPOSE_CONTEXT = {
-    "result_notification": "First message to the patient once a positive result has an accepted care owner.",
+    "result_notification": "First message to the patient once a result has an accepted care owner. States no finding: the care team will explain the result in person or by phone.",
     "reminder": "Reminder when the patient has not yet taken the next step. The dated variant is used once an appointment date exists.",
-    "appointment_confirmation": "Confirms a booked colonoscopy. Always carries the date.",
+    "appointment_confirmation": "Confirms a booked appointment (a camera test). Always carries the date. Names the appointment, never a disease or a finding.",
     "escalation_notice": "Tells the patient a more senior member of the care team has been told, so the next step is not delayed.",
     "callback_ack": "Reply when the patient pressed \"I don't understand this\". A person will call.",
 }
@@ -733,9 +739,9 @@ def questions(pw: dict) -> list[tuple[str, str, str, str]]:
         ("limits", "The other time limits",
          f"Contact the patient in {sla['contact_patient']} working days, patient confirms in {sla['patient_acknowledge']}, book the colonoscopy in {sla['book_confirmatory']}, clinician review in {sla['clinician_review']} after the colonoscopy.",
          "Which of these are too tight or too loose? The patient-confirms limit runs against the team although the patient controls it: should that clock exist, and who should be chased when it passes?"),
-        ("blood", "The first message and the word \"blood\"",
-         "The only clinical fact any message states is \"Your screening test found blood. The next step is a colonoscopy.\" The patient page adds \"This does not mean you have cancer\" (W07), although messages never name cancer, and says \"This page is not a diagnosis\" (W08).",
-         "Is \"found blood\" the right first sentence, or would you say \"needs a follow-up test\"? Should the page name cancer at all, even to say the result is not a diagnosis? Is anything in section 9 alarming, wrong, or missing?"),
+        ("disclosure", "No result in any text",
+         "No message (SMS, WhatsApp or letter) and no line on the patient page states or hints at what the screening found. A message says that the result is ready, that the care team needs to talk with the patient about the next step, and who will call. The patient page says the same and adds \"Your care team will explain your result in person or by phone.\" This follows the IFHAS standard that abnormal results are given with the participant present. The next step is named only as an appointment (\"a camera test\"; the patient page also calls it a colonoscopy). The forbidden-phrase list rejects any model draft that states a result (category `result_disclosure`).",
+         "Please confirm the non-disclosure wording (H1). Is \"Your screening result is ready and your care team needs to talk with you about the next step\" acceptable as the first message, or does it alarm patients or hint at a finding by itself? Is naming the next step (\"a camera test\", \"a colonoscopy\") acceptable, or should even that wait for the conversation? Is \"in person or by phone\" right, and what should happen when a patient replies and asks for the result by text? Is anything in section 9 alarming, wrong, or missing?"),
         ("kpi", f"What the {sla['complete_confirmatory']} working days are measured from",
          f"The national KPI is a colonoscopy within 31 working days of referral. Our clock starts when the booking is recorded (`confirmatory_booked`), not at the result, not at the care owner's acceptance, and not at the referral. Adding up every step's full allowance, a colonoscopy could happen up to {to_colonoscopy} working days after the result and still meet every one of our limits.",
          f"From which event should the {sla['complete_confirmatory']} working days be counted: result received, ownership accepted, referral, or booking? Should we also report the programme-level share (the KPI is a percentage, above 90%), not only a per-case limit?"),
@@ -938,13 +944,13 @@ def clinician_pack() -> str:
     out += ["### 9.4 A check we ran on our own wording", "",
             "The forbidden-phrase list in section 10 applies to model drafts. We ran it over every string above as a self-check. "
             + ("None matched." if not en_hits else
-               f"These strings would be rejected if a model had written them. The patient page is fixed text, not a model draft, so they are allowed today. Please say whether each is acceptable (question {qn(qs, 'blood')})."), ""]
+               f"These strings would be rejected if a model had written them. The patient page is fixed text, not a model draft, so they are allowed today. Please say whether each is acceptable (question {qn(qs, 'disclosure')})."), ""]
     if en_hits:
         out += [table(["ID", "English text", "Matching list entries"], [[it.id, it.en, ", ".join(f"`{i}`" for i in ids)] for it, ids in en_hits]), ""]
 
     # ---- 10
     out += ["## 10. Words the system never lets a model write", "",
-            "A model draft containing any of these is rejected and replaced by the template (and counted as an abstention). Matching ignores case and, for phrases, whole words only; a regular expression is shown where one word stem stands for several forms. The Arabic list has the same seven categories and is in the Arabic pack. Please say what is missing and what blocks a perfectly good sentence.", "",
+            "A model draft containing any of these is rejected and replaced by the template (and counted as an abstention). Matching ignores case and, for phrases, whole words only; a regular expression is shown where one word stem stands for several forms. The Arabic list has the same categories and is in the Arabic pack. Please say what is missing and what blocks a perfectly good sentence.", "",
             table(["Category", "What it prevents"], [[f"`{k_}`", FORBIDDEN_CATEGORY_GLOSS.get(k_, "-")] for k_ in dict.fromkeys(e["category"] for e in f["en"])]), "",
             table(["Id", "Category", "Phrase or pattern", "Why", "Example it catches"],
                   [[f"`{e['id']}`", e["category"], code(e.get("phrase") or e.get("regex")),
@@ -994,7 +1000,7 @@ def clinician_pack() -> str:
 # ====================================================================== Arabic pack
 
 AR_CHECKLIST = [
-    ("Accuracy", "Does each Arabic text say what the English says, no more and no less? In particular: \"the screening test found blood\" and \"this does not mean you have cancer\"."),
+    ("Accuracy", "Does each Arabic text say what the English says, no more and no less? In particular: \"your screening result is ready and your care team needs to talk with you about the next step\" and \"your care team will explain your result in person or by phone\". Nothing in Arabic may state or hint at the result."),
     ("Register for Gulf Arabic readers", "Modern Standard Arabic, easy to read, no dialect. Is it natural for a reader in the UAE, neither stiff nor too colloquial? Greetings: \"مرحباً\" in SMS and WhatsApp, \"السلام عليكم\" in letters. Are they right for every patient, including non-Muslim readers of Arabic?"),
     ("Plain language", "Grade-6 reading level: short sentences, everyday words. Mark any word an ordinary reader might not know."),
     ("No stigma, no fear", "Calm, respectful tone. Nothing blames the patient, nothing frightens, nothing minimises. Does any word carry a stigma in your community?"),
@@ -1059,9 +1065,9 @@ def arabic_pack() -> str:
 
     out += [
         "## 1. What these texts are for", "",
-        "A patient in Abu Dhabi has had a screening stool test (FIT) and the result was positive. The next step is a colonoscopy. The texts below tell the patient, in Arabic or English, what the result means and what happens next, who in the care team is responsible, and let them say \"I understand\" or \"I don't understand this\" (a person will call).", "",
+        "A patient in Abu Dhabi has had a screening stool test (FIT) and the care team has the result. The texts below tell the patient, in Arabic or English, that the result is ready and the care team needs to talk with them, who in the care team is responsible, and what the next step is, and let them say \"I understand, please contact me\" or \"I don't understand this\" (a person will call). They never say what the screening found: the care team explains the result in person or by phone.", "",
         "Hard rules the Arabic must keep:", "",
-        "- The only clinical fact is that the screening test found blood. No diagnosis, no disease name, no \"positive\".",
+        "- No text states or hints at what the screening found (IFHAS: abnormal results are communicated with the participant present). No \"blood\", no \"positive\", no \"abnormal\", no diagnosis, no disease name.",
         "- No reassurance (\"don't worry\"), no judgement of urgency, no advice beyond the next step. The care team contacts the patient.",
         "- Every message names the care owner and the next step.",
         "- A person approves every message before it is sent.", "",

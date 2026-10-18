@@ -1,7 +1,7 @@
 # Clinician review pack (H1)
 
 > Generated file. Do not edit by hand. Regenerate with `make review-packs` (tools/review/build_packs.py).
-> Built from pathway `colorectal_fit` v0.2, template set v1, forbidden-phrase list v1.
+> Built from pathway `colorectal_fit` v0.2, template set v2, forbidden-phrase list v1.
 > For: a GP or public-health doctor, 30 minutes
 > All data in this project is synthetic. Nothing here is clinical advice or a claim of real-world performance.
 
@@ -184,7 +184,7 @@ A case is handed to another provider with `handoff_requested`. Ownership moves o
 
 ## 9. What the patient reads (English)
 
-65 English strings in three places. The reading-level target is grade 6. Arabic versions are reviewed separately (H2); the IDs below match the Arabic pack. Placeholders in braces are filled in: {owner_name} (the care owner), {next_step} (default "a colonoscopy"), {appointment_date} (for example "Tuesday 3 November 2026"), {name} and {role} on the patient page.
+65 English strings in three places. The reading-level target is grade 6. Arabic versions are reviewed separately (H2); the IDs below match the Arabic pack. Placeholders in braces are filled in: {owner_name} (the care owner), {next_step} (default "a camera test"), {appointment_date} (for example "Tuesday 3 November 2026"), {name} and {role} on the patient page.
 
 ### 9.1 The patient page (web)
 
@@ -204,9 +204,9 @@ Shown in the installed app or browser at `/patient`. Source: `web/src/i18n/strin
 
 | ID | English text | Where it appears |
 |---|---|---|
-| W06 | What your result means | Heading of the first section. |
-| W07 | Your screening test found blood. This does not mean you have cancer. The next step is a camera test called a colonoscopy. | Large paragraph under the heading. The only statement about the result. |
-| W08 | This page is not a diagnosis. Your doctor will explain your result. | Small grey line under the result. |
+| W06 | Your result is ready | Heading of the first section. |
+| W07 | Your screening result is ready. Your care team needs to talk with you about it and about the next step. | Large paragraph under the heading. It says the result is ready and that the care team needs to talk with the patient. It states no finding. |
+| W08 | Your care team will explain your result in person or by phone. | Line under the paragraph: the care team explains the result in person or by phone (IFHAS: abnormal results are given with the participant present). |
 
 **Where you are now.** Four-step tracker.
 
@@ -223,9 +223,9 @@ Shown in the installed app or browser at `/patient`. Source: `web/src/i18n/strin
 | ID | English text | Where it appears |
 |---|---|---|
 | W14 | What happens next | Heading of the next-steps section. |
-| W15 | A care coordinator will call you to book the camera test. | Numbered step 1. |
-| W16 | You will get a date and easy steps to get ready. | Numbered step 2. |
-| W17 | A doctor will check the test and tell you what it means. | Numbered step 3. |
+| W15 | Your care team will talk with you about your result. | Numbered step 1. |
+| W16 | The next step is an appointment for a camera test called a colonoscopy. | Numbered step 2. |
+| W17 | You will get a date and easy steps to get ready. | Numbered step 3. |
 
 **Who is looking after you.** The named care owner.
 
@@ -241,9 +241,9 @@ Shown in the installed app or browser at `/patient`. Source: `web/src/i18n/strin
 
 | ID | English text | Where it appears |
 |---|---|---|
-| W23 | I understand | Primary button. Disabled until the patient has been contacted. |
-| W24 | Thank you. We saved that you understand. | Green confirmation that replaces the button once the patient has acknowledged. |
-| W25 | You can tap this button after your care team has contacted you. | Hint under the disabled button. |
+| W23 | I understand, please contact me | Primary button (one tap: the patient has read the message and asks the care team to contact them). Disabled until the patient has been contacted. |
+| W24 | Thank you. We saved this. Your care team will contact you. | Green confirmation that replaces the button once the patient has acknowledged. |
+| W25 | You can tap this button after your care team has sent you a message. | Hint under the disabled button. |
 | W26 | I don't understand this | Second button. Asks a person from the care team to call. |
 | W27 | Thank you. A person from your care team will call you. | Green confirmation after that button is pressed, or while a callback is pending. |
 | W28 | That did not work. Please try again or call your care team. | Red banner if either button fails. |
@@ -280,46 +280,46 @@ Not in the catalogue (hard-coded in `web/src/pages/PatientPage.tsx`): a "Demo ca
 
 Source: `api/app/ai/templates/en.yaml`. These are the default drafts and the fallback if a model draft is rejected. A person approves a message before it is sent. Limits: SMS 320, WhatsApp 600, letter 1200 characters. "Chars" is the length with the sample values.
 
-**result_notification.** First message to the patient once a positive result has an accepted care owner.
+**result_notification.** First message to the patient once a result has an accepted care owner. States no finding: the care team will explain the result in person or by phone.
 
 | ID | Channel | English text | Chars / limit |
 |---|---|---|---|
-| T01 | SMS | Your screening test found blood. The next step is {next_step}. Your care team will contact you. Your care owner is {owner_name}. | 130 / 320 |
-| T02 | WhatsApp | Hello. This is a message from your care team.<br><br>Your screening test found blood.<br><br>The next step is {next_step}. Your care team will contact you to talk about it and to arrange it.<br><br>Your care owner is {owner_name}. | 214 / 600 |
-| T03 | Letter | Hello,<br><br>We are writing about the screening test you did recently. The test found blood.<br><br>The next step is {next_step}. Your care team will contact you to talk about it and to arrange it.<br><br>Your care owner is {owner_name}. This is the person in your care team who is responsible for your next step.<br><br>Kind regards,<br>Your care team | 328 / 1200 |
+| T01 | SMS | Your screening result is ready and your care team needs to talk with you about the next step. {owner_name} will call you, or you can reply to book a time. The next step is {next_step}. | 186 / 320 |
+| T02 | WhatsApp | Hello. This is a message from your care team.<br><br>Your screening result is ready and your care team needs to talk with you about the next step.<br><br>The next step is {next_step}. Your care team will explain your result in person or by phone.<br><br>{owner_name} will call you, or you can reply to book a time. | 298 / 600 |
+| T03 | Letter | Hello,<br><br>We are writing about the screening test you did recently.<br><br>Your screening result is ready and your care team needs to talk with you about the next step.<br><br>The next step is {next_step}. Your care team will explain your result in person or by phone.<br><br>{owner_name} will call you, or you can contact your care team to book a time.<br>{owner_name} is the person in your care team who is responsible for your next step.<br><br>Kind regards,<br>Your care team | 449 / 1200 |
 
 **reminder.** Reminder when the patient has not yet taken the next step. The dated variant is used once an appointment date exists.
 
 | ID | Channel | English text | Chars / limit |
 |---|---|---|---|
-| T04 | SMS | Reminder from your care team. The next step after your screening test is {next_step}. Your care team will contact you. Your care owner is {owner_name}. | 153 / 320 |
-| T05 | SMS with date | Reminder from your care team. Your appointment is on {appointment_date}. The next step is {next_step}. Your care owner is {owner_name}. | 142 / 320 |
-| T06 | WhatsApp | Hello. This is a reminder from your care team.<br><br>The next step after your screening test is {next_step}. Your care team will contact you to arrange it.<br><br>Your care owner is {owner_name}. | 186 / 600 |
-| T07 | WhatsApp with date | Hello. This is a reminder from your care team.<br><br>Your appointment is on {appointment_date}. The next step is {next_step}.<br><br>Your care owner is {owner_name}. | 161 / 600 |
-| T08 | Letter | Hello,<br><br>This is a reminder from your care team. After your screening test, the next step is {next_step}.<br><br>Your care team will contact you to arrange it. Your care owner is {owner_name}.<br><br>Kind regards,<br>Your care team | 217 / 1200 |
-| T09 | Letter with date | Hello,<br><br>This is a reminder from your care team. Your appointment is on {appointment_date}.<br><br>The next step is {next_step}. Your care owner is {owner_name}.<br><br>Kind regards,<br>Your care team | 191 / 1200 |
+| T04 | SMS | Reminder from your care team. Your screening result is ready and your care team still needs to talk with you about the next step. {owner_name} will call you, or you can reply to book a time. The next step is {next_step}. | 222 / 320 |
+| T05 | SMS with date | Reminder from your care team. Your appointment for {next_step} is on {appointment_date}. Your care owner is {owner_name}. Reply to this message to change the time. | 170 / 320 |
+| T06 | WhatsApp | Hello. This is a reminder from your care team.<br><br>Your screening result is ready and your care team still needs to talk with you about the next step.<br><br>The next step is {next_step}. {owner_name} will call you, or you can reply to book a time. | 241 / 600 |
+| T07 | WhatsApp with date | Hello. This is a reminder from your care team.<br><br>Your appointment for {next_step} is on {appointment_date}.<br><br>Your care owner is {owner_name}. Reply to this message to change the time. | 189 / 600 |
+| T08 | Letter | Hello,<br><br>This is a reminder from your care team.<br><br>Your screening result is ready and your care team still needs to talk with you about the next step.<br>The next step is {next_step}.<br><br>{owner_name} will call you, or you can contact your care team to book a time.<br><br>Kind regards,<br>Your care team | 289 / 1200 |
+| T09 | Letter with date | Hello,<br><br>This is a reminder from your care team. Your appointment for {next_step} is on {appointment_date}.<br><br>Your care owner is {owner_name}. Please contact your care team to change the time.<br><br>Kind regards,<br>Your care team | 227 / 1200 |
 
-**appointment_confirmation.** Confirms a booked colonoscopy. Always carries the date.
+**appointment_confirmation.** Confirms a booked appointment (a camera test). Always carries the date. Names the appointment, never a disease or a finding.
 
 | ID | Channel | English text | Chars / limit |
 |---|---|---|---|
-| T10 | SMS | Your appointment is on {appointment_date}. The next step is {next_step}. Your care team will contact you with the details. Your care owner is {owner_name}. | 162 / 320 |
-| T11 | WhatsApp | Hello. This is a message from your care team.<br><br>Your appointment is on {appointment_date}. The next step is {next_step}.<br><br>Your care team will contact you with the details. Your care owner is {owner_name}. | 210 / 600 |
-| T12 | Letter | Hello,<br><br>We are writing to confirm your appointment. It is on {appointment_date}.<br><br>The next step is {next_step}. Your care team will contact you with the details.<br><br>Your care owner is {owner_name}.<br><br>Kind regards,<br>Your care team | 232 / 1200 |
+| T10 | SMS | Your appointment for {next_step} is on {appointment_date}. Your care team will contact you with the details. Your care owner is {owner_name}. | 148 / 320 |
+| T11 | WhatsApp | Hello. This is a message from your care team.<br><br>Your appointment for {next_step} is on {appointment_date}.<br><br>Your care team will contact you with the details. Your care owner is {owner_name}. | 196 / 600 |
+| T12 | Letter | Hello,<br><br>We are writing to confirm your appointment for {next_step}. It is on {appointment_date}.<br><br>Your care team will contact you with the details.<br><br>Your care owner is {owner_name}.<br><br>Kind regards,<br>Your care team | 218 / 1200 |
 
 **escalation_notice.** Tells the patient a more senior member of the care team has been told, so the next step is not delayed.
 
 | ID | Channel | English text | Chars / limit |
 |---|---|---|---|
-| T13 | SMS | We want to make sure your next step is not delayed. A senior member of your care team has been told. The next step is {next_step}. Your care owner is {owner_name}. Your care team will contact you. | 198 / 320 |
-| T14 | WhatsApp | Hello. This is a message from your care team.<br><br>We want to make sure your next step is not delayed. A senior member of your care team has been told.<br><br>The next step is {next_step}. Your care team will contact you. Your care owner is {owner_name}. | 246 / 600 |
-| T15 | Letter | Hello,<br><br>We want to make sure your next step is not delayed. A senior member of your care team has been told.<br><br>The next step is {next_step}. Your care team will contact you. Your care owner is {owner_name}.<br><br>Kind regards,<br>Your care team | 237 / 1200 |
+| T13 | SMS | Your screening result is ready. We want to make sure your next step is not delayed. A senior member of your care team has been told. The next step is {next_step}. {owner_name} will call you, or you can reply to book a time. | 225 / 320 |
+| T14 | WhatsApp | Hello. This is a message from your care team.<br><br>Your screening result is ready. We want to make sure your next step is not delayed. A senior member of your care team has been told.<br><br>The next step is {next_step}. {owner_name} will call you, or you can reply to book a time. | 273 / 600 |
+| T15 | Letter | Hello,<br><br>Your screening result is ready. We want to make sure your next step is not delayed. A senior member of your care team has been told.<br><br>The next step is {next_step}. {owner_name} will call you, or you can contact your care team to book a time.<br><br>Kind regards,<br>Your care team | 281 / 1200 |
 
 **callback_ack.** Reply when the patient pressed "I don't understand this". A person will call.
 
 | ID | Channel | English text | Chars / limit |
 |---|---|---|---|
-| T16 | SMS | Thank you for telling us you need help to understand. A person from your care team will call you. The next step is {next_step}. Your care owner is {owner_name}. | 162 / 320 |
+| T16 | SMS | Thank you for telling us you need help to understand. A person from your care team will call you to explain. The next step is {next_step}. Your care owner is {owner_name}. | 173 / 320 |
 | T17 | WhatsApp | Hello. Thank you for telling us you need help to understand.<br><br>A person from your care team will call you to explain. The next step is {next_step}.<br><br>Your care owner is {owner_name}. | 182 / 600 |
 | T18 | Letter | Hello,<br><br>Thank you for telling us you need help to understand our message.<br><br>A person from your care team will call you to explain. The next step is {next_step}.<br><br>Your care owner is {owner_name}.<br><br>Kind regards,<br>Your care team | 225 / 1200 |
 
@@ -339,14 +339,12 @@ The forbidden-phrase list in section 10 applies to model drafts. We ran it over 
 
 | ID | English text | Matching list entries |
 |---|---|---|
-| W07 | Your screening test found blood. This does not mean you have cancer. The next step is a camera test called a colonoscopy. | `you_have`, `cancer` |
-| W08 | This page is not a diagnosis. Your doctor will explain your result. | `diagnos` |
 | D01 | Hello. Your screening test needs a follow-up camera test called a colonoscopy. This is not a diagnosis. Please call us to book a time. | `diagnos` |
 | D02 | Hello. This is a reminder to call us about your screening follow-up. This is not a diagnosis. We are here to help. | `diagnos` |
 
 ## 10. Words the system never lets a model write
 
-A model draft containing any of these is rejected and replaced by the template (and counted as an abstention). Matching ignores case and, for phrases, whole words only; a regular expression is shown where one word stem stands for several forms. The Arabic list has the same seven categories and is in the Arabic pack. Please say what is missing and what blocks a perfectly good sentence.
+A model draft containing any of these is rejected and replaced by the template (and counted as an abstention). Matching ignores case and, for phrases, whole words only; a regular expression is shown where one word stem stands for several forms. The Arabic list has the same categories and is in the Arabic pack. Please say what is missing and what blocks a perfectly good sentence.
 
 | Category | What it prevents |
 |---|---|
@@ -357,10 +355,11 @@ A model draft containing any of these is rejected and replaced by the template (
 | `clinical_judgement` | Judging urgency or severity. |
 | `medication_or_treatment` | Mentioning medicines, doses, treatment or surgery. |
 | `advice` | Telling the patient what they should do beyond the next step. |
+| `result_disclosure` | Stating or hinting at what the screening found ("found blood", "positive result", "abnormal"). IFHAS: abnormal results are communicated with the participant present. |
 
 | Id | Category | Phrase or pattern | Why | Example it catches |
 |---|---|---|---|---|
-| `you_have` | diagnosis_statement | `you have` | "You have ..." is the grammar of a diagnosis. The only statement the message may make about the result is that the screening test found blood. | You have a problem that we need to look at. |
+| `you_have` | diagnosis_statement | `you have` | "You have ..." is the grammar of a diagnosis. A message makes no statement about the result; the care team gives it with the participant present. | You have a problem that we need to look at. |
 | `you_have_got` | diagnosis_statement | `you(?:'\|’)?ve got\|you have got` | Same as "you have"; informal form. | You've got something that needs a test. |
 | `you_are_ill` | diagnosis_statement | `you are (?:ill\|sick\|unwell\|affected\|positive)\|you(?:'\|’)re (?:ill\|sick\|unwell\|affected\|positive)` | States a condition of the patient, which only a clinician may do. | You are unwell and need a test. |
 | `diagnos` | diagnosis_statement | `diagnos\w*` | The system diagnoses nothing; any use of the word implies that it did or will. | This is not a diagnosis. |
@@ -369,7 +368,7 @@ A model draft containing any of these is rejected and replaced by the template (
 | `malignant` | disease_term | `malignan\w*` | Names a pathological finding. Not for an automated message. | The test shows it is malignant. |
 | `carcinoma_neoplasm` | disease_term | `carcinoma\w*\|neoplas\w*\|adenoma\w*\|oncolog\w*` | Clinical terminology for disease; not allowed in patient messages from the model. | You will see the oncology team. |
 | `polyp_lesion` | disease_term | `polyps?\|lesions?\|growths?` | Describes a finding the screening test cannot show. | It may be a polyp. |
-| `positive_for` | positive_result_jargon | `positive for\|tested positive\|test is positive\|positive result` | "Positive" is read by many patients as "I have the disease". The message says only that the test found blood. | A positive result came back. |
+| `positive_for` | positive_result_jargon | `positive for\|tested positive\|test is positive\|positive result` | "Positive" is read by many patients as "I have the disease". A message states no result. | A positive result came back. |
 | `do_not_worry` | false_reassurance | `(?:do not\|don(?:'\|’)t) (?:worry\|be worried\|be alarmed\|panic)\|no need to (?:worry\|panic)\|nothing to (?:worry\|be worried)` | Reassurance is a clinical judgement and may be false. It also makes patients less likely to act on the next step. | Do not worry about this. |
 | `probably_nothing` | false_reassurance | `(?:probably\|likely\|just\|only) nothing\|not serious\|nothing serious\|not a big deal\|no cause for concern\|nothing to be concerned\|rest assured` | Minimises a result that has not been investigated yet. | It is probably nothing. |
 | `be_fine` | false_reassurance | `(?:will\|should) be (?:fine\|ok\|okay\|alright\|all right)\|everything is (?:fine\|ok\|okay)\|all clear\|(?:is\|are) normal` | Predicts an outcome the system cannot know. | You will be fine. |
@@ -377,8 +376,13 @@ A model draft containing any of these is rejected and replaced by the template (
 | `medication` | medication_or_treatment | `medicat\w*\|medicine\w*\|prescri\w*\|dose\w*\|dosage\|tablets?\|pills?\|aspirin\|ibuprofen\|antibiotic\w*\|laxative\w*\|supplement\w*` | Medication advice is outside the model's remit and can cause harm (for example before a colonoscopy). | Take aspirin until then. |
 | `treatment` | medication_or_treatment | `treatment\w*\|therapy\|surgery\|surgical\|chemo\w*\|radiotherapy\|cure\w*` | Implies a treatment decision that has not been made. | Treatment will start soon. |
 | `advice_verbs` | advice | `you should\|you must\|you need to\|you have to\|we advise\|we recommend\|i recommend\|it is recommended\|recommended that\|make sure you\|be sure to\|avoid eating\|stop taking\|fasting\|diet\b` | The only instruction allowed is "the next step is ...; your care team will contact you". Everything else (preparation, diet, behaviour) is for the care team. | You should stop eating red meat. |
+| `found_blood` | result_disclosure | `(?:found\|finds\|detected\|detects\|showed\|shows\|revealed\|reveals\|saw\|seen\|spotted) (?:\w+ ){0,3}blood\|blood (?:was\|has been\|is) (?:found\|detected\|seen)\|traces? of blood` | IFHAS: abnormal results are communicated with the participant present | Your screening test found blood. |
+| `blood_in_stool` | result_disclosure | `blood in (?:your \|the \|a )?(?:stool\|stools\|sample\|poo\|faeces\|feces\|motion\|motions)\|(?:stool\|faecal\|fecal) blood\|bloody stools?` | IFHAS: abnormal results are communicated with the participant present | There was blood in your stool. |
+| `positive_result` | result_disclosure | `positive result\|(?:result\|test\|screening\|fit) (?:is\|was\|came back\|has come back) positive\|came back positive\|positive (?:screening\|fit\|test)` | IFHAS: abnormal results are communicated with the participant present | Your test was positive. |
+| `abnormal_result` | result_disclosure | `abnormal\w*\|(?:result\|test\|screening) (?:is\|was) not normal\|something wrong` | IFHAS: abnormal results are communicated with the participant present | You have an abnormal result. |
+| `result_shows` | result_disclosure | `(?:results?\|tests?\|screening) (?:shows?\|showed\|indicates?\|indicated\|suggests?\|suggested\|revealed\|reveals?)` | IFHAS: abnormal results are communicated with the participant present | Your result shows a problem. |
 
-The Arabic list has 39 entries (see `arabic-pack.md`). The validator also rejects: empty text, text over the channel limit, text in the wrong language, a missing owner name or next step, leftover placeholders, runs of 7 or more digits, email addresses, links, and identifier words (Emirates ID, passport, file number).
+The Arabic list has 53 entries (see `arabic-pack.md`). The validator also rejects: empty text, text over the channel limit, text in the wrong language, a missing owner name or next step, leftover placeholders, runs of 7 or more digits, email addresses, links, and identifier words (Emirates ID, passport, file number).
 
 ## 11. Ten questions we need answered
 
@@ -386,7 +390,7 @@ The Arabic list has 39 entries (see `arabic-pack.md`). The validator also reject
 
 2. **The other time limits.** Contact the patient in 5 working days, patient confirms in 7, book the colonoscopy in 14, clinician review in 5 after the colonoscopy. *Question:* Which of these are too tight or too loose? The patient-confirms limit runs against the team although the patient controls it: should that clock exist, and who should be chased when it passes?
 
-3. **The first message and the word "blood".** The only clinical fact any message states is "Your screening test found blood. The next step is a colonoscopy." The patient page adds "This does not mean you have cancer" (W07), although messages never name cancer, and says "This page is not a diagnosis" (W08). *Question:* Is "found blood" the right first sentence, or would you say "needs a follow-up test"? Should the page name cancer at all, even to say the result is not a diagnosis? Is anything in section 9 alarming, wrong, or missing?
+3. **No result in any text.** No message (SMS, WhatsApp or letter) and no line on the patient page states or hints at what the screening found. A message says that the result is ready, that the care team needs to talk with the patient about the next step, and who will call. The patient page says the same and adds "Your care team will explain your result in person or by phone." This follows the IFHAS standard that abnormal results are given with the participant present. The next step is named only as an appointment ("a camera test"; the patient page also calls it a colonoscopy). The forbidden-phrase list rejects any model draft that states a result (category `result_disclosure`). *Question:* Please confirm the non-disclosure wording (H1). Is "Your screening result is ready and your care team needs to talk with you about the next step" acceptable as the first message, or does it alarm patients or hint at a finding by itself? Is naming the next step ("a camera test", "a colonoscopy") acceptable, or should even that wait for the conversation? Is "in person or by phone" right, and what should happen when a patient replies and asks for the result by text? Is anything in section 9 alarming, wrong, or missing?
 
 4. **What the 31 working days are measured from.** The national KPI is a colonoscopy within 31 working days of referral. Our clock starts when the booking is recorded (`confirmatory_booked`), not at the result, not at the care owner's acceptance, and not at the referral. Adding up every step's full allowance, a colonoscopy could happen up to 61 working days after the result and still meet every one of our limits. *Question:* From which event should the 31 working days be counted: result received, ownership accepted, referral, or booking? Should we also report the programme-level share (the KPI is a percentage, above 90%), not only a per-case limit?
 
@@ -463,9 +467,10 @@ For each row write keep or change and, if you change it, say what you would do. 
 | F:clinical_judgement | Forbidden-phrase category `clinical_judgement` |  |  |
 | F:medication_or_treatment | Forbidden-phrase category `medication_or_treatment` |  |  |
 | F:advice | Forbidden-phrase category `advice` |  |  |
+| F:result_disclosure | Forbidden-phrase category `result_disclosure` |  |  |
 | Q1 | Question 1: Acknowledge and accept in 2 working days |  |  |
 | Q2 | Question 2: The other time limits |  |  |
-| Q3 | Question 3: The first message and the word "blood" |  |  |
+| Q3 | Question 3: No result in any text |  |  |
 | Q4 | Question 4: What the 31 working days are measured from |  |  |
 | Q5 | Question 5: What counts as evidence to close a case |  |  |
 | Q6 | Question 6: Informed refusal |  |  |

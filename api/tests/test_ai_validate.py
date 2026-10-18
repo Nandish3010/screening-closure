@@ -1,5 +1,7 @@
 """D3: output validation, template fallback and abstention accounting (T-D3, T-D8)."""
 
+import re
+
 import pytest
 
 from app.ai import validate as v
@@ -27,9 +29,9 @@ def make_req(language="en", purpose="result_notification", channel="sms", date=N
 
 
 GOOD = {
-    "en": "Your screening test found blood. The next step is a colonoscopy. "
+    "en": "Your screening result is ready. The next step is a camera test. "
           "Dr Sara Khan from your care team will contact you.",
-    "ar": "وجد فحص الكشف المبكر الذي أجريته دماً. الخطوة التالية هي تنظير القولون. "
+    "ar": "نتيجة فحصك جاهزة. الخطوة التالية هي فحص بالكاميرا. "
           "سيتواصل معك فريق رعايتك. المسؤول عن رعايتك هو الدكتورة سارة خان.",
 }
 
@@ -54,12 +56,12 @@ RULE_FIXTURES = {
     v.UNFILLED_PLACEHOLDER: (dict(), GOOD["en"] + " Call {phone}.", GOOD["en"]),
     v.TOO_LONG: (dict(), GOOD["en"] + " Your care team is here to help." * 12, GOOD["en"]),
     v.WRONG_LANGUAGE: (dict(), GOOD["ar"], GOOD["en"]),
-    v.MISSING_OWNER_NAME: (dict(), "Your screening test found blood. The next step is a colonoscopy.", GOOD["en"]),
-    v.MISSING_NEXT_STEP: (dict(), "Your screening test found blood. Dr Sara Khan will contact you.", GOOD["en"]),
+    v.MISSING_OWNER_NAME: (dict(), "Your screening result is ready. The next step is a camera test.", GOOD["en"]),
+    v.MISSING_NEXT_STEP: (dict(), "Your screening result is ready. Dr Sara Khan will contact you.", GOOD["en"]),
     v.MISSING_APPOINTMENT_DATE: (
         dict(purpose="appointment_confirmation"),
-        "Your appointment is booked. The next step is a colonoscopy. Dr Sara Khan will contact you.",
-        "Your appointment is on Tuesday 3 November 2026. The next step is a colonoscopy. "
+        "Your appointment is booked. The next step is a camera test. Dr Sara Khan will contact you.",
+        "Your appointment is on Tuesday 3 November 2026. The next step is a camera test. "
         "Dr Sara Khan will contact you.",
     ),
     v.FORBIDDEN_PHRASE: (dict(), GOOD["en"] + " Do not worry about it.", GOOD["en"]),
@@ -199,7 +201,7 @@ def test_arabic_indic_digits_count_as_digits():
 def test_short_numbers_and_request_values_are_allowed():
     # Short numbers (floor, time) pass; the supplied appointment date passes even though it has digits.
     req = make_req("en", "appointment_confirmation", date="2026-11-03 10:30")
-    text = ("Your appointment is on 2026-11-03 10:30. The next step is a colonoscopy. "
+    text = ("Your appointment is on 2026-11-03 10:30. The next step is a camera test. "
             "Dr Sara Khan will contact you.")
     assert validate(text, req).ok
     assert not validate(text.replace("2026-11-03 10:30", "2026-11-04 10:30"), req).ok
@@ -208,12 +210,12 @@ def test_short_numbers_and_request_values_are_allowed():
 # ------------------------------------------------------------------ fallback (T-D3)
 
 BAD_OUTPUTS = {
-    "diagnosis": ("en", "You have cancer. The next step is a colonoscopy. Dr Sara Khan will contact you."),
+    "diagnosis": ("en", "You have cancer. The next step is a camera test. Dr Sara Khan will contact you."),
     "over_length": ("en", GOOD["en"] + " Your care team is here to help." * 12),
     "wrong_language": ("en", GOOD["ar"]),
     "pii": ("en", GOOD["en"] + " Your number 0501234567 is on file."),
     "empty": ("en", ""),
-    "unfilled": ("en", "Dear {patient}, the next step is a colonoscopy. Dr Sara Khan will contact you."),
+    "unfilled": ("en", "Dear {patient}, the next step is a camera test. Dr Sara Khan will contact you."),
     "advice": ("en", GOOD["en"] + " You should stop taking your tablets."),
     "reassurance": ("en", GOOD["en"] + " Do not worry."),
     "missing_fields": ("en", "Your screening test found blood."),
@@ -306,7 +308,7 @@ def test_abstention_count_and_rate():
     req = make_req()
     plan = [
         FakeProvider(GOOD["en"]),  # ok
-        FakeProvider("You have cancer. a colonoscopy Dr Sara Khan"),  # forbidden
+        FakeProvider("You have cancer. a camera test Dr Sara Khan"),  # forbidden
         FakeProvider(exc=ProviderUnavailable("x")),  # unavailable
         FakeProvider(GOOD["en"]),  # ok
         FakeProvider(GOOD["en"] + " Visit www.example.com"),  # url
@@ -339,3 +341,93 @@ def test_reviewer_pack_lists_forbidden_phrases():
     assert "## Forbidden phrases" in md
     for e in v.load_forbidden_phrases():
         assert f"`{e.id}`" in md
+
+
+# ------------------------------------------------------------------ E14: no outbound text discloses the result
+# IFHAS: abnormal results are communicated with the participant present.
+
+DISCLOSING_EN = [
+    "Your screening test found blood.",
+    "The lab found some blood in the sample.",
+    "There is blood in your stool.",
+    "We saw blood in the sample.",
+    "You have a positive result.",
+    "Your test was positive.",
+    "The result came back positive.",
+    "This is an abnormal result.",
+    "Your result shows a problem.",
+    "Your test showed something.",
+]
+DISCLOSING_AR = [
+    "وجد فحصك دماً.",
+    "وجدنا دماً في العينة.",
+    "أظهر فحصك وجود دم.",
+    "هناك دم في البراز.",
+    "نتيجتك موجبة.",
+    "نتيجتك ايجابية.",
+    "النتيجة غير طبيعية.",
+    "أظهرت نتيجتك مشكلة.",
+    "أظهر فحصك مشكلة.",
+]
+
+
+def _disclosure_ids(text):
+    return {h.id for h in v.forbidden_hits(text) if h.category in ("result_disclosure", "positive_result_jargon")}
+
+
+@pytest.mark.parametrize("text", DISCLOSING_EN)
+def test_english_result_disclosure_is_rejected(text):
+    assert _disclosure_ids(text), text
+    draft = f"{text} The next step is a camera test. Dr Sara Khan will call you."
+    res = validate(draft, make_req("en"))
+    assert not res.ok and any(r.startswith("forbidden_phrase:") for r in res.reasons), res.reasons
+
+
+@pytest.mark.parametrize("text", DISCLOSING_AR)
+def test_arabic_result_disclosure_is_rejected(text):
+    assert _disclosure_ids(text), text
+    draft = f"{text} الخطوة التالية هي فحص بالكاميرا. ستتلقى اتصالاً من الدكتورة سارة خان."
+    res = validate(draft, make_req("ar"))
+    assert not res.ok and any(r.startswith("forbidden_phrase:") for r in res.reasons), res.reasons
+
+
+def test_a_disclosing_model_draft_falls_back_to_the_template():
+    req = make_req("en")
+    log = AbstentionLog()
+    out = draft_with_fallback(
+        req, FakeProvider("Your screening test found blood. The next step is a camera test. Dr Sara Khan will call you."), log)
+    assert out.fallback_used and out.abstention_reason.startswith("validation_failed:")
+    assert "forbidden_phrase:found_blood" in out.abstention_reason
+    assert "blood" not in out.text.lower()
+    assert log.count == 1
+
+
+def test_a_non_disclosing_model_draft_is_accepted():
+    req = make_req("en")
+    ok = ("Your screening result is ready and your care team needs to talk with you about the next step, "
+          "a camera test. Dr Sara Khan will call you, or you can reply to book a time.")
+    assert validate(ok, req).ok
+
+
+def test_disclosure_entries_carry_the_ifhas_rationale_and_reject_their_own_example():
+    entries = [fp for fp in v.load_forbidden_phrases() if fp.category == "result_disclosure"]
+    assert {fp.language for fp in entries} == {"en", "ar"}
+    for fp in entries:
+        assert fp.rationale == "IFHAS: abnormal results are communicated with the participant present", fp.id
+        assert fp.id in {h.id for h in v.forbidden_hits(fp.example) if h.language == fp.language}, fp.id
+    # The phrases the ticket names, in both languages.
+    en_ids = {fp.id for fp in entries if fp.language == "en"}
+    ar_ids = {fp.id for fp in entries if fp.language == "ar"}
+    assert {"found_blood", "blood_in_stool", "positive_result", "abnormal_result"} <= en_ids
+    assert {"found_blood", "blood_in_stool", "positive_result", "abnormal_result"} <= ar_ids
+
+
+def test_no_template_in_any_purpose_channel_or_language_discloses_the_result():
+    from app.ai.templates import iter_templates
+    n = 0
+    for e in iter_templates():
+        hits = [h.id for h in v.forbidden_hits(e.text)]
+        assert not hits, (e.language, e.purpose, e.key, hits)
+        assert not re.search(r"blood|positive|abnormal|cancer|colonoscop|دم|تنظير|سرطان", e.text, re.I), (e.language, e.purpose, e.key)
+        n += 1
+    assert n >= 30

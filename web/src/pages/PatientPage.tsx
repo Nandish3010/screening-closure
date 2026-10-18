@@ -186,7 +186,7 @@ export function PatientView({ caseId }: { caseId: string }) {
       <section aria-labelledby="p-result">
         <h2 id="p-result">{t.resultHeading}</h2>
         <p className="big">{t.resultBody}</p>
-        <p className="muted">{t.notDiagnosis}</p>
+        <p data-testid="explain-in-person">{t.explainInPerson}</p>
       </section>
 
       <section aria-labelledby="p-progress">

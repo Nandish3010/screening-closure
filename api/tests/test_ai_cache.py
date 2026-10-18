@@ -20,7 +20,7 @@ from app.ai.provider import (
 )
 from app.ai.validate import AbstentionLog, draft_with_fallback
 
-GOOD = "Your screening test found blood. Dr Sara Khan will arrange a colonoscopy and the care team will contact you."
+GOOD = "Your screening result is ready. Dr Sara Khan will arrange a colonoscopy and the care team will contact you."
 
 
 def make_req(**overrides) -> DraftRequest:
