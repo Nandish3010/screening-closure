@@ -28,12 +28,11 @@ that a git worktree tests its own code rather than whichever checkout the venv w
 
     effort-check  the committed Human effort section is current and the effort arithmetic tests pass (B17)
 
-`make check-full` (--full) also runs the slow regeneration checks:
+    sensitivity-check  re-runs the one-at-a-time sensitivity sweep; committed files must be identical (B14, ~5 min)
+    calibrate-check    re-runs the open-dataset fits (B18); SKIPPED loudly when the gitignored downloads are
+                  absent (`make calibrate-fetch` once)
 
-    sensitivity-check  re-runs the one-at-a-time sensitivity sweep; committed files must be identical (B14)
-    calibrate-check    re-runs the open-dataset fits (needs `make calibrate-fetch` once: the downloads are gitignored)
-
-Usage: python tools/check/run_check.py [--keep-going] [--full] [--only a,b] [--skip a,b]
+Usage: python tools/check/run_check.py [--keep-going] [--only a,b] [--skip a,b]
 """
 
 from __future__ import annotations
@@ -68,7 +67,7 @@ class Stage:
     needs_pg: bool = False
     before: tuple[str, ...] = ()  # make targets run first (not reported separately)
     web: bool = False
-    full: bool = False  # run only by `make check-full` (--full): the slow regeneration checks
+    needs_path: str = ""  # a gitignored input the stage reads; SKIPPED loudly (not a pass) when it is absent
 
 
 STAGES = [
@@ -87,9 +86,10 @@ STAGES = [
     Stage("test-review-packs"),
     Stage("effort-check"),
     Stage("web-e2e", web=True),
-    # `make check-full` adds these (minutes each; they re-run the sweeps and fits from scratch):
-    Stage("sensitivity-check", full=True),
-    Stage("calibrate-check", full=True),
+    # The slow regeneration checks (about 5.5 minutes together). The whole of `make check` took 13.5 minutes at the M5
+    # final merge, inside the 25-minute budget, so they stay in it rather than in a separate target.
+    Stage("sensitivity-check"),
+    Stage("calibrate-check", needs_path="data/external/MANIFEST.json"),
 ]
 
 PLAYWRIGHT_RE = re.compile(r"^(\d+ passed)(?: \([\d.]+m?s\))?$")
@@ -143,7 +143,6 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--keep-going", action="store_true", default=DEFAULT_KEEP_GOING)
     ap.add_argument("--only", default="")
     ap.add_argument("--skip", default="")
-    ap.add_argument("--full", action="store_true", help="also run the slow stages (make check-full)")
     args = ap.parse_args(argv)
     only = {s for s in args.only.split(",") if s}
     skip = {s for s in args.skip.split(",") if s}
@@ -159,8 +158,6 @@ def main(argv: list[str] | None = None) -> int:
     for stage in STAGES:
         if (only and stage.name not in only) or stage.name in skip:
             continue
-        if stage.full and not args.full and not only:
-            continue
         if failed and not args.keep_going:
             results.append((stage.name, "NOT RUN", 0.0, "an earlier stage failed"))
             continue
@@ -169,6 +166,11 @@ def main(argv: list[str] | None = None) -> int:
             box(f"SKIPPED {stage.name}: Postgres is not reachable on {PG_HOST}:{PG_PORT}. "
                 "Start it with `docker compose up -d postgres` and rerun. This is NOT a pass.")
             results.append((stage.name, "SKIPPED", 0.0, f"Postgres not reachable on {PG_HOST}:{PG_PORT}"))
+            continue
+        if stage.needs_path and not (ROOT / stage.needs_path).exists():
+            box(f"SKIPPED {stage.name}: {stage.needs_path} is missing (gitignored downloads). Run `make calibrate-fetch` "
+                "once and rerun. This is NOT a pass.")
+            results.append((stage.name, "SKIPPED", 0.0, f"{stage.needs_path} missing; run make calibrate-fetch"))
             continue
         t0 = time.perf_counter()
         if stage.web and not (ROOT / "web/node_modules").exists():

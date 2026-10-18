@@ -12,7 +12,7 @@ def test_stage_order_matches_the_brief():
     assert "load-check" in names and "test-tools" in names
     assert names[-7:] == ["risk-check", "review-packs-check", "test-review-packs", "effort-check", "web-e2e",
                           "sensitivity-check", "calibrate-check"]
-    assert [s.name for s in rc.STAGES if s.full] == ["sensitivity-check", "calibrate-check"]
+    assert [s.name for s in rc.STAGES if s.needs_path] == ["calibrate-check"]
     assert names.index("load-check") < names.index("risk-check")
 
 

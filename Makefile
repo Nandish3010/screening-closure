@@ -1,4 +1,4 @@
-.PHONY: agency-run test-demo test-e2e-live demo-scenario demo-stage demo-snapshot demo-restore demo-reset demo-kill-scheduler check check-full docs-check tracker-lint test-security test-tools test-load load-check up down logs test test-db test-db-create test-db-reset test-chaos synthea demo-seed demo-seed-clean evaluate simulate evaluate-check sensitivity sensitivity-check reset web-install web-dev web-build web-test web-e2e test-e2e review-packs review-packs-check test-review-packs test-phi-logs rbac-matrix test-offline fresh-clone risk-report risk-check calibrate-fetch calibrate-fit calibrate-check effort effort-check video video-check video-deps
+.PHONY: agency-run test-demo test-e2e-live demo-scenario demo-stage demo-snapshot demo-restore demo-reset demo-kill-scheduler check docs-check tracker-lint test-security test-tools test-load load-check up down logs test test-db test-db-create test-db-reset test-chaos synthea demo-seed demo-seed-clean evaluate simulate evaluate-check sensitivity sensitivity-check reset web-install web-dev web-build web-test web-e2e test-e2e review-packs review-packs-check test-review-packs test-phi-logs rbac-matrix test-offline fresh-clone risk-report risk-check calibrate-fetch calibrate-fit calibrate-check effort effort-check video video-check video-deps
 
 up:
 	docker compose up -d --build
@@ -200,11 +200,6 @@ agency-run:
 # even after a failure (for reporting): `make check CHECK_KEEP_GOING=1`.
 check:
 	$(PY) tools/check/run_check.py $(if $(CHECK_KEEP_GOING),--keep-going)
-
-# `make check` plus the slow regeneration checks (sensitivity-check about 5 minutes, calibrate-check, which needs the
-# gitignored downloads from `make calibrate-fetch`). Run before a release; `make check` stays the everyday gate.
-check-full:
-	$(PY) tools/check/run_check.py --full $(if $(CHECK_KEEP_GOING),--keep-going)
 
 # Broken relative links and ragged tables in docs/ and project/ (README.md too), and any TODO in docs/
 # outside lines carrying an H1/H2 review marker.

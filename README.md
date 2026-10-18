@@ -30,7 +30,7 @@ Then:
 2. `make demo-reset` brings the database, the FHIR store and the simulation clock back to the snapshot (about 25 s).
 3. Start the web app against the real API, not the in-browser mock that `make web-dev` serves by default: `cd web && VITE_API_ADAPTER=http VITE_API_URL=http://localhost:8000 npm run dev`. Open the three surfaces at http://localhost:5173: the coordinator app at `/coordinator`, the closure dashboard at `/dashboard`, and the patient PWA (switch the role to Patient from a case page, or open `/patient/<caseId>`).
 4. `make evaluate` regenerates every evaluation number in `docs/results` (about 10 s on 10 cores, simulator/README.md).
-5. `make check` runs all 14 gates (stages listed under Tests and checks).
+5. `make check` runs all 17 gates (stages listed under Tests and checks; about 14 minutes).
 
 The scripted walkthrough is [docs/submission/demo-script.md](docs/submission/demo-script.md).
 
@@ -145,9 +145,9 @@ project/     plan, tracker, decisions, log, test cases
 
 ## Tests and checks
 
-`make check` runs 14 stages in this order: test, test-db, web-test, web-build, evaluate-check, docs-check, tracker-lint, test-security, test-tools, load-check, risk-check, review-packs-check, test-review-packs, web-e2e. It stops at the first failure; `CHECK_KEEP_GOING=1` runs all of them.
+`make check` runs 17 stages in this order: test, test-db, web-test, web-build, evaluate-check, docs-check, tracker-lint, test-security, test-tools, load-check, risk-check, review-packs-check, test-review-packs, effort-check, web-e2e, sensitivity-check, calibrate-check. It stops at the first failure; `CHECK_KEEP_GOING=1` runs all of them. The whole run took 13.5 minutes at the M5 final merge, inside the 25-minute budget, so the slow regeneration checks (sensitivity-check about 5.5 minutes, calibrate-check, risk-check) stay in `make check` rather than in a separate target. test-db and load-check are SKIPPED loudly (not passed) when Postgres on :5433 is down, and calibrate-check when the gitignored downloads are absent (`make calibrate-fetch` once). Set `E2E_PORT` if port 4173 is taken by another preview.
 
-At the M5 fix wave (project/LOG.md, line "M5-fix-wave", 2026-10-18 11:55 IST), `make check` was green over 14 of 14 stages: 1805 api and simulator tests, 198 integration, 186 web unit, 35 e2e, 164 tool tests, 72 security-gate tests, 19 pack tests. Outside it: `make test-chaos` 45 passed, `make test-demo` 2 passed, `make test-e2e-live` 3 passed, `make test-offline` 17 of 17.
+At the M5 final merge (project/LOG.md, line "M5-final", 2026-10-18), `make check` was green over 17 of 17 stages: 2154 api and simulator tests, 230 integration, 287 web unit, 51 e2e, 188 tool tests, 72 security-gate tests, 19 pack tests, 20 effort tests, 21 calibration tests. Outside it: `make test-chaos` 45 passed, `make test-demo` 2 passed, `make test-e2e-live` 3 passed, `make test-offline` 17 of 17.
 
 The closure rule has its own property test: `api/tests/test_state_machine.py::test_never_closed_without_evidence_and_human_signoff`.
 
