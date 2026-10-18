@@ -38,6 +38,11 @@ def load_context(params_paths: list[str | Path] | None = None, pathway_path: str
         if not warn:
             warnings.simplefilter("ignore", AssumedParamsWarning)
         params = load_params(*paths)
+    return context_from_params(params, pathway_path)
+
+
+def context_from_params(params: Params, pathway_path: str | Path | None = None) -> Context:
+    """A Context from an already loaded (possibly modified) parameter store; the sensitivity sweep uses this."""
     mp = ModelParams.from_params(params)
     pw_path = Path(pathway_path) if pathway_path else DEFAULT_PATHWAY
     pathway = load_pathway(pw_path)

@@ -21,7 +21,7 @@ from typing import Any
 import yaml
 
 LEAF_KEYS = ("value", "source", "status")
-OPTIONAL_LEAF_KEYS = ("notes",)  # free text; ignored by the simulator
+OPTIONAL_LEAF_KEYS = ("notes", "range", "range_basis")  # notes: free text, ignored by the simulator; range: see Param
 WEEKDAYS = {"mon": 0, "tue": 1, "wed": 2, "thu": 3, "fri": 4, "sat": 5, "sun": 6}
 
 
@@ -40,6 +40,41 @@ class Param:
     source: str
     status: str
     notes: str = ""
+    # Plausible range for the sensitivity sweep (`make sensitivity`): [low, high] in the value's own type (for a list
+    # value, [low list, high list]); range_basis says where it comes from (a source, or one of the default rules in
+    # simulator/sim/sensitivity.py). Not part of the parameter hash and never read by the simulator itself.
+    range: tuple | None = None
+    range_basis: str = ""
+
+
+def _num(x: Any) -> bool:
+    return isinstance(x, (int, float)) and not isinstance(x, bool)
+
+
+def _parse_range(prefix: str, node: dict, origin: str) -> tuple[tuple | None, str]:
+    """`range: [low, high]` (numbers, or equal-length lists of numbers for a list value) needs a `range_basis` and must
+    contain the value."""
+    basis = node.get("range_basis")
+    if "range" not in node:
+        if basis:
+            raise ParamError(f"{origin}: parameter {prefix!r} has range_basis but no range")
+        return None, ""
+    raw, value = node["range"], node["value"]
+    if not isinstance(basis, str) or not basis.strip():
+        raise ParamError(f"{origin}: parameter {prefix!r} has a range but no range_basis (say where the range comes from)")
+    if not isinstance(raw, list) or len(raw) != 2:
+        raise ParamError(f"{origin}: parameter {prefix!r}: range must be [low, high]")
+    lo, hi = raw
+    if _num(value):
+        ok = _num(lo) and _num(hi) and lo <= hi and lo <= value <= hi
+    elif isinstance(value, list) and value and all(_num(v) for v in value):
+        ok = (isinstance(lo, list) and isinstance(hi, list) and len(lo) == len(hi) == len(value)
+              and all(_num(v) for v in lo + hi) and all(a <= v <= b for a, v, b in zip(lo, value, hi)))
+    else:
+        ok = False
+    if not ok:
+        raise ParamError(f"{origin}: parameter {prefix!r}: range {raw} must be numeric, ordered low <= high, and contain the value {value!r}")
+    return (tuple(lo) if isinstance(lo, list) else lo, tuple(hi) if isinstance(hi, list) else hi), basis.strip()
 
 
 def _walk(node: Any, prefix: str, out: dict[str, Param], origin: str) -> None:
@@ -58,7 +93,9 @@ def _walk(node: Any, prefix: str, out: dict[str, Param], origin: str) -> None:
                 raise ParamError(f"{origin}: parameter {prefix!r} has an empty or non-text {k!r}")
         if node["value"] is None:
             raise ParamError(f"{origin}: parameter {prefix!r} has a null value")
-        out[prefix] = Param(prefix, node["value"], node["source"].strip(), node["status"].strip(), str(node.get("notes") or "").strip())
+        rng, basis = _parse_range(prefix, node, origin)
+        out[prefix] = Param(prefix, node["value"], node["source"].strip(), node["status"].strip(),
+                            str(node.get("notes") or "").strip(), rng, basis)
         return
     for k, child in node.items():
         _walk(child, f"{prefix}.{k}" if prefix else str(k), out, origin)
@@ -124,6 +161,19 @@ class Params:
 
     def hash(self) -> str:
         return hashlib.sha256(self.canonical().encode()).hexdigest()
+
+    def with_value(self, key: str, value: Any) -> "Params":
+        """A copy with one parameter's value replaced (source, status and range unchanged); the sweep uses this."""
+        p = self.param(key)
+        new = dict(self._p)
+        new[key] = Param(p.key, value, p.source, p.status, p.notes, p.range, p.range_basis)
+        return Params(new, self.files)
+
+    def sweep_hash(self) -> str:
+        """Hash of every value AND range: identifies the sensitivity design (the plain `hash` ignores ranges)."""
+        body = json.dumps({k: [p.value, p.status, p.range, p.range_basis] for k, p in self._p.items()},
+                          sort_keys=True, separators=(",", ":"))
+        return hashlib.sha256(body.encode()).hexdigest()
 
     def warn_assumed(self) -> str | None:
         n, total = len(self.assumed()), len(self._p)

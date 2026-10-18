@@ -1,4 +1,4 @@
-.PHONY: test-demo test-e2e-live demo-scenario demo-snapshot demo-restore demo-reset demo-kill-scheduler check docs-check tracker-lint test-security test-tools test-load load-check up down logs test test-db test-db-create test-db-reset test-chaos synthea demo-seed demo-seed-clean evaluate simulate evaluate-check reset web-install web-dev web-build web-test web-e2e test-e2e review-packs review-packs-check test-review-packs test-phi-logs rbac-matrix test-offline fresh-clone risk-report risk-check
+.PHONY: test-demo test-e2e-live demo-scenario demo-snapshot demo-restore demo-reset demo-kill-scheduler check docs-check tracker-lint test-security test-tools test-load load-check up down logs test test-db test-db-create test-db-reset test-chaos synthea demo-seed demo-seed-clean evaluate simulate evaluate-check sensitivity sensitivity-check reset web-install web-dev web-build web-test web-e2e test-e2e review-packs review-packs-check test-review-packs test-phi-logs rbac-matrix test-offline fresh-clone risk-report risk-check
 
 up:
 	docker compose up -d --build
@@ -104,6 +104,19 @@ evaluate-check:
 	if diff -q $$a/results.json $$b/results.json >/dev/null; then \
 		echo "evaluate-check: PASS, results.json identical across runs (sha256 $$(shasum -a 256 $$a/results.json | cut -c1-16))"; rm -rf $$a $$b; \
 	else echo "evaluate-check: FAIL, results.json differs ($$a vs $$b)"; diff $$a/results.json $$b/results.json | head -20; exit 1; fi
+
+# One-at-a-time parameter sensitivity (ticket B14): every parameter with a `range` in simulator/params.yaml (and the overlay) is
+# moved to its low and to its high end with the rest held at the literature-anchored scenario; 5 replications x 1,000 cases x 360 days
+# per point, about 1.5 minutes with 8 workers. Writes docs/results/sensitivity.{json,md,svg}. The three files are byte-for-byte
+# reproducible; `make sensitivity-check` reruns the sweep and fails unless the committed files are identical to it.
+SENS_REPS ?= 5
+SENS_CASES ?= 1000
+SENS_JOBS ?= 8
+sensitivity:
+	$(SIMENV) $(PY) -W ignore -m simulator.sim.cli sensitivity --reps $(SENS_REPS) --cases $(SENS_CASES) --days $(EVAL_DAYS) --seed $(SEED) --jobs $(SENS_JOBS) --out-dir docs/results
+
+sensitivity-check:
+	$(SIMENV) $(PY) -W ignore -m simulator.sim.cli sensitivity --reps $(SENS_REPS) --cases $(SENS_CASES) --days $(EVAL_DAYS) --seed $(SEED) --jobs $(SENS_JOBS) --out-dir docs/results --check
 
 reset:
 	docker compose down -v

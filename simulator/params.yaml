@@ -8,6 +8,10 @@
 # Layer files at the CLI with repeated --params flags (later files override earlier keys).
 # fit_positivity_rate is read by simulator/generate_results.py (keep it in block style).
 # Time is in days (calendar days unless a key says working_days). Probabilities are in [0, 1].
+# A leaf may also carry `range: [low, high]` and `range_basis` (the plausible range used by `make sensitivity`, ticket B14, and where it
+#   comes from): "stated range: ..." quotes the source; "default rule: ..." is a mechanical rule from simulator/sim/sensitivity_rules.py
+#   (rates +-50% clipped to [0, 1], durations x0.5 and x2, and so on), used where no published range exists. Ranges are not part of the
+#   parameter hash and are never read by the simulator. A parameter with status assumed or calibrated needs a range unless it is not a quantity.
 
 # ======================================================================================
 # Part 1: adopted from the E1 research proposal (research ticket B11)
@@ -16,6 +20,8 @@ acknowledgement_delay_days:
   value: 2
   source: "No public measurement of staff time-to-acknowledge a positive result. Policy anchors only: UAE National Guideline cl. 12.3 (result to participant < 15 working days), DoH IFHAS V10 s.4.9.2.1 (results documented within 10 days of initial visit)."
   status: assumed
+  range: [1, 4]
+  range_basis: "default rule: duration, value x0.5 and x2"
   notes: "Equals the pathway's own SLA (config/pathways/colorectal_fit.yaml acknowledge: 2 working days), so it is a design choice, not evidence. Section Gaps #2."
 
 # Interpreted as non-attendance at a BOOKED colonoscopy appointment, by reminder channel.
@@ -40,12 +46,16 @@ referral_rejection_rate:
   value: 0.05
   source: "Derived 4.6% (15 of 324 abnormal FIT had a referral problem, e.g. insurance authorisation), AltaMed FQHC, https://pmc.ncbi.nlm.nih.gov/articles/PMC9716593/ . Range 1.2% (incomplete forms, Champlain GI central intake, https://pmc.ncbi.nlm.nih.gov/articles/PMC10872000/) to 8.48% (Saudi SMARC e-referral, https://pmc.ncbi.nlm.nih.gov/articles/PMC12647054/)."
   status: sourced-adjacent
+  range: [0.012, 0.085]
+  range_basis: "stated range: 0.012 (incomplete forms, Champlain GI central intake) to 0.085 (Saudi SMARC e-referral), from this parameter's source and notes"
   notes: "No GI-specific returned-referral rate for an already-indicated post-screen referral exists in the public literature found. Sensitivity 0.012 to 0.085. NHS e-RS 'about 2%' is unverified (page blocked)."
 
 wrong_contact_rate:
   value: 0.08
   source: "Derived 8.3% (59 of 711 abnormal FIT: provider unable to reach patient), Sea Mar FQHC, BMC Gastroenterol 2021, https://pmc.ncbi.nlm.nih.gov/articles/PMC8477359/"
   status: sourced-adjacent
+  range: [0.025, 0.206]
+  range_basis: "stated range: 0.025 (AltaMed, patient not found) to 0.206 (UK surgical clinic, unreachable after 3 calls), from this parameter's notes"
   notes: "Range 0.025 (AltaMed 'patient not found', https://pmc.ncbi.nlm.nih.gov/articles/PMC9716593/) to 0.206 (UK surgical clinic, unreachable after 3 calls, includes no-answer, https://pmc.ncbi.nlm.nih.gov/articles/PMC13422818/). No peer-reviewed rate of wrong EHR phone numbers found. Abu Dhabi: Emirates ID, phone and email are mandatory in the Malaffi minimum dataset (https://www.doh.gov.ae/en/resources/HIE)."
 
 fit_positivity_rate:
@@ -131,6 +141,8 @@ sms_reminder_effect:
   value: 0.25
   source: "Relative reduction in colonoscopy non-attendance, (11.9 - 8.9) / 11.9, Lam et al. 2021. https://doi.org/10.1111/jgh.15218"
   status: sourced-adjacent
+  range: [0, 0.34]
+  range_basis: "stated range: 0 (Mahmud, JAMA Netw Open 2021, no effect) to 0.34 (Cochrane CD007458), from this parameter's notes"
   notes: "Sensitivity 0 (Mahmud et al., JAMA Netw Open 2021, 753 patients, no effect, https://doi.org/10.1001/jamanetworkopen.2020.34553) to 0.34 (Cochrane CD007458, non-attendance 21.4% text vs 32.2% no reminder, derived from 78.6% vs 67.8% attendance). Reminder to positive-FOBT patients to see the GP raised 120-day colonoscopy from 47.1% to 70.3% (Azulay, JMIR mHealth 2019, https://pmc.ncbi.nlm.nih.gov/articles/PMC6379817/): a different outcome, not used."
 
 navigation_effect:
@@ -193,147 +205,147 @@ malaffi_integration_assumption:
 # ---- simulation and calendar ----------------------------------------------------------------
 simulation:
   start_date: {value: "2026-01-05", source: "assumed, no public source", status: assumed}      # must be a working day
-  intake_window_days: {value: 30, source: "assumed, no public source", status: assumed}       # results arrive uniformly over this window
+  intake_window_days: {value: 30, source: "assumed, no public source", status: assumed, range: [15, 60], range_basis: "default rule: duration, value x0.5 and x2"}       # results arrive uniformly over this window
 calendar:
   holidays: {value: [], source: "assumed, no public source", status: assumed}                  # ISO dates that are non-working
 
 # ---- patients ---------------------------------------------------------------------------------
 patients:
   language_share:
-    ar: {value: 0.45, source: "assumed, no public source", status: assumed}
-    en: {value: 0.35, source: "assumed, no public source", status: assumed}
-    other: {value: 0.20, source: "assumed, no public source", status: assumed}
+    ar: {value: 0.45, source: "assumed, no public source", status: assumed, range: [0.225, 0.675], range_basis: "default rule: category weight, value x0.5 and x1.5, mix renormalised when read"}
+    en: {value: 0.35, source: "assumed, no public source", status: assumed, range: [0.175, 0.525], range_basis: "default rule: category weight, value x0.5 and x1.5, mix renormalised when read"}
+    other: {value: 0.20, source: "assumed, no public source", status: assumed, range: [0.1, 0.3], range_basis: "default rule: category weight, value x0.5 and x1.5, mix renormalised when read"}
   channel_share:              # patient's preferred contact channel
-    sms: {value: 0.40, source: "assumed, no public source", status: assumed}
-    whatsapp: {value: 0.30, source: "assumed, no public source", status: assumed}
-    phone: {value: 0.15, source: "assumed, no public source", status: assumed}
-    letter: {value: 0.15, source: "assumed, no public source", status: assumed}
-  provider_switch_prob: {value: 0.05, source: "assumed, no public source", status: assumed}
-  responsiveness_sd: {value: 0.8, source: "assumed, no public source", status: assumed}       # logit-scale spread of the latent responsiveness factor
-  consent_withdrawal_prob: {value: 0.02, source: "assumed, no public source", status: assumed}
-  consent_withdrawal_window_days: {value: 90, source: "assumed, no public source", status: assumed}
-  consent_withdrawal_declines_care_prob: {value: 0.30, source: "assumed, no public source", status: assumed}
-  refusal_prob: {value: 0.12, source: "Calibrated to reproduce the Mohl 2023 baseline completion curve (see docs/results/results.md); placeholder was 0.12, no public source", status: calibrated}            # P(patient will not have the colonoscopy whatever is done)
-  dropout_prob_per_lapse: {value: 0.15, source: "assumed, no public source", status: assumed}  # P(disengage) after each unanswered contact or no-show
+    sms: {value: 0.40, source: "assumed, no public source", status: assumed, range: [0.2, 0.6], range_basis: "default rule: category weight, value x0.5 and x1.5, mix renormalised when read"}
+    whatsapp: {value: 0.30, source: "assumed, no public source", status: assumed, range: [0.15, 0.45], range_basis: "default rule: category weight, value x0.5 and x1.5, mix renormalised when read"}
+    phone: {value: 0.15, source: "assumed, no public source", status: assumed, range: [0.075, 0.225], range_basis: "default rule: category weight, value x0.5 and x1.5, mix renormalised when read"}
+    letter: {value: 0.15, source: "assumed, no public source", status: assumed, range: [0.075, 0.225], range_basis: "default rule: category weight, value x0.5 and x1.5, mix renormalised when read"}
+  provider_switch_prob: {value: 0.05, source: "assumed, no public source", status: assumed, range: [0.025, 0.075], range_basis: "default rule: rate, value x0.5 and x1.5, clipped to [0, 1]"}
+  responsiveness_sd: {value: 0.8, source: "assumed, no public source", status: assumed, range: [0.4, 1.6], range_basis: "default rule: scale, value x0.5 and x2"}       # logit-scale spread of the latent responsiveness factor
+  consent_withdrawal_prob: {value: 0.02, source: "assumed, no public source", status: assumed, range: [0.01, 0.03], range_basis: "default rule: rate, value x0.5 and x1.5, clipped to [0, 1]"}
+  consent_withdrawal_window_days: {value: 90, source: "assumed, no public source", status: assumed, range: [45, 180], range_basis: "default rule: duration, value x0.5 and x2"}
+  consent_withdrawal_declines_care_prob: {value: 0.30, source: "assumed, no public source", status: assumed, range: [0.15, 0.45], range_basis: "default rule: rate, value x0.5 and x1.5, clipped to [0, 1]"}
+  refusal_prob: {value: 0.12, source: "Calibrated to reproduce the Mohl 2023 baseline completion curve (see docs/results/results.md); placeholder was 0.12, no public source", status: calibrated, range: [0.06, 0.18], range_basis: "default rule: rate, value x0.5 and x1.5, clipped to [0, 1]"}            # P(patient will not have the colonoscopy whatever is done)
+  dropout_prob_per_lapse: {value: 0.15, source: "assumed, no public source", status: assumed, range: [0.075, 0.225], range_basis: "default rule: rate, value x0.5 and x1.5, clipped to [0, 1]"}  # P(disengage) after each unanswered contact or no-show
 
 # ---- staff behaviour (delays are lognormal: median * exp(sigma * z)) ------------------------
 staff:
   delay_median_days:          # acknowledge uses acknowledgement_delay_days above
-    accept_ownership: {value: 2, source: "Calibrated to reproduce the Mohl 2023 baseline completion curve (see docs/results/results.md); placeholder was 1.0, no public source", status: calibrated}
-    contact_patient: {value: 5, source: "Calibrated to reproduce the Mohl 2023 baseline completion curve (see docs/results/results.md); placeholder was 3.0, no public source", status: calibrated}
-    book_confirmatory: {value: 6, source: "Calibrated to reproduce the Mohl 2023 baseline completion curve (see docs/results/results.md); placeholder was 4.0, no public source", status: calibrated}
-    clinician_review: {value: 4.0, source: "assumed, no public source", status: assumed}
-    close: {value: 2.0, source: "assumed, no public source", status: assumed}
-  delay_sigma: {value: 0.8, source: "assumed, no public source", status: assumed}
-  forget_prob: {value: 0.015, source: "Calibrated to reproduce the Mohl 2023 baseline completion curve (see docs/results/results.md); placeholder was 0.04, no public source", status: calibrated}            # P(a staff step is never done unless prompted)
+    accept_ownership: {value: 2, source: "Calibrated to reproduce the Mohl 2023 baseline completion curve (see docs/results/results.md); placeholder was 1.0, no public source", status: calibrated, range: [1, 4], range_basis: "default rule: duration, value x0.5 and x2"}
+    contact_patient: {value: 5, source: "Calibrated to reproduce the Mohl 2023 baseline completion curve (see docs/results/results.md); placeholder was 3.0, no public source", status: calibrated, range: [2.5, 10], range_basis: "default rule: duration, value x0.5 and x2"}
+    book_confirmatory: {value: 6, source: "Calibrated to reproduce the Mohl 2023 baseline completion curve (see docs/results/results.md); placeholder was 4.0, no public source", status: calibrated, range: [3, 12], range_basis: "default rule: duration, value x0.5 and x2"}
+    clinician_review: {value: 4.0, source: "assumed, no public source", status: assumed, range: [2.0, 8.0], range_basis: "default rule: duration, value x0.5 and x2"}
+    close: {value: 2.0, source: "assumed, no public source", status: assumed, range: [1.0, 4.0], range_basis: "default rule: duration, value x0.5 and x2"}
+  delay_sigma: {value: 0.8, source: "assumed, no public source", status: assumed, range: [0.4, 1.6], range_basis: "default rule: scale, value x0.5 and x2"}
+  forget_prob: {value: 0.015, source: "Calibrated to reproduce the Mohl 2023 baseline completion curve (see docs/results/results.md); placeholder was 0.04, no public source", status: calibrated, range: [0.0075, 0.0225], range_basis: "default rule: rate, value x0.5 and x1.5, clipped to [0, 1]"}            # P(a staff step is never done unless prompted)
 
 # ---- patient response to outreach -----------------------------------------------------------
 patient_response:
   response_rate_by_channel:   # P(patient acts on one outreach attempt) before modifiers
-    sms: {value: 0.92, source: "Calibrated to reproduce the Mohl 2023 baseline completion curve (see docs/results/results.md); placeholder was 0.70, no public source", status: calibrated}
-    whatsapp: {value: 0.93, source: "Calibrated to reproduce the Mohl 2023 baseline completion curve (see docs/results/results.md); placeholder was 0.75, no public source", status: calibrated}
-    phone: {value: 0.95, source: "Calibrated to reproduce the Mohl 2023 baseline completion curve (see docs/results/results.md); placeholder was 0.80, no public source", status: calibrated}
-    letter: {value: 0.85, source: "Calibrated to reproduce the Mohl 2023 baseline completion curve (see docs/results/results.md); placeholder was 0.55, no public source", status: calibrated}
+    sms: {value: 0.92, source: "Calibrated to reproduce the Mohl 2023 baseline completion curve (see docs/results/results.md); placeholder was 0.70, no public source", status: calibrated, range: [0.46, 1.0], range_basis: "default rule: rate, value x0.5 and x1.5, clipped to [0, 1]"}
+    whatsapp: {value: 0.93, source: "Calibrated to reproduce the Mohl 2023 baseline completion curve (see docs/results/results.md); placeholder was 0.75, no public source", status: calibrated, range: [0.465, 1.0], range_basis: "default rule: rate, value x0.5 and x1.5, clipped to [0, 1]"}
+    phone: {value: 0.95, source: "Calibrated to reproduce the Mohl 2023 baseline completion curve (see docs/results/results.md); placeholder was 0.80, no public source", status: calibrated, range: [0.475, 1.0], range_basis: "default rule: rate, value x0.5 and x1.5, clipped to [0, 1]"}
+    letter: {value: 0.85, source: "Calibrated to reproduce the Mohl 2023 baseline completion curve (see docs/results/results.md); placeholder was 0.55, no public source", status: calibrated, range: [0.425, 1.0], range_basis: "default rule: rate, value x0.5 and x1.5, clipped to [0, 1]"}
   response_delay_median_days:
-    sms: {value: 1.5, source: "assumed, no public source", status: assumed}
-    whatsapp: {value: 1.0, source: "assumed, no public source", status: assumed}
-    phone: {value: 0.5, source: "assumed, no public source", status: assumed}
-    letter: {value: 6.0, source: "assumed, no public source", status: assumed}
-  response_delay_sigma: {value: 0.9, source: "assumed, no public source", status: assumed}
-  language_mismatch_multiplier: {value: 0.8, source: "Calibrated to reproduce the Mohl 2023 baseline completion curve (see docs/results/results.md); placeholder was 0.6, no public source", status: calibrated}  # message not in the patient's language
-  staff_call_response_rate: {value: 0.65, source: "assumed, no public source", status: assumed}     # human phone call from supervisor
-  coordinator_route_response_rate: {value: 0.70, source: "assumed, no public source", status: assumed}
-  dropout_residual_multiplier: {value: 0.25, source: "assumed, no public source", status: assumed}  # response multiplier for a dropped-out patient (digital)
-  human_dropout_residual_multiplier: {value: 0.60, source: "assumed, no public source", status: assumed}
-  self_presentation_prob: {value: 0.38, source: "Calibrated to reproduce the Mohl 2023 baseline completion curve (see docs/results/results.md); placeholder was 0.10, no public source", status: calibrated}       # patient eventually acts without being prompted
-  self_presentation_median_days: {value: 120, source: "Calibrated to reproduce the Mohl 2023 baseline completion curve (see docs/results/results.md); placeholder was 60, no public source", status: calibrated}
+    sms: {value: 1.5, source: "assumed, no public source", status: assumed, range: [0.75, 3.0], range_basis: "default rule: duration, value x0.5 and x2"}
+    whatsapp: {value: 1.0, source: "assumed, no public source", status: assumed, range: [0.5, 2.0], range_basis: "default rule: duration, value x0.5 and x2"}
+    phone: {value: 0.5, source: "assumed, no public source", status: assumed, range: [0.25, 1.0], range_basis: "default rule: duration, value x0.5 and x2"}
+    letter: {value: 6.0, source: "assumed, no public source", status: assumed, range: [3.0, 12.0], range_basis: "default rule: duration, value x0.5 and x2"}
+  response_delay_sigma: {value: 0.9, source: "assumed, no public source", status: assumed, range: [0.45, 1.8], range_basis: "default rule: scale, value x0.5 and x2"}
+  language_mismatch_multiplier: {value: 0.8, source: "Calibrated to reproduce the Mohl 2023 baseline completion curve (see docs/results/results.md); placeholder was 0.6, no public source", status: calibrated, range: [0.4, 1.0], range_basis: "default rule: rate, value x0.5 and x1.5, clipped to [0, 1]"}  # message not in the patient's language
+  staff_call_response_rate: {value: 0.65, source: "assumed, no public source", status: assumed, range: [0.325, 0.975], range_basis: "default rule: rate, value x0.5 and x1.5, clipped to [0, 1]"}     # human phone call from supervisor
+  coordinator_route_response_rate: {value: 0.70, source: "assumed, no public source", status: assumed, range: [0.35, 1.0], range_basis: "default rule: rate, value x0.5 and x1.5, clipped to [0, 1]"}
+  dropout_residual_multiplier: {value: 0.25, source: "assumed, no public source", status: assumed, range: [0.125, 0.375], range_basis: "default rule: rate, value x0.5 and x1.5, clipped to [0, 1]"}  # response multiplier for a dropped-out patient (digital)
+  human_dropout_residual_multiplier: {value: 0.60, source: "assumed, no public source", status: assumed, range: [0.3, 0.9], range_basis: "default rule: rate, value x0.5 and x1.5, clipped to [0, 1]"}
+  self_presentation_prob: {value: 0.38, source: "Calibrated to reproduce the Mohl 2023 baseline completion curve (see docs/results/results.md); placeholder was 0.10, no public source", status: calibrated, range: [0.19, 0.57], range_basis: "default rule: rate, value x0.5 and x1.5, clipped to [0, 1]"}       # patient eventually acts without being prompted
+  self_presentation_median_days: {value: 120, source: "Calibrated to reproduce the Mohl 2023 baseline completion curve (see docs/results/results.md); placeholder was 60, no public source", status: calibrated, range: [60, 240], range_basis: "default rule: duration, value x0.5 and x2"}
 
 # ---- appointment ------------------------------------------------------------------------------
 appointment:
-  booking_lead_median_days: {value: 24, source: "Calibrated to reproduce the Mohl 2023 baseline completion curve (see docs/results/results.md); placeholder was 14, no public source", status: calibrated}
-  booking_lead_sigma: {value: 0.6, source: "Calibrated to reproduce the Mohl 2023 baseline completion curve (see docs/results/results.md); placeholder was 0.5, no public source", status: calibrated}
-  rebook_lead_median_days: {value: 7, source: "assumed, no public source", status: assumed}
-  reminder_days_before: {value: [7, 1], source: "assumed, no public source", status: assumed}
-  max_attempts: {value: 3, source: "assumed, no public source", status: assumed}                    # appointments before giving up (max 4)
-  responsiveness_noshow_shift: {value: 0.5, source: "assumed, no public source", status: assumed}   # logit shift per unit responsiveness
+  booking_lead_median_days: {value: 24, source: "Calibrated to reproduce the Mohl 2023 baseline completion curve (see docs/results/results.md); placeholder was 14, no public source", status: calibrated, range: [12, 48], range_basis: "default rule: duration, value x0.5 and x2"}
+  booking_lead_sigma: {value: 0.6, source: "Calibrated to reproduce the Mohl 2023 baseline completion curve (see docs/results/results.md); placeholder was 0.5, no public source", status: calibrated, range: [0.3, 1.2], range_basis: "default rule: scale, value x0.5 and x2"}
+  rebook_lead_median_days: {value: 7, source: "assumed, no public source", status: assumed, range: [3.5, 14], range_basis: "default rule: duration, value x0.5 and x2"}
+  reminder_days_before: {value: [7, 1], source: "assumed, no public source", status: assumed, range: [[3.5, 0.5], [14, 2]], range_basis: "default rule: duration, value x0.5 and x2"}
+  max_attempts: {value: 3, source: "assumed, no public source", status: assumed, range: [2, 4], range_basis: "default rule: count, value x0.5 and x2, rounded half up, at least 1, at most the engine limit"}                    # appointments before giving up (max 4)
+  responsiveness_noshow_shift: {value: 0.5, source: "assumed, no public source", status: assumed, range: [0.25, 1.0], range_basis: "default rule: scale, value x0.5 and x2"}   # logit shift per unit responsiveness
 
 # ---- referral / handoff ------------------------------------------------------------------------
 handoff:
-  no_response_prob: {value: 0.04, source: "assumed, no public source", status: assumed}             # receiving service never answers
+  no_response_prob: {value: 0.04, source: "assumed, no public source", status: assumed, range: [0.02, 0.06], range_basis: "default rule: rate, value x0.5 and x1.5, clipped to [0, 1]"}             # receiving service never answers
   rejection_reason_share:
-    capacity: {value: 0.35, source: "assumed, no public source", status: assumed}
-    wrong_service: {value: 0.15, source: "assumed, no public source", status: assumed}
-    missing_info: {value: 0.30, source: "assumed, no public source", status: assumed}
-    patient_declined: {value: 0.20, source: "assumed, no public source", status: assumed}
-  response_delay_median_days: {value: 2.0, source: "assumed, no public source", status: assumed}
-  response_delay_sigma: {value: 0.7, source: "assumed, no public source", status: assumed}
-  response_sla_working_days: {value: 3, source: "assumed, no public source", status: assumed}       # orchestrated: unanswered referral bounces back
-  reroute_delay_median_days: {value: 2.0, source: "assumed, no public source", status: assumed}
-  declined_reengage_prob: {value: 0.50, source: "assumed, no public source", status: assumed}       # owner persuades a patient who declined
-  max_attempts: {value: 4, source: "assumed, no public source", status: assumed}                    # referral attempts (max 5)
-  baseline_rejection_noticed_prob: {value: 0.55, source: "Calibrated to reproduce the Mohl 2023 baseline completion curve (see docs/results/results.md); placeholder was 0.40, no public source", status: calibrated}
-  baseline_rejection_notice_median_days: {value: 21, source: "assumed, no public source", status: assumed}
+    capacity: {value: 0.35, source: "assumed, no public source", status: assumed, range: [0.175, 0.525], range_basis: "default rule: category weight, value x0.5 and x1.5, mix renormalised when read"}
+    wrong_service: {value: 0.15, source: "assumed, no public source", status: assumed, range: [0.075, 0.225], range_basis: "default rule: category weight, value x0.5 and x1.5, mix renormalised when read"}
+    missing_info: {value: 0.30, source: "assumed, no public source", status: assumed, range: [0.15, 0.45], range_basis: "default rule: category weight, value x0.5 and x1.5, mix renormalised when read"}
+    patient_declined: {value: 0.20, source: "assumed, no public source", status: assumed, range: [0.1, 0.3], range_basis: "default rule: category weight, value x0.5 and x1.5, mix renormalised when read"}
+  response_delay_median_days: {value: 2.0, source: "assumed, no public source", status: assumed, range: [1.0, 4.0], range_basis: "default rule: duration, value x0.5 and x2"}
+  response_delay_sigma: {value: 0.7, source: "assumed, no public source", status: assumed, range: [0.35, 1.4], range_basis: "default rule: scale, value x0.5 and x2"}
+  response_sla_working_days: {value: 3, source: "assumed, no public source", status: assumed, range: [2, 6], range_basis: "default rule: count, value x0.5 and x2, rounded half up, at least 1, at most the engine limit"}       # orchestrated: unanswered referral bounces back
+  reroute_delay_median_days: {value: 2.0, source: "assumed, no public source", status: assumed, range: [1.0, 4.0], range_basis: "default rule: duration, value x0.5 and x2"}
+  declined_reengage_prob: {value: 0.50, source: "assumed, no public source", status: assumed, range: [0.25, 0.75], range_basis: "default rule: rate, value x0.5 and x1.5, clipped to [0, 1]"}       # owner persuades a patient who declined
+  max_attempts: {value: 4, source: "assumed, no public source", status: assumed, range: [2, 5], range_basis: "default rule: count, value x0.5 and x2, rounded half up, at least 1, at most the engine limit"}                    # referral attempts (max 5)
+  baseline_rejection_noticed_prob: {value: 0.55, source: "Calibrated to reproduce the Mohl 2023 baseline completion curve (see docs/results/results.md); placeholder was 0.40, no public source", status: calibrated, range: [0.275, 0.825], range_basis: "default rule: rate, value x0.5 and x1.5, clipped to [0, 1]"}
+  baseline_rejection_notice_median_days: {value: 21, source: "assumed, no public source", status: assumed, range: [10.5, 42], range_basis: "default rule: duration, value x0.5 and x2"}
 
 # ---- baseline arm (today's process) -----------------------------------------------------------
 baseline:
   channel_share:              # the single letter/SMS goes out on one of these
-    letter: {value: 0.50, source: "assumed, no public source", status: assumed}
-    sms: {value: 0.50, source: "assumed, no public source", status: assumed}
+    letter: {value: 0.50, source: "assumed, no public source", status: assumed, range: [0.25, 0.75], range_basis: "default rule: category weight, value x0.5 and x1.5, mix renormalised when read"}
+    sms: {value: 0.50, source: "assumed, no public source", status: assumed, range: [0.25, 0.75], range_basis: "default rule: category weight, value x0.5 and x1.5, mix renormalised when read"}
   default_language: {value: "en", source: "assumed, no public source", status: assumed}
-  noshow_self_rebook_prob: {value: 0.45, source: "Calibrated to reproduce the Mohl 2023 baseline completion curve (see docs/results/results.md); placeholder was 0.30, no public source", status: calibrated}
-  noshow_self_rebook_median_days: {value: 30, source: "assumed, no public source", status: assumed}
+  noshow_self_rebook_prob: {value: 0.45, source: "Calibrated to reproduce the Mohl 2023 baseline completion curve (see docs/results/results.md); placeholder was 0.30, no public source", status: calibrated, range: [0.225, 0.675], range_basis: "default rule: rate, value x0.5 and x1.5, clipped to [0, 1]"}
+  noshow_self_rebook_median_days: {value: 30, source: "assumed, no public source", status: assumed, range: [15, 60], range_basis: "default rule: duration, value x0.5 and x2"}
 
 # ---- orchestrated arm -------------------------------------------------------------------------
 orchestration:
-  reaction_delay_median_days: {value: 1.0, source: "assumed, no public source", status: assumed}    # time to act after a reminder or escalation
-  reaction_delay_sigma: {value: 0.6, source: "assumed, no public source", status: assumed}
+  reaction_delay_median_days: {value: 1.0, source: "assumed, no public source", status: assumed, range: [0.5, 2.0], range_basis: "default rule: duration, value x0.5 and x2"}    # time to act after a reminder or escalation
+  reaction_delay_sigma: {value: 0.6, source: "assumed, no public source", status: assumed, range: [0.3, 1.2], range_basis: "default rule: scale, value x0.5 and x2"}
   escalation_effect_prob:     # P(staff act) per ladder rung, keyed by the pathway's notify role
-    owner: {value: 0.50, source: "assumed, no public source", status: assumed}
-    owner_supervisor: {value: 0.85, source: "assumed, no public source", status: assumed}
-    programme_coordinator: {value: 1.00, source: "assumed, no public source", status: assumed}
+    owner: {value: 0.50, source: "assumed, no public source", status: assumed, range: [0.25, 0.75], range_basis: "default rule: rate, value x0.5 and x1.5, clipped to [0, 1]"}
+    owner_supervisor: {value: 0.85, source: "assumed, no public source", status: assumed, range: [0.425, 1.0], range_basis: "default rule: rate, value x0.5 and x1.5, clipped to [0, 1]"}
+    programme_coordinator: {value: 1.00, source: "assumed, no public source", status: assumed, range: [0.5, 1.0], range_basis: "default rule: rate, value x0.5 and x1.5, clipped to [0, 1]"}
   contact_recovery_prob:      # P(a wrong contact is corrected), per ladder rung / on delivery failure
-    on_failure: {value: 0.40, source: "assumed, no public source", status: assumed}
-    owner: {value: 0.25, source: "assumed, no public source", status: assumed}
-    owner_supervisor: {value: 0.50, source: "assumed, no public source", status: assumed}
-    programme_coordinator: {value: 0.70, source: "assumed, no public source", status: assumed}
-  contact_recovery_delay_median_days: {value: 2.0, source: "assumed, no public source", status: assumed}
+    on_failure: {value: 0.40, source: "assumed, no public source", status: assumed, range: [0.2, 0.6], range_basis: "default rule: rate, value x0.5 and x1.5, clipped to [0, 1]"}
+    owner: {value: 0.25, source: "assumed, no public source", status: assumed, range: [0.125, 0.375], range_basis: "default rule: rate, value x0.5 and x1.5, clipped to [0, 1]"}
+    owner_supervisor: {value: 0.50, source: "assumed, no public source", status: assumed, range: [0.25, 0.75], range_basis: "default rule: rate, value x0.5 and x1.5, clipped to [0, 1]"}
+    programme_coordinator: {value: 0.70, source: "assumed, no public source", status: assumed, range: [0.35, 1.0], range_basis: "default rule: rate, value x0.5 and x1.5, clipped to [0, 1]"}
+  contact_recovery_delay_median_days: {value: 2.0, source: "assumed, no public source", status: assumed, range: [1.0, 4.0], range_basis: "default rule: duration, value x0.5 and x2"}
   delivery_failure_detect_days:
-    sms: {value: 0.25, source: "assumed, no public source", status: assumed}
-    whatsapp: {value: 0.25, source: "assumed, no public source", status: assumed}
-    phone: {value: 0.10, source: "assumed, no public source", status: assumed}
-    letter: {value: 7.0, source: "assumed, no public source", status: assumed}
-  ladder_exhausted_wait_working_days: {value: 5, source: "assumed, no public source", status: assumed}
-  signoff_sla_working_days: {value: 3, source: "assumed, no public source", status: assumed}        # `close` has no SLA in the pathway YAML
-  timer_miss_prob: {value: 0.02, source: "assumed, no public source", status: assumed}              # scheduler silently fails to arm a timer
-  programme_reach: {value: 1.0, source: "Design choice, not evidence: the upper-range scenario assumes every case in the orchestrated arm receives the orchestrated process. simulator/params.conservative.yaml lowers it (literature-anchored scenario)", status: assumed, notes: "Share of orchestrated-arm cases that actually get the orchestrated process (named owner, timers, ladder, consent ledger, watchdog); the rest follow today's baseline process. 1.0 = the mechanism ceiling."}
-  watchdog_idle_days: {value: 14, source: "assumed, no public source", status: assumed}
-  watchdog_effect_prob: {value: 0.90, source: "assumed, no public source", status: assumed}
-  watchdog_reaction_delay_days: {value: 2.0, source: "assumed, no public source", status: assumed}
-  consent_review_delay_median_days: {value: 2.0, source: "assumed, no public source", status: assumed}
-  transfer_reestablish_days: {value: 5.0, source: "assumed, no public source", status: assumed}     # new owner takes over after a provider switch
+    sms: {value: 0.25, source: "assumed, no public source", status: assumed, range: [0.125, 0.5], range_basis: "default rule: duration, value x0.5 and x2"}
+    whatsapp: {value: 0.25, source: "assumed, no public source", status: assumed, range: [0.125, 0.5], range_basis: "default rule: duration, value x0.5 and x2"}
+    phone: {value: 0.10, source: "assumed, no public source", status: assumed, range: [0.05, 0.2], range_basis: "default rule: duration, value x0.5 and x2"}
+    letter: {value: 7.0, source: "assumed, no public source", status: assumed, range: [3.5, 14.0], range_basis: "default rule: duration, value x0.5 and x2"}
+  ladder_exhausted_wait_working_days: {value: 5, source: "assumed, no public source", status: assumed, range: [3, 10], range_basis: "default rule: count, value x0.5 and x2, rounded half up, at least 1, at most the engine limit"}
+  signoff_sla_working_days: {value: 3, source: "assumed, no public source", status: assumed, range: [2, 6], range_basis: "default rule: count, value x0.5 and x2, rounded half up, at least 1, at most the engine limit"}        # `close` has no SLA in the pathway YAML
+  timer_miss_prob: {value: 0.02, source: "assumed, no public source", status: assumed, range: [0.01, 0.03], range_basis: "default rule: rate, value x0.5 and x1.5, clipped to [0, 1]"}              # scheduler silently fails to arm a timer
+  programme_reach: {value: 1.0, source: "Design choice, not evidence: the upper-range scenario assumes every case in the orchestrated arm receives the orchestrated process. simulator/params.conservative.yaml lowers it (literature-anchored scenario)", status: assumed, notes: "Share of orchestrated-arm cases that actually get the orchestrated process (named owner, timers, ladder, consent ledger, watchdog); the rest follow today's baseline process. 1.0 = the mechanism ceiling.", range: [0.5, 1.0], range_basis: "default rule: rate, value x0.5 and x1.5, clipped to [0, 1]"}
+  watchdog_idle_days: {value: 14, source: "assumed, no public source", status: assumed, range: [7, 28], range_basis: "default rule: duration, value x0.5 and x2"}
+  watchdog_effect_prob: {value: 0.90, source: "assumed, no public source", status: assumed, range: [0.45, 1.0], range_basis: "default rule: rate, value x0.5 and x1.5, clipped to [0, 1]"}
+  watchdog_reaction_delay_days: {value: 2.0, source: "assumed, no public source", status: assumed, range: [1.0, 4.0], range_basis: "default rule: duration, value x0.5 and x2"}
+  consent_review_delay_median_days: {value: 2.0, source: "assumed, no public source", status: assumed, range: [1.0, 4.0], range_basis: "default rule: duration, value x0.5 and x2"}
+  transfer_reestablish_days: {value: 5.0, source: "assumed, no public source", status: assumed, range: [2.5, 10.0], range_basis: "default rule: duration, value x0.5 and x2"}     # new owner takes over after a provider switch
 
 # ---- reopening after closure (both arms) ----------------------------------------------------
 reopen:
-  after_closure_prob: {value: 0.03, source: "assumed, no public source", status: assumed}
-  lag_median_days: {value: 30, source: "assumed, no public source", status: assumed}
-  lag_sigma: {value: 0.6, source: "assumed, no public source", status: assumed}
+  after_closure_prob: {value: 0.03, source: "assumed, no public source", status: assumed, range: [0.015, 0.045], range_basis: "default rule: rate, value x0.5 and x1.5, clipped to [0, 1]"}
+  lag_median_days: {value: 30, source: "assumed, no public source", status: assumed, range: [15, 60], range_basis: "default rule: duration, value x0.5 and x2"}
+  lag_sigma: {value: 0.6, source: "assumed, no public source", status: assumed, range: [0.3, 1.2], range_basis: "default rule: scale, value x0.5 and x2"}
   resume_state: {value: owner_accepted, source: "assumed, no public source", status: assumed}
 
 # ---- messy-case injection ---------------------------------------------------------------------
 # Wrong contact numbers use wrong_contact_rate; provider switches use patients.provider_switch_prob.
 messy:
-  rate_multiplier: {value: 1.0, source: "assumed, no public source", status: assumed}               # scales the three rates below; 0 switches them off
-  duplicate_result_rate: {value: 0.06, source: "assumed, no public source", status: assumed}
-  duplicate_delay_max_days: {value: 10, source: "assumed, no public source", status: assumed}
-  conflicting_ack_rate: {value: 0.04, source: "assumed, no public source", status: assumed}
-  consent_after_booking_rate: {value: 0.02, source: "assumed, no public source", status: assumed}
-  switch_window_days: {value: 60, source: "assumed, no public source", status: assumed}
-  baseline_switch_loss_prob: {value: 0.70, source: "assumed, no public source", status: assumed}
-  baseline_switch_delay_days: {value: 30, source: "assumed, no public source", status: assumed}
-  baseline_conflict_delay_days: {value: 10, source: "assumed, no public source", status: assumed}
+  rate_multiplier: {value: 1.0, source: "assumed, no public source", status: assumed, range: [0.5, 2.0], range_basis: "default rule: scale, value x0.5 and x2"}               # scales the three rates below; 0 switches them off
+  duplicate_result_rate: {value: 0.06, source: "assumed, no public source", status: assumed, range: [0.03, 0.09], range_basis: "default rule: rate, value x0.5 and x1.5, clipped to [0, 1]"}
+  duplicate_delay_max_days: {value: 10, source: "assumed, no public source", status: assumed, range: [5, 20], range_basis: "default rule: duration, value x0.5 and x2"}
+  conflicting_ack_rate: {value: 0.04, source: "assumed, no public source", status: assumed, range: [0.02, 0.06], range_basis: "default rule: rate, value x0.5 and x1.5, clipped to [0, 1]"}
+  consent_after_booking_rate: {value: 0.02, source: "assumed, no public source", status: assumed, range: [0.01, 0.03], range_basis: "default rule: rate, value x0.5 and x1.5, clipped to [0, 1]"}
+  switch_window_days: {value: 60, source: "assumed, no public source", status: assumed, range: [30, 120], range_basis: "default rule: duration, value x0.5 and x2"}
+  baseline_switch_loss_prob: {value: 0.70, source: "assumed, no public source", status: assumed, range: [0.35, 1.0], range_basis: "default rule: rate, value x0.5 and x1.5, clipped to [0, 1]"}
+  baseline_switch_delay_days: {value: 30, source: "assumed, no public source", status: assumed, range: [15, 60], range_basis: "default rule: duration, value x0.5 and x2"}
+  baseline_conflict_delay_days: {value: 10, source: "assumed, no public source", status: assumed, range: [5, 20], range_basis: "default rule: duration, value x0.5 and x2"}
 
 # ---- metric definitions -----------------------------------------------------------------------
 metrics:
-  ltfu_idle_days: {value: 30, source: "assumed, no public source", status: assumed}                 # unfinished and no progress this long = lost to follow-up
-  escalation_precision_window_working_days: {value: 5, source: "assumed, no public source", status: assumed, notes: "Window of the escalation acted-on rate (metric escalation_acted_on_rate, formerly called escalation precision). The key keeps its original name so the parameter hash, which the risk model records, does not change."}
-  min_group_size: {value: 30, source: "assumed, no public source", status: assumed}                 # smaller fairness groups are reported but excluded from max-gap
+  ltfu_idle_days: {value: 30, source: "assumed, no public source", status: assumed, range: [15, 60], range_basis: "default rule: duration, value x0.5 and x2"}                 # unfinished and no progress this long = lost to follow-up
+  escalation_precision_window_working_days: {value: 5, source: "assumed, no public source", status: assumed, notes: "Window of the escalation acted-on rate (metric escalation_acted_on_rate, formerly called escalation precision). The key keeps its original name so the parameter hash, which the risk model records, does not change.", range: [3, 10], range_basis: "default rule: count, value x0.5 and x2, rounded half up, at least 1, at most the engine limit"}
+  min_group_size: {value: 30, source: "assumed, no public source", status: assumed, range: [15, 60], range_basis: "default rule: count, value x0.5 and x2, rounded half up, at least 1, at most the engine limit"}                 # smaller fairness groups are reported but excluded from max-gap

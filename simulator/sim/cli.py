@@ -66,6 +66,28 @@ def _cmd_evaluate(args) -> int:
     return 0
 
 
+def _cmd_sensitivity(args) -> int:
+    from .sensitivity import sweep, write_outputs
+
+    t0 = time.perf_counter()
+    result = sweep(args.reps, args.cases, args.days, args.seed, args.jobs, args.params, args.pathway)
+    out_dir = Path(args.out_dir)
+    if args.check:
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmp:
+            fresh = write_outputs(result, Path(tmp))
+            bad = [f.name for f in fresh if not (out_dir / f.name).exists() or (out_dir / f.name).read_bytes() != f.read_bytes()]
+        if bad:
+            print(f"sensitivity-check: FAIL, {', '.join(bad)} differ from a fresh run ({time.perf_counter() - t0:.0f}s)")
+            return 1
+        print(f"sensitivity-check: PASS, sensitivity.json, .md and .svg are byte-identical to a fresh run ({time.perf_counter() - t0:.0f}s)")
+        return 0
+    paths = write_outputs(result, out_dir)
+    print(f"wrote {', '.join(str(p) for p in paths)} in {time.perf_counter() - t0:.1f}s")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="python -m simulator.sim.cli", description=__doc__)
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -91,6 +113,14 @@ def main(argv: list[str] | None = None) -> int:
     e.add_argument("--jobs", type=int, default=min(8, os.cpu_count() or 1), help="worker processes (never changes results)")
     e.add_argument("--out-dir", default=str(REPO_ROOT / "docs" / "results"))
     e.set_defaults(fn=_cmd_evaluate)
+    sn = sub.add_parser("sensitivity", parents=[common], help="one-at-a-time parameter sweep -> sensitivity.json, .md, .svg")
+    sn.set_defaults(cases=1000)
+    sn.add_argument("--reps", type=int, default=5)
+    sn.add_argument("--days", type=int, default=360)
+    sn.add_argument("--jobs", type=int, default=min(8, os.cpu_count() or 1), help="worker processes (never changes results)")
+    sn.add_argument("--out-dir", default=str(REPO_ROOT / "docs" / "results"))
+    sn.add_argument("--check", action="store_true", help="rerun and fail unless the three committed files are byte-identical")
+    sn.set_defaults(fn=_cmd_sensitivity)
     args = ap.parse_args(argv)
     return args.fn(args)
 
