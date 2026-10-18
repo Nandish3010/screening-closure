@@ -79,7 +79,7 @@ def _summ(values: list[float], seed_parts: tuple, resamples: int, n_reps: int) -
     if len(values) >= 2:
         lo, hi = bootstrap_ci(values, seed_parts, resamples)
     else:
-        lo = hi = mean
+        lo = hi = None  # one replication has no spread: say so (null), do not report a zero-width interval
     return {"mean": mean, "ci_low": lo, "ci_high": hi, "n_reps": len(values), "of_reps": n_reps}
 
 

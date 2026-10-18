@@ -47,3 +47,21 @@ def test_cli_run_smoke(capsys):
     out = json.loads(capsys.readouterr().out)
     assert rc == 0 and out["orchestrated"]["invariant_violations"] == 0
     assert len(out["baseline"]["event_log_sha256"]) == 64
+
+
+def test_a_single_replication_reports_no_interval_not_a_zero_width_one(tmp_path):
+    """SEC-2: with one replication there is no spread to bootstrap. The interval is null, not [mean, mean],
+    and the results and their markdown still render."""
+    ctx = load_context(warn=False)
+    res = evaluate(jobs=1, **{**SMALL, "reps": 1})
+    cell = res["arms"]["orchestrated"]["completion_90d"]
+    assert cell["n_reps"] == 1 and cell["mean"] is not None
+    assert cell["ci_low"] is None and cell["ci_high"] is None
+    assert res["difference"]["completion_90d"]["ci_low"] is None
+    write_results(res, tmp_path, ctx)
+    data = json.loads((tmp_path / "results.json").read_text())
+    assert data["arms"]["orchestrated"]["completion_90d"]["ci_low"] is None
+    assert (tmp_path / "results.md").read_text().startswith("# Evaluation results")
+    # and with two or more replications the interval is there, as before
+    many = evaluate(jobs=1, **{**SMALL, "reps": 2})["arms"]["orchestrated"]["completion_90d"]
+    assert many["ci_low"] is not None and many["ci_low"] <= many["mean"] <= many["ci_high"]

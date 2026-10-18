@@ -321,6 +321,8 @@ Architecture decision records, one per decision. Add new entries at the end with
 - The numbers cover the whole database, including closed cases of any age; there is no time window yet.
 - Bottleneck medians use completed visits only: a state where cases are currently stuck understates its delay. The age buckets and the open-case count show the stuck ones.
 
+**Amendment (SEC-2).** `GET /metrics/closure` used to drop a case whose stored log no longer replays, silently, so the closure rate could be computed over fewer cases than exist. The response now carries `replay_failures: {count, cases: [{case_id, error}]}` (the count is exact, the list is capped at 50) and the route logs the failure at error level; `cases_total` still counts the cases that were measured. The simulator's evaluation reports the confidence interval of a metric with a single replication as `null` (`ci_low`, `ci_high`), not a zero-width interval around the mean; the markdown report prints "n/a" for it.
+
 ## ADR-023: The watchdog scans in the API with its own token; heartbeats and alerts are tables, not case events
 
 **Context.** The failure we fear most is silence: a case nobody touches, and a scheduler that stopped, so no overdue flag or escalation is ever produced. The first stub had the watchdog reading a heartbeat file from a shared volume and logging. That is invisible to the API and to the dashboard, and a file is a poor fit for a service that may run on another host. We also want the watchdog to be able to do very little: if it were compromised it should not be able to close a case.
