@@ -104,6 +104,8 @@ Suggested sensitivity range for the model: clinician 3 to 6, specialist 8 to 15,
 
 Consequence to check when the merge happens: the earlier finding that weighted staff time per case is flat (84.6 against 85.0 coordinator-equivalent minutes) depends on the 3 and 4 ratios. Under the simulator the specialist minutes rise with the outcome (more patients reach colonoscopy) and coordinator minutes fall, so a specialist ratio of 10 instead of 4 will tilt weighted time per case upward, not flat. This note did not rerun the model.
 
+Update, 18 October 2026 (integration merge): the recommended set was adopted in `tools/pilot/inputs.yaml` as `wage_ratio_nurse` 1.5, `wage_ratio_clinician` 4.0 and `wage_ratio_specialist` 10.0 (status sourced-adjacent, with the sensitivity ranges above), and `python3 tools/pilot/cost_model.py` now prints a wage-weighted staff-time section from the regenerated simulator minutes by role. The prediction held: weighted time per case rises, +10.5% at programme level in the literature-anchored scenario (125.5 coordinator-equivalent minutes at baseline against 138.7), +19.1% in reach, +17.1% in the upper range, and +5.8% to +17.1% at programme level across the clinician 3 to 6 and specialist 8 to 15 ranges. At the old 3 and 4 ratios the regenerated minutes give +1.8%.
+
 ## 5. Fully loaded hourly cost
 
 One published figure was found; nothing for coordinators.

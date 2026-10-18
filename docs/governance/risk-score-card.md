@@ -137,7 +137,7 @@ How to read it. The score ranks cases about equally well in every language group
 
 At the time of this card the age-band group 70-75 is the one flagged row (its gap is inside its sampling margin, and age is a null feature by construction, so it is chance, not signal). It is left flagged rather than tuned away: a flag is information, and a retrain that flags a language group is not accepted without an explanation (section 8, step 4).
 
-**Change record (D12, language removed).** Same seed, same data, same fitting procedure; only the language columns differ. Before is the model committed at A19, after is the model in this card.
+**Change record (D12, language removed).** Same seed, same data, same fitting procedure; only the language columns differ. Before is the model committed at A19, after is the model committed at D12. Both predate the M5 recalibration of the simulator parameters (B18), after which the same procedure was retrained to the figures at the top of this card; the comparison is kept as the record of the language change.
 
 | Held-out measure | Before (with language) | After (without) |
 |---|---|---|

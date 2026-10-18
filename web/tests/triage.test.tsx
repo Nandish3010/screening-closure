@@ -11,7 +11,7 @@ import { ROLE_PROVIDERS } from "../src/api/identities";
 import { createHttpAdapter } from "../src/api/httpAdapter";
 import { createMockAdapter } from "../src/api/mockAdapter";
 import { Timeline } from "../src/components/Timeline";
-import { STAFF, REVIEW_REASONS_AR } from "../src/i18n/strings";
+import { STAFF } from "../src/i18n/strings";
 import { completeDetail, outreachHoldsOf, reviewReasonOf, triageReplayOf } from "../src/lib/derive";
 import { CaseDetailPage } from "../src/pages/CaseDetailPage";
 import { renderWithApp } from "./helpers";
@@ -32,13 +32,11 @@ describe("review reasons: the contract and the labels", () => {
   it("lists exactly the six reasons the backend accepts", () => {
     expect([...REVIEW_REASONS]).toEqual(["consent_withdrawn", "reroute_exhausted", "opt_out", "wrong_number", "triage_uncertain", "already_done"]);
   });
-  it("has an English and an Arabic label for every reason", () => {
+  it("has an English label for every reason (the staff UI is English; no unreviewed Arabic is added)", () => {
     for (const r of REVIEW_REASONS) {
       expect((STAFF.reviewReasons as Record<string, string>)[r], `en ${r}`).toMatch(/\S/);
-      expect((REVIEW_REASONS_AR as Record<string, string>)[r], `ar ${r}`).toMatch(/[؀-ۿ]/);
     }
     expect(Object.keys(STAFF.reviewReasons).sort()).toEqual([...REVIEW_REASONS].sort());
-    expect(Object.keys(REVIEW_REASONS_AR).sort()).toEqual([...REVIEW_REASONS].sort());
   });
 });
 

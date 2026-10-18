@@ -6,7 +6,9 @@ Usage:  python3 tools/pilot/cost_model.py [--inputs tools/pilot/inputs.yaml] [--
 Deterministic: no randomness, no clock, no network, standard library only. Every cost number it prints is
 arithmetic on tools/pilot/inputs.yaml, and every input there is an assumption (see that file). The output
 is illustrative; it is not a quote or a forecast. The one exception is the value table, which also reads the
-simulated shares of cases with no colonoscopy by day 270 from docs/results/results.json (synthetic).
+simulated shares of cases with no colonoscopy by day 270 from docs/results/results.json (synthetic). The
+wage-weighted staff-time section also reads the simulated minutes per case by role from the same file, and
+the three wage ratios (nurse, clinician, specialist; docs/evidence-wages.md section 4) from the inputs file.
 """
 import argparse
 import json
@@ -17,7 +19,10 @@ from pathlib import Path
 DEFAULT_INPUTS = Path(__file__).with_name("inputs.yaml")
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_RESULTS = REPO_ROOT / "docs" / "results" / "results.json"
-ALLOWED_STATUS = ("assumed", "sourced")
+ALLOWED_STATUS = ("assumed", "sourced-adjacent", "sourced")
+WAGE_RATIO_INPUTS = ("wage_ratio_nurse", "wage_ratio_clinician", "wage_ratio_specialist")
+# Roles in results.json effort.scenarios.<scenario>.<all|in_reach>.arms.<arm> as "minutes_per_case.<role>".
+EFFORT_ROLES = ("coordinator", "owner_clinician", "specialist")
 
 
 # --- minimal YAML-subset reader (nested mappings, scalars, inline lists, comments) -------------------------
@@ -71,6 +76,13 @@ def load_inputs(path):
             if spec["status"] not in ALLOWED_STATUS:
                 raise ValueError(f"input '{name}' has status '{spec['status']}'; use one of {ALLOWED_STATUS}")
             flat[name] = spec
+    for name in WAGE_RATIO_INPUTS:
+        if name not in flat:
+            raise ValueError(f"input '{name}' is missing (wage ratios are read from the inputs file)")
+    for name in WAGE_RATIO_INPUTS:
+        for field in ("low", "high"):
+            if field not in flat[name]:
+                raise ValueError(f"input '{name}' is missing '{field}' (the sensitivity range)")
     return data, flat
 
 
@@ -152,6 +164,41 @@ def load_delay_shares(path):
     return out
 
 
+def load_effort_minutes(path):
+    """Mean human minutes per case by role, from results.json effort (synthetic).
+
+    Returns a list of (label, minutes, baseline_label) rows in print order; minutes is a dict
+    {coordinator, owner_clinician, specialist}. Each orchestrated row is compared with the baseline
+    of the same scenario and the same cases (all cases, or the cases the programme reaches).
+    """
+    data = json.loads(Path(path).read_text(encoding="utf-8"))
+    scen = data["effort"]["scenarios"]
+
+    def minutes(scenario_key, subset, arm):
+        block = scen[scenario_key][subset]["arms"][arm]
+        return {role: block["minutes_per_case." + role]["mean"] for role in EFFORT_ROLES}
+
+    rows = [
+        ("baseline, all cases", minutes("literature_anchored", "all", "baseline"), None),
+        ("literature anchored, programme level", minutes("literature_anchored", "all", "orchestrated"),
+         "baseline, all cases"),
+        ("baseline, cases in reach", minutes("literature_anchored", "in_reach", "baseline"), None),
+        ("literature anchored, in reach", minutes("literature_anchored", "in_reach", "orchestrated"),
+         "baseline, cases in reach"),
+    ]
+    if "upper_range" in scen:
+        rows.append(("upper range (every case reached)", minutes("upper_range", "all", "orchestrated"),
+                     "baseline, upper-range run"))
+        rows.insert(4, ("baseline, upper-range run", minutes("upper_range", "all", "baseline"), None))
+    return rows
+
+
+def weighted_minutes(minutes, clinician_ratio, specialist_ratio):
+    """Coordinator-equivalent minutes: coordinator + clinician ratio x owner clinician + specialist ratio x specialist."""
+    return (minutes["coordinator"] + clinician_ratio * minutes["owner_clinician"]
+            + specialist_ratio * minutes["specialist"])
+
+
 def value_case(cases, shares, scenario_key, v, case_label):
     """Cancers potentially avoided for `cases` positive FIT cases (illustrative, synthetic shares x published ORs)."""
     suffix = "10_to_12_months" if case_label == "10-12 month ORs" else "over_12_months"
@@ -192,7 +239,8 @@ def main(argv=None):
 
     print("PILOT COST MODEL (illustrative)")
     print(f"Currency: {cur}. Inputs file: {Path(args.inputs).name}.")
-    print("Every input below is an assumption, not a quote, forecast or measured value.\n")
+    print("Every input below is an assumption, not a quote, forecast or measured value; the three wage ratios are")
+    print("the exception (sourced-adjacent: published salary pages, not an official pay scale).\n")
 
     print("INPUTS")
     print(table(["input", "value", "status", "unit"],
@@ -227,6 +275,42 @@ def main(argv=None):
         row("coordinator hours saved", "saved_hours"),
         row("value of time saved", "saved_value"),
     ]))
+    print("All roles' minutes are valued at the coordinator rate in this table; the next section weights them by role.")
+
+    effort_rows = load_effort_minutes(args.results)
+    ratio_sets = [
+        ("central", v["wage_ratio_clinician"], v["wage_ratio_specialist"]),
+        ("low end", spec["wage_ratio_clinician"]["low"], spec["wage_ratio_specialist"]["low"]),
+        ("high end", spec["wage_ratio_clinician"]["high"], spec["wage_ratio_specialist"]["high"]),
+    ]
+    print("\nWAGE-WEIGHTED STAFF TIME (coordinator-equivalent minutes per case; synthetic minutes x sourced-adjacent ratios)")
+    print("Weighted minutes = coordinator + clinician ratio x owner-clinician + specialist ratio x specialist minutes.")
+    print(f"Minutes by role are read from {Path(args.results).name} (effort, mean over replications). Ratios are to the coordinator")
+    print(f"(1.0), from docs/evidence-wages.md section 4: clinician {v['wage_ratio_clinician']:g}, specialist {v['wage_ratio_specialist']:g}; the sensitivity")
+    print(f"ends are clinician {spec['wage_ratio_clinician']['low']:g} to {spec['wage_ratio_clinician']['high']:g}, specialist "
+          f"{spec['wage_ratio_specialist']['low']:g} to {spec['wage_ratio_specialist']['high']:g}. The nurse ratio ({v['wage_ratio_nurse']:g}, range "
+          f"{spec['wage_ratio_nurse']['low']:g} to {spec['wage_ratio_nurse']['high']:g}) is not applied: the")
+    print("simulator has no nurse role. Each orchestrated row is compared with the baseline of the same cases.\n")
+    by_label = {label: m for label, m, _ in effort_rows}
+    print(table(["minutes per case by role", "coordinator", "owner clinician", "specialist", "all roles", "change"], [
+        [label, f"{m['coordinator']:.1f}", f"{m['owner_clinician']:.1f}", f"{m['specialist']:.1f}",
+         f"{sum(m.values()):.1f}",
+         "-" if base is None else f"{(sum(m.values()) / sum(by_label[base].values()) - 1):+.1%}"]
+        for label, m, base in effort_rows]))
+    print()
+    head_w = ["coordinator-equivalent minutes"]
+    for name, rc, rs in ratio_sets:
+        head_w += [f"{name} ({rc:g}/{rs:g})", "change"]
+    wrows = []
+    for label, m, base in effort_rows:
+        r = [label]
+        for _, rc, rs in ratio_sets:
+            w = weighted_minutes(m, rc, rs)
+            r.append(f"{w:.1f}")
+            r.append("-" if base is None else f"{(w / weighted_minutes(by_label[base], rc, rs) - 1):+.1%}")
+        wrows.append(r)
+    print(table(head_w, wrows))
+    print("Ratios in each column header are clinician/specialist. Positive change = more weighted staff time than baseline.")
 
     print("\nCOMMERCIAL OPTIONS (per year; illustrative fees from the inputs file)")
     print(table(head, [
@@ -289,8 +373,9 @@ def main(argv=None):
             vrows.append([f"  {case_label}: late-stage potentially avoided"] + [f"{x['late_stage']:,.2f}" for x in vals])
     print(table(vol_head, vrows))
 
-    print("\nREAD THIS FIRST: all inputs are assumed. Cost per case falls with volume because hosting,")
-    print("licences and the support base are fixed; the numbers show that shape, not a price.")
+    print("\nREAD THIS FIRST: every cost input is assumed (the wage ratios are sourced-adjacent). Cost per case")
+    print("falls with volume because hosting, licences and the support base are fixed; the numbers show that")
+    print("shape, not a price.")
     return 0
 
 

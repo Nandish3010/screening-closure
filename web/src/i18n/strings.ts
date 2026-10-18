@@ -258,16 +258,3 @@ export const STAFF = {
     unavailable: "Effort metrics are not available for this role or this server.",
   },
 } as const;
-
-/**
- * Arabic labels for every `review_requested.reason`, for any screen that has to show a flag in Arabic. Same keys as
- * `STAFF.reviewReasons`. TODO: native-speaker review, like every Arabic string in this file.
- */
-export const REVIEW_REASONS_AR = {
-  consent_withdrawn: "تم تحويل الحالة للمراجعة البشرية (سحب المريض موافقته)",
-  reroute_exhausted: "انتهت قائمة إعادة التوجيه: على المنسق إعادة إسناد الحالة",
-  opt_out: "طلب المريض التوقف عن الرسائل: الرسائل التلقائية موقوفة حتى يراجع شخص الموافقة",
-  wrong_number: "الرقم خاطئ: الرسائل التلقائية موقوفة حتى يؤكد شخص بيانات الاتصال",
-  triage_uncertain: "لم يتمكن النظام من فهم الرد بثقة: على شخص أن يقرأه ويقرر",
-  already_done: "يقول المريض إن تنظير القولون تم بالفعل: على شخص أن يتحقق ويؤكد",
-} as const;

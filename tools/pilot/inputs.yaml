@@ -1,12 +1,16 @@
 # Inputs for tools/pilot/cost_model.py.
 #
-# EVERY value here is an assumption chosen to show the shape of the cost curve. None comes from a quote,
-# a contract, a published price list or pilot data. Replace each one with a sourced figure (and change its
-# status) before any number from this model is used in a commercial conversation.
+# EVERY value here is an assumption chosen to show the shape of the cost curve, with one exception: the three
+# wage ratios (wage_ratio_*), which are "sourced-adjacent" (docs/evidence-wages.md section 4: published
+# recruiter and aggregator salary pages for the right roles in the right country, no official pay scale).
+# None comes from a quote, a contract, a published price list or pilot data. Replace each assumed value with a
+# sourced figure (and change its status) before any number from this model is used in a commercial conversation.
 #
 # Format: a small YAML subset (nested mappings, scalars, inline lists, # comments) read by the script's own
 # parser, so no third-party package is needed. Currency is AED. Each input has: value, unit, status, basis.
-# status must be "assumed" or "sourced"; the script refuses an input with no status.
+# status must be "assumed", "sourced-adjacent" (a published figure for a related task, setting or population,
+# the grade the simulator's effort table also uses) or "sourced"; the script refuses an input with no status.
+# The wage ratios also carry "low" and "high" fields (the sensitivity range the wage-weighted section prints).
 
 currency: AED
 
@@ -78,19 +82,43 @@ inputs:
     value: 57.3
     unit: staff minutes (all roles) per actionable case without the engine
     status: assumed
-    basis: "Source: docs/results/results.json effort (cut-effort), baseline arm, human minutes per case; minutes come from published time studies and assumptions, synthetic. Status assumed-until-regenerated (the script accepts only assumed or sourced). All roles are valued at the coordinator rate below, which understates clinician and specialist time. To be measured in the pilot shadow period (K9)."
+    basis: "Source: docs/results/results.json effort, baseline arm, human minutes per case (57.3; coordinator 46.8, owner clinician 4.4, specialist 6.1), as in docs/results/results.md Human effort, make evaluate on the merged tree, 18 October 2026. Synthetic simulator output; the minutes come from published time studies (66 percent of baseline minutes, sourced-adjacent) and assumptions (34 percent), so the blend is graded assumed, the weaker of the two. All roles are valued at the coordinator rate below, which understates clinician and specialist time; the script's wage-weighted section applies the wage ratios. To be measured in the pilot shadow period (K9)."
 
   coordinator_minutes_per_case_with_engine:
-    value: 45.5
+    value: 46.3
     unit: staff minutes (all roles) per actionable case with the engine
     status: assumed
-    basis: "Source: docs/results/results.json effort (cut-effort), literature-anchored orchestrated arm at programme level (20.5 percent fewer minutes, 0.55 reach); 35.8 in reach. Status assumed-until-regenerated. Coordinator minutes fall but owner-clinician and specialist minutes rise, so valuing all roles at the coordinator rate overstates the saving: at assumed wage ratios (clinician 3x, specialist 4x a coordinator, assumed) weighted time per case is flat. To be measured in the pilot (K9)."
+    basis: "Source: docs/results/results.json effort, literature-anchored orchestrated arm at programme level (46.3 minutes, 19.3 percent fewer than baseline, 0.55 reach); 37.2 among the cases the programme reaches (35.2 percent fewer); the upper range is 35.1 (38.8 percent fewer). Synthetic; blend graded assumed as above. Coordinator minutes fall (-35.7 percent) but owner-clinician (+102.6 percent) and specialist (+19.5 percent) minutes rise, so valuing all roles at the coordinator rate overstates the saving: at the sourced-adjacent wage ratios (clinician 4, specialist 10, below) weighted staff time per case is higher than at baseline, not lower (see the wage-weighted section of the script output). To be measured in the pilot (K9)."
 
   coordinator_cost_aed_per_hour:
     value: 120
     unit: AED per hour
     status: assumed
-    basis: Loaded cost of a screening or referral coordinator. Wage ratios used in the docs, clinician 3x and specialist 4x a coordinator, are assumed and not read by the script.
+    basis: Loaded cost of a screening or referral coordinator. The 120 is an assumption and looks high against the pay band in docs/evidence-wages.md section 5 (about AED 55 to 75 per hour loaded for a coordinator at about AED 6,500 a month, unless the model's coordinator is a nurse-coordinator); not re-estimated here. The wage ratios below are used only by the wage-weighted section of the script, which reports coordinator-equivalent minutes and does not convert them to AED.
+
+  wage_ratio_nurse:
+    value: 1.5
+    low: 1.2
+    high: 2.2
+    unit: multiple of the coordinator wage, registered nurse
+    status: sourced-adjacent
+    basis: docs/evidence-wages.md section 4 (nurse 1.5; sensitivity range 1.2 to 2.2). Median monthly pay about AED 10,000 against about 6,500 for a coordinator, from recruiter and aggregator pages, not an official scale. Read and printed by the script but not applied, because the simulator has no nurse role (the planned routing of escalations to nurse navigators is not modelled; a navigator proxy of 2.0 is in the evidence note).
+
+  wage_ratio_clinician:
+    value: 4.0
+    low: 3.0
+    high: 6.0
+    unit: multiple of the coordinator wage, GP or owner physician
+    status: sourced-adjacent
+    basis: docs/evidence-wages.md section 4 (clinician 4.0; sensitivity range 3 to 6). Median GP pay about AED 26,500 a month against about 6,500; replaces the earlier assumed 3. Recruiter and aggregator pages, not an official scale; the coordinator wage is the weakest figure and every ratio divides by it.
+
+  wage_ratio_specialist:
+    value: 10.0
+    low: 8.0
+    high: 15.0
+    unit: multiple of the coordinator wage, consultant gastroenterologist
+    status: sourced-adjacent
+    basis: docs/evidence-wages.md section 4 (specialist 10.0; sensitivity range 8 to 15). Median consultant pay about AED 75,000 a month gives 11.5; rounded down to 10 because Abu Dhabi consultant bands sit below the Dubai-weighted adverts. Replaces the earlier assumed 4. Recruiter and aggregator pages, not an official scale.
 
   price_per_screened_member_per_year_aed:
     value: 6.0

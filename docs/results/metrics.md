@@ -8,7 +8,7 @@ that does not exist, or if the worked example in section 9 stops matching the co
 
 > **Capacity caveat: escalations cost nothing in this model.** Cases are independent. There are no shared endoscopy slots, no staff
 > workload and no queueing, and a supervisor or coordinator acts on an escalation with a fixed probability however many others are open.
-> The orchestrated arm raises **about 205 escalations per 100 cases** in the upper-range scenario (see `escalations_per_100_cases`
+> The orchestrated arm raises **about 209 escalations per 100 cases** in the upper-range scenario (see `escalations_per_100_cases`
 > below), roughly two for every case. Every completion and time gain reported is therefore a gain **before capacity constraints**, and
 > would shrink if the people who must work those escalations, or the colonoscopy slots they ask for, are not there. A capacity model
 > (staff time per escalation, slot supply, queueing) is future work. Until it exists, use `escalations_per_100_cases` to size a pilot,
@@ -184,7 +184,7 @@ same step, the simulator emits no second event and takes no second action (no ou
 other ladder in its payload (`also_for`), and the run counter `escalations_coalesced` counts these, so a role is never counted twice for one case on one day. The rule applies to every
 rung, so it also removes second `reminder_sent` events (which are not counted here anyway). In the API the same rule is a single `escalate`
 with `also_for`, or a later `escalate` with `attached_to`, which tells nobody and is not counted as an escalation. The baseline has no ladder, so 0. **Escalations cost nothing in the
-model, see the capacity caveat at the top: about 205 escalations per 100 cases in the upper-range scenario.**
+model, see the capacity caveat at the top: about 209 escalations per 100 cases in the upper-range scenario.**
 
 ### `escalation_acted_on_rate`
 Escalation acted-on rate (within 5 working days): escalations followed by an action within five working days / all escalations

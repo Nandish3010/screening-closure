@@ -39,7 +39,7 @@ Definitions use the event log, so each KPI is computed from stored events and no
 | K8 | Cases closed without evidence | Count of cases in `closed` that lack an `evidence_ref` or a human `signed_by`, from an audit query run daily | Not applicable | **Zero.** Any non-zero value stops active mode | Design invariant (T-A1) |
 | K9 | Staff minutes per case, by role | A time-and-motion study during shadow mode: observers time the actions that coordinators, owner clinicians and specialists take on a sample of cases today, giving minutes per case by role; repeated in active mode. Reported by role and wage-weighted (assumed ratios: clinician 3 times, specialist 4 times a coordinator) | Shadow mode, days 1 to 30, on today's manual process | No saving is promised before it is measured. **Stop rule:** if owner-clinician minutes per case rise above the shadow-mode baseline, active mode pauses until the routing is changed and the clinical lead agrees to resume. The simulation expects owner-clinician time to roughly double under the current routing, so this rule is expected to trigger unless escalations are routed to nurse navigators after the clinician review before active mode starts | Replaces the simulator's assumed minutes (synthetic) with measured ones; the stop rule protects clinician time |
 
-**Labour claim.** In the simulation: 37.5% fewer staff minutes per case the system handles (literature-anchored, in reach, 95% CI 36.5 to 38.5), 20.5% programme-level under the 0.55 reach assumption, 41.1% in the upper range; synthetic; minutes from published time studies and assumptions.\* The 40% target is not met in the anchored scenario (only the upper range, which is not a forecast, reaches it). Coordinator time falls 37 to 71 percent; specialist time rises because more patients reach colonoscopy, which is the outcome; owner-clinician time doubles in the current routing and the planned fix is routing escalations to nurse navigators after the clinician review. At assumed wage ratios (a clinician 3 times and a specialist 4 times a coordinator; the ratios are assumed, not sourced), weighted staff time per case is flat today: 84.6 coordinator-equivalent minutes at baseline against 85.0 under the literature-anchored scenario at programme level (84.7 and 85.5 in reach). K9 replaces these assumed minutes with measured ones.
+**Labour claim.** In the simulation: 35.2% fewer staff minutes per case the system handles (literature-anchored, in reach, 95% CI 34.2 to 36.1), 19.3% programme-level under the 0.55 reach assumption (95% CI 18.7 to 19.8), 38.8% in the upper range (95% CI 37.9 to 39.6); synthetic; minutes from published time studies and assumptions.\* The 40% target is not met: the anchored figures fall short of it, and even the upper range (38.8%, which is not a forecast) does not reach it. Coordinator time falls 35.7% (anchored) to 69.1% (upper range); specialist time rises (+19.5% and +36.6%) because more patients reach colonoscopy, which is the outcome; owner-clinician time rises by 102.6% (anchored) and 179.9% (upper range) in the current routing, and the planned fix is routing escalations to nurse navigators after the clinician review. At wage ratios taken from published UAE salary pages (a clinician 4 times and a specialist 10 times a coordinator; graded sourced-adjacent, not an official pay scale, [evidence-wages.md](evidence-wages.md) section 4), weighted staff time per case goes up, not down: 125.5 coordinator-equivalent minutes at baseline against 138.7 under the literature-anchored scenario at programme level (+10.5%), 125.8 against 149.8 in reach (+19.1%) and 147.0 in the upper range (+17.1%); section 8 gives the ranges. K9 replaces these assumed minutes with measured ones.
 
 \* Current estimate from the effort model; regenerated at integration.
 
@@ -113,7 +113,7 @@ Stop rules apply at any time: a case closed without evidence, a message to the w
 
 **Lead with capacity.** The offer is to grow screening without growing coordinators, together with the outcomes: more patients reach colonoscopy and fewer are lost without anyone told (section 3, synthetic). In the simulation coordinator time falls 37 to 71 percent while the case count the programme can follow rises with the outcome; it is a capacity argument before it is a cost argument.
 
-**Wage-weighted note.** At assumed wage ratios (a clinician 3 times and a specialist 4 times a coordinator; the ratios are assumed, not sourced), weighted staff time per case is flat today: 84.6 coordinator-equivalent minutes at baseline against 85.0 under the literature-anchored scenario at programme level (84.7 and 85.5 in reach). The per-case cost saving is therefore close to zero today, and the coordinator-hour saving is not a cash saving until clinician and specialist minutes are brought down (the planned routing fix) or the freed coordinator hours are used to screen more members. The cost model below values every staff minute at the coordinator rate, which overstates the saving; read its provider-net lines as an upper bound. K9 measures the real minutes.
+**Wage-weighted note.** At wage ratios taken from published UAE salary pages (a clinician 4 times and a specialist 10 times a coordinator, with sensitivity ranges of 3 to 6 and 8 to 15; graded sourced-adjacent, not an official pay scale; [evidence-wages.md](evidence-wages.md) section 4), weighted staff time per case goes up in the simulation, not down. That is what the wage evidence note predicted once the specialist ratio rose from the earlier assumed 4 to about 10. Coordinator-equivalent minutes per case: 125.5 at baseline against 138.7 under the literature-anchored scenario at programme level (+10.5%); 125.8 against 149.8 for the cases the programme reaches (+19.1%); 147.0 in the upper range (+17.1%). At the low ends of the ranges (clinician 3, specialist 8) the programme-level change is +5.8%, and at the high ends (clinician 6, specialist 15) +17.1%, so it stays positive across the ranges. At the earlier assumed ratios of 3 and 4 the same minutes gave a nearly flat result (+1.8%). The reason: coordinator minutes fall by 35.7% but owner-clinician minutes rise by 102.6% and specialist minutes by 19.5%, and those minutes cost four and ten times as much. Part of the specialist rise is the outcome itself (more patients reach colonoscopy and need a specialist's review), not waste. The per-case labour cost is therefore not saved at these wages in the model; the coordinator-hour saving is not a cash saving until clinician and specialist minutes are brought down (the planned routing fix) or the freed coordinator hours are used to screen more members. The cost model below values every staff minute at the coordinator rate, which overstates the saving; read its provider-net lines as an upper bound (they are negative even so), and see the wage-weighted section of its output for the figures above. The ratios divide by the coordinator wage, which is the weakest figure in the evidence note, and the minutes are synthetic. K9 measures the real minutes.
 
 Two options are compared; a hybrid (small platform fee plus a lower per-unit fee) is also possible. Fees in the script are illustrative placeholders, not an offer.
 
@@ -143,50 +143,54 @@ Instead of a full integration, the engine reads a periodic flat-file (CSV) or HL
 
 ### Cost model output
 
-Costs are largely fixed (hosting base, licences, support base, integration), so cost per case and per member fall with volume, and a pilot-sized deployment costs far more per case than a programme-sized one. The script output below is quoted verbatim; run `python3 tools/pilot/cost_model.py` to reproduce it, and see `tools/pilot/inputs.yaml` for the inputs. **Every cost input is assumed**; nothing is a quote, a forecast or a measurement. The value table also reads simulated shares from `docs/results/results.json` (synthetic).
+Costs are largely fixed (hosting base, licences, support base, integration), so cost per case and per member fall with volume, and a pilot-sized deployment costs far more per case than a programme-sized one. The script output below is quoted verbatim; run `python3 tools/pilot/cost_model.py` to reproduce it, and see `tools/pilot/inputs.yaml` for the inputs. **Every cost input is assumed** (the three wage ratios are the exception: sourced-adjacent, used only in the wage-weighted section); nothing is a quote, a forecast or a measurement. The value table also reads simulated shares from `docs/results/results.json` (synthetic).
 
 ```
 PILOT COST MODEL (illustrative)
 Currency: AED. Inputs file: inputs.yaml.
-Every input below is an assumption, not a quote, forecast or measured value.
+Every input below is an assumption, not a quote, forecast or measured value; the three wage ratios are
+the exception (sourced-adjacent: published salary pages, not an official pay scale).
 
 INPUTS
-input                                          value  status   unit
---------------------------------------------  ------  -------  ----------------------------------------------------------------
-positivity_rate                                 0.07  assumed  share of screened members with a positive FIT
-hosting_fixed_aed_per_month                     9000  assumed  AED per month
-hosting_variable_aed_per_1000_cases_per_year     400  assumed  AED per 1,000 actionable cases per year
-third_party_licences_aed_per_year              24000  assumed  AED per year
-support_fte_base                                 0.5  assumed  FTE
-support_fte_per_50k_members                     0.25  assumed  FTE per 50,000 screened members per year
-support_fte_loaded_cost_aed_per_year          300000  assumed  AED per FTE per year
-integration_one_off_aed_per_provider          120000  assumed  AED per participating provider, one-off
-members_per_provider                           20000  assumed  screened members per year per provider
-amortisation_years                                 3  assumed  years
-coordinator_minutes_per_case_manual             57.3  assumed  staff minutes (all roles) per actionable case without the engine
-coordinator_minutes_per_case_with_engine        45.5  assumed  staff minutes (all roles) per actionable case with the engine
-coordinator_cost_aed_per_hour                    120  assumed  AED per hour
-price_per_screened_member_per_year_aed           6.0  assumed  AED per screened member per year
-price_per_actionable_case_aed                     90  assumed  AED per actionable (FIT-positive) case
-pilot_providers                                    3  assumed  providers
-pilot_fit_screened_per_provider_per_year        3000  assumed  FIT results per provider per year
-pilot_days                                        90  assumed  days
-followup_tail_days                                90  assumed  days
-pilot_support_fte                                1.0  assumed  FTE during the enrolment window
-tail_support_fte                                0.25  assumed  FTE during the follow-up tail
-pilot_governance_review_one_off_aed            60000  assumed  AED, one-off
-shadow_integration_one_off_aed_per_provider    15000  assumed  AED per participating provider, one-off
-shadow_days                                       90  assumed  days
-shadow_support_fte                               0.3  assumed  FTE during the shadow run
-shadow_governance_review_one_off_aed           25000  assumed  AED, one-off
-shadow_hosting_share_of_full                     0.4  assumed  share of the full-stack hosting cost
-shadow_licences_share_of_full                    0.5  assumed  share of the third-party licence cost
-crc_risk_on_time                                0.03  assumed  risk, any CRC, colonoscopy at 8-30 days
-advanced_stage_risk_on_time                    0.008  assumed  risk, advanced stage, colonoscopy at 8-30 days
-or_any_crc_10_to_12_months                      1.48  assumed  odds ratio, any CRC, 10-12 months vs 8-30 days
-or_advanced_stage_10_to_12_months               1.97  assumed  odds ratio, advanced stage, 10-12 months vs 8-30 days
-or_any_crc_over_12_months                       2.25  assumed  odds ratio, any CRC, over 12 months vs 8-30 days
-or_advanced_stage_over_12_months                3.22  assumed  odds ratio, advanced stage, over 12 months vs 8-30 days
+input                                          value  status            unit
+--------------------------------------------  ------  ----------------  ----------------------------------------------------------------
+positivity_rate                                 0.07  assumed           share of screened members with a positive FIT
+hosting_fixed_aed_per_month                     9000  assumed           AED per month
+hosting_variable_aed_per_1000_cases_per_year     400  assumed           AED per 1,000 actionable cases per year
+third_party_licences_aed_per_year              24000  assumed           AED per year
+support_fte_base                                 0.5  assumed           FTE
+support_fte_per_50k_members                     0.25  assumed           FTE per 50,000 screened members per year
+support_fte_loaded_cost_aed_per_year          300000  assumed           AED per FTE per year
+integration_one_off_aed_per_provider          120000  assumed           AED per participating provider, one-off
+members_per_provider                           20000  assumed           screened members per year per provider
+amortisation_years                                 3  assumed           years
+coordinator_minutes_per_case_manual             57.3  assumed           staff minutes (all roles) per actionable case without the engine
+coordinator_minutes_per_case_with_engine        46.3  assumed           staff minutes (all roles) per actionable case with the engine
+coordinator_cost_aed_per_hour                    120  assumed           AED per hour
+wage_ratio_nurse                                 1.5  sourced-adjacent  multiple of the coordinator wage, registered nurse
+wage_ratio_clinician                             4.0  sourced-adjacent  multiple of the coordinator wage, GP or owner physician
+wage_ratio_specialist                           10.0  sourced-adjacent  multiple of the coordinator wage, consultant gastroenterologist
+price_per_screened_member_per_year_aed           6.0  assumed           AED per screened member per year
+price_per_actionable_case_aed                     90  assumed           AED per actionable (FIT-positive) case
+pilot_providers                                    3  assumed           providers
+pilot_fit_screened_per_provider_per_year        3000  assumed           FIT results per provider per year
+pilot_days                                        90  assumed           days
+followup_tail_days                                90  assumed           days
+pilot_support_fte                                1.0  assumed           FTE during the enrolment window
+tail_support_fte                                0.25  assumed           FTE during the follow-up tail
+pilot_governance_review_one_off_aed            60000  assumed           AED, one-off
+shadow_integration_one_off_aed_per_provider    15000  assumed           AED per participating provider, one-off
+shadow_days                                       90  assumed           days
+shadow_support_fte                               0.3  assumed           FTE during the shadow run
+shadow_governance_review_one_off_aed           25000  assumed           AED, one-off
+shadow_hosting_share_of_full                     0.4  assumed           share of the full-stack hosting cost
+shadow_licences_share_of_full                    0.5  assumed           share of the third-party licence cost
+crc_risk_on_time                                0.03  assumed           risk, any CRC, colonoscopy at 8-30 days
+advanced_stage_risk_on_time                    0.008  assumed           risk, advanced stage, colonoscopy at 8-30 days
+or_any_crc_10_to_12_months                      1.48  assumed           odds ratio, any CRC, 10-12 months vs 8-30 days
+or_advanced_stage_10_to_12_months               1.97  assumed           odds ratio, advanced stage, 10-12 months vs 8-30 days
+or_any_crc_over_12_months                       2.25  assumed           odds ratio, any CRC, over 12 months vs 8-30 days
+or_advanced_stage_over_12_months                3.22  assumed           odds ratio, advanced stage, over 12 months vs 8-30 days
 
 COST TO SERVE, STEADY STATE (per year)
 per year                         10,000 members  50,000 members  200,000 members
@@ -208,17 +212,44 @@ cost per screened member           33.73            9.57             4.94
 COORDINATOR TIME (assumed minutes per case, with vs without the engine)
 per year                 10,000 members  50,000 members  200,000 members
 -----------------------  --------------  --------------  ---------------
-coordinator hours saved             138             688            2,753
-value of time saved              16,520          82,600          330,400
+coordinator hours saved             128             642            2,567
+value of time saved              15,400          77,000          308,000
+All roles' minutes are valued at the coordinator rate in this table; the next section weights them by role.
+
+WAGE-WEIGHTED STAFF TIME (coordinator-equivalent minutes per case; synthetic minutes x sourced-adjacent ratios)
+Weighted minutes = coordinator + clinician ratio x owner-clinician + specialist ratio x specialist minutes.
+Minutes by role are read from results.json (effort, mean over replications). Ratios are to the coordinator
+(1.0), from docs/evidence-wages.md section 4: clinician 4, specialist 10; the sensitivity
+ends are clinician 3 to 6, specialist 8 to 15. The nurse ratio (1.5, range 1.2 to 2.2) is not applied: the
+simulator has no nurse role. Each orchestrated row is compared with the baseline of the same cases.
+
+minutes per case by role              coordinator  owner clinician  specialist  all roles  change
+------------------------------------  -----------  ---------------  ----------  ---------  ------
+baseline, all cases                          46.8              4.4         6.1       57.3       -
+literature anchored, programme level         30.1              8.9         7.3       46.3  -19.3%
+baseline, cases in reach                     46.8              4.4         6.1       57.4       -
+literature anchored, in reach                16.2             12.6         8.3       37.2  -35.2%
+baseline, upper-range run                    46.8              4.4         6.1       57.3       -
+upper range (every case reached)             14.5             12.3         8.3       35.1  -38.8%
+
+coordinator-equivalent minutes        central (4/10)  change  low end (3/8)  change  high end (6/15)  change
+------------------------------------  --------------  ------  -------------  ------  ---------------  ------
+baseline, all cases                            125.5       -          108.9       -            164.8       -
+literature anchored, programme level           138.7  +10.5%          115.2   +5.8%            193.0  +17.1%
+baseline, cases in reach                       125.8       -          109.1       -            165.3       -
+literature anchored, in reach                  149.8  +19.1%          120.6  +10.5%            216.7  +31.1%
+baseline, upper-range run                      125.5       -          108.9       -            164.8       -
+upper range (every case reached)               147.0  +17.1%          118.0   +8.4%            213.2  +29.4%
+Ratios in each column header are clinician/specialist. Positive change = more weighted staff time than baseline.
 
 COMMERCIAL OPTIONS (per year; illustrative fees from the inputs file)
 per year                         10,000 members  50,000 members  200,000 members
 -------------------------------  --------------  --------------  ---------------
 A: fee per screened member               60,000         300,000        1,200,000
-A: provider net (saving - fee)          -43,480        -217,400         -869,600
+A: provider net (saving - fee)          -44,600        -223,000         -892,000
 A: operator margin (fee - cost)        -277,280        -178,400          212,400
 B: fee per actionable case               63,000         315,000        1,260,000
-B: provider net (saving - fee)          -46,480        -232,400         -929,600
+B: provider net (saving - fee)          -47,600        -238,000         -952,000
 B: operator margin (fee - cost)        -274,280        -163,400          272,400
 
 90-DAY PILOT (enrolment window plus follow-up tail)
@@ -252,30 +283,31 @@ shadow pilot cost per case                 681
 VALUE SIDE: late-stage cancers potentially avoided (ILLUSTRATIVE, SYNTHETIC)
 Simulated shares x published odds ratios; not a forecast, not a clinical claim; observational ORs,
 confounding by indication; never-completers treated as if completing late.
-Shares with no colonoscopy by day 270, read from results.json (synthetic): baseline 45.7%, literature-anchored orchestrated 32.7%, upper-range orchestrated 20.2%.
+Shares with no colonoscopy by day 270, read from results.json (synthetic): baseline 46.8%, literature-anchored orchestrated 34.1%, upper-range orchestrated 21.6%.
 On-time risk (assumed): any CRC 0.030, advanced stage 0.008.
 item                                                        per 1,000 cases  700 cases a year  3,500 cases a year  14,000 cases a year
 ----------------------------------------------------------  ---------------  ----------------  ------------------  -------------------
-literature-anchored: cases moved to colonoscopy by day 270            130.9              91.6               458.0              1,831.9
-  10-12 month ORs: cancers diagnosed earlier                           1.80              1.26                6.31                25.22
-  10-12 month ORs: late-stage potentially avoided                      1.00              0.70                3.50                13.99
-  >12 month ORs: cancers diagnosed earlier                             4.59              3.21               16.06                64.23
-  >12 month ORs: late-stage potentially avoided                        2.27              1.59                7.93                31.71
-upper-range: cases moved to colonoscopy by day 270                    255.3             178.7               893.5              3,573.9
-  10-12 month ORs: cancers diagnosed earlier                           3.52              2.46               12.30                49.21
-  10-12 month ORs: late-stage potentially avoided                      1.95              1.36                6.82                27.30
-  >12 month ORs: cancers diagnosed earlier                             8.95              6.27               31.33               125.30
-  >12 month ORs: late-stage potentially avoided                        4.42              3.09               15.47                61.87
+literature-anchored: cases moved to colonoscopy by day 270            127.1              89.0               445.0              1,780.1
+  10-12 month ORs: cancers diagnosed earlier                           1.75              1.23                6.13                24.51
+  10-12 month ORs: late-stage potentially avoided                      0.97              0.68                3.40                13.60
+  >12 month ORs: cancers diagnosed earlier                             4.46              3.12               15.60                62.41
+  >12 month ORs: late-stage potentially avoided                        2.20              1.54                7.70                30.81
+upper-range: cases moved to colonoscopy by day 270                    252.4             176.7               883.6              3,534.3
+  10-12 month ORs: cancers diagnosed earlier                           3.48              2.43               12.17                48.67
+  10-12 month ORs: late-stage potentially avoided                      1.93              1.35                6.75                27.00
+  >12 month ORs: cancers diagnosed earlier                             8.85              6.20               30.98               123.91
+  >12 month ORs: late-stage potentially avoided                        4.37              3.06               15.30                61.18
 
-READ THIS FIRST: all inputs are assumed. Cost per case falls with volume because hosting,
-licences and the support base are fixed; the numbers show that shape, not a price.
+READ THIS FIRST: every cost input is assumed (the wage ratios are sourced-adjacent). Cost per case
+falls with volume because hosting, licences and the support base are fixed; the numbers show that
+shape, not a price.
 ```
 
-How to read it. At the smallest volume the operator's cost to serve is well above either illustrative fee, so a pilot would be priced as an investment or at cost recovery by agreement, not at a steady-state fee. At the largest volume both illustrative fees cover the operator's cost, but the assumed time saved, 11.8 staff minutes per case (57.3 against 45.5, from the simulator, synthetic), is worth far less than either fee when valued at the coordinator rate, so the provider-net lines are negative. The script values every staff minute at the coordinator rate and labels the rows "coordinator hours", although the minutes are all-role minutes; wage-weighted (assumed ratios, section 8 note) the saving is about zero. Read the output as a statement that today's illustrative fees cannot be justified by labour cost alone: the case for a buyer is capacity (grow screening without growing coordinators) and outcomes, and the fees would be set against those, or against measured minutes from K9, not against assumed labour savings.
+How to read it. At the smallest volume the operator's cost to serve is well above either illustrative fee, so a pilot would be priced as an investment or at cost recovery by agreement, not at a steady-state fee. At the largest volume both illustrative fees cover the operator's cost, but the assumed time saved, 11.0 staff minutes per case (57.3 against 46.3, from the simulator, synthetic), is worth far less than either fee when valued at the coordinator rate, so the provider-net lines are negative. The script values every staff minute at the coordinator rate and labels the rows "coordinator hours", although the minutes are all-role minutes; wage-weighted (sourced-adjacent ratios of 4 and 10, section 8 note) there is no saving at all, because weighted staff time per case is 10.5% higher than at baseline (programme level), so those rows overstate the benefit. Read the output as a statement that today's illustrative fees cannot be justified by labour cost alone: the case for a buyer is capacity (grow screening without growing coordinators) and outcomes, and the fees would be set against those, or against measured minutes from K9, not against assumed labour savings.
 
 How to read the shadow pilot. Same three providers and the same placeholder volumes as the full pilot, so the same 155 expected cases in the window. The total is 105,828 against 577,624 for the full pilot, and 681 per case against 3,718. The difference comes from three assumed inputs: a much smaller one-off integration per provider (15,000 against 120,000, because it is an export mapping and not a live feed), less support, and a smaller hosting and licence footprint. These are assumptions chosen to be plausible, not quotes, and the export format each provider can actually produce is a data request (section 5).
 
-How to read the value table. It multiplies two things. The first is the simulated difference in the share of cases with no colonoscopy by day 270: 45.7 percent at baseline, 32.7 percent orchestrated in the literature-anchored scenario, 20.2 percent in the upper-range scenario (synthetic; `delay_harm_share`). The second is the excess cancer risk of a late colonoscopy from Corley et al., JAMA 2017 (docs/evidence.md section 9): odds ratios of 1.48 (any cancer) and 1.97 (advanced stage) at 10 to 12 months, and 2.25 and 3.22 beyond 12 months, applied to an on-time risk of 3.0 percent (any cancer, from the same paper) and 0.8 percent (advanced stage, a placeholder: no figure is recorded in evidence.md, to verify against the paper). In the literature-anchored scenario about 131 of every 1,000 positive cases move from "no colonoscopy by day 270" to "by day 270"; with the 10 to 12 month odds ratios that is about 1.8 cancers diagnosed earlier and 1.0 late-stage cancer potentially avoided per 1,000 cases, and with the beyond-12-month odds ratios 4.6 and 2.3. Read these as an order of magnitude from stated assumptions, not a forecast and not a clinical claim: the odds ratios are observational and subject to confounding by indication, they come from a different population, the simulated shares are synthetic, and cases that never complete are treated as if they completed late. The value is not part of the cost to serve or of either fee.
+How to read the value table. It multiplies two things. The first is the simulated difference in the share of cases with no colonoscopy by day 270: 46.8 percent at baseline, 34.1 percent orchestrated in the literature-anchored scenario, 21.6 percent in the upper-range scenario (synthetic; `delay_harm_share`). The second is the excess cancer risk of a late colonoscopy from Corley et al., JAMA 2017 (docs/evidence.md section 9): odds ratios of 1.48 (any cancer) and 1.97 (advanced stage) at 10 to 12 months, and 2.25 and 3.22 beyond 12 months, applied to an on-time risk of 3.0 percent (any cancer, from the same paper) and 0.8 percent (advanced stage, a placeholder: no figure is recorded in evidence.md, to verify against the paper). In the literature-anchored scenario about 127 of every 1,000 positive cases move from "no colonoscopy by day 270" to "by day 270"; with the 10 to 12 month odds ratios that is about 1.8 cancers diagnosed earlier and 1.0 late-stage cancer potentially avoided per 1,000 cases, and with the beyond-12-month odds ratios 4.5 and 2.2. Read these as an order of magnitude from stated assumptions, not a forecast and not a clinical claim: the odds ratios are observational and subject to confounding by indication, they come from a different population, the simulated shares are synthetic, and cases that never complete are treated as if they completed late. The value is not part of the cost to serve or of either fee.
 
 ## 9. Decisions made in this plan beyond the original brief
 
