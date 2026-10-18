@@ -180,7 +180,7 @@ describe("owner, handoffs and states (A5)", () => {
     expect(replayState([...upTo(5), reject])).toBe("referral_rejected");
     expect(replayState([...upTo(5), reject, ev("reassign", "coordinator:m", { owner: "x" })])).toBe("owner_accepted");
   });
-  it("the colonoscopy milestone starts at the latest handoff_accepted, state entry otherwise; confirmatory_booked has no state SLA (A13, A18)", () => {
+  it("the colonoscopy milestone starts at the FIRST handoff_requested and never restarts, state entry otherwise; confirmatory_booked has no state SLA (A18, A25)", () => {
     const evs = [
       ev("case_created", "system:intake", {}, "2026-10-01T09:00:00Z"), ev("acknowledge", "lab:x", {}, "2026-10-01T10:00:00Z"),
       ev("accept_ownership", "primary_care_owner:A", {}, "2026-10-01T11:00:00Z"), ev("contact_patient", "coordinator:m", {}, "2026-10-01T12:00:00Z"),
@@ -189,7 +189,15 @@ describe("owner, handoffs and states (A5)", () => {
     ];
     const now = "2027-01-01T00:00:00Z";
     expect(slaClock(evs, "confirmatory_booked", now).due_at).toBeNull();
-    expect(milestonesOf(evs, now).confirmatory_completed).toMatchObject({ started_at: "2026-10-05T09:00:00Z", due_at: "2026-11-17T09:00:00.000Z", overdue: true });
+    expect(milestonesOf(evs, now).confirmatory_completed).toMatchObject({ started_at: "2026-10-02T09:00:00Z", due_at: "2026-11-16T09:00:00.000Z", overdue: true });
+    // A25: a rejection and a second request (later acceptance) change nothing: the clock still runs from the first request
+    const bounced = [
+      ...evs.slice(0, 6), ev("handoff_rejected", "specialist_owner:S", { reason: "capacity" }, "2026-10-06T09:00:00Z"),
+      ev("handoff_requested", "primary_care_owner:A", { to_provider: "Q" }, "2026-10-20T09:00:00Z"),
+      ev("handoff_accepted", "specialist_owner:T", {}, "2026-10-22T09:00:00Z"),
+    ];
+    expect(milestonesOf(bounced, now).confirmatory_completed).toMatchObject({ started_at: "2026-10-02T09:00:00Z", due_at: "2026-11-16T09:00:00.000Z" });
+    // no referral request at all: the clock starts when the case enters the state that awaits the colonoscopy
     expect(milestonesOf(evs.slice(0, 5).concat(evs[7]), now).confirmatory_completed.started_at).toBe("2026-10-12T09:00:00Z");
     // the referral milestone runs from the result and is met by the request, in time
     expect(milestonesOf(evs, now).referral_requested).toMatchObject({ started_at: "2026-10-01T09:00:00Z", met_at: "2026-10-02T09:00:00Z", met_late: false, overdue: false });

@@ -1,3 +1,5 @@
+from datetime import timedelta
+
 import pytest
 from hypothesis import given, settings
 from hypothesis import strategies as st
@@ -206,10 +208,35 @@ def test_the_colonoscopy_breach_is_the_confirmatory_milestone_and_keeps_its_31_w
     orch = _run(ctx, ORCHESTRATED, cases=300, days=250)
     col = [(c, e) for c in orch.cases for e in _milestone_overdue(c, "confirmatory_completed")]
     assert col
-    for _, e in col:
+    for c, e in col:
         assert e.payload["sla_working_days"] == ctx.pathway.milestones["confirmatory_completed"].working_days == 31
-        assert e.payload["step"] == "complete_confirmatory"
+        # the clock runs from the FIRST handoff_requested (A25), whatever step the case is in when it breaches: a case still
+        # waiting for a provider to accept, or re-routed, is at book_confirmatory; the engine's owner transfers are
+        # handoff_requested events too (as in the state machine), so an early transfer starts it earlier
+        assert e.payload["step"]
+        first = min(x.at for x in c.log if x.type == "handoff_requested")
+        due = ctx.cal.add_working_days(first, 31)
+        assert abs((e.at - due).total_seconds()) < 60  # the breach is at that due date, whatever happened after the first request
     assert "complete_confirmatory" not in ctx.pathway.slas_working_days
+
+
+def test_a_bounced_referral_does_not_restart_the_colonoscopy_clock_in_the_engine(ctx):
+    """A25: a case that was rejected or bounced and asked again still breaches 31 working days after its FIRST request."""
+    orch = _run(ctx, ORCHESTRATED, cases=600, days=300)
+    rerequested = [c for c in orch.cases if len([x for x in c.log if x.type == "handoff_requested"]) >= 2]
+    assert rerequested, "no case asked a second provider in 600 cases"
+    breached = [c for c in rerequested if _milestone_overdue(c, "confirmatory_completed")]
+    assert breached
+    for c in breached:
+        reqs = sorted(x.at for x in c.log if x.type == "handoff_requested")
+        [e] = _milestone_overdue(c, "confirmatory_completed")  # once
+        assert abs((e.at - ctx.cal.add_working_days(reqs[0], 31)).total_seconds()) < 60  # from the first request
+    later = [c for c in breached if (lambda r: r[1] - r[0] >= timedelta(days=5))(sorted(x.at for x in c.log if x.type == "handoff_requested"))]
+    assert later, "no breached case was re-requested more than five days after its first request"
+    for c in later:
+        reqs = sorted(x.at for x in c.log if x.type == "handoff_requested")
+        [e] = _milestone_overdue(c, "confirmatory_completed")
+        assert e.at < ctx.cal.add_working_days(reqs[1], 31)  # a restart at the second request would be later
 
 
 def test_the_engine_refuses_a_milestone_it_cannot_model(ctx):

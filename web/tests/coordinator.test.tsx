@@ -28,7 +28,7 @@ describe("Coordinator worklist", () => {
 
 describe("Milestone clocks on the case page (A18)", () => {
   it("shows the referral and colonoscopy clocks: met and on track, or overdue", async () => {
-    openCase(9); // referred in time; the colonoscopy clock runs from the referral acceptance
+    openCase(9); // referred in time; the colonoscopy clock runs from the first referral request
     const ref = await screen.findByTestId("milestone-referral_requested");
     expect(screen.getByText("Referral within 15 working days of result")).toBeInTheDocument();
     expect(screen.getByText("Colonoscopy within 31 working days of referral")).toBeInTheDocument();

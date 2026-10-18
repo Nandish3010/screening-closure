@@ -164,7 +164,7 @@ def test_the_bounce_is_due_after_the_configured_working_days():
 def test_the_bounce_comes_alone_and_has_a_deterministic_id():
     m = requested()
     cid = uuid4()
-    far = at(60)  # also long past the state's own SLA
+    far = at(30)  # long past the state's own SLA, and inside the 31 working days of the colonoscopy milestone (A25 starts it at the request)
     planned = plan_case(cid, m, PATHWAY, UAE, far)
     assert [e.type for e in planned] == ["handoff_rejected"]  # overdue/escalation re-planned after it
     assert planned[0].event_id == plan_case(cid, m, PATHWAY, UAE, far + timedelta(days=1))[0].event_id

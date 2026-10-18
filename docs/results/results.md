@@ -1,11 +1,11 @@
 # Evaluation results: baseline vs orchestrated
 
-generated_at: 2026-10-18 13:18:14 UTC (this line is the only non-deterministic content; `results.json` is byte-for-byte reproducible)
+generated_at: 2026-10-18 15:39:38 UTC (this line is the only non-deterministic content; `results.json` is byte-for-byte reproducible)
 
 All data are synthetic. Reproduce every number here with `make evaluate`; verify reproducibility with `make evaluate-check`.
 
 - Seed 20261017, 20 replications x 2,000 cases x 360 days of follow-up, 1000 bootstrap resamples
-- Parameters hash `b90c557e531268dc` (upper range), `d48f20dc2668a41f` (literature anchored), pathway `colorectal_fit` v0.2 hash `271ce52ef0a416ce`, git commit `d8741edea343`
+- Parameters hash `b90c557e531268dc` (upper range), `d48f20dc2668a41f` (literature anchored), pathway `colorectal_fit` v0.2 hash `234c780c96de6fb1`, git commit `aa409ce6b30d`
 - Intervals are percentile bootstrap 95% CIs over replications; differences are orchestrated minus baseline, paired by replication (same patients and random numbers in both arms).
 
 ## Headline: baseline vs the two orchestrated scenarios
@@ -14,24 +14,24 @@ There are two orchestrated scenarios and one baseline. **Quote the literature-an
 
 | Metric | Baseline | Orchestrated, literature anchored | Orchestrated, upper range |
 |---|---|---|---|
-| Colonoscopy completed within 90 days | 41.9% (41.5% to 42.3%) | 57.4% (56.9% to 57.8%) | 72.9% (72.6% to 73.3%) |
+| Colonoscopy completed within 90 days | 41.9% (41.5% to 42.3%) | 57.5% (57.0% to 57.9%) | 73.1% (72.7% to 73.4%) |
 | Colonoscopy completed within 180 days | 51.1% (50.6% to 51.6%) | 64.9% (64.4% to 65.4%) | 78.3% (77.9% to 78.7%) |
-| Colonoscopy completed within 360 days | 54.1% (53.5% to 54.6%) | 66.4% (65.8% to 66.9%) | 78.5% (78.1% to 78.8%) |
+| Colonoscopy completed within 360 days | 54.1% (53.5% to 54.6%) | 66.4% (65.9% to 67.0%) | 78.5% (78.1% to 78.8%) |
 | Completion ratio vs baseline at 180 days (navigation RR for comparison: 1.27) | 1.00 | 1.27 | 1.53 |
-| Cases still open at 90 days | 63.1% (62.7% to 63.5%) | 47.3% (46.8% to 47.7%) | 31.1% (30.7% to 31.5%) |
-| Cases closed (evidence and human sign-off) by end of follow-up | 52.3% (51.7% to 52.9%) | 65.5% (64.9% to 66.1%) | 78.5% (78.1% to 78.8%) |
-| Time to safe closure, median days (among closed cases only) | 70.2 (69.9 to 70.5) | 64.0 (63.7 to 64.3) | 60.4 (60.1 to 60.7) |
-| Time to safe closure, Kaplan-Meier median days (censoring-aware) | 210.7 (194.9 to 228.2) | 83.3 (82.6 to 83.9) | 67.1 (66.8 to 67.5) |
-| Time to safe closure, restricted mean days (censoring-aware) | 216.3 (215.0 to 217.7) | 172.1 (170.7 to 173.5) | 128.3 (127.3 to 129.3) |
+| Cases still open at 90 days | 63.1% (62.7% to 63.5%) | 47.1% (46.7% to 47.5%) | 31.0% (30.6% to 31.3%) |
+| Cases closed (evidence and human sign-off) by end of follow-up | 52.3% (51.7% to 52.9%) | 65.6% (65.0% to 66.1%) | 78.5% (78.1% to 78.9%) |
+| Time to safe closure, median days (among closed cases only) | 70.2 (69.9 to 70.5) | 64.0 (63.7 to 64.3) | 60.4 (60.1 to 60.8) |
+| Time to safe closure, Kaplan-Meier median days (censoring-aware) | 210.7 (194.9 to 228.2) | 83.2 (82.6 to 83.8) | 67.1 (66.8 to 67.5) |
+| Time to safe closure, restricted mean days (censoring-aware) | 216.3 (215.0 to 217.7) | 171.9 (170.6 to 173.3) | 128.2 (127.2 to 129.2) |
 | Time to first patient contact, median days | 12.4 (12.2 to 12.6) | 10.9 (10.8 to 10.9) | 10.0 (10.0 to 10.1) |
-| Lost to follow-up (no colonoscopy, no progress for 30+ days) | 45.7% (45.1% to 46.2%) | 33.5% (33.0% to 34.0%) | 21.5% (21.2% to 21.9%) |
+| Lost to follow-up (no colonoscopy, no progress for 30+ days) | 45.7% (45.1% to 46.2%) | 33.5% (33.0% to 34.0%) | 21.5% (21.1% to 21.8%) |
 | Lost AND never surfaced to a human: programme level (all cases) | 45.7% (45.1% to 46.2%) | 20.8% (20.3% to 21.2%) | 0.0% (0.0% to 0.0%) |
 | Lost AND never surfaced to a human: in reach (cases the programme reached) | 45.7% (45.2% to 46.3%) | 0.0% (0.0% to 0.0%) | 0.0% (0.0% to 0.0%) |
-| No colonoscopy by the delay-harm threshold (270 days) | 46.8% (46.3% to 47.4%) | 34.1% (33.6% to 34.7%) | 21.6% (21.2% to 22.0%) |
+| No colonoscopy by the delay-harm threshold (270 days) | 46.8% (46.3% to 47.4%) | 34.1% (33.6% to 34.6%) | 21.6% (21.2% to 21.9%) |
 | Outreach after consent withdrawn: programme level (all cases) | 0.4% (0.3% to 0.5%) | 0.2% (0.1% to 0.2%) | 0.0% (0.0% to 0.0%) |
 | Outreach after consent withdrawn: in reach (cases the programme reached) | 0.4% (0.3% to 0.5%) | 0.0% (0.0% to 0.0%) | 0.0% (0.0% to 0.0%) |
-| Escalations per 100 cases (cost nothing in the model, see capacity caveat) | 0.00 (0.00 to 0.00) | 121.46 (120.03 to 122.96) | 209.16 (207.70 to 210.72) |
-| Escalation acted-on rate (within 5 working days) | n/a | 43.1% (42.5% to 43.6%) | 46.8% (46.4% to 47.2%) |
+| Escalations per 100 cases (cost nothing in the model, see capacity caveat) | 0.00 (0.00 to 0.00) | 134.87 (133.25 to 136.45) | 232.28 (230.69 to 234.05) |
+| Escalation acted-on rate (within 5 working days) | n/a | 40.4% (39.9% to 40.9%) | 43.7% (43.4% to 44.1%) |
 
 **Lost and never surfaced, and outreach after consent withdrawn: two denominators each.** The programme-level rows count every case. The in-reach rows count only the cases the programme reached (`orchestration.programme_reach`; in the baseline column, the same patients under today's process, so the two columns compare like with like). In the orchestrated arm both in-reach rows are 0% by construction: a lost or unreachable case in reach is flagged to a human and the consent ledger blocks outreach after a withdrawal. The programme-level figures follow from the `programme_reach` assumption (0.55 in the literature-anchored scenario): cases outside the reach are handled as today and can still be lost silently or contacted after a withdrawal, so those figures are not a measured property of the orchestration.
 
@@ -39,11 +39,11 @@ Metric definitions (numerator, denominator, clocks, censoring) are in [`metrics.
 
 ## Capacity caveat: escalations cost nothing in this model
 
-**Every gain above is a gain before capacity constraints.** Cases are independent in the simulator: there are no shared endoscopy slots, no staff workload and no queueing, and a supervisor or coordinator acts on an escalation with a fixed probability however many others are open. The orchestrated arm raises about 209 escalations per 100 cases in the upper-range scenario (121 in the literature-anchored one), roughly one for every case. A real programme needs people and colonoscopy slots to work them, and the completion and time gains would shrink if they are not there. A capacity model (staff time per escalation, slot supply, queueing) is future work; until it exists, use `escalations_per_100_cases` to size a pilot rather than the completion gains. The staff minutes an escalation takes are counted in the Human effort section, but still without any queue or shared capacity. Definitions: [`metrics.md`](metrics.md).
+**Every gain above is a gain before capacity constraints.** Cases are independent in the simulator: there are no shared endoscopy slots, no staff workload and no queueing, and a supervisor or coordinator acts on an escalation with a fixed probability however many others are open. The orchestrated arm raises about 232 escalations per 100 cases in the upper-range scenario (135 in the literature-anchored one), roughly one for every case. A real programme needs people and colonoscopy slots to work them, and the completion and time gains would shrink if they are not there. A capacity model (staff time per escalation, slot supply, queueing) is future work; until it exists, use `escalations_per_100_cases` to size a pilot rather than the completion gains. The staff minutes an escalation takes are counted in the Human effort section, but still without any queue or shared capacity. Definitions: [`metrics.md`](metrics.md).
 
 ## Summary
 
-**Literature anchored.** Across 20 simulated replications of 2,000 synthetic positive-FIT cases, the orchestrated arm got 65% of patients to a confirmatory colonoscopy within 180 days, against 51% at baseline (+13.8 percentage points, 95% CI +13.4 to +14.1, which excludes zero). At 90 days 47% of orchestrated cases were still open against 63% at baseline. Among cases that closed, the median time to a signed, evidence-backed closure was 64 days orchestrated against 70 at baseline; that conditional median only covers the 52% of baseline cases that closed at all (66% orchestrated), so an arm that closes more slow cases looks slower on it. Counting the cases that never closed as censored at the end of follow-up instead of dropping them, the Kaplan-Meier median is 83 days orchestrated against 211 at baseline and the restricted mean time to closure within 360 days is 172 against 216 days. 46% of baseline cases were lost without anyone being told, against 21% in the orchestrated arm at programme level; among the 55% of cases the programme reached the orchestrated figure is 0% against 46% for the same patients at baseline, and the programme-level remainder is cases outside the programme's reach, which are handled as today.
+**Literature anchored.** Across 20 simulated replications of 2,000 synthetic positive-FIT cases, the orchestrated arm got 65% of patients to a confirmatory colonoscopy within 180 days, against 51% at baseline (+13.8 percentage points, 95% CI +13.5 to +14.1, which excludes zero). At 90 days 47% of orchestrated cases were still open against 63% at baseline. Among cases that closed, the median time to a signed, evidence-backed closure was 64 days orchestrated against 70 at baseline; that conditional median only covers the 52% of baseline cases that closed at all (66% orchestrated), so an arm that closes more slow cases looks slower on it. Counting the cases that never closed as censored at the end of follow-up instead of dropping them, the Kaplan-Meier median is 83 days orchestrated against 211 at baseline and the restricted mean time to closure within 360 days is 172 against 216 days. 46% of baseline cases were lost without anyone being told, against 21% in the orchestrated arm at programme level; among the 55% of cases the programme reached the orchestrated figure is 0% against 46% for the same patients at baseline, and the programme-level remainder is cases outside the programme's reach, which are handled as today.
 
 **Upper range.** Across 20 simulated replications of 2,000 synthetic positive-FIT cases, the orchestrated arm got 78% of patients to a confirmatory colonoscopy within 180 days, against 51% at baseline (+27.2 percentage points, 95% CI +26.7 to +27.6, which excludes zero). At 90 days 31% of orchestrated cases were still open against 63% at baseline. Among cases that closed, the median time to a signed, evidence-backed closure was 60 days orchestrated against 70 at baseline; that conditional median only covers the 52% of baseline cases that closed at all (78% orchestrated), so an arm that closes more slow cases looks slower on it. Counting the cases that never closed as censored at the end of follow-up instead of dropping them, the Kaplan-Meier median is 67 days orchestrated against 211 at baseline and the restricted mean time to closure within 360 days is 128 against 216 days. 46% of baseline cases were lost without anyone being told, against 0% in the orchestrated arm at programme level, where lost or unreachable cases are flagged to a human and never closed automatically. These results come from a model, not a trial: 103 of 138 parameters are assumed or calibrated rather than measured, so the direction of the effect follows from the mechanisms while its size depends on those inputs. Rerun with `make evaluate` after changing any parameter in `simulator/params.yaml` or `simulator/params.conservative.yaml`.
 
@@ -51,32 +51,32 @@ Metric definitions (numerator, denominator, clocks, censoring) are in [`metrics.
 
 | Metric | Baseline (95% CI) | Orchestrated (95% CI) | Difference (95% CI) |
 |---|---|---|---|
-| Colonoscopy completed within 90 days | 41.9% (41.5% to 42.3%) | 57.4% (56.9% to 57.8%) | +15.5pp (+15.2pp to +15.8pp) |
-| Colonoscopy completed within 180 days | 51.1% (50.6% to 51.6%) | 64.9% (64.4% to 65.4%) | +13.8pp (+13.4pp to +14.1pp) |
-| Colonoscopy completed within 360 days | 54.1% (53.5% to 54.6%) | 66.4% (65.8% to 66.9%) | +12.3pp (+12.0pp to +12.6pp) |
+| Colonoscopy completed within 90 days | 41.9% (41.5% to 42.3%) | 57.5% (57.0% to 57.9%) | +15.6pp (+15.3pp to +15.9pp) |
+| Colonoscopy completed within 180 days | 51.1% (50.6% to 51.6%) | 64.9% (64.4% to 65.4%) | +13.8pp (+13.5pp to +14.1pp) |
+| Colonoscopy completed within 360 days | 54.1% (53.5% to 54.6%) | 66.4% (65.9% to 67.0%) | +12.3pp (+12.0pp to +12.7pp) |
 | Cases still open at 30 days | 99.8% (99.7% to 99.8%) | 99.6% (99.5% to 99.7%) | -0.2pp (-0.2pp to -0.1pp) |
 | Cases still open at 60 days | 82.3% (82.1% to 82.6%) | 72.4% (72.0% to 72.9%) | -9.9pp (-10.3pp to -9.6pp) |
-| Cases still open at 90 days | 63.1% (62.7% to 63.5%) | 47.3% (46.8% to 47.7%) | -15.9pp (-16.2pp to -15.6pp) |
+| Cases still open at 90 days | 63.1% (62.7% to 63.5%) | 47.1% (46.7% to 47.5%) | -16.0pp (-16.3pp to -15.7pp) |
 | Time to safe closure, median (among closed cases only) | 70.2 (69.9 to 70.5) | 64.0 (63.7 to 64.3) | -6.2 (-6.4 to -6.0) |
-| Time to safe closure, p90 (among closed cases only) | 143.1 (140.1 to 146.0) | 108.4 (107.0 to 109.7) | -34.7 (-36.8 to -32.8) |
-| Time to safe closure, Kaplan-Meier median (censoring-aware; n/a = under half closed by end of follow-up) | 210.7 (194.9 to 228.2) | 83.3 (82.6 to 83.9) | -127.5 (-144.0 to -112.0) |
-| Time to safe closure, restricted mean (days event-free within follow-up, censoring-aware) | 216.3 (215.0 to 217.7) | 172.1 (170.7 to 173.5) | -44.2 (-45.3 to -43.2) |
-| Cases closed (with evidence and human sign-off) by end of follow-up | 52.3% (51.7% to 52.9%) | 65.5% (64.9% to 66.1%) | +13.2pp (+12.8pp to +13.6pp) |
+| Time to safe closure, p90 (among closed cases only) | 143.1 (140.1 to 146.0) | 108.4 (107.0 to 109.7) | -34.7 (-36.9 to -32.8) |
+| Time to safe closure, Kaplan-Meier median (censoring-aware; n/a = under half closed by end of follow-up) | 210.7 (194.9 to 228.2) | 83.2 (82.6 to 83.8) | -127.5 (-144.0 to -112.1) |
+| Time to safe closure, restricted mean (days event-free within follow-up, censoring-aware) | 216.3 (215.0 to 217.7) | 171.9 (170.6 to 173.3) | -44.4 (-45.5 to -43.4) |
+| Cases closed (with evidence and human sign-off) by end of follow-up | 52.3% (51.7% to 52.9%) | 65.6% (65.0% to 66.1%) | +13.2pp (+12.9pp to +13.7pp) |
 | Time to named owner, median | n/a | 5.0 (4.9 to 5.0) | n/a |
 | Time to named owner, p90 | n/a | 8.7 (8.5 to 8.9) | n/a |
 | Time to first patient contact, median | 12.4 (12.2 to 12.6) | 10.9 (10.8 to 10.9) | -1.5 (-1.6 to -1.4) |
-| Time to first patient contact, p90 | 23.2 (22.9 to 23.5) | 20.1 (20.0 to 20.3) | -3.1 (-3.2 to -2.9) |
+| Time to first patient contact, p90 | 23.2 (22.9 to 23.5) | 20.1 (20.0 to 20.3) | -3.0 (-3.2 to -2.9) |
 | Time to colonoscopy, median (among completers only) | 61.1 (60.7 to 61.5) | 55.7 (55.4 to 55.9) | -5.4 (-5.7 to -5.1) |
-| Time to colonoscopy, Kaplan-Meier median (censoring-aware) | 161.2 (150.1 to 176.8) | 73.6 (72.8 to 74.3) | -87.6 (-102.3 to -76.6) |
-| Time to colonoscopy, restricted mean (censoring-aware) | 206.9 (205.5 to 208.4) | 164.2 (162.6 to 165.6) | -42.7 (-43.7 to -41.8) |
-| Reopen rate (reopened / closed) | 3.0% (2.7% to 3.2%) | 3.0% (2.8% to 3.1%) | +0.0pp (-0.1pp to +0.1pp) |
-| Escalation acted-on rate (within 5 working days) | n/a | 43.1% (42.5% to 43.6%) | n/a |
-| Escalations per 100 cases | 0.00 (0.00 to 0.00) | 121.46 (120.03 to 122.96) | +121.46 (+119.97 to +122.98) |
+| Time to colonoscopy, Kaplan-Meier median (censoring-aware) | 161.2 (150.1 to 176.8) | 73.4 (72.6 to 74.1) | -87.8 (-102.5 to -76.7) |
+| Time to colonoscopy, restricted mean (censoring-aware) | 206.9 (205.5 to 208.4) | 164.0 (162.5 to 165.3) | -42.9 (-43.9 to -42.0) |
+| Reopen rate (reopened / closed) | 3.0% (2.7% to 3.2%) | 3.0% (2.8% to 3.1%) | -0.0pp (-0.1pp to +0.1pp) |
+| Escalation acted-on rate (within 5 working days) | n/a | 40.4% (39.9% to 40.9%) | n/a |
+| Escalations per 100 cases | 0.00 (0.00 to 0.00) | 134.87 (133.25 to 136.45) | +134.87 (+133.12 to +136.46) |
 | Automation abstention rate (AI cut supplies this) | n/a | n/a | n/a |
-| Lost to follow-up (no colonoscopy, no progress for 30+ days) | 45.7% (45.1% to 46.2%) | 33.5% (33.0% to 34.0%) | -12.2pp (-12.5pp to -11.8pp) |
+| Lost to follow-up (no colonoscopy, no progress for 30+ days) | 45.7% (45.1% to 46.2%) | 33.5% (33.0% to 34.0%) | -12.2pp (-12.5pp to -11.9pp) |
 | Lost AND never surfaced to a human, programme level (all cases) | 45.7% (45.1% to 46.2%) | 20.8% (20.3% to 21.2%) | -24.9pp (-25.3pp to -24.5pp) |
 | Lost AND never surfaced to a human, in reach (cases the programme reached) | 45.5% (45.0% to 46.2%) | 0.0% (0.0% to 0.0%) | -45.5pp (-46.2pp to -45.0pp) |
-| No colonoscopy by the delay-harm threshold (270 days) | 46.8% (46.3% to 47.4%) | 34.1% (33.6% to 34.7%) | -12.7pp (-13.0pp to -12.4pp) |
+| No colonoscopy by the delay-harm threshold (270 days) | 46.8% (46.3% to 47.4%) | 34.1% (33.6% to 34.6%) | -12.8pp (-13.1pp to -12.4pp) |
 | Outreach sent after consent withdrawn, programme level (all cases) | 0.4% (0.3% to 0.5%) | 0.2% (0.1% to 0.2%) | -0.2pp (-0.3pp to -0.2pp) |
 | Outreach sent after consent withdrawn, in reach (cases the programme reached) | 0.4% (0.3% to 0.5%) | 0.0% (0.0% to 0.0%) | -0.4pp (-0.5pp to -0.3pp) |
 | Cases within the programme's reach (denominator of the in-reach rows) | 54.7% (54.2% to 55.2%) | 54.7% (54.2% to 55.2%) | +0.0pp (+0.0pp to +0.0pp) |
@@ -85,32 +85,32 @@ Metric definitions (numerator, denominator, clocks, censoring) are in [`metrics.
 
 | Metric | Baseline (95% CI) | Orchestrated (95% CI) | Difference (95% CI) |
 |---|---|---|---|
-| Colonoscopy completed within 90 days | 41.9% (41.5% to 42.3%) | 72.9% (72.6% to 73.3%) | +31.1pp (+30.6pp to +31.4pp) |
+| Colonoscopy completed within 90 days | 41.9% (41.5% to 42.3%) | 73.1% (72.7% to 73.4%) | +31.2pp (+30.8pp to +31.6pp) |
 | Colonoscopy completed within 180 days | 51.1% (50.6% to 51.6%) | 78.3% (77.9% to 78.7%) | +27.2pp (+26.7pp to +27.6pp) |
-| Colonoscopy completed within 360 days | 54.1% (53.5% to 54.6%) | 78.5% (78.1% to 78.8%) | +24.4pp (+23.9pp to +24.8pp) |
+| Colonoscopy completed within 360 days | 54.1% (53.5% to 54.6%) | 78.5% (78.1% to 78.8%) | +24.4pp (+23.9pp to +24.9pp) |
 | Cases still open at 30 days | 99.8% (99.7% to 99.8%) | 99.4% (99.3% to 99.5%) | -0.4pp (-0.5pp to -0.3pp) |
 | Cases still open at 60 days | 82.3% (82.1% to 82.6%) | 61.4% (60.9% to 61.9%) | -21.0pp (-21.5pp to -20.5pp) |
-| Cases still open at 90 days | 63.1% (62.7% to 63.5%) | 31.1% (30.7% to 31.5%) | -32.0pp (-32.4pp to -31.6pp) |
-| Time to safe closure, median (among closed cases only) | 70.2 (69.9 to 70.5) | 60.4 (60.1 to 60.7) | -9.8 (-10.2 to -9.4) |
-| Time to safe closure, p90 (among closed cases only) | 143.1 (140.1 to 146.0) | 91.6 (91.1 to 92.3) | -51.4 (-54.4 to -48.7) |
+| Cases still open at 90 days | 63.1% (62.7% to 63.5%) | 31.0% (30.6% to 31.3%) | -32.2pp (-32.6pp to -31.7pp) |
+| Time to safe closure, median (among closed cases only) | 70.2 (69.9 to 70.5) | 60.4 (60.1 to 60.8) | -9.8 (-10.2 to -9.4) |
+| Time to safe closure, p90 (among closed cases only) | 143.1 (140.1 to 146.0) | 91.3 (90.8 to 91.8) | -51.8 (-54.7 to -49.1) |
 | Time to safe closure, Kaplan-Meier median (censoring-aware; n/a = under half closed by end of follow-up) | 210.7 (194.9 to 228.2) | 67.1 (66.8 to 67.5) | -143.6 (-160.4 to -128.0) |
-| Time to safe closure, restricted mean (days event-free within follow-up, censoring-aware) | 216.3 (215.0 to 217.7) | 128.3 (127.3 to 129.3) | -88.0 (-89.2 to -86.8) |
-| Cases closed (with evidence and human sign-off) by end of follow-up | 52.3% (51.7% to 52.9%) | 78.5% (78.1% to 78.8%) | +26.1pp (+25.6pp to +26.6pp) |
+| Time to safe closure, restricted mean (days event-free within follow-up, censoring-aware) | 216.3 (215.0 to 217.7) | 128.2 (127.2 to 129.2) | -88.1 (-89.4 to -86.8) |
+| Cases closed (with evidence and human sign-off) by end of follow-up | 52.3% (51.7% to 52.9%) | 78.5% (78.1% to 78.9%) | +26.2pp (+25.6pp to +26.6pp) |
 | Time to named owner, median | n/a | 5.0 (5.0 to 5.0) | n/a |
 | Time to named owner, p90 | n/a | 8.6 (8.5 to 8.7) | n/a |
 | Time to first patient contact, median | 12.4 (12.2 to 12.6) | 10.0 (10.0 to 10.1) | -2.4 (-2.5 to -2.2) |
 | Time to first patient contact, p90 | 23.2 (22.9 to 23.5) | 15.4 (15.3 to 15.5) | -7.8 (-8.1 to -7.6) |
 | Time to colonoscopy, median (among completers only) | 61.1 (60.7 to 61.5) | 52.2 (51.9 to 52.4) | -8.9 (-9.3 to -8.5) |
 | Time to colonoscopy, Kaplan-Meier median (censoring-aware) | 161.2 (150.1 to 176.8) | 58.8 (58.4 to 59.2) | -102.4 (-117.2 to -90.9) |
-| Time to colonoscopy, restricted mean (censoring-aware) | 206.9 (205.5 to 208.4) | 121.9 (120.8 to 122.9) | -85.0 (-86.2 to -83.7) |
+| Time to colonoscopy, restricted mean (censoring-aware) | 206.9 (205.5 to 208.4) | 121.8 (120.7 to 122.8) | -85.1 (-86.3 to -83.8) |
 | Reopen rate (reopened / closed) | 3.0% (2.7% to 3.2%) | 3.1% (2.9% to 3.2%) | +0.1pp (-0.0pp to +0.2pp) |
-| Escalation acted-on rate (within 5 working days) | n/a | 46.8% (46.4% to 47.2%) | n/a |
-| Escalations per 100 cases | 0.00 (0.00 to 0.00) | 209.16 (207.70 to 210.72) | +209.16 (+207.76 to +210.62) |
+| Escalation acted-on rate (within 5 working days) | n/a | 43.7% (43.4% to 44.1%) | n/a |
+| Escalations per 100 cases | 0.00 (0.00 to 0.00) | 232.28 (230.69 to 234.05) | +232.28 (+230.70 to +233.89) |
 | Automation abstention rate (AI cut supplies this) | n/a | n/a | n/a |
-| Lost to follow-up (no colonoscopy, no progress for 30+ days) | 45.7% (45.1% to 46.2%) | 21.5% (21.2% to 21.9%) | -24.1pp (-24.6pp to -23.7pp) |
+| Lost to follow-up (no colonoscopy, no progress for 30+ days) | 45.7% (45.1% to 46.2%) | 21.5% (21.1% to 21.8%) | -24.2pp (-24.6pp to -23.7pp) |
 | Lost AND never surfaced to a human, programme level (all cases) | 45.7% (45.1% to 46.2%) | 0.0% (0.0% to 0.0%) | -45.7pp (-46.3pp to -45.1pp) |
 | Lost AND never surfaced to a human, in reach (cases the programme reached) | 45.7% (45.2% to 46.3%) | 0.0% (0.0% to 0.0%) | -45.7pp (-46.3pp to -45.2pp) |
-| No colonoscopy by the delay-harm threshold (270 days) | 46.8% (46.3% to 47.4%) | 21.6% (21.2% to 22.0%) | -25.2pp (-25.7pp to -24.8pp) |
+| No colonoscopy by the delay-harm threshold (270 days) | 46.8% (46.3% to 47.4%) | 21.6% (21.2% to 21.9%) | -25.3pp (-25.7pp to -24.8pp) |
 | Outreach sent after consent withdrawn, programme level (all cases) | 0.4% (0.3% to 0.5%) | 0.0% (0.0% to 0.0%) | -0.4pp (-0.5pp to -0.3pp) |
 | Outreach sent after consent withdrawn, in reach (cases the programme reached) | 0.4% (0.3% to 0.5%) | 0.0% (0.0% to 0.0%) | -0.4pp (-0.5pp to -0.3pp) |
 | Cases within the programme's reach (denominator of the in-reach rows) | 100.0% (100.0% to 100.0%) | 100.0% (100.0% to 100.0%) | +0.0pp (+0.0pp to +0.0pp) |
@@ -123,23 +123,23 @@ Human minutes per case in each arm and the reduction automation buys, from the e
 
 | Measure | Baseline | Orchestrated, literature anchored | Orchestrated, upper range |
 |---|---|---|---|
-| Human minutes per case | 57.3 (57.1 to 57.6) | 46.3 (46.0 to 46.6) | 35.1 (34.7 to 35.5) |
-| Human minutes per closed case | 109.6 (108.7 to 110.5) | 70.7 (69.9 to 71.5) | 44.7 (44.1 to 45.4) |
-| Human actions per case | 9.72 (9.68 to 9.76) | 9.21 (9.14 to 9.29) | 8.20 (8.08 to 8.31) |
-| Automation share (automated actions / all actions) | 0.0% (0.0% to 0.0%) | 58.9% (58.7% to 59.2%) | 74.4% (74.1% to 74.6%) |
-| **Labour reduction**, minutes per case (1 - orchestrated / baseline) | - | 19.3% (18.7% to 19.8%) | 38.8% (37.9% to 39.6%) |
-| Labour reduction, minutes per closed case | - | 35.5% (34.9% to 36.1%) | 59.2% (58.7% to 59.7%) |
-| Reduction in human actions per case | - | 5.2% (4.2% to 6.1%) | 15.6% (14.3% to 16.8%) |
-| Among the cases the programme reaches: human minutes per case | 57.4 (57.1 to 57.6) | 37.2 (36.7 to 37.6) | 35.1 (34.7 to 35.5) |
-| Among the cases the programme reaches: **labour reduction** | - | 35.2% (34.2% to 36.1%) | 38.8% (37.9% to 39.6%) |
+| Human minutes per case | 57.3 (57.1 to 57.6) | 46.8 (46.6 to 47.1) | 36.0 (35.5 to 36.4) |
+| Human minutes per closed case | 109.6 (108.7 to 110.5) | 71.5 (70.7 to 72.2) | 45.8 (45.2 to 46.5) |
+| Human actions per case | 9.72 (9.68 to 9.76) | 9.43 (9.35 to 9.50) | 8.55 (8.43 to 8.66) |
+| Automation share (automated actions / all actions) | 0.0% (0.0% to 0.0%) | 59.0% (58.8% to 59.3%) | 74.1% (73.8% to 74.3%) |
+| **Labour reduction**, minutes per case (1 - orchestrated / baseline) | - | 18.3% (17.8% to 18.8%) | 37.3% (36.4% to 38.1%) |
+| Labour reduction, minutes per closed case | - | 34.8% (34.2% to 35.4%) | 58.2% (57.6% to 58.8%) |
+| Reduction in human actions per case | - | 3.0% (2.1% to 3.9%) | 12.0% (10.6% to 13.2%) |
+| Among the cases the programme reaches: human minutes per case | 57.4 (57.1 to 57.6) | 38.2 (37.7 to 38.6) | 36.0 (35.5 to 36.3) |
+| Among the cases the programme reaches: **labour reduction** | - | 33.4% (32.5% to 34.4%) | 37.3% (36.4% to 38.1%) |
 
 **What is counted.** Staff minutes per case in each arm, computed from the simulated event log (`simulator/sim/effort.py`; no outcome in this report depends on it). A person's time is counted only when a person acts. Today's process is manual at every step (look up and acknowledge the result, phone or write to the patient, send the referral, book, record that the patient called back, review the report, file the closure), and the model adds the chasing that leaves no event in the log (up to 3 attempts every 14 days when a patient, a referral or a colonoscopy is overdue). In the orchestrated process the engine does the following by machine and they cost no human minutes: acknowledge on ingest; owner auto-assignment; pre-approved template outreach and reminders; evidence detection; closure proposal; referral acceptance carries the appointment; reroute down a provider list; bounce; overdue; escalation emission; reply handling; consent ledger; delivery tracking; de-duplication; state machine. A person acts only to accept an escalation, approve a drafted message, sign the closure and handle an exhausted reroute list, plus the steps automation cannot do (recording a patient's call-back, a consent withdrawal, a transfer decision, a rebooking, a corrected contact, a reopened case, and the specialist's own accept or reject). In the literature-anchored scenario only 55% of orchestrated-arm cases receive the orchestrated process (`programme_reach`); the rest stay manual, so the programme-level reduction is diluted by construction and the in-reach figure is the one that describes the automation itself.
 
-**Result.** In the literature-anchored scenario the programme-level reduction is 19.3%, 95% CI 18.7% to 19.8%: the 40% target is **not met**. Among the cases the programme reaches it is 35.2%, 95% CI 34.2% to 36.1% (target not met); per closed case it is 35.5%, 95% CI 34.9% to 36.1%. In the upper-range scenario the reduction is 38.8%, 95% CI 37.9% to 39.6% (target not met; the lower end of the interval is 37.9%); per closed case it is 59.2%, 95% CI 58.7% to 59.7%.
+**Result.** In the literature-anchored scenario the programme-level reduction is 18.3%, 95% CI 17.8% to 18.8%: the 40% target is **not met**. Among the cases the programme reaches it is 33.4%, 95% CI 32.5% to 34.4% (target not met); per closed case it is 34.8%, 95% CI 34.2% to 35.4%. In the upper-range scenario the reduction is 37.3%, 95% CI 36.4% to 38.1% (target not met; the lower end of the interval is 36.4%); per closed case it is 58.2%, 95% CI 57.6% to 58.8%.
 
-**What drives the remaining minutes.** In the literature-anchored scenario the orchestrated arm needs 46.3 human minutes per case against 57.3 at baseline. The largest orchestrated contributors are specialist review of referrals (7.3 min per case), coordinator alternate-route contacts (4.7 min per case), hand-over to a clinician (4.2 min per case), chasing patients (3.9 min per case). Escalation handling alone (accepting, phoning, approving) is 11.3 minutes per case, because the orchestrated arm escalates far more than today's process ever does; the orchestrated arm also takes 13.2 automated actions per case that the baseline does not do at all, so the reduction is in people's time, not in the work done. 9.2 human actions per case remain, many of them short. The time also moves between roles: coordinator minutes change by -36% but owner-clinician minutes by +102% (accepting escalations, calling, approving and signing are clinician decisions) and specialist minutes by +20%; whether that is cheaper depends on wages, which are not in the model.
+**What drives the remaining minutes.** In the literature-anchored scenario the orchestrated arm needs 46.8 human minutes per case against 57.3 at baseline. The largest orchestrated contributors are specialist review of referrals (7.3 min per case), coordinator alternate-route contacts (4.7 min per case), hand-over to a clinician (4.2 min per case), chasing patients (3.9 min per case). Escalation handling alone (accepting, phoning, approving) is 11.9 minutes per case, because the orchestrated arm escalates far more than today's process ever does; the orchestrated arm also takes 13.6 automated actions per case that the baseline does not do at all, so the reduction is in people's time, not in the work done. 9.4 human actions per case remain, many of them short. The time also moves between roles: coordinator minutes change by -35% but owner-clinician minutes by +109% (accepting escalations, calling, approving and signing are clinician decisions) and specialist minutes by +19%; whether that is cheaper depends on wages, which are not in the model.
 
-**How far to trust the minutes.** 66% of baseline minutes and 62% of orchestrated minutes rest on a published minutes figure from an adjacent setting (care coordinators and navigators in Australia and the United States); none was measured in the Abu Dhabi pathway, and none is graded `sourced` (a direct measurement of the same task in the same population). The rest (34% of baseline and 38% of orchestrated minutes) is assumed. Moving every figure to its low or its high end together barely changes the reduction, because it is a ratio, but the relative sizes matter: the table above shows how far individual figures move it, and the least favourable corner (baseline-only actions at their low end, orchestrated-only actions at their high end) gives -44%. Three modelling choices carry most of the weight: the baseline's chasing (without it the reduction is 11.4%, and baseline chasing was 10.4 minutes per case), whether a person still records every booking in the orchestrated arm (if so, 12.9%), and whether the human escalation outreach is a phone call or a drafted message that a person only approves (if only approved, 30.3%). All three are flagged for confirmation with the engine ticket (A21).
+**How far to trust the minutes.** 66% of baseline minutes and 61% of orchestrated minutes rest on a published minutes figure from an adjacent setting (care coordinators and navigators in Australia and the United States); none was measured in the Abu Dhabi pathway, and none is graded `sourced` (a direct measurement of the same task in the same population). The rest (34% of baseline and 39% of orchestrated minutes) is assumed. Moving every figure to its low or its high end together barely changes the reduction, because it is a ratio, but the relative sizes matter: the table above shows how far individual figures move it, and the least favourable corner (baseline-only actions at their low end, orchestrated-only actions at their high end) gives -48%. Three modelling choices carry most of the weight: the baseline's chasing (without it the reduction is 10.2%, and baseline chasing was 10.4 minutes per case), whether a person still records every booking in the orchestrated arm (if so, 12.0%), and whether the human escalation outreach is a phone call or a drafted message that a person only approves (if only approved, 29.7%). All three are flagged for confirmation with the engine ticket (A21).
 
 **Limits.** Human minutes are not capacity: there is no queue, no shift pattern and no shared workload, so a coordinator who accepts three escalations in an hour is not slowed down (see the capacity caveat). The orchestrated escalation volume is a simulator output (the SLA timers breach often), and a real programme could reduce it by batching or by tuning the ladder. The simulator has no model-drafted messages (every message is a pre-approved template), so the approval charge is a proxy placed on the human-contact messages. Time spent by patients, the endoscopy unit's procedure and reception work, and management or training time are outside the count.
 
@@ -147,37 +147,37 @@ Human minutes per case in each arm and the reduction automation buys, from the e
 
 | Measure | Baseline | Orchestrated, literature anchored | Orchestrated, upper range |
 |---|---|---|---|
-| Coordinator: minutes per case | 46.8 (46.7 to 47.0) | 30.1 (29.9 to 30.4) | 14.5 (14.1 to 14.8) |
-| Owner clinician: minutes per case | 4.4 (4.3 to 4.4) | 8.9 (8.8 to 9.0) | 12.3 (12.2 to 12.4) |
+| Coordinator: minutes per case | 46.8 (46.7 to 47.0) | 30.4 (30.1 to 30.6) | 14.9 (14.6 to 15.3) |
+| Owner clinician: minutes per case | 4.4 (4.3 to 4.4) | 9.2 (9.1 to 9.3) | 12.7 (12.6 to 12.8) |
 | Specialist: minutes per case | 6.1 (6.0 to 6.2) | 7.3 (7.2 to 7.4) | 8.3 (8.3 to 8.4) |
-| Coordinator: reduction | - | 35.7% (35.2% to 36.3%) | 69.1% (68.3% to 69.9%) |
-| Owner clinician: reduction | - | -102.6% (-105.8% to -99.7%) | -179.9% (-185.3% to -174.8%) |
-| Specialist: reduction | - | -19.5% (-20.2% to -18.9%) | -36.6% (-37.8% to -35.5%) |
+| Coordinator: reduction | - | 35.2% (34.6% to 35.7%) | 68.2% (67.4% to 68.9%) |
+| Owner clinician: reduction | - | -109.2% (-112.4% to -106.1%) | -189.6% (-195.1% to -184.3%) |
+| Specialist: reduction | - | -19.5% (-20.2% to -18.9%) | -36.6% (-37.7% to -35.5%) |
 
 ### How robust is the reduction
 
 | Variant (labour reduction, minutes per case, point estimate) | Orchestrated, literature anchored | Orchestrated, upper range |
 |---|---|---|
-| Headline (the table above) | +19.3% | +38.8% |
-| Baseline chasing not costed (only logged events count in the baseline) | +11.4% | +25.2% |
-| Baseline chases harder (up to 5 attempts, every 7 days) | +23.7% | +46.5% |
-| Specialist minutes left out (coordinator and owner clinician only) | +23.9% | +47.8% |
-| Orchestrated arm: a person still records every booking | +12.9% | +27.2% |
-| No charge for approving drafts (a phone call needs no approval) | +21.6% | +42.6% |
-| Escalation outreach is an approved drafted message, not a phone call (calls cost no minutes) | +30.3% | +57.0% |
-| Every minutes figure at its low end | +18.6% | +37.6% |
-| Every minutes figure at its high end | +18.9% | +38.3% |
-| Least favourable corner: baseline-only actions at their low end, orchestrated-only at their high end | -44.3% | -69.3% |
+| Headline (the table above) | +18.3% | +37.3% |
+| Baseline chasing not costed (only logged events count in the baseline) | +10.2% | +23.3% |
+| Baseline chases harder (up to 5 attempts, every 7 days) | +22.9% | +45.2% |
+| Specialist minutes left out (coordinator and owner clinician only) | +22.8% | +46.1% |
+| Orchestrated arm: a person still records every booking | +12.0% | +25.7% |
+| No charge for approving drafts (a phone call needs no approval) | +20.7% | +41.2% |
+| Escalation outreach is an approved drafted message, not a phone call (calls cost no minutes) | +29.7% | +55.9% |
+| Every minutes figure at its low end | +17.6% | +36.1% |
+| Every minutes figure at its high end | +17.9% | +36.6% |
+| Least favourable corner: baseline-only actions at their low end, orchestrated-only at their high end | -47.7% | -74.8% |
 
-The five minutes figures that move the literature anchored reduction most, one at a time (central 19.3%):
+The five minutes figures that move the literature anchored reduction most, one at a time (central 18.3%):
 
 | Minutes figure (top 5 by swing) | Grade | Low / central / high (min) | Reduction at low | Reduction at high |
 |---|---|---|---|---|
-| Coordinator contacts the patient by the alternate route (`O_COORDINATOR_CALL`) | sourced-adjacent | 3.9 / 7.2 / 12.1 | 23.0% | 13.7% |
-| Look up the positive result, review the chart, open a work item (`M_RESULT_LOOKUP`) | assumed | 3 / 5 / 14 | 18.0% | 24.1% |
-| Chase a patient who has not answered (phone call, up to N attempts) (`M_CHASE_PATIENT`) | sourced-adjacent | 3.9 / 7.2 / 12.1 | 16.6% | 22.6% |
-| Coordinator accepts an escalation or a watchdog flag (`O_ACCEPT_ESC_COORDINATOR`) | assumed | 1 / 2 / 4 | 21.1% | 15.5% |
-| Send or fax the referral to the endoscopy service (`M_REFERRAL_SEND`) | sourced-adjacent | 6.2 / 12.4 / 18.6 | 16.5% | 21.7% |
+| Coordinator contacts the patient by the alternate route (`O_COORDINATOR_CALL`) | sourced-adjacent | 3.9 / 7.2 / 12.1 | 22.1% | 12.7% |
+| Look up the positive result, review the chart, open a work item (`M_RESULT_LOOKUP`) | assumed | 3 / 5 / 14 | 17.0% | 23.2% |
+| Chase a patient who has not answered (phone call, up to N attempts) (`M_CHASE_PATIENT`) | sourced-adjacent | 3.9 / 7.2 / 12.1 | 15.6% | 21.7% |
+| Coordinator accepts an escalation or a watchdog flag (`O_ACCEPT_ESC_COORDINATOR`) | assumed | 1 / 2 / 4 | 20.3% | 14.3% |
+| Send or fax the referral to the endoscopy service (`M_REFERRAL_SEND`) | sourced-adjacent | 6.2 / 12.4 / 18.6 | 15.4% | 20.8% |
 
 ### The minutes table
 
@@ -223,9 +223,9 @@ The baseline arm is the unmanaged process. Its completion curve was tuned (param
 
 | Follow-up | Published unmanaged (Mohl 2023) | Simulated baseline | Gap | Published managed (Corley 2017) | Simulated orchestrated, literature anchored | Simulated orchestrated, upper range |
 |---|---|---|---|---|---|---|
-| 90 days | 43.0% | 41.9% (41.5% to 42.3%) | -1.1pp | 74.2% | 57.4% (56.9% to 57.8%) | 72.9% (72.6% to 73.3%) |
+| 90 days | 43.0% | 41.9% (41.5% to 42.3%) | -1.1pp | 74.2% | 57.5% (57.0% to 57.9%) | 73.1% (72.7% to 73.4%) |
 | 180 days | 51.0% | 51.1% (50.6% to 51.6%) | +0.1pp | 80.6% | 64.9% (64.4% to 65.4%) | 78.3% (77.9% to 78.7%) |
-| 360 days | 56.0% | 54.1% (53.5% to 54.6%) | -1.9pp | 83.2% | 66.4% (65.8% to 66.9%) | 78.5% (78.1% to 78.8%) |
+| 360 days | 56.0% | 54.1% (53.5% to 54.6%) | -1.9pp | 83.2% | 66.4% (65.9% to 67.0%) | 78.5% (78.1% to 78.8%) |
 
 The baseline lands within 1.9 percentage points of the published curve at every horizon shown.
 Among baseline completers the simulated time to colonoscopy is median 61 days (IQR 46 to 85). The Sea Mar FQHC figure in the parameter file (83 days, IQR 52 to 131) describes a slower, lower-completion setting (22.9% at 90 days); Mohl's higher 90-day completion implies a faster completer median, so the simulator follows the Mohl completion curve and does not try to match both.
@@ -234,7 +234,7 @@ Among baseline completers the simulated time to colonoscopy is median 61 days (I
 
 | Follow-up | Literature anchored | Upper range | Pooled navigation RR (J Gen Intern Med 2026) |
 |---|---|---|---|
-| 90 days | 1.37 | 1.74 | 1.27 |
+| 90 days | 1.37 | 1.75 | 1.27 |
 | 180 days | 1.27 | 1.53 | 1.27 |
 | 360 days | 1.23 | 1.45 | 1.27 |
 
@@ -246,49 +246,49 @@ The upper-range ratio at 180 days is 1.53 against a pooled risk ratio of 1.27 fo
 
 | Language | Baseline completion | Baseline median days to closure (among closed cases only) | Orchestrated completion | Orchestrated median days to closure (among closed cases only) |
 |---|---|---|---|---|
-| ar | 51.0% (50.2% to 51.8%) | 70.9 (70.3 to 71.5) | 65.0% (64.2% to 65.7%) | 64.1 (63.6 to 64.6) |
-| en | 59.0% (58.2% to 59.9%) | 69.1 (68.4 to 69.8) | 68.7% (68.0% to 69.4%) | 64.1 (63.6 to 64.6) |
-| other | 52.2% (51.3% to 53.2%) | 71.8 (70.8 to 72.9) | 65.3% (64.3% to 66.4%) | 64.0 (63.5 to 64.6) |
+| ar | 51.0% (50.2% to 51.8%) | 70.9 (70.3 to 71.5) | 65.1% (64.3% to 65.8%) | 64.2 (63.7 to 64.6) |
+| en | 59.0% (58.2% to 59.9%) | 69.1 (68.4 to 69.8) | 68.7% (68.0% to 69.4%) | 64.2 (63.7 to 64.6) |
+| other | 52.2% (51.3% to 53.2%) | 71.8 (70.8 to 72.9) | 65.4% (64.4% to 66.5%) | 64.0 (63.5 to 64.6) |
 
 Censoring-aware closure time by language (cases not closed by the end of follow-up are censored there, not dropped; `n/a` = fewer than half the group closed).
 
 | Language | Baseline Kaplan-Meier median days | Baseline restricted mean days | Orchestrated Kaplan-Meier median days | Orchestrated restricted mean days |
 |---|---|---|---|---|
-| ar | 287.3 (254.4 to 322.2) | 226.1 (224.1 to 228.0) | 85.8 (84.5 to 87.1) | 176.5 (174.2 to 178.8) |
-| en | 117.8 (113.6 to 121.9) | 200.5 (198.6 to 202.5) | 79.9 (78.8 to 81.0) | 164.6 (162.5 to 166.6) |
-| other | 250.2 (226.0 to 275.8) | 222.5 (220.2 to 224.8) | 85.2 (83.0 to 87.1) | 175.4 (172.2 to 178.3) |
+| ar | 287.3 (254.4 to 322.2) | 226.1 (224.1 to 228.0) | 85.6 (84.5 to 86.9) | 176.3 (174.1 to 178.6) |
+| en | 117.8 (113.6 to 121.9) | 200.5 (198.6 to 202.5) | 79.9 (78.8 to 80.8) | 164.5 (162.4 to 166.5) |
+| other | 250.2 (226.0 to 275.8) | 222.5 (220.2 to 224.8) | 85.0 (82.9 to 87.0) | 175.2 (172.0 to 178.2) |
 
 | Max-gap statistic (largest minus smallest group) | Baseline | Orchestrated | Difference |
 |---|---|---|---|
-| Completion, max gap between groups | 8.6% (7.5% to 9.5%) | 5.0% (4.1% to 5.8%) | -3.6pp (-4.4pp to -2.7pp) |
-| Median days to closure (among closed cases only), max gap between groups | 4.1 (3.2 to 4.9) | 2.0 (1.5 to 2.5) | -2.1 (-3.2 to -1.2) |
-| Kaplan-Meier median days to closure, max gap between groups | 162.0 (138.6 to 183.1) | 9.3 (8.0 to 10.5) | -153.4 (-175.0 to -128.3) |
-| Restricted mean days to closure, max gap between groups | 27.0 (24.7 to 29.1) | 15.8 (13.5 to 18.1) | -11.2 (-13.7 to -9.0) |
+| Completion, max gap between groups | 8.6% (7.5% to 9.5%) | 5.0% (4.1% to 5.8%) | -3.6pp (-4.5pp to -2.7pp) |
+| Median days to closure (among closed cases only), max gap between groups | 4.1 (3.2 to 4.9) | 2.0 (1.6 to 2.4) | -2.1 (-3.1 to -1.1) |
+| Kaplan-Meier median days to closure, max gap between groups | 162.0 (138.6 to 183.1) | 9.0 (7.8 to 10.2) | -153.6 (-175.4 to -128.7) |
+| Restricted mean days to closure, max gap between groups | 27.0 (24.7 to 29.1) | 15.7 (13.4 to 18.0) | -11.3 (-13.8 to -9.0) |
 
 ### Preferred contact channel
 
 | Preferred contact channel | Baseline completion | Baseline median days to closure (among closed cases only) | Orchestrated completion | Orchestrated median days to closure (among closed cases only) |
 |---|---|---|---|---|
 | letter | 54.1% (52.7% to 55.4%) | 70.7 (69.3 to 72.0) | 65.6% (64.4% to 66.9%) | 67.6 (66.6 to 68.6) |
-| phone | 53.7% (52.7% to 54.6%) | 70.9 (70.0 to 71.9) | 66.8% (65.7% to 67.8%) | 63.4 (62.6 to 64.4) |
-| sms | 54.3% (53.6% to 54.9%) | 69.9 (69.3 to 70.6) | 66.4% (65.8% to 67.0%) | 63.8 (63.5 to 64.1) |
-| whatsapp | 54.0% (53.0% to 54.9%) | 70.2 (69.5 to 70.9) | 66.5% (65.5% to 67.2%) | 63.2 (62.7 to 63.7) |
+| phone | 53.7% (52.7% to 54.6%) | 70.9 (70.0 to 71.9) | 66.8% (65.8% to 67.9%) | 63.5 (62.6 to 64.5) |
+| sms | 54.3% (53.6% to 54.9%) | 69.9 (69.3 to 70.6) | 66.5% (65.9% to 67.1%) | 63.8 (63.6 to 64.1) |
+| whatsapp | 54.0% (53.0% to 54.9%) | 70.2 (69.5 to 70.9) | 66.5% (65.6% to 67.3%) | 63.3 (62.8 to 63.8) |
 
 Censoring-aware closure time by preferred contact channel (cases not closed by the end of follow-up are censored there, not dropped; `n/a` = fewer than half the group closed).
 
 | Preferred contact channel | Baseline Kaplan-Meier median days | Baseline restricted mean days | Orchestrated Kaplan-Meier median days | Orchestrated restricted mean days |
 |---|---|---|---|---|
-| letter | 185.5 (157.5 to 218.6) | 216.0 (212.6 to 219.9) | 86.7 (85.0 to 88.2) | 176.1 (172.9 to 179.6) |
-| phone | 209.9 (183.8 to 238.3) | 217.5 (215.0 to 220.1) | 81.7 (80.0 to 83.5) | 169.9 (166.7 to 173.4) |
-| sms | 201.0 (179.6 to 226.2) | 215.7 (213.6 to 218.0) | 83.2 (81.9 to 84.5) | 171.8 (169.7 to 173.8) |
-| whatsapp | 196.0 (179.7 to 213.8) | 216.8 (214.8 to 219.0) | 83.0 (81.7 to 84.1) | 171.6 (169.7 to 173.6) |
+| letter | 185.5 (157.5 to 218.6) | 216.0 (212.6 to 219.9) | 86.6 (85.0 to 88.2) | 176.1 (172.8 to 179.6) |
+| phone | 209.9 (183.8 to 238.3) | 217.5 (215.0 to 220.1) | 81.2 (79.8 to 82.8) | 169.6 (166.5 to 172.9) |
+| sms | 201.0 (179.6 to 226.2) | 215.7 (213.6 to 218.0) | 83.1 (81.9 to 84.4) | 171.6 (169.5 to 173.5) |
+| whatsapp | 196.0 (179.7 to 213.8) | 216.8 (214.8 to 219.0) | 82.8 (81.6 to 84.0) | 171.5 (169.6 to 173.4) |
 
 | Max-gap statistic (largest minus smallest group) | Baseline | Orchestrated | Difference |
 |---|---|---|---|
-| Completion, max gap between groups | 5.0% (4.2% to 5.7%) | 4.6% (3.7% to 5.6%) | -0.5pp (-1.6pp to +0.8pp) |
-| Median days to closure (among closed cases only), max gap between groups | 4.5 (3.7 to 5.2) | 5.4 (4.4 to 6.3) | +1.0 (-0.4 to +2.2) |
-| Kaplan-Meier median days to closure, max gap between groups | 85.4 (64.9 to 109.2) | 8.5 (7.4 to 9.7) | -76.9 (-99.3 to -54.3) |
-| Restricted mean days to closure, max gap between groups | 13.1 (10.7 to 15.4) | 13.1 (10.3 to 15.7) | -0.0 (-3.3 to +3.9) |
+| Completion, max gap between groups | 5.0% (4.2% to 5.7%) | 4.5% (3.7% to 5.7%) | -0.5pp (-1.7pp to +0.8pp) |
+| Median days to closure (among closed cases only), max gap between groups | 4.5 (3.7 to 5.2) | 5.4 (4.4 to 6.3) | +0.9 (-0.5 to +2.1) |
+| Kaplan-Meier median days to closure, max gap between groups | 85.4 (64.9 to 109.2) | 8.4 (7.3 to 9.6) | -77.0 (-99.2 to -54.2) |
+| Restricted mean days to closure, max gap between groups | 13.1 (10.7 to 15.4) | 12.9 (10.0 to 15.8) | -0.1 (-3.5 to +3.9) |
 
 Completion is the share completing the colonoscopy by the end of follow-up. Groups smaller than the `metrics.min_group_size` parameter are shown above but excluded from the max-gap.
 
@@ -298,49 +298,49 @@ Completion is the share completing the colonoscopy by the end of follow-up. Grou
 
 | Language | Baseline completion | Baseline median days to closure (among closed cases only) | Orchestrated completion | Orchestrated median days to closure (among closed cases only) |
 |---|---|---|---|---|
-| ar | 51.0% (50.2% to 51.8%) | 70.9 (70.3 to 71.5) | 78.2% (77.7% to 78.6%) | 60.7 (60.2 to 61.1) |
-| en | 59.0% (58.2% to 59.9%) | 69.1 (68.4 to 69.8) | 78.7% (77.9% to 79.4%) | 60.6 (60.1 to 61.1) |
-| other | 52.2% (51.3% to 53.2%) | 71.8 (70.8 to 72.9) | 78.7% (77.9% to 79.6%) | 60.0 (59.4 to 60.7) |
+| ar | 51.0% (50.2% to 51.8%) | 70.9 (70.3 to 71.5) | 78.2% (77.8% to 78.7%) | 60.7 (60.3 to 61.1) |
+| en | 59.0% (58.2% to 59.9%) | 69.1 (68.4 to 69.8) | 78.7% (78.0% to 79.5%) | 60.7 (60.2 to 61.2) |
+| other | 52.2% (51.3% to 53.2%) | 71.8 (70.8 to 72.9) | 78.7% (77.9% to 79.6%) | 60.0 (59.4 to 60.6) |
 
 Censoring-aware closure time by language (cases not closed by the end of follow-up are censored there, not dropped; `n/a` = fewer than half the group closed).
 
 | Language | Baseline Kaplan-Meier median days | Baseline restricted mean days | Orchestrated Kaplan-Meier median days | Orchestrated restricted mean days |
 |---|---|---|---|---|
-| ar | 287.3 (254.4 to 322.2) | 226.1 (224.1 to 228.0) | 67.5 (67.0 to 68.0) | 129.3 (128.1 to 130.6) |
-| en | 117.8 (113.6 to 121.9) | 200.5 (198.6 to 202.5) | 67.3 (66.5 to 68.0) | 127.6 (125.6 to 130.1) |
-| other | 250.2 (226.0 to 275.8) | 222.5 (220.2 to 224.8) | 66.5 (65.9 to 67.1) | 127.4 (124.7 to 129.8) |
+| ar | 287.3 (254.4 to 322.2) | 226.1 (224.1 to 228.0) | 67.5 (67.0 to 67.9) | 129.2 (127.9 to 130.5) |
+| en | 117.8 (113.6 to 121.9) | 200.5 (198.6 to 202.5) | 67.3 (66.5 to 68.0) | 127.4 (125.6 to 129.8) |
+| other | 250.2 (226.0 to 275.8) | 222.5 (220.2 to 224.8) | 66.6 (66.0 to 67.2) | 127.3 (124.6 to 129.8) |
 
 | Max-gap statistic (largest minus smallest group) | Baseline | Orchestrated | Difference |
 |---|---|---|---|
-| Completion, max gap between groups | 8.6% (7.5% to 9.5%) | 3.1% (2.4% to 3.7%) | -5.5pp (-6.8pp to -4.2pp) |
-| Median days to closure (among closed cases only), max gap between groups | 4.1 (3.2 to 4.9) | 2.2 (1.8 to 2.6) | -1.9 (-2.9 to -0.9) |
-| Kaplan-Meier median days to closure, max gap between groups | 162.0 (138.6 to 183.1) | 2.7 (2.1 to 3.5) | -159.3 (-180.1 to -134.5) |
-| Restricted mean days to closure, max gap between groups | 27.0 (24.7 to 29.1) | 9.1 (7.3 to 10.9) | -17.9 (-21.0 to -14.6) |
+| Completion, max gap between groups | 8.6% (7.5% to 9.5%) | 3.0% (2.4% to 3.6%) | -5.5pp (-6.8pp to -4.3pp) |
+| Median days to closure (among closed cases only), max gap between groups | 4.1 (3.2 to 4.9) | 2.2 (1.8 to 2.6) | -1.9 (-2.9 to -0.8) |
+| Kaplan-Meier median days to closure, max gap between groups | 162.0 (138.6 to 183.1) | 2.7 (2.0 to 3.4) | -159.4 (-180.1 to -134.6) |
+| Restricted mean days to closure, max gap between groups | 27.0 (24.7 to 29.1) | 8.9 (7.2 to 10.7) | -18.1 (-21.0 to -14.8) |
 
 ### Preferred contact channel
 
 | Preferred contact channel | Baseline completion | Baseline median days to closure (among closed cases only) | Orchestrated completion | Orchestrated median days to closure (among closed cases only) |
 |---|---|---|---|---|
-| letter | 54.1% (52.7% to 55.4%) | 70.7 (69.3 to 72.0) | 77.2% (76.4% to 78.1%) | 64.8 (64.1 to 65.6) |
-| phone | 53.7% (52.7% to 54.6%) | 70.9 (70.0 to 71.9) | 79.3% (78.3% to 80.4%) | 58.8 (58.2 to 59.3) |
-| sms | 54.3% (53.6% to 54.9%) | 69.9 (69.3 to 70.6) | 78.4% (77.9% to 79.0%) | 60.4 (59.9 to 60.9) |
-| whatsapp | 54.0% (53.0% to 54.9%) | 70.2 (69.5 to 70.9) | 78.7% (78.0% to 79.5%) | 59.1 (58.8 to 59.5) |
+| letter | 54.1% (52.7% to 55.4%) | 70.7 (69.3 to 72.0) | 77.2% (76.4% to 78.1%) | 64.8 (64.1 to 65.5) |
+| phone | 53.7% (52.7% to 54.6%) | 70.9 (70.0 to 71.9) | 79.4% (78.4% to 80.5%) | 58.8 (58.2 to 59.3) |
+| sms | 54.3% (53.6% to 54.9%) | 69.9 (69.3 to 70.6) | 78.5% (77.9% to 79.0%) | 60.4 (59.9 to 60.9) |
+| whatsapp | 54.0% (53.0% to 54.9%) | 70.2 (69.5 to 70.9) | 78.7% (78.0% to 79.4%) | 59.1 (58.8 to 59.5) |
 
 Censoring-aware closure time by preferred contact channel (cases not closed by the end of follow-up are censored there, not dropped; `n/a` = fewer than half the group closed).
 
 | Preferred contact channel | Baseline Kaplan-Meier median days | Baseline restricted mean days | Orchestrated Kaplan-Meier median days | Orchestrated restricted mean days |
 |---|---|---|---|---|
-| letter | 185.5 (157.5 to 218.6) | 216.0 (212.6 to 219.9) | 72.0 (71.4 to 72.8) | 135.0 (132.8 to 137.5) |
-| phone | 209.9 (183.8 to 238.3) | 217.5 (215.0 to 220.1) | 65.1 (64.3 to 65.9) | 124.6 (121.0 to 127.8) |
-| sms | 201.0 (179.6 to 226.2) | 215.7 (213.6 to 218.0) | 67.1 (66.5 to 67.8) | 128.3 (126.5 to 130.0) |
-| whatsapp | 196.0 (179.7 to 213.8) | 216.8 (214.8 to 219.0) | 66.0 (65.6 to 66.3) | 127.0 (125.0 to 129.0) |
+| letter | 185.5 (157.5 to 218.6) | 216.0 (212.6 to 219.9) | 72.0 (71.4 to 72.8) | 135.0 (132.7 to 137.5) |
+| phone | 209.9 (183.8 to 238.3) | 217.5 (215.0 to 220.1) | 65.1 (64.3 to 65.9) | 124.1 (120.5 to 127.4) |
+| sms | 201.0 (179.6 to 226.2) | 215.7 (213.6 to 218.0) | 67.1 (66.5 to 67.8) | 128.2 (126.4 to 129.9) |
+| whatsapp | 196.0 (179.7 to 213.8) | 216.8 (214.8 to 219.0) | 66.0 (65.6 to 66.3) | 127.0 (124.9 to 129.0) |
 
 | Max-gap statistic (largest minus smallest group) | Baseline | Orchestrated | Difference |
 |---|---|---|---|
-| Completion, max gap between groups | 5.0% (4.2% to 5.7%) | 4.4% (3.5% to 5.3%) | -0.7pp (-1.8pp to +0.5pp) |
-| Median days to closure (among closed cases only), max gap between groups | 4.5 (3.7 to 5.2) | 6.5 (5.6 to 7.5) | +2.1 (+0.9 to +3.3) |
-| Kaplan-Meier median days to closure, max gap between groups | 85.4 (64.9 to 109.2) | 7.5 (6.5 to 8.4) | -77.9 (-100.5 to -54.6) |
-| Restricted mean days to closure, max gap between groups | 13.1 (10.7 to 15.4) | 14.8 (11.5 to 18.1) | +1.7 (-2.1 to +6.0) |
+| Completion, max gap between groups | 5.0% (4.2% to 5.7%) | 4.4% (3.4% to 5.5%) | -0.6pp (-1.8pp to +0.6pp) |
+| Median days to closure (among closed cases only), max gap between groups | 4.5 (3.7 to 5.2) | 6.5 (5.6 to 7.4) | +2.0 (+0.9 to +3.2) |
+| Kaplan-Meier median days to closure, max gap between groups | 85.4 (64.9 to 109.2) | 7.4 (6.5 to 8.4) | -77.9 (-100.5 to -54.6) |
+| Restricted mean days to closure, max gap between groups | 13.1 (10.7 to 15.4) | 15.1 (11.6 to 18.4) | +2.0 (-1.8 to +6.4) |
 
 Completion is the share completing the colonoscopy by the end of follow-up. Groups smaller than the `metrics.min_group_size` parameter are shown above but excluded from the max-gap.
 
@@ -348,11 +348,11 @@ Completion is the share completing the colonoscopy by the end of follow-up. Grou
 
 | Messy case | Cases per replication | Handled explicitly: baseline | Handled explicitly: orchestrated | Completion: baseline | Completion: orchestrated | Completion: orchestrated, unaffected cases |
 |---|---|---|---|---|---|---|
-| Wrong contact number | 165 | 0.0% (0.0% to 0.0%) | 44.5% (43.2% to 45.9%) | 21.0% (19.7% to 22.3%) | 42.8% (41.4% to 44.4%) | 68.5% (67.9% to 69.0%) |
-| Patient switches provider mid-pathway | 70 | 0.0% (0.0% to 0.0%) | 48.7% (46.5% to 50.8%) | 13.9% (12.3% to 15.6%) | 37.4% (35.1% to 39.6%) | 67.2% (66.7% to 67.8%) |
-| Duplicate result from a second lab | 120 | 0.0% (0.0% to 0.0%) | 53.8% (51.5% to 56.1%) | 53.2% (51.2% to 55.4%) | 65.3% (63.8% to 66.8%) | 66.4% (65.9% to 67.0%) |
-| Conflicting ownership acknowledgements | 77 | 0.0% (0.0% to 0.0%) | 55.4% (53.8% to 57.2%) | 56.2% (54.0% to 58.5%) | 68.0% (66.3% to 69.9%) | 66.3% (65.8% to 66.8%) |
-| Consent withdrawn after booking | 24 | 0.0% (0.0% to 0.0%) | 63.7% (58.2% to 68.6%) | 64.9% (61.6% to 68.8%) | 61.7% (57.8% to 65.2%) | 66.4% (65.9% to 67.0%) |
+| Wrong contact number | 165 | 0.0% (0.0% to 0.0%) | 44.5% (43.2% to 45.9%) | 21.0% (19.7% to 22.3%) | 42.9% (41.5% to 44.5%) | 68.6% (68.0% to 69.0%) |
+| Patient switches provider mid-pathway | 70 | 0.0% (0.0% to 0.0%) | 48.7% (46.5% to 50.8%) | 13.9% (12.3% to 15.6%) | 37.5% (35.2% to 39.7%) | 67.3% (66.8% to 67.8%) |
+| Duplicate result from a second lab | 120 | 0.0% (0.0% to 0.0%) | 53.8% (51.5% to 56.1%) | 53.2% (51.2% to 55.4%) | 65.3% (63.8% to 66.8%) | 66.5% (66.0% to 67.1%) |
+| Conflicting ownership acknowledgements | 77 | 0.0% (0.0% to 0.0%) | 55.4% (53.8% to 57.2%) | 56.2% (54.0% to 58.5%) | 68.0% (66.2% to 69.9%) | 66.4% (65.8% to 66.9%) |
+| Consent withdrawn after booking | 24 | 0.0% (0.0% to 0.0%) | 63.7% (58.2% to 68.6%) | 64.9% (61.6% to 68.8%) | 61.7% (57.8% to 65.2%) | 66.5% (66.0% to 67.1%) |
 
 `Handled explicitly` means the system logged the specific handling event (contact recovered, transfer accepted by the new owner, duplicate merged, second ownership claim rejected by the state machine, consent review completed). The baseline has no such mechanism by design, so its rate is 0. A messy case counts only if it actually occurred in that arm (for example, a provider switch after the colonoscopy is booked needs no transfer and is not counted). Wrong contact numbers are not injected separately: they are the `wrong_contact_rate` patient attribute. In the literature-anchored scenario, cases outside the programme's reach are handled as today, so the orchestrated handled rates are below 100%.
 
@@ -360,10 +360,10 @@ Completion is the share completing the colonoscopy by the end of follow-up. Grou
 
 | Messy case | Cases per replication | Handled explicitly: baseline | Handled explicitly: orchestrated | Completion: baseline | Completion: orchestrated | Completion: orchestrated, unaffected cases |
 |---|---|---|---|---|---|---|
-| Wrong contact number | 165 | 0.0% (0.0% to 0.0%) | 91.0% (89.9% to 92.1%) | 21.0% (19.7% to 22.3%) | 72.3% (70.7% to 74.1%) | 79.0% (78.6% to 79.4%) |
-| Patient switches provider mid-pathway | 70 | 0.0% (0.0% to 0.0%) | 100.0% (100.0% to 100.0%) | 13.9% (12.3% to 15.6%) | 62.6% (59.4% to 65.8%) | 78.9% (78.5% to 79.3%) |
-| Duplicate result from a second lab | 120 | 0.0% (0.0% to 0.0%) | 100.0% (100.0% to 100.0%) | 53.2% (51.2% to 55.4%) | 77.0% (75.8% to 78.5%) | 78.6% (78.2% to 79.0%) |
-| Conflicting ownership acknowledgements | 77 | 0.0% (0.0% to 0.0%) | 100.0% (100.0% to 100.0%) | 56.2% (54.0% to 58.5%) | 79.8% (78.2% to 81.4%) | 78.4% (78.0% to 78.8%) |
+| Wrong contact number | 165 | 0.0% (0.0% to 0.0%) | 91.0% (89.9% to 92.1%) | 21.0% (19.7% to 22.3%) | 72.3% (70.6% to 74.0%) | 79.1% (78.7% to 79.4%) |
+| Patient switches provider mid-pathway | 70 | 0.0% (0.0% to 0.0%) | 100.0% (100.0% to 100.0%) | 13.9% (12.3% to 15.6%) | 62.7% (59.7% to 65.8%) | 78.9% (78.5% to 79.3%) |
+| Duplicate result from a second lab | 120 | 0.0% (0.0% to 0.0%) | 100.0% (100.0% to 100.0%) | 53.2% (51.2% to 55.4%) | 77.1% (75.9% to 78.4%) | 78.6% (78.2% to 79.0%) |
+| Conflicting ownership acknowledgements | 77 | 0.0% (0.0% to 0.0%) | 100.0% (100.0% to 100.0%) | 56.2% (54.0% to 58.5%) | 79.8% (78.2% to 81.4%) | 78.4% (78.1% to 78.8%) |
 | Consent withdrawn after booking | 24 | 0.0% (0.0% to 0.0%) | 100.0% (100.0% to 100.0%) | 64.9% (61.6% to 68.8%) | 60.6% (56.7% to 64.7%) | 78.8% (78.4% to 79.2%) |
 
 `Handled explicitly` means the system logged the specific handling event (contact recovered, transfer accepted by the new owner, duplicate merged, second ownership claim rejected by the state machine, consent review completed). The baseline has no such mechanism by design, so its rate is 0. A messy case counts only if it actually occurred in that arm (for example, a provider switch after the colonoscopy is booked needs no transfer and is not counted). Wrong contact numbers are not injected separately: they are the `wrong_contact_rate` patient attribute.

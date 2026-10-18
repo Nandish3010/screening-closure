@@ -536,7 +536,7 @@ export type MilestoneName = "referral_requested" | "confirmatory_completed";
 
 /**
  * One milestone on `GET /cases/{id}` (`milestones` at the top level of the response). `due_at` is null while the
- * clock has not started (the colonoscopy clock starts at the referral acceptance). `overdue` is the milestone's own
+ * clock has not started (the colonoscopy clock starts at the first referral request and never restarts, A25). `overdue` is the milestone's own
  * breach flag: true from the scheduler's `mark_overdue {milestone}` until the milestone is met.
  */
 export interface MilestoneClock {

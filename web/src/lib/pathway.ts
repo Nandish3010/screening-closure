@@ -60,7 +60,7 @@ export type MilestoneName = "referral_requested" | "confirmatory_completed";
 
 export interface MilestoneDef {
   name: MilestoneName;
-  /** The event that starts the clock (`case_created` = the result release). The latest occurrence counts. */
+  /** The event that starts the clock (`case_created` = the result release). The FIRST occurrence counts and the clock never restarts (A25). */
   from_event: string;
   /** The event that meets the milestone. */
   until_event: string;
@@ -73,7 +73,9 @@ export interface MilestoneDef {
 
 /**
  * `milestones` in the pathway YAML (A18, ADR-028): clocks that span states, measured against a national standard.
- * The 31 working days come from the National Guideline's Appendix 2 KPI table, not from the IFHAS standard.
+ * The 31 working days come from the National Guideline's Appendix 2 KPI table, not from the IFHAS standard. They run from
+ * the FIRST referral request (`handoff_requested`) and never restart (A25, ADR-028 amended): a bounced or re-routed referral
+ * does not hand the case a fresh 31 days. The latest acceptance is only `referral_accepted_at`, for reporting.
  */
 export const MILESTONES: readonly MilestoneDef[] = [
   {
@@ -82,7 +84,7 @@ export const MILESTONES: readonly MilestoneDef[] = [
     source: "DoH IFHAS standard July 2025 via docs/evidence.md section 8",
   },
   {
-    name: "confirmatory_completed", from_event: "handoff_accepted", until_event: "complete_confirmatory", working_days: 31,
+    name: "confirmatory_completed", from_event: "handoff_requested", until_event: "complete_confirmatory", working_days: 31,
     label: "Colonoscopy within 31 working days of referral",
     source: "National Guideline Appendix 2 via evidence.md",
   },

@@ -8,7 +8,7 @@ that does not exist, or if the worked example in section 9 stops matching the co
 
 > **Capacity caveat: escalations cost nothing in this model.** Cases are independent. There are no shared endoscopy slots, no staff
 > workload and no queueing, and a supervisor or coordinator acts on an escalation with a fixed probability however many others are open.
-> The orchestrated arm raises **about 209 escalations per 100 cases** in the upper-range scenario (see `escalations_per_100_cases`
+> The orchestrated arm raises **about 232 escalations per 100 cases** in the upper-range scenario (see `escalations_per_100_cases`
 > below), roughly two for every case. Every completion and time gain reported is therefore a gain **before capacity constraints**, and
 > would shrink if the people who must work those escalations, or the colonoscopy slots they ask for, are not there. A capacity model
 > (staff time per escalation, slot supply, queueing) is future work. Until it exists, use `escalations_per_100_cases` to size a pilot,
@@ -52,17 +52,17 @@ clocks that span states and are measured against a national standard. The simula
 | Milestone | Clock starts | Met by | Allowance | Source of the figure |
 |---|---|---|---|---|
 | `referral_requested` | `case_created`, taken as the result release | the first `handoff_requested` (a request, not an acceptance; any handoff counts, including a transfer between primary care owners) | 15 working days | DoH IFHAS standard V10, July 2025: referral to secondary care within 15 working days of releasing results ([evidence.md](../evidence.md) section 8, read first-hand) |
-| `confirmatory_completed` | the latest referral acceptance by the receiving provider (`handoff_accepted`; it restarts on each later acceptance); if no referral was accepted, the case entering `confirmatory_booked` (ADR-020) | `complete_confirmatory` | 31 working days from referral | UAE National Guideline for Colorectal Cancer Screening and Diagnosis, 3rd ed. 2022, Appendix 2 (colonoscopy within 31 working days of referral; [evidence.md](../evidence.md) section 8b). **Not** an IFHAS figure. The guideline is internally inconsistent (15 working days in clause 12.5.2, 31 in Appendix 2, 31 days in Appendix 3). |
+| `confirmatory_completed` | the FIRST referral request (`handoff_requested`); it never restarts, so a later request or acceptance (a bounce, a re-route) changes nothing (A25); if no referral was requested, the case entering `confirmatory_booked` (ADR-020) | `complete_confirmatory` | 31 working days from the first referral request | UAE National Guideline for Colorectal Cancer Screening and Diagnosis, 3rd ed. 2022, Appendix 2 (colonoscopy within 31 working days of referral; [evidence.md](../evidence.md) section 8b). **Not** an IFHAS figure. The guideline is internally inconsistent (15 working days in clause 12.5.2, 31 in Appendix 2, 31 days in Appendix 3). |
 
-Starting the colonoscopy clock at the acceptance is a stated, slightly lenient reading of "from referral": the days between the referral request and its acceptance are not counted against the 31. They are bounded instead by the 3-working-day handoff response timer (`handoff_response_working_days: 3`), after which an unanswered referral bounces back to the referrer. The clinician review (H1) is asked to confirm or change this reading.
+The colonoscopy clock starts at the first referral request and never restarts (A25, ADR-028 amended), as the source says: "within 31 working days of referral". Until A25 it started at the latest acceptance and restarted on every later one, which let a case bounced between providers wait without limit while no milestone breached (the AI-simulated clinician review, gap 2). The days between the request and its acceptance now count against the 31; they are also bounded by the 3-working-day handoff response timer (`handoff_response_working_days: 3`). The latest acceptance is kept as `referral_accepted_at` in the read model for reporting only. Any `handoff_requested` counts, including a transfer between primary care owners (the same reading as the referral milestone; the clinician review asks H1 to settle it).
 
 A milestone is breached when its met-by event has not happened by the end of the allowance (the same strict "after" rule as the SLAs, on the
 working-day calendar). The breach is recorded once (the API's `mark_overdue` names the milestone instead of a state; the simulator's
 `overdue` carries `milestone`) and opens the escalation ladder for the case, in parallel with any ladder already running for the current
 step. Meeting the milestone late clears the breach and the ladder; a milestone that is met stays met. The orchestrated arm raises both; the
-baseline has no timers, so it never records a breach. The 31-working-day clock is armed when the case enters the step that awaits the
-colonoscopy, which the simulator reaches at the same instant as the referral acceptance, so its behaviour is the same as the per-step
-colonoscopy SLA it replaced. The two figures are **per-case limits**; the standards are programme-level shares (above 90% acceptable for the
+baseline has no timers, so it never records a breach. The 31-working-day clock is armed once, when the case logs its first `handoff_requested` (A25), and is not bound to the step the case is in, so a
+breach opens the ladder for whatever step the case is at (a case still waiting for a provider to accept, or re-routed, breaches at
+`book_confirmatory`; a booked one at `complete_confirmatory`). The two figures are **per-case limits**; the standards are programme-level shares (above 90% acceptable for the
 31 days), and no results metric reports the share of cases within either limit. The pre-referral step SLAs (2, 1, 3 and 5 working days) add
 up to 11, inside the 15.
 
@@ -184,7 +184,7 @@ same step, the simulator emits no second event and takes no second action (no ou
 other ladder in its payload (`also_for`), and the run counter `escalations_coalesced` counts these, so a role is never counted twice for one case on one day. The rule applies to every
 rung, so it also removes second `reminder_sent` events (which are not counted here anyway). In the API the same rule is a single `escalate`
 with `also_for`, or a later `escalate` with `attached_to`, which tells nobody and is not counted as an escalation. The baseline has no ladder, so 0. **Escalations cost nothing in the
-model, see the capacity caveat at the top: about 209 escalations per 100 cases in the upper-range scenario.**
+model, see the capacity caveat at the top: about 232 escalations per 100 cases in the upper-range scenario.**
 
 ### `escalation_acted_on_rate`
 Escalation acted-on rate (within 5 working days): escalations followed by an action within five working days / all escalations

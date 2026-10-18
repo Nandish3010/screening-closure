@@ -33,6 +33,7 @@ def test_a_closure_resolves_against_a_real_diagnosticreport_and_a_ghost_does_not
     status, _ = fhirtest.put_tagged({
         "resourceType": "DiagnosticReport", "id": report_id, "status": "final",
         "code": {"text": "Colonoscopy report (test)"},
+        "conclusionCode": [{"coding": [{"system": evidence.COMPLETENESS_SYSTEM, "code": "complete"}]}],  # A24
         # SEC-2: the evidence names the case it belongs to (what app.confirmatory writes)
         "identifier": [{"system": evidence.CASE_IDENTIFIER_SYSTEM, "value": cid}]})
     assert status in (200, 201)
@@ -52,3 +53,35 @@ def test_a_closure_resolves_against_a_real_diagnosticreport_and_a_ghost_does_not
     assert r.status_code == 422 and count(cid) == n
     r = post(cid, "close", spec, {"evidence_ref": f"DiagnosticReport/{report_id}", "signed_by": signer})
     assert r.status_code == 201 and r.json()["state"] == "closed"
+
+
+def test_a24_the_recorders_resources_are_judged_by_a_real_hapi_round_trip():
+    """A24 (ADR-036): what `app.confirmatory` writes is what `FhirVerifier.assess` reads back from a real server,
+    including the `Procedure.report` link; a stopped colonoscopy is refused and a CT colonography is accepted."""
+    from datetime import UTC, datetime
+
+    from app import confirmatory
+
+    verdicts = {}
+    for completeness in ("complete", "incomplete", "ct_colonography"):
+        case_id = uuid4()
+        procedure, report = confirmatory.build_resources(case_id, {"identifier": {"system": confirmatory.SYSTEM_PATIENT_REF,
+                                                                                  "value": "Patient/1"}},
+                                                         datetime.now(UTC), completeness)
+        assert fhirtest.put_tagged(report)[0] in (200, 201) and fhirtest.put_tagged(procedure)[0] in (200, 201)
+        case = {"case_id": case_id, "patient_ref": "Patient/1"}
+        verdicts[completeness] = (evidence.verifier.assess(f"Procedure/{procedure['id']}", **case),
+                                  evidence.verifier.assess(f"DiagnosticReport/{report['id']}", **case))
+    for completeness, ok in (("complete", True), ("incomplete", False), ("ct_colonography", True)):
+        via_procedure, via_report = verdicts[completeness]
+        assert via_procedure.resolves and via_report.resolves, completeness
+        assert via_procedure.acceptable is ok and via_report.acceptable is ok, completeness
+        assert via_report.completeness == completeness
+    # a Procedure alone (no link) is not closure evidence, even though it exists and is the case's
+    case_id = uuid4()
+    alone = {"resourceType": "Procedure", "id": f"a24-{uuid4().hex[:12]}", "status": "completed",
+             "code": {"text": "Colonoscopy"}, "identifier": [{"system": evidence.CASE_IDENTIFIER_SYSTEM, "value": str(case_id)}]}
+    assert fhirtest.put_tagged(alone)[0] in (200, 201)
+    got = evidence.verifier.assess(f"Procedure/{alone['id']}", case_id=case_id, patient_ref="Patient/1")
+    assert got.resolves and not got.acceptable and "procedure alone" in got.reason
+

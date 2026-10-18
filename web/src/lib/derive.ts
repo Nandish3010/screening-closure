@@ -207,8 +207,8 @@ export function slaClock(events: CaseEvent[], state: string, simNow: string) {
 
 /**
  * Milestone clocks by replay (A18, ADR-028), the mock's and the UI's fallback for a server that sends no
- * `milestones`. A milestone starts at its `from_event` (the latest occurrence until it is met; `case_created` =
- * the first event), or, if that never happened, when the case enters the state that awaits its `until_event`; it is
+ * `milestones`. A milestone starts at its `from_event` (the FIRST occurrence, and it never restarts, A25; `case_created`
+ * = the first event), or, if that never happened, when the case enters the state that awaits its `until_event`; it is
  * met by the `until_event` and void if the case closes first. `overdue` here is "past due at `simNow`", where the
  * real read model has the scheduler's flag.
  */
@@ -223,7 +223,7 @@ export function milestonesOf(events: CaseEvent[], simNow: string | null = null):
       const to = nextState(state, ev);
       if (met === null && !isVoid) {
         if (ev.type === def.until_event) met = ev.at;
-        else if (ev.type === def.from_event && def.from_event !== "case_created") started = ev.at;
+        else if (ev.type === def.from_event && def.from_event !== "case_created" && started === null) started = ev.at; // first only (A25)
         else if (started === null && to && nextTransition(to)?.event === def.until_event) started = ev.at;
         if (to === "closed" && met === null) isVoid = true;
       }

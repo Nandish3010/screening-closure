@@ -115,6 +115,7 @@ def scan_text(source: str, text: str, markers: tuple[str, ...] = (MARKER,)) -> l
 # `opaque` (an id the system issued), `gap` (accepts something that can be an identifier: a documented finding).
 QUERY_REVIEW: dict[tuple[str, str, str], tuple[str, str]] = {
     ("GET", "/cases", "state"): ("enum", "one of the pathway's state names"),
+    ("POST", "/cases/{case_id}/confirmatory-result", "completeness"): ("enum", "complete, incomplete or ct_colonography (A24); FastAPI refuses anything else"),
     ("GET", "/cases", "overdue"): ("bool", "true or false"),
     ("GET", "/cases", "flagged"): ("bool", "true or false"),
     ("GET", "/cases", "provider"): ("opaque", "a provider (organisation) key such as `endo-1`, not a person"),

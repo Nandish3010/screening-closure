@@ -369,13 +369,13 @@ describe("mock adapter: worklist filters, alerts, clocks", () => {
     await api.setSchedulerDown!(false);
     expect((await api.listAlerts())[0].cleared_at).toBe(SIM_NOW);
   });
-  it("the colonoscopy milestone starts at handoff_accepted when there was one (A13, A18), state clocks at state entry", async () => {
-    const d9 = await api.getCase(cid(9)); // handoff accepted 20 days ago, booked 12 days ago
+  it("the colonoscopy milestone starts at the first handoff_requested (A18, A25), state clocks at state entry", async () => {
+    const d9 = await api.getCase(cid(9)); // handoff requested and accepted 20 days ago, booked 12 days ago
     const tl = await api.getTimeline(cid(9));
     const started = tl.items.find((i) => i.kind === "milestone_started" && i.milestone === "confirmatory_completed");
-    const accepted = d9.events.find((e) => e.type === "handoff_accepted")!;
-    expect(started?.at).toBe(accepted.at);
-    expect(d9.milestones?.confirmatory_completed).toMatchObject({ started_at: accepted.at, met_at: null, overdue: false, working_days: 31 });
+    const requested = d9.events.find((e) => e.type === "handoff_requested")!;
+    expect(started?.at).toBe(requested.at);
+    expect(d9.milestones?.confirmatory_completed).toMatchObject({ started_at: requested.at, met_at: null, overdue: false, working_days: 31 });
     expect(d9.milestones?.referral_requested).toMatchObject({ overdue: false, working_days: 15 });
     expect(tl.items.find((i) => i.kind === "sla_started")).toBeUndefined(); // confirmatory_booked has no per-state SLA
     const t1 = (await api.getTimeline(DEMO_OVERDUE_CASE_ID)).items.find((i) => i.kind === "sla_started");

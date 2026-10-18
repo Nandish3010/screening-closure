@@ -36,7 +36,8 @@ replay of the event log produces:
     clock_started_event_id  the `event_id` of that event. The scheduler derives the ids of `mark_overdue`
                          and the escalation rungs from it (never from a timestamp, SEC-2): re-entering a
                          state is a new clock and so a new breach, even at the very same instant
-    referral_accepted_at `at` of the latest handoff_accepted (A13), None before any
+    referral_accepted_at `at` of the latest handoff_accepted (A13), None before any. For reporting only since A25: the
+                         31-working-day milestone starts at the FIRST handoff_requested and never restarts
     breach_due_at        the due date of the open breach (set with overdue)
     milestones           per milestone of the pathway (A18, ADR-028): {started_at, met_at, overdue,
                          breach_due_at, escalation_level, escalation_accepted, void}. A milestone is a clock
@@ -246,7 +247,7 @@ class MilestoneState:
     started_at: datetime | None = None
     # the `event_id` of the event that started this clock (the `case_created` marker, the `from_event`, or the
     # event that entered the awaiting state): the sweep derives the milestone's mark_overdue and rung ids from it,
-    # never from a timestamp (SEC-2), so a restarted milestone is a new breach even at the very same instant
+    # never from a timestamp (SEC-2). A milestone's clock never restarts (A25), so its ids are stable for its life
     started_event_id: UUID | None = None
     met_at: datetime | None = None
     overdue: bool = False
@@ -553,9 +554,10 @@ def _set_ms(model: CaseModel, name: str, ms: MilestoneState) -> CaseModel:
 
 def _advance_milestones(new: CaseModel, before: CaseModel, event: Event, pathway: Pathway) -> CaseModel:
     """Fold one accepted event into every milestone: the `until_event` meets it (and clears its breach and ladder),
-    the `from_event` (re)starts an unmet one, entering the state that awaits the `until_event` starts one that never
-    got a `from_event` (a case with no formal referral keeps a colonoscopy clock, ADR-020), and closing the case
-    voids the unmet ones. A met milestone never changes again."""
+    the FIRST `from_event` starts one that has not started and a later one changes nothing (A25: a clock that has
+    started never restarts, so a second referral request cannot hand the case a fresh 31 days), entering the state
+    that awaits the `until_event` starts one that never got a `from_event` (a case with no formal referral keeps a
+    colonoscopy clock, ADR-020), and closing the case voids the unmet ones. A met milestone never changes again."""
     if not pathway.milestones:
         return new
     at = _aware(event.at)
@@ -568,8 +570,8 @@ def _advance_milestones(new: CaseModel, before: CaseModel, event: Event, pathway
         if cur.met_at is None and not cur.void:
             if event.type == d.until_event:
                 cur = replace(cur, met_at=at, overdue=False, **_NO_LADDER)
-            elif event.type == d.from_event:
-                cur = MilestoneState(started_at=at, started_event_id=event.event_id)  # a new obligation: breach and ladder cleared
+            elif event.type == d.from_event and cur.started_at is None:
+                cur = MilestoneState(started_at=at, started_event_id=event.event_id)  # the first one only; never restarts (A25)
             elif cur.started_at is None and name in awaiting:
                 cur = replace(cur, started_at=at, started_event_id=event.event_id)
             if closing and cur.met_at is None:

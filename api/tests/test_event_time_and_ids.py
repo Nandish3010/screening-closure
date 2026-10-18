@@ -197,16 +197,22 @@ def test_rungs_take_the_clock_start_too_and_a_consent_excursion_keeps_the_clock(
     assert model.state == "patient_contacted" and model.clock_started_event_id == started
 
 
-def test_a_referral_acceptance_restarts_the_colonoscopy_milestone_with_its_own_event():
+def test_the_first_referral_request_starts_the_colonoscopy_milestone_with_its_own_event():
     """A18 moved the colonoscopy clock from the confirmatory_booked SLA to the confirmatory_completed milestone
-    (ADR-028); its ids derive from the handoff_accepted that started it, as the state clock's did (SEC-2)."""
+    (ADR-028); since A25 its ids derive from the FIRST handoff_requested that started it and stay the same for its life
+    (SEC-2): a second request or an acceptance does not make a new obligation."""
     model = drive(*TO_CONTACTED, ("patient_acknowledge", "patient:p", {}))
-    assert PATHWAY.milestones["confirmatory_completed"].from_event == "handoff_accepted"
-    model = step(model, make_event("handoff_requested", OWNER, {"to_provider": "endo-1"}, at(10)), PATHWAY)
+    assert PATHWAY.milestones["confirmatory_completed"].from_event == "handoff_requested"
+    request = make_event("handoff_requested", OWNER, {"to_provider": "endo-1"}, at(10))
+    model = step(model, request, PATHWAY)
+    model = step(model, make_event("handoff_rejected", "specialist_owner:s", {"reason": "capacity"}, at(10, 1)), PATHWAY)
+    model = step(model, make_event("handoff_requested", OWNER, {"to_provider": "endo-2"}, at(10, 2)), PATHWAY)
     accept = make_event("handoff_accepted", "specialist_owner:s", {}, at(11))
     model = step(model, accept, PATHWAY)
+    for i, (kind, who) in enumerate([("contact_patient", "specialist_owner:s"), ("patient_acknowledge", "patient:p")]):
+        model = step(model, make_event(kind, who, {}, at(11, 1 + i)), PATHWAY)
     book = make_event("book_confirmatory", "specialist_owner:s", {}, at(12))
     model = step(model, book, PATHWAY)
     ms = model.milestones["confirmatory_completed"]
-    assert model.state == "confirmatory_booked" and ms.started_event_id == accept.event_id
-    assert ms.started_at == accept.at and model.clock_started_event_id == book.event_id
+    assert model.state == "confirmatory_booked" and ms.started_event_id == request.event_id
+    assert ms.started_at == request.at and model.clock_started_event_id == book.event_id

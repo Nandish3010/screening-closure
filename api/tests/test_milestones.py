@@ -99,7 +99,7 @@ def model(store, cid):
 def test_the_yaml_declares_both_milestones_with_their_sources():
     ref, col = PATHWAY.milestones[REFERRAL], PATHWAY.milestones[COLONOSCOPY]
     assert (ref.from_event, ref.until_event, ref.working_days) == ("case_created", "handoff_requested", 15)
-    assert (col.from_event, col.until_event, col.working_days) == ("handoff_accepted", "complete_confirmatory", 31)
+    assert (col.from_event, col.until_event, col.working_days) == ("handoff_requested", "complete_confirmatory", 31)
     assert "IFHAS" in ref.source and "evidence.md section 8" in ref.source
     # the 31 comes from the National Guideline's KPI table (Appendix 2), not the IFHAS standard
     assert "National Guideline Appendix 2" in col.source and "IFHAS" not in col.source
@@ -128,7 +128,7 @@ def write_variant(tmp_path, old, new):
     "old,new,match",
     [
         ("until_event: handoff_requested", "until_event: no_such_event", "until_event"),
-        ("from_event: handoff_accepted", "from_event: no_such_event", "from_event"),
+        ("from_event: handoff_requested", "from_event: no_such_event", "from_event"),
         ("working_days: 15", "working_days: 0", "working_days"),
         ("working_days: 15", "working_days: fifteen", "working_days"),
         ("source: \"DoH IFHAS standard July 2025 via docs/evidence.md section 8\"", "source: \"\"", "source"),
@@ -255,7 +255,7 @@ def test_acceptance_without_a_milestone_finds_the_one_ladder_that_has_a_rung():
 
 def test_milestone_event_ids_derive_from_the_event_that_started_the_milestone():
     """SEC-2 + A18: never a timestamp. referral_requested runs from the case_created marker, confirmatory_completed
-    from the handoff_accepted; a milestone started by the same event as a state clock never shares its ids."""
+    from the first handoff_requested (A25); a milestone started by the same event as a state clock never shares its ids."""
     case, start = uuid4(), uuid4()
     got = sweep_event_id(case, start, f"milestone:{REFERRAL}:mark_overdue")
     assert got == sweep_event_id(case, str(start), f"milestone:{REFERRAL}:mark_overdue")
@@ -279,12 +279,12 @@ def test_milestone_event_ids_derive_from_the_event_that_started_the_milestone():
 
     store, cid = new_case()
     referred_and_booked(store, cid)
-    [accepted] = [e for e in store.events_for(cid) if e.type == "handoff_accepted"]
+    [requested] = [e for e in store.events_for(cid) if e.type == "handoff_requested"]
     ms = model(store, cid).milestones[COLONOSCOPY]
-    assert ms.started_event_id == accepted.event_id
+    assert ms.started_event_id == requested.event_id
     due = UAE.add_working_days(ms.started_at, 31)
     [breach, *_] = plan_milestones(cid, model(store, cid), PATHWAY, UAE, due + timedelta(hours=1))
-    assert breach.event_id == sweep_event_id(cid, accepted.event_id, f"milestone:{COLONOSCOPY}:mark_overdue")
+    assert breach.event_id == sweep_event_id(cid, requested.event_id, f"milestone:{COLONOSCOPY}:mark_overdue")
 
 
 def test_a_milestone_restarted_at_the_same_instant_is_a_new_breach():
@@ -320,20 +320,23 @@ def test_two_sweeps_planning_the_same_breach_insert_it_once():
 # ---- the colonoscopy milestone ----------------------------------------------------------------------
 
 
+REQUESTED_AT = AT + timedelta(days=5)  # the referral request in `referred_and_booked`: where the 31 working days start (A25)
+
+
 def referred_and_booked(store, cid, accepted=None, booked=None):
     to_patient_acknowledged(store, cid)
     accepted = accepted or AT + timedelta(days=6)
-    post(store, cid, "handoff_requested", PCO, AT + timedelta(days=5), {"to_provider": "endo-1"})
+    post(store, cid, "handoff_requested", PCO, REQUESTED_AT, {"to_provider": "endo-1"})
     post(store, cid, "handoff_accepted", SPEC, accepted)
     post(store, cid, "book_confirmatory", SPEC, booked or accepted + timedelta(days=1))
     return accepted
 
 
-def test_the_colonoscopy_milestone_breaches_31_working_days_after_referral_acceptance_and_is_met_by_the_procedure():
+def test_the_colonoscopy_milestone_breaches_31_working_days_after_the_first_referral_request_and_is_met_by_the_procedure():
     store, cid = new_case()
-    accepted = referred_and_booked(store, cid)
-    due = UAE.add_working_days(accepted, 31)
-    assert model(store, cid).milestones[COLONOSCOPY].started_at == accepted
+    referred_and_booked(store, cid)
+    due = UAE.add_working_days(REQUESTED_AT, 31)
+    assert model(store, cid).milestones[COLONOSCOPY].started_at == REQUESTED_AT
     sweep(store, cid, due)
     assert of(store, cid, "mark_overdue", COLONOSCOPY) == []
     sweep(store, cid, due + timedelta(hours=1))
@@ -354,7 +357,7 @@ def test_a_met_milestone_never_changes_again():
     accepted = referred_and_booked(store, cid)
     post(store, cid, "complete_confirmatory", SPEC, accepted + timedelta(days=10))
     met = model(store, cid).milestones[COLONOSCOPY]
-    # a later referral (a transfer, a re-route) does not restart a met colonoscopy clock
+    # a later referral (a transfer, a re-route) does not restart a met colonoscopy clock (nor a running one, A25)
     post(store, cid, "handoff_requested", SPEC, accepted + timedelta(days=11), {"to_provider": "endo-2"})
     post(store, cid, "handoff_accepted", PCO, accepted + timedelta(days=12))
     assert model(store, cid).milestones[COLONOSCOPY] == met

@@ -18,8 +18,8 @@ two different clocks that start at the same instant (a state entered, left and e
 handoff requested, bounced and requested again) are different obligations and must not share an
 id, or the second would be swallowed as a repeat of the first. A milestone's ids derive from the
 event that started the milestone (`MilestoneState.started_event_id`: the `case_created` marker for
-`referral_requested`, the `handoff_accepted` for `confirmatory_completed`, or the event that entered
-the awaiting state when there was no referral) and their kind is prefixed `milestone:<name>:`, so a
+`referral_requested`, the first `handoff_requested` for `confirmatory_completed` (A25: it never
+restarts), or the event that entered the awaiting state when there was no referral) and their kind is prefixed `milestone:<name>:`, so a
 milestone that starts at the same event as a state clock never shares an id with the state's breach.
 Running the sweep again, or two sweeps at once, still inserts each event once: the store treats a
 repeated event_id on the same case as a no-op. The state machine adds a second line of defence (a

@@ -354,7 +354,7 @@ def test_t_f4_a_service_actors_late_event_is_accepted_flagged_in_the_timeline_an
     assert next(r for r in listing() if r["case_id"] == cid)  # the worklist row is unchanged in shape
 
 
-def test_t_a28_the_confirmatory_clock_is_shown_starting_at_referral_acceptance(backend):
+def test_t_a28_the_confirmatory_clock_is_shown_starting_at_the_first_referral_request(backend):
     cid = new_case("Patient/rr-ref")
     pco = login("primary_care_owner", "Dr Ref A")
     spec = login("specialist_owner", "Dr Ref B", provider="rr-endo-r")
@@ -365,11 +365,10 @@ def test_t_a28_the_confirmatory_clock_is_shown_starting_at_referral_acceptance(b
         assert post(cid, type_, h, p).status_code == 201, type_
     items = timeline(cid)["items"]
     started = next(i for i in items if i["kind"] == "milestone_started" and i["milestone"] == "confirmatory_completed")
-    accepted = next(i for i in items if i["kind"] == "event" and i["type"] == "handoff_accepted")
-    assert started["from_event"] == "handoff_accepted" and started["at"] == accepted["at"]
+    requested = next(i for i in items if i["kind"] == "event" and i["type"] == "handoff_requested")
+    assert started["from_event"] == "handoff_requested" and started["at"] == requested["at"]  # A25: not the acceptance
     assert started["working_days"] == 31
     # the referral milestone started at the result and was met by the referral request (A18)
-    requested = next(i for i in items if i["kind"] == "event" and i["type"] == "handoff_requested")
     first = next(i for i in items if i["kind"] == "milestone_started" and i["milestone"] == "referral_requested")
     met = next(i for i in items if i["kind"] == "milestone_met" and i["milestone"] == "referral_requested")
     assert first["at"] == items[0]["at"] and met["at"] == requested["at"] and met["late"] is False

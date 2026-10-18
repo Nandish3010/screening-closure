@@ -14,31 +14,31 @@ All data are synthetic. The score is a demonstration of the pattern, not a valid
 | Simulator seed | 20261017 |
 | Simulated start date | 2026-01-05 (results arrive over 30 days, each case followed for 180 days) |
 | Simulated cases | 20000 |
-| Rows | 15324 (one snapshot per case, taken at a random day in the first 90 days after the result; cases already past the colonoscopy at the snapshot are not at risk and are left out) |
+| Rows | 15321 (one snapshot per case, taken at a random day in the first 90 days after the result; cases already past the colonoscopy at the snapshot are not at risk and are left out) |
 | Training split | 10733 rows (70%, assigned by a hash of the case key) |
-| Held-out split | 4591 rows |
+| Held-out split | 4588 rows |
 | Label | no colonoscopy within 180 days of the result (lost to follow-up) |
-| Prevalence | 46.3% in the training split |
+| Prevalence | 46.2% in the training split |
 | Fit | L2-regularised logistic regression, lambda 1, Newton-Raphson from zero, 7 iterations, standard library only |
-| Row hash | `169bf723e768b7c511f4f8807356e4cdfbe70f7cf9dce9af5f95b0675d967869` |
-| Coefficient hash | `02a3a684586e6b8a18f97a27c59f07e5658242b394b6f1cf57506a693f7303df` |
+| Row hash | `a4905e54043523df2a76ed21f3c5933b0a6658d27e220de373262a728668d161` |
+| Coefficient hash | `3c8f962eebc49ae275ce3868a7d6d8a7b03f441a14d0f76b83a8fd712841fc89` |
 
 ## Performance on the held-out split
 
 | Measure (held-out split) | Value |
 |---|---|
-| Held-out cases | 4591 (of 15324 rows from 20000 simulated cases) |
-| Prevalence of loss to follow-up | 45.2% (training split 46.3%) |
-| AUC | 0.8808 |
-| Brier score | 0.1360 |
-| Brier score of the base-rate predictor | 0.2478 |
-| Brier skill score (1 minus the ratio) | 0.4510 |
-| Expected calibration error (ECE, 10 equal-width bins) | 0.0236 |
-| ECE of a perfectly calibrated model at this sample size (mean, 95th percentile) | 0.0137, 0.0198 |
+| Held-out cases | 4588 (of 15321 rows from 20000 simulated cases) |
+| Prevalence of loss to follow-up | 45.1% (training split 46.2%) |
+| AUC | 0.8816 |
+| Brier score | 0.1355 |
+| Brier score of the base-rate predictor | 0.2477 |
+| Brier skill score (1 minus the ratio) | 0.4531 |
+| Expected calibration error (ECE, 10 equal-width bins) | 0.0240 |
+| ECE of a perfectly calibrated model at this sample size (mean, 95th percentile) | 0.0134, 0.0183 |
 | Tolerance: ECE at or below 0.05 | met |
-| As served today, with channel and age band unknown (AUC, Brier, ECE) | 0.8808, 0.1361, 0.0244 |
+| As served today, with channel and age band unknown (AUC, Brier, ECE) | 0.8817, 0.1356, 0.0245 |
 
-The calibration tolerance is met: ECE 0.0236 is at or below 0.05, and the Brier score is better than the base-rate predictor.
+The calibration tolerance is met: ECE 0.0240 is at or below 0.05, and the Brier score is better than the base-rate predictor.
 
 The tolerance was proposed at 0.05 (ticket D10).
 
@@ -46,16 +46,16 @@ The tolerance was proposed at 0.05 (ticket D10).
 
 | Bin | Predicted range | Cases | Mean predicted | Observed rate | Absolute gap |
 |---|---|---|---|---|---|
-| 1 | 0.0 to 0.1 | 836 | 0.0531 | 0.0646 | 0.0115 |
-| 2 | 0.1 to 0.2 | 576 | 0.1467 | 0.1372 | 0.0095 |
-| 3 | 0.2 to 0.3 | 378 | 0.2486 | 0.2090 | 0.0396 |
-| 4 | 0.3 to 0.4 | 637 | 0.3534 | 0.3359 | 0.0174 |
-| 5 | 0.4 to 0.5 | 347 | 0.4416 | 0.4207 | 0.0209 |
-| 6 | 0.5 to 0.6 | 231 | 0.5491 | 0.5065 | 0.0426 |
-| 7 | 0.6 to 0.7 | 230 | 0.6487 | 0.6304 | 0.0183 |
-| 8 | 0.7 to 0.8 | 266 | 0.7533 | 0.8534 | 0.1000 |
-| 9 | 0.8 to 0.9 | 349 | 0.8552 | 0.8883 | 0.0331 |
-| 10 | 0.9 to 1.0 | 741 | 0.9589 | 0.9487 | 0.0102 |
+| 1 | 0.0 to 0.1 | 847 | 0.0528 | 0.0649 | 0.0122 |
+| 2 | 0.1 to 0.2 | 570 | 0.1465 | 0.1386 | 0.0079 |
+| 3 | 0.2 to 0.3 | 383 | 0.2482 | 0.2037 | 0.0446 |
+| 4 | 0.3 to 0.4 | 636 | 0.3532 | 0.3365 | 0.0167 |
+| 5 | 0.4 to 0.5 | 336 | 0.4420 | 0.4256 | 0.0164 |
+| 6 | 0.5 to 0.6 | 232 | 0.5491 | 0.5000 | 0.0491 |
+| 7 | 0.6 to 0.7 | 230 | 0.6489 | 0.6304 | 0.0185 |
+| 8 | 0.7 to 0.8 | 267 | 0.7533 | 0.8539 | 0.1006 |
+| 9 | 0.8 to 0.9 | 345 | 0.8552 | 0.8899 | 0.0347 |
+| 10 | 0.9 to 1.0 | 742 | 0.9590 | 0.9488 | 0.0102 |
 
 ![Reliability diagram](calibration.svg)
 
@@ -65,21 +65,21 @@ The tolerance was proposed at 0.05 (ticket D10).
 
 | Group | Value | Held-out cases | Prevalence | AUC | ECE | Chance ECE (95th percentile) | Brier | Mean predicted | Observed rate | Gap (predicted minus observed) | Sampling margin (95%) | Gap flag |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
-| Language (audit only, not an input) | ar | 2114 | 46.6% | 0.8826 | 0.0231 | 0.0270 | 0.1350 | 0.4649 | 0.4664 | -0.0015 | 0.0213 | ok |
-| Language (audit only, not an input) | en | 1563 | 41.1% | 0.8774 | 0.0353 | 0.0337 | 0.1364 | 0.4240 | 0.4114 | +0.0126 | 0.0244 | ok |
-| Language (audit only, not an input) | other | 914 | 48.7% | 0.8795 | 0.0480 | 0.0437 | 0.1378 | 0.4828 | 0.4869 | -0.0041 | 0.0324 | ok |
-| Preferred channel | sms | 1829 | 45.2% | 0.8801 | 0.0268 | 0.0304 | 0.1368 | 0.4558 | 0.4522 | +0.0036 | 0.0228 | ok |
-| Preferred channel | whatsapp | 1349 | 44.9% | 0.8827 | 0.0295 | 0.0351 | 0.1344 | 0.4486 | 0.4492 | -0.0007 | 0.0265 | ok |
-| Preferred channel | phone | 701 | 46.8% | 0.8822 | 0.0517 | 0.0503 | 0.1343 | 0.4686 | 0.4679 | +0.0007 | 0.0369 | ok |
-| Preferred channel | letter | 712 | 44.0% | 0.8777 | 0.0426 | 0.0465 | 0.1389 | 0.4487 | 0.4396 | +0.0091 | 0.0365 | ok |
-| Age band | 40-49 | 1266 | 45.7% | 0.8734 | 0.0328 | 0.0360 | 0.1409 | 0.4449 | 0.4566 | -0.0117 | 0.0274 | ok |
-| Age band | 50-59 | 1272 | 44.1% | 0.8859 | 0.0321 | 0.0382 | 0.1333 | 0.4562 | 0.4410 | +0.0152 | 0.0273 | ok |
-| Age band | 60-69 | 1292 | 46.6% | 0.8879 | 0.0346 | 0.0379 | 0.1319 | 0.4648 | 0.4659 | -0.0011 | 0.0272 | ok |
-| Age band | 70-75 | 761 | 43.8% | 0.8720 | 0.0441 | 0.0486 | 0.1395 | 0.4502 | 0.4376 | +0.0126 | 0.0352 | ok |
+| Language (audit only, not an input) | ar | 2111 | 46.5% | 0.8841 | 0.0228 | 0.0267 | 0.1341 | 0.4640 | 0.4652 | -0.0012 | 0.0213 | ok |
+| Language (audit only, not an input) | en | 1563 | 41.1% | 0.8778 | 0.0354 | 0.0323 | 0.1361 | 0.4228 | 0.4107 | +0.0121 | 0.0244 | ok |
+| Language (audit only, not an input) | other | 914 | 48.7% | 0.8795 | 0.0459 | 0.0429 | 0.1377 | 0.4818 | 0.4869 | -0.0050 | 0.0324 | ok |
+| Preferred channel | sms | 1828 | 45.2% | 0.8809 | 0.0238 | 0.0299 | 0.1363 | 0.4544 | 0.4519 | +0.0025 | 0.0228 | ok |
+| Preferred channel | whatsapp | 1348 | 44.9% | 0.8833 | 0.0276 | 0.0351 | 0.1339 | 0.4480 | 0.4488 | -0.0008 | 0.0266 | ok |
+| Preferred channel | phone | 700 | 46.7% | 0.8824 | 0.0482 | 0.0482 | 0.1339 | 0.4676 | 0.4671 | +0.0004 | 0.0370 | ok |
+| Preferred channel | letter | 712 | 43.7% | 0.8795 | 0.0448 | 0.0477 | 0.1378 | 0.4482 | 0.4368 | +0.0114 | 0.0364 | ok |
+| Age band | 40-49 | 1266 | 45.6% | 0.8743 | 0.0342 | 0.0375 | 0.1404 | 0.4439 | 0.4558 | -0.0119 | 0.0274 | ok |
+| Age band | 50-59 | 1271 | 44.1% | 0.8860 | 0.0323 | 0.0357 | 0.1331 | 0.4553 | 0.4406 | +0.0147 | 0.0273 | ok |
+| Age band | 60-69 | 1290 | 46.4% | 0.8900 | 0.0366 | 0.0349 | 0.1306 | 0.4640 | 0.4643 | -0.0003 | 0.0272 | ok |
+| Age band | 70-75 | 761 | 43.8% | 0.8714 | 0.0440 | 0.0487 | 0.1396 | 0.4490 | 0.4376 | +0.0114 | 0.0352 | ok |
 
-Largest gap between groups (maximum minus minimum): language AUC 0.005, ECE 0.025; channel AUC 0.005, ECE 0.025; age band AUC 0.016, ECE 0.012.
+Largest gap between groups (maximum minus minimum): language AUC 0.006, ECE 0.023; channel AUC 0.004, ECE 0.024; age band AUC 0.019, ECE 0.012.
 
-Mean predicted probability against observed rate, flag threshold 0.02: language: no group flagged (largest gap 0.0126); channel: no group flagged (largest gap 0.0091); age band: no group flagged (largest gap 0.0152).
+Mean predicted probability against observed rate, flag threshold 0.02: language: no group flagged (largest gap 0.0121); channel: no group flagged (largest gap 0.0114); age band: no group flagged (largest gap 0.0147).
 
 ## Coefficients
 
@@ -87,27 +87,27 @@ Numeric columns are standardised on the training split, so their coefficients ar
 
 | Column | Coefficient (log-odds) | Odds ratio | Unit |
 |---|---|---|---|
-| intercept | 0.4910 | n/a | baseline logit for an all-zero row |
-| channel=sms | 0.0556 | 1.057 | 1 if true, else 0 |
-| channel=whatsapp | 0.0081 | 1.008 | 1 if true, else 0 |
-| channel=phone | 0.1076 | 1.114 | 1 if true, else 0 |
-| channel=letter | -0.1712 | 0.843 | 1 if true, else 0 |
-| age_band=40-49 | -0.0491 | 0.952 | 1 if true, else 0 |
-| age_band=50-59 | 0.0323 | 1.033 | 1 if true, else 0 |
-| age_band=60-69 | -0.0252 | 0.975 | 1 if true, else 0 |
-| age_band=70-75 | 0.0420 | 1.043 | 1 if true, else 0 |
-| contact_valid | -0.1290 | 0.879 | 1 if true, else 0 |
-| stage=result_received | 0.9869 | 2.683 | 1 if true, else 0 |
-| stage=acknowledged | 1.0988 | 3.001 | 1 if true, else 0 |
-| stage=owner_accepted | 0.6347 | 1.886 | 1 if true, else 0 |
-| stage=patient_contacted | 1.3268 | 3.769 | 1 if true, else 0 |
-| stage=patient_acknowledged | -0.8534 | 0.426 | 1 if true, else 0 |
-| stage=confirmatory_booked | -3.1937 | 0.041 | 1 if true, else 0 |
-| days_since_result | 1.3284 | 3.775 | per 1 SD (24.61; mean 38.12) |
-| prior_escalations | -0.0633 | 0.939 | per 1 SD (1.10; mean 0.63) |
-| prior_bounces | 0.1471 | 1.158 | per 1 SD (0.63; mean 0.22) |
-| consent_withdrawn | 1.9779 | 7.227 | 1 if true, else 0 |
-| provider_changed | -0.3133 | 0.731 | 1 if true, else 0 |
+| intercept | 0.4886 | n/a | baseline logit for an all-zero row |
+| channel=sms | 0.0521 | 1.053 | 1 if true, else 0 |
+| channel=whatsapp | 0.0104 | 1.010 | 1 if true, else 0 |
+| channel=phone | 0.1059 | 1.112 | 1 if true, else 0 |
+| channel=letter | -0.1683 | 0.845 | 1 if true, else 0 |
+| age_band=40-49 | -0.0492 | 0.952 | 1 if true, else 0 |
+| age_band=50-59 | 0.0326 | 1.033 | 1 if true, else 0 |
+| age_band=60-69 | -0.0248 | 0.976 | 1 if true, else 0 |
+| age_band=70-75 | 0.0414 | 1.042 | 1 if true, else 0 |
+| contact_valid | -0.1307 | 0.877 | 1 if true, else 0 |
+| stage=result_received | 0.9886 | 2.688 | 1 if true, else 0 |
+| stage=acknowledged | 1.1083 | 3.029 | 1 if true, else 0 |
+| stage=owner_accepted | 0.6389 | 1.894 | 1 if true, else 0 |
+| stage=patient_contacted | 1.3300 | 3.781 | 1 if true, else 0 |
+| stage=patient_acknowledged | -0.8540 | 0.426 | 1 if true, else 0 |
+| stage=confirmatory_booked | -3.2117 | 0.040 | 1 if true, else 0 |
+| days_since_result | 1.3369 | 3.807 | per 1 SD (24.61; mean 38.12) |
+| prior_escalations | -0.0783 | 0.925 | per 1 SD (1.11; mean 0.64) |
+| prior_bounces | 0.1556 | 1.168 | per 1 SD (0.63; mean 0.22) |
+| consent_withdrawn | 2.0008 | 7.395 | 1 if true, else 0 |
+| provider_changed | -0.2889 | 0.749 | 1 if true, else 0 |
 
 ## Reproduce
 

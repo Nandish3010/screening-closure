@@ -1,6 +1,6 @@
-"""T-A34 and T-A35 (A13, ADR-020, A18, ADR-028): the `close` SLA, and the colonoscopy clock measured from referral
-acceptance with a fallback to state entry. Since A18 that clock is the `confirmatory_completed` milestone, not a
-per-state SLA; the milestones are tested further in test_milestones.py."""
+"""T-A34 and T-A35 (A13, ADR-020, A18, ADR-028, A25): the `close` SLA, and the colonoscopy clock measured from the FIRST
+referral request, never restarted, with a fallback to state entry. Since A18 that clock is the `confirmatory_completed`
+milestone, not a per-state SLA; the milestones are tested further in test_milestones.py."""
 
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -70,7 +70,7 @@ def test_t_a34_every_open_state_of_the_main_path_has_a_timer():
     assert PATHWAY.sla_for_state("referral_rejected") == ("reassign", 2)
 
 
-# ---- T-A35: the colonoscopy clock starts at referral acceptance --------------------------------------
+# ---- T-A35: the colonoscopy clock starts at the first referral request and never restarts (A25) ------------
 
 
 def colonoscopy(m):
@@ -79,7 +79,7 @@ def colonoscopy(m):
 
 def test_t_a35_the_yaml_declares_the_colonoscopy_milestone_not_a_state_sla():
     d = PATHWAY.milestones["confirmatory_completed"]
-    assert (d.from_event, d.until_event, d.working_days) == ("handoff_accepted", "complete_confirmatory", 31)
+    assert (d.from_event, d.until_event, d.working_days) == ("handoff_requested", "complete_confirmatory", 31)
     assert "National Guideline Appendix 2" in d.source  # the 31 comes from the guideline's KPI table, not IFHAS
     assert "complete_confirmatory" not in PATHWAY.slas_working_days
     for event in PATHWAY.slas_working_days:
@@ -87,7 +87,7 @@ def test_t_a35_the_yaml_declares_the_colonoscopy_milestone_not_a_state_sla():
 
 
 def booked_after_referral():
-    """Referral accepted on day 6, then booked on day 7."""
+    """Referral requested on day 5, accepted on day 6, then booked on day 7."""
     m = drive(
         *TO_CONTACTED,
         ("patient_acknowledge", "patient:p", {}),
@@ -97,14 +97,15 @@ def booked_after_referral():
     return step(m, make_event("book_confirmatory", SPEC, {}, at(7)), PATHWAY)
 
 
-def test_t_a35_the_31_working_days_run_from_referral_acceptance_not_from_booking():
+def test_t_a35_the_31_working_days_run_from_the_first_referral_request_not_from_acceptance_or_booking():
     m = booked_after_referral()
     assert m.state == "confirmatory_booked"
-    assert m.referral_accepted_at == at(6) and colonoscopy(m).started_at == at(6)
+    # the acceptance is kept for reporting only; the clock started at the request
+    assert m.referral_accepted_at == at(6) and colonoscopy(m).started_at == at(5)
     due = milestone_due_at(m, "confirmatory_completed", PATHWAY, UAE)
-    assert due == UAE.add_working_days(at(6), 31)
-    assert due <= UAE.add_working_days(at(7), 31)
-    # measured from acceptance: overdue the minute after that due time, whatever the booking date
+    assert due == UAE.add_working_days(at(5), 31)
+    assert due <= UAE.add_working_days(at(6), 31) <= UAE.add_working_days(at(7), 31)
+    # measured from the request: overdue the minute after that due time, whatever the acceptance or booking date
     assert plan_case(CASE, m, PATHWAY, UAE, due) == []
     planned = plan_case(CASE, m, PATHWAY, UAE, due + timedelta(minutes=1))
     assert planned[0].type == "mark_overdue" and planned[0].payload["due_at"] == due.isoformat()
@@ -114,14 +115,14 @@ def test_t_a35_the_31_working_days_run_from_referral_acceptance_not_from_booking
     assert not m.overdue  # the state-level flag is untouched: confirmatory_booked has no per-state SLA
 
 
-def test_t_a35_acceptance_early_in_the_pathway_counts_even_though_booking_is_much_later():
-    # accepted on day 6, booked three weeks (15 working days) later: the clock is already running
+def test_t_a35_the_request_early_in_the_pathway_counts_even_though_booking_is_much_later():
+    # requested on day 5, accepted on day 6, booked three weeks (15 working days) later: the clock is already running
     m = drive(*TO_CONTACTED, ("patient_acknowledge", "patient:p", {}))
     m = step(m, make_event("handoff_requested", OWNER, {"to_provider": "endo-1"}, at(5)), PATHWAY)
     m = step(m, make_event("handoff_accepted", SPEC, {}, at(6)), PATHWAY)
     m = step(m, make_event("book_confirmatory", SPEC, {}, at(27)), PATHWAY)
-    assert colonoscopy(m).started_at == at(6)
-    assert milestone_due_at(m, "confirmatory_completed", PATHWAY, UAE) == UAE.add_working_days(at(6), 31)
+    assert colonoscopy(m).started_at == at(5)
+    assert milestone_due_at(m, "confirmatory_completed", PATHWAY, UAE) == UAE.add_working_days(at(5), 31)
 
 
 def test_t_a35_without_a_handoff_the_clock_falls_back_to_state_entry():
@@ -147,21 +148,51 @@ def test_t_a35_other_slas_ignore_a_handoff_and_start_at_state_entry():
     assert m.clock_started_at == at(6)  # patient_acknowledged is a state_entry SLA too
 
 
-def test_t_a35_a_new_acceptance_restarts_a_running_confirmatory_clock():
+def test_t_a70_a_later_request_or_acceptance_never_restarts_the_confirmatory_clock():
+    """A25 (ADR-028 amended): the clock started at the first request keeps running when the case is handed to another
+    endoscopy unit. Before A25 the new acceptance cleared the breach and gave the case a fresh 31 working days."""
     m = booked_after_referral()
+    started, started_event = colonoscopy(m).started_at, colonoscopy(m).started_event_id
     due = milestone_due_at(m, "confirmatory_completed", PATHWAY, UAE)
     late = due + timedelta(days=1)
     for e in plan_case(CASE, m, PATHWAY, UAE, late):
         m = step(m, e, PATHWAY)
-    assert colonoscopy(m).overdue and colonoscopy(m).escalation_level >= 1
-    # the case is handed to another endoscopy unit, which accepts: a new obligation
+    before = colonoscopy(m)
+    assert before.overdue and before.escalation_level >= 1
+    # the case is handed to another endoscopy unit, which accepts: NOT a new obligation any more
     m = step(m, make_event("handoff_requested", SPEC, {"to_provider": "endo-2"}, late), PATHWAY)
     m = step(m, make_event("handoff_accepted", "specialist_owner:dr_t", {}, late + timedelta(hours=1)), PATHWAY)
     ms = colonoscopy(m)
-    assert not ms.overdue and ms.escalation_level == 0 and not ms.escalation_accepted and ms.breach_due_at is None
-    assert ms.started_at == late + timedelta(hours=1)
-    assert m.referral_accepted_at == ms.started_at
-    assert milestone_due_at(m, "confirmatory_completed", PATHWAY, UAE) == UAE.add_working_days(late + timedelta(hours=1), 31)
+    assert ms == before  # the whole milestone state is untouched: breach, ladder position, ids
+    assert ms.started_at == started and ms.started_event_id == started_event and ms.breach_due_at == due
+    assert m.referral_accepted_at == late + timedelta(hours=1)  # the latest acceptance, for reporting only
+    assert milestone_due_at(m, "confirmatory_completed", PATHWAY, UAE) == due
+
+
+def test_t_a70_a_bounced_and_rebooked_case_cannot_wait_beyond_31_working_days_from_the_first_request():
+    m = drive(*TO_CONTACTED, ("patient_acknowledge", "patient:p", {}))
+    m = step(m, make_event("handoff_requested", OWNER, {"to_provider": "endo-1"}, at(5)), PATHWAY)
+    m = step(m, make_event("handoff_rejected", SPEC, {"reason": "capacity"}, at(6)), PATHWAY)
+    m = step(m, make_event("handoff_requested", OWNER, {"to_provider": "endo-2"}, at(40)), PATHWAY)  # weeks later
+    m = step(m, make_event("handoff_accepted", SPEC, {}, at(41)), PATHWAY)
+    assert m.state == "owner_accepted" and m.referral_accepted_at == at(41)
+    assert colonoscopy(m).started_at == at(5)
+    due = UAE.add_working_days(at(5), 31)
+    assert milestone_due_at(m, "confirmatory_completed", PATHWAY, UAE) == due
+    # the second provider accepted on day 41, but the 31 working days ran out on the first request's schedule: before
+    # A25 the acceptance gave the case a fresh 31 working days (to about day 85), so nothing was due on day 60
+    late = [e for e in plan_case(CASE, m, PATHWAY, UAE, due + timedelta(hours=1))
+            if e.payload.get("milestone") == "confirmatory_completed"]
+    assert [e.type for e in late[:1]] == ["mark_overdue"] and late[0].payload["due_at"] == due.isoformat()
+
+
+def test_t_a70_a_request_after_a_fallback_start_does_not_restart_either():
+    """No referral when the case reached the state that awaits the colonoscopy: the clock started there; a request made
+    afterwards changes nothing."""
+    m = drive(*TO_CONTACTED, ("patient_acknowledge", "patient:p", {}), ("book_confirmatory", OWNER, {}))
+    assert colonoscopy(m).started_at == at(5)
+    m = step(m, make_event("handoff_requested", OWNER, {"to_provider": "endo-1"}, at(9)), PATHWAY)
+    assert colonoscopy(m).started_at == at(5)
 
 
 def test_t_a35_a_reroute_acceptance_from_referral_rejected_leaves_the_next_state_on_state_entry():
