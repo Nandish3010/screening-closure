@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { can, isOwnerScoped, useApp } from "../app/AppContext";
 import type {
-  CaseDetail, CaseTimeline, ConsentChanges, ContactChannel, DraftApproval, DraftRecord, EscalationRung, MilestoneClock, TimelineItem,
+  CaseDetail, CaseTimeline, ConsentChanges, ContactChannel, DraftApproval, DraftRecord, EscalationRung, MilestoneClock, ReplyResult, TimelineItem,
 } from "../api/contract";
 import { ApiError, DRAFTS_OWNER_ONLY, HANDOFF_REJECT_REASONS, PROVIDERS, REOPEN_REASONS, type ReopenReason } from "../api/contract";
 import { REASSIGN_TARGETS, ROLE_NAMES, ROLE_PROVIDERS } from "../api/identities";
@@ -74,6 +74,9 @@ export function CaseDetailPage() {
   const [reopenReason, setReopenReason] = useState<ReopenReason>(REOPEN_REASONS[0]);
   const [failedAttempts, setFailedAttempts] = useState(3);
   const [channel, setChannel] = useState<ContactChannel>("phone");
+  const [replyChannel, setReplyChannel] = useState<ContactChannel>("whatsapp");
+  const [replyText, setReplyText] = useState("");
+  const [replyResult, setReplyResult] = useState<ReplyResult | null>(null);
   const [appointment, setAppointment] = useState("");
   const [appointmentDate, setAppointmentDate] = useState("");
   const [resultRef, setResultRef] = useState("");
@@ -499,6 +502,39 @@ export function CaseDetailPage() {
               >
                 {frozen ? "Record: patient restored consent" : "Record: patient withdrew consent"}
               </ActionButton>
+            )}
+          </section>
+
+          <section className="panel" aria-labelledby="reply-h" data-testid="reply-panel">
+            <h3 id="reply-h">{STAFF.replyForm.heading}</h3>
+            <p className="muted">{STAFF.replyForm.intro}</p>
+            <label className="field"><span>{STAFF.replyForm.channel}</span>
+              <select value={replyChannel} onChange={(e) => setReplyChannel(e.target.value as ContactChannel)} data-testid="reply-channel">
+                <option value="sms">Text message</option><option value="whatsapp">WhatsApp</option><option value="phone">Phone call</option><option value="letter">Letter</option>
+              </select>
+            </label>
+            <label className="field"><span>{STAFF.replyForm.text}</span>
+              <textarea rows={3} dir="auto" value={replyText} onChange={(e) => setReplyText(e.target.value)} data-testid="reply-text" />
+            </label>
+            <ActionButton
+              testId="record-reply"
+              busy={busy}
+              disabledReason={why("recordReply", "coordinator") ?? (replyText.trim() ? null : STAFF.replyForm.needText)}
+              onClick={() => act(async () => {
+                const r = await api.postReply(caseId, { channel: replyChannel, text: replyText.trim() });
+                setReplyResult(r);
+                setReplyText("");
+                return r;
+              }, (r: ReplyResult) => (r.needs_human ? STAFF.replyForm.recordedNeedsPerson : STAFF.replyForm.recordedHandled(String(r.intent).replace(/_/g, " "))))}
+            >
+              {STAFF.replyForm.button}
+            </ActionButton>
+            {replyResult && (
+              <p className={`banner ${replyResult.needs_human ? "banner-warn" : "banner-ok"}`} role="status" data-testid="reply-result" data-intent={replyResult.intent} data-needs-human={String(replyResult.needs_human)}>
+                <strong>{STAFF.replyForm.readAs} {String(replyResult.intent).replace(/_/g, " ")}</strong>
+                {" "}({Math.round(replyResult.confidence * 100)}% sure, model: {replyResult.model_id}).{" "}
+                {replyResult.needs_human ? STAFF.replyForm.needsPerson : STAFF.replyForm.handled}
+              </p>
             )}
           </section>
 

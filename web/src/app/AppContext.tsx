@@ -129,6 +129,8 @@ export const PERMISSIONS = {
   /** Record the colonoscopy as FHIR evidence (E8): the case owner (the API checks ownership). */
   recordColonoscopy: OWNERS,
   recordConsent: ["coordinator"],
+  /** Record what the patient wrote back (D13): the coordinator (the API route is coordinator-only). */
+  recordReply: ["coordinator"],
   signOff: OWNERS,
   reopen: OWNERS,
 } as const satisfies Record<string, readonly Role[]>;

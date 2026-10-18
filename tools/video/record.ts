@@ -265,6 +265,7 @@ async function runAction(page: any, act: Action, ctx: { cases: Record<string, st
       let loc;
       if (v.testid) loc = page.getByTestId(v.testid).first();
       else if (v.name) loc = page.getByRole("button", { name: v.name }).first();
+      else if (v.link) loc = page.getByRole("link", { name: v.link }).first();
       else if (v.row) loc = page.getByTestId("worklist-row").filter({ hasText: v.row }).first().getByRole("link").first();
       else throw new Error(`click: no target in ${JSON.stringify(v)}`);
       await loc.scrollIntoViewIfNeeded({ timeout: T });

@@ -1,23 +1,23 @@
 # E16: the shot list for the 3-minute submission video and the backup demo video.
 #
 # Derived from the "Backup video storyboard (3 minutes)" table in docs/submission/demo-script.md (shots 1 to 13, same
-# beats, same captions) and driven against the LIVE stack (http adapter) after `make demo-reset` and
-# `make demo-scenario UNTIL=owner_accepted`. Read by tools/video/storyboard.py (validation, `make video-check`),
-# tools/video/record.ts (Playwright) and tools/video/narrate.py (text to speech).
+# two beats, same captions: the catch (shots 3 to 6), then the reveal (shots 7 to 11), then the numbers and the ask) and
+# driven against the LIVE stack (http adapter) after `make demo-reset` and `make demo-scenario UNTIL=owner_accepted`.
+# Read by tools/video/storyboard.py (validation, `make video-check`), tools/video/record.ts (Playwright) and
+# tools/video/narrate.py (text to speech). tests/test_demo_docs.py keeps this file and the demo script in step.
 #
 # Every shot has: id, title, beat (the live beat of the demo script), route, actions, caption, narration, duration (the
 # target in seconds), and optionally submission: true (in the 3-minute video; every shot is in the backup video) and
 # optional: true (skipped, not failed, when its route is absent or its guard element never shows up).
 #
-# Targets: the script's storyboard adds up to exactly 180 s with no room for a title card and an end card, so the targets
-# below are trimmed by 11 s in total (shots 1, 2 and 7 to 13) to leave 3 s for the title card and 4 s for the end
-# card inside the 180 s cap. The final length of a shot is max(narration length, target); `make video-check` checks the
-# targets, `assemble.sh` checks the real lengths.
+# Targets: the 13 shots add up to 158 s, which with the 3 s title card and the 4 s end card is 165 s, inside the 180 s
+# cap. The final length of a shot is max(narration length, target); `make video-check` checks the targets, `assemble.sh`
+# checks the real lengths.
 #
 # Actions (one key per step):
 #   goto: /path                      open a route in the app ({case} = the named patient's case, {case2} = the prepared second case)
 #   role: owner|coordinator|supervisor|specialist|clinician|patient    the header's Switch role
-#   click: {name: "Button text"} | {testid: id} | {row: "text in a worklist row"}
+#   click: {name: "Button text"} | {link: "Link text"} | {testid: id} | {row: "text in a worklist row"}
 #   select: {label: "Field label", value: "option label or value"} | {testid: id, value: ...}
 #   fill: {label: "Field label", value: "text"}
 #   scroll: {testid: id} | {text: "visible text"} | {heading: "Heading"}      scrolls the element into the middle of the screen
@@ -68,42 +68,43 @@ shots:
     beat: What this is
     submission: true
     route: /coordinator
-    duration: 9
+    duration: 7
     caption: "A named owner, a clock, an audit trail, a clinician-signed closure. Nothing is diagnosed. All data synthetic."
-    narration: "This is an accountability and closure engine. A named owner, a clock, an audit trail and a clinician's signature on every closure. Nothing is diagnosed."
+    narration: "This is an accountability and closure engine: a named owner, a clock, an audit trail and a clinician's signature on every closure. Nothing is diagnosed."
     actions:
       - goto: /coordinator
       - wait_for: {testid: worklist-row, timeout: 20000}
-      - hold: 6
+      - hold: 5
 
   - id: 3
-    title: Owned case, kill the scheduler
-    beat: "1, 2. Owned case, kill the scheduler"
+    title: An owned case, an honest banner, the scheduler stopped
+    beat: "Catch 1, 2. Owned case, banner, kill the scheduler"
     submission: true
     route: "/coordinator/{case}"
-    duration: 10
-    caption: "A positive FIT has a named owner. We stop the scheduler on purpose."
-    narration: "A positive screening result has a named owner, Doctor Haddad. Now we stop the scheduler on purpose, to see whether anyone notices."
+    duration: 12
+    caption: "The system named the owner and sent the first message by itself. Amber: no clinician has signed those messages off, so the demo runs on a placeholder. We stop the scheduler on purpose."
+    narration: "A positive result has a named owner, assigned by the system. The amber banner says the automatic messages run on a demo approval, because no clinician has signed them off. Now we stop the scheduler on purpose."
     actions:
       - goto: "/coordinator/{case}"
       - wait_for: {heading: "Owner accepted", timeout: 20000}
+      - wait_for: {testid: outreach-demo-banner, timeout: 20000}
       - hold: 2
       - scroll: {heading: "Timeline"}
       - hold: 2
       - terminal: {command: "docker compose stop scheduler", run: true, timeout: 60}
-      - hold: 2
+      - hold: 1
 
   - id: 4
     title: Patient contacted, clock jump
-    beat: "3, 4. Patient contacted, clock jump"
+    beat: "Catch 3, 4. Patient contacted, clock jump"
     submission: true
     route: "/coordinator/{case}"
-    duration: 10
+    duration: 12
     caption: "No answer from the patient. Eleven working days pass. Nothing is flagged: this is silence."
     narration: "The owner phones the patient, who does not answer. Eleven working days pass. Nothing is flagged, because the clock that flags it is dead."
     actions:
       - goto: "/coordinator/{case}"
-      - role: owner
+      - role: clinician
       - wait_for: {testid: contact-patient, timeout: 20000}
       - click: {testid: contact-patient}
       - wait_for: {testid: flash, contains: "Patient contact recorded", timeout: 20000}
@@ -117,12 +118,12 @@ shots:
 
   - id: 5
     title: Watchdog catches the dead scheduler
-    beat: "5, 6. Watchdog"
+    beat: "Catch 5, 6. Watchdog, restart"
     submission: true
     route: "terminal, /dashboard, /coordinator/{case}"
     duration: 15
-    caption: "The watchdog caught the dead scheduler. Restarted: nothing lost, nothing skipped."
-    narration: "While the watchdog counts, a property test throws two thousand random event sequences at the engine. Then the banner: the scheduler is down. Restart it, and the missed overdue flag and both escalations appear, once each, in order."
+    caption: "The watchdog caught the dead scheduler. Restarted: the overdue flag, the reminder and the supervisor escalation appear, once each, in order."
+    narration: "While the watchdog counts, a property test throws two thousand random sequences at the engine. Then the banner: the scheduler is down. Restart it, and the overdue flag, the reminder and the supervisor escalation appear, once each, in order."
     actions:
       # The alert is due 60 to 80 s after the stop in shot 3; the test fills part of the wait.
       - terminal: {command: ".venv/bin/pytest -q \"api/tests/test_state_machine.py::test_never_closed_without_evidence_and_human_signoff\"", run: true, timeout: 180, reuse: property-test, lines: 14}
@@ -147,7 +148,7 @@ shots:
 
   - id: 6
     title: Escalation accepted
-    beat: 7. Escalation accepted
+    beat: "Catch 7. Escalation accepted"
     submission: true
     route: "/coordinator/{case}"
     duration: 5
@@ -164,107 +165,57 @@ shots:
       - hold: 2
 
   - id: 7
-    title: Arabic draft and the patient page
-    beat: "8, 9. Arabic draft, patient PWA"
-    submission: true
-    route: "/coordinator/{case}, /patient/{case}"
-    duration: 14
-    caption: "The model only drafts. The owner approves. The patient understands, in Arabic."
-    narration: "The model drafts a message in Arabic and never sees the patient's name. Only the owner can approve it. Then the patient opens it, in Arabic, and taps: I understand."
-    actions:
-      - goto: "/coordinator/{case}"
-      - role: owner
-      - scroll: {testid: drafts-panel}
-      - select: {label: "Language", value: ar}
-      - click: {testid: request-draft}
-      - wait_for: {text: "AI draft", timeout: 60000}
-      - hold: 2
-      - click: {name: "Approve draft"}
-      - wait_for: {text: "Sent", timeout: 30000}
-      - hold: 2
-      - role: patient
-      - wait_for: {testid: patient-root, timeout: 20000}
-      - hold: 2
-      - click: {name: "I understand"}
-      - wait_for: {testid: ack-done, timeout: 20000}
-      - hold: 2
-
-  - id: 8
-    title: Decline, bounce, re-route
-    beat: "10, 11, 12. Decline, bounce, re-route"
-    submission: true
-    route: "/coordinator/{case}"
-    duration: 19
-    caption: "Declined with a reason. Ignored: bounced after 3 working days. Ownership never left primary care."
-    narration: "A specialist declines, with a reason from a fixed list. The next provider never answers, so after three working days the scheduler bounces the request back. The coordinator re-routes it in one click, and the new owner must contact the patient again."
-    actions:
-      - goto: "/coordinator/{case}"
-      - role: owner
-      - scroll: {heading: "Hand off to provider"}
-      - select: {testid: handoff-provider, value: "Corniche Gastro Unit"}
-      - click: {testid: hand-off}
-      - wait_for: {testid: handoff-pending, timeout: 20000}
-      - role: specialist
-      - wait_for: {testid: reject-handoff, timeout: 20000}
-      - scroll: {testid: reject-handoff}
-      - select: {label: "Reason for declining", value: "No capacity (no slot in time)"}
-      - click: {testid: reject-handoff}
-      - wait_for: {testid: flash, contains: "Hand-off declined", timeout: 20000}
-      - hold: 1
-      - role: owner
-      - scroll: {heading: "Hand off to provider"}
-      - select: {testid: handoff-provider, value: "Al Noor Endoscopy Centre"}
-      - click: {testid: hand-off}
-      - wait_for: {testid: handoff-pending, timeout: 20000}
-      - role: supervisor
-      - advance_clock: 5
-      - cut: start
-      - wait_for: {testid: handoff-bounced, timeout: 90000, reload_every: 5000}
-      - cut: end
-      - hold: 2
-      - caption: "A re-routed referral goes back through contact and acknowledgement"
-      - role: coordinator
-      - scroll: {testid: reassign-panel}
-      - click: {testid: reassign}
-      - wait_for: {testid: flash, contains: "re-routed", timeout: 20000}
-      - hold: 3
-
-  - id: 9
-    title: The prepared second case
-    beat: "13. A prepared second case"
-    submission: true
-    route: /coordinator
-    duration: 9
-    caption: "Colonoscopy done and recorded as a FHIR Procedure and DiagnosticReport"
-    narration: "A second case, prepared earlier, already has its colonoscopy, recorded as a FHIR procedure and diagnostic report."
-    actions:
-      - goto: /coordinator
-      - role: specialist
-      - wait_for: {testid: worklist-row, timeout: 20000}
-      - hold: 2
-      - click: {row: "Confirmatory completed"}
-      - wait_for: {heading: "Confirmatory completed", timeout: 20000}
-      - hold: 3
-
-  - id: 10
-    title: Bad reference refused, then closed
-    beat: "13. Bad reference refused, then closed"
+    title: The prepared second case, a bad reference refused
+    beat: "Reveal 1. Second case, bad evidence refused"
     submission: true
     route: "/coordinator/{case2}"
-    duration: 19
-    caption: "A reference that does not exist is refused. With the real Procedure and the clinician's own signature: closed."
-    narration: "Closure needs evidence that exists. A reference that does not exist is refused. With the real procedure and the clinician's own signature, the case closes, and the timeline says so."
+    duration: 12
+    caption: "A reference that does not exist is refused. Closure needs evidence that exists."
+    narration: "A second case, prepared earlier, already has its colonoscopy. Closure needs evidence that exists, so a made-up reference is refused."
     actions:
       - goto: "/coordinator/{case2}"
       - role: specialist
+      - wait_for: {heading: "Confirmatory completed", timeout: 20000}
+      - hold: 2
       - scroll: {text: "Clinician sign-off and closure"}
       - fill: {label: "Evidence reference", value: "Procedure/colonoscopy-0001"}
       - click: {testid: signoff}
       - wait_for: {text: "refused", timeout: 20000}
       - hold: 3
-      # The refused close left the page showing the state before the review the engine did record: reload it (the
-      # review is already on the case) so the second sign-off posts only the close.
-      - goto: "/coordinator/{case2}"
+
+  - id: 8
+    title: "The agency: the morning's work, one decision in the inbox"
+    beat: "Reveal 2. Agency, run, inbox"
+    submission: true
+    route: /agency
+    duration: 15
+    caption: "Agents do the labour, never the authority. One run reads all 22 open cases; the inbox holds only the human decision."
+    narration: "Behind the worklist, one supervisor agent, five department heads and fourteen specialists prepare the work: every overdue case explained, the evidence found, the closure pack assembled. The inbox holds only the human decision."
+    actions:
+      - goto: /agency
+      - role: supervisor
+      - wait_for: {testid: run-agency, timeout: 20000}
+      - click: {testid: run-agency}
+      - wait_for: {testid: run-result, timeout: 60000}
+      - hold: 3
+      - scroll: {testid: run-group-quality_ops}
+      - hold: 3
+      - role: specialist
+      - wait_for: {testid: inbox-item, timeout: 30000}
+      - scroll: {testid: agency-inbox}
+      - hold: 3
+
+  - id: 9
+    title: Signed and closed
+    beat: "Reveal 3. Real evidence, the clinician's own signature, closed"
+    submission: true
+    route: "/coordinator/{case2}"
+    duration: 13
+    caption: "The real Procedure and the clinician's own signature: closed. A record that says the colonoscopy was incomplete is refused."
+    narration: "The clinician opens it from the inbox, records the real procedure, signs as themselves, and the case closes. A record that says the colonoscopy was incomplete would be refused."
+    actions:
+      - click: {link: "Open case"}
+      - wait_for: {heading: "Clinician reviewed", timeout: 20000}
       - scroll: {text: "Clinician sign-off and closure"}
       - click: {testid: record-colonoscopy}
       - hold: 2
@@ -274,33 +225,51 @@ shots:
       - wait_for: {text: "Case closed", timeout: 10000}
       - hold: 3
 
-  - id: 11
-    title: Proof
-    beat: "13. Proof"
+  - id: 10
+    title: Human effort
+    beat: "Reveal 4. Human effort card"
     submission: true
-    route: "terminal, /coordinator/{case2}"
-    duration: 14
-    caption: "No closure without evidence and a clinician's signature: tested on 2,000 random sequences every run. Reopening needs a reason."
-    narration: "No closure without evidence and a clinician's signature, tested on two thousand random sequences every run. Only a clinician can reopen a case, and only with a reason."
+    route: /dashboard
+    duration: 10
+    caption: "Human actions against automated actions, minutes against baseline. The minutes are assumed, not measured."
+    narration: "Human actions against automated actions, and minutes against baseline. The minutes are assumed, not measured, and on this handful of demo cases they flatter the system."
     actions:
-      - goto: "/coordinator/{case2}"
-      - wait_for: {testid: timeline, timeout: 20000}
-      - scroll: {testid: timeline}
+      - goto: /dashboard
+      - role: supervisor
+      - wait_for: {testid: effort-card, timeout: 20000}
+      - wait_for: {testid: effort-total-human, timeout: 20000}
+      - scroll: {testid: effort-card}
+      - hold: 6
+
+  - id: 11
+    title: Triage cameo
+    beat: "Reveal 5. A Gulf-Arabic reply, a person reads it"
+    submission: true
+    route: "/coordinator/{case}"
+    duration: 14
+    caption: "A reply in Gulf Arabic. The offline model is not loaded here, so the system flags it for a person: it can flag, never close, send or change consent."
+    narration: "A patient replies in Gulf Arabic. The offline model is not loaded on this laptop, so the system does what it is built to do when unsure: it flags the case, and a person reads the reply."
+    actions:
+      - goto: "/coordinator/{case}"
+      - role: coordinator
+      - scroll: {testid: reply-panel}
+      - select: {testid: reply-channel, value: whatsapp}
+      - fill: {label: "Patient's reply", value: "ان شاء الله بجي يوم الأحد"}
+      - hold: 1
+      - click: {testid: record-reply}
+      - wait_for: {testid: reply-result, timeout: 30000}
       - hold: 2
-      - terminal: {command: ".venv/bin/pytest -q \"api/tests/test_state_machine.py::test_never_closed_without_evidence_and_human_signoff\"", run: false, reuse: property-test, lines: 14}
+      - scroll: {testid: triage-review-banner}
       - hold: 3
-      - goto: "/coordinator/{case2}"
-      - scroll: {testid: reopen-panel}
-      - hold: 4
 
   - id: 12
     title: Numbers
     beat: Numbers
     submission: true
     route: "card:results"
-    duration: 28
-    caption: "Simulation on synthetic data, literature-anchored scenario: colonoscopy within 180 days 52% to 66%; lost without anyone told 44.5% at baseline, 0% for cases the programme reaches and 20% programme-level under a 0.55 reach assumption; open at 90 days 62% to 46%. Before capacity limits. Rerun: make evaluate"
-    narration: "These figures come from a simulation on synthetic data, the literature-anchored scenario, before capacity limits. Colonoscopy within one hundred eighty days rises from fifty-two to sixty-six percent. Cases lost without anyone told: forty-four point five percent at baseline, zero for cases the programme reaches, and twenty percent programme-wide under a point five five reach assumption. Still open at ninety days: sixty-two down to forty-six percent. Rerun it with make evaluate."
+    duration: 26
+    caption: "Simulation on synthetic data, literature-anchored scenario, before capacity limits. Closed with evidence and a signature 52% to 66%; lost without anyone told 46% at baseline, 0% where the programme reaches, 21% programme-level. Labour: 33% fewer minutes per handled case, 18% programme-level: the 40% target is not met. Rerun: make evaluate"
+    narration: "Simulation on synthetic data, literature-anchored, before capacity limits. Cases closed with evidence and a signature rise from fifty-two to sixty-six percent. Cases lost without anyone told: forty-six percent today, zero where the programme reaches, twenty-one percent programme-wide. Labour falls thirty-three percent per handled case, eighteen percent programme-wide: below our forty percent target."
     actions:
       - card:
           kind: results
@@ -308,10 +277,19 @@ shots:
           columns: ["Baseline", "Orchestrated, literature anchored"]
           rows:
             - "Colonoscopy completed within 180 days"
-            - "Cases still open at 90 days"
+            - "Cases closed (evidence and human sign-off)"
             - "Lost AND never surfaced to a human: programme level"
             - "Lost AND never surfaced to a human: in reach"
-      - hold: 22
+      - hold: 15
+      - card:
+          kind: slide
+          heading: "Labour, in the same simulation"
+          bullets:
+            - "33% fewer staff minutes per case the system handles (in reach)"
+            - "18% fewer across the whole programme (0.55 reach assumption)"
+            - "The 40% target is not met"
+            - "Minutes are published or assumed; synthetic"
+      - hold: 8
 
   - id: 13
     title: The ask
@@ -332,24 +310,9 @@ shots:
             - "Cases closed without evidence: must stay at zero. If it moves, we stop"
       - hold: 7
 
-  # ---- Reveal shots: the pages exist on branches that merge later. Skipped, not failed, if absent. -----------------
+  # ---- Backup-only extra: not in the 3-minute cut. Skipped, not failed, if the element is absent. ------------------------
   - id: 14
-    title: Reveal, the agency page
-    beat: Agency layer (A22)
-    optional: true
-    submission: false
-    route: /agency
-    requires: {route: /agency, testid: agency-org}
-    duration: 10
-    caption: "Agents do the labour, never the authority: every decision still needs a human."
-    narration: "Behind the worklist, a supervisor, five department heads and fourteen executioners do the labour, never the authority. Every decision still needs a human."
-    actions:
-      - goto: /agency
-      - wait_for: {testid: agency-org, timeout: 8000}
-      - hold: 8
-
-  - id: 15
-    title: Reveal, the effort counter
+    title: The effort counter on a case
     beat: Effort counter (A21)
     optional: true
     submission: false

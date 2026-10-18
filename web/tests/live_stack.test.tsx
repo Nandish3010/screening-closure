@@ -74,6 +74,17 @@ describe("http adapter against the real API's identity rules", () => {
     expect(calls.find((c) => c.key === "POST /clock/advance")!.body).toEqual({ days: 7 });
   });
 
+  it("postReply posts the reply to POST /cases/{id}/replies (D13) and returns the API's classification", async () => {
+    const answer = { reply_id: "r1", case_id: "c1", channel: "whatsapp", intent: "other", confidence: 0, model_id: "unavailable", needs_human: true, logged: true, applied: ["reply_received", "reply_classified", "review_requested"], note: null };
+    const { fn, calls } = recorder({
+      "POST /auth/dev-login": { token: "t", user_id: "u", role: "coordinator" },
+      "POST /cases/c1/replies": answer,
+    });
+    const api = createHttpAdapter("http://api.test", fn);
+    expect(await api.postReply("c1", { channel: "whatsapp", text: "ان شاء الله" })).toEqual(answer);
+    expect(calls.find((c) => c.key === "POST /cases/c1/replies")!.body).toEqual({ channel: "whatsapp", text: "ان شاء الله" });
+  });
+
   it("shows the display names the API resolved for opaque actor ids", () => {
     expect(actorName("primary_care_owner:deadbeef0001")).toBe("deadbeef0001");
     registerActors({ "primary_care_owner:deadbeef0001": { display_name: "Dr. Layla Haddad" } });

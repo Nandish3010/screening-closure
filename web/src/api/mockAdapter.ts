@@ -8,7 +8,7 @@
  */
 import type {
   AgencyInboxItem, AgencyOrg, AgencyRun, AgencyTask, AgencyTaskParams, Alert, ApiClient, CaseAgencySummary, CaseDetail, CaseEvent, CaseListParams, CaseSummary, CaseTimeline, ClosureMetrics, ConfirmatoryResult, Draft, DraftApproval,
-  DraftRecord, DraftRejection, DraftRequestBody, EffortMetrics, Me, PostEventBody, Role, TimelineItem,
+  DraftRecord, DraftRejection, DraftRequestBody, EffortMetrics, Me, PostEventBody, ReplyBody, ReplyResult, Role, TimelineItem,
 } from "./contract";
 import { ApiError, AUTOMATION_ACTOR, BACKEND_ROLE, OWNER_SCOPED_ROLES, REJECT_NOTE_MAX, REJECT_REASONS, ROLES } from "./contract";
 import { FIXTURE_RISK, SEED_ALERTS, SEED_METRICS, SIM_NOW, caseIdFor, seedDrafts, seedEvents } from "./fixtures";
@@ -24,6 +24,24 @@ import {
 import { effortMetricsOf, effortOf } from "../lib/effort";
 
 export { ROLE_NAMES };
+
+/**
+ * The mock's stand-in for the reply triage (D13): a handful of keywords, NOT the model (the real classifier is a small
+ * offline model on the API host, or "unavailable" when it is not installed). It exists so the reply form can be exercised in the
+ * browser: the same rules of the API apply after it (an opt-out, a question, anything else and every low-confidence reply need a
+ * person; a confirmation needs nothing).
+ */
+export function mockClassifyReply(text: string): { intent: string; confidence: number; needs_human: boolean } {
+  const intent =
+    /(\bstop\b|opt.?out|unsubscribe|لا تتصل|لا ترسل|أوقف|اوقف)/i.test(text) ? "opt_out"
+    : /(wrong number|not my number|رقم غلط|رقم خاطئ|رقم خطأ)/i.test(text) ? "wrong_number"
+    : /[?؟]|(\bwhat\b|\bwhy\b|\bhow\b|شنو|ليش|كيف|ماذا)/i.test(text) ? "question"
+    : /(\byes\b|\bok(ay)?\b|will come|see you|تمام|إن شاء الله|ان شاء الله|نعم|ايوه)/i.test(text) ? "confirm"
+    : "other";
+  const confidence = intent === "other" ? 0.35 : 0.93;
+  const needs_human = ["opt_out", "question", "other"].includes(intent) || confidence < 0.553;
+  return { intent, confidence, needs_human };
+}
 
 /**
  * Mock options.
@@ -431,6 +449,34 @@ export function createMockAdapter(
       }
       save(db);
       return caseFor(db, id);
+    },
+    async postReply(id, body: ReplyBody): Promise<ReplyResult> {
+      if (session.role !== "coordinator") throw new ApiError(403, `role '${BACKEND_ROLE[session.role]}' may not call POST /cases/{case_id}/replies`);
+      if (!body.text || !body.text.trim()) throw new ApiError(422, "text: a reply cannot be empty");
+      const db = load();
+      const evs = must(db, id);
+      const result = { ...mockClassifyReply(body.text), model_id: "triage-mock-1" };
+      const n = evs.length;
+      const ref = `reply-mock-${n + 1}`;
+      const closed = replayState(evs) === "closed";
+      const applied: string[] = [];
+      if (!closed) {
+        append(db, id, "reply_received", "system:triage", { channel: body.channel, text_ref: ref }, { internal: true, eventId: `ev-reply-${n + 1}-received` });
+        applied.push("reply_received");
+        const classifiedId = `ev-reply-${n + 1}-classified`;
+        append(db, id, "reply_classified", "system:triage", { ...result, text_ref: ref }, { internal: true, eventId: classifiedId });
+        applied.push("reply_classified");
+        const reason = result.needs_human ? (result.intent === "opt_out" ? "opt_out" : "triage_uncertain") : result.intent === "wrong_number" ? "wrong_number" : null;
+        if (reason) {
+          append(db, id, "review_requested", "system:triage", { reason, source_event_id: classifiedId }, { internal: true, eventId: `ev-reply-${n + 1}-review` });
+          applied.push("review_requested");
+        }
+        save(db);
+      }
+      return {
+        reply_id: ref, case_id: id, channel: body.channel, ...result, logged: applied.length > 0, applied,
+        note: applied.length ? null : "the case is closed: the reply is stored for a person to read, nothing was logged",
+      };
     },
     async requestDraft(id, body: DraftRequestBody): Promise<Draft> {
       requireStaff();

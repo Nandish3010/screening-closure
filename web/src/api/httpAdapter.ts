@@ -1,7 +1,7 @@
 /** HTTP adapter: the real API at VITE_API_URL, with bearer-token auth from POST /auth/dev-login. */
 import type {
   AgencyInboxItem, AgencyOrg, AgencyRun, AgencyTask, AgencyTaskParams, Alert, ApiClient, CaseAgencySummary, CaseDetail, CaseEvent, CaseListParams, CaseSummary, CaseTimeline, ClosureMetrics, ConfirmatoryResult, Draft,
-  DraftApproval, DraftRecord, DraftRejection, DraftRequestBody, EffortMetrics, Me, PostEventBody, Role, TimelineItem,
+  DraftApproval, DraftRecord, DraftRejection, DraftRequestBody, EffortMetrics, Me, PostEventBody, ReplyBody, ReplyResult, Role, TimelineItem,
 } from "./contract";
 import { ApiError, BACKEND_ROLE, OWNER_SCOPED_ROLES, ROLES } from "./contract";
 import { completeDetail, completeSummary, registerActors } from "../lib/derive";
@@ -189,6 +189,9 @@ export function createHttpAdapter(baseUrl: string, fetchImpl: typeof fetch = (..
     },
     recordConfirmatoryResult(id: string) {
       return request<ConfirmatoryResult>(`/cases/${encodeURIComponent(id)}/confirmatory-result`, { method: "POST" });
+    },
+    postReply(id: string, body: ReplyBody) {
+      return request<ReplyResult>(`/cases/${encodeURIComponent(id)}/replies`, { method: "POST", body: JSON.stringify(body) });
     },
     async advanceClock(by) {
       const j = await request<{ sim_time: string }>("/clock/advance", { method: "POST", body: JSON.stringify(by) });

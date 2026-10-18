@@ -214,6 +214,20 @@ export const STAFF = {
     already_done: "The patient says the colonoscopy is already done: a person must check and confirm",
   },
   incompleteProcedureHelp: "A colonoscopy counts as closure evidence only when a final report states it was complete (or a CT colonography was done). Arrange a repeat colonoscopy or a CT colonography, or record the complete result.",
+  /** D13: the coordinator records what the patient wrote back; the triage reads it and only ever flags or relays. */
+  replyForm: {
+    heading: "Record patient reply",
+    intro: "The patient wrote back. Type or paste the reply: a small offline model reads it, the text is kept outside the audit trail, and the case gets either one safe step or a request for a person to read it. The model cannot change the case, send, close or withdraw consent.",
+    channel: "Channel the reply came in on",
+    text: "Patient's reply",
+    button: "Record reply",
+    needText: "Enter the patient's reply first.",
+    readAs: "Read as",
+    needsPerson: "A person must look at this reply: the case is flagged for human review and the system took no other step.",
+    handled: "No person was needed for this one; the log shows the one safe step the system took, if any.",
+    recordedNeedsPerson: "Reply recorded. The triage did not act on it: a person must read it.",
+    recordedHandled: (intent: string) => `Reply recorded and read as ${intent}.`,
+  },
   /** A26: shown while the automatic messages run on the demo placeholder approval (`GET /health` -> `outreach.demo_approval`). */
   outreachDemoBanner: {
     fallback: "DEMO PLACEHOLDER (clinical sign-off pending, H1)",

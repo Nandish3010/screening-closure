@@ -499,6 +499,32 @@ export interface CaseDetail extends Omit<CaseSummary, "pathway" | "created_at" |
   events: CaseEvent[];
 }
 
+/** `POST /cases/{id}/replies` body (D13). The sender, the case and the time come from the login, the path and the clock. */
+export interface ReplyBody {
+  channel: ContactChannel;
+  text: string;
+  language_hint?: Lang;
+}
+
+/**
+ * `POST /cases/{id}/replies` -> 201 (D13). `needs_human` is true for every `opt_out`, `question` and `other`, for a reply the model
+ * is not sure of and for every reply when the model is not installed (`model_id: "unavailable"`, confidence 0): the case then
+ * gets `review_requested` and a person reads the stored text. `applied` lists the events written (`reply_received`,
+ * `reply_classified` and at most one more). The text itself is never in the log.
+ */
+export interface ReplyResult {
+  reply_id: string;
+  case_id: string;
+  channel: string;
+  intent: ReplyIntent | string;
+  confidence: number;
+  model_id: string;
+  needs_human: boolean;
+  logged: boolean;
+  applied: string[];
+  note: string | null;
+}
+
 /**
  * `GET /health` -> `outreach` (A26, ADR-037). The shipped outreach policy is UNSIGNED and an unsigned policy sends no automatic
  * message. `demo_approval` is true while the automation runs only on the demo placeholder (`OUTREACH_DEMO_APPROVAL=1`, compose):
@@ -1159,6 +1185,11 @@ export interface ApiClient {
   actorFor(role: Role, name: string, provider?: string): Promise<string>;
   /** Record the colonoscopy as FHIR evidence (E8, see ConfirmatoryResult). Owners of the case only. */
   recordConfirmatoryResult(caseId: string): Promise<ConfirmatoryResult>;
+  /**
+   * POST /cases/{id}/replies (D13, coordinator only): record what the patient wrote back. The API classifies it
+   * (`reply_classified`), and either takes one safe step or asks a person to read it (`review_requested`). See ReplyResult.
+   */
+  postReply(caseId: string, body: ReplyBody): Promise<ReplyResult>;
   /** POST /clock/advance (supervisor only): move the simulation clock forward. http only. Returns the new sim time. */
   advanceClock?(by: { days?: number; hours?: number }): Promise<string>;
   me(): Promise<Me>;
