@@ -23,7 +23,7 @@ from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
 from app import payloads
-from app.events import CaseNotFound, Event, EventIdConflict, EventStore
+from app.events import CaseNotFound, Event, EventContentConflict, EventIdConflict, EventStore
 from app.pathway import Pathway
 from app.state_machine import CaseModel, InvalidTransition
 
@@ -99,7 +99,7 @@ def run_idle_scan(store: EventStore, pathway: Pathway, now: datetime, idle_days:
         try:
             payloads.validate(event.type, event.payload)
             store.append(event, pathway)
-        except InvalidTransition as exc:
+        except (InvalidTransition, EventContentConflict) as exc:
             result.rejected += 1  # another writer moved the case first; the next scan re-plans
             log.info("case %s: flag refused: %s", case_id, exc)
         except (payloads.PayloadSchemaError, CaseNotFound, EventIdConflict) as exc:

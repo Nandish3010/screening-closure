@@ -15,6 +15,7 @@ from app.events import (
     CaseAlreadyExists,
     CaseNotFound,
     Event,
+    EventContentConflict,
     EventIdConflict,
     EventStore,
     InMemoryEventStore,
@@ -260,6 +261,9 @@ def post_event(
         raise HTTPException(422, str(exc))
     except InvalidTransition as exc:
         raise HTTPException(409, str(exc))
+    except EventContentConflict:
+        raise HTTPException(409, "event_id already used by a different event on this case: a retry repeats "
+                                 "the same type, payload and time; use a new event_id for a new event")
     except EventIdConflict:
         raise HTTPException(409, "event_id already used by another case")
     if body.type == "consent_updated":

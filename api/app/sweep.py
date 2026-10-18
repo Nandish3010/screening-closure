@@ -35,7 +35,7 @@ from uuid import UUID
 
 from app import payloads
 from app.calendar import WorkingCalendar
-from app.events import CaseNotFound, Event, EventIdConflict, EventStore
+from app.events import CaseNotFound, Event, EventContentConflict, EventIdConflict, EventStore
 from app.pathway import Pathway
 from app.state_machine import CaseModel, InvalidTransition
 
@@ -286,6 +286,12 @@ def run_sweep(
                 except InvalidTransition as exc:
                     # Another writer moved the case between our read and our write; the next
                     # sweep re-plans from the new state.
+                    result.rejected += 1
+                    log.info("case %s: %s refused: %s", case_id, event.type, exc)
+                    break
+                except EventContentConflict as exc:
+                    # Another detector appended this id with different content a moment ago: a race, like
+                    # the refusal above; the next sweep re-plans from the log.
                     result.rejected += 1
                     log.info("case %s: %s refused: %s", case_id, event.type, exc)
                     break

@@ -8,9 +8,11 @@ against a replay on every append. Two stores implement the same `EventStore` pro
 from __future__ import annotations
 
 import dataclasses
+import hashlib
+import json
 import threading
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Protocol
 from uuid import UUID, uuid4
 
@@ -19,6 +21,7 @@ from app.state_machine import (  # noqa: F401  (CASE_CREATED and replay_model ar
     CASE_CREATED,
     CaseModel,
     genesis,
+    is_automated,
     replay_model,
     step,
 )
@@ -73,7 +76,40 @@ class CaseAlreadyExists(Exception):
 
 
 class EventIdConflict(Exception):
-    """The event_id is already used by an event on a different case."""
+    """The event_id is already used by an event on a different case, or twice in one batch."""
+
+
+class EventContentConflict(EventIdConflict):
+    """The event_id is already used on THIS case by an event with different content (type, actor,
+    payload or time). A retry of the same request repeats it exactly; anything else is a client bug
+    (or an attempt to overwrite history by id) and is refused, not swallowed as a no-op."""
+
+
+def event_digest(type_: str, at: datetime, actor: str, payload: dict) -> str:
+    """sha256 over what makes an event THIS event: type, actor, payload and `at` (UTC). The idempotency
+    check compares the digest of a repeated `event_id` with that of the stored event.
+
+    Events from automated actors (the sweep, the watchdog, the notifier, the consent service) leave `at`
+    out: their ids are derived from the cause (a clock start, a request, a draft), and `at` is merely
+    when a detector noticed, which two concurrent detectors legitimately disagree on by a moment. What
+    they did is in the type and payload; those still have to match."""
+    when = None if is_automated(actor) else (at if at.tzinfo else at.replace(tzinfo=UTC)).astimezone(UTC).isoformat()
+    blob = json.dumps([type_, actor, when, payload], sort_keys=True, separators=(",", ":"), default=str)
+    return hashlib.sha256(blob.encode()).hexdigest()
+
+
+def digest_of(event: "Event") -> str:
+    return event_digest(event.type, event.at, event.actor, event.payload)
+
+
+def check_batch_ids(events) -> None:
+    """Two events of one batch may not share an id: the second would be silently dropped as a retry
+    of the first. Raises EventIdConflict."""
+    seen: set[UUID] = set()
+    for e in events:
+        if e.event_id in seen:
+            raise EventIdConflict(f"event_id {e.event_id} appears twice in one batch")
+        seen.add(e.event_id)
 
 
 class StateCorruption(Exception):
@@ -99,8 +135,9 @@ class EventStore(Protocol):
         raises propagates, nothing is written. It is not called for a repeated event_id (a retry).
 
         Returns the new state. Raises CaseNotFound, InvalidTransition (nothing written),
-        EventIdConflict or StateCorruption. A repeated event_id on the same case is a
-        no-op that returns the current state.
+        EventIdConflict, EventContentConflict or StateCorruption. A repeated event_id on the same
+        case with the same content is a no-op that returns the current state; with different
+        content (type, actor, payload, time) it is an EventContentConflict (HTTP 409).
         """
         ...
 
@@ -150,7 +187,7 @@ class InMemoryEventStore:
     def __init__(self) -> None:
         self._lock = threading.Lock()
         self._cases: dict[UUID, _Case] = {}
-        self._event_ids: dict[UUID, UUID] = {}  # event_id -> case_id
+        self._event_ids: dict[UUID, tuple[UUID, str]] = {}  # event_id -> (case_id, content digest)
 
     def create_case(
         self, case_id: UUID, pathway_name: str, genesis_event: Event, initial_state: str
@@ -162,6 +199,7 @@ class InMemoryEventStore:
                 raise CaseAlreadyExists(str(case_id))
             if genesis_event.event_id in self._event_ids:
                 raise EventIdConflict(str(genesis_event.event_id))
+            self._event_ids[genesis_event.event_id] = (case_id, digest_of(genesis_event))
             self._cases[case_id] = _Case(
                 pathway_name,
                 genesis(CaseModel(state=initial_state), genesis_event),
@@ -169,7 +207,6 @@ class InMemoryEventStore:
                 genesis_event.at,
                 [dataclasses.replace(genesis_event, seq=1)],
             )
-            self._event_ids[genesis_event.event_id] = case_id
 
     def append(self, event: Event, pathway: Pathway, *, within=None, guard=None) -> str:
         # `within(None)`, if given, runs after the event is accepted and before anything is
@@ -178,11 +215,14 @@ class InMemoryEventStore:
             case = self._cases.get(event.case_id)
             if case is None:
                 raise CaseNotFound(str(event.case_id))
-            owner = self._event_ids.get(event.event_id)
-            if owner is not None:
-                if owner == event.case_id:
-                    return case.model.state
-                raise EventIdConflict(str(event.event_id))
+            known = self._event_ids.get(event.event_id)
+            if known is not None:
+                if known[0] != event.case_id:
+                    raise EventIdConflict(str(event.event_id))
+                if known[1] != digest_of(event):
+                    raise EventContentConflict(
+                        f"event_id {event.event_id} is already used by a different event on this case")
+                return case.model.state
             if guard is not None:
                 guard(case.model)
             new_model = step(case.model, event, pathway)  # raises InvalidTransition
@@ -191,7 +231,7 @@ class InMemoryEventStore:
             case.events.append(dataclasses.replace(event, seq=len(case.events) + 1))
             case.model = new_model
             case.updated_at = event.at
-            self._event_ids[event.event_id] = event.case_id
+            self._event_ids[event.event_id] = (event.case_id, digest_of(event))
             return new_model.state
 
     def events_for(self, case_id: UUID) -> list[Event]:
