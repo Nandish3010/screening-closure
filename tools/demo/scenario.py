@@ -291,16 +291,36 @@ STEPS = [
 ]
 
 
+def wait_for_hapi(http: httpx.Client, seconds: float = 90, pause: float = 2) -> bool:
+    """True once HAPI answers `/metadata`; False after `seconds` (it takes up to ~40 s to boot after a reset)."""
+    deadline = time.monotonic() + seconds
+    while True:
+        try:
+            if http.get(f"{FHIR}/metadata").status_code == 200:
+                return True
+        except httpx.HTTPError:
+            pass
+        if time.monotonic() > deadline:
+            return False
+        time.sleep(pause)
+
+
 # ---- picking the patient --------------------------------------------------------------------------------
 
 
-def pick_case() -> tuple[str, str]:
-    """(case_id, patient_ref) of the first positive FIT in seed order: the first row of the cohort manifest."""
+def pick_case(index: int = 0) -> tuple[str, str]:
+    """(case_id, patient_ref) of the `index`-th positive FIT in seed order: the cohort manifest's row `index`.
+
+    Row 0 is the named patient of this scenario. `stage_second_case.py` takes row 1, so the two never meet.
+    """
     if not MANIFEST.exists():
         raise ScenarioError(f"{MANIFEST} not found: seed the cohort first (make demo-seed)")
-    first = json.loads(MANIFEST.read_text())["results"][0]
-    case_id = str(uuid.uuid5(CASE_NAMESPACE, f"DiagnosticReport/{first['report_id']}"))
-    return case_id, f"Patient/{first['patient_id']}"
+    rows = json.loads(MANIFEST.read_text())["results"]
+    if index >= len(rows):
+        raise ScenarioError(f"{MANIFEST} has {len(rows)} result(s): there is no row {index}")
+    row = rows[index]
+    case_id = str(uuid.uuid5(CASE_NAMESPACE, f"DiagnosticReport/{row['report_id']}"))
+    return case_id, f"Patient/{row['patient_id']}"
 
 
 def synthea_name(http: httpx.Client, patient_ref: str) -> str:
@@ -360,17 +380,9 @@ def main(argv: list[str] | None = None) -> int:
         if datetime.fromisoformat(health["sim_time"]) != SIM_START:
             print(f"scenario: the simulation clock is at {health['sim_time']}, not at its start {SIM_START.isoformat()}: run `make demo-reset` first", file=sys.stderr)
             return 2
-        deadline = time.monotonic() + 90  # HAPI takes up to ~40 s to boot after a reset
-        while True:
-            try:
-                if http.get(f"{FHIR}/metadata").status_code == 200:
-                    break
-            except httpx.HTTPError:
-                pass
-            if time.monotonic() > deadline:
-                print(f"scenario: HAPI at {FHIR} is not answering; the stack is not ready", file=sys.stderr)
-                return 2
-            time.sleep(2)
+        if not wait_for_hapi(http):
+            print(f"scenario: HAPI at {FHIR} is not answering; the stack is not ready", file=sys.stderr)
+            return 2
         try:
             demo.case_id, demo.patient_ref = pick_case()
             demo.patient_name = synthea_name(http, demo.patient_ref)

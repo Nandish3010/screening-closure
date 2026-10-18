@@ -1,4 +1,4 @@
-.PHONY: test-demo test-e2e-live demo-scenario demo-snapshot demo-restore demo-reset demo-kill-scheduler check docs-check tracker-lint test-security test-tools test-load load-check up down logs test test-db test-db-create test-db-reset test-chaos synthea demo-seed demo-seed-clean evaluate simulate evaluate-check sensitivity sensitivity-check reset web-install web-dev web-build web-test web-e2e test-e2e review-packs review-packs-check test-review-packs test-phi-logs rbac-matrix test-offline fresh-clone risk-report risk-check
+.PHONY: test-demo test-e2e-live demo-scenario demo-stage demo-snapshot demo-restore demo-reset demo-kill-scheduler check docs-check tracker-lint test-security test-tools test-load load-check up down logs test test-db test-db-create test-db-reset test-chaos synthea demo-seed demo-seed-clean evaluate simulate evaluate-check sensitivity sensitivity-check reset web-install web-dev web-build web-test web-e2e test-e2e review-packs review-packs-check test-review-packs test-phi-logs rbac-matrix test-offline fresh-clone risk-report risk-check
 
 up:
 	docker compose up -d --build
@@ -148,9 +148,17 @@ web-e2e:
 demo-scenario:
 	$(PY) tools/demo/scenario.py $(if $(UNTIL),--until $(UNTIL))
 
+# E9: stage the demo's SECOND case through the API: the second positive FIT in seed order, walked to
+# confirmatory_completed and owned by the specialist login (Dr. Karim Nasser), simulation clock untouched. Needs the
+# stack up and seeded. Safe to rerun: if the case is already there (or past it) it says so and does nothing.
+# `python3 tools/demo/stage_second_case.py --show` prints which case it is.
+demo-stage:
+	$(PY) tools/demo/stage_second_case.py
+
 # Save the current database (cases, events, drafts, notifications, the sim clock AND HAPI's FHIR data) as the demo
-# snapshot, on a clean seeded stack: `make reset && make demo-seed && make demo-snapshot`.
-demo-snapshot:
+# snapshot, on a clean seeded stack: `make reset && make demo-seed && make demo-snapshot`. It stages the second case
+# first (demo-stage), so `make demo-reset` brings that case back with everything else.
+demo-snapshot: demo-stage
 	tools/demo/snapshot.sh save
 
 demo-restore:
