@@ -221,21 +221,38 @@ def evaluate(model: Model, rows: Sequence[Row], base_rate: float) -> dict:
     }
 
 
-def group_metrics(model: Model, rows: Sequence[Row], base_rate: float, feature: str, levels: Sequence[str]) -> list[dict]:
-    """AUC, ECE and Brier per level of `feature` on `rows`. A group with one outcome class has AUC null."""
+GAP_TOLERANCE = 0.02  # |mean predicted - observed rate| per group above this is flagged (D12)
+
+
+def group_metrics(model: Model, rows: Sequence[Row], base_rate: float, feature: str, levels: Sequence[str],
+                  labels: Sequence[str] | None = None) -> list[dict]:
+    """AUC, ECE, Brier and the calibration-in-the-large gap per level of `feature` on `rows`. A group with one
+    outcome class has AUC null. By default a row's group is `f.value_of(feature)`; pass `labels` (one per row)
+    to group by an attribute the model never sees, such as language (an outcome audit, not an input).
+
+    `gap` is mean predicted minus observed rate (signed), `gap_flag` is True when its size exceeds
+    `GAP_TOLERANCE`, and `gap_margin_95` is the sampling margin of the observed rate at this group size
+    (1.96 standard errors), so a reader can tell a real gap from a small group's noise."""
+    if labels is not None and len(labels) != len(rows):
+        raise ValueError("labels must have one entry per row")
     out = []
     for level in levels:
-        sub = [(f, y) for f, y in rows if f.value_of(feature) == level]
-        if not sub:
-            out.append({"group": level, "n": 0, "prevalence": None, "auc": None, "ece": None, "brier": None})
+        idx = [i for i, (f, _y) in enumerate(rows)
+               if (labels[i] if labels is not None else f.value_of(feature)) == level]
+        if not idx:
+            out.append({"group": level, "n": 0, "prevalence": None, "auc": None, "ece": None, "brier": None,
+                        "mean_predicted": None, "gap": None, "gap_flag": False, "gap_margin_95": None})
             continue
-        y = [yi for _f, yi in sub]
-        p = [model.predict(f) for f, _y in sub]
+        y = [rows[i][1] for i in idx]
+        p = [model.predict(rows[i][0]) for i in idx]
         a = auc(y, p)
+        prev, mean_p = sum(y) / len(y), sum(p) / len(p)
         out.append({
-            "group": level, "n": len(sub), "prevalence": r8(sum(y) / len(y)),
+            "group": level, "n": len(idx), "prevalence": r8(prev),
             "auc": r8(a) if a is not None else None,
             "ece": r8(ece_of(calibration_bins(y, p))), "brier": r8(brier(y, p)),
-            "mean_predicted": r8(sum(p) / len(p)),
+            "mean_predicted": r8(mean_p),
+            "gap": r8(mean_p - prev), "gap_flag": abs(mean_p - prev) > GAP_TOLERANCE,
+            "gap_margin_95": r8(1.96 * math.sqrt(prev * (1.0 - prev) / len(y))),
         })
     return out

@@ -112,7 +112,7 @@ def headline_table(risk: dict) -> str:
         f"| Expected calibration error (ECE, 10 equal-width bins) | {_f(h['ece'])} |",
         f"| ECE of a perfectly calibrated model at this sample size (mean, 95th percentile) | {_f(nf['mean'])}, {_f(nf['p95'])} |",
         f"| Tolerance: ECE at or below {tol['ece_max']} | {verdict} |",
-        f"| As served today, with language, channel and age band unknown (AUC, Brier, ECE) | {_f(u['auc'])}, {_f(u['brier'])}, {_f(u['ece'])} |",
+        f"| As served today, with channel and age band unknown (AUC, Brier, ECE) | {_f(u['auc'])}, {_f(u['brier'])}, {_f(u['ece'])} |",
     ]) + "\n\n" + verdict_sentence(risk)
 
 
@@ -125,19 +125,28 @@ def verdict_sentence(risk: dict) -> str:
             "ordering aid (its ranking is still informative), but its probabilities must not be read as calibrated risks.")
 
 
+def _signed(x, nd=4) -> str:
+    return "n/a" if x is None else f"{x:+.{nd}f}"
+
+
 def fairness_table(risk: dict) -> str:
     rows = [
-        "| Group | Value | Held-out cases | Prevalence | AUC | ECE | Chance ECE (95th percentile) | Brier |",
-        "|---|---|---|---|---|---|---|---|",
+        "| Group | Value | Held-out cases | Prevalence | AUC | ECE | Chance ECE (95th percentile) | Brier "
+        "| Mean predicted | Observed rate | Gap (predicted minus observed) | Sampling margin (95%) | Gap flag |",
+        "|---|---|---|---|---|---|---|---|---|---|---|---|---|",
     ]
-    for feature, label in (("language", "Language"), ("channel", "Preferred channel"), ("age_band", "Age band")):
+    tol = risk["calibration_gap"]["tolerance"]
+    for feature, label in (("language", "Language (audit only, not an input)"), ("channel", "Preferred channel"),
+                           ("age_band", "Age band")):
         for g in risk["groups"][feature]:
             small = " (small sample)" if g["n"] < SMALL_GROUP else ""
+            flag = "n/a" if g["gap"] is None else ("FLAG" if g["gap_flag"] else "ok")
             rows.append(
                 f"| {label} | {g['group']} | {g['n']}{small} | {_pct(g['prevalence'])} | {_f(g['auc'])} | "
-                f"{_f(g['ece'])} | {_f(g.get('ece_noise_p95'))} | {_f(g['brier'])} |"
+                f"{_f(g['ece'])} | {_f(g.get('ece_noise_p95'))} | {_f(g['brier'])} | {_f(g['mean_predicted'])} | "
+                f"{_f(g['prevalence'])} | {_signed(g['gap'])} | {_f(g['gap_margin_95'])} | {flag} |"
             )
-    gaps = risk["group_gaps"]
+    gaps, cg = risk["group_gaps"], risk["calibration_gap"]
     rows.append("")
     rows.append(
         "Largest gap between groups (maximum minus minimum): "
@@ -147,7 +156,19 @@ def fairness_table(risk: dict) -> str:
         )
         + "."
     )
+    rows.append("")
+    rows.append(f"Mean predicted probability against observed rate, flag threshold {tol}: "
+                + "; ".join(gap_phrase(label, cg[f], risk["groups"][f])
+                            for f, label in (("language", "language"), ("channel", "channel"), ("age_band", "age band")))
+                + ".")
     return "\n".join(rows)
+
+
+def gap_phrase(label: str, summary: dict, groups: list[dict]) -> str:
+    if not summary["flagged"]:
+        return f"{label}: no group flagged (largest gap {_f(summary['max_abs_gap'], 4)})"
+    shown = ", ".join(f"{g['group']} {_signed(g['gap'], 3)}" for g in groups if g["gap_flag"])
+    return f"{label}: FLAGGED, {shown} (largest gap {_f(summary['max_abs_gap'], 4)})"
 
 
 def coefficient_table(risk: dict) -> str:
@@ -205,6 +226,8 @@ The tolerance was proposed at 0.05 (ticket D10).
 ![Reliability diagram](calibration.svg)
 
 ## Fairness by group (held-out split)
+
+`language` is not a model input (D12). It is reported here, with channel and age band, only as an outcome audit: for every group, AUC, ECE and the gap between the mean predicted probability and the observed rate (flag when the gap exceeds {risk['calibration_gap']['tolerance']}).
 
 {fairness_table(risk)}
 

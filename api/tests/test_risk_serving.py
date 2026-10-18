@@ -87,7 +87,7 @@ def test_unknown_attributes_are_imputed_and_change_nothing_by_themselves():
 
 
 def test_top_factors_are_the_three_largest_in_absolute_log_odds_and_say_what_they_saw():
-    f = case_at("acknowledged", 75.0, consent_withdrawn=True, prior_bounces=2, language="en", channel="letter",
+    f = case_at("acknowledged", 75.0, consent_withdrawn=True, prior_bounces=2, channel="letter",
                 contact_valid=False, age_band="60-69")
     out = S.explain_features(f)
     tops = out["top_factors"]
@@ -100,6 +100,38 @@ def test_top_factors_are_the_three_largest_in_absolute_log_odds_and_say_what_the
     if "consent_withdrawn" in by_feature:
         assert by_feature["consent_withdrawn"]["value"] is True
     assert out["score"] == S.score_features(f)
+
+
+def test_d12_language_never_appears_in_the_model_or_in_top_factors():
+    raw = json.loads(MODEL_PATH.read_text())
+    assert "language" in raw["excluded_features"]
+    assert not [c for c in raw["columns"] if c["feature"] == "language" or str(c.get("level")) in ("ar", "en", "other")]
+    assert "language" not in default_model().contributions(case_at()) and "language" not in F.FEATURES
+    seen = set()
+    for stage in F.STAGES:
+        for days in (0.0, 30.0, 90.0):
+            for ch in (None, *F.CHANNELS):
+                for band in (None, *F.AGE_BANDS):
+                    for kw in ({}, {"consent_withdrawn": True}, {"prior_bounces": 3, "prior_escalations": 3, "provider_changed": True},
+                               {"contact_valid": False}):
+                        out = S.explain_features(case_at(stage, days, channel=ch, age_band=band, **kw))
+                        seen |= {t["feature"] for t in out["top_factors"]}
+    assert seen and "language" not in seen
+
+
+def test_the_served_case_carries_no_language_factor_and_the_patients_language_does_not_move_the_score():
+    scores = {}
+    for lang in ("ar", "en"):
+        ref = f"Patient/rk-{lang}"
+        cid = new_case(ref)
+        lab, pco = H("lab", "rk lab"), H("primary_care_owner", "rk pco")
+        post(cid, "acknowledge", lab)
+        post(cid, "accept_ownership", pco)
+        post(cid, "contact_patient", pco, {"channel": "sms"})
+        post(cid, "patient_acknowledge", H("patient", "rk pat", ref), {"lang": lang})
+        scores[lang] = client.get(f"/cases/{cid}", headers=H("coordinator", "rk coord")).json()["risk"]
+        assert "language" not in {t["feature"] for t in scores[lang]["top_factors"]}
+    assert scores["ar"] == scores["en"]  # same story, different language: the identical score and factors
 
 
 def test_scoring_is_pure_and_repeatable():

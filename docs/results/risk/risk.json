@@ -1,247 +1,300 @@
 {
-  "group_gaps": {
+  "calibration_gap": {
     "age_band": {
-      "auc": 0.02162222,
-      "ece": 0.01609934
+      "flagged": [
+        "70-75"
+      ],
+      "max_abs_gap": 0.0229057
     },
     "channel": {
-      "auc": 0.01752906,
-      "ece": 0.02112561
+      "flagged": [],
+      "max_abs_gap": 0.00375156
     },
     "language": {
-      "auc": 0.01152139,
-      "ece": 0.0099415
+      "flagged": [],
+      "max_abs_gap": 0.01136043
+    },
+    "tolerance": 0.02
+  },
+  "group_gaps": {
+    "age_band": {
+      "auc": 0.02043359,
+      "ece": 0.01631115
+    },
+    "channel": {
+      "auc": 0.01374671,
+      "ece": 0.01426345
+    },
+    "language": {
+      "auc": 0.01153933,
+      "ece": 0.01495194
     }
   },
   "groups": {
     "age_band": [
       {
-        "auc": 0.87972129,
-        "brier": 0.13625885,
-        "ece": 0.02722563,
-        "ece_noise_p95": 0.03613728,
+        "auc": 0.88028707,
+        "brier": 0.13601052,
+        "ece": 0.02673449,
+        "ece_noise_p95": 0.03505152,
+        "gap": -0.01684195,
+        "gap_flag": false,
+        "gap_margin_95": 0.02752131,
         "group": "40-49",
-        "mean_predicted": 0.43235727,
+        "mean_predicted": 0.43256044,
         "n": 1255,
         "prevalence": 0.44940239
       },
       {
-        "auc": 0.8964863,
-        "brier": 0.12607757,
-        "ece": 0.02475019,
-        "ece_noise_p95": 0.03658711,
+        "auc": 0.89639002,
+        "brier": 0.12610225,
+        "ece": 0.02051219,
+        "ece_noise_p95": 0.03528829,
+        "gap": 0.00726315,
+        "gap_flag": false,
+        "gap_margin_95": 0.02734993,
         "group": "50-59",
-        "mean_predicted": 0.43938724,
+        "mean_predicted": 0.43900918,
         "n": 1260,
         "prevalence": 0.43174603
       },
       {
-        "auc": 0.90134351,
-        "brier": 0.12391469,
-        "ece": 0.02941215,
-        "ece_noise_p95": 0.03648413,
+        "auc": 0.90072066,
+        "brier": 0.12456708,
+        "ece": 0.03025354,
+        "ece_noise_p95": 0.03519791,
+        "gap": -0.00828773,
+        "gap_flag": false,
+        "gap_margin_95": 0.02721545,
         "group": "60-69",
-        "mean_predicted": 0.44857665,
+        "mean_predicted": 0.44858873,
         "n": 1287,
         "prevalence": 0.45687646
       },
       {
-        "auc": 0.89951716,
-        "brier": 0.12167507,
-        "ece": 0.04084953,
-        "ece_noise_p95": 0.04309902,
+        "auc": 0.9000103,
+        "brier": 0.12140227,
+        "ece": 0.03682334,
+        "ece_noise_p95": 0.04577809,
+        "gap": 0.0229057,
+        "gap_flag": true,
+        "gap_margin_95": 0.03517356,
         "group": "70-75",
-        "mean_predicted": 0.43131748,
+        "mean_predicted": 0.4309057,
         "n": 750,
         "prevalence": 0.408
       }
     ],
     "channel": [
       {
-        "auc": 0.89357486,
-        "brier": 0.12799934,
-        "ece": 0.01964353,
-        "ece_noise_p95": 0.02781957,
+        "auc": 0.89335157,
+        "brier": 0.12824729,
+        "ece": 0.01994441,
+        "ece_noise_p95": 0.02785489,
+        "gap": 0.00026813,
+        "gap_flag": false,
+        "gap_margin_95": 0.02287182,
         "group": "sms",
-        "mean_predicted": 0.43982919,
+        "mean_predicted": 0.43973745,
         "n": 1809,
         "prevalence": 0.43946932
       },
       {
-        "auc": 0.89723499,
-        "brier": 0.12495536,
-        "ece": 0.02307053,
-        "ece_noise_p95": 0.03339402,
+        "auc": 0.89757219,
+        "brier": 0.12477104,
+        "ece": 0.02421307,
+        "ece_noise_p95": 0.03198992,
+        "gap": -0.00375156,
+        "gap_flag": false,
+        "gap_margin_95": 0.02662097,
         "group": "whatsapp",
-        "mean_predicted": 0.4352892,
+        "mean_predicted": 0.43519975,
         "n": 1335,
         "prevalence": 0.43895131
       },
       {
-        "auc": 0.8991473,
-        "brier": 0.12312573,
-        "ece": 0.03172297,
-        "ece_noise_p95": 0.05053411,
+        "auc": 0.89775093,
+        "brier": 0.12435815,
+        "ece": 0.02801666,
+        "ece_noise_p95": 0.04663136,
+        "gap": -0.00196306,
+        "gap_flag": false,
+        "gap_margin_95": 0.03689634,
         "group": "phone",
-        "mean_predicted": 0.4501946,
+        "mean_predicted": 0.45011134,
         "n": 699,
         "prevalence": 0.45207439
       },
       {
-        "auc": 0.88161824,
-        "brier": 0.13563611,
-        "ece": 0.04076914,
-        "ece_noise_p95": 0.04722744,
+        "auc": 0.88400422,
+        "brier": 0.13463548,
+        "ece": 0.03420786,
+        "ece_noise_p95": 0.04837964,
+        "gap": 0.00059711,
+        "gap_flag": false,
+        "gap_margin_95": 0.03644411,
         "group": "letter",
-        "mean_predicted": 0.43102177,
+        "mean_predicted": 0.43078047,
         "n": 709,
         "prevalence": 0.43018336
       }
     ],
     "language": [
       {
-        "auc": 0.89717647,
-        "brier": 0.12581921,
-        "ece": 0.02779679,
-        "ece_noise_p95": 0.02738152,
+        "auc": 0.89714621,
+        "brier": 0.12581365,
+        "ece": 0.02366054,
+        "ece_noise_p95": 0.02715768,
+        "gap": -0.00622761,
+        "gap_flag": false,
+        "gap_margin_95": 0.0213172,
         "group": "ar",
-        "mean_predicted": 0.45772053,
+        "mean_predicted": 0.44966176,
         "n": 2097,
         "prevalence": 0.45588937
       },
       {
-        "auc": 0.89218231,
-        "brier": 0.12617442,
-        "ece": 0.02450645,
-        "ece_noise_p95": 0.03251535,
+        "auc": 0.89224202,
+        "brier": 0.12637585,
+        "ece": 0.0289282,
+        "ece_noise_p95": 0.03098581,
+        "gap": 0.01136043,
+        "gap_flag": false,
+        "gap_margin_95": 0.02440258,
         "group": "en",
-        "mean_predicted": 0.39519633,
+        "mean_predicted": 0.40734229,
         "n": 1543,
         "prevalence": 0.39598185
       },
       {
-        "auc": 0.88565508,
-        "brier": 0.1338455,
-        "ece": 0.03444795,
-        "ece_noise_p95": 0.04260232,
+        "auc": 0.88560688,
+        "brier": 0.13390617,
+        "ece": 0.03861248,
+        "ece_noise_p95": 0.04345613,
+        "gap": -0.01090129,
+        "gap_flag": false,
+        "gap_margin_95": 0.03241661,
         "group": "other",
-        "mean_predicted": 0.46865641,
+        "mean_predicted": 0.4660724,
         "n": 912,
         "prevalence": 0.47697368
       }
     ]
   },
   "heldout": {
-    "auc": 0.89375125,
-    "brier": 0.12754769,
+    "auc": 0.89372285,
+    "brier": 0.12762557,
     "brier_base_rate": 0.24642929,
-    "brier_skill": 0.48241667,
+    "brier_skill": 0.48210067,
     "calibration": [
       {
-        "abs_gap": 0.00454058,
+        "abs_gap": 0.00474372,
         "bin": 0,
         "high": 0.1,
         "low": 0.0,
-        "mean_predicted": 0.04359301,
-        "n": 1018,
-        "observed_rate": 0.0481336
+        "mean_predicted": 0.04357975,
+        "n": 1014,
+        "observed_rate": 0.04832347
       },
       {
-        "abs_gap": 0.00436258,
+        "abs_gap": 0.00456632,
         "bin": 1,
         "high": 0.2,
         "low": 0.1,
-        "mean_predicted": 0.14385505,
+        "mean_predicted": 0.14340309,
         "n": 533,
-        "observed_rate": 0.14821764
+        "observed_rate": 0.13883677
       },
       {
-        "abs_gap": 0.03225302,
+        "abs_gap": 0.01557227,
         "bin": 2,
         "high": 0.3,
         "low": 0.2,
-        "mean_predicted": 0.25356449,
-        "n": 366,
-        "observed_rate": 0.22131148
+        "mean_predicted": 0.25354018,
+        "n": 374,
+        "observed_rate": 0.23796791
       },
       {
-        "abs_gap": 0.02501165,
+        "abs_gap": 0.02818998,
         "bin": 3,
         "high": 0.4,
         "low": 0.3,
-        "mean_predicted": 0.35043538,
-        "n": 590,
-        "observed_rate": 0.32542373
+        "mean_predicted": 0.34998929,
+        "n": 578,
+        "observed_rate": 0.32179931
       },
       {
-        "abs_gap": 0.01828502,
+        "abs_gap": 0.00799745,
         "bin": 4,
         "high": 0.5,
         "low": 0.4,
-        "mean_predicted": 0.44440154,
-        "n": 268,
-        "observed_rate": 0.46268657
+        "mean_predicted": 0.44278006,
+        "n": 276,
+        "observed_rate": 0.43478261
       },
       {
-        "abs_gap": 0.06033241,
+        "abs_gap": 0.03215579,
         "bin": 5,
         "high": 0.6,
         "low": 0.5,
-        "mean_predicted": 0.54931919,
-        "n": 227,
-        "observed_rate": 0.48898678
+        "mean_predicted": 0.55001293,
+        "n": 224,
+        "observed_rate": 0.51785714
       },
       {
-        "abs_gap": 0.02526223,
+        "abs_gap": 0.03041806,
         "bin": 6,
         "high": 0.7,
         "low": 0.6,
-        "mean_predicted": 0.6490497,
-        "n": 218,
-        "observed_rate": 0.67431193
+        "mean_predicted": 0.64815336,
+        "n": 224,
+        "observed_rate": 0.67857143
       },
       {
-        "abs_gap": 0.09764968,
+        "abs_gap": 0.10075353,
         "bin": 7,
         "high": 0.8,
         "low": 0.7,
-        "mean_predicted": 0.75274402,
-        "n": 254,
-        "observed_rate": 0.8503937
+        "mean_predicted": 0.75309262,
+        "n": 260,
+        "observed_rate": 0.85384615
       },
       {
-        "abs_gap": 0.03220465,
+        "abs_gap": 0.02795366,
         "bin": 8,
         "high": 0.9,
         "low": 0.8,
-        "mean_predicted": 0.8539492,
-        "n": 325,
-        "observed_rate": 0.88615385
+        "mean_predicted": 0.85495774,
+        "n": 316,
+        "observed_rate": 0.88291139
       },
       {
-        "abs_gap": 0.00984099,
+        "abs_gap": 0.00958707,
         "bin": 9,
         "high": 1.0,
         "low": 0.9,
-        "mean_predicted": 0.95937618,
+        "mean_predicted": 0.95912226,
         "n": 753,
         "observed_rate": 0.94953519
       }
     ],
-    "ece": 0.02203248,
+    "ece": 0.01929569,
     "n": 4552,
     "prevalence": 0.43980668
   },
   "heldout_attributes_unknown": {
-    "auc": 0.8938106,
-    "brier": 0.12775928,
-    "ece": 0.01844417,
+    "auc": 0.89383234,
+    "brier": 0.127751,
+    "ece": 0.01781259,
     "n": 4552
   },
   "meta": {
     "arm": "orchestrated",
-    "coefficient_sha256": "fac32b19654ad67439c6e4645dfbe6ce8f656d6e2b2094c80b80f8f8639d994f",
+    "coefficient_sha256": "72d284834724b3101369a23a5e29b147c0b99f953192a67f9e843575e48f48cf",
     "data_sha256": "b3284190b57cb10c26437a76e3cc8942e157d5359b95ea3909cfa80bba8dd912",
+    "excluded_features": [
+      "language"
+    ],
     "follow_up_days": 180,
     "intake_window_days": 30.0,
     "iterations": 7,
@@ -262,43 +315,13 @@
     "simulated_start_date": "2026-01-05",
     "snapshot_max_days": 90.0,
     "train_fraction": 0.7,
-    "train_log_loss": 0.41191875
+    "train_log_loss": 0.41223397
   },
   "model": {
     "columns": [
       {
         "center": 0.0,
-        "coef": 0.06577352,
-        "feature": "language",
-        "kind": "onehot",
-        "level": "ar",
-        "mean_enc": 0.45607442,
-        "name": "language=ar",
-        "scale": 1.0
-      },
-      {
-        "center": 0.0,
-        "coef": -0.08902885,
-        "feature": "language",
-        "kind": "onehot",
-        "level": "en",
-        "mean_enc": 0.33965987,
-        "name": "language=en",
-        "scale": 1.0
-      },
-      {
-        "center": 0.0,
-        "coef": 0.02325534,
-        "feature": "language",
-        "kind": "onehot",
-        "level": "other",
-        "mean_enc": 0.20426571,
-        "name": "language=other",
-        "scale": 1.0
-      },
-      {
-        "center": 0.0,
-        "coef": 0.0515839,
+        "coef": 0.05316763,
         "feature": "channel",
         "kind": "onehot",
         "level": "sms",
@@ -308,7 +331,7 @@
       },
       {
         "center": 0.0,
-        "coef": 0.02804928,
+        "coef": 0.02846214,
         "feature": "channel",
         "kind": "onehot",
         "level": "whatsapp",
@@ -318,7 +341,7 @@
       },
       {
         "center": 0.0,
-        "coef": 0.10051463,
+        "coef": 0.09788804,
         "feature": "channel",
         "kind": "onehot",
         "level": "phone",
@@ -328,7 +351,7 @@
       },
       {
         "center": 0.0,
-        "coef": -0.1801478,
+        "coef": -0.17951782,
         "feature": "channel",
         "kind": "onehot",
         "level": "letter",
@@ -338,7 +361,7 @@
       },
       {
         "center": 0.0,
-        "coef": -0.0249117,
+        "coef": -0.02548716,
         "feature": "age_band",
         "kind": "onehot",
         "level": "40-49",
@@ -348,7 +371,7 @@
       },
       {
         "center": 0.0,
-        "coef": 0.03285381,
+        "coef": 0.03365894,
         "feature": "age_band",
         "kind": "onehot",
         "level": "50-59",
@@ -358,7 +381,7 @@
       },
       {
         "center": 0.0,
-        "coef": -0.02581908,
+        "coef": -0.02655769,
         "feature": "age_band",
         "kind": "onehot",
         "level": "60-69",
@@ -368,7 +391,7 @@
       },
       {
         "center": 0.0,
-        "coef": 0.01787697,
+        "coef": 0.01838591,
         "feature": "age_band",
         "kind": "onehot",
         "level": "70-75",
@@ -378,7 +401,7 @@
       },
       {
         "center": 0.0,
-        "coef": -0.11367249,
+        "coef": -0.11579258,
         "feature": "contact_valid",
         "kind": "bool",
         "level": null,
@@ -388,7 +411,7 @@
       },
       {
         "center": 0.0,
-        "coef": 1.11721175,
+        "coef": 1.12089276,
         "feature": "stage",
         "kind": "onehot",
         "level": "result_received",
@@ -398,7 +421,7 @@
       },
       {
         "center": 0.0,
-        "coef": 1.22945496,
+        "coef": 1.22730534,
         "feature": "stage",
         "kind": "onehot",
         "level": "acknowledged",
@@ -408,7 +431,7 @@
       },
       {
         "center": 0.0,
-        "coef": 0.69751855,
+        "coef": 0.69439493,
         "feature": "stage",
         "kind": "onehot",
         "level": "owner_accepted",
@@ -418,7 +441,7 @@
       },
       {
         "center": 0.0,
-        "coef": 1.4063995,
+        "coef": 1.40824013,
         "feature": "stage",
         "kind": "onehot",
         "level": "patient_contacted",
@@ -428,7 +451,7 @@
       },
       {
         "center": 0.0,
-        "coef": -0.88430306,
+        "coef": -0.88370948,
         "feature": "stage",
         "kind": "onehot",
         "level": "patient_acknowledged",
@@ -438,7 +461,7 @@
       },
       {
         "center": 0.0,
-        "coef": -3.56628169,
+        "coef": -3.56712367,
         "feature": "stage",
         "kind": "onehot",
         "level": "confirmatory_booked",
@@ -448,7 +471,7 @@
       },
       {
         "center": 37.873126,
-        "coef": 1.37827694,
+        "coef": 1.37859018,
         "feature": "days_since_result",
         "kind": "numeric",
         "level": null,
@@ -458,7 +481,7 @@
       },
       {
         "center": 0.62369633,
-        "coef": -0.10299857,
+        "coef": -0.10374847,
         "feature": "prior_escalations",
         "kind": "numeric",
         "level": null,
@@ -468,7 +491,7 @@
       },
       {
         "center": 0.21544677,
-        "coef": 0.20858761,
+        "coef": 0.20916391,
         "feature": "prior_bounces",
         "kind": "numeric",
         "level": null,
@@ -478,7 +501,7 @@
       },
       {
         "center": 0.0,
-        "coef": 2.14243506,
+        "coef": 2.15694486,
         "feature": "consent_withdrawn",
         "kind": "bool",
         "level": null,
@@ -488,7 +511,7 @@
       },
       {
         "center": 0.0,
-        "coef": -0.42014987,
+        "coef": -0.40683985,
         "feature": "provider_changed",
         "kind": "bool",
         "level": null,
@@ -497,12 +520,12 @@
         "scale": 1.0
       }
     ],
-    "intercept": 0.36619079
+    "intercept": 0.37144509
   },
   "noise_floor": {
     "draws": 200,
-    "mean": 0.01294298,
-    "p95": 0.01850774
+    "mean": 0.01299789,
+    "p95": 0.01763485
   },
   "tolerance": {
     "brier_beats_base_rate": true,
@@ -510,9 +533,9 @@
     "met": true
   },
   "train": {
-    "auc": 0.89196277,
-    "brier": 0.12902241,
-    "ece": 0.02307607,
+    "auc": 0.89169028,
+    "brier": 0.12922146,
+    "ece": 0.02394363,
     "n": 10643,
     "prevalence": 0.4470544
   }

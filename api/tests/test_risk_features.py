@@ -25,7 +25,7 @@ API_STORY = [
     ev("mark_overdue", {"state": "patient_contacted", "due_at": "2026-01-14T08:00:00+00:00"}, day=10),
     ev("escalate", {"rung": "reminder", "state": "patient_contacted"}, day=10),
     ev("escalate", {"rung": "supervisor", "state": "patient_contacted"}, day=13),
-    ev("patient_acknowledge", {"lang": "ar"}, day=14),
+    ev("patient_acknowledge", {"lang": "ar"}, day=14),   # the language is in the log and must not reach the features (D12)
     ev("handoff_requested", {"to_provider": "endo-1"}, day=15),
     ev("handoff_rejected", {"reason": "timeout", "bounced": True}, day=19),
     ev("handoff_requested", {"to_provider": "endo-2"}, day=20),
@@ -76,10 +76,27 @@ def test_features_from_case_maps_states_and_reads_the_genesis_flag():
     m = CaseModel(state="patient_contacted")
     f = F.features_from_case(m, API_STORY, T0, now)
     assert f.stage == "patient_contacted" and f.days_since_result == 30.0
-    assert f.contact_valid is False and f.channel == "sms" and f.language == "ar"
+    assert f.contact_valid is False and f.channel == "sms"
     assert f.age_band is None  # no registry: unknown, not guessed
-    assert F.features_from_case(m, API_STORY, T0, now, {"language": "en", "age_band": "50-59", "contact_valid": True}).language == "en"
+    assert F.features_from_case(m, API_STORY, T0, now, {"channel": "letter", "age_band": "50-59", "contact_valid": True}).channel == "letter"
     assert F.features_from_case(m, API_STORY, T0, now, {"contact_valid": True}).contact_valid is True
+
+
+def test_d12_language_is_not_a_feature_anywhere():
+    """Language is a proxy for nationality: not a column, not a field, not read from the log or the registry attributes."""
+    assert "language" in F.EXCLUDED_FEATURES
+    assert all(feature != "language" for feature, _k, _l in F.COLUMNS) and "language" not in F.FEATURES
+    assert not any(n.startswith("language") for n in F.COLUMN_NAMES)
+    assert "language" not in F.CaseFeatures.__slots__ and not hasattr(F.EventSummary, "language_hint")
+    with pytest.raises(TypeError):
+        F.CaseFeatures(stage="acknowledged", days_since_result=1.0, language="ar")  # type: ignore[call-arg]
+    now = T0 + timedelta(days=30)
+    m = CaseModel(state="patient_contacted")
+    plain = F.features_from_case(m, API_STORY, T0, now)
+    # a language in the registry attributes, or a different language in the log, changes nothing
+    assert F.features_from_case(m, API_STORY, T0, now, {"language": "en"}) == plain
+    swapped = [e if e.type != "patient_acknowledge" else ev("patient_acknowledge", {"lang": "en"}, day=14) for e in API_STORY]
+    assert F.features_from_case(m, swapped, T0, now) == plain
 
 
 @pytest.mark.parametrize("state,resume,stage", [
