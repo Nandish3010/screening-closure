@@ -37,7 +37,7 @@ def reasons(text, req=EN):
 def test_an_invisible_character_anywhere_is_rejected(char):
     assert v.INVISIBLE_CHARACTER in reasons(GOOD["en"] + char)
     assert v.INVISIBLE_CHARACTER in reasons(char + GOOD["en"])
-    assert v.INVISIBLE_CHARACTER in reasons(GOOD["en"].replace("blood", "blo" + char + "od"))
+    assert v.INVISIBLE_CHARACTER in reasons(GOOD["en"].replace("result", "res" + char + "ult"))
 
 
 @pytest.mark.parametrize("zw", ["​", "‌", "‍", "⁠", "﻿", "­", "‮"])
@@ -99,7 +99,7 @@ def test_a_single_latin_letter_in_an_arabic_message_fails_too():
 
 def test_request_values_in_another_script_are_still_allowed_when_used_whole():
     req = DraftRequest("result_notification", "sms", "ar", "Dr Sara Khan", "primary_care_owner", "تنظير القولون", "colorectal_fit", None)
-    text = "وجد فحص الكشف المبكر الذي أجريته دماً. الخطوة التالية هي تنظير القولون. المسؤول عن رعايتك هو Dr Sara Khan."
+    text = "نتيجة فحصك جاهزة. الخطوة التالية هي تنظير القولون. المسؤول عن رعايتك هو Dr Sara Khan."
     assert validate(text, req).ok
 
 
@@ -155,7 +155,7 @@ def om_request(language="en", **kw):
     return DraftRequest("result_notification", "sms", language, "Om", "primary_care_owner", "a colonoscopy", "colorectal_fit", None, **kw)
 
 
-BASE = "Your screening test found blood. The next step is a colonoscopy. Your care owner is Om."
+BASE = "Your screening result is ready. The next step is a colonoscopy. Your care owner is Om."
 
 
 def test_the_owner_om_does_not_hide_evil_dot_com():
@@ -171,7 +171,7 @@ def test_the_owner_om_does_not_hide_evil_dot_com():
                                        ("App", "evil.app"), ("Org", "evil.org"), ("Net", "evil.net")])
 def test_an_owner_named_like_a_tld_does_not_hide_a_link(owner, link):
     req = DraftRequest("result_notification", "sms", "en", owner, "primary_care_owner", "a colonoscopy", "colorectal_fit", None)
-    text = f"Your screening test found blood. The next step is a colonoscopy. Your care owner is {owner}. See {link}"
+    text = f"Your screening result is ready. The next step is a colonoscopy. Your care owner is {owner}. See {link}"
     assert v.URL in validate(text, req).reasons
 
 
@@ -191,6 +191,6 @@ def test_masking_works_only_at_word_boundaries():
 
 def test_a_digit_run_cannot_hide_inside_a_masked_value():
     req = DraftRequest("result_notification", "sms", "en", "Dr Sara Khan", "primary_care_owner", "a colonoscopy", "colorectal_fit", None)
-    text = "Your screening test found blood. The next step is a colonoscopy5551234567. Dr Sara Khan will contact you."
+    text = "Your screening result is ready. The next step is a colonoscopy5551234567. Dr Sara Khan will contact you."
     assert not validate(text, req).ok  # "a colonoscopy" glued to digits is not the request value, so the glued text stays visible
     assert v.PII_IDENTIFIER in validate(text, req).reasons
