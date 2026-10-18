@@ -268,3 +268,38 @@ def test_no_name_ever_reaches_the_log():
     # ... but the names are resolvable, from the users table
     body = client.get(f"/cases/{cid}", headers=H("coordinator")).json()
     assert {v["display_name"] for v in body["actors"].values() if v["role"] != "system"} >= set(names.values()) - {names["supervisor"]}
+
+
+# ---- SEC-1: reassign.owner is a staff actor ------------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("role", ["primary_care_owner", "specialist_owner", "coordinator", "supervisor", "lab"])
+def test_reassign_accepts_a_staff_actor(role):
+    payloads.validate("reassign", {"owner": f"{role}:abc123def456"})
+
+
+@pytest.mark.parametrize(
+    "owner",
+    ["patient:abc123def456", "system:scheduler", "system:intake", "scheduler:x", "watchdog:x", "model:gpt", "system:consent",
+     "doctor:abc", "primary_care_owner", "primary_care_owner:", "primary_care_owner:a b", "PRIMARY_CARE_OWNER:abc",
+     "primary_care_owner:abc:def", ""],
+)
+def test_reassign_refuses_a_patient_an_automated_actor_or_a_malformed_one(owner):
+    with pytest.raises(payloads.PayloadSchemaError):
+        payloads.validate("reassign", {"owner": owner})
+
+
+def test_the_reassign_role_list_is_the_user_roles_without_the_patient():
+    from app import auth
+
+    allowed = {r for r in auth.USER_ROLES if r != "patient"}
+    for role in auth.USER_ROLES:
+        ok = True
+        try:
+            payloads.validate("reassign", {"owner": f"{role}:abc"})
+        except payloads.PayloadSchemaError:
+            ok = False
+        assert ok == (role in allowed), role
+    for name in auth.AUTOMATED_ROLE_NAMES:
+        with pytest.raises(payloads.PayloadSchemaError):
+            payloads.validate("reassign", {"owner": f"{name}:abc"})

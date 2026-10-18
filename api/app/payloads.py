@@ -67,6 +67,14 @@ Uuid = Annotated[str, StringConstraints(pattern=r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}
 Sha256 = Annotated[str, StringConstraints(pattern=r"^[0-9a-f]{64}$")]
 # A booked appointment's date for the patient message (D4): an ISO-8601 date or date-time, nothing else.
 IsoDate = Annotated[str, StringConstraints(pattern=r"^\d{4}-\d{2}-\d{2}(T[0-9:.+Zz-]{1,40})?$")]
+# Who a case can be reassigned to (SEC-1): a person acting in one of the staff roles, `role:user_id`. Never a patient
+# (a patient does not own a case) and never an automated actor (system, scheduler, watchdog, model: none of them can
+# log in, so the case would have an owner nobody can be). tests/test_payloads.py keeps the role list equal to
+# app.auth.USER_ROLES minus the patient.
+OwnerActor = Annotated[
+    str,
+    StringConstraints(pattern=r"^(lab|primary_care_owner|specialist_owner|coordinator|supervisor):[A-Za-z0-9_-]{1,64}$"),
+]
 # Closure evidence is a FHIR report or procedure, by reference (A15).
 EvidenceRef = Annotated[
     str, StringConstraints(pattern=r"^(DiagnosticReport|Procedure)/[A-Za-z0-9.-]{1,64}$"), AfterValidator(_no_dot_segment)
@@ -207,7 +215,7 @@ class HandoffRejected(_Timed):
 
 
 class Reassign(_Human):
-    owner: ActorId
+    owner: OwnerActor
     provider: Provider | None = None
 
 
