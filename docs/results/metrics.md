@@ -26,7 +26,7 @@ scenarios see the same patients.
 90/180/360 day horizons) are **calendar days**. Working days (Monday to Friday, no holidays configured, Friday not shortened; the
 `working_week` and `calendar.holidays` parameters) enter in three places only, all inside the model rather than in the reported numbers:
 (a) the orchestrated arm's SLA timers and escalation ladder are armed in working days, (b) staff actions land on working days, (c) the
-escalation-precision window is five **working** days (`metrics.escalation_precision_window_working_days`).
+escalation acted-on window is five **working** days (`metrics.escalation_precision_window_working_days`, a parameter key that keeps its original name, see section 10).
 
 **Follow-up and censoring.** Each case is followed for `follow_up_days` after its own arrival (360 in `make evaluate`); events after that
 are not simulated. All cases have the same follow-up, so there is no staggered censoring. A metric that needs a longer horizon than the
@@ -44,7 +44,7 @@ Kaplan-Meier estimate and no competing-risks treatment.
 | Time to colonoscopy | `case_created` | `complete_confirmatory` | first |
 | Time to closure | `case_created` | `close` (needs `evidence_ref`, `signed_by`, a human actor) | first (a later re-close does not count) |
 | Open at day D | `case_created` | a `close` at or before D that has not been undone by a `reopened` at or before D | state at D |
-| Escalation precision window | an `escalated` event | five working days later | any action in the window |
+| Escalation acted-on window | an `escalated` event | five working days later | any action in the window |
 
 **Aggregation.** Each metric is computed per replication (one cohort of 2,000 cases per arm per scenario), then summarised over the 20
 replications as `{mean, ci_low, ci_high, n_reps, of_reps}`: the mean of the per-replication values, a percentile bootstrap 95% interval
@@ -58,7 +58,9 @@ longer than the follow-up, or when its denominator is empty in a replication (re
 
 **Scenarios.** The definitions are identical in the `upper_range` and `literature_anchored` scenarios and in both arms. In the
 literature-anchored scenario only part of the orchestrated arm's cases get the orchestrated process (`orchestration.programme_reach`);
-the rest follow baseline rules, so ownership, escalation and visibility metrics are computed over all cases, reached or not.
+the rest follow baseline rules, so ownership, escalation and visibility metrics are computed over all cases, reached or not (the
+programme-level figures). `silent_loss_rate` and `consent_breach_rate` are also reported over the cases in reach only (section 6), because
+their programme-level values follow from the `programme_reach` assumption.
 
 **Reopening.** A closed case can be reopened once by a late finding (`reopened`, `reopen.after_closure_prob`, about 30 days after closing,
 the same in both arms). A reopen moves the case back to `owner_accepted` and it runs the later steps again. It affects the metrics as
@@ -89,7 +91,7 @@ This is when staff or the system **initiated** contact in the chosen channel and
 it. In the baseline it is the single letter or SMS.
 
 ### `time_to_colonoscopy_median`, `time_to_colonoscopy_p25`, `time_to_colonoscopy_p75`
-Median, 25th and 75th percentile, over cases that completed the confirmatory colonoscopy within follow-up, of the days from
+**Among completers only.** Median, 25th and 75th percentile, over cases that completed the confirmatory colonoscopy within follow-up, of the days from
 `case_created` to the first `complete_confirmatory`. Completers only, so a slow arm that loses its slow cases looks fast.
 
 ### `completion_90d`, `completion_180d`, `completion_360d`
@@ -111,7 +113,7 @@ Cases with **no** colonoscopy by day 270 (never within follow-up, or completed a
 Cases with at least one `close` event within follow-up / all cases. A case closed and later reopened still counts as closed.
 
 ### `time_to_closure_median`, `time_to_closure_p90`
-Median and 90th percentile, over cases that closed, of the days from `case_created` to the **first** `close`. Conditional on closing:
+**Among closed cases only.** Median and 90th percentile, over cases that closed, of the days from `case_created` to the **first** `close`. Conditional on closing:
 read it with `closed_share` (the baseline closes about half its cases, the orchestrated arm more, so the two medians describe
 different populations). "Safe closure" means the closure rule held: evidence reference, signer and a human actor are checked on
 every case log by the invariants (`simulator/sim/invariants.py`).
@@ -125,6 +127,29 @@ follow-up is shorter than D. Note that "open" includes cases that are lost or ha
 Cases with at least one `reopened` event / cases with at least one `close`. `null` if nothing closed. Equal in both arms by
 construction (a late finding arrives regardless of arm); a difference is noise. Reopens after the end of follow-up are not seen.
 
+### `time_to_closure_km_median`, `time_to_closure_rmst`
+**Censoring-aware** time to closure (ticket B16). The conditional `time_to_closure_median` above is computed over closed cases only, so an
+arm that also closes its slower cases looks slower on it, and a group that closes only its fastest cases looks fast. These two use every
+case. Each case contributes one observation: the day of its first `close` if that is within follow-up (an event), otherwise the end of
+follow-up `follow_up_days` (censored: still unclosed when observation stopped). The Kaplan-Meier curve S(t) is the product over event
+days of (1 - closures that day / cases still event-free and under observation); at a tied day closures are counted before censorings.
+- `time_to_closure_km_median`: the earliest day at which S(t) is at or below 0.5, i.e. by which half of all cases have closed. `null` when
+  fewer than half the cases have closed by the end of follow-up (the median is not reached). Read `null` as "later than the follow-up
+  window", not as missing. In the replication summary it is the mean over the replications in which it was reached (`n_reps` says how many).
+- `time_to_closure_rmst`: restricted mean survival time at tau = `follow_up_days`, the area under S(t) from day 0 to tau. It is the average
+  number of days a case spends **not yet closed** within the window (equal to the mean of min(day of first close, tau) over all cases when
+  every case has the same follow-up). Always defined. Smaller is better; tau = 360 in `make evaluate`, so a case that never closes counts as 360.
+  Unlike a median it needs no 50% crossing, and it rewards closing more cases as well as closing them sooner.
+- The conditional median and these two answer different questions and can disagree. If arm B closes everything arm A closes at the same
+  times and also closes some slow cases, B's conditional median is higher (worse), B's Kaplan-Meier median is no higher, and B's restricted mean
+  is lower. A test (`simulator/tests/test_sim_km.py`) builds exactly that case. No confidence-interval or log-rank treatment beyond the
+  replication bootstrap; reopened cases use the first close, as everywhere else.
+
+### `time_to_colonoscopy_km_median`, `time_to_colonoscopy_rmst`
+The same two statistics for the first `complete_confirmatory`: a case without a colonoscopy within follow-up is censored at `follow_up_days`.
+Companion to the completers-only `time_to_colonoscopy_median`. The complement of S(t) at 90, 180 and 360 days is `completion_90d`, `completion_180d`
+and `completion_360d`.
+
 ## 5. Escalations
 
 ### `escalations_per_100_cases`
@@ -135,9 +160,11 @@ missed SLA, and each missed colonoscopy appointment, opens a ladder), so more th
 count of events per 100 cases, not the share of cases escalated. The baseline has no ladder, so 0. **Escalations cost nothing in the
 model, see the capacity caveat at the top: about 99 escalations per 100 cases in the upper-range scenario.**
 
-### `escalation_precision`
-Escalations followed by an action within five working days / all escalations (`escalated` events as above; the denominator counts
-events, not cases).
+### `escalation_acted_on_rate`
+Escalation acted-on rate (within 5 working days): escalations followed by an action within five working days / all escalations
+(`escalated` events as above; the denominator counts events, not cases). Renamed from `escalation_precision` (see section 10): the pilot plan
+uses "precision" for a different, human-judged definition (pilot plan K7: the share of escalations that a coordinator reviewer, on a sample, judges to have been needed), and
+this simulator quantity is not that.
 
 - **Window.** For an escalation at relative day e, the window is (e, e'] where e' is e plus five **working** days on the simulation calendar
   (Monday to Friday), keeping the time of day. An escalation on a Thursday has its window end the following Thursday.
@@ -173,11 +200,30 @@ that the case was put on it. The baseline raises no `overdue`, `escalated` or `w
 referral attempts are exhausted, and those cases count as surfaced. In the literature-anchored scenario,
 orchestrated-arm cases outside the programme's reach behave like baseline cases, so silent loss is not zero there.
 
+### `silent_loss_rate_in_reach`
+Lost cases never surfaced to a human, among **cases within the programme's reach** / cases within the programme's reach (ticket B15). A case is in
+reach if its fixed random draw for `orchestration.programme_reach` is below that parameter (the draw is the same in both arms, so the baseline arm is
+scored on the same patients: "the cases the programme would have reached"). In the orchestrated arm these cases get the orchestrated process, so
+every lost or unreachable one is flagged to a human and this rate is 0% by construction (a non-zero value would be a defect). The
+programme-level `silent_loss_rate` counts all cases, including those outside the reach, which follow today's process; it is above zero in the
+orchestrated arm **only because of the `programme_reach` assumption** (0.5 in the literature-anchored scenario, 1.0 in the upper-range one) and
+should not be read as a measured property of the orchestration. `null` if no case is in reach.
+
 ### `consent_breach_rate`
 Cases with at least one `message_sent` event **strictly after** the first `consent_updated` with status `withdrawn` / all cases.
-`message_sent` includes appointment reminders and every outreach kind. Zero in the orchestrated arm where the consent ledger blocks
+`message_sent` includes appointment reminders and every outreach kind. Zero in the orchestrated arm for the cases that get the orchestrated process, where the consent ledger blocks
 outreach (a blocked message is `message_blocked`, which does not count); the baseline has no ledger. Uses event time, so a message in the
-same instant as the withdrawal is not a breach.
+same instant as the withdrawal is not a breach. Outside the programme's reach the case follows today's process and can breach, so this
+programme-level rate is above zero in the literature-anchored orchestrated arm; see `consent_breach_rate_in_reach`.
+
+### `consent_breach_rate_in_reach`
+The same, among cases within the programme's reach only (denominator: cases in reach; baseline arm scored on the same patients, as for
+`silent_loss_rate_in_reach`). 0% by construction in the orchestrated arm. Like the silent-loss pair, the gap between this and the programme-level
+rate follows from the `programme_reach` assumption.
+
+### `in_reach_share`
+Cases within the programme's reach / all cases: the denominator of the two in-reach rates, about `orchestration.programme_reach` up to sampling
+noise (0.5 in the literature-anchored scenario, 1.0 in the upper-range one). Identical in both arms. It is the one baseline-arm quantity that differs between the two scenarios: the baseline process and its event logs are identical, but the in-reach rates score it on the subset of the same patients that the scenario's `programme_reach` would reach.
 
 ## 7. Fairness
 
@@ -192,8 +238,13 @@ Cases in the group (`<dim>` is `language` or `channel`).
 Cases in the group with a colonoscopy within follow-up / cases in the group (the `completion_final` definition restricted to the group).
 
 ### `fairness.<dim>.<group>.closure_median`
-Median days to first `close` among the group's closed cases (`time_to_closure_median` restricted to the group); `null` if the group has
-no closed case.
+**Among closed cases only.** Median days to first `close` among the group's closed cases (`time_to_closure_median` restricted to the group);
+`null` if the group has no closed case.
+
+### `fairness.<dim>.<group>.closure_km_median`, `fairness.<dim>.<group>.closure_rmst`
+The censoring-aware versions (ticket B16, definitions under `time_to_closure_km_median`) restricted to the group: Kaplan-Meier median (`null`
+when fewer than half the group closed within follow-up) and restricted mean days unclosed within follow-up. A group that closes only its
+fastest cases has a low conditional median but a high restricted mean; the gap statistics below should be read on the censoring-aware columns.
 
 ### `fairness.language.completion_gap_max`, `fairness.channel.completion_gap_max`
 The **max-gap statistic** for completion: among groups with at least `metrics.min_group_size` (30) cases, the largest
@@ -203,9 +254,15 @@ replication and then averaged, so the reported mean gap is at least as large as 
 `difference` row is the paired change in the gap (orchestrated minus baseline); a negative value means the arm narrowed the gap.
 
 ### `fairness.language.closure_median_gap_max_days`, `fairness.channel.closure_median_gap_max_days`
-The same statistic for `closure_median`: largest minus smallest group median days to closure, among groups with at least
-`metrics.min_group_size` cases and a defined median. In days. Conditional on closing, so it can move in the "wrong" direction when a
-change lets slower cases close.
+The same statistic for `closure_median`: largest minus smallest group median days to closure **among closed cases only**, among groups with at least
+`metrics.min_group_size` cases and a defined median. In days. Conditional on closing, so it is biased by censoring and can move in the "wrong"
+direction when a change lets slower cases close.
+
+### `fairness.language.closure_km_median_gap_max_days`, `fairness.channel.closure_km_median_gap_max_days`
+The same statistic on the Kaplan-Meier medians (groups whose median is not reached are left out; `null` with fewer than two such groups).
+
+### `fairness.language.closure_rmst_gap_max_days`, `fairness.channel.closure_rmst_gap_max_days`
+The same statistic on the restricted mean days unclosed: always defined for every eligible group, so this is the censoring-aware gap to quote.
 
 ## 8. Messy cases
 
@@ -248,6 +305,10 @@ How the numbers come out:
 
 - `time_to_ownership_median`: owners at 1, 2, 1, 4, 1; sorted 1, 1, 1, 2, 4; the middle value is **1**. `time_to_ownership_p90`: position
   0.9 x 4 = 3.6, so 2 + 0.6 x (4 - 2) = **3.2**.
+- `time_to_closure_km_median` / `time_to_closure_rmst`: C4 never closes, so it is censored at 180. S(t) drops to 0.8 at 25, 0.6 at 50, 0.4 at 85,
+  0.2 at 110. The first S at or below 0.5 is at day **85**. The area under S from 0 to 180 is 25 x 1 + 25 x 0.8 + 35 x 0.6 + 25 x 0.4 + 70 x 0.2 =
+  **90** (the mean of 25, 50, 85, 110 and 180). The conditional median of the closed cases is 67.5, lower, because C4 is not in its sample.
+  `time_to_colonoscopy_km_median`: completions at 20, 40, 60, 100 give S = 0.8, 0.6, 0.4, so **60**; `time_to_colonoscopy_rmst` = (20 + 40 + 60 + 100 + 180) / 5 = **80**.
 - `time_to_closure_median`: first closes at 25, 50, 85, 110 (C4 never closed, so it is not in the sample); (50 + 85) / 2 = **67.5**.
   C2's second close at d120 is ignored. `closed_share` = 4 / 5 = **0.8**.
 - `open_60d`: C1 (closed d25) and C2 (closed d50, reopened only at d95) are closed; C3, C4, C5 are open: 3 / 5 = **0.6**. `open_90d`: C3
@@ -256,7 +317,7 @@ How the numbers come out:
 - `completion_90d`: colonoscopies at 20, 40, 60, 100; three are within 90; 3 / 5 = **0.6**. `completion_180d` = 4 / 5 = **0.8**.
   `completion_360d` is `null` (follow-up 180).
 - `reopen_rate`: 1 reopened (C2) of 4 ever closed = **0.25**.
-- `escalations_per_100_cases`: 2 escalations over 5 cases = **40**. `escalation_precision`: C2's escalation on d10 (Thursday) has a window to
+- `escalations_per_100_cases`: 2 escalations over 5 cases = **40**. `escalation_acted_on_rate`: C2's escalation on d10 (Thursday) has a window to
   five working days later, Thursday d17; the patient acknowledges on d12, inside it, so it counts. C3's escalation on d15 (Tuesday)
   has a window to d22; its next action is d30, outside it. 1 of 2 = **0.5**.
 - `lost_to_follow_up_rate`: only C4 has no colonoscopy and a `lost_contact` flag: 1 / 5 = **0.2**. `silent_loss_rate`: C4's own
@@ -271,6 +332,10 @@ Machine-checked values for this example (the test compares each row with `scenar
 | `time_to_ownership_median` | 1.0 |
 | `time_to_ownership_p90` | 3.2 |
 | `time_to_closure_median` | 67.5 |
+| `time_to_closure_km_median` | 85.0 |
+| `time_to_closure_rmst` | 90.0 |
+| `time_to_colonoscopy_km_median` | 60.0 |
+| `time_to_colonoscopy_rmst` | 80.0 |
 | `closed_share` | 0.8 |
 | `open_60d` | 0.6 |
 | `open_90d` | 0.4 |
@@ -278,8 +343,19 @@ Machine-checked values for this example (the test compares each row with `scenar
 | `completion_180d` | 0.8 |
 | `reopen_rate` | 0.25 |
 | `escalations_per_100_cases` | 40.0 |
-| `escalation_precision` | 0.5 |
+| `escalation_acted_on_rate` | 0.5 |
 | `lost_to_follow_up_rate` | 0.2 |
 | `silent_loss_rate` | 0.0 |
 | `fairness.language.completion_gap_max` | 1.0 |
 | `fairness.language.closure_median_gap_max_days` | 25.0 |
+
+## 10. Deprecated aliases
+
+Names that changed. Nothing reads the old names any more; they are listed so older notes and screenshots can be mapped to the current ones. The
+quantity itself is unchanged by the rename (every value in `results.json` is identical); only the bootstrap interval around a renamed metric moves in the
+third decimal place, because the bootstrap stream is seeded from the metric name.
+
+| `deprecated_aliases` (old name) | Current name | Why |
+|---|---|---|
+| `escalation_precision` | `escalation_acted_on_rate` | The pilot plan uses "precision" for a human-judged definition (pilot plan K7: the share of escalations a coordinator reviewer judges to have been needed). This simulator quantity is the share of escalations followed by any pathway action within 5 working days, which is not that. Label: "Escalation acted-on rate (within 5 working days)". |
+| `metrics.escalation_precision_window_working_days` | (not renamed) | The parameter that sets the five-working-day window keeps its key, with a note in `simulator/params.yaml`: renaming it would change the parameter hash that the risk model (`api/app/risk/model.json`) records and force a retrain outside this ticket. |

@@ -44,6 +44,13 @@
         "n_reps": 20,
         "of_reps": 20
       },
+      "consent_breach_rate_in_reach": {
+        "ci_high": 0.0046,
+        "ci_low": 0.00315,
+        "mean": 0.003825,
+        "n_reps": 20,
+        "of_reps": 20
+      },
       "delay_harm_share": {
         "ci_high": 0.463201,
         "ci_low": 0.451674,
@@ -51,11 +58,18 @@
         "n_reps": 20,
         "of_reps": 20
       },
-      "escalation_precision": null,
+      "escalation_acted_on_rate": null,
       "escalations_per_100_cases": {
         "ci_high": 0.0,
         "ci_low": 0.0,
         "mean": 0.0,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "fairness.channel.closure_km_median_gap_max_days": {
+        "ci_high": 95.695743,
+        "ci_low": 62.347293,
+        "mean": 77.783208,
         "n_reps": 20,
         "of_reps": 20
       },
@@ -66,6 +80,13 @@
         "n_reps": 20,
         "of_reps": 20
       },
+      "fairness.channel.closure_rmst_gap_max_days": {
+        "ci_high": 16.484564,
+        "ci_low": 11.145028,
+        "mean": 13.87735,
+        "n_reps": 20,
+        "of_reps": 20
+      },
       "fairness.channel.completion_gap_max": {
         "ci_high": 0.059668,
         "ci_low": 0.041689,
@@ -73,10 +94,24 @@
         "n_reps": 20,
         "of_reps": 20
       },
+      "fairness.channel.letter.closure_km_median": {
+        "ci_high": 201.202777,
+        "ci_low": 148.058539,
+        "mean": 172.201061,
+        "n_reps": 17,
+        "of_reps": 20
+      },
       "fairness.channel.letter.closure_median": {
         "ci_high": 71.994131,
         "ci_low": 69.573851,
         "mean": 70.76324,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "fairness.channel.letter.closure_rmst": {
+        "ci_high": 216.804549,
+        "ci_low": 209.077878,
+        "mean": 212.822854,
         "n_reps": 20,
         "of_reps": 20
       },
@@ -94,10 +129,24 @@
         "n_reps": 20,
         "of_reps": 20
       },
+      "fairness.channel.phone.closure_km_median": {
+        "ci_high": 209.773347,
+        "ci_low": 165.201881,
+        "mean": 186.825994,
+        "n_reps": 17,
+        "of_reps": 20
+      },
       "fairness.channel.phone.closure_median": {
         "ci_high": 71.940276,
         "ci_low": 69.961695,
         "mean": 70.920824,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "fairness.channel.phone.closure_rmst": {
+        "ci_high": 218.14649,
+        "ci_low": 212.276785,
+        "mean": 215.121845,
         "n_reps": 20,
         "of_reps": 20
       },
@@ -115,10 +164,24 @@
         "n_reps": 20,
         "of_reps": 20
       },
+      "fairness.channel.sms.closure_km_median": {
+        "ci_high": 191.955115,
+        "ci_low": 160.288964,
+        "mean": 175.348254,
+        "n_reps": 19,
+        "of_reps": 20
+      },
       "fairness.channel.sms.closure_median": {
         "ci_high": 70.532034,
         "ci_low": 69.298758,
         "mean": 69.908046,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "fairness.channel.sms.closure_rmst": {
+        "ci_high": 215.235778,
+        "ci_low": 210.629956,
+        "mean": 212.815062,
         "n_reps": 20,
         "of_reps": 20
       },
@@ -136,10 +199,24 @@
         "n_reps": 20,
         "of_reps": 20
       },
+      "fairness.channel.whatsapp.closure_km_median": {
+        "ci_high": 204.275215,
+        "ci_low": 168.685122,
+        "mean": 185.631165,
+        "n_reps": 18,
+        "of_reps": 20
+      },
       "fairness.channel.whatsapp.closure_median": {
         "ci_high": 71.079919,
         "ci_low": 69.507806,
         "mean": 70.264145,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "fairness.channel.whatsapp.closure_rmst": {
+        "ci_high": 216.008678,
+        "ci_low": 211.971701,
+        "mean": 213.950515,
         "n_reps": 20,
         "of_reps": 20
       },
@@ -157,10 +234,24 @@
         "n_reps": 20,
         "of_reps": 20
       },
+      "fairness.language.ar.closure_km_median": {
+        "ci_high": 304.715015,
+        "ci_low": 240.130201,
+        "mean": 274.362739,
+        "n_reps": 12,
+        "of_reps": 20
+      },
       "fairness.language.ar.closure_median": {
         "ci_high": 71.480345,
         "ci_low": 70.297196,
         "mean": 70.917343,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "fairness.language.ar.closure_rmst": {
+        "ci_high": 225.552791,
+        "ci_low": 221.515727,
+        "mean": 223.534286,
         "n_reps": 20,
         "of_reps": 20
       },
@@ -178,10 +269,24 @@
         "n_reps": 20,
         "of_reps": 20
       },
+      "fairness.language.closure_km_median_gap_max_days": {
+        "ci_high": 183.883493,
+        "ci_low": 136.714576,
+        "mean": 160.599296,
+        "n_reps": 16,
+        "of_reps": 20
+      },
       "fairness.language.closure_median_gap_max_days": {
         "ci_high": 5.174317,
         "ci_low": 3.292815,
         "mean": 4.229292,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "fairness.language.closure_rmst_gap_max_days": {
+        "ci_high": 30.647841,
+        "ci_low": 25.649116,
+        "mean": 28.122381,
         "n_reps": 20,
         "of_reps": 20
       },
@@ -192,10 +297,24 @@
         "n_reps": 20,
         "of_reps": 20
       },
+      "fairness.language.en.closure_km_median": {
+        "ci_high": 114.627719,
+        "ci_low": 107.939711,
+        "mean": 111.229115,
+        "n_reps": 20,
+        "of_reps": 20
+      },
       "fairness.language.en.closure_median": {
         "ci_high": 69.713859,
         "ci_low": 68.43205,
         "mean": 69.05696,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "fairness.language.en.closure_rmst": {
+        "ci_high": 199.075713,
+        "ci_low": 194.704414,
+        "mean": 196.820708,
         "n_reps": 20,
         "of_reps": 20
       },
@@ -213,10 +332,24 @@
         "n_reps": 20,
         "of_reps": 20
       },
+      "fairness.language.other.closure_km_median": {
+        "ci_high": 240.287955,
+        "ci_low": 201.323306,
+        "mean": 220.835794,
+        "n_reps": 13,
+        "of_reps": 20
+      },
       "fairness.language.other.closure_median": {
         "ci_high": 73.208566,
         "ci_low": 71.103195,
         "mean": 72.138729,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "fairness.language.other.closure_rmst": {
+        "ci_high": 222.755229,
+        "ci_low": 217.942512,
+        "mean": 220.33831,
         "n_reps": 20,
         "of_reps": 20
       },
@@ -231,6 +364,13 @@
         "ci_high": 402.6525,
         "ci_low": 390.89875,
         "mean": 396.7,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "in_reach_share": {
+        "ci_high": 1.0,
+        "ci_low": 1.0,
+        "mean": 1.0,
         "n_reps": 20,
         "of_reps": 20
       },
@@ -500,6 +640,20 @@
         "n_reps": 20,
         "of_reps": 20
       },
+      "silent_loss_rate_in_reach": {
+        "ci_high": 0.451555,
+        "ci_low": 0.44015,
+        "mean": 0.445475,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "time_to_closure_km_median": {
+        "ci_high": 206.627259,
+        "ci_low": 171.157258,
+        "mean": 187.56246,
+        "n_reps": 20,
+        "of_reps": 20
+      },
       "time_to_closure_median": {
         "ci_high": 70.641353,
         "ci_low": 70.032749,
@@ -511,6 +665,20 @@
         "ci_high": 146.163565,
         "ci_low": 140.447614,
         "mean": 143.238816,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "time_to_closure_rmst": {
+        "ci_high": 214.906458,
+        "ci_low": 212.032446,
+        "mean": 213.499282,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "time_to_colonoscopy_km_median": {
+        "ci_high": 153.622809,
+        "ci_low": 135.260934,
+        "mean": 143.647575,
         "n_reps": 20,
         "of_reps": 20
       },
@@ -532,6 +700,13 @@
         "ci_high": 86.280027,
         "ci_low": 84.67265,
         "mean": 85.455286,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "time_to_colonoscopy_rmst": {
+        "ci_high": 205.366693,
+        "ci_low": 202.305362,
+        "mean": 203.795585,
         "n_reps": 20,
         "of_reps": 20
       },
@@ -596,6 +771,13 @@
         "n_reps": 20,
         "of_reps": 20
       },
+      "consent_breach_rate_in_reach": {
+        "ci_high": 0.0,
+        "ci_low": 0.0,
+        "mean": 0.0,
+        "n_reps": 20,
+        "of_reps": 20
+      },
       "delay_harm_share": {
         "ci_high": 0.171401,
         "ci_low": 0.165025,
@@ -603,9 +785,9 @@
         "n_reps": 20,
         "of_reps": 20
       },
-      "escalation_precision": {
-        "ci_high": 0.486137,
-        "ci_low": 0.47865,
+      "escalation_acted_on_rate": {
+        "ci_high": 0.485809,
+        "ci_low": 0.478684,
         "mean": 0.482202,
         "n_reps": 20,
         "of_reps": 20
@@ -617,10 +799,24 @@
         "n_reps": 20,
         "of_reps": 20
       },
+      "fairness.channel.closure_km_median_gap_max_days": {
+        "ci_high": 9.182142,
+        "ci_low": 7.60178,
+        "mean": 8.357342,
+        "n_reps": 20,
+        "of_reps": 20
+      },
       "fairness.channel.closure_median_gap_max_days": {
         "ci_high": 8.523442,
         "ci_low": 6.867569,
         "mean": 7.73215,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "fairness.channel.closure_rmst_gap_max_days": {
+        "ci_high": 17.813435,
+        "ci_low": 11.636118,
+        "mean": 14.704627,
         "n_reps": 20,
         "of_reps": 20
       },
@@ -631,10 +827,24 @@
         "n_reps": 20,
         "of_reps": 20
       },
+      "fairness.channel.letter.closure_km_median": {
+        "ci_high": 74.206545,
+        "ci_low": 72.739249,
+        "mean": 73.456251,
+        "n_reps": 20,
+        "of_reps": 20
+      },
       "fairness.channel.letter.closure_median": {
         "ci_high": 69.255168,
         "ci_low": 67.638548,
         "mean": 68.456222,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "fairness.channel.letter.closure_rmst": {
+        "ci_high": 125.963958,
+        "ci_low": 120.618306,
+        "mean": 123.207771,
         "n_reps": 20,
         "of_reps": 20
       },
@@ -652,10 +862,24 @@
         "n_reps": 20,
         "of_reps": 20
       },
+      "fairness.channel.phone.closure_km_median": {
+        "ci_high": 66.198459,
+        "ci_low": 64.811474,
+        "mean": 65.502794,
+        "n_reps": 20,
+        "of_reps": 20
+      },
       "fairness.channel.phone.closure_median": {
         "ci_high": 61.689931,
         "ci_low": 60.616781,
         "mean": 61.176618,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "fairness.channel.phone.closure_rmst": {
+        "ci_high": 115.387646,
+        "ci_low": 108.98656,
+        "mean": 112.172985,
         "n_reps": 20,
         "of_reps": 20
       },
@@ -673,10 +897,24 @@
         "n_reps": 20,
         "of_reps": 20
       },
+      "fairness.channel.sms.closure_km_median": {
+        "ci_high": 68.029664,
+        "ci_low": 66.916752,
+        "mean": 67.45369,
+        "n_reps": 20,
+        "of_reps": 20
+      },
       "fairness.channel.sms.closure_median": {
         "ci_high": 62.873667,
         "ci_low": 62.389043,
         "mean": 62.644608,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "fairness.channel.sms.closure_rmst": {
+        "ci_high": 117.239008,
+        "ci_low": 114.239058,
+        "mean": 115.710198,
         "n_reps": 20,
         "of_reps": 20
       },
@@ -694,10 +932,24 @@
         "n_reps": 20,
         "of_reps": 20
       },
+      "fairness.channel.whatsapp.closure_km_median": {
+        "ci_high": 66.709486,
+        "ci_low": 66.052386,
+        "mean": 66.369307,
+        "n_reps": 20,
+        "of_reps": 20
+      },
       "fairness.channel.whatsapp.closure_median": {
         "ci_high": 61.903809,
         "ci_low": 61.088673,
         "mean": 61.501713,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "fairness.channel.whatsapp.closure_rmst": {
+        "ci_high": 117.394955,
+        "ci_low": 114.522274,
+        "mean": 115.973736,
         "n_reps": 20,
         "of_reps": 20
       },
@@ -715,10 +967,24 @@
         "n_reps": 20,
         "of_reps": 20
       },
+      "fairness.language.ar.closure_km_median": {
+        "ci_high": 68.770941,
+        "ci_low": 67.717994,
+        "mean": 68.266466,
+        "n_reps": 20,
+        "of_reps": 20
+      },
       "fairness.language.ar.closure_median": {
         "ci_high": 63.318381,
         "ci_low": 62.857458,
         "mean": 63.080064,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "fairness.language.ar.closure_rmst": {
+        "ci_high": 118.726409,
+        "ci_low": 115.878186,
+        "mean": 117.2947,
         "n_reps": 20,
         "of_reps": 20
       },
@@ -736,10 +1002,24 @@
         "n_reps": 20,
         "of_reps": 20
       },
+      "fairness.language.closure_km_median_gap_max_days": {
+        "ci_high": 3.31441,
+        "ci_low": 2.253075,
+        "mean": 2.783358,
+        "n_reps": 20,
+        "of_reps": 20
+      },
       "fairness.language.closure_median_gap_max_days": {
         "ci_high": 2.059064,
         "ci_low": 1.122427,
         "mean": 1.574431,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "fairness.language.closure_rmst_gap_max_days": {
+        "ci_high": 8.929502,
+        "ci_low": 6.323432,
+        "mean": 7.644986,
         "n_reps": 20,
         "of_reps": 20
       },
@@ -750,10 +1030,24 @@
         "n_reps": 20,
         "of_reps": 20
       },
+      "fairness.language.en.closure_km_median": {
+        "ci_high": 68.464101,
+        "ci_low": 67.18554,
+        "mean": 67.861356,
+        "n_reps": 20,
+        "of_reps": 20
+      },
       "fairness.language.en.closure_median": {
         "ci_high": 63.224593,
         "ci_low": 62.723848,
         "mean": 63.003677,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "fairness.language.en.closure_rmst": {
+        "ci_high": 117.743654,
+        "ci_low": 114.286408,
+        "mean": 115.997934,
         "n_reps": 20,
         "of_reps": 20
       },
@@ -771,10 +1065,24 @@
         "n_reps": 20,
         "of_reps": 20
       },
+      "fairness.language.other.closure_km_median": {
+        "ci_high": 67.882929,
+        "ci_low": 66.507003,
+        "mean": 67.208697,
+        "n_reps": 20,
+        "of_reps": 20
+      },
       "fairness.language.other.closure_median": {
         "ci_high": 63.132555,
         "ci_low": 61.809364,
         "mean": 62.463256,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "fairness.language.other.closure_rmst": {
+        "ci_high": 116.831226,
+        "ci_low": 112.852683,
+        "mean": 114.852675,
         "n_reps": 20,
         "of_reps": 20
       },
@@ -789,6 +1097,13 @@
         "ci_high": 402.3,
         "ci_low": 390.9975,
         "mean": 396.7,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "in_reach_share": {
+        "ci_high": 1.0,
+        "ci_low": 1.0,
+        "mean": 1.0,
         "n_reps": 20,
         "of_reps": 20
       },
@@ -1058,6 +1373,20 @@
         "n_reps": 20,
         "of_reps": 20
       },
+      "silent_loss_rate_in_reach": {
+        "ci_high": 0.0,
+        "ci_low": 0.0,
+        "mean": 0.0,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "time_to_closure_km_median": {
+        "ci_high": 68.305533,
+        "ci_low": 67.53124,
+        "mean": 67.925099,
+        "n_reps": 20,
+        "of_reps": 20
+      },
       "time_to_closure_median": {
         "ci_high": 63.076734,
         "ci_low": 62.766765,
@@ -1069,6 +1398,20 @@
         "ci_high": 96.002514,
         "ci_low": 94.995174,
         "mean": 95.458898,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "time_to_closure_rmst": {
+        "ci_high": 117.264145,
+        "ci_low": 115.499032,
+        "mean": 116.357343,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "time_to_colonoscopy_km_median": {
+        "ci_high": 59.888032,
+        "ci_low": 59.272098,
+        "mean": 59.587506,
         "n_reps": 20,
         "of_reps": 20
       },
@@ -1090,6 +1433,13 @@
         "ci_high": 69.609989,
         "ci_low": 68.946605,
         "mean": 69.288614,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "time_to_colonoscopy_rmst": {
+        "ci_high": 110.349147,
+        "ci_low": 108.576655,
+        "mean": 109.515599,
         "n_reps": 20,
         "of_reps": 20
       },
@@ -1167,6 +1517,13 @@
       "n_reps": 20,
       "of_reps": 20
     },
+    "consent_breach_rate_in_reach": {
+      "ci_high": -0.0032,
+      "ci_low": -0.0046,
+      "mean": -0.003825,
+      "n_reps": 20,
+      "of_reps": 20
+    },
     "delay_harm_share": {
       "ci_high": -0.283949,
       "ci_low": -0.294651,
@@ -1174,11 +1531,18 @@
       "n_reps": 20,
       "of_reps": 20
     },
-    "escalation_precision": null,
+    "escalation_acted_on_rate": null,
     "escalations_per_100_cases": {
       "ci_high": 99.9025,
       "ci_low": 98.217313,
       "mean": 99.095,
+      "n_reps": 20,
+      "of_reps": 20
+    },
+    "fairness.channel.closure_km_median_gap_max_days": {
+      "ci_high": -53.338347,
+      "ci_low": -85.482659,
+      "mean": -69.425867,
       "n_reps": 20,
       "of_reps": 20
     },
@@ -1189,6 +1553,13 @@
       "n_reps": 20,
       "of_reps": 20
     },
+    "fairness.channel.closure_rmst_gap_max_days": {
+      "ci_high": 5.397924,
+      "ci_low": -3.337058,
+      "mean": 0.827277,
+      "n_reps": 20,
+      "of_reps": 20
+    },
     "fairness.channel.completion_gap_max": {
       "ci_high": 0.004385,
       "ci_low": -0.023324,
@@ -1196,10 +1567,24 @@
       "n_reps": 20,
       "of_reps": 20
     },
+    "fairness.channel.letter.closure_km_median": {
+      "ci_high": -74.095633,
+      "ci_low": -125.924747,
+      "mean": -98.848336,
+      "n_reps": 17,
+      "of_reps": 20
+    },
     "fairness.channel.letter.closure_median": {
       "ci_high": -1.109937,
       "ci_low": -3.397071,
       "mean": -2.307019,
+      "n_reps": 20,
+      "of_reps": 20
+    },
+    "fairness.channel.letter.closure_rmst": {
+      "ci_high": -84.985189,
+      "ci_low": -94.540219,
+      "mean": -89.615083,
       "n_reps": 20,
       "of_reps": 20
     },
@@ -1217,10 +1602,24 @@
       "n_reps": 20,
       "of_reps": 20
     },
+    "fairness.channel.phone.closure_km_median": {
+      "ci_high": -100.674872,
+      "ci_low": -145.360986,
+      "mean": -121.443515,
+      "n_reps": 17,
+      "of_reps": 20
+    },
     "fairness.channel.phone.closure_median": {
       "ci_high": -8.795921,
       "ci_low": -10.807204,
       "mean": -9.744205,
+      "n_reps": 20,
+      "of_reps": 20
+    },
+    "fairness.channel.phone.closure_rmst": {
+      "ci_high": -99.146988,
+      "ci_low": -106.733022,
+      "mean": -102.94886,
       "n_reps": 20,
       "of_reps": 20
     },
@@ -1238,10 +1637,24 @@
       "n_reps": 20,
       "of_reps": 20
     },
+    "fairness.channel.sms.closure_km_median": {
+      "ci_high": -92.576945,
+      "ci_low": -123.386129,
+      "mean": -108.028581,
+      "n_reps": 19,
+      "of_reps": 20
+    },
     "fairness.channel.sms.closure_median": {
       "ci_high": -6.699131,
       "ci_low": -7.814277,
       "mean": -7.263437,
+      "n_reps": 20,
+      "of_reps": 20
+    },
+    "fairness.channel.sms.closure_rmst": {
+      "ci_high": -95.190136,
+      "ci_low": -99.027696,
+      "mean": -97.104864,
       "n_reps": 20,
       "of_reps": 20
     },
@@ -1259,10 +1672,24 @@
       "n_reps": 20,
       "of_reps": 20
     },
+    "fairness.channel.whatsapp.closure_km_median": {
+      "ci_high": -101.905691,
+      "ci_low": -140.041229,
+      "mean": -119.348384,
+      "n_reps": 18,
+      "of_reps": 20
+    },
     "fairness.channel.whatsapp.closure_median": {
       "ci_high": -7.888794,
       "ci_low": -9.551268,
       "mean": -8.762432,
+      "n_reps": 20,
+      "of_reps": 20
+    },
+    "fairness.channel.whatsapp.closure_rmst": {
+      "ci_high": -95.744343,
+      "ci_low": -100.041698,
+      "mean": -97.97678,
       "n_reps": 20,
       "of_reps": 20
     },
@@ -1280,10 +1707,24 @@
       "n_reps": 20,
       "of_reps": 20
     },
+    "fairness.language.ar.closure_km_median": {
+      "ci_high": -173.821617,
+      "ci_low": -237.683585,
+      "mean": -206.178082,
+      "n_reps": 12,
+      "of_reps": 20
+    },
     "fairness.language.ar.closure_median": {
       "ci_high": -7.250783,
       "ci_low": -8.393051,
       "mean": -7.837278,
+      "n_reps": 20,
+      "of_reps": 20
+    },
+    "fairness.language.ar.closure_rmst": {
+      "ci_high": -104.242035,
+      "ci_low": -108.098629,
+      "mean": -106.239586,
       "n_reps": 20,
       "of_reps": 20
     },
@@ -1301,10 +1742,24 @@
       "n_reps": 20,
       "of_reps": 20
     },
+    "fairness.language.closure_km_median_gap_max_days": {
+      "ci_high": -134.567923,
+      "ci_low": -180.456968,
+      "mean": -157.960397,
+      "n_reps": 16,
+      "of_reps": 20
+    },
     "fairness.language.closure_median_gap_max_days": {
       "ci_high": -1.726501,
       "ci_low": -3.71268,
       "mean": -2.654861,
+      "n_reps": 20,
+      "of_reps": 20
+    },
+    "fairness.language.closure_rmst_gap_max_days": {
+      "ci_high": -17.267062,
+      "ci_low": -23.645341,
+      "mean": -20.477395,
       "n_reps": 20,
       "of_reps": 20
     },
@@ -1315,10 +1770,24 @@
       "n_reps": 20,
       "of_reps": 20
     },
+    "fairness.language.en.closure_km_median": {
+      "ci_high": -40.323232,
+      "ci_low": -46.554275,
+      "mean": -43.367759,
+      "n_reps": 20,
+      "of_reps": 20
+    },
     "fairness.language.en.closure_median": {
       "ci_high": -5.529604,
       "ci_low": -6.614755,
       "mean": -6.053283,
+      "n_reps": 20,
+      "of_reps": 20
+    },
+    "fairness.language.en.closure_rmst": {
+      "ci_high": -78.549153,
+      "ci_low": -82.899836,
+      "mean": -80.822774,
       "n_reps": 20,
       "of_reps": 20
     },
@@ -1336,10 +1805,24 @@
       "n_reps": 20,
       "of_reps": 20
     },
+    "fairness.language.other.closure_km_median": {
+      "ci_high": -135.022614,
+      "ci_low": -172.820448,
+      "mean": -153.898708,
+      "n_reps": 13,
+      "of_reps": 20
+    },
     "fairness.language.other.closure_median": {
       "ci_high": -8.764477,
       "ci_low": -10.613642,
       "mean": -9.675474,
+      "n_reps": 20,
+      "of_reps": 20
+    },
+    "fairness.language.other.closure_rmst": {
+      "ci_high": -103.119978,
+      "ci_low": -108.097627,
+      "mean": -105.485635,
       "n_reps": 20,
       "of_reps": 20
     },
@@ -1351,6 +1834,13 @@
       "of_reps": 20
     },
     "fairness.language.other.n": {
+      "ci_high": 0.0,
+      "ci_low": 0.0,
+      "mean": 0.0,
+      "n_reps": 20,
+      "of_reps": 20
+    },
+    "in_reach_share": {
       "ci_high": 0.0,
       "ci_low": 0.0,
       "mean": 0.0,
@@ -1623,6 +2113,20 @@
       "n_reps": 20,
       "of_reps": 20
     },
+    "silent_loss_rate_in_reach": {
+      "ci_high": -0.439998,
+      "ci_low": -0.451651,
+      "mean": -0.445475,
+      "n_reps": 20,
+      "of_reps": 20
+    },
+    "time_to_closure_km_median": {
+      "ci_high": -104.739506,
+      "ci_low": -138.653958,
+      "mean": -119.637362,
+      "n_reps": 20,
+      "of_reps": 20
+    },
     "time_to_closure_median": {
       "ci_high": -7.09183,
       "ci_low": -7.685589,
@@ -1634,6 +2138,20 @@
       "ci_high": -44.954544,
       "ci_low": -50.859165,
       "mean": -47.779918,
+      "n_reps": 20,
+      "of_reps": 20
+    },
+    "time_to_closure_rmst": {
+      "ci_high": -95.74993,
+      "ci_low": -98.516661,
+      "mean": -97.141938,
+      "n_reps": 20,
+      "of_reps": 20
+    },
+    "time_to_colonoscopy_km_median": {
+      "ci_high": -75.440322,
+      "ci_low": -93.933987,
+      "mean": -84.060069,
       "n_reps": 20,
       "of_reps": 20
     },
@@ -1655,6 +2173,13 @@
       "ci_high": -15.383806,
       "ci_low": -16.995496,
       "mean": -16.166672,
+      "n_reps": 20,
+      "of_reps": 20
+    },
+    "time_to_colonoscopy_rmst": {
+      "ci_high": -92.954276,
+      "ci_low": -95.603501,
+      "mean": -94.279986,
       "n_reps": 20,
       "of_reps": 20
     },
@@ -1680,7 +2205,7 @@
     "cases_per_replication": 2000,
     "ci_method": "percentile bootstrap over replications; differences are paired by replication (common random numbers)",
     "follow_up_days": 360,
-    "git_commit": "617126f5a53ac2ac4ba57d40a9e8ad7f1c19fc80",
+    "git_commit": "17ab78f043d406af545fb385311cdffc25b9b16b",
     "parameter_status_counts": {
       "assumed": 88,
       "calibrated": 16,
@@ -2072,7 +2597,7 @@
     },
     {
       "key": "metrics.escalation_precision_window_working_days",
-      "notes": "",
+      "notes": "Window of the escalation acted-on rate (metric escalation_acted_on_rate, formerly called escalation precision). The key keeps its original name so the parameter hash, which the risk model records, does not change.",
       "source": "assumed, no public source",
       "status": "assumed",
       "value": 5
@@ -3177,6 +3702,13 @@
             "n_reps": 20,
             "of_reps": 20
           },
+          "consent_breach_rate_in_reach": {
+            "ci_high": 0.004724,
+            "ci_low": 0.002802,
+            "mean": 0.003765,
+            "n_reps": 20,
+            "of_reps": 20
+          },
           "delay_harm_share": {
             "ci_high": 0.463201,
             "ci_low": 0.451674,
@@ -3184,11 +3716,18 @@
             "n_reps": 20,
             "of_reps": 20
           },
-          "escalation_precision": null,
+          "escalation_acted_on_rate": null,
           "escalations_per_100_cases": {
             "ci_high": 0.0,
             "ci_low": 0.0,
             "mean": 0.0,
+            "n_reps": 20,
+            "of_reps": 20
+          },
+          "fairness.channel.closure_km_median_gap_max_days": {
+            "ci_high": 95.695743,
+            "ci_low": 62.347293,
+            "mean": 77.783208,
             "n_reps": 20,
             "of_reps": 20
           },
@@ -3199,6 +3738,13 @@
             "n_reps": 20,
             "of_reps": 20
           },
+          "fairness.channel.closure_rmst_gap_max_days": {
+            "ci_high": 16.484564,
+            "ci_low": 11.145028,
+            "mean": 13.87735,
+            "n_reps": 20,
+            "of_reps": 20
+          },
           "fairness.channel.completion_gap_max": {
             "ci_high": 0.059668,
             "ci_low": 0.041689,
@@ -3206,10 +3752,24 @@
             "n_reps": 20,
             "of_reps": 20
           },
+          "fairness.channel.letter.closure_km_median": {
+            "ci_high": 201.202777,
+            "ci_low": 148.058539,
+            "mean": 172.201061,
+            "n_reps": 17,
+            "of_reps": 20
+          },
           "fairness.channel.letter.closure_median": {
             "ci_high": 71.994131,
             "ci_low": 69.573851,
             "mean": 70.76324,
+            "n_reps": 20,
+            "of_reps": 20
+          },
+          "fairness.channel.letter.closure_rmst": {
+            "ci_high": 216.804549,
+            "ci_low": 209.077878,
+            "mean": 212.822854,
             "n_reps": 20,
             "of_reps": 20
           },
@@ -3227,10 +3787,24 @@
             "n_reps": 20,
             "of_reps": 20
           },
+          "fairness.channel.phone.closure_km_median": {
+            "ci_high": 209.773347,
+            "ci_low": 165.201881,
+            "mean": 186.825994,
+            "n_reps": 17,
+            "of_reps": 20
+          },
           "fairness.channel.phone.closure_median": {
             "ci_high": 71.940276,
             "ci_low": 69.961695,
             "mean": 70.920824,
+            "n_reps": 20,
+            "of_reps": 20
+          },
+          "fairness.channel.phone.closure_rmst": {
+            "ci_high": 218.14649,
+            "ci_low": 212.276785,
+            "mean": 215.121845,
             "n_reps": 20,
             "of_reps": 20
           },
@@ -3248,10 +3822,24 @@
             "n_reps": 20,
             "of_reps": 20
           },
+          "fairness.channel.sms.closure_km_median": {
+            "ci_high": 191.955115,
+            "ci_low": 160.288964,
+            "mean": 175.348254,
+            "n_reps": 19,
+            "of_reps": 20
+          },
           "fairness.channel.sms.closure_median": {
             "ci_high": 70.532034,
             "ci_low": 69.298758,
             "mean": 69.908046,
+            "n_reps": 20,
+            "of_reps": 20
+          },
+          "fairness.channel.sms.closure_rmst": {
+            "ci_high": 215.235778,
+            "ci_low": 210.629956,
+            "mean": 212.815062,
             "n_reps": 20,
             "of_reps": 20
           },
@@ -3269,10 +3857,24 @@
             "n_reps": 20,
             "of_reps": 20
           },
+          "fairness.channel.whatsapp.closure_km_median": {
+            "ci_high": 204.275215,
+            "ci_low": 168.685122,
+            "mean": 185.631165,
+            "n_reps": 18,
+            "of_reps": 20
+          },
           "fairness.channel.whatsapp.closure_median": {
             "ci_high": 71.079919,
             "ci_low": 69.507806,
             "mean": 70.264145,
+            "n_reps": 20,
+            "of_reps": 20
+          },
+          "fairness.channel.whatsapp.closure_rmst": {
+            "ci_high": 216.008678,
+            "ci_low": 211.971701,
+            "mean": 213.950515,
             "n_reps": 20,
             "of_reps": 20
           },
@@ -3290,10 +3892,24 @@
             "n_reps": 20,
             "of_reps": 20
           },
+          "fairness.language.ar.closure_km_median": {
+            "ci_high": 304.715015,
+            "ci_low": 240.130201,
+            "mean": 274.362739,
+            "n_reps": 12,
+            "of_reps": 20
+          },
           "fairness.language.ar.closure_median": {
             "ci_high": 71.480345,
             "ci_low": 70.297196,
             "mean": 70.917343,
+            "n_reps": 20,
+            "of_reps": 20
+          },
+          "fairness.language.ar.closure_rmst": {
+            "ci_high": 225.552791,
+            "ci_low": 221.515727,
+            "mean": 223.534286,
             "n_reps": 20,
             "of_reps": 20
           },
@@ -3311,10 +3927,24 @@
             "n_reps": 20,
             "of_reps": 20
           },
+          "fairness.language.closure_km_median_gap_max_days": {
+            "ci_high": 183.883493,
+            "ci_low": 136.714576,
+            "mean": 160.599296,
+            "n_reps": 16,
+            "of_reps": 20
+          },
           "fairness.language.closure_median_gap_max_days": {
             "ci_high": 5.174317,
             "ci_low": 3.292815,
             "mean": 4.229292,
+            "n_reps": 20,
+            "of_reps": 20
+          },
+          "fairness.language.closure_rmst_gap_max_days": {
+            "ci_high": 30.647841,
+            "ci_low": 25.649116,
+            "mean": 28.122381,
             "n_reps": 20,
             "of_reps": 20
           },
@@ -3325,10 +3955,24 @@
             "n_reps": 20,
             "of_reps": 20
           },
+          "fairness.language.en.closure_km_median": {
+            "ci_high": 114.627719,
+            "ci_low": 107.939711,
+            "mean": 111.229115,
+            "n_reps": 20,
+            "of_reps": 20
+          },
           "fairness.language.en.closure_median": {
             "ci_high": 69.713859,
             "ci_low": 68.43205,
             "mean": 69.05696,
+            "n_reps": 20,
+            "of_reps": 20
+          },
+          "fairness.language.en.closure_rmst": {
+            "ci_high": 199.075713,
+            "ci_low": 194.704414,
+            "mean": 196.820708,
             "n_reps": 20,
             "of_reps": 20
           },
@@ -3346,10 +3990,24 @@
             "n_reps": 20,
             "of_reps": 20
           },
+          "fairness.language.other.closure_km_median": {
+            "ci_high": 240.287955,
+            "ci_low": 201.323306,
+            "mean": 220.835794,
+            "n_reps": 13,
+            "of_reps": 20
+          },
           "fairness.language.other.closure_median": {
             "ci_high": 73.208566,
             "ci_low": 71.103195,
             "mean": 72.138729,
+            "n_reps": 20,
+            "of_reps": 20
+          },
+          "fairness.language.other.closure_rmst": {
+            "ci_high": 222.755229,
+            "ci_low": 217.942512,
+            "mean": 220.33831,
             "n_reps": 20,
             "of_reps": 20
           },
@@ -3364,6 +4022,13 @@
             "ci_high": 402.6525,
             "ci_low": 390.89875,
             "mean": 396.7,
+            "n_reps": 20,
+            "of_reps": 20
+          },
+          "in_reach_share": {
+            "ci_high": 0.503326,
+            "ci_low": 0.491749,
+            "mean": 0.4976,
             "n_reps": 20,
             "of_reps": 20
           },
@@ -3633,6 +4298,20 @@
             "n_reps": 20,
             "of_reps": 20
           },
+          "silent_loss_rate_in_reach": {
+            "ci_high": 0.44978,
+            "ci_low": 0.438985,
+            "mean": 0.443769,
+            "n_reps": 20,
+            "of_reps": 20
+          },
+          "time_to_closure_km_median": {
+            "ci_high": 206.627259,
+            "ci_low": 171.157258,
+            "mean": 187.56246,
+            "n_reps": 20,
+            "of_reps": 20
+          },
           "time_to_closure_median": {
             "ci_high": 70.641353,
             "ci_low": 70.032749,
@@ -3644,6 +4323,20 @@
             "ci_high": 146.163565,
             "ci_low": 140.447614,
             "mean": 143.238816,
+            "n_reps": 20,
+            "of_reps": 20
+          },
+          "time_to_closure_rmst": {
+            "ci_high": 214.906458,
+            "ci_low": 212.032446,
+            "mean": 213.499282,
+            "n_reps": 20,
+            "of_reps": 20
+          },
+          "time_to_colonoscopy_km_median": {
+            "ci_high": 153.622809,
+            "ci_low": 135.260934,
+            "mean": 143.647575,
             "n_reps": 20,
             "of_reps": 20
           },
@@ -3665,6 +4358,13 @@
             "ci_high": 86.280027,
             "ci_low": 84.67265,
             "mean": 85.455286,
+            "n_reps": 20,
+            "of_reps": 20
+          },
+          "time_to_colonoscopy_rmst": {
+            "ci_high": 205.366693,
+            "ci_low": 202.305362,
+            "mean": 203.795585,
             "n_reps": 20,
             "of_reps": 20
           },
@@ -3729,6 +4429,13 @@
             "n_reps": 20,
             "of_reps": 20
           },
+          "consent_breach_rate_in_reach": {
+            "ci_high": 0.0,
+            "ci_low": 0.0,
+            "mean": 0.0,
+            "n_reps": 20,
+            "of_reps": 20
+          },
           "delay_harm_share": {
             "ci_high": 0.330628,
             "ci_low": 0.3206,
@@ -3736,9 +4443,9 @@
             "n_reps": 20,
             "of_reps": 20
           },
-          "escalation_precision": {
-            "ci_high": 0.438484,
-            "ci_low": 0.427576,
+          "escalation_acted_on_rate": {
+            "ci_high": 0.438935,
+            "ci_low": 0.427643,
             "mean": 0.432971,
             "n_reps": 20,
             "of_reps": 20
@@ -3750,10 +4457,24 @@
             "n_reps": 20,
             "of_reps": 20
           },
+          "fairness.channel.closure_km_median_gap_max_days": {
+            "ci_high": 10.827173,
+            "ci_low": 7.635996,
+            "mean": 9.114263,
+            "n_reps": 20,
+            "of_reps": 20
+          },
           "fairness.channel.closure_median_gap_max_days": {
             "ci_high": 6.756135,
             "ci_low": 5.057842,
             "mean": 5.928224,
+            "n_reps": 20,
+            "of_reps": 20
+          },
+          "fairness.channel.closure_rmst_gap_max_days": {
+            "ci_high": 15.884196,
+            "ci_low": 10.830437,
+            "mean": 13.372593,
             "n_reps": 20,
             "of_reps": 20
           },
@@ -3764,10 +4485,24 @@
             "n_reps": 20,
             "of_reps": 20
           },
+          "fairness.channel.letter.closure_km_median": {
+            "ci_high": 90.111858,
+            "ci_low": 87.065509,
+            "mean": 88.531553,
+            "n_reps": 20,
+            "of_reps": 20
+          },
           "fairness.channel.letter.closure_median": {
             "ci_high": 70.535101,
             "ci_low": 68.879298,
             "mean": 69.70621,
+            "n_reps": 20,
+            "of_reps": 20
+          },
+          "fairness.channel.letter.closure_rmst": {
+            "ci_high": 175.316191,
+            "ci_low": 168.22826,
+            "mean": 171.679949,
             "n_reps": 20,
             "of_reps": 20
           },
@@ -3785,10 +4520,24 @@
             "n_reps": 20,
             "of_reps": 20
           },
+          "fairness.channel.phone.closure_km_median": {
+            "ci_high": 83.918099,
+            "ci_low": 80.332026,
+            "mean": 82.097796,
+            "n_reps": 20,
+            "of_reps": 20
+          },
           "fairness.channel.phone.closure_median": {
             "ci_high": 66.086711,
             "ci_low": 64.468342,
             "mean": 65.274677,
+            "n_reps": 20,
+            "of_reps": 20
+          },
+          "fairness.channel.phone.closure_rmst": {
+            "ci_high": 170.713736,
+            "ci_low": 163.689103,
+            "mean": 167.099425,
             "n_reps": 20,
             "of_reps": 20
           },
@@ -3806,10 +4555,24 @@
             "n_reps": 20,
             "of_reps": 20
           },
+          "fairness.channel.sms.closure_km_median": {
+            "ci_high": 84.370841,
+            "ci_low": 82.275436,
+            "mean": 83.298816,
+            "n_reps": 20,
+            "of_reps": 20
+          },
           "fairness.channel.sms.closure_median": {
             "ci_high": 65.61108,
             "ci_low": 64.865121,
             "mean": 65.230861,
+            "n_reps": 20,
+            "of_reps": 20
+          },
+          "fairness.channel.sms.closure_rmst": {
+            "ci_high": 171.124506,
+            "ci_low": 167.377347,
+            "mean": 169.223382,
             "n_reps": 20,
             "of_reps": 20
           },
@@ -3827,10 +4590,24 @@
             "n_reps": 20,
             "of_reps": 20
           },
+          "fairness.channel.whatsapp.closure_km_median": {
+            "ci_high": 84.121015,
+            "ci_low": 82.007497,
+            "mean": 83.099704,
+            "n_reps": 20,
+            "of_reps": 20
+          },
           "fairness.channel.whatsapp.closure_median": {
             "ci_high": 64.824303,
             "ci_low": 63.915041,
             "mean": 64.34497,
+            "n_reps": 20,
+            "of_reps": 20
+          },
+          "fairness.channel.whatsapp.closure_rmst": {
+            "ci_high": 170.665237,
+            "ci_low": 167.037127,
+            "mean": 168.884656,
             "n_reps": 20,
             "of_reps": 20
           },
@@ -3848,10 +4625,24 @@
             "n_reps": 20,
             "of_reps": 20
           },
+          "fairness.language.ar.closure_km_median": {
+            "ci_high": 87.853572,
+            "ci_low": 85.58488,
+            "mean": 86.705592,
+            "n_reps": 20,
+            "of_reps": 20
+          },
           "fairness.language.ar.closure_median": {
             "ci_high": 66.487317,
             "ci_low": 65.186419,
             "mean": 65.821568,
+            "n_reps": 20,
+            "of_reps": 20
+          },
+          "fairness.language.ar.closure_rmst": {
+            "ci_high": 176.462757,
+            "ci_low": 172.211141,
+            "mean": 174.324402,
             "n_reps": 20,
             "of_reps": 20
           },
@@ -3869,10 +4660,24 @@
             "n_reps": 20,
             "of_reps": 20
           },
+          "fairness.language.closure_km_median_gap_max_days": {
+            "ci_high": 10.037709,
+            "ci_low": 6.988725,
+            "mean": 8.44086,
+            "n_reps": 20,
+            "of_reps": 20
+          },
           "fairness.language.closure_median_gap_max_days": {
             "ci_high": 3.111457,
             "ci_low": 2.299234,
             "mean": 2.716501,
+            "n_reps": 20,
+            "of_reps": 20
+          },
+          "fairness.language.closure_rmst_gap_max_days": {
+            "ci_high": 18.994189,
+            "ci_low": 13.757291,
+            "mean": 16.327687,
             "n_reps": 20,
             "of_reps": 20
           },
@@ -3883,10 +4688,24 @@
             "n_reps": 20,
             "of_reps": 20
           },
+          "fairness.language.en.closure_km_median": {
+            "ci_high": 81.235375,
+            "ci_low": 79.246405,
+            "mean": 80.275015,
+            "n_reps": 20,
+            "of_reps": 20
+          },
           "fairness.language.en.closure_median": {
             "ci_high": 66.024436,
             "ci_low": 65.042758,
             "mean": 65.541144,
+            "n_reps": 20,
+            "of_reps": 20
+          },
+          "fairness.language.en.closure_rmst": {
+            "ci_high": 162.344362,
+            "ci_low": 158.98463,
+            "mean": 160.661387,
             "n_reps": 20,
             "of_reps": 20
           },
@@ -3904,10 +4723,24 @@
             "n_reps": 20,
             "of_reps": 20
           },
+          "fairness.language.other.closure_km_median": {
+            "ci_high": 87.266286,
+            "ci_low": 83.389762,
+            "mean": 85.347722,
+            "n_reps": 20,
+            "of_reps": 20
+          },
           "fairness.language.other.closure_median": {
             "ci_high": 66.496802,
             "ci_low": 65.0714,
             "mean": 65.839714,
+            "n_reps": 20,
+            "of_reps": 20
+          },
+          "fairness.language.other.closure_rmst": {
+            "ci_high": 175.227238,
+            "ci_low": 169.569396,
+            "mean": 172.449993,
             "n_reps": 20,
             "of_reps": 20
           },
@@ -3922,6 +4755,13 @@
             "ci_high": 402.3,
             "ci_low": 390.9975,
             "mean": 396.7,
+            "n_reps": 20,
+            "of_reps": 20
+          },
+          "in_reach_share": {
+            "ci_high": 0.50325,
+            "ci_low": 0.491874,
+            "mean": 0.4976,
             "n_reps": 20,
             "of_reps": 20
           },
@@ -4191,6 +5031,20 @@
             "n_reps": 20,
             "of_reps": 20
           },
+          "silent_loss_rate_in_reach": {
+            "ci_high": 0.0,
+            "ci_low": 0.0,
+            "mean": 0.0,
+            "n_reps": 20,
+            "of_reps": 20
+          },
+          "time_to_closure_km_median": {
+            "ci_high": 84.359731,
+            "ci_low": 83.210517,
+            "mean": 83.830806,
+            "n_reps": 20,
+            "of_reps": 20
+          },
           "time_to_closure_median": {
             "ci_high": 65.894899,
             "ci_low": 65.25597,
@@ -4202,6 +5056,20 @@
             "ci_high": 113.548981,
             "ci_low": 110.645743,
             "mean": 112.016069,
+            "n_reps": 20,
+            "of_reps": 20
+          },
+          "time_to_closure_rmst": {
+            "ci_high": 170.319607,
+            "ci_low": 167.917628,
+            "mean": 169.166128,
+            "n_reps": 20,
+            "of_reps": 20
+          },
+          "time_to_colonoscopy_km_median": {
+            "ci_high": 74.451497,
+            "ci_low": 73.295873,
+            "mean": 73.903445,
             "n_reps": 20,
             "of_reps": 20
           },
@@ -4223,6 +5091,13 @@
             "ci_high": 75.89194,
             "ci_low": 74.877671,
             "mean": 75.400697,
+            "n_reps": 20,
+            "of_reps": 20
+          },
+          "time_to_colonoscopy_rmst": {
+            "ci_high": 162.058273,
+            "ci_low": 159.430376,
+            "mean": 160.728874,
             "n_reps": 20,
             "of_reps": 20
           },
@@ -4300,6 +5175,13 @@
           "n_reps": 20,
           "of_reps": 20
         },
+        "consent_breach_rate_in_reach": {
+          "ci_high": -0.0029,
+          "ci_low": -0.00473,
+          "mean": -0.003765,
+          "n_reps": 20,
+          "of_reps": 20
+        },
         "delay_harm_share": {
           "ci_high": -0.128349,
           "ci_low": -0.1355,
@@ -4307,11 +5189,18 @@
           "n_reps": 20,
           "of_reps": 20
         },
-        "escalation_precision": null,
+        "escalation_acted_on_rate": null,
         "escalations_per_100_cases": {
           "ci_high": 53.750625,
           "ci_low": 51.912438,
           "mean": 52.7825,
+          "n_reps": 20,
+          "of_reps": 20
+        },
+        "fairness.channel.closure_km_median_gap_max_days": {
+          "ci_high": -52.751764,
+          "ci_low": -84.067732,
+          "mean": -68.668946,
           "n_reps": 20,
           "of_reps": 20
         },
@@ -4322,6 +5211,13 @@
           "n_reps": 20,
           "of_reps": 20
         },
+        "fairness.channel.closure_rmst_gap_max_days": {
+          "ci_high": 3.471321,
+          "ci_low": -4.031148,
+          "mean": -0.504757,
+          "n_reps": 20,
+          "of_reps": 20
+        },
         "fairness.channel.completion_gap_max": {
           "ci_high": 0.007264,
           "ci_low": -0.018313,
@@ -4329,10 +5225,24 @@
           "n_reps": 20,
           "of_reps": 20
         },
+        "fairness.channel.letter.closure_km_median": {
+          "ci_high": -60.569417,
+          "ci_low": -110.407488,
+          "mean": -83.708802,
+          "n_reps": 17,
+          "of_reps": 20
+        },
         "fairness.channel.letter.closure_median": {
           "ci_high": -0.055961,
           "ci_low": -2.076524,
           "mean": -1.057031,
+          "n_reps": 20,
+          "of_reps": 20
+        },
+        "fairness.channel.letter.closure_rmst": {
+          "ci_high": -37.207001,
+          "ci_low": -45.622598,
+          "mean": -41.142905,
           "n_reps": 20,
           "of_reps": 20
         },
@@ -4350,10 +5260,24 @@
           "n_reps": 20,
           "of_reps": 20
         },
+        "fairness.channel.phone.closure_km_median": {
+          "ci_high": -84.718205,
+          "ci_low": -130.093761,
+          "mean": -105.442276,
+          "n_reps": 17,
+          "of_reps": 20
+        },
         "fairness.channel.phone.closure_median": {
           "ci_high": -4.91152,
           "ci_low": -6.425116,
           "mean": -5.646147,
+          "n_reps": 20,
+          "of_reps": 20
+        },
+        "fairness.channel.phone.closure_rmst": {
+          "ci_high": -44.804136,
+          "ci_low": -50.993343,
+          "mean": -48.02242,
           "n_reps": 20,
           "of_reps": 20
         },
@@ -4371,10 +5295,24 @@
           "n_reps": 20,
           "of_reps": 20
         },
+        "fairness.channel.sms.closure_km_median": {
+          "ci_high": -77.32222,
+          "ci_low": -107.548014,
+          "mean": -92.334522,
+          "n_reps": 19,
+          "of_reps": 20
+        },
         "fairness.channel.sms.closure_median": {
           "ci_high": -4.20347,
           "ci_low": -5.13806,
           "mean": -4.677185,
+          "n_reps": 20,
+          "of_reps": 20
+        },
+        "fairness.channel.sms.closure_rmst": {
+          "ci_high": -41.895402,
+          "ci_low": -45.158216,
+          "mean": -43.59168,
           "n_reps": 20,
           "of_reps": 20
         },
@@ -4392,10 +5330,24 @@
           "n_reps": 20,
           "of_reps": 20
         },
+        "fairness.channel.whatsapp.closure_km_median": {
+          "ci_high": -84.829909,
+          "ci_low": -123.441844,
+          "mean": -102.565076,
+          "n_reps": 18,
+          "of_reps": 20
+        },
         "fairness.channel.whatsapp.closure_median": {
           "ci_high": -5.131513,
           "ci_low": -6.66473,
           "mean": -5.919175,
+          "n_reps": 20,
+          "of_reps": 20
+        },
+        "fairness.channel.whatsapp.closure_rmst": {
+          "ci_high": -42.984302,
+          "ci_low": -47.336329,
+          "mean": -45.065859,
           "n_reps": 20,
           "of_reps": 20
         },
@@ -4413,10 +5365,24 @@
           "n_reps": 20,
           "of_reps": 20
         },
+        "fairness.language.ar.closure_km_median": {
+          "ci_high": -156.454327,
+          "ci_low": -220.308325,
+          "mean": -188.525507,
+          "n_reps": 12,
+          "of_reps": 20
+        },
         "fairness.language.ar.closure_median": {
           "ci_high": -4.571185,
           "ci_low": -5.636231,
           "mean": -5.095775,
+          "n_reps": 20,
+          "of_reps": 20
+        },
+        "fairness.language.ar.closure_rmst": {
+          "ci_high": -47.531444,
+          "ci_low": -50.779206,
+          "mean": -49.209884,
           "n_reps": 20,
           "of_reps": 20
         },
@@ -4434,10 +5400,24 @@
           "n_reps": 20,
           "of_reps": 20
         },
+        "fairness.language.closure_km_median_gap_max_days": {
+          "ci_high": -129.97201,
+          "ci_low": -175.60803,
+          "mean": -153.27451,
+          "n_reps": 16,
+          "of_reps": 20
+        },
         "fairness.language.closure_median_gap_max_days": {
           "ci_high": -0.563162,
           "ci_low": -2.485512,
           "mean": -1.512791,
+          "n_reps": 20,
+          "of_reps": 20
+        },
+        "fairness.language.closure_rmst_gap_max_days": {
+          "ci_high": -9.687838,
+          "ci_low": -14.076336,
+          "mean": -11.794694,
           "n_reps": 20,
           "of_reps": 20
         },
@@ -4448,10 +5428,24 @@
           "n_reps": 20,
           "of_reps": 20
         },
+        "fairness.language.en.closure_km_median": {
+          "ci_high": -28.092116,
+          "ci_low": -33.982047,
+          "mean": -30.9541,
+          "n_reps": 20,
+          "of_reps": 20
+        },
         "fairness.language.en.closure_median": {
           "ci_high": -2.989384,
           "ci_low": -4.02118,
           "mean": -3.515816,
+          "n_reps": 20,
+          "of_reps": 20
+        },
+        "fairness.language.en.closure_rmst": {
+          "ci_high": -34.687377,
+          "ci_low": -37.498117,
+          "mean": -36.159321,
           "n_reps": 20,
           "of_reps": 20
         },
@@ -4469,10 +5463,24 @@
           "n_reps": 20,
           "of_reps": 20
         },
+        "fairness.language.other.closure_km_median": {
+          "ci_high": -118.359262,
+          "ci_low": -155.942576,
+          "mean": -136.861175,
+          "n_reps": 13,
+          "of_reps": 20
+        },
         "fairness.language.other.closure_median": {
           "ci_high": -5.337362,
           "ci_low": -7.319167,
           "mean": -6.299016,
+          "n_reps": 20,
+          "of_reps": 20
+        },
+        "fairness.language.other.closure_rmst": {
+          "ci_high": -45.988679,
+          "ci_low": -49.63183,
+          "mean": -47.888316,
           "n_reps": 20,
           "of_reps": 20
         },
@@ -4484,6 +5492,13 @@
           "of_reps": 20
         },
         "fairness.language.other.n": {
+          "ci_high": 0.0,
+          "ci_low": 0.0,
+          "mean": 0.0,
+          "n_reps": 20,
+          "of_reps": 20
+        },
+        "in_reach_share": {
           "ci_high": 0.0,
           "ci_low": 0.0,
           "mean": 0.0,
@@ -4756,6 +5771,20 @@
           "n_reps": 20,
           "of_reps": 20
         },
+        "silent_loss_rate_in_reach": {
+          "ci_high": -0.439116,
+          "ci_low": -0.449903,
+          "mean": -0.443769,
+          "n_reps": 20,
+          "of_reps": 20
+        },
+        "time_to_closure_km_median": {
+          "ci_high": -88.882022,
+          "ci_low": -122.710794,
+          "mean": -103.731654,
+          "n_reps": 20,
+          "of_reps": 20
+        },
         "time_to_closure_median": {
           "ci_high": -4.430424,
           "ci_low": -5.072479,
@@ -4767,6 +5796,20 @@
           "ci_high": -29.271121,
           "ci_low": -33.342468,
           "mean": -31.222747,
+          "n_reps": 20,
+          "of_reps": 20
+        },
+        "time_to_closure_rmst": {
+          "ci_high": -43.246787,
+          "ci_low": -45.274278,
+          "mean": -44.333154,
+          "n_reps": 20,
+          "of_reps": 20
+        },
+        "time_to_colonoscopy_km_median": {
+          "ci_high": -61.50623,
+          "ci_low": -79.791517,
+          "mean": -69.74413,
           "n_reps": 20,
           "of_reps": 20
         },
@@ -4788,6 +5831,13 @@
           "ci_high": -9.260938,
           "ci_low": -10.933846,
           "mean": -10.054589,
+          "n_reps": 20,
+          "of_reps": 20
+        },
+        "time_to_colonoscopy_rmst": {
+          "ci_high": -42.101924,
+          "ci_low": -44.038669,
+          "mean": -43.066711,
           "n_reps": 20,
           "of_reps": 20
         },
@@ -5407,6 +6457,13 @@
             "n_reps": 20,
             "of_reps": 20
           },
+          "consent_breach_rate_in_reach": {
+            "ci_high": 0.0046,
+            "ci_low": 0.00315,
+            "mean": 0.003825,
+            "n_reps": 20,
+            "of_reps": 20
+          },
           "delay_harm_share": {
             "ci_high": 0.463201,
             "ci_low": 0.451674,
@@ -5414,11 +6471,18 @@
             "n_reps": 20,
             "of_reps": 20
           },
-          "escalation_precision": null,
+          "escalation_acted_on_rate": null,
           "escalations_per_100_cases": {
             "ci_high": 0.0,
             "ci_low": 0.0,
             "mean": 0.0,
+            "n_reps": 20,
+            "of_reps": 20
+          },
+          "fairness.channel.closure_km_median_gap_max_days": {
+            "ci_high": 95.695743,
+            "ci_low": 62.347293,
+            "mean": 77.783208,
             "n_reps": 20,
             "of_reps": 20
           },
@@ -5429,6 +6493,13 @@
             "n_reps": 20,
             "of_reps": 20
           },
+          "fairness.channel.closure_rmst_gap_max_days": {
+            "ci_high": 16.484564,
+            "ci_low": 11.145028,
+            "mean": 13.87735,
+            "n_reps": 20,
+            "of_reps": 20
+          },
           "fairness.channel.completion_gap_max": {
             "ci_high": 0.059668,
             "ci_low": 0.041689,
@@ -5436,10 +6507,24 @@
             "n_reps": 20,
             "of_reps": 20
           },
+          "fairness.channel.letter.closure_km_median": {
+            "ci_high": 201.202777,
+            "ci_low": 148.058539,
+            "mean": 172.201061,
+            "n_reps": 17,
+            "of_reps": 20
+          },
           "fairness.channel.letter.closure_median": {
             "ci_high": 71.994131,
             "ci_low": 69.573851,
             "mean": 70.76324,
+            "n_reps": 20,
+            "of_reps": 20
+          },
+          "fairness.channel.letter.closure_rmst": {
+            "ci_high": 216.804549,
+            "ci_low": 209.077878,
+            "mean": 212.822854,
             "n_reps": 20,
             "of_reps": 20
           },
@@ -5457,10 +6542,24 @@
             "n_reps": 20,
             "of_reps": 20
           },
+          "fairness.channel.phone.closure_km_median": {
+            "ci_high": 209.773347,
+            "ci_low": 165.201881,
+            "mean": 186.825994,
+            "n_reps": 17,
+            "of_reps": 20
+          },
           "fairness.channel.phone.closure_median": {
             "ci_high": 71.940276,
             "ci_low": 69.961695,
             "mean": 70.920824,
+            "n_reps": 20,
+            "of_reps": 20
+          },
+          "fairness.channel.phone.closure_rmst": {
+            "ci_high": 218.14649,
+            "ci_low": 212.276785,
+            "mean": 215.121845,
             "n_reps": 20,
             "of_reps": 20
           },
@@ -5478,10 +6577,24 @@
             "n_reps": 20,
             "of_reps": 20
           },
+          "fairness.channel.sms.closure_km_median": {
+            "ci_high": 191.955115,
+            "ci_low": 160.288964,
+            "mean": 175.348254,
+            "n_reps": 19,
+            "of_reps": 20
+          },
           "fairness.channel.sms.closure_median": {
             "ci_high": 70.532034,
             "ci_low": 69.298758,
             "mean": 69.908046,
+            "n_reps": 20,
+            "of_reps": 20
+          },
+          "fairness.channel.sms.closure_rmst": {
+            "ci_high": 215.235778,
+            "ci_low": 210.629956,
+            "mean": 212.815062,
             "n_reps": 20,
             "of_reps": 20
           },
@@ -5499,10 +6612,24 @@
             "n_reps": 20,
             "of_reps": 20
           },
+          "fairness.channel.whatsapp.closure_km_median": {
+            "ci_high": 204.275215,
+            "ci_low": 168.685122,
+            "mean": 185.631165,
+            "n_reps": 18,
+            "of_reps": 20
+          },
           "fairness.channel.whatsapp.closure_median": {
             "ci_high": 71.079919,
             "ci_low": 69.507806,
             "mean": 70.264145,
+            "n_reps": 20,
+            "of_reps": 20
+          },
+          "fairness.channel.whatsapp.closure_rmst": {
+            "ci_high": 216.008678,
+            "ci_low": 211.971701,
+            "mean": 213.950515,
             "n_reps": 20,
             "of_reps": 20
           },
@@ -5520,10 +6647,24 @@
             "n_reps": 20,
             "of_reps": 20
           },
+          "fairness.language.ar.closure_km_median": {
+            "ci_high": 304.715015,
+            "ci_low": 240.130201,
+            "mean": 274.362739,
+            "n_reps": 12,
+            "of_reps": 20
+          },
           "fairness.language.ar.closure_median": {
             "ci_high": 71.480345,
             "ci_low": 70.297196,
             "mean": 70.917343,
+            "n_reps": 20,
+            "of_reps": 20
+          },
+          "fairness.language.ar.closure_rmst": {
+            "ci_high": 225.552791,
+            "ci_low": 221.515727,
+            "mean": 223.534286,
             "n_reps": 20,
             "of_reps": 20
           },
@@ -5541,10 +6682,24 @@
             "n_reps": 20,
             "of_reps": 20
           },
+          "fairness.language.closure_km_median_gap_max_days": {
+            "ci_high": 183.883493,
+            "ci_low": 136.714576,
+            "mean": 160.599296,
+            "n_reps": 16,
+            "of_reps": 20
+          },
           "fairness.language.closure_median_gap_max_days": {
             "ci_high": 5.174317,
             "ci_low": 3.292815,
             "mean": 4.229292,
+            "n_reps": 20,
+            "of_reps": 20
+          },
+          "fairness.language.closure_rmst_gap_max_days": {
+            "ci_high": 30.647841,
+            "ci_low": 25.649116,
+            "mean": 28.122381,
             "n_reps": 20,
             "of_reps": 20
           },
@@ -5555,10 +6710,24 @@
             "n_reps": 20,
             "of_reps": 20
           },
+          "fairness.language.en.closure_km_median": {
+            "ci_high": 114.627719,
+            "ci_low": 107.939711,
+            "mean": 111.229115,
+            "n_reps": 20,
+            "of_reps": 20
+          },
           "fairness.language.en.closure_median": {
             "ci_high": 69.713859,
             "ci_low": 68.43205,
             "mean": 69.05696,
+            "n_reps": 20,
+            "of_reps": 20
+          },
+          "fairness.language.en.closure_rmst": {
+            "ci_high": 199.075713,
+            "ci_low": 194.704414,
+            "mean": 196.820708,
             "n_reps": 20,
             "of_reps": 20
           },
@@ -5576,10 +6745,24 @@
             "n_reps": 20,
             "of_reps": 20
           },
+          "fairness.language.other.closure_km_median": {
+            "ci_high": 240.287955,
+            "ci_low": 201.323306,
+            "mean": 220.835794,
+            "n_reps": 13,
+            "of_reps": 20
+          },
           "fairness.language.other.closure_median": {
             "ci_high": 73.208566,
             "ci_low": 71.103195,
             "mean": 72.138729,
+            "n_reps": 20,
+            "of_reps": 20
+          },
+          "fairness.language.other.closure_rmst": {
+            "ci_high": 222.755229,
+            "ci_low": 217.942512,
+            "mean": 220.33831,
             "n_reps": 20,
             "of_reps": 20
           },
@@ -5594,6 +6777,13 @@
             "ci_high": 402.6525,
             "ci_low": 390.89875,
             "mean": 396.7,
+            "n_reps": 20,
+            "of_reps": 20
+          },
+          "in_reach_share": {
+            "ci_high": 1.0,
+            "ci_low": 1.0,
+            "mean": 1.0,
             "n_reps": 20,
             "of_reps": 20
           },
@@ -5863,6 +7053,20 @@
             "n_reps": 20,
             "of_reps": 20
           },
+          "silent_loss_rate_in_reach": {
+            "ci_high": 0.451555,
+            "ci_low": 0.44015,
+            "mean": 0.445475,
+            "n_reps": 20,
+            "of_reps": 20
+          },
+          "time_to_closure_km_median": {
+            "ci_high": 206.627259,
+            "ci_low": 171.157258,
+            "mean": 187.56246,
+            "n_reps": 20,
+            "of_reps": 20
+          },
           "time_to_closure_median": {
             "ci_high": 70.641353,
             "ci_low": 70.032749,
@@ -5874,6 +7078,20 @@
             "ci_high": 146.163565,
             "ci_low": 140.447614,
             "mean": 143.238816,
+            "n_reps": 20,
+            "of_reps": 20
+          },
+          "time_to_closure_rmst": {
+            "ci_high": 214.906458,
+            "ci_low": 212.032446,
+            "mean": 213.499282,
+            "n_reps": 20,
+            "of_reps": 20
+          },
+          "time_to_colonoscopy_km_median": {
+            "ci_high": 153.622809,
+            "ci_low": 135.260934,
+            "mean": 143.647575,
             "n_reps": 20,
             "of_reps": 20
           },
@@ -5895,6 +7113,13 @@
             "ci_high": 86.280027,
             "ci_low": 84.67265,
             "mean": 85.455286,
+            "n_reps": 20,
+            "of_reps": 20
+          },
+          "time_to_colonoscopy_rmst": {
+            "ci_high": 205.366693,
+            "ci_low": 202.305362,
+            "mean": 203.795585,
             "n_reps": 20,
             "of_reps": 20
           },
@@ -5959,6 +7184,13 @@
             "n_reps": 20,
             "of_reps": 20
           },
+          "consent_breach_rate_in_reach": {
+            "ci_high": 0.0,
+            "ci_low": 0.0,
+            "mean": 0.0,
+            "n_reps": 20,
+            "of_reps": 20
+          },
           "delay_harm_share": {
             "ci_high": 0.171401,
             "ci_low": 0.165025,
@@ -5966,9 +7198,9 @@
             "n_reps": 20,
             "of_reps": 20
           },
-          "escalation_precision": {
-            "ci_high": 0.486137,
-            "ci_low": 0.47865,
+          "escalation_acted_on_rate": {
+            "ci_high": 0.485809,
+            "ci_low": 0.478684,
             "mean": 0.482202,
             "n_reps": 20,
             "of_reps": 20
@@ -5980,10 +7212,24 @@
             "n_reps": 20,
             "of_reps": 20
           },
+          "fairness.channel.closure_km_median_gap_max_days": {
+            "ci_high": 9.182142,
+            "ci_low": 7.60178,
+            "mean": 8.357342,
+            "n_reps": 20,
+            "of_reps": 20
+          },
           "fairness.channel.closure_median_gap_max_days": {
             "ci_high": 8.523442,
             "ci_low": 6.867569,
             "mean": 7.73215,
+            "n_reps": 20,
+            "of_reps": 20
+          },
+          "fairness.channel.closure_rmst_gap_max_days": {
+            "ci_high": 17.813435,
+            "ci_low": 11.636118,
+            "mean": 14.704627,
             "n_reps": 20,
             "of_reps": 20
           },
@@ -5994,10 +7240,24 @@
             "n_reps": 20,
             "of_reps": 20
           },
+          "fairness.channel.letter.closure_km_median": {
+            "ci_high": 74.206545,
+            "ci_low": 72.739249,
+            "mean": 73.456251,
+            "n_reps": 20,
+            "of_reps": 20
+          },
           "fairness.channel.letter.closure_median": {
             "ci_high": 69.255168,
             "ci_low": 67.638548,
             "mean": 68.456222,
+            "n_reps": 20,
+            "of_reps": 20
+          },
+          "fairness.channel.letter.closure_rmst": {
+            "ci_high": 125.963958,
+            "ci_low": 120.618306,
+            "mean": 123.207771,
             "n_reps": 20,
             "of_reps": 20
           },
@@ -6015,10 +7275,24 @@
             "n_reps": 20,
             "of_reps": 20
           },
+          "fairness.channel.phone.closure_km_median": {
+            "ci_high": 66.198459,
+            "ci_low": 64.811474,
+            "mean": 65.502794,
+            "n_reps": 20,
+            "of_reps": 20
+          },
           "fairness.channel.phone.closure_median": {
             "ci_high": 61.689931,
             "ci_low": 60.616781,
             "mean": 61.176618,
+            "n_reps": 20,
+            "of_reps": 20
+          },
+          "fairness.channel.phone.closure_rmst": {
+            "ci_high": 115.387646,
+            "ci_low": 108.98656,
+            "mean": 112.172985,
             "n_reps": 20,
             "of_reps": 20
           },
@@ -6036,10 +7310,24 @@
             "n_reps": 20,
             "of_reps": 20
           },
+          "fairness.channel.sms.closure_km_median": {
+            "ci_high": 68.029664,
+            "ci_low": 66.916752,
+            "mean": 67.45369,
+            "n_reps": 20,
+            "of_reps": 20
+          },
           "fairness.channel.sms.closure_median": {
             "ci_high": 62.873667,
             "ci_low": 62.389043,
             "mean": 62.644608,
+            "n_reps": 20,
+            "of_reps": 20
+          },
+          "fairness.channel.sms.closure_rmst": {
+            "ci_high": 117.239008,
+            "ci_low": 114.239058,
+            "mean": 115.710198,
             "n_reps": 20,
             "of_reps": 20
           },
@@ -6057,10 +7345,24 @@
             "n_reps": 20,
             "of_reps": 20
           },
+          "fairness.channel.whatsapp.closure_km_median": {
+            "ci_high": 66.709486,
+            "ci_low": 66.052386,
+            "mean": 66.369307,
+            "n_reps": 20,
+            "of_reps": 20
+          },
           "fairness.channel.whatsapp.closure_median": {
             "ci_high": 61.903809,
             "ci_low": 61.088673,
             "mean": 61.501713,
+            "n_reps": 20,
+            "of_reps": 20
+          },
+          "fairness.channel.whatsapp.closure_rmst": {
+            "ci_high": 117.394955,
+            "ci_low": 114.522274,
+            "mean": 115.973736,
             "n_reps": 20,
             "of_reps": 20
           },
@@ -6078,10 +7380,24 @@
             "n_reps": 20,
             "of_reps": 20
           },
+          "fairness.language.ar.closure_km_median": {
+            "ci_high": 68.770941,
+            "ci_low": 67.717994,
+            "mean": 68.266466,
+            "n_reps": 20,
+            "of_reps": 20
+          },
           "fairness.language.ar.closure_median": {
             "ci_high": 63.318381,
             "ci_low": 62.857458,
             "mean": 63.080064,
+            "n_reps": 20,
+            "of_reps": 20
+          },
+          "fairness.language.ar.closure_rmst": {
+            "ci_high": 118.726409,
+            "ci_low": 115.878186,
+            "mean": 117.2947,
             "n_reps": 20,
             "of_reps": 20
           },
@@ -6099,10 +7415,24 @@
             "n_reps": 20,
             "of_reps": 20
           },
+          "fairness.language.closure_km_median_gap_max_days": {
+            "ci_high": 3.31441,
+            "ci_low": 2.253075,
+            "mean": 2.783358,
+            "n_reps": 20,
+            "of_reps": 20
+          },
           "fairness.language.closure_median_gap_max_days": {
             "ci_high": 2.059064,
             "ci_low": 1.122427,
             "mean": 1.574431,
+            "n_reps": 20,
+            "of_reps": 20
+          },
+          "fairness.language.closure_rmst_gap_max_days": {
+            "ci_high": 8.929502,
+            "ci_low": 6.323432,
+            "mean": 7.644986,
             "n_reps": 20,
             "of_reps": 20
           },
@@ -6113,10 +7443,24 @@
             "n_reps": 20,
             "of_reps": 20
           },
+          "fairness.language.en.closure_km_median": {
+            "ci_high": 68.464101,
+            "ci_low": 67.18554,
+            "mean": 67.861356,
+            "n_reps": 20,
+            "of_reps": 20
+          },
           "fairness.language.en.closure_median": {
             "ci_high": 63.224593,
             "ci_low": 62.723848,
             "mean": 63.003677,
+            "n_reps": 20,
+            "of_reps": 20
+          },
+          "fairness.language.en.closure_rmst": {
+            "ci_high": 117.743654,
+            "ci_low": 114.286408,
+            "mean": 115.997934,
             "n_reps": 20,
             "of_reps": 20
           },
@@ -6134,10 +7478,24 @@
             "n_reps": 20,
             "of_reps": 20
           },
+          "fairness.language.other.closure_km_median": {
+            "ci_high": 67.882929,
+            "ci_low": 66.507003,
+            "mean": 67.208697,
+            "n_reps": 20,
+            "of_reps": 20
+          },
           "fairness.language.other.closure_median": {
             "ci_high": 63.132555,
             "ci_low": 61.809364,
             "mean": 62.463256,
+            "n_reps": 20,
+            "of_reps": 20
+          },
+          "fairness.language.other.closure_rmst": {
+            "ci_high": 116.831226,
+            "ci_low": 112.852683,
+            "mean": 114.852675,
             "n_reps": 20,
             "of_reps": 20
           },
@@ -6152,6 +7510,13 @@
             "ci_high": 402.3,
             "ci_low": 390.9975,
             "mean": 396.7,
+            "n_reps": 20,
+            "of_reps": 20
+          },
+          "in_reach_share": {
+            "ci_high": 1.0,
+            "ci_low": 1.0,
+            "mean": 1.0,
             "n_reps": 20,
             "of_reps": 20
           },
@@ -6421,6 +7786,20 @@
             "n_reps": 20,
             "of_reps": 20
           },
+          "silent_loss_rate_in_reach": {
+            "ci_high": 0.0,
+            "ci_low": 0.0,
+            "mean": 0.0,
+            "n_reps": 20,
+            "of_reps": 20
+          },
+          "time_to_closure_km_median": {
+            "ci_high": 68.305533,
+            "ci_low": 67.53124,
+            "mean": 67.925099,
+            "n_reps": 20,
+            "of_reps": 20
+          },
           "time_to_closure_median": {
             "ci_high": 63.076734,
             "ci_low": 62.766765,
@@ -6432,6 +7811,20 @@
             "ci_high": 96.002514,
             "ci_low": 94.995174,
             "mean": 95.458898,
+            "n_reps": 20,
+            "of_reps": 20
+          },
+          "time_to_closure_rmst": {
+            "ci_high": 117.264145,
+            "ci_low": 115.499032,
+            "mean": 116.357343,
+            "n_reps": 20,
+            "of_reps": 20
+          },
+          "time_to_colonoscopy_km_median": {
+            "ci_high": 59.888032,
+            "ci_low": 59.272098,
+            "mean": 59.587506,
             "n_reps": 20,
             "of_reps": 20
           },
@@ -6453,6 +7846,13 @@
             "ci_high": 69.609989,
             "ci_low": 68.946605,
             "mean": 69.288614,
+            "n_reps": 20,
+            "of_reps": 20
+          },
+          "time_to_colonoscopy_rmst": {
+            "ci_high": 110.349147,
+            "ci_low": 108.576655,
+            "mean": 109.515599,
             "n_reps": 20,
             "of_reps": 20
           },
@@ -6530,6 +7930,13 @@
           "n_reps": 20,
           "of_reps": 20
         },
+        "consent_breach_rate_in_reach": {
+          "ci_high": -0.0032,
+          "ci_low": -0.0046,
+          "mean": -0.003825,
+          "n_reps": 20,
+          "of_reps": 20
+        },
         "delay_harm_share": {
           "ci_high": -0.283949,
           "ci_low": -0.294651,
@@ -6537,11 +7944,18 @@
           "n_reps": 20,
           "of_reps": 20
         },
-        "escalation_precision": null,
+        "escalation_acted_on_rate": null,
         "escalations_per_100_cases": {
           "ci_high": 99.9025,
           "ci_low": 98.217313,
           "mean": 99.095,
+          "n_reps": 20,
+          "of_reps": 20
+        },
+        "fairness.channel.closure_km_median_gap_max_days": {
+          "ci_high": -53.338347,
+          "ci_low": -85.482659,
+          "mean": -69.425867,
           "n_reps": 20,
           "of_reps": 20
         },
@@ -6552,6 +7966,13 @@
           "n_reps": 20,
           "of_reps": 20
         },
+        "fairness.channel.closure_rmst_gap_max_days": {
+          "ci_high": 5.397924,
+          "ci_low": -3.337058,
+          "mean": 0.827277,
+          "n_reps": 20,
+          "of_reps": 20
+        },
         "fairness.channel.completion_gap_max": {
           "ci_high": 0.004385,
           "ci_low": -0.023324,
@@ -6559,10 +7980,24 @@
           "n_reps": 20,
           "of_reps": 20
         },
+        "fairness.channel.letter.closure_km_median": {
+          "ci_high": -74.095633,
+          "ci_low": -125.924747,
+          "mean": -98.848336,
+          "n_reps": 17,
+          "of_reps": 20
+        },
         "fairness.channel.letter.closure_median": {
           "ci_high": -1.109937,
           "ci_low": -3.397071,
           "mean": -2.307019,
+          "n_reps": 20,
+          "of_reps": 20
+        },
+        "fairness.channel.letter.closure_rmst": {
+          "ci_high": -84.985189,
+          "ci_low": -94.540219,
+          "mean": -89.615083,
           "n_reps": 20,
           "of_reps": 20
         },
@@ -6580,10 +8015,24 @@
           "n_reps": 20,
           "of_reps": 20
         },
+        "fairness.channel.phone.closure_km_median": {
+          "ci_high": -100.674872,
+          "ci_low": -145.360986,
+          "mean": -121.443515,
+          "n_reps": 17,
+          "of_reps": 20
+        },
         "fairness.channel.phone.closure_median": {
           "ci_high": -8.795921,
           "ci_low": -10.807204,
           "mean": -9.744205,
+          "n_reps": 20,
+          "of_reps": 20
+        },
+        "fairness.channel.phone.closure_rmst": {
+          "ci_high": -99.146988,
+          "ci_low": -106.733022,
+          "mean": -102.94886,
           "n_reps": 20,
           "of_reps": 20
         },
@@ -6601,10 +8050,24 @@
           "n_reps": 20,
           "of_reps": 20
         },
+        "fairness.channel.sms.closure_km_median": {
+          "ci_high": -92.576945,
+          "ci_low": -123.386129,
+          "mean": -108.028581,
+          "n_reps": 19,
+          "of_reps": 20
+        },
         "fairness.channel.sms.closure_median": {
           "ci_high": -6.699131,
           "ci_low": -7.814277,
           "mean": -7.263437,
+          "n_reps": 20,
+          "of_reps": 20
+        },
+        "fairness.channel.sms.closure_rmst": {
+          "ci_high": -95.190136,
+          "ci_low": -99.027696,
+          "mean": -97.104864,
           "n_reps": 20,
           "of_reps": 20
         },
@@ -6622,10 +8085,24 @@
           "n_reps": 20,
           "of_reps": 20
         },
+        "fairness.channel.whatsapp.closure_km_median": {
+          "ci_high": -101.905691,
+          "ci_low": -140.041229,
+          "mean": -119.348384,
+          "n_reps": 18,
+          "of_reps": 20
+        },
         "fairness.channel.whatsapp.closure_median": {
           "ci_high": -7.888794,
           "ci_low": -9.551268,
           "mean": -8.762432,
+          "n_reps": 20,
+          "of_reps": 20
+        },
+        "fairness.channel.whatsapp.closure_rmst": {
+          "ci_high": -95.744343,
+          "ci_low": -100.041698,
+          "mean": -97.97678,
           "n_reps": 20,
           "of_reps": 20
         },
@@ -6643,10 +8120,24 @@
           "n_reps": 20,
           "of_reps": 20
         },
+        "fairness.language.ar.closure_km_median": {
+          "ci_high": -173.821617,
+          "ci_low": -237.683585,
+          "mean": -206.178082,
+          "n_reps": 12,
+          "of_reps": 20
+        },
         "fairness.language.ar.closure_median": {
           "ci_high": -7.250783,
           "ci_low": -8.393051,
           "mean": -7.837278,
+          "n_reps": 20,
+          "of_reps": 20
+        },
+        "fairness.language.ar.closure_rmst": {
+          "ci_high": -104.242035,
+          "ci_low": -108.098629,
+          "mean": -106.239586,
           "n_reps": 20,
           "of_reps": 20
         },
@@ -6664,10 +8155,24 @@
           "n_reps": 20,
           "of_reps": 20
         },
+        "fairness.language.closure_km_median_gap_max_days": {
+          "ci_high": -134.567923,
+          "ci_low": -180.456968,
+          "mean": -157.960397,
+          "n_reps": 16,
+          "of_reps": 20
+        },
         "fairness.language.closure_median_gap_max_days": {
           "ci_high": -1.726501,
           "ci_low": -3.71268,
           "mean": -2.654861,
+          "n_reps": 20,
+          "of_reps": 20
+        },
+        "fairness.language.closure_rmst_gap_max_days": {
+          "ci_high": -17.267062,
+          "ci_low": -23.645341,
+          "mean": -20.477395,
           "n_reps": 20,
           "of_reps": 20
         },
@@ -6678,10 +8183,24 @@
           "n_reps": 20,
           "of_reps": 20
         },
+        "fairness.language.en.closure_km_median": {
+          "ci_high": -40.323232,
+          "ci_low": -46.554275,
+          "mean": -43.367759,
+          "n_reps": 20,
+          "of_reps": 20
+        },
         "fairness.language.en.closure_median": {
           "ci_high": -5.529604,
           "ci_low": -6.614755,
           "mean": -6.053283,
+          "n_reps": 20,
+          "of_reps": 20
+        },
+        "fairness.language.en.closure_rmst": {
+          "ci_high": -78.549153,
+          "ci_low": -82.899836,
+          "mean": -80.822774,
           "n_reps": 20,
           "of_reps": 20
         },
@@ -6699,10 +8218,24 @@
           "n_reps": 20,
           "of_reps": 20
         },
+        "fairness.language.other.closure_km_median": {
+          "ci_high": -135.022614,
+          "ci_low": -172.820448,
+          "mean": -153.898708,
+          "n_reps": 13,
+          "of_reps": 20
+        },
         "fairness.language.other.closure_median": {
           "ci_high": -8.764477,
           "ci_low": -10.613642,
           "mean": -9.675474,
+          "n_reps": 20,
+          "of_reps": 20
+        },
+        "fairness.language.other.closure_rmst": {
+          "ci_high": -103.119978,
+          "ci_low": -108.097627,
+          "mean": -105.485635,
           "n_reps": 20,
           "of_reps": 20
         },
@@ -6714,6 +8247,13 @@
           "of_reps": 20
         },
         "fairness.language.other.n": {
+          "ci_high": 0.0,
+          "ci_low": 0.0,
+          "mean": 0.0,
+          "n_reps": 20,
+          "of_reps": 20
+        },
+        "in_reach_share": {
           "ci_high": 0.0,
           "ci_low": 0.0,
           "mean": 0.0,
@@ -6986,6 +8526,20 @@
           "n_reps": 20,
           "of_reps": 20
         },
+        "silent_loss_rate_in_reach": {
+          "ci_high": -0.439998,
+          "ci_low": -0.451651,
+          "mean": -0.445475,
+          "n_reps": 20,
+          "of_reps": 20
+        },
+        "time_to_closure_km_median": {
+          "ci_high": -104.739506,
+          "ci_low": -138.653958,
+          "mean": -119.637362,
+          "n_reps": 20,
+          "of_reps": 20
+        },
         "time_to_closure_median": {
           "ci_high": -7.09183,
           "ci_low": -7.685589,
@@ -6997,6 +8551,20 @@
           "ci_high": -44.954544,
           "ci_low": -50.859165,
           "mean": -47.779918,
+          "n_reps": 20,
+          "of_reps": 20
+        },
+        "time_to_closure_rmst": {
+          "ci_high": -95.74993,
+          "ci_low": -98.516661,
+          "mean": -97.141938,
+          "n_reps": 20,
+          "of_reps": 20
+        },
+        "time_to_colonoscopy_km_median": {
+          "ci_high": -75.440322,
+          "ci_low": -93.933987,
+          "mean": -84.060069,
           "n_reps": 20,
           "of_reps": 20
         },
@@ -7018,6 +8586,13 @@
           "ci_high": -15.383806,
           "ci_low": -16.995496,
           "mean": -16.166672,
+          "n_reps": 20,
+          "of_reps": 20
+        },
+        "time_to_colonoscopy_rmst": {
+          "ci_high": -92.954276,
+          "ci_low": -95.603501,
+          "mean": -94.279986,
           "n_reps": 20,
           "of_reps": 20
         },

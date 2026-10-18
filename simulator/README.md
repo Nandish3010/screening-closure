@@ -93,7 +93,7 @@ acknowledgements, consent withdrawn after booking. `messy.rate_multiplier: 0` sw
 
 Per arm: time to ownership (median, p90; `n/a` for the baseline, which has no owner by design), time to first contact, time to
 safe closure (median, p90, among closed cases), share open at 30/60/90 days, completion within 90/180/360 days, reopen rate,
-escalation precision (escalations followed by any pathway action within 5 working days / all escalations), automation abstention
+escalation acted-on rate (escalations followed by any pathway action within 5 working days / all escalations; formerly called escalation precision, a name the pilot plan uses for a different, human-judged definition), automation abstention
 rate (`n/a` until the AI cut supplies a hook, see `metrics.AbstentionHook`), lost-to-follow-up and silent-loss rate, share past
 the 270-day delay-harm threshold, consent breaches, fairness by language and channel (completion, time to closure, and the max-gap
 statistic = largest minus smallest group), and per-messy-case handling. Hand-checked arithmetic: `scenario.py` and

@@ -97,7 +97,12 @@ def test_results_have_both_scenarios_and_keep_the_upper_range_keys(small_result)
     assert r["arms"] == up["arms"] and r["difference"] == up["difference"] and r["per_replication"] == up["per_replication"]
     assert r["meta"]["scenarios"] == [UPPER, LITERATURE]
     # same baseline, byte for byte, in both scenarios
-    assert up["arms"]["baseline"] == lit["arms"]["baseline"]
+    # (the in-reach rates of the baseline arm are scored on the cases the programme would reach, which depends on
+    # programme_reach and so differs between scenarios; the baseline process itself, its event logs, does not)
+    def process(arm):
+        return {k: v for k, v in arm.items() if not k.endswith("_in_reach") and k != "in_reach_share"}
+
+    assert process(up["arms"]["baseline"]) == process(lit["arms"]["baseline"])
     assert [p["arms"]["baseline"] for p in up["per_replication"]] == [p["arms"]["baseline"] for p in lit["per_replication"]]
     assert lit["params_hash"] != up["params_hash"]
     assert up["overrides"] == [] and {o["key"] for o in lit["overrides"]} >= {"sms_reminder_effect", "orchestration.programme_reach"}

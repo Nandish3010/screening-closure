@@ -65,7 +65,7 @@ def metrics_of(ctx: Context, result: RunResult, abstention_hook: AbstentionHook 
         result.records,
         cal=ctx.cal,
         ltfu_idle_days=mp.ltfu_idle_days,
-        escalation_window_wd=mp.escalation_precision_window_working_days,
+        escalation_window_wd=mp.escalation_acted_on_window_working_days,
         min_group_size=mp.min_group_size,
         delay_harm_days=mp.delay_harm_threshold_days,
         abstention_hook=abstention_hook,

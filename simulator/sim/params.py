@@ -278,7 +278,7 @@ class ModelParams:
     baseline_conflict_delay_days: float
     # metrics
     ltfu_idle_days: float
-    escalation_precision_window_working_days: int
+    escalation_acted_on_window_working_days: int
     min_group_size: int
 
     @classmethod
@@ -381,7 +381,7 @@ class ModelParams:
             baseline_switch_delay_days=p.float("messy.baseline_switch_delay_days"),
             baseline_conflict_delay_days=p.float("messy.baseline_conflict_delay_days"),
             ltfu_idle_days=p.float("metrics.ltfu_idle_days"),
-            escalation_precision_window_working_days=p.int("metrics.escalation_precision_window_working_days"),
+            escalation_acted_on_window_working_days=p.int("metrics.escalation_precision_window_working_days"),
             min_group_size=p.int("metrics.min_group_size"),
         )
         mp.validate()

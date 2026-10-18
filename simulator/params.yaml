@@ -335,5 +335,5 @@ messy:
 # ---- metric definitions -----------------------------------------------------------------------
 metrics:
   ltfu_idle_days: {value: 30, source: "assumed, no public source", status: assumed}                 # unfinished and no progress this long = lost to follow-up
-  escalation_precision_window_working_days: {value: 5, source: "assumed, no public source", status: assumed}
+  escalation_precision_window_working_days: {value: 5, source: "assumed, no public source", status: assumed, notes: "Window of the escalation acted-on rate (metric escalation_acted_on_rate, formerly called escalation precision). The key keeps its original name so the parameter hash, which the risk model records, does not change."}
   min_group_size: {value: 30, source: "assumed, no public source", status: assumed}                 # smaller fairness groups are reported but excluded from max-gap

@@ -14,21 +14,29 @@ HEADLINE = [
     ("open_30d", "Cases still open at 30 days", "pct"),
     ("open_60d", "Cases still open at 60 days", "pct"),
     ("open_90d", "Cases still open at 90 days", "pct"),
-    ("time_to_closure_median", "Time to safe closure, median (closed cases only)", "days"),
-    ("time_to_closure_p90", "Time to safe closure, p90 (closed cases only)", "days"),
+    ("time_to_closure_median", "Time to safe closure, median (among closed cases only)", "days"),
+    ("time_to_closure_p90", "Time to safe closure, p90 (among closed cases only)", "days"),
+    ("time_to_closure_km_median", "Time to safe closure, Kaplan-Meier median (censoring-aware; n/a = under half closed by end of follow-up)", "days"),
+    ("time_to_closure_rmst", "Time to safe closure, restricted mean (days event-free within follow-up, censoring-aware)", "days"),
     ("closed_share", "Cases closed (with evidence and human sign-off) by end of follow-up", "pct"),
     ("time_to_ownership_median", "Time to named owner, median", "days"),
     ("time_to_ownership_p90", "Time to named owner, p90", "days"),
     ("time_to_first_contact_median", "Time to first patient contact, median", "days"),
     ("time_to_first_contact_p90", "Time to first patient contact, p90", "days"),
+    ("time_to_colonoscopy_median", "Time to colonoscopy, median (among completers only)", "days"),
+    ("time_to_colonoscopy_km_median", "Time to colonoscopy, Kaplan-Meier median (censoring-aware)", "days"),
+    ("time_to_colonoscopy_rmst", "Time to colonoscopy, restricted mean (censoring-aware)", "days"),
     ("reopen_rate", "Reopen rate (reopened / closed)", "pct"),
-    ("escalation_precision", "Escalation precision (acted on within 5 working days)", "pct"),
+    ("escalation_acted_on_rate", "Escalation acted-on rate (within 5 working days)", "pct"),
     ("escalations_per_100_cases", "Escalations per 100 cases", "num"),
     ("automation_abstention_rate", "Automation abstention rate (AI cut supplies this)", "pct"),
     ("lost_to_follow_up_rate", "Lost to follow-up (no colonoscopy, no progress for 30+ days)", "pct"),
-    ("silent_loss_rate", "Lost AND never surfaced to a human", "pct"),
+    ("silent_loss_rate", "Lost AND never surfaced to a human, programme level (all cases)", "pct"),
+    ("silent_loss_rate_in_reach", "Lost AND never surfaced to a human, in reach (cases the programme reached)", "pct"),
     ("delay_harm_share", "No colonoscopy by the delay-harm threshold (270 days)", "pct"),
-    ("consent_breach_rate", "Outreach sent after consent withdrawn", "pct"),
+    ("consent_breach_rate", "Outreach sent after consent withdrawn, programme level (all cases)", "pct"),
+    ("consent_breach_rate_in_reach", "Outreach sent after consent withdrawn, in reach (cases the programme reached)", "pct"),
+    ("in_reach_share", "Cases within the programme's reach (denominator of the in-reach rows)", "pct"),
 ]
 LABELS = {k: (l, kind) for k, l, kind in HEADLINE}
 TAG_LABEL = {
@@ -137,17 +145,38 @@ def summary_paragraph(res: dict, scen: str = UPPER, caveat: bool = True) -> str:
         parts.append(
             f"Among cases that closed, the median time to a signed, evidence-backed closure was "
             f"{mean(o['time_to_closure_median']):.0f} days orchestrated against {mean(b['time_to_closure_median']):.0f} "
-            f"at baseline; the baseline figure only covers the {pct(mean(b['closed_share']))} of cases that closed at all, "
-            f"so read it together with the closure share ({pct(mean(o['closed_share']))} orchestrated)."
+            f"at baseline; that conditional median only covers the {pct(mean(b['closed_share']))} of baseline cases that closed at all "
+            f"({pct(mean(o['closed_share']))} orchestrated), so an arm that closes more slow cases looks slower on it."
         )
+        if mean(o.get("time_to_closure_rmst")) is not None and mean(b.get("time_to_closure_rmst")) is not None:
+            km_o, km_b = mean(o.get("time_to_closure_km_median")), mean(b.get("time_to_closure_km_median"))
+            km_txt = (f"the Kaplan-Meier median is {km_o:.0f} days orchestrated against {km_b:.0f} at baseline and "
+                      if km_o is not None and km_b is not None else
+                      ("the Kaplan-Meier median is reached at " + (f"{km_o:.0f} days orchestrated" if km_o is not None else "no point within follow-up orchestrated")
+                       + " and " + (f"{km_b:.0f} days at baseline" if km_b is not None else "no point within follow-up at baseline") + ", and "))
+            parts.append(
+                f"Counting the cases that never closed as censored at the end of follow-up instead of dropping them, {km_txt}"
+                f"the restricted mean time to closure within {meta['follow_up_days']} days is {mean(o['time_to_closure_rmst']):.0f} against "
+                f"{mean(b['time_to_closure_rmst']):.0f} days."
+            )
     if mean(b.get("silent_loss_rate")) is not None:
-        parts.append(
-            f"{pct(mean(b['silent_loss_rate']))} of baseline cases were lost without anyone being told, against "
-            f"{pct(mean(o['silent_loss_rate']))} in the orchestrated arm, where lost or unreachable cases that receive the "
-            f"orchestrated process are flagged to a human and never closed automatically"
-            + ("." if (mean(o["silent_loss_rate"]) or 0) < 0.005 else
-               f"; the remainder are cases outside the programme's reach, which are handled as today.")
+        so, sb = mean(o["silent_loss_rate"]) or 0.0, mean(b["silent_loss_rate"])
+        si, sbi = mean(o.get("silent_loss_rate_in_reach")), mean(b.get("silent_loss_rate_in_reach"))
+        reach = mean(o.get("in_reach_share"))
+        txt = (
+            f"{pct(sb)} of baseline cases were lost without anyone being told, against {pct(so)} in the orchestrated arm at programme level"
         )
+        if si is not None and sbi is not None and reach is not None and reach < 0.9995:
+            txt += (
+                f"; among the {pct(reach)} of cases the programme reached the orchestrated figure is {pct(si)} against {pct(sbi)} for the same "
+                f"patients at baseline, and the programme-level remainder is cases outside the programme's reach, which are handled as today."
+            )
+        else:
+            txt += (
+                ", where lost or unreachable cases are flagged to a human and never closed automatically"
+                + ("." if so < 0.005 else "; the remainder are cases outside the programme's reach, which are handled as today.")
+            )
+        parts.append(txt)
     counts = sc["parameter_status_counts"]
     n_all = sum(counts.values())
     weak = counts.get("assumed", 0) + counts.get("calibrated", 0)
@@ -244,11 +273,27 @@ def fairness_section(res: dict, scen: str = UPPER) -> str:
             rows.append(row)
         out.append(f"### {title}")
         out.append("")
-        out.append(_table([title, "Baseline completion", "Baseline median days to closure", "Orchestrated completion", "Orchestrated median days to closure"], rows))
+        out.append(_table([title, "Baseline completion", "Baseline median days to closure (among closed cases only)", "Orchestrated completion",
+                           "Orchestrated median days to closure (among closed cases only)"], rows))
+        out.append("")
+        krows = []
+        for g in groups:
+            row = [g]
+            for arm in (BASELINE, ORCHESTRATED):
+                row.append(_cell(_m(res, arm, f"fairness.{dim}.{g}.closure_km_median", scen), "days"))
+                row.append(_cell(_m(res, arm, f"fairness.{dim}.{g}.closure_rmst", scen), "days"))
+            krows.append(row)
+        out.append(f"Censoring-aware closure time by {title.lower()} (cases not closed by the end of follow-up are censored there, not dropped; "
+                   f"`n/a` = fewer than half the group closed).")
+        out.append("")
+        out.append(_table([title, "Baseline Kaplan-Meier median days", "Baseline restricted mean days", "Orchestrated Kaplan-Meier median days",
+                           "Orchestrated restricted mean days"], krows))
         out.append("")
         gap_rows = []
         for label, key, kind in (("Completion, max gap between groups", f"fairness.{dim}.completion_gap_max", "pct"),
-                                 ("Median days to closure, max gap between groups", f"fairness.{dim}.closure_median_gap_max_days", "days")):
+                                 ("Median days to closure (among closed cases only), max gap between groups", f"fairness.{dim}.closure_median_gap_max_days", "days"),
+                                 ("Kaplan-Meier median days to closure, max gap between groups", f"fairness.{dim}.closure_km_median_gap_max_days", "days"),
+                                 ("Restricted mean days to closure, max gap between groups", f"fairness.{dim}.closure_rmst_gap_max_days", "days")):
             gap_rows.append([label, _cell(_m(res, BASELINE, key, scen), kind), _cell(_m(res, ORCHESTRATED, key, scen), kind),
                              _cell(sc["difference"].get(key), kind, signed=True)])
         out.append(_table(["Max-gap statistic (largest minus smallest group)", "Baseline", "Orchestrated", "Difference"], gap_rows))
@@ -321,13 +366,18 @@ HEADLINE_ROWS = [
     (("ratio", "completion_180d"), "Completion ratio vs baseline at 180 days (navigation RR for comparison: 1.27)", "ratio"),
     ("open_90d", "Cases still open at 90 days", "pct"),
     ("closed_share", "Cases closed (evidence and human sign-off) by end of follow-up", "pct"),
-    ("time_to_closure_median", "Time to safe closure, median days (closed cases only)", "days"),
+    ("time_to_closure_median", "Time to safe closure, median days (among closed cases only)", "days"),
+    ("time_to_closure_km_median", "Time to safe closure, Kaplan-Meier median days (censoring-aware)", "days"),
+    ("time_to_closure_rmst", "Time to safe closure, restricted mean days (censoring-aware)", "days"),
     ("time_to_first_contact_median", "Time to first patient contact, median days", "days"),
     ("lost_to_follow_up_rate", "Lost to follow-up (no colonoscopy, no progress for 30+ days)", "pct"),
-    ("silent_loss_rate", "Lost AND never surfaced to a human", "pct"),
+    ("silent_loss_rate", "Lost AND never surfaced to a human: programme level (all cases)", "pct"),
+    ("silent_loss_rate_in_reach", "Lost AND never surfaced to a human: in reach (cases the programme reached)", "pct"),
     ("delay_harm_share", "No colonoscopy by the delay-harm threshold (270 days)", "pct"),
+    ("consent_breach_rate", "Outreach after consent withdrawn: programme level (all cases)", "pct"),
+    ("consent_breach_rate_in_reach", "Outreach after consent withdrawn: in reach (cases the programme reached)", "pct"),
     ("escalations_per_100_cases", "Escalations per 100 cases (cost nothing in the model, see capacity caveat)", "num"),
-    ("escalation_precision", "Escalation precision (acted on within 5 working days)", "pct"),
+    ("escalation_acted_on_rate", "Escalation acted-on rate (within 5 working days)", "pct"),
 ]
 
 
@@ -369,7 +419,7 @@ def headline_paragraph(res: dict) -> str:
     if reach is not None and silent:
         reach_txt = (
             f" To hold the average effect to the published figure the scenario lets the orchestrated process reach only "
-            f"{pct(reach)} of cases, so {pct(silent['mean'])} of cases are still lost without a human being told; that is a device for "
+            f"{pct(reach)} of cases, so {pct(silent['mean'])} of cases are still lost without a human being told (programme level; among the cases it reaches the figure is 0%); that is a device for "
             f"calibrating the average effect, not a prediction of how many cases a real programme would miss."
         )
     return (
@@ -384,6 +434,37 @@ def headline_paragraph(res: dict) -> str:
         f"numbers and the same baseline arm; the baseline was calibrated to published unmanaged completion, and the only orchestrated-arm fit "
         f"is the reach parameter, set so the literature-anchored 180-day ratio equals the navigation risk ratio."
     )
+
+
+def reach_paragraph(res: dict) -> str:
+    """Why the headline table reports silent loss and post-withdrawal outreach twice (ticket B15)."""
+    scen = LITERATURE if _has(res, LITERATURE) else UPPER
+    reach = None
+    if scen == LITERATURE:
+        reach = next((o["value"] for o in _sc(res, LITERATURE)["overrides"] if o["key"] == "orchestration.programme_reach"), None)
+    if reach is None:
+        reach = next((p["value"] for p in res["parameters"] if p["key"] == "orchestration.programme_reach"), 1.0)
+    si = _m(res, ORCHESTRATED, "silent_loss_rate_in_reach", scen)
+    ci = _m(res, ORCHESTRATED, "consent_breach_rate_in_reach", scen)
+    zero = lambda c: c is not None and abs(c["mean"]) < 5e-4  # noqa: E731
+    both_zero = zero(si) and zero(ci)
+    name = "literature-anchored" if scen == LITERATURE else "upper-range"
+    first = (
+        "**Lost and never surfaced, and outreach after consent withdrawn: two denominators each.** The programme-level rows count every case. "
+        "The in-reach rows count only the cases the programme reached (`orchestration.programme_reach`; in the baseline column, the same patients "
+        "under today's process, so the two columns compare like with like). "
+        + ("In the orchestrated arm both in-reach rows are 0% by construction: a lost or unreachable case in reach is flagged to a human and the "
+           "consent ledger blocks outreach after a withdrawal. " if both_zero else
+           "In the orchestrated arm both in-reach rows are at or near 0%, because a lost or unreachable case in reach is flagged to a human and the "
+           "consent ledger blocks outreach after a withdrawal. ")
+    )
+    second = (
+        f"The programme-level figures follow from the `programme_reach` assumption ({reach} in the {name} scenario): cases outside the reach are handled "
+        f"as today and can still be lost silently or contacted after a withdrawal, so those figures are not a measured property of the orchestration."
+        if reach < 1 else
+        "In this scenario `programme_reach` is 1.0, so every case is in reach and the programme-level and in-reach figures coincide."
+    )
+    return first + second
 
 
 def render_markdown(res: dict) -> str:
@@ -424,6 +505,8 @@ def render_markdown(res: dict) -> str:
         headline_paragraph(res),
         "",
         headline_table(res),
+        "",
+        reach_paragraph(res),
         "",
         "Metric definitions (numerator, denominator, clocks, censoring) are in [`metrics.md`](metrics.md).",
         "",
