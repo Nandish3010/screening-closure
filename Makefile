@@ -1,4 +1,4 @@
-.PHONY: test-demo test-e2e-live demo-scenario demo-stage demo-snapshot demo-restore demo-reset demo-kill-scheduler check docs-check tracker-lint test-security test-tools test-load load-check up down logs test test-db test-db-create test-db-reset test-chaos synthea demo-seed demo-seed-clean evaluate simulate evaluate-check sensitivity sensitivity-check reset web-install web-dev web-build web-test web-e2e test-e2e review-packs review-packs-check test-review-packs test-phi-logs rbac-matrix test-offline fresh-clone risk-report risk-check calibrate-fetch calibrate-fit calibrate-check effort effort-check
+.PHONY: test-demo test-e2e-live demo-scenario demo-stage demo-snapshot demo-restore demo-reset demo-kill-scheduler check docs-check tracker-lint test-security test-tools test-load load-check up down logs test test-db test-db-create test-db-reset test-chaos synthea demo-seed demo-seed-clean evaluate simulate evaluate-check sensitivity sensitivity-check reset web-install web-dev web-build web-test web-e2e test-e2e review-packs review-packs-check test-review-packs test-phi-logs rbac-matrix test-offline fresh-clone risk-report risk-check calibrate-fetch calibrate-fit calibrate-check effort effort-check video video-check video-deps
 
 up:
 	docker compose up -d --build
@@ -245,7 +245,7 @@ fresh-clone:
 # Cross-cutting tests in tests/ (scanner, linters, load harness). PYTHONPATH=api makes a git worktree
 # test its own api/ rather than the checkout the venv was installed from.
 test-tools:
-	PYTHONPATH=api $(PY) -m pytest tests tools/demo/tests -q -m "not live"
+	PYTHONPATH=api $(PY) -m pytest tests tools/demo/tests tools/video/tests -q -m "not live"
 
 # Scheduler sweep over 1k / 10k / 100k seeded open cases in a throwaway `closure_load` database on the
 # compose Postgres (:5433); rewrites docs/results/load.md. KEEP_LOAD_DB=1 keeps the database.
@@ -314,3 +314,22 @@ calibrate-fit:
 calibrate-check:
 	PYTHONPATH=$(CURDIR)/api:$(CURDIR) $(PY) -m pytest tools/calibration/tests -q
 	python3 -I tools/calibration/calibrate.py check
+
+# ---- E16: the 3-minute submission video and the backup demo video, produced without a human recording (tools/video/) -----
+# `make video-check` (no stack, no ffmpeg) validates tools/video/storyboard.yaml (every shot has route, actions, caption, narration, duration; the
+# submission targets plus the cards add up to at most 180 s). `make video` does the whole run against the live stack
+# (it runs `make demo-reset` and `make demo-scenario UNTIL=owner_accepted` first, stops and restarts the scheduler for the
+# catch shot, and runs `make demo-reset` again at the end): record (Playwright, needs Node 22.18+), narrate (macOS `say`,
+# ffmpeg), assemble (ffmpeg). Outputs: tools/video/out/submission-3min.mp4 and tools/video/out/backup-demo.mp4 (gitignored).
+# About 10 minutes. See docs/submission/video.md.
+video-check:
+	$(PY) tools/video/storyboard.py --check
+
+# `make video-deps` checks ffmpeg, ffprobe and macOS `say` (and the voice) are installed, with the fix in the message.
+video-deps:
+	$(PY) tools/video/storyboard.py --tools
+
+video: video-check video-deps
+	node tools/video/record.ts
+	$(PY) tools/video/narrate.py
+	tools/video/assemble.sh

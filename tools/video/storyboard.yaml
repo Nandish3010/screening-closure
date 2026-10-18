@@ -1,0 +1,365 @@
+# E16: the shot list for the 3-minute submission video and the backup demo video.
+#
+# Derived from the "Backup video storyboard (3 minutes)" table in docs/submission/demo-script.md (shots 1 to 13, same
+# beats, same captions) and driven against the LIVE stack (http adapter) after `make demo-reset` and
+# `make demo-scenario UNTIL=owner_accepted`. Read by tools/video/storyboard.py (validation, `make video-check`),
+# tools/video/record.ts (Playwright) and tools/video/narrate.py (text to speech).
+#
+# Every shot has: id, title, beat (the live beat of the demo script), route, actions, caption, narration, duration (the
+# target in seconds), and optionally submission: true (in the 3-minute video; every shot is in the backup video) and
+# optional: true (skipped, not failed, when its route is absent or its guard element never shows up).
+#
+# Targets: the script's storyboard adds up to exactly 180 s with no room for a title card and an end card, so the targets
+# below are trimmed by 11 s in total (shots 1, 2 and 7 to 13) to leave 3 s for the title card and 4 s for the end
+# card inside the 180 s cap. The final length of a shot is max(narration length, target); `make video-check` checks the
+# targets, `assemble.sh` checks the real lengths.
+#
+# Actions (one key per step):
+#   goto: /path                      open a route in the app ({case} = the named patient's case, {case2} = the prepared second case)
+#   role: owner|coordinator|supervisor|specialist|clinician|patient    the header's Switch role
+#   click: {name: "Button text"} | {testid: id} | {row: "text in a worklist row"}
+#   select: {label: "Field label", value: "option label or value"} | {testid: id, value: ...}
+#   fill: {label: "Field label", value: "text"}
+#   scroll: {testid: id} | {text: "visible text"} | {heading: "Heading"}      scrolls the element into the middle of the screen
+#   wait_for: {testid|text|heading: ..., contains: "text", absent: true, timeout: ms, reload_every: ms}
+#   hold: seconds                    let the viewer read
+#   caption: "text"                  change the on-screen caption from here on
+#   cut: start | end                 the video between the two markers is removed (dead waiting); the shot keeps its caption
+#   shell: "command"                 run in the repository root (not shown)
+#   terminal: {command, run: true, timeout: s, reuse: key, lines: n}   run a command and show it in a terminal page
+#   card: {kind: stat|text|results|slide, ...}                         a full-screen page rendered by the tool
+#   advance_clock: days              supervisor only: the header's Advance clock (days) control, then the badge changes
+
+meta:
+  width: 1280
+  height: 800
+  voice: Samantha       # macOS `say`; en_US, clear. Daniel (en_GB) also works.
+  rate: 185             # words per minute for `say -r`
+  submission_cap_seconds: 180
+
+cards:
+  title:
+    seconds: 3
+    heading: Screening Closure
+    line: Every actionable screening result has a named owner, a clock, an audit trail, and a clinician-signed closure. Nothing is diagnosed.
+    note: All data synthetic
+  end:
+    seconds: 4
+    heading: Screening Closure
+    line: "Repository: [repository link: to be added at submission]"
+    team: "[Team name]"
+    note: "All data synthetic. Narration is synthetic text-to-speech."
+
+shots:
+  - id: 1
+    title: The problem
+    beat: Problem
+    submission: true
+    route: "card:stat"
+    duration: 8
+    caption: "Abu Dhabi audit: 30.5% of positive screening tests ever reached a colonoscopy (BMC Cancer 2021)"
+    narration: "An Abu Dhabi audit found that only thirty point five percent of positive bowel screening tests ever reached a colonoscopy."
+    actions:
+      - card: {kind: stat, value: "30.5%", text: "of positive screening tests in an Abu Dhabi audit ever had the follow-up colonoscopy", source: "Almansoori et al., BMC Cancer 2021"}
+      - hold: 6
+
+  - id: 2
+    title: What this is
+    beat: What this is
+    submission: true
+    route: /coordinator
+    duration: 9
+    caption: "A named owner, a clock, an audit trail, a clinician-signed closure. Nothing is diagnosed. All data synthetic."
+    narration: "This is an accountability and closure engine. A named owner, a clock, an audit trail and a clinician's signature on every closure. Nothing is diagnosed."
+    actions:
+      - goto: /coordinator
+      - wait_for: {testid: worklist-row, timeout: 20000}
+      - hold: 6
+
+  - id: 3
+    title: Owned case, kill the scheduler
+    beat: "1, 2. Owned case, kill the scheduler"
+    submission: true
+    route: "/coordinator/{case}"
+    duration: 10
+    caption: "A positive FIT has a named owner. We stop the scheduler on purpose."
+    narration: "A positive screening result has a named owner, Doctor Haddad. Now we stop the scheduler on purpose, to see whether anyone notices."
+    actions:
+      - goto: "/coordinator/{case}"
+      - wait_for: {heading: "Owner accepted", timeout: 20000}
+      - hold: 2
+      - scroll: {heading: "Timeline"}
+      - hold: 2
+      - terminal: {command: "docker compose stop scheduler", run: true, timeout: 60}
+      - hold: 2
+
+  - id: 4
+    title: Patient contacted, clock jump
+    beat: "3, 4. Patient contacted, clock jump"
+    submission: true
+    route: "/coordinator/{case}"
+    duration: 10
+    caption: "No answer from the patient. Eleven working days pass. Nothing is flagged: this is silence."
+    narration: "The owner phones the patient, who does not answer. Eleven working days pass. Nothing is flagged, because the clock that flags it is dead."
+    actions:
+      - goto: "/coordinator/{case}"
+      - role: owner
+      - wait_for: {testid: contact-patient, timeout: 20000}
+      - click: {testid: contact-patient}
+      - wait_for: {testid: flash, contains: "Patient contact recorded", timeout: 20000}
+      - hold: 1
+      - role: supervisor
+      - wait_for: {testid: clock-control, timeout: 20000}
+      - advance_clock: 15
+      - hold: 1
+      - scroll: {testid: sla-clock}
+      - hold: 3
+
+  - id: 5
+    title: Watchdog catches the dead scheduler
+    beat: "5, 6. Watchdog"
+    submission: true
+    route: "terminal, /dashboard, /coordinator/{case}"
+    duration: 15
+    caption: "The watchdog caught the dead scheduler. Restarted: nothing lost, nothing skipped."
+    narration: "While the watchdog counts, a property test throws two thousand random event sequences at the engine. Then the banner: the scheduler is down. Restart it, and the missed overdue flag and both escalations appear, once each, in order."
+    actions:
+      # The alert is due 60 to 80 s after the stop in shot 3; the test fills part of the wait.
+      - terminal: {command: ".venv/bin/pytest -q \"api/tests/test_state_machine.py::test_never_closed_without_evidence_and_human_signoff\"", run: true, timeout: 180, reuse: property-test, lines: 14}
+      - hold: 3
+      - goto: /dashboard
+      - cut: start
+      - wait_for: {testid: scheduler-banner, timeout: 150000}
+      - cut: end
+      - hold: 3
+      - shell: "docker compose start scheduler"
+      - cut: start
+      - wait_for: {testid: scheduler-banner, absent: true, timeout: 120000}
+      - cut: end
+      - wait_for: {testid: scheduler-recovered, timeout: 20000}
+      - hold: 2
+      - goto: "/coordinator/{case}"
+      - cut: start
+      - wait_for: {testid: escalation-level, contains: "Level", timeout: 90000, reload_every: 5000}
+      - cut: end
+      - scroll: {testid: escalation-level}
+      - hold: 3
+
+  - id: 6
+    title: Escalation accepted
+    beat: 7. Escalation accepted
+    submission: true
+    route: "/coordinator/{case}"
+    duration: 5
+    caption: "Every escalation needs a human to accept it"
+    narration: "Every escalation needs a human to accept it."
+    actions:
+      - goto: "/coordinator/{case}"
+      - role: supervisor
+      - wait_for: {testid: pending-escalation, timeout: 20000}
+      - scroll: {testid: pending-escalation}
+      - hold: 1
+      - click: {testid: accept-escalation}
+      - wait_for: {testid: flash, contains: "Escalation accepted", timeout: 20000}
+      - hold: 2
+
+  - id: 7
+    title: Arabic draft and the patient page
+    beat: "8, 9. Arabic draft, patient PWA"
+    submission: true
+    route: "/coordinator/{case}, /patient/{case}"
+    duration: 14
+    caption: "The model only drafts. The owner approves. The patient understands, in Arabic."
+    narration: "The model drafts a message in Arabic and never sees the patient's name. Only the owner can approve it. Then the patient opens it, in Arabic, and taps: I understand."
+    actions:
+      - goto: "/coordinator/{case}"
+      - role: owner
+      - scroll: {testid: drafts-panel}
+      - select: {label: "Language", value: ar}
+      - click: {testid: request-draft}
+      - wait_for: {text: "AI draft", timeout: 60000}
+      - hold: 2
+      - click: {name: "Approve draft"}
+      - wait_for: {text: "Sent", timeout: 30000}
+      - hold: 2
+      - role: patient
+      - wait_for: {testid: patient-root, timeout: 20000}
+      - hold: 2
+      - click: {name: "I understand"}
+      - wait_for: {testid: ack-done, timeout: 20000}
+      - hold: 2
+
+  - id: 8
+    title: Decline, bounce, re-route
+    beat: "10, 11, 12. Decline, bounce, re-route"
+    submission: true
+    route: "/coordinator/{case}"
+    duration: 19
+    caption: "Declined with a reason. Ignored: bounced after 3 working days. Ownership never left primary care."
+    narration: "A specialist declines, with a reason from a fixed list. The next provider never answers, so after three working days the scheduler bounces the request back. The coordinator re-routes it in one click, and the new owner must contact the patient again."
+    actions:
+      - goto: "/coordinator/{case}"
+      - role: owner
+      - scroll: {heading: "Hand off to provider"}
+      - select: {testid: handoff-provider, value: "Corniche Gastro Unit"}
+      - click: {testid: hand-off}
+      - wait_for: {testid: handoff-pending, timeout: 20000}
+      - role: specialist
+      - wait_for: {testid: reject-handoff, timeout: 20000}
+      - scroll: {testid: reject-handoff}
+      - select: {label: "Reason for declining", value: "No capacity (no slot in time)"}
+      - click: {testid: reject-handoff}
+      - wait_for: {testid: flash, contains: "Hand-off declined", timeout: 20000}
+      - hold: 1
+      - role: owner
+      - scroll: {heading: "Hand off to provider"}
+      - select: {testid: handoff-provider, value: "Al Noor Endoscopy Centre"}
+      - click: {testid: hand-off}
+      - wait_for: {testid: handoff-pending, timeout: 20000}
+      - role: supervisor
+      - advance_clock: 5
+      - cut: start
+      - wait_for: {testid: handoff-bounced, timeout: 90000, reload_every: 5000}
+      - cut: end
+      - hold: 2
+      - caption: "A re-routed referral goes back through contact and acknowledgement"
+      - role: coordinator
+      - scroll: {testid: reassign-panel}
+      - click: {testid: reassign}
+      - wait_for: {testid: flash, contains: "re-routed", timeout: 20000}
+      - hold: 3
+
+  - id: 9
+    title: The prepared second case
+    beat: "13. A prepared second case"
+    submission: true
+    route: /coordinator
+    duration: 9
+    caption: "Colonoscopy done and recorded as a FHIR Procedure and DiagnosticReport"
+    narration: "A second case, prepared earlier, already has its colonoscopy, recorded as a FHIR procedure and diagnostic report."
+    actions:
+      - goto: /coordinator
+      - role: specialist
+      - wait_for: {testid: worklist-row, timeout: 20000}
+      - hold: 2
+      - click: {row: "Confirmatory completed"}
+      - wait_for: {heading: "Confirmatory completed", timeout: 20000}
+      - hold: 3
+
+  - id: 10
+    title: Bad reference refused, then closed
+    beat: "13. Bad reference refused, then closed"
+    submission: true
+    route: "/coordinator/{case2}"
+    duration: 19
+    caption: "A reference that does not exist is refused. With the real Procedure and the clinician's own signature: closed."
+    narration: "Closure needs evidence that exists. A reference that does not exist is refused. With the real procedure and the clinician's own signature, the case closes, and the timeline says so."
+    actions:
+      - goto: "/coordinator/{case2}"
+      - role: specialist
+      - scroll: {text: "Clinician sign-off and closure"}
+      - fill: {label: "Evidence reference", value: "Procedure/colonoscopy-0001"}
+      - click: {testid: signoff}
+      - wait_for: {text: "refused", timeout: 20000}
+      - hold: 3
+      # The refused close left the page showing the state before the review the engine did record: reload it (the
+      # review is already on the case) so the second sign-off posts only the close.
+      - goto: "/coordinator/{case2}"
+      - scroll: {text: "Clinician sign-off and closure"}
+      - click: {testid: record-colonoscopy}
+      - hold: 2
+      - click: {testid: signoff}
+      - wait_for: {heading: "Closed", timeout: 30000}
+      - scroll: {testid: timeline}
+      - wait_for: {text: "Case closed", timeout: 10000}
+      - hold: 3
+
+  - id: 11
+    title: Proof
+    beat: "13. Proof"
+    submission: true
+    route: "terminal, /coordinator/{case2}"
+    duration: 14
+    caption: "No closure without evidence and a clinician's signature: tested on 2,000 random sequences every run. Reopening needs a reason."
+    narration: "No closure without evidence and a clinician's signature, tested on two thousand random sequences every run. Only a clinician can reopen a case, and only with a reason."
+    actions:
+      - goto: "/coordinator/{case2}"
+      - wait_for: {testid: timeline, timeout: 20000}
+      - scroll: {testid: timeline}
+      - hold: 2
+      - terminal: {command: ".venv/bin/pytest -q \"api/tests/test_state_machine.py::test_never_closed_without_evidence_and_human_signoff\"", run: false, reuse: property-test, lines: 14}
+      - hold: 3
+      - goto: "/coordinator/{case2}"
+      - scroll: {testid: reopen-panel}
+      - hold: 4
+
+  - id: 12
+    title: Numbers
+    beat: Numbers
+    submission: true
+    route: "card:results"
+    duration: 28
+    caption: "Simulation on synthetic data, literature-anchored scenario: colonoscopy within 180 days 52% to 66%; lost without anyone told 44.5% at baseline, 0% for cases the programme reaches and 20% programme-level under a 0.55 reach assumption; open at 90 days 62% to 46%. Before capacity limits. Rerun: make evaluate"
+    narration: "These figures come from a simulation on synthetic data, the literature-anchored scenario, before capacity limits. Colonoscopy within one hundred eighty days rises from fifty-two to sixty-six percent. Cases lost without anyone told: forty-four point five percent at baseline, zero for cases the programme reaches, and twenty percent programme-wide under a point five five reach assumption. Still open at ninety days: sixty-two down to forty-six percent. Rerun it with make evaluate."
+    actions:
+      - card:
+          kind: results
+          source: docs/results/results.md
+          columns: ["Baseline", "Orchestrated, literature anchored"]
+          rows:
+            - "Colonoscopy completed within 180 days"
+            - "Cases still open at 90 days"
+            - "Lost AND never surfaced to a human: programme level"
+            - "Lost AND never surfaced to a human: in reach"
+      - hold: 22
+
+  - id: 13
+    title: The ask
+    beat: Ask
+    submission: true
+    route: "card:slide"
+    duration: 9
+    caption: "Pilot ask: one programme, two providers, 90 days, shadow mode first. Cases closed without evidence: must stay zero."
+    narration: "The pilot ask: one programme, two providers, ninety days, shadow mode first. Cases closed without evidence must stay at zero."
+    actions:
+      - card:
+          kind: slide
+          heading: "Pilot ask"
+          bullets:
+            - "One programme: colorectal screening"
+            - "Two providers"
+            - "Ninety days, shadow mode first: 30 days watching, nothing sent"
+            - "Cases closed without evidence: must stay at zero. If it moves, we stop"
+      - hold: 7
+
+  # ---- Reveal shots: the pages exist on branches that merge later. Skipped, not failed, if absent. -----------------
+  - id: 14
+    title: Reveal, the agency page
+    beat: Agency layer (A22)
+    optional: true
+    submission: false
+    route: /agency
+    requires: {route: /agency, testid: agency-org}
+    duration: 10
+    caption: "Agents do the labour, never the authority: every decision still needs a human."
+    narration: "Behind the worklist, a supervisor, five department heads and fourteen executioners do the labour, never the authority. Every decision still needs a human."
+    actions:
+      - goto: /agency
+      - wait_for: {testid: agency-org, timeout: 8000}
+      - hold: 8
+
+  - id: 15
+    title: Reveal, the effort counter
+    beat: Effort counter (A21)
+    optional: true
+    submission: false
+    route: "/coordinator/{case2}"
+    requires: {route: "/coordinator/{case2}", testid: effort-counter}
+    duration: 10
+    caption: "Human actions against automated actions on every case. Minutes saved are assumed, not measured."
+    narration: "Every case shows its human actions against its automated actions, with the minutes saved. The minutes are assumed, not measured."
+    actions:
+      - goto: "/coordinator/{case2}"
+      - wait_for: {testid: effort-counter, timeout: 8000}
+      - scroll: {testid: effort-counter}
+      - hold: 8
