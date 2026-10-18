@@ -69,7 +69,10 @@ class AttemptCount:
 
 
 class DraftStore(Protocol):
-    def add(self, draft: DraftRecord, prompt: PromptRecord) -> None: ...
+    def add(self, draft: DraftRecord, prompt: PromptRecord, cur=None) -> None:
+        """Insert the draft and its prompt. `cur`: the caller's Postgres cursor, so the rows commit (or
+        roll back) with the `message_drafted` event written in the same transaction (SEC-2)."""
+        ...
 
     def get(self, draft_id: UUID) -> DraftRecord | None: ...
 
@@ -98,7 +101,7 @@ class InMemoryDraftStore:
         self._drafts: dict[UUID, DraftRecord] = {}
         self._prompts: dict[str, PromptRecord] = {}
 
-    def add(self, draft: DraftRecord, prompt: PromptRecord) -> None:
+    def add(self, draft: DraftRecord, prompt: PromptRecord, cur=None) -> None:
         with self._lock:
             if draft.draft_id in self._drafts:
                 raise ValueError(f"draft {draft.draft_id} already exists")
@@ -153,20 +156,26 @@ class PostgresDraftStore:
     def __init__(self, pool) -> None:
         self.pool = pool
 
-    def add(self, draft: DraftRecord, prompt: PromptRecord) -> None:
-        with self.pool.connection() as conn, conn.transaction():
-            conn.execute(
+    def add(self, draft: DraftRecord, prompt: PromptRecord, cur=None) -> None:
+        def write(execute) -> None:
+            execute(
                 "INSERT INTO prompts (prompt_hash, system_prompt, prompt_text) VALUES (%s, %s, %s)"
                 " ON CONFLICT (prompt_hash) DO NOTHING",
                 (prompt.prompt_hash, prompt.system_prompt, prompt.prompt_text),
             )
-            conn.execute(
+            execute(
                 f"INSERT INTO drafts ({_COLS}) VALUES ({', '.join(['%s'] * 16)})",
                 (draft.draft_id, draft.case_id, draft.purpose, draft.channel, draft.language, draft.text,
                  draft.provider, draft.model_id, draft.fallback_used, draft.abstention_reason,
                  draft.abstained_at, draft.prompt_hash, draft.created_by, draft.created_at,
                  draft.approved_at, draft.approved_by),
             )
+
+        if cur is not None:  # the caller's transaction (the event store's append)
+            write(cur.execute)
+            return
+        with self.pool.connection() as conn, conn.transaction():
+            write(conn.execute)
 
     def get(self, draft_id: UUID) -> DraftRecord | None:
         with self.pool.connection() as conn:

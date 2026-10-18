@@ -312,12 +312,37 @@ def create_draft(
             "language": req.language,
         },
     )
+    abstained = result.abstention_reason
+    record = DraftRecord(
+        draft_id=draft_id,
+        case_id=case_id,
+        purpose=req.purpose,
+        channel=req.channel,
+        language=req.language,
+        text=result.text,
+        provider=result.provider,
+        model_id=result.model_id,
+        fallback_used=result.fallback_used,
+        abstention_reason=abstained,
+        abstained_at=now if abstained else None,
+        prompt_hash=digest,
+        created_by=identity.actor,
+        created_at=now,
+    )
+    prompt = PromptRecord(digest, SYSTEM_PROMPT, build_prompt(req))
+    drafts_db = draft_store()
     try:
         # The strict A14 schema and docs/governance/ai-boundary.md: the log holds ids and hashes, never the text.
         payloads.validate(event.type, event.payload)
-        # SEC-2: owner scope is re-checked under the case lock, on the replayed model (build_request's
-        # check was made on an earlier read; the case may have changed hands since).
-        cases.store.append(event, cases.pathway, guard=policy.owner_guard(identity, "create_draft"))
+        # SEC-2: the event and the draft row are ONE transaction (the `within` hook): a failure between them
+        # leaves neither, never a `message_drafted` for a draft that does not exist. Owner scope is re-checked
+        # under the case lock, on the replayed model (build_request's check was made on an earlier read; the
+        # case may have changed hands since).
+        cases.store.append(
+            event, cases.pathway,
+            within=lambda cur: drafts_db.add(record, prompt, cur=cur),
+            guard=policy.owner_guard(identity, "create_draft"),
+        )
     except payloads.PayloadSchemaError as exc:  # a provider name outside the allowed shape; never a 500
         log.error("message_drafted payload refused: %s", exc)
         raise HTTPException(503, "drafting provider is misconfigured") from None
@@ -328,26 +353,6 @@ def create_draft(
     except EventIdConflict:  # cannot happen with a fresh uuid4; do not leak a 500 if it ever does
         raise HTTPException(409, "event id conflict") from None
 
-    abstained = result.abstention_reason
-    draft_store().add(
-        DraftRecord(
-            draft_id=draft_id,
-            case_id=case_id,
-            purpose=req.purpose,
-            channel=req.channel,
-            language=req.language,
-            text=result.text,
-            provider=result.provider,
-            model_id=result.model_id,
-            fallback_used=result.fallback_used,
-            abstention_reason=abstained,
-            abstained_at=now if abstained else None,
-            prompt_hash=digest,
-            created_by=identity.actor,
-            created_at=now,
-        ),
-        PromptRecord(digest, SYSTEM_PROMPT, build_prompt(req)),
-    )
     return {
         "draft_id": str(draft_id),
         "text": result.text,
