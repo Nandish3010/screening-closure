@@ -63,7 +63,7 @@ def _synthetic(n, seed, w_days=1.0, w_consent=2.0, w_letter=-0.5, bias=-0.3):
         consent = rng.random() < 0.1
         channel = rng.choice(F.CHANNELS)
         f = F.CaseFeatures(stage="patient_contacted", days_since_result=days, consent_withdrawn=consent,
-                           channel=channel, language="en", age_band="50-59", contact_valid=True)
+                           channel=channel, age_band="50-59", contact_valid=True)
         z = bias + w_days * (days - 45) / 26 + w_consent * consent + w_letter * (channel == "letter")
         rows.append((f, 1 if rng.random() < sigmoid(z) else 0))
     return rows
@@ -119,22 +119,49 @@ def _model():
 
 def test_an_unknown_value_is_imputed_at_the_mean_and_contributes_nothing():
     m = _model()
-    full = F.CaseFeatures(stage="patient_contacted", days_since_result=30.0, language="en", channel="sms",
+    full = F.CaseFeatures(stage="patient_contacted", days_since_result=30.0, channel="sms",
                           age_band="50-59", contact_valid=True)
     blank = F.CaseFeatures(stage="patient_contacted", days_since_result=30.0)
-    assert m.contributions(blank)["language"] == pytest.approx(0.0, abs=1e-12)
+    assert m.contributions(blank)["channel"] == pytest.approx(0.0, abs=1e-12)
     assert m.contributions(blank)["age_band"] == pytest.approx(0.0, abs=1e-12)
-    odd = F.CaseFeatures(stage="patient_contacted", days_since_result=30.0, language="fr")  # a level never seen
-    assert m.contributions(odd)["language"] == pytest.approx(0.0, abs=1e-12)
+    odd = F.CaseFeatures(stage="patient_contacted", days_since_result=30.0, channel="fax")  # a level never seen
+    assert m.contributions(odd)["channel"] == pytest.approx(0.0, abs=1e-12)
     assert 0.0 < m.predict(full) < 1.0 and 0.0 < m.predict(blank) < 1.0
 
 
 def test_contributions_sum_to_the_logit_relative_to_the_mean_case():
     m = _model()
     f = F.CaseFeatures(stage="acknowledged", days_since_result=70.0, prior_escalations=2, consent_withdrawn=True,
-                       language="ar", channel="letter", age_band="60-69", contact_valid=False)
+                       channel="letter", age_band="60-69", contact_valid=False)
     mean_logit = m.intercept + sum(c.coef * c.mean_enc for c in m.columns)
     assert sum(m.contributions(f).values()) == pytest.approx(m.logit_of(m.encode(f)) - mean_logit)
+
+
+def test_group_metrics_can_group_by_an_audit_label_the_model_never_sees_and_flags_a_gap():
+    rows = _synthetic(900, 8)
+    raw, _ = train.fit(rows)
+    m = Model(raw)
+    audit = ["ar" if i % 3 else "en" for i in range(len(rows))]          # a label with no connection to the features
+    groups = train.group_metrics(m, rows, 0.4, "language", ("ar", "en", "other"), audit)
+    assert [g["group"] for g in groups] == ["ar", "en", "other"] and groups[-1]["n"] == 0 and groups[-1]["gap"] is None
+    assert groups[0]["n"] + groups[1]["n"] == len(rows)
+    for g in groups[:2]:
+        assert g["gap"] == pytest.approx(g["mean_predicted"] - g["prevalence"], abs=1e-7)
+        assert g["gap_flag"] == (abs(g["gap"]) > train.GAP_TOLERANCE) and g["gap_margin_95"] > 0
+    # a model that under-predicts one group by construction is flagged, the other is not
+    lo = [(f, 1) for f, _y in rows[:200]]
+    flagged = train.group_metrics(m, lo + rows[200:400], 0.4, "language", ("x", "y"), ["x"] * 200 + ["y"] * 200)
+    assert flagged[0]["gap_flag"] is True and flagged[0]["gap"] < -train.GAP_TOLERANCE
+    with pytest.raises(ValueError):
+        train.group_metrics(m, rows, 0.4, "language", ("ar",), ["ar"])
+
+
+def test_the_model_refuses_a_language_column():
+    """D12: language must not be a model input, whatever model.json says."""
+    raw, _ = train.fit(_synthetic(300, 9))
+    raw["columns"] = [{**raw["columns"][0], "feature": "language", "level": "ar"}] + raw["columns"]
+    with pytest.raises(ValueError, match="excluded feature"):
+        Model(raw)
 
 
 def test_the_model_refuses_columns_that_do_not_match_the_feature_spec():

@@ -41,8 +41,29 @@ def test_the_card_has_every_required_section():
 def test_the_features_table_lists_every_feature_the_model_uses():
     features = section("4. Features")
     for name in ("stage", "days_since_result", "prior_escalations", "prior_bounces", "consent_withdrawn",
-                 "provider_changed", "contact_valid", "language", "channel", "age_band"):
+                 "provider_changed", "contact_valid", "channel", "age_band"):
         assert f"`{name}`" in features, name
+    # language is NOT a model feature: it appears only under the excluded features, and no row of the features table is for it
+    table = features.split("### Excluded features")[0]
+    assert not [line for line in table.splitlines() if line.startswith("| `language`")]
+    assert not re.search(r"^\| language=", report.card_blocks(RISK)["coefficients"], re.M)
+
+
+def test_d12_the_card_states_the_exclusion_the_retraining_policy_and_what_validation_needs():
+    features, limits = section("4. Features"), section("8. Limits and retraining")
+    excluded = features.split("### Excluded features")[1]
+    assert "`language`" in excluded and "proxy for nationality" in excluded
+    assert "audit label" in excluded and "null feature" in excluded
+    use = section("1. Intended use")
+    assert "worklist" in use and "synthetic" in use and "demonstration of the pattern" in use
+    policy = limits.split("### Retraining policy")[1].split("### What a validated model would need")[0]
+    for phrase in ("never retrained on production data without the approval of the Department of Health",
+                   "consented", "de-identified", "shadow mode", "language"):
+        assert phrase in policy, phrase
+    needs = limits.split("### What a validated model would need")[1]
+    for phrase in ("Approved real data", "validation", "Subgroup", "Clinical safety", "None of these exists today"):
+        assert phrase in needs, phrase
+    assert "0.02" in section("6. Fairness check by language and channel")
 
 
 def test_the_generated_blocks_in_the_card_are_the_ones_the_committed_results_give():
@@ -61,10 +82,12 @@ def test_the_card_reports_the_tolerance_verdict_honestly():
 
 def test_the_fairness_table_covers_language_and_channel_with_ece_and_auc():
     fairness = report.card_blocks(RISK)["fairness"]
-    for group in ("| Language | ar |", "| Language | en |", "| Language | other |", "| Preferred channel | sms |",
+    for group in ("| Language (audit only, not an input) | ar |", "| Language (audit only, not an input) | en |",
+                  "| Language (audit only, not an input) | other |", "| Preferred channel | sms |",
                   "| Preferred channel | whatsapp |", "| Preferred channel | phone |", "| Preferred channel | letter |"):
         assert group in fairness, group
-    assert "AUC" in fairness and "ECE" in fairness
+    assert "AUC" in fairness and "ECE" in fairness and "Mean predicted" in fairness and "Observed rate" in fairness
+    assert "language: no group flagged" in fairness or "language: FLAGGED" in fairness
     for feature in ("language", "channel"):
         for g in RISK["groups"][feature]:
             assert g["n"] > 0 and g["auc"] is not None and g["ece"] is not None

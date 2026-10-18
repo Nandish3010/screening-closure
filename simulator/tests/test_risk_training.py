@@ -60,7 +60,9 @@ def test_the_label_is_no_colonoscopy_by_day_180_and_features_see_only_the_past(s
             s.prior_escalations, s.prior_bounces, s.consent_withdrawn, s.provider_changed)
         assert f.days_since_result == F.cap_days(row.snapshot_day)
         assert f.stage in F.STAGES
-        assert (f.language, f.channel, f.contact_valid) == (case.p.language, case.p.channel, case.p.contact_valid)
+        assert (f.channel, f.contact_valid) == (case.p.channel, case.p.contact_valid)
+        assert row.language == case.p.language  # kept only as the audit label of the fairness check (D12)
+        assert not hasattr(f, "language")
         assert 0 <= row.snapshot_day <= X.SNAPSHOT_MAX_DAYS
 
 
@@ -88,6 +90,32 @@ def test_the_age_band_is_a_null_feature_by_construction(small_run):
     assert set(by_band) == set(F.AGE_BANDS) and max(rates) - min(rates) < 0.06
 
 
+def test_d12_language_is_not_an_input_and_cannot_change_the_fit(scenario, small_run):
+    """The fitted model has no language column, and relabelling every patient's language (the audit label) leaves the
+    coefficients and the held-out metrics untouched; only the per-language audit rows move."""
+    assert not [c for c in small_run["model_file"]["columns"] if c["feature"] == "language"]
+    assert small_run["model_file"]["excluded_features"].keys() == {"language"}
+    assert small_run["risk"]["meta"]["excluded_features"] == ["language"]
+    rows = X.build_rows(scenario, 800, X.DEFAULT_SEED)
+    assert {r.language for r in rows} == set(F.LANGUAGES)
+    scrambled = [type(r)(**{**{k: getattr(r, k) for k in r.__slots__}, "language": F.LANGUAGES[i % 3]}) for i, r in enumerate(rows)]
+    fit = lambda rs: train.fit([(r.features, r.label) for r in rs if r.split == "train"], l2=X.L2)[0]  # noqa: E731
+    assert train.canonical_json(fit(rows)) == train.canonical_json(fit(scrambled))
+
+
+def test_the_language_audit_reports_auc_ece_and_the_predicted_against_observed_gap(small_run):
+    risk = small_run["risk"]
+    tol = risk["calibration_gap"]["tolerance"]
+    assert tol == train.GAP_TOLERANCE == 0.02
+    langs = risk["groups"]["language"]
+    assert [g["group"] for g in langs] == list(F.LANGUAGES) and sum(g["n"] for g in langs) == risk["heldout"]["n"]
+    for g in langs:
+        assert g["auc"] is not None and g["ece"] is not None
+        assert g["gap"] == pytest.approx(g["mean_predicted"] - g["prevalence"], abs=1e-6)
+        assert g["gap_flag"] == (abs(g["gap"]) > tol)
+    assert risk["calibration_gap"]["language"]["flagged"] == [g["group"] for g in langs if g["gap_flag"]]
+
+
 def test_the_fit_is_better_than_the_base_rate_even_on_a_small_cohort(small_run):
     h = small_run["risk"]["heldout"]
     assert h["auc"] > 0.75 and h["brier"] < h["brier_base_rate"]
@@ -107,6 +135,7 @@ def test_the_committed_model_is_consistent_with_the_spec_and_the_parameters(scen
         assert t[key] not in (None, "")
     assert t["seed"] == X.DEFAULT_SEED and t["n_cases"] == X.DEFAULT_CASES and t["scenario"] == "literature_anchored"
     assert raw["synthetic_data"] is True and "worklist ordering only" in raw["intended_use"]
+    assert "language" in raw["excluded_features"] and not [c for c in raw["columns"] if c["feature"] == "language"]
     # drift guard: if the simulator parameters change, the score must be retrained (make risk-report)
     assert t["params_hash"] == scenario.params.hash(), (
         "simulator parameters changed since the risk model was trained: "
@@ -127,6 +156,10 @@ def test_t_d9_calibration_is_within_tolerance_and_beats_the_base_rate_on_held_ou
     for feature, n in (("language", 3), ("channel", 4), ("age_band", 4)):
         assert len(risk["groups"][feature]) == n
         assert sum(g["n"] for g in risk["groups"][feature]) == h["n"]
+    # D12: the score does not encode language indirectly: no language group is flagged (mean predicted within 0.02 of observed)
+    assert risk["calibration_gap"]["language"]["flagged"] == [], risk["calibration_gap"]["language"]
+    for g in risk["groups"]["language"]:
+        assert abs(g["gap"]) <= risk["calibration_gap"]["tolerance"] and g["auc"] > 0.8
 
 
 @pytest.mark.slow

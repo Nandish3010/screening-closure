@@ -4,9 +4,11 @@ Loss-to-follow-up risk score for the coordinator worklist (tickets D8, D9, D10).
 
 **Status: a demonstration of the pattern, not a validated model.** It is trained on synthetic data produced by our own behaviour simulator, so it has learned the simulator's assumptions and nothing about real patients. Do not quote its numbers as evidence of clinical or operational performance.
 
+**Language is not an input (D12).** The score does not read the patient's language, which is a proxy for nationality and must not rank patients (section 4, "Excluded features"). It is reported only as an outcome group in the fairness check (section 6). The model is never retrained on production data without Department of Health approval (section 8, "Retraining policy").
+
 ## 1. Intended use
 
-One use: **ordering the coordinator's worklist**. `GET /cases` carries `risk_score`, a number between 0 and 1: the modelled probability that the case ends with no colonoscopy within 180 days of the result. The worklist shows cases past their deadline first (SLA breach), and uses the score to order cases within that. `GET /cases/{id}` carries `risk` with the same score and the three features that moved it most, so a coordinator can see why a case ranks where it does.
+One use: **ordering the coordinator's worklist**, and nothing else. It is a demonstration of the pattern (a transparent, calibrated, bounded risk score with a card, a boundary test and a reproducible training run), trained on synthetic data only. `GET /cases` carries `risk_score`, a number between 0 and 1: the modelled probability that the case ends with no colonoscopy within 180 days of the result. The worklist shows cases past their deadline first (SLA breach), and uses the score to order cases within that. `GET /cases/{id}` carries `risk` with the same score and the three features that moved it most, so a coordinator can see why a case ranks where it does.
 
 The score is read by staff roles only. A patient's worklist rows and case page carry `null`.
 
@@ -48,12 +50,20 @@ All are known while the case is open and before a colonoscopy has happened. The 
 | `consent_withdrawn` | The patient's latest consent update withdraws consent | `consent_updated` events. |
 | `provider_changed` | The case was transferred to another provider | A second `handoff_accepted`, or a `reassign`. |
 | `contact_valid` | No known contact problem | The `contact_valid` flag on the case at creation. |
-| `language`, `channel` | The patient's language (ar, en, other) and preferred channel | No registry feeds these yet: taken from the log when it shows them (`patient_acknowledge.lang`, `contact_patient.channel`), otherwise unknown. |
-| `age_band` | 40-49, 50-59, 60-69, 70-75 | Unknown today. |
+| `channel` | The patient's preferred channel (sms, whatsapp, phone, letter) | No registry feeds it yet: taken from the log when it shows it (`contact_patient.channel`), otherwise unknown. |
+| `age_band` | 40-49, 50-59, 60-69, 70-75. Kept as the documented null feature (see below). | Unknown today. |
 
-**Unknown values.** A feature that is unknown for a case is encoded at its training mean, so it adds exactly nothing relative to an average patient. Today the API knows none of age band and little of language and channel, so the served score rests on stage, days, escalations, bounces, consent, provider change and the contact flag. The performance table below includes the held-out result with language, channel and age band unknown, which is what the API serves today.
+**Unknown values.** A feature that is unknown for a case is encoded at its training mean, so it adds exactly nothing relative to an average patient. Today the API knows nothing of the age band and little of the channel, so the served score rests on stage, days, escalations, bounces, consent, provider change and the contact flag. The performance table below includes the held-out result with channel and age band unknown, which is what the API serves today.
 
 **Features that the brief or the pathway suggests and the simulator cannot support.** The simulator has no ages, so the age band is drawn by the exporter from its own random stream, independent of every behaviour: it is a null feature by construction. Its coefficients are about zero, which is the check that the pipeline does not invent signal. The simulator has no provider identities and no per-channel consent, so neither is a feature (`provider_changed` stands for the provider). Consent is the single withdrawal flag.
+
+### Excluded features
+
+| Excluded | Why |
+|---|---|
+| `language` | A proxy for nationality. A score that ranked patients partly by the language they speak would rank them partly by who they are, which a Department of Health reviewer would rightly object to, and the effect (a lower or higher place on the worklist) would fall on groups that already face barriers. It is therefore not a column of the model, not a field of `CaseFeatures`, and not read from the event log (`patient_acknowledge.lang` is ignored); a language entry in the serving attributes is ignored too. `Model` refuses a `model.json` that has a column for an excluded feature, and `top_factors` are built from the model's columns, so language cannot appear in them. The simulator still knows each patient's language and the exporter keeps it as an **audit label**, used only to report outcomes by group (section 6). Messaging in the patient's language is unaffected: that is a service the patient is entitled to, not a prediction input. |
+
+The age band stays in, deliberately: it is the documented **null feature**, drawn by the exporter independent of every behaviour, so its coefficients should be about zero and the fairness table shows no real age effect. If it ever acquires weight, the pipeline is inventing signal. Real age would be a legitimate screening attribute, but the simulator has none to learn from, so nothing in this model should be read as an age effect. Channel stays in because it is a service attribute the programme chooses with the patient; it is audited (section 6) because it could correlate with access.
 
 ## 5. Performance
 
@@ -64,16 +74,16 @@ Measured on the held-out split of synthetic data. Generated by `python -m simula
 |---|---|
 | Held-out cases | 4552 (of 15195 rows from 20000 simulated cases) |
 | Prevalence of loss to follow-up | 44.0% (training split 44.7%) |
-| AUC | 0.8938 |
-| Brier score | 0.1275 |
+| AUC | 0.8937 |
+| Brier score | 0.1276 |
 | Brier score of the base-rate predictor | 0.2464 |
-| Brier skill score (1 minus the ratio) | 0.4824 |
-| Expected calibration error (ECE, 10 equal-width bins) | 0.0220 |
-| ECE of a perfectly calibrated model at this sample size (mean, 95th percentile) | 0.0129, 0.0185 |
+| Brier skill score (1 minus the ratio) | 0.4821 |
+| Expected calibration error (ECE, 10 equal-width bins) | 0.0193 |
+| ECE of a perfectly calibrated model at this sample size (mean, 95th percentile) | 0.0130, 0.0176 |
 | Tolerance: ECE at or below 0.05 | met |
-| As served today, with language, channel and age band unknown (AUC, Brier, ECE) | 0.8938, 0.1278, 0.0184 |
+| As served today, with channel and age band unknown (AUC, Brier, ECE) | 0.8938, 0.1278, 0.0178 |
 
-The calibration tolerance is met: ECE 0.0220 is at or below 0.05, and the Brier score is better than the base-rate predictor.
+The calibration tolerance is met: ECE 0.0193 is at or below 0.05, and the Brier score is better than the base-rate predictor.
 <!-- risk:performance:end -->
 
 The tolerance for calibration, ECE at or below 0.05 on the held-out set, was proposed in ticket D10 and confirmed after the first fit. ECE is the count-weighted mean absolute gap between the mean predicted probability and the observed rate over ten equal-width probability bins. The chance level shown is what a perfectly calibrated model would score at this sample size; the observed ECE sits just above it, with the gaps in the 0.5 to 0.8 bins, which is consistent with a linear-logit model that cannot represent the interaction between stage and days. Most of the discrimination comes from stage, days since the result and consent withdrawal: a case that stays early in the pathway for a long time is lost more often.
@@ -83,43 +93,60 @@ The tolerance for calibration, ECE at or below 0.05 on the held-out set, was pro
 <!-- risk:calibration:begin -->
 | Bin | Predicted range | Cases | Mean predicted | Observed rate | Absolute gap |
 |---|---|---|---|---|---|
-| 1 | 0.0 to 0.1 | 1018 | 0.0436 | 0.0481 | 0.0045 |
-| 2 | 0.1 to 0.2 | 533 | 0.1439 | 0.1482 | 0.0044 |
-| 3 | 0.2 to 0.3 | 366 | 0.2536 | 0.2213 | 0.0323 |
-| 4 | 0.3 to 0.4 | 590 | 0.3504 | 0.3254 | 0.0250 |
-| 5 | 0.4 to 0.5 | 268 | 0.4444 | 0.4627 | 0.0183 |
-| 6 | 0.5 to 0.6 | 227 | 0.5493 | 0.4890 | 0.0603 |
-| 7 | 0.6 to 0.7 | 218 | 0.6490 | 0.6743 | 0.0253 |
-| 8 | 0.7 to 0.8 | 254 | 0.7527 | 0.8504 | 0.0976 |
-| 9 | 0.8 to 0.9 | 325 | 0.8539 | 0.8862 | 0.0322 |
-| 10 | 0.9 to 1.0 | 753 | 0.9594 | 0.9495 | 0.0098 |
+| 1 | 0.0 to 0.1 | 1014 | 0.0436 | 0.0483 | 0.0047 |
+| 2 | 0.1 to 0.2 | 533 | 0.1434 | 0.1388 | 0.0046 |
+| 3 | 0.2 to 0.3 | 374 | 0.2535 | 0.2380 | 0.0156 |
+| 4 | 0.3 to 0.4 | 578 | 0.3500 | 0.3218 | 0.0282 |
+| 5 | 0.4 to 0.5 | 276 | 0.4428 | 0.4348 | 0.0080 |
+| 6 | 0.5 to 0.6 | 224 | 0.5500 | 0.5179 | 0.0322 |
+| 7 | 0.6 to 0.7 | 224 | 0.6482 | 0.6786 | 0.0304 |
+| 8 | 0.7 to 0.8 | 260 | 0.7531 | 0.8538 | 0.1008 |
+| 9 | 0.8 to 0.9 | 316 | 0.8550 | 0.8829 | 0.0280 |
+| 10 | 0.9 to 1.0 | 753 | 0.9591 | 0.9495 | 0.0096 |
 
 ![Reliability diagram](../results/risk/calibration.svg)
 <!-- risk:calibration:end -->
 
 ## 6. Fairness check by language and channel
 
-ECE and AUC per group on the held-out split, with the ECE a perfectly calibrated model would show at the same group size ("chance ECE", 95th percentile of 100 simulated draws). Age band is included as the null-feature check.
+Language is not an input, so this is an **outcome audit**: does the score treat language groups differently anyway, through the features it does use? For each group on the held-out split the table gives AUC and ECE (with the ECE a perfectly calibrated model would show at the same group size, "chance ECE", 95th percentile of 100 simulated draws), the mean predicted probability against the observed loss rate, and their gap. **A gap above 0.02 in size is flagged** (`FLAG`). The sampling margin column is how far the observed rate of a group of that size is expected to wander by chance alone (1.96 standard errors): a flagged gap inside its margin is not evidence of bias by itself, but it is still reported and has to be read. Channel is audited the same way, and age band is included as the null-feature check.
 
 <!-- risk:fairness:begin -->
-| Group | Value | Held-out cases | Prevalence | AUC | ECE | Chance ECE (95th percentile) | Brier |
-|---|---|---|---|---|---|---|---|
-| Language | ar | 2097 | 45.6% | 0.8972 | 0.0278 | 0.0274 | 0.1258 |
-| Language | en | 1543 | 39.6% | 0.8922 | 0.0245 | 0.0325 | 0.1262 |
-| Language | other | 912 | 47.7% | 0.8857 | 0.0344 | 0.0426 | 0.1338 |
-| Preferred channel | sms | 1809 | 43.9% | 0.8936 | 0.0196 | 0.0278 | 0.1280 |
-| Preferred channel | whatsapp | 1335 | 43.9% | 0.8972 | 0.0231 | 0.0334 | 0.1250 |
-| Preferred channel | phone | 699 | 45.2% | 0.8991 | 0.0317 | 0.0505 | 0.1231 |
-| Preferred channel | letter | 709 | 43.0% | 0.8816 | 0.0408 | 0.0472 | 0.1356 |
-| Age band | 40-49 | 1255 | 44.9% | 0.8797 | 0.0272 | 0.0361 | 0.1363 |
-| Age band | 50-59 | 1260 | 43.2% | 0.8965 | 0.0248 | 0.0366 | 0.1261 |
-| Age band | 60-69 | 1287 | 45.7% | 0.9013 | 0.0294 | 0.0365 | 0.1239 |
-| Age band | 70-75 | 750 | 40.8% | 0.8995 | 0.0408 | 0.0431 | 0.1217 |
+| Group | Value | Held-out cases | Prevalence | AUC | ECE | Chance ECE (95th percentile) | Brier | Mean predicted | Observed rate | Gap (predicted minus observed) | Sampling margin (95%) | Gap flag |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| Language (audit only, not an input) | ar | 2097 | 45.6% | 0.8971 | 0.0237 | 0.0272 | 0.1258 | 0.4497 | 0.4559 | -0.0062 | 0.0213 | ok |
+| Language (audit only, not an input) | en | 1543 | 39.6% | 0.8922 | 0.0289 | 0.0310 | 0.1264 | 0.4073 | 0.3960 | +0.0114 | 0.0244 | ok |
+| Language (audit only, not an input) | other | 912 | 47.7% | 0.8856 | 0.0386 | 0.0435 | 0.1339 | 0.4661 | 0.4770 | -0.0109 | 0.0324 | ok |
+| Preferred channel | sms | 1809 | 43.9% | 0.8934 | 0.0199 | 0.0279 | 0.1282 | 0.4397 | 0.4395 | +0.0003 | 0.0229 | ok |
+| Preferred channel | whatsapp | 1335 | 43.9% | 0.8976 | 0.0242 | 0.0320 | 0.1248 | 0.4352 | 0.4390 | -0.0038 | 0.0266 | ok |
+| Preferred channel | phone | 699 | 45.2% | 0.8978 | 0.0280 | 0.0466 | 0.1244 | 0.4501 | 0.4521 | -0.0020 | 0.0369 | ok |
+| Preferred channel | letter | 709 | 43.0% | 0.8840 | 0.0342 | 0.0484 | 0.1346 | 0.4308 | 0.4302 | +0.0006 | 0.0364 | ok |
+| Age band | 40-49 | 1255 | 44.9% | 0.8803 | 0.0267 | 0.0351 | 0.1360 | 0.4326 | 0.4494 | -0.0168 | 0.0275 | ok |
+| Age band | 50-59 | 1260 | 43.2% | 0.8964 | 0.0205 | 0.0353 | 0.1261 | 0.4390 | 0.4317 | +0.0073 | 0.0273 | ok |
+| Age band | 60-69 | 1287 | 45.7% | 0.9007 | 0.0303 | 0.0352 | 0.1246 | 0.4486 | 0.4569 | -0.0083 | 0.0272 | ok |
+| Age band | 70-75 | 750 | 40.8% | 0.9000 | 0.0368 | 0.0458 | 0.1214 | 0.4309 | 0.4080 | +0.0229 | 0.0352 | FLAG |
 
-Largest gap between groups (maximum minus minimum): language AUC 0.012, ECE 0.010; channel AUC 0.018, ECE 0.021; age band AUC 0.022, ECE 0.016.
+Largest gap between groups (maximum minus minimum): language AUC 0.012, ECE 0.015; channel AUC 0.014, ECE 0.014; age band AUC 0.020, ECE 0.016.
+
+Mean predicted probability against observed rate, flag threshold 0.02: language: no group flagged (largest gap 0.0114); channel: no group flagged (largest gap 0.0038); age band: FLAGGED, 70-75 +0.023 (largest gap 0.0229).
 <!-- risk:fairness:end -->
 
-How to read it. The score ranks cases about equally well in every group (the AUC gaps are the last line of the table), and calibration within each group is close to the chance level for its size, so the score does not systematically under-predict risk for Arabic speakers, for "other" language speakers or for any channel in this synthetic population. This is a check of the pipeline, not of fairness in the world: the simulator makes language and channel matter only through response probabilities, and it contains no other source of inequity. The model does use language and channel, with small coefficients next to stage, days and consent (table below); ordering by the score therefore ranks, other things equal, a patient with a lower assumed response rate slightly higher, which is the intended effect, and any retrain must repeat this table.
+How to read it. The score ranks cases about equally well in every language group (the AUC gaps are in the line under the table), calibration within each group is close to the chance level for its size, and the mean predicted probability of each language group sits within 0.02 of its observed loss rate: the score neither systematically under-predicts risk for Arabic speakers or for "other" language speakers, nor over-predicts it for English speakers, even though it never sees language. The observed rates do differ by language (the simulator gives groups different response probabilities); the score reproduces most of that difference through stage, days since the result, bounces and the like, which is how the outcome differs for real, not through the patient's language. This is a check of the pipeline, not of fairness in the world: the simulator contains no other source of inequity, and in a real population channel, postcode, provider and age could carry language indirectly, so the table must be repeated on any retrain and on shadow-mode data (section 8).
+
+At the time of this card the age-band group 70-75 is the one flagged row (its gap is inside its sampling margin, and age is a null feature by construction, so it is chance, not signal). It is left flagged rather than tuned away: a flag is information, and a retrain that flags a language group is not accepted without an explanation (section 8, step 4).
+
+**Change record (D12, language removed).** Same seed, same data, same fitting procedure; only the language columns differ. Before is the model committed at A19, after is the model in this card.
+
+| Held-out measure | Before (with language) | After (without) |
+|---|---|---|
+| AUC | 0.8938 | 0.8937 |
+| Brier score | 0.1275 | 0.1276 |
+| ECE | 0.0220 | 0.0193 |
+| ar: AUC, ECE, mean predicted minus observed | 0.8972, 0.0278, +0.0018 | 0.8971, 0.0237, -0.0062 |
+| en: AUC, ECE, mean predicted minus observed | 0.8922, 0.0245, -0.0008 | 0.8922, 0.0289, +0.0114 |
+| other: AUC, ECE, mean predicted minus observed | 0.8857, 0.0344, -0.0083 | 0.8856, 0.0386, -0.0109 |
+
+Removing language cost nothing measurable in discrimination or calibration (the language coefficients were small, at most 0.09 in log-odds), and moved the predicted mean of each language group by about one percentage point at most, toward the overall mean: English speakers are scored a little higher than before and Arabic and "other" speakers a little lower. The sign is worth watching. With language out, a group whose loss rate is genuinely higher is ranked slightly lower than a model that knew its language would rank it; that is the price of not ranking by nationality, and the answer to it is monitoring (section 8), not putting the proxy back.
 
 ## 7. Coefficients
 
@@ -128,30 +155,27 @@ Log-odds per column. Numeric columns are standardised on the training split, so 
 <!-- risk:coefficients:begin -->
 | Column | Coefficient (log-odds) | Odds ratio | Unit |
 |---|---|---|---|
-| intercept | 0.3662 | n/a | baseline logit for an all-zero row |
-| language=ar | 0.0658 | 1.068 | 1 if true, else 0 |
-| language=en | -0.0890 | 0.915 | 1 if true, else 0 |
-| language=other | 0.0233 | 1.024 | 1 if true, else 0 |
-| channel=sms | 0.0516 | 1.053 | 1 if true, else 0 |
-| channel=whatsapp | 0.0280 | 1.028 | 1 if true, else 0 |
-| channel=phone | 0.1005 | 1.106 | 1 if true, else 0 |
-| channel=letter | -0.1801 | 0.835 | 1 if true, else 0 |
-| age_band=40-49 | -0.0249 | 0.975 | 1 if true, else 0 |
-| age_band=50-59 | 0.0329 | 1.033 | 1 if true, else 0 |
-| age_band=60-69 | -0.0258 | 0.975 | 1 if true, else 0 |
-| age_band=70-75 | 0.0179 | 1.018 | 1 if true, else 0 |
-| contact_valid | -0.1137 | 0.893 | 1 if true, else 0 |
-| stage=result_received | 1.1172 | 3.056 | 1 if true, else 0 |
-| stage=acknowledged | 1.2295 | 3.419 | 1 if true, else 0 |
-| stage=owner_accepted | 0.6975 | 2.009 | 1 if true, else 0 |
-| stage=patient_contacted | 1.4064 | 4.081 | 1 if true, else 0 |
-| stage=patient_acknowledged | -0.8843 | 0.413 | 1 if true, else 0 |
-| stage=confirmatory_booked | -3.5663 | 0.028 | 1 if true, else 0 |
-| days_since_result | 1.3783 | 3.968 | per 1 SD (24.53; mean 37.87) |
-| prior_escalations | -0.1030 | 0.902 | per 1 SD (1.09; mean 0.62) |
-| prior_bounces | 0.2086 | 1.232 | per 1 SD (0.63; mean 0.22) |
-| consent_withdrawn | 2.1424 | 8.520 | 1 if true, else 0 |
-| provider_changed | -0.4201 | 0.657 | 1 if true, else 0 |
+| intercept | 0.3714 | n/a | baseline logit for an all-zero row |
+| channel=sms | 0.0532 | 1.055 | 1 if true, else 0 |
+| channel=whatsapp | 0.0285 | 1.029 | 1 if true, else 0 |
+| channel=phone | 0.0979 | 1.103 | 1 if true, else 0 |
+| channel=letter | -0.1795 | 0.836 | 1 if true, else 0 |
+| age_band=40-49 | -0.0255 | 0.975 | 1 if true, else 0 |
+| age_band=50-59 | 0.0337 | 1.034 | 1 if true, else 0 |
+| age_band=60-69 | -0.0266 | 0.974 | 1 if true, else 0 |
+| age_band=70-75 | 0.0184 | 1.019 | 1 if true, else 0 |
+| contact_valid | -0.1158 | 0.891 | 1 if true, else 0 |
+| stage=result_received | 1.1209 | 3.068 | 1 if true, else 0 |
+| stage=acknowledged | 1.2273 | 3.412 | 1 if true, else 0 |
+| stage=owner_accepted | 0.6944 | 2.002 | 1 if true, else 0 |
+| stage=patient_contacted | 1.4082 | 4.089 | 1 if true, else 0 |
+| stage=patient_acknowledged | -0.8837 | 0.413 | 1 if true, else 0 |
+| stage=confirmatory_booked | -3.5671 | 0.028 | 1 if true, else 0 |
+| days_since_result | 1.3786 | 3.969 | per 1 SD (24.53; mean 37.87) |
+| prior_escalations | -0.1037 | 0.901 | per 1 SD (1.09; mean 0.62) |
+| prior_bounces | 0.2092 | 1.233 | per 1 SD (0.63; mean 0.22) |
+| consent_withdrawn | 2.1569 | 8.645 | 1 if true, else 0 |
+| provider_changed | -0.4068 | 0.666 | 1 if true, else 0 |
 <!-- risk:coefficients:end -->
 
 ## 8. Limits and retraining
@@ -165,7 +189,8 @@ Log-odds per column. Numeric columns are standardised on the training split, so 
 - **A prediction of "no colonoscopy by day 180", not of harm.** Delay can harm before day 180, and a colonoscopy at day 179 counts as success.
 - **No capacity, no clinical content.** Endoscopy slots, bowel preparation failures and findings are not modelled.
 - **Feedback.** If the worklist order improves follow-up, the data that a retrain would see change. Retrain only from data collected under a documented ordering policy.
-- **Missing attributes.** Language, channel and age band are unknown in the API today and imputed at the training mean.
+- **Missing attributes.** Channel and age band are unknown in the API today and imputed at the training mean.
+- **Indirect proxies.** Removing language removes the direct proxy only. Other features (channel, and in a real registry postcode, provider, age) can still carry language or nationality; the audit in section 6 is the control, and it does not prove their absence.
 - **Per-case explanation is not causal.** `top_factors` are contributions to the log-odds relative to an average training patient, not reasons the patient was lost.
 
 ### Retraining procedure
@@ -173,11 +198,30 @@ Log-odds per column. Numeric columns are standardised on the training split, so 
 1. Change nothing by hand in `api/app/risk/model.json`. It is generated.
 2. Make the change (simulator parameters, the feature set in `api/app/risk/features.py`, or the training settings in `simulator/sim/export_training.py`).
 3. Run `make risk-report` (`PYTHONPATH=api:. .venv/bin/python -m simulator.sim.export_training` from the repository root). It reruns the simulator from the seed, refits, validates on the held-out split and rewrites `model.json`, `docs/results/risk/` and the generated blocks of this card. Two runs on the same inputs write identical bytes (T-D11); `make risk-check` (`... --check`) fails if a committed file differs from a fresh run (T-D12) and is a stage of `make check`.
-4. Read the generated report. Accept the new model only if the calibration tolerance (ECE at or below 0.05) is met or explicitly waived in this card, the Brier score beats the base-rate predictor, AUC has not fallen without an explanation, the age-band coefficients are still about zero, and the fairness table shows no group with a markedly worse AUC or an ECE well above its chance level.
+4. Read the generated report. Accept the new model only if the calibration tolerance (ECE at or below 0.05) is met or explicitly waived in this card, the Brier score beats the base-rate predictor, AUC has not fallen without an explanation, the age-band coefficients are still about zero, the fairness table shows no group with a markedly worse AUC or an ECE well above its chance level, and no language group is flagged (mean predicted within 0.02 of observed) or any flag is explained here. `language` must stay out of `COLUMNS`; `api/tests/test_risk_features.py` and `simulator/tests/test_risk_card.py` fail if it comes back.
 5. Update the prose in this card that depends on the numbers (the reading of the calibration table and of the coefficients), and add a line to `project/LOG.md`.
 6. Run `make check`. The tests that guard the pattern are `api/tests/test_risk_*.py` and `simulator/tests/test_risk_training.py`.
 7. Roll back by reverting the commit: the API reads `model.json` at start-up.
 
-**Retraining on real data (not done).** Replace the exporter's input with a registry extract of the same features and the same label, keep the split and the report, and treat it as a new model: a documented ordering policy during data collection, review of the fairness table by the programme, and sign-off by the clinical safety owner before the score is shown to staff. The training data must come from the provider's environment and never from anywhere else (see [regulatory mapping](regulatory-mapping.md)).
+### Retraining policy
 
-**Monitoring in a pilot.** Compare the score at the time a case first appears with its outcome at 180 days, in the same calibration table, per language and channel, every month; any group whose ECE leaves its chance band is a reason to stop using the score for ordering until it is understood.
+1. **Synthetic data only, until approved otherwise.** The model is trained on simulator output and on nothing else. It is **never retrained on production data without the approval of the Department of Health**, and then only on **consented, de-identified** data, as the DoH Responsible AI Standard restricts training on production data (clause 3.1.4.4 as read in [regulatory mapping](regulatory-mapping.md), section 4; verify against the current text). Consent for the programme's outreach does not by itself cover model training: the training use needs its own consent basis and its own approval.
+2. **No training from the live system, even de-identified, on our own initiative.** The exporter reads the simulator, not the database. A change that connects it to the event store, the registry or any extract of real cases is a change of policy, not of code, and needs the approval in (1) first.
+3. **Monitor in shadow mode instead.** In a pilot the score runs beside the process without changing it (it already cannot: section 2). Each month compare the score at the time a case first appears with its outcome at 180 days, in the calibration table, the AUC, and the mean-predicted-against-observed gap, per language group (language used as an audit label only, held outside the model), channel and age band. This produces evidence about the model without producing a training set, and without feeding the outcomes back into the model.
+4. **What shadow monitoring may trigger.** A group whose ECE leaves its chance band, a language group flagged by the 0.02 rule that persists across two months, or a calibration tolerance miss: stop using the score for ordering until it is understood, and report it to the clinical safety owner. It does not trigger an automatic refit.
+5. **Features are changed by decision, not by tuning.** Adding a feature (especially any that could proxy for nationality, language, religion, sex or area of residence) needs the fairness table for it and a line in this card first. `language` stays excluded.
+
+### What a validated model would need
+
+Before any score of this kind is shown to staff on real patients:
+
+- **Approved real data**: consented, de-identified, extracted in the provider's environment inside the UAE, under DoH approval (policy 1), with a documented ordering policy during collection so that the data are not shaped by the model's own ordering.
+- **Prospective or temporal validation**: a held-out period after the training period, on a different site if possible, with the pre-registered measures of this card (AUC, ECE at or below 0.05, Brier against the base rate, calibration per group, gap against the 0.02 rule). Retrospective fit on the training window is not validation.
+- **Subgroup performance and bias review** with real attributes, including the indirect proxies listed under Limits, reviewed by the programme and the clinical safety owner.
+- **Clinical safety case and sign-off**: hazard log entries for the score, the incident route, a named owner, and classification under the DoH risk protocol with conformity assessment if the classification requires it.
+- **Impact evidence**: that the ordering improves follow-up without harming any group, measured against the process without it.
+- **A change process**: versioned model, traceable training data hash, rollback, and a revalidation after any retrain.
+
+None of these exists today. This card documents a pattern, not a validated model.
+
+**Retraining on real data (not done).** If policy 1 is ever satisfied: replace the exporter's input with the approved extract of the same features and the same label, keep the split and the report, and treat it as a new model: a documented ordering policy during data collection, review of the fairness table by the programme, and sign-off by the clinical safety owner before the score is shown to staff. The training data must come from the provider's environment and never from anywhere else (see [regulatory mapping](regulatory-mapping.md)).

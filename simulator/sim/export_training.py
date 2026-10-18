@@ -15,9 +15,12 @@ Everything derives from the seed and the parameter files: no wall clock, no path
 two runs write identical bytes (T-D11, T-D12). `--check` regenerates in memory and fails if a
 committed file differs.
 
-Features (see `app.risk.features`): language, preferred channel, age band, contact flag, pathway stage,
+Features (see `app.risk.features`): preferred channel, age band, contact flag, pathway stage,
 days since the result, prior escalations, prior handoff bounces, consent withdrawal, provider change.
-The simulator models no age, so the age band is drawn by this exporter from its own seeded stream,
+`language` is deliberately NOT a feature (D12: a proxy for nationality). Each row still carries the
+patient's language, but only as an audit label: the fairness check reports AUC, ECE and the gap between
+mean predicted probability and observed rate per language group, to show the score does not encode language
+indirectly. The simulator models no age, so the age band is drawn by this exporter from its own seeded stream,
 independent of every behaviour: it is a null feature by construction (its coefficient should be near
 zero), kept so the score card can show the pipeline does not invent signal.
 """
@@ -64,6 +67,7 @@ class ExportRow:
     snapshot_day: float
     features: F.CaseFeatures
     label: int          # 1 = no colonoscopy within FOLLOW_UP_DAYS
+    language: str       # audit label for the fairness check only; never a model input (D12)
 
 
 def _age_band(seed: int, key: str) -> str:
@@ -113,23 +117,23 @@ def build_rows(ctx: Context, cases: int, seed: int) -> list[ExportRow]:
                 consent_withdrawn=s.consent_withdrawn,
                 provider_changed=s.provider_changed,
                 contact_valid=p.contact_valid,
-                language=p.language,
                 channel=p.channel,
                 age_band=_age_band(seed, p.key),
             ),
             label=int(t_complete is None),
+            language=p.language,
         ))
     return rows
 
 
 def _row_fields(r: ExportRow) -> list:
     f = r.features
-    return [r.key, r.split, f"{r.snapshot_day:.2f}", f.language, f.channel, f.age_band, int(f.contact_valid),
+    return [r.key, r.split, f"{r.snapshot_day:.2f}", r.language, f.channel, f.age_band, int(f.contact_valid),
             f.stage, f"{f.days_since_result:.2f}", f.prior_escalations, f.prior_bounces,
             int(f.consent_withdrawn), int(f.provider_changed), r.label]
 
 
-CSV_HEADER = ["case_key", "split", "snapshot_day", "language", "channel", "age_band", "contact_valid", "stage",
+CSV_HEADER = ["case_key", "split", "snapshot_day", "language_audit_only", "channel", "age_band", "contact_valid", "stage",
               "days_since_result", "prior_escalations", "prior_bounces", "consent_withdrawn", "provider_changed",
               "lost_to_follow_up_180d"]
 
@@ -158,20 +162,22 @@ def train_and_report(ctx: Context, cases: int, seed: int) -> dict:
     rows = build_rows(ctx, cases, seed)
     train = [(r.features, r.label) for r in rows if r.split == "train"]
     held = [(r.features, r.label) for r in rows if r.split == "heldout"]
+    held_language = [r.language for r in rows if r.split == "heldout"]  # audit labels, never given to the model
     model_dict, info = T.fit(train, l2=L2)
     model = Model(model_dict)
     base_rate = sum(y for _f, y in train) / len(train)
     heldout = T.evaluate(model, held, base_rate)
-    # How the score performs as the API serves it today: no registry gives language, channel or age band, so they are
+    # How the score performs as the API serves it today: no registry gives channel or age band, so they are
     # unknown and imputed. Same held-out cases, same model.
-    masked = [(replace(f, language=None, channel=None, age_band=None), y) for f, y in held]
+    masked = [(replace(f, channel=None, age_band=None), y) for f, y in held]
     served = T.evaluate(model, masked, base_rate)
     noise = T.ece_noise_floor([model.predict(f) for f, _y in held], derive_seed(seed, "risk-noise"))
     groups = {}
     for feature, levels in (("language", F.LANGUAGES), ("channel", F.CHANNELS), ("age_band", F.AGE_BANDS)):
-        gm = T.group_metrics(model, held, base_rate, feature, levels)
+        labels = held_language if feature == "language" else [f.value_of(feature) for f, _y in held]
+        gm = T.group_metrics(model, held, base_rate, feature, levels, labels)
         for g in gm:
-            sub = [model.predict(f) for f, _y in held if f.value_of(feature) == g["group"]]
+            sub = [model.predict(f) for (f, _y), lab in zip(held, labels) if lab == g["group"]]
             g["ece_noise_p95"] = T.ece_noise_floor(sub, derive_seed(seed, "risk-noise", feature, g["group"]), 100)["p95"] if sub else None
         groups[feature] = gm
     mp = ctx.mp
@@ -185,6 +191,7 @@ def train_and_report(ctx: Context, cases: int, seed: int) -> dict:
         "seed": seed,
         "n_cases": cases,
         "n_rows": len(rows),
+        "excluded_features": list(F.EXCLUDED_FEATURES),
         "n_train": len(train),
         "n_heldout": len(held),
         "train_fraction": TRAIN_FRACTION,
@@ -213,6 +220,13 @@ def train_and_report(ctx: Context, cases: int, seed: int) -> dict:
                       "brier_beats_base_rate": heldout["brier"] < heldout["brier_base_rate"]},
         "groups": groups,
         "group_gaps": {f: {"auc": _gap(gs, "auc"), "ece": _gap(gs, "ece")} for f, gs in groups.items()},
+        # Calibration in the large per group: mean predicted probability against observed rate (D12).
+        "calibration_gap": {
+            "tolerance": T.GAP_TOLERANCE,
+            **{f: {"max_abs_gap": T.r8(max(abs(g["gap"]) for g in gs if g["gap"] is not None)),
+                   "flagged": [g["group"] for g in gs if g["gap_flag"]]}
+               for f, gs in groups.items()},
+        },
     }
     model_file = {
         "model_type": "logistic_regression",
@@ -220,6 +234,7 @@ def train_and_report(ctx: Context, cases: int, seed: int) -> dict:
         "label": f"no colonoscopy within {FOLLOW_UP_DAYS} days of the result (lost to follow-up)",
         "intended_use": "worklist ordering only; see docs/governance/risk-score-card.md",
         "synthetic_data": True,
+        "excluded_features": {"language": "a proxy for nationality: it must not rank patients (D12); audited as an outcome group only"},
         **model_dict,
         "training": meta,
         "validation": {"n": heldout["n"], "auc": heldout["auc"], "brier": heldout["brier"],
