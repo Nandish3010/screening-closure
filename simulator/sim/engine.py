@@ -223,7 +223,8 @@ class Engine:
                 continue
             handlers[kind](c, t, token, data)
         records = [
-            build_record(c.p.idx, c.p.language, c.p.channel, c.msy.tags(), self.days, c.t0, c.log, self.start_dt)
+            build_record(c.p.idx, c.p.language, c.p.channel, c.msy.tags(), self.days, c.t0, c.log, self.start_dt,
+                         in_reach=c.lat.u_reach < self.mp.programme_reach)
             for c in cases
         ]
         return RunResult(

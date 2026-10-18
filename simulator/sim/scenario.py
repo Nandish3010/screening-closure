@@ -121,6 +121,13 @@ EXPECTED = {
     "time_to_first_contact_p90": 8.0,      # position 3.6 -> 5 + 0.6*(10-5)
     "closed_share": 0.8,                   # C1, C2, C3, C5 closed; C4 never
     "time_to_closure_median": 67.5,        # first closures [25, 50, 85, 110] -> (50 + 85) / 2
+    "time_to_closure_km_median": 85.0,     # S after closes at 25, 50, 85: 0.8, 0.6, 0.4 (C4 censored at 180); first S <= 0.5 is at 85
+    "time_to_closure_rmst": 90.0,          # area under S to 180: 25*1 + 25*0.8 + 35*0.6 + 25*0.4 + 70*0.2 (= mean of 25, 50, 85, 110, 180)
+    "time_to_colonoscopy_km_median": 60.0, # completions at 20, 40, 60, 100: S 0.8, 0.6, 0.4 -> 60
+    "time_to_colonoscopy_rmst": 80.0,      # mean of min(t, 180) = (20 + 40 + 60 + 100 + 180) / 5
+    "in_reach_share": 1.0,                 # programme_reach is not applied to the hand-built cases
+    "silent_loss_rate_in_reach": 0.0,
+    "consent_breach_rate_in_reach": 0.0,
     "time_to_closure_p90": 102.5,          # position 2.7 -> 85 + 0.7*(110-85)
     "open_30d": 0.8,                       # only C1 closed by day 30
     "open_60d": 0.6,                       # C1 (25) and C2 (50, reopened only at 95) closed
@@ -135,7 +142,7 @@ EXPECTED = {
     "delay_harm_share": None,              # follow-up shorter than the 270-day threshold
     "reopen_rate": 0.25,                   # 1 reopened (C2) of 4 ever closed
     "escalations_per_100_cases": 40.0,     # 2 escalations / 5 cases
-    "escalation_precision": 0.5,           # C2 d10: patient acks d12, inside 5 working days (to d17); C3 d15: next action d30, outside (d22)
+    "escalation_acted_on_rate": 0.5,         # C2 d10: patient acks d12, inside 5 working days (to d17); C3 d15: next action d30, outside (d22)
     "automation_abstention_rate": None,
     "lost_to_follow_up_rate": 0.2,         # C4 only (no colonoscopy, lost_contact)
     "silent_loss_rate": 0.0,               # C4 carries a lost_contact flag, so it was surfaced

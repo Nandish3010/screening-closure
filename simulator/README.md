@@ -22,6 +22,8 @@ make simulate                  # one orchestrated run: 2,000 cases x 120 days, i
 make simulate ARM=baseline     # the baseline arm
 make evaluate                  # 20 replications x 2 arms x 2 scenarios x 2,000 cases x 360 days -> docs/results/results.{json,md}
 make evaluate-check            # evaluate twice into temp dirs (once multi-process, once single) and diff results.json
+make sensitivity               # one-at-a-time parameter sweep (about 1.5 minutes, 8 workers) -> docs/results/sensitivity.{json,md,svg}
+make sensitivity-check         # rerun the sweep and fail unless the three committed files are byte-identical
 
 python -m simulator.sim.cli run --arm orchestrated --cases 2000 --days 120 --seed 20261017
 python -m simulator.sim.cli evaluate --reps 20
@@ -93,7 +95,7 @@ acknowledgements, consent withdrawn after booking. `messy.rate_multiplier: 0` sw
 
 Per arm: time to ownership (median, p90; `n/a` for the baseline, which has no owner by design), time to first contact, time to
 safe closure (median, p90, among closed cases), share open at 30/60/90 days, completion within 90/180/360 days, reopen rate,
-escalation precision (escalations followed by any pathway action within 5 working days / all escalations), automation abstention
+escalation acted-on rate (escalations followed by any pathway action within 5 working days / all escalations; formerly called escalation precision, a name the pilot plan uses for a different, human-judged definition), automation abstention
 rate (`n/a` until the AI cut supplies a hook, see `metrics.AbstentionHook`), lost-to-follow-up and silent-loss rate, share past
 the 270-day delay-harm threshold, consent breaches, fairness by language and channel (completion, time to closure, and the max-gap
 statistic = largest minus smallest group), and per-messy-case handling. Hand-checked arithmetic: `scenario.py` and
@@ -190,6 +192,24 @@ for the literature-anchored one, the list of `overrides`). `make evaluate-check`
 (including across process counts). `results.md` additionally carries a `generated_at` line. Wall time: about 10 s on 10 cores (two
 scenarios, 20 replications); `evaluate-check` runs the second pass single-process, about a minute.
 
+## Sensitivity sweep (`make sensitivity`, ticket B14)
+
+`python -m simulator.sim.cli sensitivity` moves every parameter that has a plausible range to the low and to the high end of it, one at a
+time, holding the rest at the **literature-anchored** scenario, and records how the headline moves: the orchestrated-minus-baseline difference in
+180-day completion, plus the same difference in the share still open at 90 days and in silent loss. 5 replications x 1,000 cases x 360 days per
+point, the same patients and random numbers at every point; about 200 points, about 1.5 minutes with 8 workers. Output in `docs/results/`:
+`sensitivity.json` (sorted, reproducible), `sensitivity.md` (tornado table, plain-English reading, method, parameters not swept) and
+`sensitivity.svg` (hand-written tornado of the top 20).
+
+**Ranges.** A parameter is swept when its leaf carries `range: [low, high]` and a `range_basis`. Every `assumed` or `calibrated` parameter that
+is a quantity has one, and so do the sourced parameters whose source states a range (`referral_rejection_rate`, `wrong_contact_rate`,
+`sms_reminder_effect`). Where no published range exists the range comes from a labelled default rule, in `simulator/sim/sensitivity_rules.py`:
+rates plus or minus 50% clipped to [0, 1]; durations x0.5 and x2; other scale parameters x0.5 and x2; counts x0.5 and x2, rounded, within the
+engine limit; categorical weights plus or minus 50%, renormalised. `range_basis` holds the rule's label (or the quoted source), and a test recomputes
+every rule-made range. The keys the conservative overlay overrides carry their own ranges in `params.conservative.yaml`, around the
+literature-anchored value. Ranges are not in the parameter hash and the simulator never reads them. To change one, edit the leaf and rerun
+`make sensitivity`; a test fails while the committed `sensitivity.json` is out of date with the parameters and ranges.
+
 ## Layout
 
 ```
@@ -205,8 +225,9 @@ simulator/sim/scenario.py   hand-built five-case scenario with hand-computed exp
 simulator/params.conservative.yaml  overlay defining the literature-anchored scenario
 simulator/sim/evaluate.py   replications, scenarios, bootstrap, results.json
 simulator/sim/report.py     results.md
+simulator/sim/sensitivity.py        one-at-a-time sweep -> sensitivity.json (rules for default ranges: sensitivity_rules.py; md and svg: sensitivity_report.py)
 simulator/sim/runner.py     loading and running helpers
-simulator/sim/cli.py        python -m simulator.sim.cli run | evaluate
+simulator/sim/cli.py        python -m simulator.sim.cli run | evaluate | sensitivity
 simulator/tests/test_sim_*  determinism, calendar, closure-rule property test, metric arithmetic, params validation, evaluate reproducibility, scenarios and programme reach
 ```
 

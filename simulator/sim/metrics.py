@@ -16,7 +16,7 @@ from .messy import MESSY_TAGS
 
 DAY = timedelta(days=1)
 
-# Events that count as "somebody acted" for escalation precision and progress.
+# Events that count as "somebody acted" for the escalation acted-on rate and progress.
 MAIN_CHAIN_PROGRESS = (
     "acknowledge", "accept_ownership", "contact_patient", "patient_acknowledge", "book_confirmatory",
     "complete_confirmatory", "clinician_review", "close",
@@ -48,11 +48,14 @@ class CaseRecord:
     consent_breach: bool  # outreach sent after consent was withdrawn
     handled: tuple[str, ...]  # messy tags that the system explicitly handled
     n_events: int = 0
+    # Within the programme's reach (orchestration.programme_reach): the case gets (orchestrated arm) or would get (baseline
+    # arm, same patient and same random number) the orchestrated process. Always True when programme_reach is 1.0.
+    in_reach: bool = True
 
 
 def build_record(
     idx: int, language: str, channel: str, messy: Iterable[str], follow_up_days: float,
-    t0: float, events: Sequence, start_dt: datetime,
+    t0: float, events: Sequence, start_dt: datetime, in_reach: bool = True,
 ) -> CaseRecord:
     first_at = events[0].at
     t_owner = t_contact = t_complete = None
@@ -124,6 +127,7 @@ def build_record(
         closes=tuple(closes), reopens=tuple(reopens), escalations=tuple(escalations),
         actions=tuple(actions), last_progress=last_progress, lost_contact=lost, visible=visible,
         consent_breach=breach, handled=tuple(dict.fromkeys(handled)), n_events=len(events),
+        in_reach=in_reach,
     )
 
 
@@ -174,6 +178,58 @@ def is_ltfu(rec: CaseRecord, idle_days: float) -> bool:
 
 
 # ---------------------------------------------------------------------------------------------
+# censoring-aware time-to-event (ticket B16): Kaplan-Meier median and restricted mean survival time
+# ---------------------------------------------------------------------------------------------
+
+def km_curve(obs: Sequence[tuple[float, bool]]) -> list[tuple[float, float]]:
+    """Kaplan-Meier survival steps [(t, S(t))] from (time, event) pairs; event False = censored at that time.
+    At a tied time events are counted before censorings (standard convention)."""
+    n_risk = len(obs)
+    s = 1.0
+    steps: list[tuple[float, float]] = []
+    by_time: dict[float, list[int]] = {}
+    for t, ev in obs:
+        d = by_time.setdefault(t, [0, 0])
+        d[0 if ev else 1] += 1
+    for t in sorted(by_time):
+        events, censored = by_time[t]
+        if events and n_risk:
+            s *= 1.0 - events / n_risk
+            steps.append((t, s))
+        n_risk -= events + censored
+    return steps
+
+
+def km_median(steps: Sequence[tuple[float, float]]) -> float | None:
+    """Smallest time at which the survival curve is at or below 0.5; None when the curve never gets there
+    (more than half the cases are still event-free at the end of follow-up)."""
+    for t, s in steps:
+        if s <= 0.5:
+            return t
+    return None
+
+
+def rmst(steps: Sequence[tuple[float, float]], tau: float) -> float:
+    """Restricted mean survival time: area under the Kaplan-Meier curve from 0 to tau (days spent event-free, on
+    average, within tau). Equals the mean of min(time to event, tau) when every case has the same follow-up."""
+    area, prev_t, s = 0.0, 0.0, 1.0
+    for t, s_after in steps:
+        if t >= tau:
+            break
+        area += s * (t - prev_t)
+        prev_t, s = t, s_after
+    return area + s * (tau - prev_t)
+
+
+def _closure_obs(recs: Sequence[CaseRecord], tau: float) -> list[tuple[float, bool]]:
+    return [(r.closes[0], True) if r.closes and r.closes[0] <= tau else (tau, False) for r in recs]
+
+
+def _completion_obs(recs: Sequence[CaseRecord], tau: float) -> list[tuple[float, bool]]:
+    return [(r.t_complete, True) if r.t_complete is not None and r.t_complete <= tau else (tau, False) for r in recs]
+
+
+# ---------------------------------------------------------------------------------------------
 # metric computation
 # ---------------------------------------------------------------------------------------------
 
@@ -185,12 +241,15 @@ def _median(vals: Sequence[float]) -> float | None:
     return percentile(vals, 0.5)
 
 
-def _group_stats(recs: Sequence[CaseRecord]) -> dict[str, float | None]:
+def _group_stats(recs: Sequence[CaseRecord], tau: float) -> dict[str, float | None]:
     ct = [c for c in map(_closure_time, recs) if c is not None]
+    steps = km_curve(_closure_obs(recs, tau))
     return {
         "n": float(len(recs)),
         "completion_final": _share([r.t_complete is not None for r in recs]),
         "closure_median": _median(ct),
+        "closure_km_median": km_median(steps),
+        "closure_rmst": rmst(steps, tau),
     }
 
 
@@ -227,6 +286,10 @@ def compute_metrics(
     out["closed_share"] = len(closure) / n
     out["time_to_closure_median"] = _median(closure)
     out["time_to_closure_p90"] = percentile(closure, 0.9)
+    # censoring-aware versions: cases not closed by the end of follow-up are censored there, not dropped
+    close_steps = km_curve(_closure_obs(records, horizon))
+    out["time_to_closure_km_median"] = km_median(close_steps)
+    out["time_to_closure_rmst"] = rmst(close_steps, horizon)
 
     for d in (30, 60, 90):
         out[f"open_{d}d"] = _share([is_open_at(r, d) for r in records]) if horizon >= d else None
@@ -234,6 +297,9 @@ def compute_metrics(
     out["time_to_colonoscopy_median"] = _median(comp_times)
     out["time_to_colonoscopy_p25"] = percentile(comp_times, 0.25)
     out["time_to_colonoscopy_p75"] = percentile(comp_times, 0.75)
+    comp_steps = km_curve(_completion_obs(records, horizon))
+    out["time_to_colonoscopy_km_median"] = km_median(comp_steps)
+    out["time_to_colonoscopy_rmst"] = rmst(comp_steps, horizon)
     for d in (90, 180, 360):
         out[f"completion_{d}d"] = (
             _share([r.t_complete is not None and r.t_complete <= d for r in records]) if horizon >= d else None
@@ -252,9 +318,9 @@ def compute_metrics(
     out["escalations_per_100_cases"] = 100.0 * esc_total / n
     if esc_total:
         good = sum(1 for r in records for e in r.escalations if _acted_within(r, cal, e, escalation_window_wd))
-        out["escalation_precision"] = good / esc_total
+        out["escalation_acted_on_rate"] = good / esc_total
     else:
-        out["escalation_precision"] = None
+        out["escalation_acted_on_rate"] = None
 
     out["automation_abstention_rate"] = abstention_hook(records) if abstention_hook else None
 
@@ -262,22 +328,32 @@ def compute_metrics(
     out["lost_to_follow_up_rate"] = _share(ltfu)
     out["silent_loss_rate"] = _share([lf and not r.visible for lf, r in zip(ltfu, records)])
     out["consent_breach_rate"] = _share([r.consent_breach for r in records])
+    # in-reach versions (ticket B15): the same two quantities among the cases the programme reached only. The
+    # programme-level rates above count every case, reached or not, so they follow from orchestration.programme_reach.
+    reached = [(r, lf) for r, lf in zip(records, ltfu) if r.in_reach]
+    out["in_reach_share"] = len(reached) / n
+    out["silent_loss_rate_in_reach"] = _share([lf and not r.visible for r, lf in reached])
+    out["consent_breach_rate_in_reach"] = _share([r.consent_breach for r, _ in reached])
 
     # fairness: completion and time to closure by language and by preferred channel
     for dim in ("language", "channel"):
         groups: dict[str, list[CaseRecord]] = {}
         for r in records:
             groups.setdefault(getattr(r, dim), []).append(r)
-        comp_vals, clos_vals = [], []
+        comp_vals, clos_vals, km_vals, rmst_vals = [], [], [], []
         for g in sorted(groups):
-            st = _group_stats(groups[g])
+            st = _group_stats(groups[g], horizon)
             for k, v in st.items():
                 out[f"fairness.{dim}.{g}.{k}"] = v
             if len(groups[g]) >= min_group_size:
                 comp_vals.append(st["completion_final"])
                 clos_vals.append(st["closure_median"])
+                km_vals.append(st["closure_km_median"])
+                rmst_vals.append(st["closure_rmst"])
         out[f"fairness.{dim}.completion_gap_max"] = _gap(comp_vals)
         out[f"fairness.{dim}.closure_median_gap_max_days"] = _gap(clos_vals)
+        out[f"fairness.{dim}.closure_km_median_gap_max_days"] = _gap(km_vals)
+        out[f"fairness.{dim}.closure_rmst_gap_max_days"] = _gap(rmst_vals)
 
     # messy-case handling
     for tag in MESSY_TAGS:
