@@ -12,6 +12,7 @@ from app.state_machine import AUTOMATION_ACTOR, AUTOMATION_ALLOWED_EVENTS
 from test_automation import (  # noqa: F401  (the world fixture and the walk helpers)
     KARIM,
     LAYLA_LOGIN,
+    appointment_passed,
     booked_case,
     evidence,
     fresh,
@@ -24,6 +25,17 @@ from test_automation import (  # noqa: F401  (the world fixture and the walk hel
 )
 
 client = make_client()
+
+
+@pytest.fixture(autouse=True)
+def own_copy_of_the_minutes(monkeypatch):
+    """The figures below are the module's own copy. Whether the simulator's table is importable depends on the checkout, not
+    on the test: pin the table the accounting reads to the own copy (the loader has its own tests, further down)."""
+    monkeypatch.setattr(effort, "HUMAN_ACTION_MINUTES", dict(effort.ASSUMED_MINUTES))
+    monkeypatch.setattr(effort, "MINUTES_SOURCE", effort.OWN_COPY)
+    monkeypatch.setattr(effort, "FROM_SIMULATOR", ())
+
+
 OWNERS_FIGURES = {
     "coordinator_phone_call": 6, "clinician_review": 3, "referral_handling": 8, "sign_off": 4,
     "escalation_handling": 5, "message_approval": 2,
@@ -169,6 +181,7 @@ def test_the_claim_rests_on_the_assumptions_and_the_margin_is_stated(monkeypatch
 def test_the_effort_route_reports_a_real_case_walk(fresh):
     cid = booked_case()
     found(cid, f"Procedure/colonoscopy-{cid}")
+    appointment_passed()
     scan()
     evidence_scan()
     post(cid, "clinician_review", login(*KARIM))
@@ -196,3 +209,62 @@ def test_the_effort_route_is_for_coordinators_and_supervisors_and_limits_its_row
     assert body["cases"] == 3 and len(body["per_case"]) == 2 and body["per_case_truncated"] is True
     assert client.get("/metrics/effort?limit=0", headers=login_headers(client, "coordinator")).status_code == 422
     assert "/metrics/effort" in app.openapi()["paths"]
+
+
+# ---- the minutes: the simulator's table when importable, else the module's own assumed copy ---------------------------
+
+
+class FakeSimulatorTable:
+    """What `simulator.sim.effort` exposes: `MINUTES`, keyed by action id."""
+
+    MINUTES = {"M_PHONE_ATTEMPT": 7.2, "M_CLINICIAN_REVIEW": 5.0, "O_SIGN_CLOSURE": 5.0, "O_APPROVE_DRAFT": 1.5,
+               "M_SMS_ATTEMPT": 1.5, "X_BOOK_APPT": 8.0}
+
+
+def test_without_the_simulator_the_own_copy_is_used_and_marked_assumed():
+    class NoMinutes:
+        pass
+
+    for module in (NoMinutes, type("Bad", (), {"MINUTES": 7}), type("Empty", (), {"MINUTES": {}}),
+                   type("Junk", (), {"MINUTES": {"M_PHONE_ATTEMPT": "seven", "O_SIGN_CLOSURE": True, "M_SMS_ATTEMPT": -1}})):
+        minutes, source, priced = effort.load_minutes(module)
+        assert minutes == effort.ASSUMED_MINUTES and source == effort.OWN_COPY and priced == ()
+    assert effort.OWN_COPY.endswith("(own copy, assumed)")
+    assumed = effort.assumptions()
+    assert assumed["status"] == effort.ASSUMED and assumed["source"] == effort.OWN_COPY and assumed["illustrative"] is True
+    assert assumed["minutes"] == effort.ASSUMED_MINUTES and "behaviour simulator" in assumed["note"]
+
+
+def test_the_simulators_table_is_read_when_it_is_there_action_by_action(monkeypatch):
+    minutes, source, priced = effort.load_minutes(FakeSimulatorTable)
+    assert source == "simulator/sim/effort.py"
+    assert minutes["coordinator_phone_call"] == 7.2 and minutes["sign_off"] == 5.0 and minutes["message_approval"] == 1.5
+    assert minutes["appointment_booking"] == 8.0 and minutes["manual_message"] == 1.5
+    # what the simulator does not price keeps the own copy
+    assert minutes["referral_handling"] == effort.ASSUMED_MINUTES["referral_handling"]
+    assert minutes["accept_ownership"] == effort.ASSUMED_MINUTES["accept_ownership"]
+    assert priced == tuple(sorted(a for a, i in effort.SIMULATOR_ACTION.items() if i in FakeSimulatorTable.MINUTES))
+    monkeypatch.setattr(effort, "HUMAN_ACTION_MINUTES", minutes)
+    monkeypatch.setattr(effort, "MINUTES_SOURCE", source)
+    monkeypatch.setattr(effort, "FROM_SIMULATOR", priced)
+    assumed = effort.assumptions()
+    assert assumed["source"] == "simulator/sim/effort.py" and assumed["status"] != effort.ASSUMED
+    assert effort.minutes_for("coordinator_phone_call") == 7.2
+
+
+def test_every_simulator_row_the_accounting_names_is_an_action_of_the_accounting():
+    assert set(effort.SIMULATOR_ACTION) <= set(effort.ASSUMED_MINUTES)
+    assert len(set(effort.SIMULATOR_ACTION.values())) == len(effort.SIMULATOR_ACTION)
+
+
+def test_the_module_says_it_is_illustrative_and_where_the_submission_number_comes_from():
+    assert "ILLUSTRATIVE" in effort.__doc__ and "simulator/sim/effort.py" in effort.__doc__
+    assert "NOT where the submission's number comes from" in effort.__doc__
+
+
+def test_the_api_starts_when_the_simulator_cannot_be_imported(monkeypatch):
+    import sys
+
+    monkeypatch.setitem(sys.modules, "simulator.sim.effort", None)  # an import of it raises ImportError
+    minutes, source, priced = effort.load_minutes()
+    assert (minutes, source, priced) == (effort.ASSUMED_MINUTES, effort.OWN_COPY, ())

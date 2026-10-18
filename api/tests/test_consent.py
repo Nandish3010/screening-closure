@@ -139,7 +139,7 @@ def test_freeze_does_not_stop_the_things_that_protect_the_patient():
     frozen = step(drive(*TO_CONTACTED), consent_event({"withdrawn": True}), PATHWAY)
     for kind, actor, payload in [
         ("callback_requested", "patient:p", {}),
-        ("watchdog_flagged", "watchdog", {}),
+        ("watchdog_flagged", "system:watchdog", {}),
         ("callback_requested", "coordinator:co", {}),
     ]:
         assert step(frozen, make_event(kind, actor, payload, at(6)), PATHWAY).state == "consent_withdrawn"

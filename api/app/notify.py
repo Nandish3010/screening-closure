@@ -2,10 +2,11 @@
 log and never sent. This module opens no network connection and imports nothing that could.
 
 `send` is the only code path that writes `message_sent` (no route can post it: EVENT_POLICY is
-empty for it, and the state machine accepts it only from `system:notifier`, for an approved draft, or, since
-A21 (ADR-032), from `system:automation`, for a pre-approved deterministic template named in
+empty for it, and the actor table of the state machine gives it only to `system:notifier`, for an approved draft, and,
+since A21 (ADR-032), to `system:automation`, for a pre-approved deterministic template named in
 config/outreach_policy.yaml, within the weekly cap and the patient's consent: `send(..., auto=...)`, called by
-`app.automation` and by nothing else). The state machine also
+`app.automation` and by nothing else; the policy part of that gate is an append-time guard of the store transaction,
+`outreach_policy.auto_message_guard`, never consulted on replay). The state machine also
 holds the approval gate (SEC-2, ADR-030): it accepts a `message_sent` only for a draft a human approved
 on that case and that has not gone out, on a channel the patient consents to at that moment. Approving a
 draft writes an outbox row (`app.outbox`) in the same transaction as the approval; `drain_outbox` calls
@@ -33,7 +34,7 @@ from datetime import datetime
 from typing import Protocol
 from uuid import UUID
 
-from app import payloads
+from app import outreach_policy, payloads
 from app.clock import clock
 from app.consent import CHANNELS, channel_allowed
 from app.events import CaseNotFound, Event
@@ -105,12 +106,15 @@ class InMemoryNotificationLog:
 log: NotificationLog = InMemoryNotificationLog()
 
 
-def contact_blocked(genesis_payload: dict, channel: str) -> str | None:
+def contact_blocked(genesis_payload: dict, channel: str, model=None) -> str | None:
     """Why the patient cannot be reached on `channel`, from the case_created payload, else None.
 
     `contact_valid` is `false` (no valid contact details at all), or a mapping of channel to
     bool (`{"sms": false}`: the number on file is wrong). Absent or null means "no known problem".
+    A person who confirmed the contact details since (`contact_updated`, `model.contact_confirmed_at`) overrides the flag.
     """
+    if model is not None and getattr(model, "contact_confirmed_at", None) is not None:
+        return None
     flag = genesis_payload.get("contact_valid")
     if flag is False:
         return "contact details flagged invalid"
@@ -143,7 +147,10 @@ def emit_message_sent(store, pathway, case_id: UUID, notification_id: UUID, chan
     event = Event(case_id, "message_sent", at, AUTOMATION_ACTOR if auto is not None else NOTIFIER_ACTOR, payload,
                   uuid.uuid5(NOTIFY_NAMESPACE, str(notification_id)))
     payloads.validate(event.type, event.payload)
-    store.append(event, pathway, within=within)  # InvalidTransition if the case cannot take it
+    # An automatic message passes the outreach policy gate at append time, inside the store's transaction (the state
+    # machine, which replay uses, does not read the policy); an approved draft passes the approval gate in the machine.
+    guard = outreach_policy.auto_message_guard(event) if auto is not None else None
+    store.append(event, pathway, within=within, guard=guard)  # InvalidTransition if the case cannot take it
     return event
 
 
@@ -195,7 +202,7 @@ def send(
     status, reason = ("blocked_consent", why) if not allowed else ("sent", None)
     if allowed:
         genesis = store.events_for(case_id)[0].payload
-        problem = contact_blocked(genesis, channel)
+        problem = contact_blocked(genesis, channel, model)
         if problem:
             status, reason = "blocked_contact", problem
 

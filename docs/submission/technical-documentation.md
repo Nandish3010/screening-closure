@@ -272,7 +272,7 @@ It is a demonstration of the ordering pattern, not a validated model. It is trai
 
 ### 6.7 Human gates
 
-A human decides wherever a wrong decision could harm a patient: accepting ownership, a referral or an escalation rung; approving each message; changing consent; reopening; and closing with resolving evidence and the closer's own signature. Each is human-only in the state machine or the policy table, with a test (section 5).
+A human decides wherever a wrong decision could harm a patient: accepting ownership, a referral or an escalation rung; approving each model-drafted message (the fixed, pre-approved templates are sent automatically under a policy file the clinical lead signs off, a placeholder until H1: a `message_sent` is either an approved draft or an allow-listed template with consent and under the cap); changing consent; reopening; and closing with resolving evidence and the closer's own signature. Each is human-only in the state machine or the policy table, with a test (section 5).
 
 ## 7. Data governance
 

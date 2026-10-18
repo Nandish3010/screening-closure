@@ -111,6 +111,7 @@ SAMPLES = {
     "escalation_accepted": {"rung": "reminder"}, "handoff_requested": {"to_provider": "endo-1"},
     "handoff_accepted": {"provider": "endo-1"}, "handoff_rejected": {"reason": "capacity"},
     "reassign": {"owner": "primary_care_owner:abc123def456"}, "consent_updated": {"withdrawn": True},
+    "contact_updated": {"contact_valid": True},
     "mark_lost_contact": {"failed_attempts": 3},
     "review_requested": {"reason": "consent_withdrawn", "source_event_id": UUID_A},
     "message_drafted": DRAFTED, "message_approved": {"draft_id": UUID_A},
@@ -141,8 +142,8 @@ def test_an_event_type_without_a_schema_is_refused():
 
 
 @pytest.mark.parametrize("event_type", ["acknowledge", "accept_ownership", "close", "reopen", "handoff_requested",
-                                        "reassign", "consent_updated", "mark_lost_contact", "callback_requested",
-                                        "escalation_accepted", "message_approved"])
+                                        "reassign", "consent_updated", "contact_updated", "mark_lost_contact",
+                                        "callback_requested", "escalation_accepted", "message_approved"])
 def test_human_events_take_a_note_of_at_most_200_characters(event_type):
     ok = {**SAMPLES[event_type], "note": "n" * 200}
     payloads.validate(event_type, ok)
@@ -185,6 +186,9 @@ def test_automated_events_take_no_note(event_type):
     ("handoff_requested", "to_provider", ""),
     ("mark_lost_contact", "failed_attempts", "3"),
     ("consent_updated", "withdrawn", "true"),
+    ("contact_updated", "contact_valid", False),  # it says the details are fine; there is no "contact_updated: invalid"
+    ("contact_updated", "contact_valid", "yes"),
+    ("review_requested", "reason", "opt_out please"),
     ("message_drafted", "prompt_hash", "not a hash"),
     ("message_drafted", "language", "fr"),
     ("mark_overdue", "due_at", "next week"),
@@ -309,3 +313,11 @@ def test_the_reassign_role_list_is_the_user_roles_without_the_patient():
     for name in auth.AUTOMATED_ROLE_NAMES:
         with pytest.raises(payloads.PayloadSchemaError):
             payloads.validate("reassign", {"owner": f"{name}:abc"})
+
+
+@pytest.mark.parametrize("reason", ["consent_withdrawn", "reroute_exhausted", "opt_out", "wrong_number"])
+def test_review_requested_takes_the_four_reasons_and_the_machine_vocabulary_is_the_same(reason):
+    from app import state_machine
+
+    payloads.validate("review_requested", {"reason": reason, "source_event_id": UUID_A})
+    assert tuple(payloads.REVIEW_REASONS) == tuple(state_machine.REVIEW_REASONS)

@@ -1,7 +1,9 @@
 """The automation actor (A21, ADR-032): every step of the pathway that is not a human decision, done by `system:automation`.
 
-Product principle: people act only at final decisions (accept an escalation, approve a model-drafted message, sign a
-closure, handle an exhausted reroute list). Everything else is here:
+Coordinator labour is the scaling limit of a screening-closure programme, so people should act only at final decisions
+(accept an escalation, approve a model-drafted message, sign a closure, handle an exhausted reroute list). Everything else
+is here. The automation writes its events in process (the ingest hook and the scheduler's scans): there is no route a
+token can use to post them.
 
 * intake        `acknowledge {auto}` when the result arrives, then `assign_ownership {owner, provider, auto}` to the default
                 owner of the provider the patient is registered with (config/providers.yaml). The owner is named, not
@@ -11,25 +13,31 @@ closure, handle an exhausted reroute list). Everything else is here:
                 provider in the reroute order (`handoff_requested {to_provider, auto}`); when the list is used up the
                 automation raises `review_requested {reason: reroute_exhausted}` and stops: a coordinator reassigns.
 * outreach      pre-approved deterministic templates (config/outreach_policy.yaml) sent through `notify.send(auto=...)`:
-                no draft, no approval, `message_sent {auto, template_id, template_version}`. The state machine is the gate
-                (template allow-list and version, consent for the channel now, consent freeze, weekly cap); this module
-                only decides what is due.
+                no draft, no approval, `message_sent {auto, template_id, template_version}`. Two gates, neither of them in
+                this module: at append time, inside the store transaction, the outreach policy (template allow-list and
+                version, weekly cap over ALL outbound messages: `outreach_policy.auto_message_guard`); in the state machine,
+                what the log decides (consent for the channel now, consent freeze, an open opt-out or wrong-number hold).
+                This module only decides what is due, and sends nothing while a hold is open.
 * evidence      HAPI is asked whether the colonoscopy exists for the case; if so `complete_confirmatory {result_ref, auto}`
                 (from confirmatory_booked) and `closure_proposed {evidence_ref}`. The proposal gives the clinician a
                 one-click sign-off with the evidence prefilled. Closure stays human: this actor cannot emit `close`
-                (the state machine refuses every automated actor), and nothing here reads a proposal back.
+                (the state machine refuses every automated actor), and nothing here reads a proposal back. HAPI is asked
+                only about cases whose booked appointment has begun, at most once per `EVIDENCE_NEGATIVE_TTL` of simulated
+                time per case when it has nothing yet, and the scan stops at the first answer of "unavailable".
 
 Every append has a deterministic event id (uuid5 over the case, the event that caused it and the kind), so a scan that
 runs twice, or two at once, writes each event once. Every scan is a no-op while `AUTOMATION_ENABLED` is false. The scans
-read the open cases once (`iter_open_case_models`) and fetch a case's log only when the model says something is due.
+ask the store only for the states they can act on (a SQL filter on `current_state`, not a replay of every open case) and
+fetch a case's log only when the model says something is due.
 """
 
 from __future__ import annotations
 
 import logging
+import threading
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
 from app import evidence, notify, outreach_policy, payloads, users
@@ -52,6 +60,8 @@ log = logging.getLogger("app.automation")
 AUTOMATION_NAMESPACE = uuid.UUID("c3e1b7a4-52d8-4f0a-9b66-1d7e8a3f4c25")
 EVIDENCE_SCAN_STATES = ("confirmatory_booked", *CLOSURE_PROPOSAL_STATES)
 EVIDENCE_SCAN_LIMIT = 200  # cases asked about in HAPI per scan: the rest are asked on the next loop
+EVIDENCE_NEGATIVE_TTL = timedelta(hours=6)  # simulated time: a case HAPI had nothing for is not asked again sooner
+INTAKE_STATES = ("result_received", "acknowledged")
 
 
 def eid(case_id: UUID, *parts: object) -> UUID:
@@ -61,6 +71,40 @@ def eid(case_id: UUID, *parts: object) -> UUID:
 
 def enabled() -> bool:
     return bool(settings.automation_enabled)
+
+
+class NegativeCache:
+    """Per-case memory of "HAPI had no colonoscopy for this case" (simulated time, in process, lost on restart: a restart
+    only costs one extra question per case). A case HAPI could not answer for is NOT remembered, only a definite no."""
+
+    def __init__(self, ttl: timedelta = EVIDENCE_NEGATIVE_TTL) -> None:
+        self.ttl = ttl
+        self._at: dict[UUID, datetime] = {}
+        self._lock = threading.Lock()
+
+    def fresh(self, case_id: UUID, now: datetime) -> bool:
+        with self._lock:
+            at = self._at.get(case_id)
+        return at is not None and at <= now < at + self.ttl  # a clock that went back makes the entry stale
+
+    def remember(self, case_id: UUID, now: datetime) -> None:
+        with self._lock:
+            self._at[case_id] = now
+
+    def prune(self, now: datetime) -> None:
+        """Forget the entries that have expired, so the cache stays the size of the cases asked about in one TTL."""
+        with self._lock:
+            self._at = {c: at for c, at in self._at.items() if at <= now < at + self.ttl}
+
+    def clear(self) -> None:
+        with self._lock:
+            self._at.clear()
+
+    def __len__(self) -> int:
+        return len(self._at)
+
+
+evidence_negatives = NegativeCache()  # the evidence scan's; tests clear it
 
 
 @dataclass
@@ -181,7 +225,8 @@ def _reroute(store, pathway: Pathway, case_id: UUID, model, now: datetime, resul
 
 def _rule_key(rule, model, pathway: Pathway, calendar: WorkingCalendar, now: datetime):
     """The id of the thing that makes `rule` due now (the event that entered the state, or that raised the rung), else
-    None. One message per key per rule, ever: the notification id is derived from it."""
+    None. One message per key per rule, ever: the notification id is derived from it. (An open outreach hold does not
+    change what is due, only whether it is sent: `_outreach`.)"""
     if model.consent_frozen or model.state not in pathway.open_states:
         return None
     if rule.state is not None and model.state != rule.state:
@@ -212,6 +257,9 @@ def _outreach(store, pathway: Pathway, case_id: UUID, model, now: datetime, cale
     due = [(r, k) for r in policy.rules if (k := _rule_key(r, model, pathway, calendar, now)) is not None]
     if not due:
         return
+    if model.outreach_holds:  # an opt-out or a wrong number is flagged: nothing goes until a person clears it
+        result.add("outreach_held", len(due))
+        return
     from app.ai.provider import MAX_FIELD_CHARS
     from app.ai.templates import DEFAULT_NEXT_STEP, render
     from app.routers.drafts import appointment_date  # late: the drafts router imports the cases router
@@ -223,7 +271,7 @@ def _outreach(store, pathway: Pathway, case_id: UUID, model, now: datetime, cale
         nid = eid(case_id, "outreach", rule.id, key)
         if nid in existing:
             continue
-        recent = sum(1 for t in model.auto_message_times if now - AUTO_MESSAGE_WINDOW < t <= now)
+        recent = sum(1 for t in model.outbound_message_times if now - AUTO_MESSAGE_WINDOW < t <= now)  # automatic AND approved
         if recent >= policy.max_auto_messages_per_week:
             result.add("outreach_capped")  # still due: tried again on a later scan, once the week allows it
             continue
@@ -237,14 +285,14 @@ def _outreach(store, pathway: Pathway, case_id: UUID, model, now: datetime, cale
             result.add("outreach_no_date")
             continue
         channel = next((c for c in rule.channels
-                        if channel_consent(model, c)[0] and notify.contact_blocked(genesis, c) is None), rule.channels[0])
+                        if channel_consent(model, c)[0] and notify.contact_blocked(genesis, c, model) is None), rule.channels[0])
         template = policy.templates[f"{rule.purpose}.{channel}"]
         body = render(template.purpose, channel, language, owner_name=owner["display_name"],
                       next_step=DEFAULT_NEXT_STEP[language], appointment_date=date)
         try:
             row = notify.send(case_id, channel, language, template.purpose, body, at=now, store=store, pathway=pathway,
                               notification_id=nid, auto={"template_id": template.id, "template_version": template.version})
-        except InvalidTransition as exc:  # consent changed, cap reached, or the case moved on, between our read and the write
+        except InvalidTransition as exc:  # consent or a hold changed, the cap was reached, or the case moved on, between our read and the write
             log.info("case %s: automatic message refused: %s", case_id, exc)
             result.add("outreach_refused")
             continue
@@ -254,8 +302,20 @@ def _outreach(store, pathway: Pathway, case_id: UUID, model, now: datetime, cale
 # ---- the scan the scheduler loop calls -----------------------------------------------------------------------------
 
 
+def _scan_states(policy) -> tuple[str, ...] | None:
+    """The states the automation scan can act on, for the SQL filter on `current_state`: intake, the re-route wait, and the
+    state of every outreach rule. None (no filter) if a rule applies in any state."""
+    states = {*INTAKE_STATES, "referral_rejected"}
+    for rule in policy.rules if policy is not None else ():
+        if rule.state is None:
+            return None
+        states.add(rule.state)
+    return tuple(sorted(states))
+
+
 def run_automation_scan(store, pathway: Pathway, now: datetime, calendar: WorkingCalendar, only=None) -> dict:
-    """One pass over the open cases: intake (acknowledge, assign), reroute, outreach. Idempotent. Returns counts."""
+    """One pass over the open cases in the states it can act on: intake (acknowledge, assign), reroute, outreach.
+    Idempotent. Returns counts."""
     if not enabled():
         return {"enabled": False}
     result = ScanResult()
@@ -265,13 +325,15 @@ def run_automation_scan(store, pathway: Pathway, now: datetime, calendar: Workin
         policy = None  # fail closed on messaging only: the rest of the automation does not depend on templates
         result.errors.append(f"outreach policy unusable, no automatic messages: {exc}")
         log.error("outreach policy unusable, no automatic messages: %s", exc)
-    for case_id, model, error in store.iter_open_case_models(pathway, only=only):
+    states = _scan_states(policy)
+    candidates = store.iter_open_case_models(pathway, only=only, **({"states": states} if states is not None else {}))
+    for case_id, model, error in candidates:
         result.add("cases_evaluated")
         if model is None:
             result.errors.append(f"{case_id}: {error}")
             continue
         try:
-            if model.state in ("result_received", "acknowledged"):
+            if model.state in INTAKE_STATES:
                 _intake(store, pathway, case_id, model, now, result)
             _reroute(store, pathway, case_id, model, now, result)
             if policy is not None:
@@ -292,35 +354,67 @@ def _booking_time(events) -> datetime | None:
     return None
 
 
+def _appointment_begun(events, now: datetime) -> bool:
+    """False only when the booked appointment is known and still ahead: a colonoscopy that has not happened has no report
+    in HAPI, so there is nothing to ask. A date-only appointment has begun at the start of its day (UTC); no date on the
+    booking means we cannot tell, so we ask."""
+    for e in reversed(events):
+        if e.type != "book_confirmatory":
+            continue
+        raw = e.payload.get("appointment_at") or e.payload.get("appointment_date")
+        if not isinstance(raw, str):
+            return True
+        try:
+            when = datetime.fromisoformat(raw.replace("Z", "+00:00").replace("z", "+00:00"))
+        except ValueError:
+            return True
+        return (when if when.tzinfo else when.replace(tzinfo=UTC)) <= (now if now.tzinfo else now.replace(tzinfo=UTC))
+    return True
+
+
 def scan_evidence(store, pathway: Pathway, now: datetime, finder=None, verifier=None,
-                  limit: int = EVIDENCE_SCAN_LIMIT, only=None) -> dict:
+                  limit: int = EVIDENCE_SCAN_LIMIT, only=None, negatives: NegativeCache | None = None) -> dict:
     """Ask HAPI for the colonoscopy of every case that is booked or completed and has no closure proposal yet. When one is
     found and belongs to the case (the verifier `close` uses), complete the confirmatory step if it is still open and
-    propose the closure. A person still reviews and signs."""
+    propose the closure. A person still reviews and signs.
+
+    Kind to HAPI: only the cases in the three states that can take a proposal are read (a filter on `current_state` in
+    the store); a booked case whose appointment is still ahead is not asked about; a case HAPI had nothing for is not
+    asked again for `EVIDENCE_NEGATIVE_TTL` of simulated time; and the first answer of "unavailable" ends the scan (every
+    further question would meet the same outage), to be tried again on the next loop."""
     if not enabled():
         return {"enabled": False}
     finder = finder if finder is not None else evidence.finder
     verifier = verifier if verifier is not None else evidence.verifier
+    negatives = negatives if negatives is not None else evidence_negatives
+    negatives.prune(now)
     result = ScanResult()
     asked = 0
-    for case_id, model, error in store.iter_open_case_models(pathway, only=only):
+    for case_id, model, error in store.iter_open_case_models(pathway, only=only, states=EVIDENCE_SCAN_STATES):
         if model is None or model.state not in EVIDENCE_SCAN_STATES or model.closure_proposal is not None:
+            continue
+        if negatives.fresh(case_id, now):
+            result.add("skipped_recent_no")
+            continue
+        events = store.events_for(case_id)
+        if model.state == "confirmatory_booked" and not _appointment_begun(events, now):
+            result.add("not_yet_due")
             continue
         if asked >= limit:
             result.add("deferred")
             continue
         asked += 1
-        events = store.events_for(case_id)
         patient_ref = events[0].payload.get("patient_ref") if events else None
         try:
             ref = next((r for r in finder.find(case_id=case_id, patient_ref=patient_ref, after=_booking_time(events))
                         if verifier.exists(r, case_id=case_id, patient_ref=patient_ref)), None)
         except evidence.EvidenceUnavailable as exc:
             result.add("unavailable")
-            log.warning("evidence scan: FHIR server cannot answer: %s", exc)
-            continue
+            log.warning("evidence scan: FHIR server cannot answer, stopping this scan: %s", exc)
+            break
         result.add("asked")
         if ref is None:
+            negatives.remember(case_id, now)
             continue
         result.add("found")
         if model.state == "confirmatory_booked":

@@ -4,6 +4,7 @@ from hypothesis import strategies as st
 
 from app.events import Event
 from app.state_machine import InvalidTransition, apply
+from simulator.sim.actors import as_machine_event
 from simulator.sim.calendar import WorkingCalendar
 from simulator.sim.engine import ARMS, BASELINE, ORCHESTRATED
 from simulator.sim.invariants import check_case_log, check_consent, stateful_events
@@ -65,10 +66,10 @@ def test_state_machine_rejects_unsafe_closes(ctx):
     with pytest.raises(InvalidTransition):
         apply("clinician_reviewed", close("watchdog", evidence_ref="r", signed_by="c"), pw)
     with pytest.raises(InvalidTransition):
-        apply("clinician_reviewed", close("clinician:1", evidence_ref="r"), pw)
+        apply("clinician_reviewed", close("primary_care_owner:1", evidence_ref="r"), pw)
     with pytest.raises(InvalidTransition):
-        apply("patient_acknowledged", close("clinician:1", evidence_ref="r", signed_by="c"), pw)
-    assert apply("clinician_reviewed", close("clinician:1", evidence_ref="r", signed_by="c"), pw) == "closed"
+        apply("patient_acknowledged", close("primary_care_owner:1", evidence_ref="r", signed_by="c"), pw)
+    assert apply("clinician_reviewed", close("primary_care_owner:1", evidence_ref="r", signed_by="c"), pw) == "closed"
 
 
 @pytest.mark.parametrize("arm", ARMS)
@@ -105,7 +106,7 @@ def test_every_case_is_in_a_state_consistent_with_its_log(ctx):
             if ev.type == "reopened":
                 state = ev.payload["resume_state"]
             elif ev.type in stateful_events(pw):
-                state = apply(state, ev, pw)
+                state = apply(state, as_machine_event(ev), pw)
         assert state == c.state
 
 
@@ -222,3 +223,22 @@ def test_the_engine_refuses_a_milestone_it_cannot_model(ctx):
     pw = dataclasses.replace(ctx.pathway, milestones={**ctx.pathway.milestones, "odd": bad})
     with pytest.raises(ParamError, match="cannot model milestone"):
         make_engine(ORCHESTRATED, ctx.mp, pw, ctx.cal, 100, SEED)
+
+
+def test_the_simulators_actor_names_meet_the_state_machines_table_without_changing_what_is_logged():
+    """The state machine is default-deny about who may write what; the simulator keeps its own, hashed actor names and
+    renames only the role part for the machine (`sim/actors.py`)."""
+    from datetime import datetime, timezone
+    from uuid import uuid4
+
+    from simulator.sim.actors import machine_actor
+
+    assert machine_actor("owner:pcp-3") == "primary_care_owner:pcp-3"
+    assert machine_actor("staff:outreach-2") == "coordinator:outreach-2"
+    assert machine_actor("clinician:cl-1") == "primary_care_owner:cl-1"
+    assert machine_actor("endoscopy:unit") == "specialist_owner:unit"
+    assert machine_actor("lab:staff-1") == "lab:staff-1" and machine_actor("patient:k") == "patient:k"
+    for service in ("system:scheduler", "scheduler", "watchdog", "system:intake", "nobody:x", "owner:", ""):
+        assert machine_actor(service) == service  # not a person: the table decides (and refuses most of them)
+    ev = Event(uuid4(), "acknowledge", datetime(2026, 1, 5, tzinfo=timezone.utc), "staff:intake-1", {})
+    assert as_machine_event(ev).actor == "coordinator:intake-1" and ev.actor == "staff:intake-1"

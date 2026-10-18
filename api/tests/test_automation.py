@@ -18,7 +18,7 @@ from uuid import UUID, uuid4
 import pytest
 
 from api_helpers import login_headers, make_client
-from app import auth, automation, evidence, notify, outreach_policy, policy, providers, users
+from app import auth, automation, evidence, notify, outreach_policy, payloads, policy, providers, users
 from app.ai.draft_store import InMemoryDraftStore
 from app.auth import opaque_user_id
 from app.calendar import default_calendar
@@ -59,10 +59,12 @@ def world(**settings):
         mp.setattr(evidence, "finder", evidence.StaticFinder())
         mp.setattr(evidence, "verifier", evidence.AcceptAllVerifier())
         clock.reset()
+        automation.evidence_negatives.clear()
         try:
             yield
         finally:
             clock.reset()
+            automation.evidence_negatives.clear()
 
 
 @pytest.fixture
@@ -115,6 +117,15 @@ def scan():
 
 def evidence_scan():
     return automation.scan_evidence(cases.store, PATHWAY, clock.now())
+
+
+APPOINTMENT = datetime(2026, 1, 20, tzinfo=UTC)  # the date every booking here carries
+
+
+def appointment_passed():
+    """The evidence scan asks HAPI only once the booked appointment has begun: move the clock past it."""
+    if clock.now() <= APPOINTMENT:
+        clock.advance(days=(APPOINTMENT - clock.now()).days + 1)
 
 
 def owner_accepted_case(registered_provider=None, **extra):
@@ -344,7 +355,7 @@ def test_assign_ownership_is_one_time_and_only_before_acceptance(fresh):
 
 def test_assign_ownership_by_anyone_else_is_refused(fresh):
     cid = new_case()
-    for headers in (login_headers(client, "supervisor"), login_headers(client, "coordinator"), SCHED):
+    for headers in (login_headers(client, "supervisor"), login_headers(client, "coordinator"), SCHED, AUTO):
         post(cid, "assign_ownership", headers, {"owner": actor("primary_care_owner", HUDA), "auto": True}, expect=403)
     # and by the machine, whatever the route: a person's actor is refused
     store = InMemoryEventStore()
@@ -367,16 +378,23 @@ def test_the_automation_token_is_system_automation_and_cannot_log_in_as_a_user(f
     assert client.post("/auth/dev-login", json={"role": "system", "name": "automation"}).status_code == 403
 
 
-def test_the_automation_token_may_emit_exactly_the_events_of_its_row(fresh):
-    allowed = {t for t, roles in policy.EVENT_POLICY.items() if "automation" in roles}
-    assert allowed == {"acknowledge", "assign_ownership", "complete_confirmatory", "closure_proposed", "handoff_requested"}
+def test_the_automation_token_gets_403_on_the_events_route_for_every_event_type(fresh):
+    """A2: the automation writes in process (the scans and the ingest hook); there is no route a token can post to. The
+    route policy refuses the role outright, and no row of EVENT_POLICY names it either."""
+    assert "automation" not in policy.ROUTE_POLICY[("POST", "/cases/{case_id}/events")]
+    assert all("automation" not in roles for roles in policy.EVENT_POLICY.values())
     cid = new_case()
-    for type_ in set(policy.EVENT_POLICY) - allowed:
+    every_type = (set(policy.EVENT_POLICY) | set(PATHWAY.event_types) | set(payloads.SCHEMAS)
+                  | {"case_created", "bogus_event", "contact_updated"})
+    assert {"acknowledge", "assign_ownership", "complete_confirmatory", "closure_proposed", "handoff_requested",
+            "message_sent", "review_requested", "close", "contact_updated"} <= every_type
+    before = types(cid)
+    for type_ in sorted(every_type):
         post(cid, type_, AUTO, {}, expect=403)
-    # nobody can post these two, the automation included: they are written in process only
-    for type_ in ("message_sent", "review_requested"):
+    assert types(cid) == before
+    # the in-process events nobody can post, the automation's included
+    for type_ in ("assign_ownership", "closure_proposed", "message_sent", "review_requested"):
         assert policy.EVENT_POLICY[type_] == frozenset()
-        post(cid, type_, AUTO, {}, expect=403)
     assert client.get("/cases", headers=AUTO).status_code == 403
     assert client.post("/cases", json={}, headers=AUTO).status_code == 403
     assert client.get("/metrics/effort", headers=AUTO).status_code == 403
@@ -529,7 +547,13 @@ def test_an_escalation_rung_can_trigger_a_reminder(fresh):
     assert "reminder.sms" in [e.payload["template_id"] for e in sent(cid)]
 
 
-# -- the gate is the state machine's, not this module's ----------------------------------------------------------------
+# -- the gates: the outreach policy at append time (a store guard), the log's own facts in the state machine ----------------
+
+
+def append_auto(store, event):
+    """An automatic message the way the application writes it (`notify.emit_message_sent`): through the append-time
+    outreach-policy guard, inside the store's transaction."""
+    return store.append(event, PATHWAY, guard=outreach_policy.auto_message_guard(event))
 
 
 def accepted_case_store():
@@ -548,10 +572,10 @@ def auto_msg(cid, template_id="result_notification.sms", channel="sms", purpose=
     return Event(cid, "message_sent", at or clock.now(), AUTOMATION_ACTOR, payload)
 
 
-def test_the_machine_accepts_a_listed_template_and_nothing_else():
+def test_the_append_guard_accepts_a_listed_template_and_nothing_else():
     with world():
         store, cid = accepted_case_store()
-        store.append(auto_msg(cid), PATHWAY)
+        append_auto(store, auto_msg(cid))
         for bad, why in (
             (auto_msg(cid, template_id="made_up.sms"), "not in the approved"),
             (auto_msg(cid, version=2), "approved at version 1"),
@@ -561,7 +585,7 @@ def test_the_machine_accepts_a_listed_template_and_nothing_else():
             (auto_msg(cid, template_id="escalation_notice.sms", purpose="escalation_notice"), "not in the approved"),
         ):
             with pytest.raises(InvalidTransition, match=why):
-                store.append(bad, PATHWAY)
+                append_auto(store, bad)
         assert len(replay_model(store.events_for(cid), PATHWAY).auto_message_times) == 1
 
 
@@ -598,16 +622,16 @@ def test_consent_freeze_and_an_off_channel_block_an_automatic_message_at_apply_t
             store.append(auto_msg(cid, "reminder.whatsapp", "whatsapp", "reminder"), PATHWAY)
 
 
-def test_at_most_max_auto_messages_per_week_enforced_in_the_machine():
+def test_at_most_max_auto_messages_per_week_enforced_at_append_time():
     with world():
         store, cid = accepted_case_store()
         t0 = clock.now()
-        store.append(auto_msg(cid, at=t0), PATHWAY)
-        store.append(auto_msg(cid, "reminder.sms", "sms", "reminder", at=t0 + timedelta(days=1)), PATHWAY)
-        with pytest.raises(InvalidTransition, match="2 automatic messages in the last 7 days"):
-            store.append(auto_msg(cid, "reminder.whatsapp", "whatsapp", "reminder", at=t0 + timedelta(days=6)), PATHWAY)
+        append_auto(store, auto_msg(cid, at=t0))
+        append_auto(store, auto_msg(cid, "reminder.sms", "sms", "reminder", at=t0 + timedelta(days=1)))
+        with pytest.raises(InvalidTransition, match="2 outbound messages"):
+            append_auto(store, auto_msg(cid, "reminder.whatsapp", "whatsapp", "reminder", at=t0 + timedelta(days=6)))
         # the first leaves the window at day 7
-        store.append(auto_msg(cid, "reminder.whatsapp", "whatsapp", "reminder", at=t0 + timedelta(days=7, minutes=1)), PATHWAY)
+        append_auto(store, auto_msg(cid, "reminder.whatsapp", "whatsapp", "reminder", at=t0 + timedelta(days=7, minutes=1)))
 
 
 def test_the_cap_is_read_from_the_policy(monkeypatch):
@@ -616,7 +640,7 @@ def test_the_cap_is_read_from_the_policy(monkeypatch):
         monkeypatch.setattr(outreach_policy, "get_policy", lambda path=None: dataclasses.replace(pol, max_auto_messages_per_week=0))
         store, cid = accepted_case_store()
         with pytest.raises(InvalidTransition, match="the limit is 0"):
-            store.append(auto_msg(cid), PATHWAY)
+            append_auto(store, auto_msg(cid))
 
 
 def test_an_unusable_policy_sends_nothing_but_the_rest_of_the_automation_runs(fresh, monkeypatch):
@@ -629,7 +653,7 @@ def test_an_unusable_policy_sends_nothing_but_the_rest_of_the_automation_runs(fr
     assert sent(cid) == [] and any("outreach policy unusable" in e for e in out["errors"])
     store, cid2 = accepted_case_store()
     with pytest.raises(InvalidTransition, match="not usable"):
-        store.append(auto_msg(cid2), PATHWAY)
+        append_auto(store, auto_msg(cid2))
 
 
 def test_message_sent_still_has_no_poster_and_model_drafts_still_need_a_human(fresh):
@@ -757,6 +781,7 @@ def found(cid, *refs):
 def test_evidence_found_completes_the_step_and_proposes_the_closure(fresh):
     cid = booked_case()
     found(cid, f"Procedure/colonoscopy-{cid}")
+    appointment_passed()
     out = evidence_scan()
     assert out["found"] == 1 and out["completed"] == 1 and out["closure_proposed"] == 1
     tail = log(cid)[-2:]
@@ -775,6 +800,7 @@ def test_the_closure_stays_human_the_clinician_reviews_and_signs_with_the_eviden
     cid = booked_case()
     ref = f"Procedure/colonoscopy-{cid}"
     found(cid, ref)
+    appointment_passed()
     evidence_scan()
     karim = login(*KARIM)
     # the automation cannot close, and neither can any token
@@ -791,6 +817,7 @@ def test_a_reopen_withdraws_the_proposal(fresh):
     cid = booked_case()
     ref = f"Procedure/colonoscopy-{cid}"
     found(cid, ref)
+    appointment_passed()
     evidence_scan()
     karim = login(*KARIM)
     post(cid, "clinician_review", karim)
@@ -815,9 +842,11 @@ def test_evidence_that_is_not_this_cases_is_never_proposed(fresh):
     mine, theirs = f"Procedure/colonoscopy-{cid}", "Procedure/colonoscopy-someone-else"
     evidence.verifier = evidence.StaticVerifier({mine, theirs}, bindings={theirs: uuid4(), mine: cid})
     found(cid, theirs)
+    appointment_passed()
     out = evidence_scan()
     assert out.get("found") is None and "closure_proposed" not in types(cid)
     found(cid, theirs, mine)  # the first that belongs to the case wins
+    clock.advance(hours=7)  # the "nothing yet" answer is remembered for 6 simulated hours
     evidence_scan()
     assert model(cid).closure_proposal["evidence_ref"] == mine
 
@@ -825,6 +854,7 @@ def test_evidence_that_is_not_this_cases_is_never_proposed(fresh):
 def test_an_unreachable_fhir_server_is_counted_and_changes_nothing(fresh):
     cid = booked_case()
     before = types(cid)
+    appointment_passed()
     evidence.finder = evidence.StaticFinder(fail="connection refused")
     out = evidence_scan()
     assert out["unavailable"] == 1 and types(cid) == before
@@ -844,10 +874,12 @@ def test_closure_proposed_is_an_annotation_that_changes_no_state_and_needs_the_a
         cases.store.append(Event(UUID(cid), "closure_proposed", clock.now(), AUTOMATION_ACTOR,
                                  {"evidence_ref": "Procedure/1", "auto": True}), PATHWAY)
     post(cid, "complete_confirmatory", login(*KARIM))
-    for headers in (login(*KARIM), login_headers(client, "supervisor"), SCHED):
+    for headers in (login(*KARIM), login_headers(client, "supervisor"), SCHED, AUTO):  # nobody can post it
         post(cid, "closure_proposed", headers, {"evidence_ref": "Procedure/1", "auto": True}, expect=403)
-    post(cid, "closure_proposed", AUTO, {"evidence_ref": "Procedure/1", "auto": True})
-    assert model(cid).state == "confirmatory_completed"
+    # the automation writes it in process
+    cases.store.append(Event(UUID(cid), "closure_proposed", clock.now(), AUTOMATION_ACTOR,
+                             {"evidence_ref": "Procedure/1", "auto": True}), PATHWAY)
+    assert model(cid).state == "confirmatory_completed" and model(cid).closure_proposal["evidence_ref"] == "Procedure/1"
 
 
 # -- the HAPI search itself, with a fake HTTP layer --------------------------------------------------------------------
@@ -935,6 +967,7 @@ def test_the_finder_is_bound_by_configure():
 def test_a_patient_sees_neither_the_assignment_nor_the_proposal_nor_the_template_internals(fresh):
     cid = booked_case()
     found(cid, f"Procedure/colonoscopy-{cid}")
+    appointment_passed()
     scan()
     evidence_scan()
     pat = login("patient", "pat", patient_ref="Patient/1")
@@ -950,6 +983,7 @@ def test_a_patient_sees_neither_the_assignment_nor_the_proposal_nor_the_template
 def test_the_whole_log_replays_to_the_same_model_and_the_timeline_marks_the_actor_kind(fresh):
     cid = booked_case()
     found(cid, f"Procedure/colonoscopy-{cid}")
+    appointment_passed()
     scan()
     evidence_scan()
     again = replay_model(log(cid), PATHWAY)

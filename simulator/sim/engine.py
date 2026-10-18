@@ -36,6 +36,7 @@ from app.events import CASE_CREATED, Event
 from app.pathway import Pathway
 from app.state_machine import InvalidTransition, apply
 
+from .actors import as_machine_event
 from .behaviour import (
     A_POOL, H_POOL, HUMAN_KINDS, M_POOL, N_RUNGS, STAFF_STEPS, T_POOL, W_POOL, Behaviour, Latents, draw_latents,
     lognormal,
@@ -297,7 +298,7 @@ class Engine:
     def advance(self, c: Case, t: float, etype: str, actor: str, payload: dict | None = None) -> None:
         """Apply a pathway event through the shared state machine, then enter the next step."""
         ev = self._mk(c, t, etype, actor, payload)
-        c.state = apply(c.state, ev, self.pw)  # raises InvalidTransition on a bug in the engine
+        c.state = apply(c.state, as_machine_event(ev), self.pw)  # raises InvalidTransition on a bug in the engine
         self._log(c, ev, t)
         if c.state == self.terminal:
             c.step = None
@@ -410,7 +411,7 @@ class Engine:
                 ev2 = self._mk(c, t, "accept_ownership", other, {"owner": other})
                 c.seq -= 1  # a rejected claim is not part of the case log
                 try:
-                    apply(c.state, ev2, self.pw)
+                    apply(c.state, as_machine_event(ev2), self.pw)
                 except InvalidTransition as exc:
                     self.emit(c, t, "conflicting_ack_rejected", "system:state-machine",
                               {"claimant": other, "owner": owner, "reason": str(exc)})

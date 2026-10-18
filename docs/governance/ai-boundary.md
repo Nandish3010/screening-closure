@@ -9,7 +9,11 @@ Where a language model may be used in this system, where it may not, how its out
 - Draft one patient message (purpose, channel and language chosen by a person or by the pathway), as text.
 - Nothing else. There is no model call anywhere in the closure engine, the scheduler, the escalation ladder, the watchdog or the closure check.
 
-A draft is only a proposal. It is shown to the case owner, who approves it or rejects it. Only after approval does the notification mock "send" it. The rule is enforced by the case's state machine, not only by the route: it accepts a `message_sent` only for a draft a human approved on that case, once, and only if the patient still consents to that channel when it is applied (ADR-030). The exact prompt, the draft, the provider and model, the requester, the approver and the timestamps are stored as Provenance (D4, D5): see section 7.
+A draft is only a proposal. It is shown to the case owner, who approves it or rejects it. Only after approval does the notification mock "send" it. The rule is enforced by the case's state machine, not only by the route: it accepts a `message_sent` for a draft only if a human approved that draft on that case, once, and only if the patient still consents to that channel when it is applied (ADR-030). The exact prompt, the draft, the provider and model, the requester, the approver and the timestamps are stored as Provenance (D4, D5): see section 7.
+
+**Pre-approved deterministic templates are a separate path and involve no model.** Since A21 (ADR-032) the automation actor `system:automation` sends the fixed, reviewed message templates (`api/app/ai/templates`, filled only with the care owner's name, the next step and a booked date) automatically, with no draft and no per-message approval, under a policy file, `config/outreach_policy.yaml`, that the clinical lead signs off (each template at a version, an `approved_by`, the triggers, a weekly cap). **The sign-off is a placeholder until H1: nobody has signed it yet**, and the policy says so (`status: pending_h1_clinical_lead_signoff`). The templates are the same texts the clinician pack puts in front of the reviewers. A model never writes, picks or edits what the automation sends.
+
+The `message_sent` property is therefore this: **a `message_sent` is either an approved draft, or an allow-listed template with the patient's consent and under the cap.** An approved draft needs a human approval of that draft on that case. An automatic message needs a template listed in the signed policy at that version, the patient's consent to the channel when it is written, no open opt-out or wrong-number flag on the case, and fewer than the weekly cap of outbound messages (automatic and approved drafts together) in the seven days before. The policy part (the allow-list, the version, the cap) is checked when the event is appended, inside the store transaction; the part the log itself decides (consent, the flags) is checked by the state machine. Replaying a log never reads the policy file.
 
 The model sees the minimum it needs: the care owner's name and role, the next step in plain words, an appointment date if there is one, and the pathway name. It is never given the patient's name, contact details, identifiers or clinical history. No message may state or hint at what the screening found (section 4a).
 
@@ -17,10 +21,10 @@ The model sees the minimum it needs: the care owner's name and role, the next st
 
 | The model may not | How this is enforced |
 |---|---|
-| Move a case between states | A `model:` actor is automated; the state machine refuses every state-changing event from an automated actor. Only `message_drafted` is allowed (T-D2, D5). |
+| Move a case between states | A `model:` actor is automated; the state machine's actor table (default deny) gives it `message_drafted` and nothing else (T-D2, D5, T-A51). |
 | Close a case or sign off a closure | `close` needs `evidence_ref` and `signed_by` from a non-automated actor (T-A1, T-A4). |
 | Decide or change care, escalate, reassign an owner | These are events with human or scheduler actors; the model has no route to them. |
-| Contact a patient directly | There is no code path to `message_sent` except through owner approval (T-D1, D5). The provider returns text and nothing else; it has no handle on any channel. |
+| Contact a patient directly | A model draft reaches a patient only through owner approval (T-D1, D5); the provider returns text and nothing else and has no handle on any channel. The only other path to `message_sent` is the automation's pre-approved deterministic template, which involves no model and passes the policy gate above (T-A43, T-A48, T-A49). |
 | Diagnose, advise or reassure | Output validation rejects it and the template is used instead (section 4). |
 | Be required | The default provider is `template`, which needs no network and no model. With the model off or failing, the product behaves the same. |
 

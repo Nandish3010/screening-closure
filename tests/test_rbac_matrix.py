@@ -38,7 +38,7 @@ def test_the_matrix_covers_every_event_type_and_an_unknown_one_is_refused_for_ev
 
 
 def test_nobody_but_the_gate_can_post_message_sent_message_approved_or_review_requested(result):
-    for event_type in ("message_sent", "message_approved", "review_requested"):
+    for event_type in ("message_sent", "message_approved", "review_requested", "assign_ownership", "closure_proposed"):
         assert {result.event_cells[(event_type, role)].text() for role in m.COLUMNS if role != "anonymous"} == {"R"}
 
 
@@ -50,10 +50,10 @@ def test_service_tokens_reach_only_their_own_routes_and_events(result):
     allowed_events = {role: {e for e in policy.EVENT_POLICY if result.event_cells[(e, role)].text() == "A"} for role in ("scheduler", "watchdog", "automation")}
     assert allowed_events["scheduler"] == {"mark_overdue", "escalate", "handoff_rejected"}
     assert allowed_events["watchdog"] == {"watchdog_flagged"}
-    # A21: the automation token reaches exactly its five postable events; it can never close a case
-    assert allowed_events["automation"] == {"acknowledge", "assign_ownership", "complete_confirmatory",
-                                            "closure_proposed", "handoff_requested"}
+    # A21 + A2 of the engineering review: the automation token posts NO event (it writes in process); it can never close a case
+    assert allowed_events["automation"] == set()
     assert result.event_cells[("close", "automation")].text() == "R"
+    assert result.route_cells[("POST", "/cases/{case_id}/events", "automation")].text() == "R"
 
 
 # ---- the check itself catches what it is for

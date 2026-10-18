@@ -32,7 +32,9 @@ NOTE_MAX_LENGTH = 200
 REOPEN_REASONS = ("new_finding", "evidence_inadequate", "closed_in_error", "patient_request", "other")
 CALLBACK_REASONS = ("patient_does_not_understand", "wants_to_speak_to_clinician", "cannot_attend", "other")
 WATCHDOG_REASONS = ("idle", "scheduler_down")
-REVIEW_REASONS = ("consent_withdrawn", "reroute_exhausted")  # reroute_exhausted: A21, system:automation
+# consent_withdrawn: system:consent. reroute_exhausted: A21, system:automation. opt_out and wrong_number: the triage actor
+# (branch cut-triage) flags an inbound reply; the automation sends nothing until a person clears the flag.
+REVIEW_REASONS = ("consent_withdrawn", "reroute_exhausted", "opt_out", "wrong_number")
 # handoff_rejected: the human taxonomy is in the pathway YAML (handoff_reject_reasons) and is
 # enforced by the state machine; this model only requires a short code, so the YAML stays the
 # single source for it.
@@ -292,8 +294,16 @@ class MarkLostContact(_Human):
     failed_attempts: int = Field(ge=0, le=1000)
 
 
+class ContactUpdated(_Human):
+    """A person confirmed the patient's contact details (the number or address was wrong and has been put right, or was
+    checked and is fine). It carries no number and no address: those live outside the log. `contact_valid` is always true;
+    it clears a `wrong_number` hold and lifts a `contact_valid: false` on the case_created payload."""
+
+    contact_valid: Literal[True]
+
+
 class ReviewRequested(_Payload):
-    reason: Literal["consent_withdrawn", "reroute_exhausted"]
+    reason: Literal["consent_withdrawn", "reroute_exhausted", "opt_out", "wrong_number"]
     source_event_id: Uuid
 
 
@@ -364,6 +374,7 @@ SCHEMAS: dict[str, type[BaseModel]] = {
     "closure_proposed": ClosureProposed,
     "reassign": Reassign,
     "consent_updated": ConsentUpdated,
+    "contact_updated": ContactUpdated,
     "mark_lost_contact": MarkLostContact,
     "review_requested": ReviewRequested,
     "message_drafted": MessageDrafted,

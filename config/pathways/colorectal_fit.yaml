@@ -58,6 +58,7 @@ annotations:
   - handoff_accepted
   - handoff_rejected
   - consent_updated
+  - contact_updated
   - review_requested
   - message_drafted
   - message_approved
@@ -71,11 +72,14 @@ annotations:
   # neither can close a case: `close` still needs a person, evidence and a signature.
   - assign_ownership
   - closure_proposed
-# Events an automated actor (system:, scheduler, watchdog, model:) may never emit.
+# The decisions only a person makes. This list does not enforce anything: the single actor table
+# (ACTOR_EVENTS in api/app/state_machine.py, default deny) decides who may write what, and
+# tests/test_actor_table.py checks that no service row of it holds any of these events.
 human_only_events:
   - escalation_accepted
   - handoff_accepted
   - consent_updated
+  - contact_updated
   - message_approved
   - message_rejected
   - callback_requested

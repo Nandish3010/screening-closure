@@ -408,7 +408,7 @@ def render(result: Result) -> str:
         "- `*` after a letter: the cell is a documented gap, observed behaviour that differs from the intended rule (see Findings).",
         "- Columns: `anon` no token; the six user roles (`pco` = `primary_care_owner`, `spec` = `specialist_owner`, "
         "`coord` = `coordinator`, `super` = `supervisor`); `sched` the scheduler service token; `wdog` the watchdog service token; "
-        "`auto` the automation service token (`system:automation`, A21).",
+        "`auto` the automation service token (`system:automation`, A21): it reaches the two scan routes and no event type, because the automation writes its events in process.",
         "- \"Own case\": for a clinician, a case they own; for a patient, the case with their `patient_ref`. "
         "\"Other\": a case owned by another clinician, or another patient's.",
         "",

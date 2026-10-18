@@ -23,6 +23,7 @@ const EVENT_LABEL: Record<string, string> = {
   escalation_accepted: "Escalation accepted by a human",
   callback_requested: "Patient asked for a call-back",
   consent_updated: "Consent updated",
+  contact_updated: STAFF.contactUpdated,
   review_requested: STAFF.reviewReasons.consent_withdrawn,
   assign_ownership: STAFF.assignOwnership,
   closure_proposed: STAFF.closureProposed,
@@ -40,7 +41,8 @@ const EVENT_LABEL: Record<string, string> = {
 function eventLabel(ev: Pick<CaseEvent, "type" | "payload">): string {
   const p = ev.payload;
   if (ev.type === "review_requested") {
-    return p.reason === "reroute_exhausted" ? STAFF.reviewReasons.reroute_exhausted : STAFF.reviewReasons.consent_withdrawn;
+    const reasons: Record<string, string> = STAFF.reviewReasons;
+    return reasons[String(p.reason)] ?? STAFF.reviewReasons.consent_withdrawn;
   }
   if (ev.type === "message_sent" && p.auto === true && !p.draft_id) return STAFF.templateMessageSent;
   if (ev.type === "handoff_requested" && p.auto === true) return STAFF.autoHandoff;

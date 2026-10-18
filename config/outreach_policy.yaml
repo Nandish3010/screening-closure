@@ -1,11 +1,14 @@
 # Pre-approved patient messages the system may send without a draft and without a per-message approval (A21, ADR-032).
 #
 # The automation sends only DETERMINISTIC templates (api/app/ai/templates/*.yaml, filled with the care owner's name, the
-# next step and, for a confirmation, the booked date). No model is involved. The state machine accepts a `message_sent`
-# from `system:automation` only if its `template_id` is listed here, with the version listed here, on a channel listed for
-# that template, with the patient's consent for that channel at the moment the event is applied, and with fewer than
-# `max_auto_messages_per_week` automatic messages in the previous seven days. A model-drafted message still goes through
-# the human approval gate (ADR-030) and is not affected by this file.
+# next step and, for a confirmation, the booked date). No model is involved. A `message_sent` from `system:automation` is
+# written only if its `template_id` is listed here, with the version listed here, on a channel listed for that template,
+# and with fewer than `max_auto_messages_per_week` outbound messages (automatic and approved drafts together) in the
+# previous seven days: an append-time guard inside the store transaction (app.outreach_policy.auto_message_guard), under
+# the case lock. The state machine does not read this file, so replaying a log never depends on it. The state machine
+# itself checks what the log decides: the patient's consent for the channel at the moment the event is applied, and that
+# no opt-out or wrong-number flag is open. A model-drafted message still goes through the human approval gate (ADR-030)
+# and is not affected by this file.
 #
 # H1: every `approved_by` below is a PLACEHOLDER for the clinical lead. Nothing here has been clinically reviewed; the
 # template texts are the same ones the clinician pack (docs/review/clinician-pack.md) puts in front of the reviewers, and

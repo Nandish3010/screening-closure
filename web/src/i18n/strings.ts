@@ -190,7 +190,10 @@ export const STAFF = {
   reviewReasons: {
     consent_withdrawn: "Flagged for human review (consent withdrawn)",
     reroute_exhausted: "Reroute list exhausted: a coordinator must reassign",
+    opt_out: "The patient opted out: automatic messages are held until a person reviews consent",
+    wrong_number: "The number is wrong: automatic messages are held until a person confirms the contact details",
   },
+  contactUpdated: "Contact details confirmed by a person",
   closureBanner: {
     heading: "Closure proposed",
     found: "The system found the colonoscopy evidence in the record:",

@@ -12,7 +12,7 @@ Every cell is what the running API did, not what the policy table says: the scri
 - `U` 401, no valid identity.
 - `X/Y` two letters: `X` for the caller's own case, `Y` for another case. One letter: scope makes no difference (the role has no case scope, or the route does not name a case).
 - `*` after a letter: the cell is a documented gap, observed behaviour that differs from the intended rule (see Findings).
-- Columns: `anon` no token; the six user roles (`pco` = `primary_care_owner`, `spec` = `specialist_owner`, `coord` = `coordinator`, `super` = `supervisor`); `sched` the scheduler service token; `wdog` the watchdog service token; `auto` the automation service token (`system:automation`, A21).
+- Columns: `anon` no token; the six user roles (`pco` = `primary_care_owner`, `spec` = `specialist_owner`, `coord` = `coordinator`, `super` = `supervisor`); `sched` the scheduler service token; `wdog` the watchdog service token; `auto` the automation service token (`system:automation`, A21): it reaches the two scan routes and no event type, because the automation writes its events in process.
 - "Own case": for a clinician, a case they own; for a patient, the case with their `patient_ref`. "Other": a case owned by another clinician, or another patient's.
 
 ## Routes by role
@@ -27,7 +27,7 @@ Every cell is what the running API did, not what the policy table says: the scri
 | `POST /cases/{case_id}/confirmatory-result` | U | R | A/S | A/S | R | R | R | R | R | R |
 | `GET /cases/{case_id}/drafts` | U | R | A/S | A/S | A | R | A | R | R | R |
 | `POST /cases/{case_id}/drafts` | U | R | A/S | A/S | A | R | A | R | R | R |
-| `POST /cases/{case_id}/events` (the event rows below decide) | U | A | A | A | A | A | A | A | A | A |
+| `POST /cases/{case_id}/events` (the event rows below decide) | U | A | A | A | A | A | A | A | A | R |
 | `GET /cases/{case_id}/fhir` | U | R | A/S | A/S | A | R | A | R | R | R |
 | `GET /cases/{case_id}/notifications` | U | R | A/S | A/S | A | R | A | R | R | R |
 | `GET /cases/{case_id}/timeline` | U | A | A | A | A | A/S | A | R | R | R |
@@ -58,21 +58,22 @@ The route admits every role and both service tokens; the event policy then decid
 |  | anon | lab | pco | spec | coord | patient | super | sched | wdog | auto |
 |---|---|---|---|---|---|---|---|---|---|---|
 | `accept_ownership` | U | R | A/S | A/S | R | R | A | R | R | R |
-| `acknowledge` | U | A | R | R | A | R | A | R | R | A |
-| `assign_ownership` | U | R | R | R | R | R | R | R | R | A |
+| `acknowledge` | U | A | R | R | A | R | A | R | R | R |
+| `assign_ownership` | U | R | R | R | R | R | R | R | R | R |
 | `book_confirmatory` | U | R | A/S | A/S | A | R | R | R | R | R |
 | `callback_requested` | U | R | R | R | A | A/S | R | R | R | R |
 | `clinician_review` | U | R | A/S | A/S | R | R | R | R | R | R |
 | `close` | U | R | A/S | A/S | R | R | R | R | R | R |
-| `closure_proposed` | U | R | R | R | R | R | R | R | R | A |
-| `complete_confirmatory` | U | R | R | A/S | R | R | R | R | R | A |
+| `closure_proposed` | U | R | R | R | R | R | R | R | R | R |
+| `complete_confirmatory` | U | R | R | A/S | R | R | R | R | R | R |
 | `consent_updated` | U | R | R | R | A | A/S | R | R | R | R |
 | `contact_patient` | U | R | A/S | A/S | A | R | A | R | R | R |
+| `contact_updated` | U | R | A/S | A/S | A | R | A | R | R | R |
 | `escalate` | U | R | R | R | A | R | A | A | R | R |
 | `escalation_accepted` | U | R | A/S | A/S | A | R | A | R | R | R |
 | `handoff_accepted` | U | R | A/S | A/S | R | R | R | R | R | R |
 | `handoff_rejected` | U | R | A/S | A/S | R | R | R | A | R | R |
-| `handoff_requested` | U | R | A/S | A/S | R | R | A | R | R | A |
+| `handoff_requested` | U | R | A/S | A/S | R | R | A | R | R | R |
 | `mark_lost_contact` | U | R | A/S | A/S | A | R | A | R | R | R |
 | `mark_overdue` | U | R | R | R | R | R | R | A | R | R |
 | `message_approved` | U | R | R | R | R | R | R | R | R | R |
@@ -110,5 +111,5 @@ None.
 ## What was checked
 
 - 29 routes in the OpenAPI document, 29 entries in `ROUTE_POLICY`: every route has a decision and no decision is stale.
-- 27 event types in `EVENT_POLICY`, plus one unknown type that must be refused for every role.
-- 671 role, route and scope combinations probed with real requests; 0 differ from the policy tables; 0 are documented gaps (see Findings).
+- 28 event types in `EVENT_POLICY`, plus one unknown type that must be refused for every role.
+- 684 role, route and scope combinations probed with real requests; 0 differ from the policy tables; 0 are documented gaps (see Findings).

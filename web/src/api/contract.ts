@@ -215,6 +215,7 @@ export type NonTransitionEvent =
   | "escalation_accepted"
   | "callback_requested"
   | "consent_updated"
+  | "contact_updated"
   | "message_drafted"
   | "message_approved"
   | "message_rejected"
@@ -239,8 +240,12 @@ export const ACTOR_KINDS: readonly ActorKind[] = ["human", "automation", "model"
 /** The actor of every automatic step (A21). */
 export const AUTOMATION_ACTOR = "system:automation";
 
-/** `review_requested.reason` (A21): consent withdrawn (system:consent) or the automatic re-route list ran out (system:automation). */
-export const REVIEW_REASONS = ["consent_withdrawn", "reroute_exhausted"] as const;
+/**
+ * `review_requested.reason`: consent withdrawn (system:consent), the automatic re-route list ran out (system:automation,
+ * A21), or, from the triage actor (branch cut-triage), the patient opted out or the number is wrong. The last two hold
+ * the automation's messages until a person clears them (`consent_updated`, `contact_updated {contact_valid: true}`).
+ */
+export const REVIEW_REASONS = ["consent_withdrawn", "reroute_exhausted", "opt_out", "wrong_number"] as const;
 export type ReviewReason = (typeof REVIEW_REASONS)[number];
 
 /** Fixed taxonomy for `handoff_rejected.reason`. */

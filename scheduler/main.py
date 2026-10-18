@@ -15,7 +15,7 @@ API's `system:automation` actor and answer `{"enabled": false}` unless the API r
 
 Heartbeat (not a case event): posted to the API (`POST /scheduler/heartbeat`, stored in the
 `heartbeats` table) at the START of every loop (before the sweep), every few seconds from a thread while
-the sweep runs, and again when it ends, including when the sweep fails, with whether the last sweep worked
+the sweep runs and again while the automation scans run, and when the loop ends, including when the sweep fails, with whether the last sweep worked
 and how many in a row have failed, so a scheduler that is alive but useless is distinguishable from one
 that is dead. A sweep over a large cohort can take longer than the watchdog's 60-second limit; a beat only
 at the end of the loop made a long sweep look like a dead scheduler (`scheduler_down`), which is a false
@@ -177,13 +177,17 @@ def loop_once(state: LoopState) -> dict | None:
         summary = run_sweep()
     state.sweep_ok = summary is not None
     # The automation scans run after the sweep (a bounce it just wrote can be re-routed in the same loop). They do not
-    # decide whether the loop worked: the heartbeat is about the sweep.
-    for scan in ("automation-scan", "evidence-scan"):
-        counts = run_automation(scan)
-        if counts and counts.get("enabled"):
-            log.info("%s %s", scan, {k: v for k, v in counts.items() if k not in ("enabled", "errors")} or "nothing to do")
-            if counts.get("errors"):
-                log.warning("%s errors=%s", scan, len(counts["errors"]))
+    # decide whether the loop worked: the heartbeat is about the sweep. They run inside the heartbeat thread as well: a
+    # scan over a large cohort, or a HAPI that answers slowly, can take longer than the watchdog's 60 seconds, and a
+    # loop that is busy must not look like a dead scheduler (`scheduler_down`).
+    with BeatWhile(state.sweep_ok, state.failures):
+        for scan in ("automation-scan", "evidence-scan"):
+            counts = run_automation(scan)
+            if counts and counts.get("enabled"):
+                log.info("%s %s", scan,
+                         {k: v for k, v in counts.items() if k not in ("enabled", "errors")} or "nothing to do")
+                if counts.get("errors"):
+                    log.warning("%s errors=%s", scan, len(counts["errors"]))
     state.failures = 0 if summary is not None else state.failures + 1
     if summary is not None:
         state.last_ok = time.time()  # wall-clock-ok: liveness heartbeat only

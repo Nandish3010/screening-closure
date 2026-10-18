@@ -1,21 +1,26 @@
-"""Human-effort accounting (A21, ADR-032): how much of a case's work a person did, and how much the system did.
+"""Human-effort accounting (A21, ADR-032), ILLUSTRATIVE: how much of one case's work a person did, and how much the system did.
 
-The product principle is that humans act only at final decisions (accept an escalation, approve a drafted message, sign a
-closure, handle an exhausted reroute list); every other step is automated, and the system has to show that it cuts human
-labour by more than `TARGET_REDUCTION_PCT`. This module is the accounting, and nothing else: pure functions over a case's
-events, no clock, no store, no I/O, so the API (`GET /metrics/effort`, the case page's `effort`) and the behaviour
-simulator (B17 imports `HUMAN_ACTION_MINUTES`) read the same numbers.
+This module is an illustration of the accounting for one case in the running application (`GET /metrics/effort`, the case
+page's `effort`). It is NOT where the submission's number comes from. The headline reduction in human effort is computed by
+the behaviour simulator over a simulated cohort, with ranges, sources and a sensitivity analysis
+(`simulator/sim/effort.py`, ticket B17; `docs/evidence.md` section 11; `docs/results/`). Quote that number, not the
+percentage this module shows for a handful of demo cases. Coordinator labour is the scaling limit of a screening-closure
+programme, so the system aims to cut human labour by more than `TARGET_REDUCTION_PCT`, and this module shows, case by
+case, what that accounting looks like; it is pure functions over a case's events, no clock, no store, no I/O.
 
 `actor_kind(actor)` classifies who wrote an event: `human` (a person acting in one of the six user roles), `automation`
 (`system:automation`), `model` (`model:*`, a drafting model) or `service` (the scheduler, watchdog, notifier, consent
 service and intake: infrastructure, neither a person nor a substitute for one).
 
-Minutes. `HUMAN_ACTION_MINUTES` is a plain dict of the minutes one human action takes. EVERY VALUE IS AN ASSUMPTION
-("assumed; to source"): none is a measurement, none has a citation yet, and the 40% result stands or falls with them. The
-first six rows are the owner's figures (coordinator phone call 6, review 3, referral handling 8, sign-off 4, escalation
-handling 5, message approval 2); the rest price the steps the automation replaces and the owner did not list, so that
-"before" can be compared with "after". `docs/assumptions-limitations.md` and the pilot plan say how to replace them with a
-time-and-motion study (to source).
+Minutes. `HUMAN_ACTION_MINUTES` is a plain dict of the minutes one human action takes. Where the simulator's table is
+importable at runtime (`simulator.sim.effort`, present in a checkout of the repository, absent from the API image) the
+minutes are read from it, action by action (`SIMULATOR_ACTION`); anything the simulator does not price, and every value when
+it is not importable, comes from this module's own copy, `ASSUMED_MINUTES`, and EVERY VALUE OF THAT COPY IS AN ASSUMPTION
+("assumed; to source"): none is a measurement, none has a citation, and the reduction stands or falls with them.
+`MINUTES_SOURCE` says which it is and `assumptions()` reports it next to the percentage. The first six rows of the own copy
+are the owner's figures (coordinator phone call 6, review 3, referral handling 8, sign-off 4, escalation handling 5, message
+approval 2); the rest price the steps the automation replaces and the owner did not list, so that "before" can be compared
+with "after".
 
 The comparison. `baseline_minutes` is what the same case would have cost a person with no automation: the minutes of the
 human actions that happened, plus the minutes of the manual action each automated event replaced
@@ -37,8 +42,9 @@ AUTOMATION_ACTOR = "system:automation"
 
 ACTOR_KINDS = ("human", "automation", "model", "service")
 
-# Minutes of one human action. ALL ASSUMED (ASSUMED above): to source.
-HUMAN_ACTION_MINUTES: dict[str, float] = {
+# Minutes of one human action: this module's OWN COPY. ALL ASSUMED (ASSUMED above): to source. Used for every action the
+# simulator's table does not price, and for all of them when the simulator is not importable.
+ASSUMED_MINUTES: dict[str, float] = {
     # the owner's figures (A21)
     "coordinator_phone_call": 6,   # contact_patient: phoning the patient about the result and the next step
     "clinician_review": 3,         # clinician_review: reading the colonoscopy outcome
@@ -55,6 +61,55 @@ HUMAN_ACTION_MINUTES: dict[str, float] = {
     "closure_preparation": 2,      # pulling the evidence reference together for the sign-off
     "appointment_booking": 5,      # book_confirmatory: booking the confirmatory appointment
 }
+
+# Which row of the simulator's table (simulator/sim/effort.py, `MINUTES`, keyed by action id) prices each action here. An action
+# with no counterpart there (accept_ownership, closure_preparation) keeps its own copy.
+SIMULATOR_ACTION: dict[str, str] = {
+    "coordinator_phone_call": "M_PHONE_ATTEMPT",
+    "clinician_review": "M_CLINICIAN_REVIEW",
+    "referral_handling": "M_REFERRAL_SEND",
+    "sign_off": "O_SIGN_CLOSURE",
+    "escalation_handling": "O_ACCEPT_ESC_COORDINATOR",
+    "message_approval": "O_APPROVE_DRAFT",
+    "result_acknowledgement": "M_RESULT_ACK",
+    "owner_assignment": "M_HANDOVER",
+    "manual_message": "M_SMS_ATTEMPT",
+    "evidence_chase": "M_COMPLETION_RECORD",
+    "appointment_booking": "X_BOOK_APPT",
+}
+SIMULATOR_MODULE = "simulator.sim.effort"
+OWN_COPY = "api/app/effort.py (own copy, assumed)"
+
+
+def load_minutes(module=None) -> tuple[dict[str, float], str, tuple[str, ...]]:
+    """(minutes, source, actions priced by the simulator). Reads the simulator's table when `simulator.sim.effort` can be
+    imported (or `module` is given) and has a `MINUTES` mapping; any failure, or a missing row, falls back to the own copy,
+    never to an error: the API must start without the simulator."""
+    minutes = dict(ASSUMED_MINUTES)
+    try:
+        if module is None:
+            import importlib
+
+            module = importlib.import_module(SIMULATOR_MODULE)
+        table = module.MINUTES
+        taken = {}
+        for action, sim_id in SIMULATOR_ACTION.items():
+            value = table.get(sim_id)
+            if isinstance(value, (int, float)) and not isinstance(value, bool) and value >= 0:
+                taken[action] = float(value)
+    except Exception:  # noqa: BLE001 - not importable (the API image), or a table of another shape: use the own copy
+        return minutes, OWN_COPY, ()
+    if not taken:
+        return minutes, OWN_COPY, ()
+    minutes.update(taken)
+    return minutes, "simulator/sim/effort.py", tuple(sorted(taken))
+
+
+# What the accounting uses. Tests that need the figures in the own copy patch this with `dict(ASSUMED_MINUTES)`.
+HUMAN_ACTION_MINUTES: dict[str, float]
+MINUTES_SOURCE: str
+FROM_SIMULATOR: tuple[str, ...]
+HUMAN_ACTION_MINUTES, MINUTES_SOURCE, FROM_SIMULATOR = load_minutes()
 
 # Event type -> the human action it counts as, when a PERSON wrote it. An event with no row is a human action that is
 # counted but has no minutes in the table (the report says how many).
@@ -178,9 +233,16 @@ def effort_report(per_case: dict) -> dict:
 
 
 def assumptions() -> dict:
-    """What the page must say next to the percentage: the minutes are assumed, and which they are."""
+    """What the page must say next to the percentage: where the minutes come from and that they are not measurements."""
+    from_sim = bool(FROM_SIMULATOR)
     return {
-        "status": ASSUMED,
-        "note": "Every minute value is an assumption with no source yet; the reduction is only as good as these.",
+        "status": ASSUMED if not from_sim else "from the simulator's table; rows without a source there are assumed",
+        "source": MINUTES_SOURCE,
+        "illustrative": True,
+        "note": ("Illustrative, per case. The number for the submission comes from the behaviour simulator "
+                 "(simulator/sim/effort.py, docs/results). "
+                 + ("Every minute value here is an assumption with no source yet; the reduction is only as good as these."
+                    if not from_sim else
+                    "Minutes for " + ", ".join(FROM_SIMULATOR) + " are the simulator's; the rest are this module's assumptions.")),
         "minutes": dict(HUMAN_ACTION_MINUTES),
     }

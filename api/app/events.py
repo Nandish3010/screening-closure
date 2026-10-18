@@ -167,9 +167,10 @@ class EventStore(Protocol):
         and read model, ordered by (genesis time, case id). One batch read, not one per case."""
         ...
 
-    def iter_open_case_models(self, pathway: Pathway, only=None):
+    def iter_open_case_models(self, pathway: Pathway, only=None, states=None):
         """Yield (case_id, model | None, error | None) for every non-closed case of the pathway
-        (optionally only those in `only`). Used by the scheduler sweep."""
+        (optionally only those in `only`, and only those whose current state is one of `states`: the filter is
+        applied by the store before any log is read). Used by the scheduler sweep and the automation scans."""
         ...
 
 
@@ -255,13 +256,14 @@ class InMemoryEventStore:
             case = self._cases.get(case_id)
             return start_genesis_milestones(case.model, pathway) if case else None
 
-    def iter_open_case_models(self, pathway: Pathway, only=None):
+    def iter_open_case_models(self, pathway: Pathway, only=None, states=None):
         only = set(only) if only is not None else None
+        states = set(states) if states is not None else None
         with self._lock:
             snapshot = [
                 (cid, start_genesis_milestones(c.model, pathway)) for cid, c in self._cases.items()
                 if c.pathway == pathway.name and c.model.state != pathway.terminal_state
-                and (only is None or cid in only)
+                and (only is None or cid in only) and (states is None or c.model.state in states)
             ]
         for cid, model in snapshot:
             yield cid, model, None

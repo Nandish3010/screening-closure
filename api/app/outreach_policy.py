@@ -1,9 +1,12 @@
 """The pre-approved outreach policy (A21, ADR-032), from config/outreach_policy.yaml.
 
 Which deterministic template the automation may send, on which channel, in response to which trigger, approved by whom
-and at which version. The state machine reads `template_for` and `max_auto_messages_per_week` at apply time (a
-`message_sent` from `system:automation` is accepted only for a template listed here); `app.automation` reads the rules to
-decide what to send now. Pure: a loaded file, no clock, no store.
+and at which version. `app.automation` reads the rules to decide what to send now; `auto_message_guard` below is the
+gate: a `message_sent` from `system:automation` is written only for a template listed here, at the version listed here,
+within `max_auto_messages_per_week` outbound messages. The gate runs at APPEND time, as a guard inside the store's
+transaction (like the owner guard of `app.policy`), and nowhere else. The state machine does not read this file, so
+replaying a log never depends on it: editing a template, or a policy that no longer loads, cannot make a historical case
+fail to replay. Pure: a loaded file, no clock, no store.
 
 The file is validated hard at load time: every template exists in the message template files for every language, on
 that channel, and the approval names the template-set version it was given against, so editing a template without
@@ -13,10 +16,13 @@ re-approving it makes the policy fail to load (the automation then sends nothing
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import UTC
 from functools import lru_cache
 from pathlib import Path
 
 import yaml
+
+from app.state_machine import AUTO_MESSAGE_WINDOW, InvalidTransition
 
 TRIGGERS = ("entered_state", "reminder", "escalation_rung")
 DEFAULT_MAX_PER_WEEK = 2
@@ -150,3 +156,42 @@ def get_policy(path: str | None = None) -> OutreachPolicy:
 
         path = settings.outreach_policy_path
     return _cached(str(path))
+
+
+def auto_message_guard(event, path: str | None = None):
+    """The append-time gate for an automatic `message_sent` (A21, ADR-032), as a store `guard(model)`: it runs inside the
+    store's transaction, under the case lock, on the model replayed from the log as it stands, before the state machine
+    sees the event, and raises InvalidTransition (nothing written) unless
+
+    * the policy loads (otherwise nothing is sent: fail closed),
+    * the template id is listed, at the version in the event, with the event's purpose and channel, and
+    * the patient has had fewer than `max_auto_messages_per_week` OUTBOUND messages in the seven days before the event,
+      counting both automatic messages and approved drafts (`model.outbound_message_times`).
+
+    Consent for the channel and the outreach holds (opt-out, wrong number) are the state machine's, because the log alone
+    decides them. A repeated event id is a retry, for which the store skips the guard. Not called during replay."""
+    def guard(model) -> None:
+        try:
+            policy = get_policy(path)
+        except OutreachPolicyError as exc:
+            raise InvalidTransition(f"message_sent: the outreach policy is not usable: {exc}") from exc
+        payload = event.payload
+        template = policy.template_for(payload.get("template_id"))
+        if template is None:
+            raise InvalidTransition(
+                f"message_sent: template {payload.get('template_id')!r} is not in the approved outreach policy")
+        if payload.get("template_version") != template.version:
+            raise InvalidTransition(
+                f"message_sent: template {template.id!r} is approved at version {template.version}, "
+                f"not {payload.get('template_version')!r}")
+        if payload.get("purpose") != template.purpose or payload.get("channel") != template.channel:
+            raise InvalidTransition(f"message_sent: purpose and channel must be those of template {template.id!r}")
+        at = event.at if event.at.tzinfo else event.at.replace(tzinfo=UTC)
+        recent = sum(1 for t in model.outbound_message_times
+                     if at - AUTO_MESSAGE_WINDOW < (t if t.tzinfo else t.replace(tzinfo=UTC)) <= at)
+        if recent >= policy.max_auto_messages_per_week:
+            raise InvalidTransition(
+                f"message_sent: the patient has had {recent} outbound messages (automatic or approved) in the last "
+                f"7 days (the limit is {policy.max_auto_messages_per_week})")
+
+    return guard
