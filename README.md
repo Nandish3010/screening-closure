@@ -138,6 +138,7 @@ project/     plan, tracker, decisions, log, test cases
 | Demo | `demo-stage` | Walk the second seeded case to `confirmatory_completed`, owned by the specialist login, through the API; safe to rerun (E9, `tools/demo/README.md`) |
 | Demo | `demo-snapshot`, `demo-restore`, `demo-reset` | Save the demo state (stages the second case first); restore it; one-click reset (restore, reset the clock, check the state fingerprint) |
 | Demo | `demo-kill-scheduler` (`RUNS=3`) | Kill-the-scheduler rehearsal: stop the scheduler, wait for the alert, restart, check no event was lost (F11) |
+| Demo | `agency-run` | One agency run on demand against the running stack (`POST /agency/run` as the supervisor), printing the summary; the compose stack sets `AGENCY_EVERY_SWEEPS=0`, so the scheduler never starts one itself and the demo snapshot stays deterministic (A22, `tools/demo/README.md`) |
 | Risk score | `risk-report`, `risk-check` | Retrain the loss-to-follow-up risk score and rewrite its report and score card (D10); fail if the committed files differ from a fresh run |
 | Reproducibility | `fresh-clone` | Clone the repository into a temporary directory and run the fresh-clone steps there, with the checklist for the second machine (F12) |
 | Test | `test-offline` | The demo scenario with api, HAPI and Postgres on a network with no route out, in its own project (Docker only; a few minutes) |

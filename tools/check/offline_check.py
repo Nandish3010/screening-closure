@@ -9,9 +9,9 @@ docker-compose.offline.yml: api, HAPI, Postgres, scheduler and watchdog sit on a
      8.8.8.8:53 and a DNS lookup of example.com all fail), and that the same probe run from the `edge` container,
      which is on an ordinary bridge, is reported as a control (it succeeds when the host itself is online);
   2. seeds the demo patient (the Patient and positive FIT report in HAPI, the case in the API) and runs the E8 demo
-     scenario, tools/demo/scenario.py, against the stack: the same 20 steps as the live demo (escalation ladder,
-     Arabic template draft approved and sent, a declined and a bounced hand-off, booking, the colonoscopy Procedure in
-     HAPI, review and `close` with that evidence, which the API verifies in HAPI over the internal network); the
+     scenario, tools/demo/scenario.py, against the stack: the same 23 steps as the live demo (automatic intake, escalation ladder,
+     Arabic template draft approved and sent, a declined hand-off the automation re-routes until the list is used up, booking, the colonoscopy Procedure in
+     HAPI, the closure the evidence scan proposes, review and `close` with that evidence, which the API verifies in HAPI over the internal network); the
      scheduler's heartbeat is fresh and the FHIR projection queue drains;
   3. recreates the api with `LLM_PROVIDER=azure_openai` and still no network: the draft route must answer quickly with
      the template text, `fallback_used`, an abstention reason, and the abstention is counted;
@@ -176,7 +176,7 @@ def run(keep: bool, build: bool) -> int:
         # 2. the demo scenario (tools/demo/scenario.py, the E8 story) with template drafting, against this empty stack
         api = Api()
         for key, role, name, extra in (("coord", "coordinator", "Offline Coord", {}), ("lab", "lab", "Offline Lab", {}),
-                                       ("pco", "primary_care_owner", "Dr Offline Referrer", {})):
+                                       ("pco", "primary_care_owner", "Dr. Layla Haddad", {"provider": "Riverside Primary Care"})):
             api.login(key, role, name, **extra)
         manifest, case_id = seed_demo_patient(api)
         step("demo patient, result report and case seeded in the offline stack", True, f"case {case_id}")
@@ -184,7 +184,7 @@ def run(keep: bool, build: bool) -> int:
         env = {**os.environ, "API_URL": API, "FHIR_BASE_URL": FHIR, "DEMO_MANIFEST": str(manifest), "PYTHONPATH": str(ROOT / "api")}
         out = subprocess.run([sys.executable, "tools/demo/scenario.py", "--json"], cwd=ROOT, env=env, capture_output=True, text=True, timeout=900)
         summary = json.loads(out.stdout[out.stdout.index("{"):]) if out.returncode == 0 and "{" in out.stdout else {}
-        step("tools/demo/scenario.py runs end to end offline (20 steps, escalation ladder, hand-offs, booking, close with Procedure evidence)",
+        step("tools/demo/scenario.py runs end to end offline (23 steps: automatic intake, reminder and re-route, escalation ladder, booking, closure proposal, close with Procedure evidence)",
              out.returncode == 0 and summary.get("state") == "closed",
              f"exit {out.returncode}, state {summary.get('state')}, {summary.get('events')} events, {time.monotonic() - t0:.1f} s"
              + ("" if out.returncode == 0 else f", stderr: {out.stderr.strip()[-300:]}"))
@@ -198,7 +198,7 @@ def run(keep: bool, build: bool) -> int:
         step("approval sent through the notification mock", "message_approved" in types and "message_sent" in types)
         # a template reference draft for step 3 (same owner as the case used there, so the texts can be compared)
         ref_case = api.call("POST", "/cases", "coord", {"patient_ref": "Patient/offline-1"}, expect=201)["case_id"]
-        api.event(ref_case, "lab", "acknowledge")
+        # A21: the automation acknowledged the case and named its owner (the default provider's, Dr. Layla Haddad) when it was created
         api.event(ref_case, "pco", "accept_ownership")
         draft = api.call("POST", f"/cases/{ref_case}/drafts", "coord", {"purpose": "result_notification", "channel": "sms", "language": "en"}, expect=201)
         step("a plain template draft is available as the reference", draft["provider"] == "template" and not draft["fallback_used"])
@@ -220,11 +220,10 @@ def run(keep: bool, build: bool) -> int:
         compose("up", "-d", "--no-deps", "api", env_extra={"OFFLINE_LLM_PROVIDER": "azure_openai"})
         step("api restarted with LLM_PROVIDER=azure_openai", wait_healthy(120))
         api = Api()
-        for key, role, name in (("coord", "coordinator", "Offline Coord"), ("pco", "primary_care_owner", "Dr Offline Referrer"), ("lab", "lab", "Offline Lab")):
+        for key, role, name in (("coord", "coordinator", "Offline Coord"), ("pco", "primary_care_owner", "Dr. Layla Haddad"), ("lab", "lab", "Offline Lab")):
             api.login(key, role, name)
         case2 = api.call("POST", "/cases", "coord", {"patient_ref": "Patient/offline-1"}, expect=201)["case_id"]
-        api.event(case2, "lab", "acknowledge")
-        api.event(case2, "pco", "accept_ownership")
+        api.event(case2, "pco", "accept_ownership")  # acknowledged and assigned to Dr. Layla Haddad by the automation
         t0 = time.monotonic()
         d2 = api.call("POST", f"/cases/{case2}/drafts", "coord", {"purpose": "result_notification", "channel": "sms", "language": "en"}, expect=201)
         took = time.monotonic() - t0

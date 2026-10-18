@@ -1,9 +1,10 @@
 /**
- * More of the real API through the browser: lost contact with failed attempts, a declined handoff and the
- * coordinator's re-route (`reassign.owner` is the new owner's `role:user_id`, which only the API knows).
+ * More of the real API through the browser: lost contact with failed attempts, a declined handoff that the
+ * automation (A21) re-routes until its provider list is used up, and then the coordinator's re-route (`reassign.owner`
+ * is the new owner's `role:user_id`, which only the API knows).
  */
 import { expect, test, type Page } from "@playwright/test";
-import { createCase, getCase, login, stackProblem } from "./helpers";
+import { automationScan, createCase, driveToRerouteExhausted, getCase, login, stackProblem } from "./helpers";
 
 let problem: string | null = null;
 test.beforeAll(async () => {
@@ -25,12 +26,12 @@ test("lost contact, a declined handoff and the coordinator's re-route", async ({
     }
   });
   await page.goto(`/coordinator/${caseId}`);
-  // A21: the automation actor has normally acknowledged the new case already; the manual acknowledge stays for the older flow.
+  // A21: acknowledged and assigned (to Dr. Layla Haddad, the default owner of Riverside Primary Care) by system:automation.
   await page.getByTestId("owner").waitFor();
-  if (await page.getByTestId("acknowledge").count()) {
-    await page.getByTestId("acknowledge").click();
-    await expect(page.getByTestId("flash")).toContainText("acknowledged");
-  }
+  const intake = (await getCase(caseId)).events as { type: string; actor: string }[];
+  expect(intake.find((e) => e.type === "acknowledge")?.actor).toBe("system:automation");
+  expect(intake.find((e) => e.type === "assign_ownership")?.actor).toBe("system:automation");
+  await expect(page.getByTestId("acknowledge")).toHaveCount(0);
   await as(page, "owner", "Dr. Layla Haddad");
   await page.getByTestId("accept-ownership").click();
   await expect(page.getByTestId("flash")).toContainText("You now own this case");
@@ -61,8 +62,22 @@ test("lost contact, a declined handoff and the coordinator's re-route", async ({
   await expect(page.getByTestId("flash")).toContainText("Hand-off declined");
   expect((await getCase(caseId)).state).toBe("referral_rejected");
 
+  // A21: a capacity rejection is re-routed by the automation, not by a person: it asks the next provider in
+  // config/providers.yaml that was not asked yet (Corniche Gastro Unit), as handoff_requested from system:automation.
+  await automationScan();
+  const rerouted = await getCase(caseId);
+  expect(rerouted.read_model.pending_handoff?.to_provider).toBe("Corniche Gastro Unit");
+  expect(rerouted.events.filter((e: any) => e.type === "handoff_requested" && e.actor === "system:automation")).toHaveLength(1);
+  // Nobody answers; the sweep bounces each request three working days later and the automation tries the next provider
+  // until the list is used up. Only then is the case a coordinator's: the page shows the reason and the re-route panel.
+  await driveToRerouteExhausted(caseId);
+  const exhausted = await getCase(caseId);
+  expect(exhausted.state).toBe("referral_rejected");
+  expect(exhausted.read_model.review_reason).toBe("reroute_exhausted");
+
   // The coordinator re-routes to the specialist: the page sends that user's real actor string.
   await as(page, "coordinator", "Maryam Al Suwaidi");
+  await page.reload();
   await page.getByTestId("reassign-panel").getByRole("combobox").selectOption({ label: "Dr. Karim Nasser" });
   await page.getByTestId("reassign").click();
   await expect(page.getByTestId("flash")).toContainText("re-routed");

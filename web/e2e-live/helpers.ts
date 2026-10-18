@@ -84,6 +84,47 @@ export async function sweep(): Promise<any> {
   return res.json();
 }
 
+/** One pass of the automation (A21): acknowledge/assign anything waiting, re-route rejected referrals, send the due pre-approved messages. */
+export async function automationScan(): Promise<any> {
+  const res = await fetch(`${API}/scheduler/automation-scan`, { method: "POST", headers: { Authorization: `Bearer ${SCHEDULER_TOKEN}` } });
+  if (!res.ok) throw new Error(`scheduler/automation-scan: HTTP ${res.status} ${await res.text()}`);
+  const out = await res.json();
+  if (!out.enabled) throw new Error("the API runs without the automation (AUTOMATION_ENABLED=true is what these specs expect)");
+  return out;
+}
+
+/**
+ * One pass of the evidence scan (A21): asks HAPI for the colonoscopy of booked and completed cases; completes the
+ * confirmatory step and proposes the closure when it exists. A case HAPI had no answer for is not asked again for six
+ * SIMULATED hours, so a spec that records the colonoscopy right after a scan must move the clock first.
+ */
+export async function evidenceScan(): Promise<any> {
+  const res = await fetch(`${API}/scheduler/evidence-scan`, { method: "POST", headers: { Authorization: `Bearer ${SCHEDULER_TOKEN}` } });
+  if (!res.ok) throw new Error(`scheduler/evidence-scan: HTTP ${res.status} ${await res.text()}`);
+  const out = await res.json();
+  if (!out.enabled) throw new Error("the API runs without the automation (AUTOMATION_ENABLED=true is what these specs expect)");
+  return out;
+}
+
+/**
+ * Follow the automation after a declined referral until the reroute list is used up: each unanswered request is bounced
+ * by the sweep three working days later (5 calendar days cover any weekend) and the automation asks the next provider,
+ * until it flags the case `reroute_exhausted` for a coordinator. Returns the number of days the clock was moved.
+ */
+export async function driveToRerouteExhausted(caseId: string): Promise<number> {
+  let moved = 0;
+  for (let i = 0; i < 8; i++) {
+    await automationScan();
+    const model = (await getCase(caseId)).read_model;
+    if (model.pending_handoff === null && model.review_reason === "reroute_exhausted") return moved;
+    if (model.pending_handoff === null) throw new Error(`no request pending and not exhausted: ${JSON.stringify(model.review_reason)}`);
+    await advanceClock(5);
+    moved += 5;
+    await sweep();
+  }
+  throw new Error("the reroute list was not used up after 8 rounds");
+}
+
 export async function getCase(caseId: string): Promise<any> {
   const coordinator = await login("coordinator", "Maryam Al Suwaidi");
   return (await call(coordinator.token, "GET", `/cases/${caseId}`)).body;

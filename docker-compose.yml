@@ -85,6 +85,11 @@ services:
       SPRING_DATASOURCE_DRIVERCLASSNAME: org.postgresql.Driver
       SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT: ca.uhn.fhir.jpa.model.dialect.HapiFhirPostgresDialect
       SPRING_JPA_PROPERTIES_HIBERNATE_SEARCH_ENABLED: "false"
+      # HAPI reuses the result of an identical search for 60 s by default. The automation's evidence scan (A21) searches for the
+      # colonoscopy by case identifier; a "nothing yet" answer would then hide a Procedure written seconds later (the scan
+      # does not ask again for six simulated hours, so a demo that moves the clock quickly would never see it). -1 turns the
+      # reuse off: every search runs against the data.
+      hapi.fhir.reuse_cached_search_results_millis: "-1"
       # Synthea patient bundles reach 20 MB each; the default container heap (~25% of RAM) is too small
       # to parse and process them in one transaction.
       JAVA_TOOL_OPTIONS: -Xmx3g
@@ -110,6 +115,10 @@ services:
       AUTOMATION_ENABLED: ${AUTOMATION_ENABLED:-true}
       PROVIDERS_PATH: /config/providers.yaml
       OUTREACH_POLICY_PATH: /config/outreach_policy.yaml
+      # The agency (A22, ADR-033): the scheduler hook starts an agency run every N-th sweep (the code default is 6). 0 = never, which
+      # keeps the demo snapshot deterministic: no agency run (and so no agency-drafted message_drafted event on the demo case) fires from
+      # the scheduler. Trigger one by hand with `make agency-run`; set AGENCY_EVERY_SWEEPS=6 to rehearse the scheduled runs.
+      AGENCY_EVERY_SWEEPS: ${AGENCY_EVERY_SWEEPS:-0}
       # Set explicitly so a missing .env cannot silently fall back to the in-memory store. The unprivileged role, not the
       # owner (SEC-1): it can add events, not alter or delete them, and cannot change the schema.
       DATABASE_URL: postgresql://closure_app:${APP_DB_PASSWORD:-closure_app_dev_password}@postgres:5432/${POSTGRES_DB:-closure}

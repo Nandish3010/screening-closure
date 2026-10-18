@@ -14,12 +14,17 @@ demo-snapshot`: `make demo-reset` then brings it back every time).
 Which case: the SECOND positive FIT in seed order (row 1 of `data/results/manifest.json`; `scenario.py` drives row 0, so
 the two never meet). The case id is the same uuid5 `simulator/create_cases.py` gave it.
 
-What it does, as the logins of the demo script (the same ones as scenario.py and the web's role switcher): the coordinator
-acknowledges the result; Dr. Karim Nasser (specialist, Corniche Gastro Unit) accepts ownership and records the patient
-contact; the patient acknowledges; Dr. Nasser books the colonoscopy 14 days after the simulation clock and records the
-result (`POST /cases/{id}/confirmatory-result` writes the `Procedure` and `DiagnosticReport` to HAPI, then
-`complete_confirmatory` carries the `Procedure` as `result_ref`). The simulation clock is not moved, so the snapshot stays
-at the clock's start, which `scenario.py` insists on.
+What it does, as the logins of the demo script (the same ones as scenario.py and the web's role switcher). The stack runs
+with the automation on (A21), so the case arrived acknowledged and assigned to the default owner of the provider the
+patient is registered with (config/providers.yaml): that owner accepts ownership (the automation sends the pre-approved
+result notice) and hands the case to Corniche Gastro Unit, where Dr. Karim Nasser (specialist, the demo's clinician)
+accepts and records the patient contact; the patient acknowledges; Dr. Nasser books the colonoscopy 14 days after the
+simulation clock and records the result (`POST /cases/{id}/confirmatory-result` writes the `Procedure` and
+`DiagnosticReport` to HAPI, then `complete_confirmatory` carries the `Procedure` as `result_ref`). A last evidence scan
+makes the automation propose the closure (`closure_proposed`, evidence prefilled for the clinician's one-click sign-off):
+it would do so within seconds anyway (the Procedure is in HAPI), so it is done here, where the snapshot will contain it,
+and not by the scheduler container after a reset. The simulation clock is not moved, which `scenario.py` requires of the
+snapshot.
 
 Safe to rerun: every event id is a uuid5 of the case and the step, the Procedure id is deterministic, and the script reads
 the case first. A case that is part-way (an earlier run stopped) continues from its state; one already at
@@ -42,19 +47,22 @@ import httpx
 sys.path.insert(0, str(Path(__file__).resolve().parent))  # tools/demo, for `import scenario`
 
 import scenario  # noqa: E402
-from scenario import COORDINATOR, SPECIALIST, Demo, ScenarioError  # noqa: E402
+from scenario import OWNERS, REROUTED_TO, SPECIALIST, Demo, ScenarioError  # noqa: E402
 
 SECOND_CASE_INDEX = 1  # row of the cohort manifest; scenario.py takes row 0
 APPOINTMENT_REF = "APPT-2026-0002"
 APPOINTMENT_IN_DAYS = 14
 
-# The main path from the result to the target, and what each step moves the case to.
+# The main path from the intake to the target (the automation acknowledges and assigns on creation, so it starts at
+# `acknowledged`), and the steps still to do from each state.
 PATH = [
-    "result_received", "acknowledged", "owner_accepted", "patient_contacted", "patient_acknowledged",
+    "acknowledged", "owner_accepted", "patient_contacted", "patient_acknowledged",
     "confirmatory_booked", "confirmatory_completed",
 ]
 TARGET = PATH[-1]
-STEPS = ["acknowledge", "accept_ownership", "contact_patient", "patient_acknowledge", "book_confirmatory", "record_result"]
+STEPS = ["accept_ownership", "hand_off", "contact_patient", "patient_acknowledge", "book_confirmatory", "record_result"]
+FIRST_STEP = {"acknowledged": 0, "owner_accepted": 1, "patient_contacted": 3, "patient_acknowledged": 4,
+              "confirmatory_booked": 5, "confirmatory_completed": len(STEPS)}
 PAST_TARGET = ("clinician_reviewed", "closed")  # the case got here and moved on: nothing to stage
 
 
@@ -74,11 +82,12 @@ def remaining_steps(state: str) -> list[str]:
     """The steps still to do from `state`, in order. [] when the case is at the target or past it."""
     if state in PAST_TARGET:
         return []
-    if state not in PATH:
+    if state not in FIRST_STEP:
+        hint = " (the automation has not taken the intake: is the stack running with AUTOMATION_ENABLED=true?)" if state == "result_received" else ""
         raise StageError(
-            f"the case is in {state!r}, which is off the main path to {TARGET!r}: run `make demo-reset` and stage again"
+            f"the case is in {state!r}, which is off the main path to {TARGET!r}{hint}: run `make demo-reset` and stage again"
         )
-    return STEPS[PATH.index(state):]
+    return STEPS[FIRST_STEP[state]:]
 
 
 def _owner_name(case: dict) -> str | None:
@@ -101,13 +110,26 @@ class Stager:
         # the ids are uuid5(case, "demo|stage_<type>|0"): a rerun cannot write an event twice
         return self.demo.event(who, type_, payload, name=f"stage_{type_}", **kw)
 
-    def do_acknowledge(self) -> None:
-        self._event(COORDINATOR, "acknowledge")
-        self.demo.expect_state("acknowledged")
+    def _assigned_owner(self) -> tuple:
+        """The login of the case's current owner: the automation's assignee, or the specialist once the case is with them."""
+        name = _owner_name(self.demo.case())
+        who = OWNERS.get(name) or (SPECIALIST if name == SPECIALIST[1] else None)
+        if who is None:
+            raise StageError(f"the case is owned by {name!r}, who is not in the demo cast ({sorted([*OWNERS, SPECIALIST[1]])})")
+        return who
 
     def do_accept_ownership(self) -> None:
-        self._event(SPECIALIST, "accept_ownership")
+        self._event(self._assigned_owner(), "accept_ownership")
         self.demo.expect_state("owner_accepted")
+        self.demo.automation_scan()  # the pre-approved result notice goes out now, not whenever the container's loop looks
+
+    def do_hand_off(self) -> None:
+        if _owner_name(self.demo.case()) == SPECIALIST[1]:
+            return  # an earlier run got this far
+        self._event(self._assigned_owner(), "handoff_requested", {"to_provider": REROUTED_TO})
+        self._event(SPECIALIST, "handoff_accepted")
+        self.demo.expect_state("owner_accepted")
+        self.demo.automation_scan()
 
     def do_contact_patient(self) -> None:
         self._event(SPECIALIST, "contact_patient", {"channel": "phone"})
@@ -121,6 +143,7 @@ class Stager:
         when = (self.demo.sim_now() + timedelta(days=APPOINTMENT_IN_DAYS)).date().isoformat()
         self._event(SPECIALIST, "book_confirmatory", {"appointment_ref": APPOINTMENT_REF, "appointment_date": when})
         self.demo.expect_state("confirmatory_booked")
+        self.demo.automation_scan()  # the appointment confirmation
 
     def do_record_result(self) -> None:
         out = self.demo.call(SPECIALIST, "POST", f"/cases/{self.demo.case_id}/confirmatory-result")
@@ -157,7 +180,16 @@ def stage(demo: Demo, patient_name: str) -> dict:
         raise StageError(
             f"the case is at {TARGET!r} but its owner is {owner!r}, not {SPECIALIST[1]!r}: run `make demo-reset` and stage again"
         )
-    return {**summary, "outcome": "staged" if todo else "already_staged", "state": final["state"], "owner": owner}
+    if final["read_model"].get("closure_proposal") is None:
+        try:
+            demo.evidence_scan()  # the automation finds the Procedure and proposes the closure (a person still signs)
+            final = demo.case()
+        except (ScenarioError, httpx.HTTPError) as exc:
+            raise StageError(f"the evidence scan failed (the case is staged; rerun to propose the closure): {exc}") from exc
+        if final["read_model"].get("closure_proposal") is None:
+            raise StageError("the evidence scan did not propose the closure although the Procedure is in HAPI")
+    return {**summary, "outcome": "staged" if todo else "already_staged", "state": final["state"], "owner": owner,
+            "closure_proposed": True}
 
 
 def describe(result: dict) -> str:

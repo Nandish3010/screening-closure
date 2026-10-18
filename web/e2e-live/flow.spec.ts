@@ -2,13 +2,15 @@
  * The full flow through the browser against the REAL stack (http adapter): worklist, accept ownership,
  * contact, patient acknowledges, draft approved and sent, handoff to a specialist, booking, clock advance with
  * overdue and escalation, colonoscopy result recorded in HAPI, clinician review, close with a real Procedure and
- * the signer's own Practitioner, reopen with a taxonomy reason.
+ * the signer's own Practitioner, reopen with a taxonomy reason. The automation (A21) is on: the new case is
+ * acknowledged and assigned by system:automation, and the closure is proposed (never closed) by the evidence scan once the
+ * appointment date has passed and the colonoscopy is in HAPI.
  *
  * It creates its own case (for a seeded patient) and leaves the simulation clock later than it found it:
  * run `make demo-reset` afterwards to put the demo back.
  */
 import { expect, test, type Page } from "@playwright/test";
-import { advanceClock, createCase, fhirExists, getCase, login, call, stackProblem, sweep } from "./helpers";
+import { advanceClock, automationScan, createCase, evidenceScan, fhirExists, getCase, login, call, stackProblem, sweep } from "./helpers";
 
 let problem: string | null = null;
 test.beforeAll(async () => {
@@ -39,14 +41,18 @@ test("worklist to reopen against the real API", async ({ page }) => {
   expect(await page.getByTestId("worklist-row").count()).toBeGreaterThanOrEqual(22);
   await expect(page.getByTestId("sim-badge")).toContainText("SIMULATED TIME");
   await page.goto(`/coordinator/${caseId}`);
-  // A21: the automation actor has normally acknowledged the new case already; the manual acknowledge stays for the older flow.
+  // A21: nobody acknowledges or assigns: system:automation did both when the case was created, and named the default owner
+  // of the provider the patient is registered with (no registration was sent: the default, Riverside Primary Care).
   await page.getByTestId("owner").waitFor();
-  if (await page.getByTestId("acknowledge").count()) {
-    await page.getByTestId("acknowledge").click();
-    await expect(page.getByTestId("flash")).toContainText("acknowledged");
-  }
+  const intake = await events();
+  expect(intake.find((e) => e.type === "acknowledge")).toMatchObject({ actor: "system:automation", payload: { auto: true } });
+  expect(intake.find((e) => e.type === "assign_ownership")).toMatchObject({
+    actor: "system:automation", payload: { auto: true, provider: "Riverside Primary Care" },
+  });
+  expect((await getCase(caseId)).state).toBe("acknowledged");
+  await expect(page.getByTestId("acknowledge")).toHaveCount(0);
 
-  // 2. Owner accepts ownership: the body carries no owner (the API takes the caller).
+  // 2. The named owner accepts ownership: the body carries no owner (the API takes the caller).
   await as(page, "owner", "Dr. Layla Haddad");
   await page.getByTestId("accept-ownership").click();
   await expect(page.getByTestId("flash")).toContainText("You now own this case");
@@ -96,6 +102,11 @@ test("worklist to reopen against the real API", async ({ page }) => {
   // (ADR-028) the colonoscopy clock is the confirmatory_completed milestone, so the breach is a milestone breach.
   await advanceClock(60);
   await sweep();
+  await automationScan();
+  // The booked date (2 March) is behind the clock now, so the evidence scan asks HAPI: nothing there yet, so no closure proposal,
+  // and the scheduler container's own scans will not ask again for six simulated hours (which keeps them out of step 8).
+  await evidenceScan();
+  expect((await getCase(caseId)).read_model.closure_proposal).toBeNull();
   await page.reload();
   await expect(page.getByTestId("sla-clock")).toContainText("overdue");
   await expect(page.getByTestId("escalation-level")).toContainText(/Level [1-3] of 3/);
@@ -113,6 +124,19 @@ test("worklist to reopen against the real API", async ({ page }) => {
   await page.getByTestId("record-result").click();
   await expect(page.getByTestId("flash")).toContainText("Confirmatory result recorded");
   expect(await fhirExists(`Procedure/colonoscopy-${caseId}`)).toBe(true);
+
+  // The colonoscopy is recorded and the step completed by a person; the evidence scan proposes the closure once its
+  // six-hour memory of "no colonoscopy" has passed: move the clock a day (whole hours, as a supervisor does) and run it.
+  expect((await getCase(caseId)).read_model.closure_proposal).toBeNull();
+  await advanceClock(1);
+  await sweep();
+  await evidenceScan();
+  const proposal = (await getCase(caseId)).read_model.closure_proposal;
+  expect(proposal).toMatchObject({ evidence_ref: `Procedure/colonoscopy-${caseId}` });
+  expect((await events()).find((e) => e.type === "closure_proposed")).toMatchObject({ actor: "system:automation", payload: { auto: true } });
+  expect((await getCase(caseId)).state).toBe("confirmatory_completed"); // proposed, not closed
+  await page.reload();
+  await expect(page.getByTestId("closure-proposal-evidence")).toHaveText(`Procedure/colonoscopy-${caseId}`);
 
   // 9. Sign-off: the evidence is the Procedure, the signer the caller's own Practitioner. Review, then close.
   const me = await login("specialist_owner", "Dr. Karim Nasser", { provider: "Corniche Gastro Unit" });

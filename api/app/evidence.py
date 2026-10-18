@@ -200,7 +200,10 @@ class FhirFinder:
 
     def _search(self, resource_type: str, params: dict) -> list[dict]:
         url = f"{self.base_url}/{resource_type}?{urllib.parse.urlencode({**params, '_count': 20})}"
-        request = urllib.request.Request(url, headers={"Accept": "application/fhir+json"}, method="GET")
+        # no-cache: HAPI reuses an identical search's result for 60 s by default, which would hide a colonoscopy recorded
+        # seconds ago behind an earlier "nothing yet" (found by the M5 demo run; compose also turns the reuse off).
+        request = urllib.request.Request(url, headers={"Accept": "application/fhir+json", "Cache-Control": "no-cache"},
+                                         method="GET")
         try:
             with urllib.request.urlopen(request, timeout=self.timeout) as resp:
                 raw = resp.read(MAX_BODY_BYTES + 1)

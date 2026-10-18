@@ -26,7 +26,14 @@ A skipped stage is printed as a boxed warning and counted separately; it is not 
 the exit status is still non-zero. The api tests are run with PYTHONPATH=<this checkout>/api so
 that a git worktree tests its own code rather than whichever checkout the venv was installed from.
 
-Usage: python tools/check/run_check.py [--keep-going] [--only a,b] [--skip a,b]
+    effort-check  the committed Human effort section is current and the effort arithmetic tests pass (B17)
+
+`make check-full` (--full) also runs the slow regeneration checks:
+
+    sensitivity-check  re-runs the one-at-a-time sensitivity sweep; committed files must be identical (B14)
+    calibrate-check    re-runs the open-dataset fits (needs `make calibrate-fetch` once: the downloads are gitignored)
+
+Usage: python tools/check/run_check.py [--keep-going] [--full] [--only a,b] [--skip a,b]
 """
 
 from __future__ import annotations
@@ -61,6 +68,7 @@ class Stage:
     needs_pg: bool = False
     before: tuple[str, ...] = ()  # make targets run first (not reported separately)
     web: bool = False
+    full: bool = False  # run only by `make check-full` (--full): the slow regeneration checks
 
 
 STAGES = [
@@ -77,7 +85,11 @@ STAGES = [
     Stage("risk-check"),
     Stage("review-packs-check"),
     Stage("test-review-packs"),
+    Stage("effort-check"),
     Stage("web-e2e", web=True),
+    # `make check-full` adds these (minutes each; they re-run the sweeps and fits from scratch):
+    Stage("sensitivity-check", full=True),
+    Stage("calibrate-check", full=True),
 ]
 
 PLAYWRIGHT_RE = re.compile(r"^(\d+ passed)(?: \([\d.]+m?s\))?$")
@@ -131,6 +143,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--keep-going", action="store_true", default=DEFAULT_KEEP_GOING)
     ap.add_argument("--only", default="")
     ap.add_argument("--skip", default="")
+    ap.add_argument("--full", action="store_true", help="also run the slow stages (make check-full)")
     args = ap.parse_args(argv)
     only = {s for s in args.only.split(",") if s}
     skip = {s for s in args.skip.split(",") if s}
@@ -145,6 +158,8 @@ def main(argv: list[str] | None = None) -> int:
     failed = False
     for stage in STAGES:
         if (only and stage.name not in only) or stage.name in skip:
+            continue
+        if stage.full and not args.full and not only:
             continue
         if failed and not args.keep_going:
             results.append((stage.name, "NOT RUN", 0.0, "an earlier stage failed"))
