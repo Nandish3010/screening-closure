@@ -268,3 +268,14 @@ def test_the_api_starts_when_the_simulator_cannot_be_imported(monkeypatch):
     monkeypatch.setitem(sys.modules, "simulator.sim.effort", None)  # an import of it raises ImportError
     minutes, source, priced = effort.load_minutes()
     assert (minutes, source, priced) == (effort.ASSUMED_MINUTES, effort.OWN_COPY, ())
+
+
+def test_every_simulator_action_id_exists_in_the_real_simulator_table():
+    """M5 final merge: `SIMULATOR_ACTION` names rows of `simulator/sim/effort.py` (B17). In a checkout the simulator is
+    importable, so every id must be a real row and every mapped action must be priced from it."""
+    sim = pytest.importorskip("simulator.sim.effort")
+    missing = sorted(i for i in effort.SIMULATOR_ACTION.values() if i not in sim.MINUTES)
+    assert not missing, missing
+    minutes, source, priced = effort.load_minutes(sim)
+    assert source == "simulator/sim/effort.py" and set(priced) == set(effort.SIMULATOR_ACTION)
+    assert all(minutes[a] == float(sim.MINUTES[i]) for a, i in effort.SIMULATOR_ACTION.items())
