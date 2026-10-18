@@ -106,6 +106,10 @@ def _case_json(case_id: UUID, identity: Identity | None = None) -> dict:
     row = readmodel.case_row(
         LoadedCase(case_id, pathway.name, events[0].at, events, model), pathway, default_calendar()
     )
+    if identity is not None and identity.role == "patient":
+        # SEC-2: a patient's case page is the redacted one (no staff notes or reasons, no escalation
+        # internals, no staff names: roles only).
+        return readmodel.patient_case_json(row, model, events)
     explained = _risk_explained(model, events, clock.now()) if _sees_risk(identity) else None
     row["risk_score"] = explained["score"] if explained else None
     return {
@@ -169,7 +173,7 @@ def list_cases(
         if row is not None and readmodel.matches(row, owner=owner, overdue=overdue, provider=provider, flagged=flagged):
             if with_risk:  # D9: filled last, so no filter or order above depends on it
                 row["risk_score"] = _risk_score(lc, now)
-            rows.append(row)
+            rows.append(readmodel.patient_case_row(row) if identity.role == "patient" else row)  # SEC-2: redacted for a patient
     return rows
 
 
@@ -293,6 +297,10 @@ def case_timeline(case_id: UUID, identity: Identity = Depends(require_identity))
     events = store.events_for(case_id)
     if not events:
         raise HTTPException(404, "case not found")
+    if identity.role == "patient":
+        # SEC-2: the patient's own timeline, redacted: visible steps only, roles instead of names.
+        return {"case_id": str(case_id), **readmodel.patient_timeline(events, clock.now()),
+                "actors": readmodel.patient_actors(events)}
     model = replay_model(events, pathway)
     return {
         "case_id": str(case_id),

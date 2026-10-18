@@ -186,3 +186,103 @@ def timeline(
                 })
     sortable.sort(key=lambda t: (t[0].astimezone(UTC), t[1], t[2]))
     return {"sim_time": sim_time.isoformat(), "items": [t[3] for t in sortable]}
+
+
+# ---- the patient's view (SEC-2) -------------------------------------------------------------------------------
+#
+# A patient sees their own case, redacted: what happened to it in plain steps, and nothing about how staff
+# ran it. No staff notes, no handoff or reopen reasons, no escalation or SLA internals (breaches, rungs,
+# bounces, watchdog flags, who accepted which rung), no risk, and no staff display names: the other party is
+# shown by role only. The filter is an allow-list (event types, and the payload keys of each), so a field added
+# to an event later is hidden from patients until someone decides otherwise.
+
+PATIENT_EVENT_FIELDS: dict[str, tuple[str, ...]] = {
+    "case_created": (),
+    "acknowledge": (),
+    "accept_ownership": (),
+    "contact_patient": ("channel",),
+    "patient_acknowledge": ("lang",),
+    "book_confirmatory": ("appointment_date", "appointment_at"),
+    "complete_confirmatory": (),
+    "clinician_review": (),  # not `signed_by`: that names the clinician
+    "close": (),  # not the evidence reference or the signer
+    "reopen": (),  # not the reason
+    # what the patient themselves told us, and what was sent to them
+    "consent_updated": ("channel_sms", "channel_whatsapp", "channel_phone", "channel_letter",
+                        "share_with_specialist", "withdrawn"),
+    "callback_requested": ("lang",),  # not the reason code
+    "message_sent": ("channel", "language", "purpose"),
+}
+PATIENT_CONSENT_KEYS = ("channel_sms", "channel_whatsapp", "channel_phone", "channel_letter",
+                        "share_with_specialist", "withdrawn")
+
+
+def role_of(actor: str | None) -> str | None:
+    """`role:opaque_id` -> `role` (the id is an identifier of a person; a patient is told the role)."""
+    if not actor:
+        return None
+    return actor.split(":", 1)[0]
+
+
+def role_only(actor: str | None) -> dict | None:
+    """The shape of `users.resolve_actor`, with the role standing in for the person."""
+    role = role_of(actor)
+    return None if role is None else {"actor": role, "display_name": role, "role": role}
+
+
+def patient_event_json(e: Event) -> dict | None:
+    """The patient's view of one event, or None where the event is staff-internal."""
+    allowed = PATIENT_EVENT_FIELDS.get(e.type)
+    if allowed is None:
+        return None
+    return {
+        "seq": e.seq, "event_id": str(e.event_id), "type": e.type, "at": e.at.isoformat(),
+        "actor": role_of(e.actor), "payload": {k: v for k, v in e.payload.items() if k in allowed},
+    }
+
+
+def patient_actors(events: list[Event]) -> dict:
+    """Role-only display entries for the actors of the events a patient sees."""
+    roles = {role_of(e.actor) for e in events if e.type in PATIENT_EVENT_FIELDS}
+    return {r: role_only(r) for r in sorted(r for r in roles if r)}
+
+
+def patient_timeline(events: list[Event], sim_time: datetime) -> dict:
+    """The patient's timeline: the visible events, in log order, and nothing derived (no SLA clocks, breaches,
+    ladder rungs, bounces, flags: those are how staff are held to account, not part of the patient's story)."""
+    items = []
+    for e in events:
+        row = patient_event_json(e)
+        if row is not None:
+            items.append({"kind": "event", **row})
+    items.sort(key=lambda i: (datetime.fromisoformat(i["at"]).astimezone(UTC), i["seq"] or 0))
+    return {"sim_time": sim_time.isoformat(), "items": items}
+
+
+def patient_case_row(row: dict) -> dict:
+    """A worklist row for a patient: their case's state and when it last moved, the owner by role, nothing else."""
+    owner = row.get("owner")
+    return {
+        "case_id": row["case_id"], "pathway": row["pathway"], "state": row["state"],
+        "created_at": row["created_at"], "updated_at": row["updated_at"], "patient_ref": row["patient_ref"],
+        "owner": role_only(owner["actor"]) if owner else None,
+        "consent_frozen": row["consent_frozen"], "last_event_at": row["last_event_at"],
+        "risk_score": None,  # a patient's rows carry null (D9, T-D10)
+    }
+
+
+def patient_case_json(row: dict, model: CaseModel, events: list[Event]) -> dict:
+    """`GET /cases/{id}` for a patient (also what posting an event returns to them)."""
+    return {
+        **patient_case_row(row),
+        "case_id": row["case_id"],
+        "read_model": {
+            "state": model.state,
+            "consent_frozen": model.consent_frozen,
+            "consent": {k: model.consent.get(k) for k in PATIENT_CONSENT_KEYS},
+            "last_event_at": iso(model.last_event_at),
+        },
+        "actors": patient_actors(events),
+        "events": [r for r in (patient_event_json(e) for e in events) if r is not None],
+        "risk": None,
+    }

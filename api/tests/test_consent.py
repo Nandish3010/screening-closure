@@ -276,8 +276,11 @@ def test_t_a23_withdrawal_freezes_outreach_and_flags_the_case_for_review():
     cid = new_case()
     r = post(cid, "consent_updated", PATIENT, {"withdrawn": True})
     assert r.status_code == 201
-    body = r.json()
-    assert body["state"] == "consent_withdrawn"
+    patient_body = r.json()  # SEC-2: the patient's answer is the redacted one: no review flag, no staff events
+    assert patient_body["state"] == "consent_withdrawn" and patient_body["read_model"]["consent_frozen"] is True
+    assert "review_reason" not in patient_body["read_model"]
+    assert [(e["type"], e["actor"]) for e in patient_body["events"][-1:]] == [("consent_updated", "patient")]
+    body = case(cid)  # staff see the whole case
     rm = body["read_model"]
     assert rm["consent_frozen"] is True and rm["review_reason"] == "consent_withdrawn"
     assert [(e["type"], e["actor"]) for e in body["events"][-2:]] == [
