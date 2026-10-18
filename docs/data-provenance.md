@@ -26,8 +26,8 @@ All data in this project is synthetic. No real patient, clinician, facility or s
 
 | parameter | value |
 |---|---|
-| population (`SYNTHEA_POPULATION`) | 300 living patients (Synthea also exports the deceased it generated along the way: 384 patients in HAPI in the reference run, 364 patient bundles plus 2 infrastructure bundles) |
-| age range | 40-75 (`-a 40-75`). The dev stack was regenerated with it on 18 Oct 2026 (`make demo-seed-clean && make reset && make demo-seed`): 384 Patient resources in HAPI, 300 aged 40-75 on 2026-01-05 and not deceased by then, 22 positive FIT reports and 22 cases |
+| population (`SYNTHEA_POPULATION`) | 300 living patients (Synthea also exports the deceased it generated along the way: 364 patients in HAPI in the reference run, from 364 patient bundles plus 2 infrastructure bundles) |
+| age range | 40-75 (`-a 40-75`). The dev stack was regenerated with it on 18 Oct 2026 (`make demo-seed-clean && make reset && make demo-seed`, last at the M5 fix wave, with HAPI in its own database `hapi`): 364 Patient resources in HAPI (`GET /fhir/Patient?_summary=count`), 300 aged 40-75 on 2026-01-05 and not deceased by then, 22 positive FIT reports and 22 cases |
 | state | Massachusetts |
 | years of history | 5 (`--exporter.years_of_history=5`) |
 | FHIR export | R4, `use_us_core_ig=false`; hospital and practitioner bundles exported |
