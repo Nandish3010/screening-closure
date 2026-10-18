@@ -1,4 +1,4 @@
-.PHONY: test-demo test-e2e-live demo-scenario demo-stage demo-snapshot demo-restore demo-reset demo-kill-scheduler check docs-check tracker-lint test-security test-tools test-load load-check up down logs test test-db test-db-create test-db-reset test-chaos synthea demo-seed demo-seed-clean evaluate simulate evaluate-check sensitivity sensitivity-check reset web-install web-dev web-build web-test web-e2e test-e2e review-packs review-packs-check test-review-packs test-phi-logs rbac-matrix test-offline fresh-clone risk-report risk-check
+.PHONY: test-demo test-e2e-live demo-scenario demo-stage demo-snapshot demo-restore demo-reset demo-kill-scheduler check docs-check tracker-lint test-security test-tools test-load load-check up down logs test test-db test-db-create test-db-reset test-chaos synthea demo-seed demo-seed-clean evaluate simulate evaluate-check sensitivity sensitivity-check reset web-install web-dev web-build web-test web-e2e test-e2e review-packs review-packs-check test-review-packs test-phi-logs rbac-matrix test-offline fresh-clone risk-report risk-check effort effort-check
 
 up:
 	docker compose up -d --build
@@ -104,6 +104,16 @@ evaluate-check:
 	if diff -q $$a/results.json $$b/results.json >/dev/null; then \
 		echo "evaluate-check: PASS, results.json identical across runs (sha256 $$(shasum -a 256 $$a/results.json | cut -c1-16))"; rm -rf $$a $$b; \
 	else echo "evaluate-check: FAIL, results.json differs ($$a vs $$b)"; diff $$a/results.json $$b/results.json | head -20; exit 1; fi
+
+# Human effort per case (ticket B17): the Human effort section of docs/results/results.md is written by `make evaluate` (it is computed from the same
+# event logs, no extra run). `make effort` prints it from the committed results.json; `make effort-check` fails if results.json predates the effort
+# model in simulator/sim/effort.py or docs/evidence.md section 11 lacks a source, and runs the effort tests (hand-computed arithmetic on the five-case scenario).
+effort:
+	$(SIMENV) $(PY) -m simulator.sim.cli effort
+
+effort-check:
+	$(SIMENV) $(PY) -m simulator.sim.cli effort --check
+	$(SIMENV) $(PY) -m pytest simulator/tests/test_effort.py -q
 
 # One-at-a-time parameter sensitivity (ticket B14): every parameter with a `range` in simulator/params.yaml (and the overlay) is
 # moved to its low and to its high end with the rest held at the literature-anchored scenario; 5 replications x 1,000 cases x 360 days

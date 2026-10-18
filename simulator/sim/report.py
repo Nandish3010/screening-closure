@@ -531,6 +531,8 @@ def render_markdown(res: dict) -> str:
         "Lost to follow-up = no confirmatory colonoscopy by the end of follow-up and either an explicit lost-contact flag or no pathway progress for 30+ days. "
         "`n/a` means the arm has no such events by design (the baseline has no named owner and no escalations) or no input from the AI cut yet.",
         "",
+        effort_section(res),
+        "",
         calibration_section(res),
         "",
     ]
@@ -560,5 +562,226 @@ def capacity_caveat(res: dict) -> str:
         f"many others are open. The orchestrated arm raises {txt}, roughly one for every case. A real programme needs people and "
         f"colonoscopy slots to work them, and the completion and time gains would shrink if they are not there. A capacity model (staff "
         f"time per escalation, slot supply, queueing) is future work; until it exists, use `escalations_per_100_cases` to size a pilot "
-        f"rather than the completion gains. Definitions: [`metrics.md`](metrics.md).",
+        f"rather than the completion gains. The staff minutes an escalation takes are counted in the Human effort section, but still without any queue or "
+        f"shared capacity. Definitions: [`metrics.md`](metrics.md).",
+    ])
+
+
+# ---------------------------------------------------------------------------------------------------------------------
+# Human effort (ticket B17)
+# ---------------------------------------------------------------------------------------------------------------------
+
+EFFORT_ROWS = [
+    ("minutes_per_case", "Human minutes per case", "days"),
+    ("minutes_per_closed_case", "Human minutes per closed case", "days"),
+    ("human_actions_per_case", "Human actions per case", "num"),
+    ("automation_share", "Automation share (automated actions / all actions)", "pct"),
+]
+EFFORT_REDUCTION_ROWS = [
+    ("labour_reduction", "**Labour reduction**, minutes per case (1 - orchestrated / baseline)"),
+    ("labour_reduction_per_closed_case", "Labour reduction, minutes per closed case"),
+    ("human_actions_reduction", "Reduction in human actions per case"),
+]
+ROBUSTNESS_LABELS = [
+    ("headline", "Headline (the table above)"),
+    ("baseline_chasing_not_costed", "Baseline chasing not costed (only logged events count in the baseline)"),
+    ("baseline_chasing_intensive", "Baseline chases harder (up to 5 attempts, every 7 days)"),
+    ("coordinator_and_clinician_only", "Specialist minutes left out (coordinator and owner clinician only)"),
+    ("orchestrated_bookings_keyed_by_hand", "Orchestrated arm: a person still records every booking"),
+    ("no_draft_approval_charge", "No charge for approving drafts (a phone call needs no approval)"),
+    ("escalation_outreach_is_an_approved_draft_not_a_call", "Escalation outreach is an approved drafted message, not a phone call (calls cost no minutes)"),
+    ("all_minutes_low", "Every minutes figure at its low end"),
+    ("all_minutes_high", "Every minutes figure at its high end"),
+    ("least_favourable_minutes", "Least favourable corner: baseline-only actions at their low end, orchestrated-only at their high end"),
+]
+
+
+def _eff(res: dict, scen: str) -> dict | None:
+    return res.get("effort", {}).get("scenarios", {}).get(scen)
+
+
+def effort_target_met(res: dict, scen: str, subset: str = "all", target: float = 0.40) -> bool | None:
+    e = _eff(res, scen)
+    if not e:
+        return None
+    r = e[subset]["reduction"]["labour_reduction"]
+    return None if not r or r["ci_low"] is None else r["ci_low"] > target
+
+
+def effort_section(res: dict) -> str:
+    eff = res.get("effort")
+    if not eff:
+        return ""
+    scens = [s for s in ((LITERATURE,) if _has(res, LITERATURE) else ()) + (UPPER,) if _eff(res, s)]
+    model = eff["model"]
+    acts = {a["id"]: a for a in model["actions"]}
+    pc = lambda x: f"{100 * x:.0f}%"  # noqa: E731
+    p1 = lambda x: "n/a" if x is None else f"{100 * x:.1f}%"  # noqa: E731
+    verdict = lambda met: "not assessable (one replication has no interval)" if met is None else ("met" if met else "not met")  # noqa: E731
+
+    def cell(scen, subset, arm, key, kind):
+        return _cell(_eff(res, scen)[subset]["arms"][arm][key], kind)
+
+    def red(scen, subset, key):
+        return _cell(_eff(res, scen)[subset]["reduction"][key], "pct")
+
+    head = ["Measure", "Baseline"] + [f"Orchestrated, {SCENARIO_TITLE[s]}" for s in scens]
+    rows = []
+    for key, label, kind in EFFORT_ROWS:
+        rows.append([label, cell(scens[0], "all", BASELINE, key, kind)] + [cell(s, "all", ORCHESTRATED, key, kind) for s in scens])
+    for key, label in EFFORT_REDUCTION_ROWS:
+        rows.append([label, "-"] + [red(s, "all", key) for s in scens])
+    rows.append(["Among the cases the programme reaches: human minutes per case", cell(scens[0], "in_reach", BASELINE, "minutes_per_case", "days")]
+                + [cell(s, "in_reach", ORCHESTRATED, "minutes_per_case", "days") for s in scens])
+    rows.append(["Among the cases the programme reaches: **labour reduction**", "-"] + [red(s, "in_reach", "labour_reduction") for s in scens])
+    main = _table(head, rows)
+
+    role_names = {"coordinator": "Coordinator", "owner_clinician": "Owner clinician", "specialist": "Specialist"}
+    rrows = []
+    for r in ("coordinator", "owner_clinician", "specialist"):
+        rrows.append([f"{role_names[r]}: minutes per case", cell(scens[0], "all", BASELINE, f"minutes_per_case.{r}", "days")]
+                     + [cell(s, "all", ORCHESTRATED, f"minutes_per_case.{r}", "days") for s in scens])
+    for r in ("coordinator", "owner_clinician", "specialist"):
+        rrows.append([f"{role_names[r]}: reduction", "-"] + [red(s, "all", f"labour_reduction.{r}") for s in scens])
+    roles = _table(head, rrows)
+
+    def rob(scen, key):
+        v = _eff(res, scen)["robustness"].get(key)
+        return "n/a" if v is None else f"{100 * v:+.1f}%"
+
+    robust = _table(["Variant (labour reduction, minutes per case, point estimate)"] + [f"Orchestrated, {SCENARIO_TITLE[s]}" for s in scens],
+                    [[label] + [rob(s, k) for s in scens] for k, label in ROBUSTNESS_LABELS])
+
+    ref = LITERATURE if LITERATURE in scens else UPPER
+    torn = _eff(res, ref)["tornado"][:5]
+    base_red = _eff(res, ref)["tornado_base"]
+    tt = _table(
+        ["Minutes figure (top 5 by swing)", "Grade", "Low / central / high (min)", "Reduction at low", "Reduction at high"],
+        [[f"{acts[t['action']]['label']} (`{t['action']}`)", t["status"], f"{t['low_minutes']:g} / {acts[t['action']]['minutes']:g} / {t['high_minutes']:g}",
+          p1(t["reduction_at_low"]), p1(t["reduction_at_high"])] for t in torn],
+    )
+
+    def status_share(scen, arm):
+        a = _eff(res, scen)["all"]["arms"][arm]
+        tot = a["minutes_per_case"]["mean"]
+        return {s: (a[f"minutes_per_case.status.{s}"]["mean"] / tot if tot else 0.0) for s in ("sourced", "sourced-adjacent", "assumed")}
+
+    sb, so = status_share(ref, BASELINE), status_share(ref, ORCHESTRATED)
+
+    arows = []
+    for a in model["actions"]:
+        arows.append([f"`{a['id']}` {a['label']}", a["role"].replace("_", " "), {"manual": "today's process", "orchestrated": "orchestrated", "both": "both"}[a["process"]],
+                      f"{a['minutes']:g} ({a['low']:g} to {a['high']:g})", a["status"], _esc(a["source"])])
+    action_table = _table(["Human action", "Role", "Process", "Minutes (range)", "Grade", "Basis"], arows)
+
+    steps = "; ".join(dict.fromkeys(s["step"] for s in model["automated_steps"]))
+
+    # ---- paragraph ----------------------------------------------------------------------------------------------------
+    lit = _eff(res, LITERATURE) if LITERATURE in scens else None
+    up = _eff(res, UPPER)
+
+    def val(e, subset, key):
+        return e[subset]["reduction"][key]["mean"]
+
+    def ci(e, subset, key):
+        c = e[subset]["reduction"][key]
+        return f"{p1(c['mean'])}, 95% CI {p1(c['ci_low'])} to {p1(c['ci_high'])}"
+
+    ba = _eff(res, ref)["all"]["arms"][BASELINE]["minutes_per_case"]["mean"]
+    oa = _eff(res, ref)["all"]["arms"][ORCHESTRATED]["minutes_per_case"]["mean"]
+    reach = next((o["value"] for o in _sc(res, LITERATURE)["overrides"] if o["key"] == "orchestration.programme_reach"), None) if lit else None
+    target_bits = []
+    if lit:
+        met_all, met_in = effort_target_met(res, LITERATURE, "all"), effort_target_met(res, LITERATURE, "in_reach")
+        target_bits.append(f"In the literature-anchored scenario the programme-level reduction is {ci(lit, 'all', 'labour_reduction')}: the 40% target is "
+                           f"**{verdict(met_all)}**. Among the cases the programme reaches it is {ci(lit, 'in_reach', 'labour_reduction')} "
+                           f"(target {verdict(met_in)}); per closed case it is {ci(lit, 'all', 'labour_reduction_per_closed_case')}.")
+    met_up = effort_target_met(res, UPPER, "all")
+    target_bits.append(f"In the upper-range scenario the reduction is {ci(up, 'all', 'labour_reduction')} (target {verdict(met_up)}; the lower end of the interval "
+                       f"is {p1(up['all']['reduction']['labour_reduction']['ci_low'])}); per closed case it is {ci(up, 'all', 'labour_reduction_per_closed_case')}.")
+
+    # biggest orchestrated contributors (reference scenario)
+    apc = _eff(res, ref)["all"]["actions_per_case"][ORCHESTRATED]
+    contrib = sorted(((k, v * acts[k]["minutes"]) for k, v in apc.items() if k in acts), key=lambda kv: -kv[1])[:4]
+    contrib_txt = ", ".join(f"{acts[k]['short']} ({m:.1f} min per case)" for k, m in contrib)
+    esc_min = sum(apc.get(k, 0) * acts[k]["minutes"] for k in ("O_ACCEPT_ESC_SUPERVISOR", "O_ACCEPT_ESC_COORDINATOR", "O_SUPERVISOR_CALL", "O_COORDINATOR_CALL", "O_APPROVE_DRAFT"))
+    chase_min = sum(_eff(res, ref)["all"]["actions_per_case"][BASELINE].get(k, 0) * acts[k]["minutes"] for k in acts if acts[k]["chase"])
+    auto_pc = _eff(res, ref)["all"]["arms"][ORCHESTRATED]["automated_actions_per_case"]["mean"]
+    human_pc_o = _eff(res, ref)["all"]["arms"][ORCHESTRATED]["human_actions_per_case"]["mean"]
+    def role_chg(role):
+        a = _eff(res, ref)["all"]["arms"]
+        return f"{100 * (a[ORCHESTRATED][f'minutes_per_case.{role}']['mean'] / a[BASELINE][f'minutes_per_case.{role}']['mean'] - 1):+.0f}%"
+
+    lf = _eff(res, ref)["robustness"]["least_favourable_minutes"]
+    keyed = _eff(res, ref)["robustness"]["orchestrated_bookings_keyed_by_hand"]
+    nochase = _eff(res, ref)["robustness"]["baseline_chasing_not_costed"]
+    appr = _eff(res, ref)["robustness"]["escalation_outreach_is_an_approved_draft_not_a_call"]
+    reach_txt = (f" In the literature-anchored scenario only {pc(reach)} of orchestrated-arm cases receive the orchestrated process (`programme_reach`); the rest stay manual, "
+                 f"so the programme-level reduction is diluted by construction and the in-reach figure is the one that describes the automation itself.") if reach is not None and reach < 1 else ""
+
+    para = [
+        f"**What is counted.** Staff minutes per case in each arm, computed from the simulated event log (`simulator/sim/effort.py`; no outcome in this report depends on it). "
+        f"A person's time is counted only when a person acts. Today's process is manual at every step (look up and acknowledge the result, phone or write to the patient, "
+        f"send the referral, book, record that the patient called back, review the report, file the closure), and the model adds the chasing that leaves no event in the log "
+        f"(up to {model['chase']['default']['max_attempts']} attempts every {model['chase']['default']['interval_days']:g} days when a patient, a referral or a colonoscopy is overdue). "
+        f"In the orchestrated process the engine does the following by machine and they cost no human minutes: {steps}. A person acts only to accept an escalation, approve a "
+        f"drafted message, sign the closure and handle an exhausted reroute list, plus the steps automation cannot do (recording a patient's call-back, a consent withdrawal, a "
+        f"transfer decision, a rebooking, a corrected contact, a reopened case, and the specialist's own accept or reject)." + reach_txt,
+        "",
+        "**Result.** " + " ".join(target_bits),
+        "",
+        f"**What drives the remaining minutes.** In the {SCENARIO_TITLE[ref].replace('literature anchored', 'literature-anchored')} scenario the orchestrated arm needs {oa:.1f} human minutes per case against {ba:.1f} at baseline. "
+        f"The largest orchestrated contributors are {contrib_txt}. Escalation handling alone (accepting, phoning, approving) is {esc_min:.1f} minutes per case, because the orchestrated arm "
+        f"escalates far more than today's process ever does; the orchestrated arm also takes {auto_pc:.1f} automated actions per case that the baseline does not do at all, "
+        f"so the reduction is in people's time, not in the work done. {human_pc_o:.1f} human actions per case remain, many of them short. "
+        f"The time also moves between roles: coordinator minutes change by {role_chg('coordinator')} but owner-clinician minutes by {role_chg('owner_clinician')} "
+        f"(accepting escalations, calling, approving and signing are clinician decisions) and specialist minutes by {role_chg('specialist')}; whether that is cheaper depends on wages, which are not in the model.",
+        "",
+        f"**How far to trust the minutes.** {pc(sb['sourced'] + sb['sourced-adjacent'])} of baseline minutes and {pc(so['sourced'] + so['sourced-adjacent'])} of orchestrated minutes rest on a "
+        f"published minutes figure from an adjacent setting (care coordinators and navigators in Australia and the United States); none was measured in the Abu Dhabi pathway"
+        + ("" if any(a["status"] == "sourced" for a in model["actions"]) else ", and none is graded `sourced` (a direct measurement of the same task in the same population)") +
+        f". The rest ({pc(sb['assumed'])} of baseline and {pc(so['assumed'])} of orchestrated minutes) is assumed. "
+        f"Moving every figure to its low or its high end together barely changes the reduction, because it is a ratio, but the relative sizes matter: the table above shows how far "
+        f"individual figures move it, and the least favourable corner (baseline-only actions at their low end, orchestrated-only actions at their high end) gives {100 * lf:+.0f}%. "
+        f"Three modelling choices carry most of the weight: the baseline's chasing (without it the reduction is {p1(nochase)}, and baseline chasing was "
+        f"{chase_min:.1f} minutes per case), whether a person still records every booking in the orchestrated arm (if so, {p1(keyed)}), and whether the human escalation outreach "
+        f"is a phone call or a drafted message that a person only approves (if only approved, {p1(appr)}). All three are flagged for confirmation with the engine ticket (A21).",
+        "",
+        "**Limits.** Human minutes are not capacity: there is no queue, no shift pattern and no shared workload, so a coordinator who accepts three escalations in an hour is not slowed down "
+        "(see the capacity caveat). The orchestrated escalation volume is a simulator output (the SLA timers breach often), and a real programme could reduce it by batching or by tuning "
+        "the ladder. The simulator has no model-drafted messages (every message is a pre-approved template), so the approval charge is a proxy placed on the human-contact messages. "
+        "Time spent by patients, the endoscopy unit's procedure and reception work, and management or training time are outside the count.",
+    ]
+    return "\n".join([
+        "## Human effort",
+        "",
+        "Human minutes per case in each arm and the reduction automation buys, from the event logs of the same replications as the rest of this report "
+        "(95% CIs are percentile bootstrap over replications; the reduction is paired by replication). Definitions: [`metrics.md`](metrics.md) section 11. "
+        "Sources and grades of every minutes figure: [`evidence.md`](../evidence.md) section 11.",
+        "",
+        main,
+        "",
+        *para,
+        "",
+        "### Human minutes per case by role",
+        "",
+        roles,
+        "",
+        "### How robust is the reduction",
+        "",
+        robust,
+        "",
+        f"The five minutes figures that move the {SCENARIO_TITLE[ref]} reduction most, one at a time (central {p1(base_red)}):",
+        "",
+        tt,
+        "",
+        "### The minutes table",
+        "",
+        "Every human action, the minutes used, the range used in the sweep and where the figure comes from. `sourced-adjacent` = a published figure for a related task or setting; "
+        "`assumed` = no published figure found. Steps the engine automates cost no human minutes and are listed in `results.json` under `effort.model.automated_steps`.",
+        "",
+        action_table,
+        "",
+        "Work that today's process never does (so it costs the baseline nothing, and the orchestrated arm does it by machine): "
+        + "; ".join(w["work"][0].lower() + w["work"][1:] for w in model["never_done_in_baseline"]) + ".",
     ])
