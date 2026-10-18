@@ -275,3 +275,16 @@ def test_get_alerts_is_unchanged_without_a_projection(monkeypatch):
     monkeypatch.setattr(ops, "store", ops.InMemoryOpsStore())
     assert client.get("/alerts", headers=COORD).json() == []
     assert fp.dead_letter_alert(cases.store) is None
+
+
+def test_wrap_store_accepts_a_minimal_settings_object_and_uses_the_default_retry_policy():
+    class S:  # what a test or a tool passes: no retry knobs
+        fhir_projection = True
+        fhir_base_url = "http://hapi.invalid/fhir"
+        fhir_projection_drain_seconds = 3600.0
+
+    wrapped = fp.wrap_store(InMemoryEventStore(), S, PATHWAY, default_calendar())
+    try:
+        assert (wrapped.projector.queue.policy.base_seconds, wrapped.projector.queue.policy.max_attempts) == (30.0, 12)
+    finally:
+        wrapped.projector.stop()

@@ -729,8 +729,10 @@ def wrap_store(store, app_settings, pathway: Pathway, calendar: WorkingCalendar,
     retry queue is the Postgres table when there is a pool, else in memory."""
     if not app_settings.fhir_projection:
         return store
-    policy = RetryPolicy(app_settings.fhir_retry_base_seconds, app_settings.fhir_retry_cap_seconds,
-                         app_settings.fhir_retry_max_attempts)
+    # getattr: a duck-typed settings object (tests, tools) need not carry the retry knobs; the defaults are Settings'
+    policy = RetryPolicy(getattr(app_settings, "fhir_retry_base_seconds", 30.0),
+                         getattr(app_settings, "fhir_retry_cap_seconds", 3600.0),
+                         getattr(app_settings, "fhir_retry_max_attempts", 12))
     if pool is not None:
         from app.store_pg import PostgresProjectionQueue
 
