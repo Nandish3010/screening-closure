@@ -65,7 +65,7 @@ outcomes, so changing a parameter never re-draws anything and differences betwee
 | Owner | none (`accept_ownership` is implicit, `owner: null`) | named owner on `accept_ownership`; changes on a provider transfer |
 | First outreach | one letter or SMS in a default language | patient's preferred channel and language |
 | Timers | none | working-day SLA per pathway step from the YAML (`close` uses `orchestration.signoff_sla_working_days`; `complete_confirmatory` is 31 working days in the YAML, the DoH KPI) |
-| Overdue / escalation | none | `overdue` at breach, then the YAML ladder: reminder (owner), escalate (supervisor, human phone call), escalate (coordinator, alternate contact route) |
+| Overdue / escalation | none | `overdue` at breach, then the YAML ladder: reminder (owner), escalate (supervisor, human phone call), escalate (coordinator, alternate contact route). A step's ladder and a milestone's can run at once; a rung to a role that another ladder already went to on the same working day, in the same step, is not emitted again (no second message, outreach or staff reaction): the earlier event lists it in `also_for` and the run counts `escalations_coalesced` (A19, ADR-031) |
 | Unreachable patient | silent loss | delivery failure detected, contact recovery attempted; ladder exhausted -> `lost_contact` flagged to a human |
 | Referral | rejection or silence may never be noticed | `handoff_requested/accepted/rejected`; rejections bounce to the owner with their reason; unanswered referrals bounce on a timer |
 | Appointment | no reminders; a no-show is not noticed | reminders before the appointment; a no-show raises `overdue` and a rebooking ladder |
@@ -169,6 +169,7 @@ intention-to-treat reading of a risk ratio: a programme's average effect is dilu
 orchestrated-arm quantity that is fitted rather than taken from a source: it is set so that the completion ratio at 180 days equals
 `navigation_effect` (1.27). Side effect, stated in `results.md`: the unreached cases can be lost silently, so `silent_loss_rate` is not
 zero in this scenario. Reach is a calibration device for the average effect, not a forecast of how many cases a programme would miss.
+The fitted value is 0.55 (refit on 2026-10-18 after the A18 milestones and A19 coalescing: 0.50 gave a ratio of 1.248, 0.55 gives 1.272; the probes are in ADR-028).
 
 **Re-fitting reach.** If baseline parameters change, rerun `make evaluate`, read the literature-anchored completion ratio at 180 days
 in `results.md` (calibration section), and adjust `orchestration.programme_reach` in `params.conservative.yaml` until it equals

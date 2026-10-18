@@ -128,10 +128,10 @@ def test_committed_results_report_programme_level_and_in_reach_and_the_renamed_m
         assert sc["arms"]["orchestrated"]["silent_loss_rate_in_reach"]["mean"] == 0.0
         assert sc["arms"]["orchestrated"]["consent_breach_rate_in_reach"]["mean"] == 0.0
     lit = res["scenarios"]["literature_anchored"]["arms"]["orchestrated"]
-    assert lit["silent_loss_rate"]["mean"] > 0.1 and 0.45 < lit["in_reach_share"]["mean"] < 0.55
+    assert lit["silent_loss_rate"]["mean"] > 0.1 and 0.50 < lit["in_reach_share"]["mean"] < 0.60
     assert "Escalation acted-on rate (within 5 working days)" in md and "Escalation precision" not in md
     assert "programme level (all cases)" in md and "in reach (cases the programme reached)" in md
-    assert "follow from the `programme_reach` assumption (0.5 in the literature-anchored scenario)" in md
+    assert "follow from the `programme_reach` assumption (0.55 in the literature-anchored scenario)" in md
     assert "deprecated_aliases" in metrics_md and "`escalation_precision`" in metrics_md.split("## 10.")[1]
     assert "### `escalation_precision`" not in metrics_md and "### `escalation_acted_on_rate`" in metrics_md
 

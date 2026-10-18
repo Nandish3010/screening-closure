@@ -1,9 +1,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 608" width="520" height="608" role="img" aria-labelledby="t d" font-family="Helvetica, Arial, sans-serif" font-size="12">
 <title id="t">Reliability diagram of the loss-to-follow-up risk score on the held-out simulator data</title>
-<desc id="d">Observed rate of loss to follow-up against mean predicted probability in ten equal-width bins; expected calibration error 0.024, AUC 0.892, 4604 held-out cases. Synthetic data.</desc>
+<desc id="d">Observed rate of loss to follow-up against mean predicted probability in ten equal-width bins; expected calibration error 0.022, AUC 0.894, 4552 held-out cases. Synthetic data.</desc>
 <rect width="520" height="608" fill="#ffffff"/>
 <text x="64" y="24" font-size="15" font-weight="bold" fill="#222222">Risk score reliability, held-out simulator data</text>
-<text x="64" y="42" fill="#555555">n = 4604, ECE = 0.024, AUC = 0.892, Brier = 0.130 (base-rate predictor 0.248)</text>
+<text x="64" y="42" fill="#555555">n = 4552, ECE = 0.022, AUC = 0.894, Brier = 0.128 (base-rate predictor 0.246)</text>
 <line x1="64.00" y1="456.00" x2="64.00" y2="56.00" stroke="#e3e3e3" stroke-width="1"/>
 <line x1="64.00" y1="456.00" x2="464.00" y2="456.00" stroke="#e3e3e3" stroke-width="1"/>
 <text x="64.00" y="472.00" text-anchor="middle" fill="#444444">0.0</text>
@@ -40,38 +40,38 @@
 <text x="56.00" y="60.00" text-anchor="end" fill="#444444">1.0</text>
 <rect x="64" y="56" width="400" height="400" fill="none" stroke="#888888"/>
 <line x1="64.00" y1="456.00" x2="464.00" y2="56.00" stroke="#888888" stroke-dasharray="5 4"/>
-<polyline points="82.13,434.53 122.25,400.32 164.98,375.02 204.48,323.12 241.60,267.54 284.51,256.83 323.80,188.16 365.16,123.63 405.55,97.14 447.23,76.84" fill="none" stroke="#1f6feb" stroke-width="1.5"/>
-<circle cx="82.13" cy="434.53" r="11.00" fill="#1f6feb" fill-opacity="0.75" stroke="#ffffff"/>
-<circle cx="122.25" cy="400.32" r="9.06" fill="#1f6feb" fill-opacity="0.75" stroke="#ffffff"/>
-<circle cx="164.98" cy="375.02" r="7.69" fill="#1f6feb" fill-opacity="0.75" stroke="#ffffff"/>
-<circle cx="204.48" cy="323.12" r="9.29" fill="#1f6feb" fill-opacity="0.75" stroke="#ffffff"/>
-<circle cx="241.60" cy="267.54" r="7.58" fill="#1f6feb" fill-opacity="0.75" stroke="#ffffff"/>
-<circle cx="284.51" cy="256.83" r="7.03" fill="#1f6feb" fill-opacity="0.75" stroke="#ffffff"/>
-<circle cx="323.80" cy="188.16" r="6.91" fill="#1f6feb" fill-opacity="0.75" stroke="#ffffff"/>
-<circle cx="365.16" cy="123.63" r="7.33" fill="#1f6feb" fill-opacity="0.75" stroke="#ffffff"/>
-<circle cx="405.55" cy="97.14" r="7.86" fill="#1f6feb" fill-opacity="0.75" stroke="#ffffff"/>
-<circle cx="447.23" cy="76.84" r="10.28" fill="#1f6feb" fill-opacity="0.75" stroke="#ffffff"/>
+<polyline points="81.44,436.75 121.54,396.71 165.43,367.48 204.17,325.83 241.76,270.93 283.73,260.41 323.62,186.28 365.10,115.84 405.58,101.54 447.75,76.19" fill="none" stroke="#1f6feb" stroke-width="1.5"/>
+<circle cx="81.44" cy="436.75" r="11.00" fill="#1f6feb" fill-opacity="0.75" stroke="#ffffff"/>
+<circle cx="121.54" cy="396.71" r="8.79" fill="#1f6feb" fill-opacity="0.75" stroke="#ffffff"/>
+<circle cx="165.43" cy="367.48" r="7.80" fill="#1f6feb" fill-opacity="0.75" stroke="#ffffff"/>
+<circle cx="204.17" cy="325.83" r="9.09" fill="#1f6feb" fill-opacity="0.75" stroke="#ffffff"/>
+<circle cx="241.76" cy="270.93" r="7.10" fill="#1f6feb" fill-opacity="0.75" stroke="#ffffff"/>
+<circle cx="283.73" cy="260.41" r="6.78" fill="#1f6feb" fill-opacity="0.75" stroke="#ffffff"/>
+<circle cx="323.62" cy="186.28" r="6.70" fill="#1f6feb" fill-opacity="0.75" stroke="#ffffff"/>
+<circle cx="365.10" cy="115.84" r="7.00" fill="#1f6feb" fill-opacity="0.75" stroke="#ffffff"/>
+<circle cx="405.58" cy="101.54" r="7.52" fill="#1f6feb" fill-opacity="0.75" stroke="#ffffff"/>
+<circle cx="447.75" cy="76.19" r="9.88" fill="#1f6feb" fill-opacity="0.75" stroke="#ffffff"/>
 <text x="264.00" y="492.00" text-anchor="middle" fill="#222222">Mean predicted probability (bin)</text>
 <text x="18" y="256.00" text-anchor="middle" fill="#222222" transform="rotate(-90 18 256.00)">Observed rate of loss to follow-up</text>
 <text x="64" y="508.00" fill="#444444">Held-out cases per probability bin</text>
 <rect x="66.00" y="514.00" width="36.00" height="60.00" fill="#9db7e5"/>
-<text x="84.00" y="588.00" text-anchor="middle" fill="#444444" font-size="10">950</text>
-<rect x="106.00" y="539.52" width="36.00" height="34.48" fill="#9db7e5"/>
-<text x="124.00" y="588.00" text-anchor="middle" fill="#444444" font-size="10">546</text>
-<rect x="146.00" y="553.41" width="36.00" height="20.59" fill="#9db7e5"/>
-<text x="164.00" y="588.00" text-anchor="middle" fill="#444444" font-size="10">326</text>
-<rect x="186.00" y="536.93" width="36.00" height="37.07" fill="#9db7e5"/>
-<text x="204.00" y="588.00" text-anchor="middle" fill="#444444" font-size="10">587</text>
-<rect x="226.00" y="554.29" width="36.00" height="19.71" fill="#9db7e5"/>
-<text x="244.00" y="588.00" text-anchor="middle" fill="#444444" font-size="10">312</text>
-<rect x="266.00" y="558.78" width="36.00" height="15.22" fill="#9db7e5"/>
-<text x="284.00" y="588.00" text-anchor="middle" fill="#444444" font-size="10">241</text>
-<rect x="306.00" y="559.66" width="36.00" height="14.34" fill="#9db7e5"/>
-<text x="324.00" y="588.00" text-anchor="middle" fill="#444444" font-size="10">227</text>
-<rect x="346.00" y="556.44" width="36.00" height="17.56" fill="#9db7e5"/>
-<text x="364.00" y="588.00" text-anchor="middle" fill="#444444" font-size="10">278</text>
-<rect x="386.00" y="551.89" width="36.00" height="22.11" fill="#9db7e5"/>
-<text x="404.00" y="588.00" text-anchor="middle" fill="#444444" font-size="10">350</text>
-<rect x="426.00" y="524.29" width="36.00" height="49.71" fill="#9db7e5"/>
-<text x="444.00" y="588.00" text-anchor="middle" fill="#444444" font-size="10">787</text>
+<text x="84.00" y="588.00" text-anchor="middle" fill="#444444" font-size="10">1018</text>
+<rect x="106.00" y="542.59" width="36.00" height="31.41" fill="#9db7e5"/>
+<text x="124.00" y="588.00" text-anchor="middle" fill="#444444" font-size="10">533</text>
+<rect x="146.00" y="552.43" width="36.00" height="21.57" fill="#9db7e5"/>
+<text x="164.00" y="588.00" text-anchor="middle" fill="#444444" font-size="10">366</text>
+<rect x="186.00" y="539.23" width="36.00" height="34.77" fill="#9db7e5"/>
+<text x="204.00" y="588.00" text-anchor="middle" fill="#444444" font-size="10">590</text>
+<rect x="226.00" y="558.20" width="36.00" height="15.80" fill="#9db7e5"/>
+<text x="244.00" y="588.00" text-anchor="middle" fill="#444444" font-size="10">268</text>
+<rect x="266.00" y="560.62" width="36.00" height="13.38" fill="#9db7e5"/>
+<text x="284.00" y="588.00" text-anchor="middle" fill="#444444" font-size="10">227</text>
+<rect x="306.00" y="561.15" width="36.00" height="12.85" fill="#9db7e5"/>
+<text x="324.00" y="588.00" text-anchor="middle" fill="#444444" font-size="10">218</text>
+<rect x="346.00" y="559.03" width="36.00" height="14.97" fill="#9db7e5"/>
+<text x="364.00" y="588.00" text-anchor="middle" fill="#444444" font-size="10">254</text>
+<rect x="386.00" y="554.84" width="36.00" height="19.16" fill="#9db7e5"/>
+<text x="404.00" y="588.00" text-anchor="middle" fill="#444444" font-size="10">325</text>
+<rect x="426.00" y="529.62" width="36.00" height="44.38" fill="#9db7e5"/>
+<text x="444.00" y="588.00" text-anchor="middle" fill="#444444" font-size="10">753</text>
 </svg>

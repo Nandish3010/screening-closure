@@ -2,250 +2,250 @@
   "columns": [
     {
       "center": 0.0,
-      "coef": 0.08142603,
+      "coef": 0.06577352,
       "feature": "language",
       "kind": "onehot",
       "level": "ar",
-      "mean_enc": 0.45689816,
+      "mean_enc": 0.45607442,
       "scale": 1.0
     },
     {
       "center": 0.0,
-      "coef": -0.09776526,
+      "coef": -0.08902885,
       "feature": "language",
       "kind": "onehot",
       "level": "en",
-      "mean_enc": 0.33932229,
+      "mean_enc": 0.33965987,
       "scale": 1.0
     },
     {
       "center": 0.0,
-      "coef": 0.01633923,
+      "coef": 0.02325534,
       "feature": "language",
       "kind": "onehot",
       "level": "other",
-      "mean_enc": 0.20377956,
+      "mean_enc": 0.20426571,
       "scale": 1.0
     },
     {
       "center": 0.0,
-      "coef": 0.04352044,
+      "coef": 0.0515839,
       "feature": "channel",
       "kind": "onehot",
       "level": "sms",
-      "mean_enc": 0.40011171,
+      "mean_enc": 0.40063892,
       "scale": 1.0
     },
     {
       "center": 0.0,
-      "coef": 0.04486014,
+      "coef": 0.02804928,
       "feature": "channel",
       "kind": "onehot",
       "level": "whatsapp",
-      "mean_enc": 0.29808229,
+      "mean_enc": 0.29775439,
       "scale": 1.0
     },
     {
       "center": 0.0,
-      "coef": 0.07974268,
+      "coef": 0.10051463,
       "feature": "channel",
       "kind": "onehot",
       "level": "phone",
-      "mean_enc": 0.1495997,
+      "mean_enc": 0.14873626,
       "scale": 1.0
     },
     {
       "center": 0.0,
-      "coef": -0.16812325,
+      "coef": -0.1801478,
       "feature": "channel",
       "kind": "onehot",
       "level": "letter",
-      "mean_enc": 0.15220629,
+      "mean_enc": 0.15287043,
       "scale": 1.0
     },
     {
       "center": 0.0,
-      "coef": -0.02297025,
+      "coef": -0.0249117,
       "feature": "age_band",
       "kind": "onehot",
       "level": "40-49",
-      "mean_enc": 0.28383914,
+      "mean_enc": 0.28431833,
       "scale": 1.0
     },
     {
       "center": 0.0,
-      "coef": 0.02675798,
+      "coef": 0.03285381,
       "feature": "age_band",
       "kind": "onehot",
       "level": "50-59",
-      "mean_enc": 0.27881214,
+      "mean_enc": 0.27811707,
       "scale": 1.0
     },
     {
       "center": 0.0,
-      "coef": 0.00381652,
+      "coef": -0.02581908,
       "feature": "age_band",
       "kind": "onehot",
       "level": "60-69",
-      "mean_enc": 0.27136474,
+      "mean_enc": 0.27153998,
       "scale": 1.0
     },
     {
       "center": 0.0,
-      "coef": -0.00760425,
+      "coef": 0.01787697,
       "feature": "age_band",
       "kind": "onehot",
       "level": "70-75",
-      "mean_enc": 0.16598399,
+      "mean_enc": 0.16602462,
       "scale": 1.0
     },
     {
       "center": 0.0,
-      "coef": -0.09204163,
+      "coef": -0.11367249,
       "feature": "contact_valid",
       "kind": "bool",
       "level": null,
-      "mean_enc": 0.9015081,
+      "mean_enc": 0.9018134,
       "scale": 1.0
     },
     {
       "center": 0.0,
-      "coef": 1.07966108,
+      "coef": 1.11721175,
       "feature": "stage",
       "kind": "onehot",
       "level": "result_received",
-      "mean_enc": 0.05157326,
+      "mean_enc": 0.05120737,
       "scale": 1.0
     },
     {
       "center": 0.0,
-      "coef": 1.22126419,
+      "coef": 1.22945496,
       "feature": "stage",
       "kind": "onehot",
       "level": "acknowledged",
-      "mean_enc": 0.05185254,
+      "mean_enc": 0.05017382,
       "scale": 1.0
     },
     {
       "center": 0.0,
-      "coef": 0.67477015,
+      "coef": 0.69751855,
       "feature": "stage",
       "kind": "onehot",
       "level": "owner_accepted",
-      "mean_enc": 0.10789425,
+      "mean_enc": 0.10645495,
       "scale": 1.0
     },
     {
       "center": 0.0,
-      "coef": 1.37659555,
+      "coef": 1.4063995,
       "feature": "stage",
       "kind": "onehot",
       "level": "patient_contacted",
-      "mean_enc": 0.32526531,
+      "mean_enc": 0.31814338,
       "scale": 1.0
     },
     {
       "center": 0.0,
-      "coef": -0.87571366,
+      "coef": -0.88430306,
       "feature": "stage",
       "kind": "onehot",
       "level": "patient_acknowledged",
-      "mean_enc": 0.17175573,
+      "mean_enc": 0.17448088,
       "scale": 1.0
     },
     {
       "center": 0.0,
-      "coef": -3.47657731,
+      "coef": -3.56628169,
       "feature": "stage",
       "kind": "onehot",
       "level": "confirmatory_booked",
-      "mean_enc": 0.29165891,
+      "mean_enc": 0.2995396,
       "scale": 1.0
     },
     {
-      "center": 38.14218023,
-      "coef": 1.33692106,
+      "center": 37.873126,
+      "coef": 1.37827694,
       "feature": "days_since_result",
       "kind": "numeric",
       "level": null,
       "mean_enc": 0.0,
-      "scale": 24.61638422
+      "scale": 24.53167916
     },
     {
-      "center": 0.57568423,
-      "coef": -0.09832482,
+      "center": 0.62369633,
+      "coef": -0.10299857,
       "feature": "prior_escalations",
       "kind": "numeric",
       "level": null,
       "mean_enc": 0.0,
-      "scale": 1.07058506
+      "scale": 1.09245204
     },
     {
-      "center": 0.20126606,
-      "coef": 0.21455256,
+      "center": 0.21544677,
+      "coef": 0.20858761,
       "feature": "prior_bounces",
       "kind": "numeric",
       "level": null,
       "mean_enc": 0.0,
-      "scale": 0.61196282
+      "scale": 0.63318162
     },
     {
       "center": 0.0,
-      "coef": 2.01559234,
+      "coef": 2.14243506,
       "feature": "consent_withdrawn",
       "kind": "bool",
       "level": null,
-      "mean_enc": 0.00837833,
+      "mean_enc": 0.00920793,
       "scale": 1.0
     },
     {
       "center": 0.0,
-      "coef": -0.33780233,
+      "coef": -0.42014987,
       "feature": "provider_changed",
       "kind": "bool",
       "level": null,
-      "mean_enc": 0.00856451,
+      "mean_enc": 0.00939585,
       "scale": 1.0
     }
   ],
   "intended_use": "worklist ordering only; see docs/governance/risk-score-card.md",
-  "intercept": 0.3728193,
+  "intercept": 0.36619079,
   "label": "no colonoscopy within 180 days of the result (lost to follow-up)",
   "model_type": "logistic_regression",
   "schema_version": 1,
   "synthetic_data": true,
   "training": {
     "arm": "orchestrated",
-    "coefficient_sha256": "7d8bc384eda3433630d9e2394c737935989537ab14a6fdb4521a5146f7846701",
-    "data_sha256": "ed297834d77e8c7dea35fb2661fd709176e2ce455ef2e009322b4291cffb2f4f",
+    "coefficient_sha256": "fac32b19654ad67439c6e4645dfbe6ce8f656d6e2b2094c80b80f8f8639d994f",
+    "data_sha256": "b3284190b57cb10c26437a76e3cc8942e157d5359b95ea3909cfa80bba8dd912",
     "follow_up_days": 180,
     "intake_window_days": 30.0,
     "iterations": 7,
     "l2": 1.0,
     "n_cases": 20000,
-    "n_heldout": 4604,
-    "n_rows": 15346,
-    "n_train": 10742,
+    "n_heldout": 4552,
+    "n_rows": 15195,
+    "n_train": 10643,
     "optimizer": "newton_raphson_l2",
     "params_files": [
       "simulator/params.yaml",
       "simulator/params.conservative.yaml"
     ],
-    "params_hash": "b2caa28b05979d1571b393ac79d56c733cd65676f5ba3fd50cb527e770a22d04",
-    "prevalence_train": 0.46052877,
+    "params_hash": "edb40020bea5b7b7a5ad2a51661737c6a33f6845b7369a638398aa5aabdeba3e",
+    "prevalence_train": 0.4470544,
     "scenario": "literature_anchored",
     "seed": 20261017,
     "simulated_start_date": "2026-01-05",
     "snapshot_max_days": 90.0,
     "train_fraction": 0.7,
-    "train_log_loss": 0.4201676
+    "train_log_loss": 0.41191875
   },
   "validation": {
-    "auc": 0.8921204,
-    "brier": 0.12974484,
-    "brier_base_rate": 0.24806009,
-    "ece": 0.02381758,
+    "auc": 0.89375125,
+    "brier": 0.12754769,
+    "brier_base_rate": 0.24642929,
+    "ece": 0.02203248,
     "ece_tolerance": 0.05,
-    "n": 4604
+    "n": 4552
   }
 }
