@@ -178,8 +178,9 @@ def _patient_ref(case_id: UUID) -> str | None:
     return events[0].payload.get("patient_ref") if events else None
 
 
-def _check_signature_and_evidence(identity: Identity, event_type: str, payload: dict) -> None:
-    """A15 (ADR-021): a signature is the signer's own, and closure evidence must resolve."""
+def _check_signature_and_evidence(identity: Identity, event_type: str, payload: dict, case_id: UUID) -> None:
+    """A15 (ADR-021): a signature is the signer's own, and closure evidence must resolve AND be this
+    case's own (SEC-2: the resource must be the one named, and belong to this case or its patient)."""
     signed_by = payload.get("signed_by")
     if event_type in ("clinician_review", "close") and signed_by is not None:
         if not evidence.signed_by_matches(identity, signed_by):
@@ -190,12 +191,14 @@ def _check_signature_and_evidence(identity: Identity, event_type: str, payload: 
             )
     if event_type == "close":
         ref = payload["evidence_ref"]  # shape already checked by the payload schema
+        if not evidence.well_formed_ref(ref):  # `Procedure/.`: the URL would collapse to a search
+            raise HTTPException(422, f"evidence_ref {ref!r} is not a resource reference")
         try:
-            resolves = evidence.verifier.exists(ref)
+            resolves = evidence.verifier.exists(ref, case_id=case_id, patient_ref=_patient_ref(case_id))
         except evidence.EvidenceUnavailable as exc:
             raise HTTPException(503, f"cannot verify closure evidence: {exc}")
         if not resolves:
-            raise HTTPException(422, f"evidence_ref {ref!r} does not resolve to a resource")
+            raise HTTPException(422, f"evidence_ref {ref!r} does not resolve to a resource of this case")
 
 
 @router.post("/{case_id}/events", status_code=201)
@@ -221,7 +224,7 @@ def post_event(
     try:
         payloads.validate(body.type, body.payload)  # free text cannot enter the log (A14)
         validate_payload(event, pathway)  # malformed payload: 422 before anything is written
-        _check_signature_and_evidence(identity, body.type, body.payload)
+        _check_signature_and_evidence(identity, body.type, body.payload, case_id)
         store.append(event, pathway)
     except CaseNotFound:
         raise HTTPException(404, "case not found")

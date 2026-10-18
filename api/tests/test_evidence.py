@@ -1,6 +1,7 @@
 """T-A37 (A15, ADR-021): closure evidence must resolve, and the signer must be the closer."""
 
 import http.server
+import json
 import threading
 from uuid import UUID
 
@@ -29,17 +30,17 @@ def post(case_id, type_, headers, payload=None):
     return client.post(f"/cases/{case_id}/events", json={"type": type_, "payload": payload or {}}, headers=headers)
 
 
-def reviewed_case(spec_name="Dr Closer", review=True):
+def reviewed_case(spec_name="Dr Closer", review=True, patient_ref="Patient/1"):
     """A case at clinician_reviewed (or confirmatory_completed) whose owner is the specialist
     `spec_name`, who acts for provider endo-a15."""
-    cid = client.post("/cases", json={"patient_ref": "Patient/1"}, headers=H("coordinator")).json()["case_id"]
+    cid = client.post("/cases", json={"patient_ref": patient_ref}, headers=H("coordinator")).json()["case_id"]
     pco = H("primary_care_owner", "Dr Referrer")
     token = client.post("/auth/dev-login", json={"role": "specialist_owner", "name": spec_name,
                                                  "provider": "endo-a15"}).json()["token"]
     spec = {"Authorization": f"Bearer {token}"}
     steps = [
         ("acknowledge", H("lab"), {}), ("accept_ownership", pco, {}), ("contact_patient", pco, {}),
-        ("patient_acknowledge", H("patient", "pat", "Patient/1"), {}),
+        ("patient_acknowledge", H("patient", "pat", patient_ref), {}),
         ("handoff_requested", pco, {"to_provider": "endo-a15"}), ("handoff_accepted", spec, {}),
         ("book_confirmatory", spec, {}), ("complete_confirmatory", spec, {}),
     ]
@@ -97,7 +98,7 @@ def test_t_a37_only_a_diagnosticreport_or_procedure_reference_is_accepted(ref):
 
 def test_t_a37_when_the_fhir_server_cannot_answer_the_closure_is_refused_not_assumed():
     class Down:
-        def exists(self, ref):
+        def exists(self, ref, *, case_id=None, patient_ref=None):
             raise evidence.EvidenceUnavailable("connection refused")
 
     evidence.verifier = Down()
@@ -173,10 +174,15 @@ class _Fhir(http.server.BaseHTTPRequestHandler):
     def do_GET(self):
         code = {"/fhir/DiagnosticReport/here": 200, "/fhir/DiagnosticReport/gone": 410,
                 "/fhir/DiagnosticReport/boom": 500}.get(self.path, 404)
+        body = b"{}"
+        if code == 200:  # the body is the resource asked for, and it is Patient/1's
+            ident = self.path.rsplit("/", 1)[1]
+            body = json.dumps({"resourceType": "DiagnosticReport", "id": ident,
+                               "subject": {"reference": "Patient/1"}}).encode()
         self.send_response(code)
         self.send_header("Content-Type", "application/fhir+json")
         self.end_headers()
-        self.wfile.write(b"{}")
+        self.wfile.write(body)
 
     def log_message(self, *args):
         pass
@@ -192,11 +198,12 @@ def fhir_server():
 
 def test_t_a37_the_fhir_verifier_maps_http_status_to_resolves_or_not(fhir_server):
     v = evidence.FhirVerifier(fhir_server, timeout=2)
-    assert v.exists("DiagnosticReport/here") is True
-    assert v.exists("DiagnosticReport/nope") is False  # 404
-    assert v.exists("DiagnosticReport/gone") is False  # 410 deleted
+    case = {"case_id": UUID(int=1), "patient_ref": "Patient/1"}
+    assert v.exists("DiagnosticReport/here", **case) is True
+    assert v.exists("DiagnosticReport/nope", **case) is False  # 404
+    assert v.exists("DiagnosticReport/gone", **case) is False  # 410 deleted
     with pytest.raises(evidence.EvidenceUnavailable, match="HTTP 500"):
-        v.exists("DiagnosticReport/boom")
+        v.exists("DiagnosticReport/boom", **case)
 
 
 def test_t_a37_an_unreachable_fhir_server_is_unavailable_not_false():

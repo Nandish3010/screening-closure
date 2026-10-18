@@ -6,6 +6,10 @@ posts `complete_confirmatory {result_ref}` and, later, `close {evidence_ref}` wi
 `Procedure/<id>`; `close` is checked against HAPI by `app.evidence` (A15), so the evidence the
 clinician signs against is a resource that really exists.
 
+Each resource carries the identifier `urn:screening-closure:case|<case_id>` (and the patient as its
+subject): that is what ties the evidence to this case, and `app.evidence.FhirVerifier` refuses a
+closure whose evidence belongs to another case (SEC-2).
+
 The ids are deterministic (`colonoscopy-<case_id>`, `colonoscopy-report-<case_id>`) and written
 with PUT inside one transaction, so recording twice is idempotent and a demo that is reset and
 replayed produces the same references. Nothing here decides anything about the case: it writes
@@ -23,6 +27,7 @@ from datetime import datetime
 from typing import Protocol
 from uuid import UUID
 
+from app.evidence import CASE_IDENTIFIER_SYSTEM
 from app.fhir_projection import DEFAULT_TAG, FhirClient, FhirError, HttpFhirClient
 
 SYSTEM_PATIENT_REF = "urn:screening-closure:patient-ref"
@@ -53,7 +58,7 @@ def build_resources(case_id: UUID, patient: dict | None, performed_at: datetime)
         "status": "completed",
         "code": {"coding": [COLONOSCOPY_SNOMED], "text": "Colonoscopy"},
         "performedDateTime": when,
-        "identifier": [{"system": "urn:screening-closure:case", "value": str(case_id)}],
+        "identifier": [{"system": CASE_IDENTIFIER_SYSTEM, "value": str(case_id)}],
     }
     report = {
         "resourceType": "DiagnosticReport",
@@ -63,7 +68,7 @@ def build_resources(case_id: UUID, patient: dict | None, performed_at: datetime)
         "code": {"coding": [COLONOSCOPY_LOINC], "text": "Colonoscopy report"},
         "effectiveDateTime": when,
         "conclusion": "Colonoscopy completed. Synthetic demonstration record; no clinical finding is encoded.",
-        "identifier": [{"system": "urn:screening-closure:case", "value": str(case_id)}],
+        "identifier": [{"system": CASE_IDENTIFIER_SYSTEM, "value": str(case_id)}],
     }
     if patient is not None:
         procedure["subject"] = patient

@@ -1,6 +1,6 @@
 """T-A37 against the running HAPI server (`make test-db` with the stack up)."""
 
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import pytest
 
@@ -25,22 +25,30 @@ def hapi_verifier():
 
 
 def test_a_closure_resolves_against_a_real_diagnosticreport_and_a_ghost_does_not():
-    report_id = f"a15-{uuid4().hex[:12]}"
-    status, _ = fhirtest.put_tagged({
-        "resourceType": "DiagnosticReport", "id": report_id, "status": "final",
-        "code": {"text": "Colonoscopy report (test)"}})
-    assert status in (200, 201)
-    assert evidence.verifier.exists(f"DiagnosticReport/{report_id}") is True
-    assert evidence.verifier.exists(f"DiagnosticReport/a15-ghost-{uuid4().hex[:8]}") is False
-    assert evidence.verifier.exists(f"Procedure/a15-ghost-{uuid4().hex[:8]}") is False
-
     # end to end through the API on the in-memory store, with the real verifier
     from test_evidence import reviewed_case, post, count, state  # reuses the walk to clinician_reviewed
 
     cid, spec = reviewed_case("Dr Hapi Closer")
+    report_id = f"a15-{uuid4().hex[:12]}"
+    status, _ = fhirtest.put_tagged({
+        "resourceType": "DiagnosticReport", "id": report_id, "status": "final",
+        "code": {"text": "Colonoscopy report (test)"},
+        # SEC-2: the evidence names the case it belongs to (what app.confirmatory writes)
+        "identifier": [{"system": evidence.CASE_IDENTIFIER_SYSTEM, "value": cid}]})
+    assert status in (200, 201)
+    case = {"case_id": UUID(cid), "patient_ref": "Patient/1"}
+    assert evidence.verifier.exists(f"DiagnosticReport/{report_id}", **case) is True
+    assert evidence.verifier.exists(f"DiagnosticReport/{report_id}", case_id=UUID(int=9), patient_ref="Patient/9") is False
+    assert evidence.verifier.exists(f"DiagnosticReport/a15-ghost-{uuid4().hex[:8]}", **case) is False
+    assert evidence.verifier.exists(f"Procedure/a15-ghost-{uuid4().hex[:8]}", **case) is False
+    # the real server answers `Procedure/.` with a Bundle (a search), which must not count as evidence
+    assert evidence.verifier.exists("Procedure/.", **case) is False
+
     signer = f"Practitioner/{user_id_of('specialist_owner', 'Dr Hapi Closer')}"
     n = count(cid)
     r = post(cid, "close", spec, {"evidence_ref": f"DiagnosticReport/a15-nope-{uuid4().hex[:8]}", "signed_by": signer})
     assert r.status_code == 422 and count(cid) == n and state(cid) == "clinician_reviewed"
+    r = post(cid, "close", spec, {"evidence_ref": "Procedure/..", "signed_by": signer})
+    assert r.status_code == 422 and count(cid) == n
     r = post(cid, "close", spec, {"evidence_ref": f"DiagnosticReport/{report_id}", "signed_by": signer})
     assert r.status_code == 201 and r.json()["state"] == "closed"
