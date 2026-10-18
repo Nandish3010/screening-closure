@@ -6,11 +6,15 @@ annotation `message_drafted` as the automated actor `model:<provider>`, and stor
 the exact prompt and the provider as provenance.
 
 It also holds the approval gate (D5): `POST /drafts/{id}/approve` is the only code path that
-calls `notify.send`, and so the only way a `message_sent` event can come to exist. Nothing else
-in the API imports `notify.send`, `notify.emit_message_sent` or the notifier actor
-(`tests/test_approval_gate.py` scans the source for that), `message_sent` and `message_approved`
-are not postable through `POST /cases/{id}/events` (empty EVENT_POLICY), and the state machine
-accepts `message_sent` only from `system:notifier`.
+approves a draft and starts the send, and so the only way a `message_sent` event can come to exist.
+The approval, the `message_approved` event and an outbox row (`app.outbox`) commit in ONE transaction;
+`drain_outbox()` then hands the row to the notification mock (`notify.drain_outbox`), and the scheduler
+loop calls the same drain, so an approval that committed is never lost. Nothing else in the API imports
+`notify.send`, `notify.emit_message_sent` or the notifier actor (`tests/test_approval_gate.py` scans the
+source for that), `message_sent` and `message_approved` are not postable through
+`POST /cases/{id}/events` (empty EVENT_POLICY), and the state machine accepts `message_sent` only from
+`system:notifier`, for a draft in the case's approved-unsent set, on a channel with consent at that
+moment (SEC-2, ADR-030).
 
 Routes (roles in `app.policy.ROUTE_POLICY`, registered below so a missing entry fails closed):
 
@@ -31,7 +35,7 @@ from uuid import UUID, uuid4
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 
-from app import metrics_abstention, notify, payloads, policy, users
+from app import metrics_abstention, notify, outbox, payloads, policy, users
 from app.ai.draft_store import (
     DraftAlreadyDecided,
     DraftNotFound,
@@ -69,6 +73,11 @@ router = APIRouter(tags=["drafts"])
 # With Postgres the store is built from the event store's connection pool (see `draft_store`).
 store: DraftStore = InMemoryDraftStore()
 _pg: PostgresDraftStore | None = None
+# The send outbox (migration 010): the Postgres table when the event store is Postgres, else in memory.
+# The in-memory outbox belongs to the in-memory draft store it was made for (a fresh draft store, as the
+# unit tests install, gets a fresh outbox), so no test can drain another's rows.
+_mem_outbox: tuple[object, outbox.InMemoryOutbox] | None = None
+_pg_outbox: outbox.PostgresOutbox | None = None
 
 DRAFT_ROLES = frozenset({policy.PCO, policy.SPEC, policy.COORD, policy.SUPER})
 METRICS_ROLES = frozenset({policy.COORD, policy.SUPER})
@@ -94,6 +103,29 @@ def draft_store() -> DraftStore:
     if _pg is None or _pg.pool is not pool:
         _pg = PostgresDraftStore(pool)
     return _pg
+
+
+def outbox_store() -> outbox.Outbox:
+    """The Postgres outbox when the event store is Postgres, else the in-memory one."""
+    global _pg_outbox, _mem_outbox
+    pool = getattr(cases.store, "_pool", None)
+    if pool is None:
+        if _mem_outbox is None or _mem_outbox[0] is not store:
+            _mem_outbox = (store, outbox.InMemoryOutbox())
+        return _mem_outbox[1]
+    if _pg_outbox is None or _pg_outbox.pool is not pool:
+        _pg_outbox = outbox.PostgresOutbox(pool)
+    return _pg_outbox
+
+
+def drain_outbox(only=None, limit: int = 100) -> list[notify.DrainOutcome]:
+    """Send every approved draft that has not gone out yet (or only the drafts in `only`). Idempotent;
+    called at the end of an approval and by the scheduler loop (`POST /scheduler/outbox/drain`)."""
+    def text_of(draft_id: UUID) -> str | None:
+        d = draft_store().get(draft_id)
+        return d.text if d is not None else None
+
+    return notify.drain_outbox(outbox_store(), text_of, limit=limit, only=only)
 
 
 class CreateDraft(BaseModel):
@@ -344,8 +376,10 @@ def abstention_metric() -> dict:
 # ---------------------------------------------------------------- the approval gate (D5)
 
 # Why the notification mock did not send, as the API reports it (the detail is on the
-# notification row, `GET /cases/{id}/notifications`).
-_BLOCKED = {"blocked_consent": "consent", "blocked_contact": "contact"}
+# notification row, `GET /cases/{id}/notifications`). `pending`: the drain could not finish yet; the
+# approval stands and the scheduler's next drain sends it.
+_BLOCKED = {"blocked_consent": "consent", "blocked_contact": "contact", "case_state": "case_state",
+            "draft_missing": "case_state"}
 
 
 def _decidable(draft_id: UUID, identity: Identity) -> tuple[DraftRecord, object]:
@@ -373,10 +407,12 @@ def approve_draft(draft_id: UUID, identity: Identity = Depends(require_identity)
     """Approve a draft and hand it to the notification mock.
 
     One transaction (Postgres) or one critical section (in-memory) records the approval on the
-    draft and appends `message_approved` as the approver, so neither can exist without the
-    other. Only then is `notify.send` called, which writes `message_sent` as `system:notifier`
-    and the notification row, or reports why it did not (consent / contact): the approval stands
-    and the response says `sent: false`.
+    draft, appends `message_approved` as the approver and writes the outbox row, so none of the three
+    can exist without the others (ADR-030). Only then is the outbox drained: the notification mock
+    writes `message_sent` as `system:notifier` and the notification row (one transaction), or reports
+    why it did not (consent / contact / the case moved on): the approval stands and the response says
+    `sent: false`. If the drain itself fails the row stays pending, the response says so
+    (`blocked_reason: "pending"`) and the scheduler's next drain sends it, once.
     """
     draft, model = _decidable(draft_id, identity)
     if model.consent_frozen:
@@ -386,13 +422,15 @@ def approve_draft(draft_id: UUID, identity: Identity = Depends(require_identity)
 
     now = clock.now()
     event = Event(draft.case_id, "message_approved", now, identity.actor, {"draft_id": str(draft_id)})
-    drafts_db = draft_store()
+    drafts_db, outbox_db = draft_store(), outbox_store()
+
+    def decide(cur) -> None:
+        approved = drafts_db.approve(draft_id, identity.actor, now, cur=cur)
+        outbox_db.enqueue(outbox.OutboxItem(draft_id, draft.case_id, approved.channel, approved.language,
+                                            approved.purpose, now), cur=cur)
+
     try:
-        cases.store.append(
-            event, cases.pathway,
-            within=lambda cur: drafts_db.approve(draft_id, identity.actor, now, cur=cur),
-            guard=policy.owner_guard(identity, "decide_draft"),
-        )
+        cases.store.append(event, cases.pathway, within=decide, guard=policy.owner_guard(identity, "decide_draft"))
     except CaseNotFound:
         raise HTTPException(404, "case not found") from None
     except DraftNotFound:
@@ -406,19 +444,16 @@ def approve_draft(draft_id: UUID, identity: Identity = Depends(require_identity)
 
     base = {"draft_id": str(draft_id), "approved_by": identity.actor, "approved_at": now.isoformat()}
     try:
-        sent = notify.send(
-            draft.case_id, draft.channel, draft.language, draft.purpose, draft.text,
-            draft_id=str(draft_id), at=now,
-        )
-    except (InvalidTransition, CaseNotFound) as exc:
-        # The case changed between the approval and the send (closed, or consent withdrawn):
-        # nothing went out and no message_sent exists. The approval stands, as recorded.
-        log.warning("approved draft %s was not sent: %s", draft_id, exc)
-        return {**base, "sent": False, "blocked_reason": "case_state", "notification_id": None}
-    if sent.status == "sent":
-        return {**base, "sent": True, "blocked_reason": None, "notification_id": str(sent.id)}
-    return {**base, "sent": False, "blocked_reason": _BLOCKED.get(sent.status, sent.status),
-            "notification_id": str(sent.id)}
+        drain_outbox(only=[draft_id])
+    except Exception:  # noqa: BLE001 - the approval has committed; whatever failed, the row is still pending
+        log.exception("outbox drain after approving draft %s failed", draft_id)
+    done = outbox_db.get(draft_id)
+    if done is not None and done.status == outbox.SENT:
+        return {**base, "sent": True, "blocked_reason": None, "notification_id": str(done.notification_id)}
+    if done is not None and done.status == outbox.BLOCKED:
+        return {**base, "sent": False, "blocked_reason": _BLOCKED.get(done.reason, done.reason),
+                "notification_id": str(done.notification_id) if done.notification_id else None}
+    return {**base, "sent": False, "blocked_reason": "pending", "notification_id": None}
 
 
 @router.post("/drafts/{draft_id}/reject")

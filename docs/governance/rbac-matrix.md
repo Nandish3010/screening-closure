@@ -42,6 +42,7 @@ Every cell is what the running API did, not what the policy table says: the scri
 | `GET /metrics/closure` | U | R | R | R | A | R | A | R | R |
 | `GET /pathways` | U | A | A | A | A | A | A | A | A |
 | `POST /scheduler/heartbeat` | U | R | R | R | R | R | R | A | R |
+| `POST /scheduler/outbox/drain` | U | R | R | R | R | R | R | A | R |
 | `POST /scheduler/sweep` | U | R | R | R | R | R | R | A | R |
 | `POST /watchdog/scan` | U | R | R | R | R | R | R | R | A |
 
@@ -103,6 +104,6 @@ None.
 
 ## What was checked
 
-- 25 routes in the OpenAPI document, 25 entries in `ROUTE_POLICY`: every route has a decision and no decision is stale.
+- 26 routes in the OpenAPI document, 26 entries in `ROUTE_POLICY`: every route has a decision and no decision is stale.
 - 25 event types in `EVENT_POLICY`, plus one unknown type that must be refused for every role.
-- 555 role, route and scope combinations probed with real requests; 0 differ from the policy tables; 0 are documented gaps (see Findings).
+- 564 role, route and scope combinations probed with real requests; 0 differ from the policy tables; 0 are documented gaps (see Findings).

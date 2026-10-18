@@ -15,6 +15,8 @@ replay of the event log produces:
                          requested_at, requested_event_id}; ownership changes only when it is accepted (A5)
     last_handoff         outcome of the latest answered or bounced handoff (A5)
     consent_frozen       outreach is frozen (state is consent_withdrawn)
+    approved_unsent      draft ids a human approved whose `message_sent` has not been written yet (SEC-2, ADR-030):
+                         the approval gate lives HERE, so a `message_sent` is accepted only for a draft in this set
     last_event_at        `at` of the latest event, including annotations
     last_activity_at     `at` of the latest event that is not a watchdog flag: the idle clock (A11)
     last_activity_event_id  the `event_id` of that event: what the watchdog derives its flag id from, so a
@@ -73,6 +75,7 @@ DEFAULT_CONSENT = {
     "share_with_specialist": True,
     "withdrawn": False,
 }
+CHANNELS = ("sms", "whatsapp", "phone", "letter")  # contact channels (the `channel_*` consent keys)
 # Events refused while consent is withdrawn (outreach and handing the patient to someone new).
 CONSENT_FROZEN_EVENTS = frozenset(
     {"contact_patient", "message_drafted", "message_approved", "message_sent", "handoff_requested"}
@@ -130,6 +133,7 @@ class CaseModel:
     provider: str | None = None
     pending_handoff: dict | None = None
     last_handoff: dict | None = None
+    approved_unsent: tuple = ()  # draft ids approved by a human and not yet sent (ADR-030)
     # Consent ledger (A6): current values, and every change in order (append-only by replay).
     consent: dict = field(default_factory=lambda: {**DEFAULT_CONSENT, "updated_at": None, "updated_by": None})
     consent_history: tuple = ()
@@ -148,6 +152,7 @@ class CaseModel:
             "escalation_accepted": self.escalation_accepted,
             "owner": self.owner,
             "consent_frozen": self.consent_frozen,
+            "approved_unsent_drafts": list(self.approved_unsent),
             "last_event_at": iso(self.last_event_at),
             "last_activity_at": iso(self.last_activity_at),
             "watchdog_flag": dict(self.watchdog_flag) if self.watchdog_flag else None,
@@ -416,6 +421,21 @@ def _precheck(model: CaseModel, event: Event, pathway: Pathway) -> None:
             f"consent withdrawn: {kind!r} is refused while the patient's consent is withdrawn; "
             "a human must review the case"
         )
+    # The approval gate, in the machine (SEC-2, ADR-030): a message goes out only for a draft a human
+    # approved on THIS case and that has not gone out yet, on a channel the patient consents to NOW (at
+    # apply time, under the case lock), not when the approval was given. A bug or a stray caller in the
+    # notifier cannot send what nobody approved, send it twice, or send it past an opt-out.
+    if kind == "message_approved" and event.payload.get("draft_id") in model.approved_unsent:
+        raise InvalidTransition(f"message_approved: draft {event.payload.get('draft_id')!r} is already approved")
+    if kind == "message_sent":
+        draft_id = event.payload.get("draft_id")
+        if draft_id is None or draft_id not in model.approved_unsent:
+            raise InvalidTransition(
+                f"message_sent: draft {draft_id!r} is not an approved, unsent draft of this case"
+            )
+        consented, why = channel_consent(model, event.payload.get("channel"))
+        if not consented:
+            raise InvalidTransition(f"message_sent: {why}")
     pending = model.pending_handoff
     if kind == "handoff_requested":
         if model.owner is None:
@@ -430,6 +450,18 @@ def _precheck(model: CaseModel, event: Event, pathway: Pathway) -> None:
             raise InvalidTransition(f"{kind}: there is no pending handoff request")
         if kind == "handoff_accepted" and actor in (pending["requested_by"], pending["from_owner"]):
             raise InvalidTransition("a handoff cannot be accepted by the party that requested it")
+
+
+def channel_consent(model: CaseModel, channel) -> tuple[bool, str]:
+    """(allowed, reason): may the patient be contacted on `channel` given the consent ledger as it stands.
+    Not allowed when consent is withdrawn, the channel is unknown, or the channel is switched off."""
+    if model.consent_frozen or model.consent.get("withdrawn"):
+        return False, "consent withdrawn"
+    if channel not in CHANNELS:
+        return False, f"unknown channel {channel!r}"
+    if not model.consent.get(f"channel_{channel}", False):
+        return False, f"patient has not consented to contact by {channel}"
+    return True, "ok"
 
 
 def _consent_after(model: CaseModel, event: Event, was_frozen: bool) -> CaseModel:
@@ -497,6 +529,10 @@ def _finish(
             "bounced": payload.get("bounced") is True, "to_provider": pending["to_provider"],
             "by": event.actor, "at": at.isoformat(),
         })
+    elif kind == "message_approved" and isinstance(payload.get("draft_id"), str):
+        out = replace(out, approved_unsent=(*out.approved_unsent, payload["draft_id"]))
+    elif kind == "message_sent":
+        out = replace(out, approved_unsent=tuple(d for d in out.approved_unsent if d != payload.get("draft_id")))
     elif kind == "consent_updated":
         out = _consent_after(out, event, (before or model).consent_frozen)
     elif kind == "review_requested":

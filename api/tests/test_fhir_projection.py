@@ -4,7 +4,7 @@ The same walk runs against the real HAPI server in test_fhir_projection_hapi.py.
 
 import json
 from datetime import timedelta
-from uuid import UUID
+from uuid import UUID, uuid4
 
 import pytest
 
@@ -14,7 +14,7 @@ from app import notify, ops, users
 from app.calendar import default_calendar
 from app.clock import clock
 from app.config import settings as app_settings
-from app.events import InMemoryEventStore
+from app.events import Event, InMemoryEventStore
 from app.pathway import load_pathway
 from app.routers import cases
 from app.sweep import run_sweep
@@ -62,7 +62,10 @@ def walk(patient_ref="Patient/p-1", result_ref="DiagnosticReport/r-1"):
     post(cid, "acknowledge", lab)
     post(cid, "accept_ownership", pco)
     post(cid, "contact_patient", pco)
-    notify.send(UUID(cid), "sms", "en", "first_contact", "Dear Fatima, please call us")  # message_sent
+    draft = str(uuid4())  # ADR-030: a message_sent needs a draft a human approved
+    cases.store.append(Event(UUID(cid), "message_approved", clock.now(), actor_of("primary_care_owner", "Dr Proj A"),
+                             {"draft_id": draft}), PATHWAY)
+    notify.send(UUID(cid), "sms", "en", "first_contact", "Dear Fatima, please call us", draft_id=draft)  # message_sent
     clock.advance(days=12)  # patient_acknowledge (7 wd) breached: mark_overdue + reminder + supervisor rung
     run_sweep(cases.store, PATHWAY, default_calendar(), clock.now(), only=[UUID(cid)])
     post(cid, "patient_acknowledge", pat)

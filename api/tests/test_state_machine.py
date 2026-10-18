@@ -435,6 +435,7 @@ def test_read_model_shape_and_values():
         "breach_due_at": None,
         "provider": None,
         "pending_handoff": None,
+        "approved_unsent_drafts": [],
         "last_handoff": None,
         "consent": {
             "channel_sms": True, "channel_whatsapp": True, "channel_phone": True,
@@ -748,6 +749,9 @@ def test_annotations_are_allowed_in_any_open_state_without_changing_it(state, ty
     payload = {"withdrawn": False} if type_ == "consent_updated" else {}
     if state == "consent_withdrawn" and type_ == "consent_updated":
         payload = {"withdrawn": True}  # (False would be the resume transition)
+    if type_ == "message_sent":  # ADR-030: only for a draft a human approved and that has not gone out
+        model = dataclasses.replace(model, approved_unsent=("d-1",))
+        payload = {"draft_id": "d-1", "channel": "sms"}
     new = step(model, make_event(type_, actor, payload), PATHWAY)
     assert new.state == state
 

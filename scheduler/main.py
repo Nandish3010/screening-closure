@@ -5,7 +5,8 @@ ladder) is `api/app/sweep.py`, run inside the API next to the event store and dr
 API's simulation clock; the API splits it over `SWEEP_WORKERS` processes (A17), invisible here.
 This process authenticates as `system:scheduler` with a service token
 that the API restricts to `mark_overdue`, `escalate` and `watchdog_flagged`; it can never
-close a case.
+close a case. Each loop it also asks the API to drain the send outbox (`POST /scheduler/outbox/drain`,
+ADR-030): approved drafts whose send was interrupted go out exactly once.
 
 Heartbeat (not a case event): posted to the API (`POST /scheduler/heartbeat`, stored in the
 `heartbeats` table) on every loop, including when the sweep fails, with whether the sweep worked
@@ -48,6 +49,24 @@ def run_sweep() -> dict | None:
         log.error("sweep refused: HTTP %s %s", exc.code, exc.read()[:200])
     except Exception as exc:  # keep looping; the watchdog reports a stale or failing heartbeat
         log.warning("sweep failed: %s", exc)
+    return None
+
+
+def drain_outbox() -> dict | None:
+    """POST /scheduler/outbox/drain: send approved drafts that have not gone out (ADR-030). The approve
+    request drains its own draft; this finishes any whose drain never ran (the API died after the approval
+    committed). A failure is logged and retried next loop, never fatal: the row stays pending."""
+    request = urllib.request.Request(
+        f"{API_URL}/scheduler/outbox/drain", data=b"", method="POST",
+        headers={"Authorization": f"Bearer {SERVICE_TOKEN}"},
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=60) as resp:
+            return json.load(resp)
+    except urllib.error.HTTPError as exc:
+        log.error("outbox drain refused: HTTP %s %s", exc.code, exc.read()[:200])
+    except Exception as exc:
+        log.warning("outbox drain failed: %s", exc)
     return None
 
 
@@ -100,6 +119,10 @@ def main() -> None:
                 summary["escalate"], summary.get("handoff_bounced", 0), summary["rejected"],
                 len(summary["errors"]),
             )
+        drained = drain_outbox()
+        if drained and drained.get("drained"):
+            log.info("outbox drained=%s sent=%s blocked=%s still_pending=%s", drained["drained"], drained["sent"],
+                     drained["blocked"], drained["pending"])
         write_heartbeat(summary, last_ok)
         post_heartbeat(summary, failures)
         time.sleep(INTERVAL_SECONDS)

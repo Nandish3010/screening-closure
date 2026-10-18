@@ -285,13 +285,19 @@ class PostgresNotificationLog:
     def __init__(self, pool: ConnectionPool) -> None:
         self._pool = pool
 
-    def add(self, n) -> None:
+    def add(self, n, cur=None) -> None:
+        """Insert the row; idempotent on `id` (the outbox drain uses a deterministic id, so a drain that
+        is run again after a crash cannot log the same notification twice). With `cur`, the insert is part
+        of the caller's transaction (the `message_sent` event commits with it, or neither does)."""
+        sql = (f"INSERT INTO notifications ({self._COLS}) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)"
+               " ON CONFLICT (id) DO NOTHING")
+        params = (n.id, n.case_id, n.channel, n.language, n.purpose, n.body, n.status, n.reason,
+                  n.event_id, n.created_at)
+        if cur is not None:
+            cur.execute(sql, params)
+            return
         with self._pool.connection() as conn:
-            conn.execute(
-                f"INSERT INTO notifications ({self._COLS}) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
-                (n.id, n.case_id, n.channel, n.language, n.purpose, n.body, n.status, n.reason,
-                 n.event_id, n.created_at),
-            )
+            conn.execute(sql, params)
 
     def for_case(self, case_id: UUID) -> list:
         from app.notify import Notification

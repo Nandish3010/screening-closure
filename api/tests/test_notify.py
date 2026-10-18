@@ -5,7 +5,7 @@ import ast
 import socket
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import pytest
 
@@ -50,10 +50,23 @@ def make_case(store, genesis=None, upto="patient_contacted"):
     return cid
 
 
+def approve_draft(store, cid, draft_id, when):
+    """A human approved `draft_id` (ADR-030: the state machine accepts a message_sent only for such a draft).
+    On a case with consent withdrawn the approval is itself refused; the send then reports blocked_consent."""
+    try:
+        store.append(Event(cid, "message_approved", when, OWNER, {"draft_id": draft_id}), PATHWAY)
+    except InvalidTransition:
+        pass
+
+
 def mock_send(store, cid, log, channel="sms", **kw):
+    when = kw.pop("at", at(1))
+    draft_id = kw.pop("draft_id", None) or str(uuid4())
+    if kw.pop("approved", True):
+        approve_draft(store, cid, draft_id, when)
     return send(cid, channel, kw.pop("language", "en"), kw.pop("purpose", "result_reminder"),
                 kw.pop("body", "Please call the clinic."), store=store, pathway=PATHWAY,
-                notification_log=log, at=kw.pop("at", at(1)), **kw)
+                notification_log=log, at=when, draft_id=draft_id, **kw)
 
 
 # ---- sending ---------------------------------------------------------------------------------------
@@ -229,10 +242,20 @@ def http_case(monkeypatch):
     clock.reset()
 
 
+def send_approved(cid, channel, language, purpose, body, **kw):
+    """`send` for a draft a human approved first (the state machine accepts no other, ADR-030)."""
+    draft = str(uuid4())
+    try:
+        cases.store.append(Event(UUID(cid), "message_approved", kw.get("at") or clock.now(), OWNER, {"draft_id": draft}), PATHWAY)
+    except InvalidTransition:
+        pass  # consent is withdrawn: the approval is refused too, and the send reports blocked_consent
+    return send(cid, channel, language, purpose, body, draft_id=draft, **kw)
+
+
 def test_the_notifications_route_lists_the_log(http_case, no_network):
     cid = http_case
-    send(cid, "sms", "en", "reminder", "Hello")
-    send(cid, "letter", "ar", "reminder", "مرحبا")
+    send_approved(cid, "sms", "en", "reminder", "Hello")
+    send_approved(cid, "letter", "ar", "reminder", "مرحبا")
     r = client.get(f"/cases/{cid}/notifications", headers=COORD)
     assert r.status_code == 200
     rows = r.json()
@@ -265,13 +288,13 @@ def test_nobody_can_post_message_sent_over_http(http_case):
 
 def test_t_a23_after_a_withdrawal_over_http_no_outbound_row_exists(http_case, no_network):
     cid = http_case
-    send(cid, "sms", "en", "reminder", "before", at=clock.now())
+    send_approved(cid, "sms", "en", "reminder", "before", at=clock.now())
     client.post("/clock/advance", json={"hours": 1}, headers=SUP)
     r = client.post(f"/cases/{cid}/events", json={"type": "consent_updated", "payload": {"withdrawn": True}}, headers=PATIENT)
     assert r.status_code == 201 and r.json()["state"] == "consent_withdrawn"
     withdrawn_at = r.json()["events"][-2]["at"]
     for ch in ("sms", "whatsapp", "phone", "letter"):
-        send(cid, ch, "en", "reminder", "after")  # at the sim clock
+        send_approved(cid, ch, "en", "reminder", "after")  # at the sim clock
     rows = client.get(f"/cases/{cid}/notifications", headers=COORD).json()
     assert [x["status"] for x in rows] == ["sent"] + ["blocked_consent"] * 4
     assert [x for x in rows if x["status"] in ("sent", "queued") and x["created_at"] >= withdrawn_at] == []

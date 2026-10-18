@@ -129,6 +129,9 @@ def test_the_same_events_are_fine_while_consent_stands():
         payload = {"to_provider": "endo-1"} if kind == "handoff_requested" else {}
         if kind == "contact_patient":
             continue  # a state transition, not valid from patient_contacted
+        if kind == "message_sent":  # only for a draft a human approved (ADR-030)
+            m = step(m, make_event("message_approved", OWNER, {"draft_id": "d-1"}, at(6)), PATHWAY)
+            payload = {"draft_id": "d-1", "channel": "sms"}
         step(m, make_event(kind, OWNER if kind != "message_sent" else "system:notifier", payload, at(6)), PATHWAY)
 
 

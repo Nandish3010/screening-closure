@@ -9,7 +9,7 @@ Where a language model may be used in this system, where it may not, how its out
 - Draft one patient message (purpose, channel and language chosen by a person or by the pathway), as text.
 - Nothing else. There is no model call anywhere in the closure engine, the scheduler, the escalation ladder, the watchdog or the closure check.
 
-A draft is only a proposal. It is shown to the case owner, who approves it or rejects it. Only after approval does the notification mock "send" it. The exact prompt, the draft, the provider and model, the requester, the approver and the timestamps are stored as Provenance (D4, D5): see section 7.
+A draft is only a proposal. It is shown to the case owner, who approves it or rejects it. Only after approval does the notification mock "send" it. The rule is enforced by the case's state machine, not only by the route: it accepts a `message_sent` only for a draft a human approved on that case, once, and only if the patient still consents to that channel when it is applied (ADR-030). The exact prompt, the draft, the provider and model, the requester, the approver and the timestamps are stored as Provenance (D4, D5): see section 7.
 
 The model sees the minimum it needs: the care owner's name and role, the next step in plain words, an appointment date if there is one, and the pathway name. It is never given the patient's name, contact details, identifiers or clinical history. The only clinical fact a message may state is that the screening test found blood.
 

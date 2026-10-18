@@ -57,6 +57,8 @@ ROUTE_POLICY: dict[tuple[str, str], object] = {
     # The scheduler service's periodic sweep and its heartbeat.
     ("POST", "/scheduler/sweep"): SCHEDULER,
     ("POST", "/scheduler/heartbeat"): SCHEDULER,
+    # The send outbox (ADR-030): the scheduler loop drains approved drafts that have not gone out yet.
+    ("POST", "/scheduler/outbox/drain"): SCHEDULER,
     # The watchdog service's scan (idle cases, scheduler liveness); its own token, nobody else.
     ("POST", "/watchdog/scan"): WATCHDOG,
     # Liveness for the dashboard (A11): coordinator and supervisor; the watchdog may read it too.
