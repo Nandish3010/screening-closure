@@ -218,7 +218,7 @@ export const STAFF = {
   replyForm: {
     heading: "Record patient reply",
     intro: "The patient wrote back. Type or paste the reply: a small offline model reads it, the text is kept outside the audit trail, and the case gets either one safe step or a request for a person to read it. The model cannot change the case, send, close or withdraw consent.",
-    channel: "Channel the reply came in on",
+    channel: "Reply arrived by",
     text: "Patient's reply",
     button: "Record reply",
     needText: "Enter the patient's reply first.",
