@@ -66,7 +66,7 @@ Six independent workstreams. Each cut owns its directories and touches nothing e
 - A behaviour simulator with literature-sourced parameters. Every parameter records value, source URL and status (`assumed` or `sourced`).
 - Messy-case injection: wrong contact, provider switch, duplicate result, conflicting acknowledgements, consent withdrawn.
 - A baseline arm (today's process: no owner, no clock, no escalation) compared with the orchestrated arm on the same simulated patients.
-- Metrics: time-to-ownership, time-to-safe-closure, share of cases open at 30, 60 and 90 days, reopen rate, escalation precision, automation abstention rate, and a fairness split by language and contact channel.
+- Metrics: time-to-ownership, time-to-safe-closure, share of cases open at 30, 60 and 90 days, reopen rate, escalation acted-on rate (within 5 working days), automation abstention rate, and a fairness split by language and contact channel.
 - Bootstrap confidence intervals over seeds.
 - `make evaluate` writing `docs/results/*.md` and `*.json`.
 
@@ -99,7 +99,7 @@ Six independent workstreams. Each cut owns its directories and touches nothing e
 - LLM message drafting behind owner approval, with a Provenance record (prompt, draft, approver, timestamp).
 - Deterministic template fallback, output validation, and cached outputs so the demo runs offline.
 - Provider switch `LLM_PROVIDER=template|azure_openai|jais`; `template` is the default and needs no network.
-- One simple calibrated loss-to-follow-up risk score (logistic regression on simulator features) used only to order the worklist, with a reliability plot and a risk score card. It never closes, escalates or decides care.
+- One simple calibrated loss-to-follow-up risk score (logistic regression on simulator features: stage, days since result, prior escalations, prior referral bounces, consent withdrawn, contact valid, provider changed, preferred channel and age band, the last kept as the documented null feature; language is excluded because it is a proxy for nationality, D12, on the cut-risk branch and not yet merged; trained on simulator output only) used only to order the worklist, with a reliability plot and a risk score card. It never closes, escalates or decides care.
 - Governance write-ups that belong with the code.
 
 **Owning directories.** `api/app/ai/`, `docs/governance/`.
