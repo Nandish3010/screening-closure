@@ -22,7 +22,8 @@ result does not depend on when the scheduler container wakes up. The log of the 
 random ids (draft and notification ids) replaced; two runs after `make demo-reset` print the same hash.
 
 Environment: API_URL (default http://localhost:8000), FHIR_BASE_URL (default http://localhost:8080/fhir),
-SCHEDULER_SERVICE_TOKEN (default: the development token compose runs with).
+SCHEDULER_SERVICE_TOKEN (default: the development token compose runs with), DEMO_MANIFEST (default
+data/results/manifest.json; `make test-offline` points it at a one-row manifest for its own empty stack).
 """
 
 from __future__ import annotations
@@ -49,7 +50,7 @@ from app.calendar import default_calendar  # noqa: E402  (the same working-day c
 API = os.environ.get("API_URL", "http://localhost:8000").rstrip("/")
 FHIR = os.environ.get("FHIR_BASE_URL", "http://localhost:8080/fhir").rstrip("/")
 SCHEDULER_TOKEN = os.environ.get("SCHEDULER_SERVICE_TOKEN", "dev-only-scheduler-service-token")
-MANIFEST = ROOT / "data" / "results" / "manifest.json"
+MANIFEST = Path(os.environ.get("DEMO_MANIFEST") or ROOT / "data" / "results" / "manifest.json")
 CASE_NAMESPACE = uuid.UUID("0b8e6d5a-3c1f-4a52-8a77-9d4e2f6b1c33")  # simulator/create_cases.py
 SIM_START = datetime(2026, 1, 5, 8, 0, tzinfo=UTC)  # config SIM_CLOCK_START
 
