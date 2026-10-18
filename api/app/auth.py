@@ -25,6 +25,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from app.config import (
     AUTOMATION_TOKEN_DEFAULT,
+    AGENCY_TOKEN_DEFAULT,
     DEV_AUTH_SECRET_DEFAULT,
     SCHEDULER_TOKEN_DEFAULT,
     WATCHDOG_TOKEN_DEFAULT,
@@ -42,8 +43,14 @@ USER_ROLES = (
 SCHEDULER_ROLE = "scheduler"  # service role; only reachable with the service token
 WATCHDOG_ROLE = "watchdog"  # service role; may emit watchdog_flagged and nothing else (A11)
 AUTOMATION_ROLE = "automation"  # service role; the A21 automation actor (system:automation), never closes a case
+# The agency (A22, ADR-033). One service role for every agent; which agent it is lives in the name
+# (`agency:supervisor`, `agency:outreach`, ...), so the actor is `system:agency:<department>`. Only the
+# supervisor has a token, and it may start a run and nothing else; the departments act in process. No agency
+# identity may emit any case event (its row of the state machine's actor table is empty).
+AGENCY_ROLE = "agency"
+AGENCY_SUPERVISOR_NAME = "agency:supervisor"
 # Names that can never be a user role, even by accident.
-AUTOMATED_ROLE_NAMES = ("system", "scheduler", "watchdog", "model", "automation")
+AUTOMATED_ROLE_NAMES = ("system", "scheduler", "watchdog", "model", "automation", "agency")
 
 NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9 ._@-]{0,63}$")  # no ":" so role:name parses
 PATIENT_REF_RE = re.compile(r"^Patient/[A-Za-z0-9-]{1,64}$")  # the same shape a case's patient_ref must have (SEC-1)
@@ -194,6 +201,10 @@ def service_identity(token: str) -> Identity | None:
         token.encode(), settings.automation_service_token.encode()
     ):
         return Identity("service", AUTOMATION_ROLE, "automation")
+    if settings.agency_service_token and hmac.compare_digest(
+        token.encode(), settings.agency_service_token.encode()
+    ):
+        return Identity("service", AGENCY_ROLE, AGENCY_SUPERVISOR_NAME)
     return None
 
 
@@ -215,7 +226,9 @@ def secure_config_problems() -> list[str]:
         ("WATCHDOG_SERVICE_TOKEN", settings.watchdog_service_token, WATCHDOG_TOKEN_DEFAULT),
         ("AUTOMATION_SERVICE_TOKEN", settings.automation_service_token, AUTOMATION_TOKEN_DEFAULT),
     )
-    for name, value, default in secrets:
+    optional = (("AGENCY_SERVICE_TOKEN", settings.agency_service_token, AGENCY_TOKEN_DEFAULT),)
+    # the agency token (A22) is optional: empty switches it off, which is always safe; set, it is checked like the rest
+    for name, value, default in (*secrets, *(o for o in optional if o[1])):
         if value == default:
             problems.append(f"{name} is the built-in development default")
         elif not value:
@@ -226,10 +239,11 @@ def secure_config_problems() -> list[str]:
         ("SCHEDULER_SERVICE_TOKEN", settings.scheduler_service_token),
         ("WATCHDOG_SERVICE_TOKEN", settings.watchdog_service_token),
         ("AUTOMATION_SERVICE_TOKEN", settings.automation_service_token),
+        ("AGENCY_SERVICE_TOKEN", settings.agency_service_token),
     )
     for i, (name_a, a) in enumerate(tokens):
         for name_b, b in tokens[i + 1:]:
-            if a == b:
+            if a and a == b:
                 problems.append(f"{name_a} and {name_b} are the same value")
     return problems
 

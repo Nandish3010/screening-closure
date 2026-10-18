@@ -123,7 +123,10 @@ WATCHDOG_ACTOR = "system:watchdog"  # emits watchdog_flagged, and nothing else
 MODEL_ACTOR_PREFIX = "model:"
 NOTIFIER_ACTOR = "system:notifier"  # the notification mock: writes message_sent for an approved draft
 TRIAGE_ACTOR = "system:triage"  # D13: classifies inbound patient replies (rows below)
-AGENCY_ACTOR_PREFIX = "system:agency:"  # branch cut-agency: an outside agency's agent. Placeholder here: nothing yet
+# The agency (A22, ADR-033): agents are labour, not authority. An agency actor may emit NO event: whatever an agent
+# causes on a case is written by the actor that owns that path (the drafting model's `message_drafted` through the
+# drafts route), under that actor's own rules. Its row below is empty, and `step` refuses the prefix by name first.
+AGENCY_ACTOR_PREFIX = "system:agency:"
 # A21, ADR-032: the automation actor. It does the steps that are not a human decision and nothing else. It can never
 # close a case (the closure guard refuses every automated actor) and none of the human-only events.
 AUTOMATION_ACTOR = "system:automation"
@@ -154,6 +157,8 @@ HUMAN_EVENTS = frozenset({
 #   system:triage       reply triage (D13): the reply and its classification, a review flag for the triage reasons, and a
 #                       traceable relay of the patient's own callback request (the one human-only event a service row
 #                       holds; `_precheck` limits it to the triage callback reasons with a source_event_id)
+#   system:agency:      the agency's agents (A22, ADR-033): EMPTY, and it stays empty. Drafting goes through the drafts
+#                       route as `model:<provider>`; every other agent only writes its own ledger rows
 # Humans are listed once per role. Nothing but this table decides which actor may emit which event type.
 ACTOR_EVENTS: dict[str, frozenset[str]] = {
     **{f"{role}:": HUMAN_EVENTS for role in HUMAN_ROLES},
@@ -406,6 +411,11 @@ def step(model: CaseModel, event: Event, pathway: Pathway) -> CaseModel:
     Replay-safe: it reads the event, the model and the pathway and nothing else. No configuration file, no clock, no
     policy: a log that was accepted once is accepted again whatever has been edited since (the append-time policy gates
     live in app.outreach_policy and app.policy, as guards of the store transaction)."""
+    # The agency (A22, ADR-033) is labour, not authority: its row of the table is empty, and it gets its own refusal so
+    # the log of a refused attempt says why. Whatever an agent causes is written under another actor's own rules.
+    if event.actor.startswith(AGENCY_ACTOR_PREFIX):
+        raise InvalidTransition(f"an agency actor may emit no event ({event.type!r} refused; its row of the actor table "
+                                "is empty): agents are labour, not authority")
     if event.type not in allowed_events(event.actor):
         raise InvalidTransition(f"actor {event.actor!r} may not emit {event.type!r} (it is not in its row of the actor table)")
     if pathway.milestones:

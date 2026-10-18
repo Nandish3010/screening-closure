@@ -124,6 +124,13 @@ QUERY_REVIEW: dict[tuple[str, str, str], tuple[str, str]] = {
     ),
     ("GET", "/alerts", "active"): ("bool", "true or false"),
     ("GET", "/metrics/effort", "limit"): ("int", "a row cap from 1 to 5000 (A21)"),
+    # A22: the agency's ledger and runs. Enums, UUIDs and a count only (FastAPI refuses anything else with 422).
+    ("GET", "/agency/runs", "limit"): ("int", "how many runs, 1 to 200"),
+    ("GET", "/agency/tasks", "status"): ("enum", "a task status: queued, running, done, failed, needs_human"),
+    ("GET", "/agency/tasks", "department"): ("enum", "one of the six agency department keys"),
+    ("GET", "/agency/tasks", "case_id"): ("opaque", "a case UUID"),
+    ("GET", "/agency/tasks", "run_id"): ("opaque", "a run UUID"),
+    ("GET", "/agency/tasks", "limit"): ("int", "how many tasks, 1 to 5000"),
 }
 GAP_PARAMS = {key for key, (kind, _) in QUERY_REVIEW.items() if kind == "gap"}
 

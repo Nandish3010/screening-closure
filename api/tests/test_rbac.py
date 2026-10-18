@@ -150,6 +150,9 @@ def test_insecure_defaults_refuse_to_start_outside_dev(monkeypatch):
     with pytest.raises(RuntimeError, match="AUTOMATION_SERVICE_TOKEN"):
         auth.assert_secure_config()
     monkeypatch.setattr(settings, "automation_service_token", "q" * 40)
+    with pytest.raises(RuntimeError, match="AGENCY_SERVICE_TOKEN"):  # A22
+        auth.assert_secure_config()
+    monkeypatch.setattr(settings, "agency_service_token", "w" * 40)
     with pytest.raises(RuntimeError, match="DEV_LOGIN_ENABLED"):
         auth.assert_secure_config()
     monkeypatch.setattr(settings, "dev_login_enabled", False)

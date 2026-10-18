@@ -39,3 +39,12 @@ def _test_database_ready():
     finally:
         pool.close()
     yield
+
+
+@pytest.fixture(autouse=True)
+def _agency_hook_off(monkeypatch):
+    """The scheduler hook (A22) starts an agency run every AGENCY_EVERY_SWEEPS sweeps, in the background. Tests that
+    sweep must not get agency drafts on their cases at an arbitrary moment, so it is off unless a test turns it on."""
+    from app.config import settings
+
+    monkeypatch.setattr(settings, "agency_every_sweeps", 0)

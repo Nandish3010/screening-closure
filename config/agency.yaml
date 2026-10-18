@@ -1,0 +1,28 @@
+# The agency (A22, ADR-033): configuration an agent reads. Agents are labour, not authority: nothing here lets an
+# agent change a case; it only tells them where to look and what to prepare for a person.
+version: 1
+
+# Receiving providers for a colonoscopy referral, in the order a reroute recommendation tries them. Synthetic demo
+# names (the same three the web's provider list offers). A provider the case has already been referred to and that
+# rejected or bounced it is skipped; when every provider has been tried the reroute is exhausted and goes to a
+# person (coordinator or supervisor), never to automation.
+providers:
+  - Al Noor Endoscopy Centre
+  - Corniche Gastro Unit
+  - Marina Digestive Health
+
+# The prepared script for a follow-up phone call (Outreach: followup_call_prep). A person reads it to the patient.
+# Same rule as every message (E14, IFHAS V10): it says the result is ready and the care team needs to talk about the
+# next step; it never states or hints at what the screening found. Tested against the forbidden-phrase list.
+# TODO native-speaker review (H2): the Arabic lines are an unreviewed draft, like api/app/ai/templates/ar.yaml.
+call_script:
+  en:
+    - "Hello, I am calling from your screening programme care team."
+    - "Your screening result is ready and your care team needs to talk with you about the next step."
+    - "The next step is a camera test. Can we find a time that suits you?"
+    - "If you would rather speak with a clinician, I can arrange a call back."
+  ar:
+    - "مرحباً، أتصل بك من فريق رعايتك في برنامج الفحص."
+    - "نتيجة فحصك جاهزة، ويحتاج فريق رعايتك إلى التحدث معك عن الخطوة التالية."
+    - "الخطوة التالية هي فحص بالكاميرا. هل يمكننا اختيار موعد يناسبك؟"
+    - "إذا كنت تفضل التحدث مع طبيب، يمكنني ترتيب اتصال لاحق."

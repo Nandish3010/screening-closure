@@ -97,6 +97,16 @@ def _risk_explained(model, events, now: datetime) -> dict | None:
         return None
 
 
+def factors_for_agency(case_id: UUID) -> dict | None:
+    """The staff case page's explanation (`{score, top_factors}`) for one case, for the agency's one-sentence
+    explainer (A22): read-only, shown to a person, and read by no plan, dispatch or decision of the agency
+    (tests/test_agency.py proves the plans are the same with it randomised). None for an unknown case."""
+    events = store.events_for(case_id)
+    if not events:
+        return None
+    return _risk_explained(replay_model(events, pathway), events, clock.now())
+
+
 def _case_json(case_id: UUID, identity: Identity | None = None) -> dict:
     """The case page. `identity` decides whether the risk fields are filled (staff yes, patient and
     unauthenticated internal callers no)."""

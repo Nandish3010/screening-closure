@@ -9,7 +9,8 @@ The sections below set out the drafting model's boundary in full.
 ## 1. What the model may do
 
 - Draft one patient message (purpose, channel and language chosen by a person or by the pathway), as text.
-- Nothing else. There is no model call anywhere in the closure engine, the scheduler, the escalation ladder, the watchdog or the closure check.
+- Put one department's own candidate tasks in priority order and write a short rationale for the operations team: the agency planner (A22, ADR-033, section 8). It cannot add, drop or change a task, name a tool, or see any patient text, and a reply that does not validate gives the rule order, counted as a fallback in the task ledger.
+- Nothing else. There is no model call anywhere in the closure engine, the scheduler, the escalation ladder, the watchdog or the closure check. The agency runs beside the engine, not inside it, and when its agents want a patient message they draft it through the drafting route (this section's first item), with its validation and its approval; they have no other way to produce patient-facing text.
 
 A draft is only a proposal. It is shown to the case owner, who approves it or rejects it. Only after approval does the notification mock "send" it. The rule is enforced by the case's state machine, not only by the route: it accepts a `message_sent` for a draft only if a human approved that draft on that case, once, and only if the patient still consents to that channel when it is applied (ADR-030). The exact prompt, the draft, the provider and model, the requester, the approver and the timestamps are stored as Provenance (D4, D5): see section 7.
 
@@ -28,6 +29,7 @@ The model sees the minimum it needs: the care owner's name and role, the next st
 | Decide or change care, escalate, reassign an owner | These are events with human or scheduler actors; the model has no route to them. |
 | Contact a patient directly | A model draft reaches a patient only through owner approval (T-D1, D5); the provider returns text and nothing else and has no handle on any channel. The only other path to `message_sent` is the automation's pre-approved deterministic template, which involves no model and passes the policy gate above (T-A43, T-A48, T-A49). |
 | Diagnose, advise or reassure | Output validation rejects it and the template is used instead (section 4). |
+| Decide what the agency does | The planner's reply is parsed as an order of the candidate tasks and a rationale and nothing else; it cannot add or change a task, and an invalid reply is replaced by the rule order (section 8, T-A66). |
 | Be required | The default provider is `template`, which needs no network and no model. With the model off or failing, the product behaves the same. |
 
 This is structural, not a policy: the rules above hold even if the model, or a prompt, behaves badly.
@@ -139,3 +141,19 @@ Each draft is stored with what is needed to reproduce and audit it (`api/migrati
 - The `message_drafted` event on the case carries the draft id, the provider, `fallback_used`, the prompt hash and the language, with the actor `model:<provider>`, and never the text (the strict payload schema of A14 refuses it; the text is read from the `drafts` table). It is an annotation: it changes no state. Approval writes `message_approved` (only the approve route can, T-D1) and the notification mock then writes `message_sent`. A rejection writes no event yet (follow-up A16).
 
 The database refuses to edit or delete a prompt, to delete a draft, and to change anything on a draft except filling its one decision (approval or rejection) once. A draft is refused (HTTP 409) for a case whose outreach is frozen by a consent withdrawal, and for a closed case.
+
+## 8. The agency planner (A22, ADR-033)
+
+The agency is one supervisor, five department heads and fourteen executioners (`docs/governance/agency.md`). Executioners are rules and tools and use no model. The only model call in the agency is the **planner**, which a department head asks to order the tasks its rules have already chosen.
+
+**What it may do.** Return a priority order for the head's candidate tasks and a rationale of at most 400 characters. The head executes exactly its own candidates in that order; a task the planner leaves out is appended at the end, so the planner cannot drop work, and it cannot add a task, change an agent type, case or input, or name a tool.
+
+**What it sees.** The department and, for each candidate, the agent type, the case id, a reason code and a fixed set of label keys (state, overdue, escalation level, due time, message and contact counts, appointment time, day). It sees no patient text, name, note, reply or draft, because the view an agent has of a case (`CaseFacts`) has no text field (T-A66). A patient reply is an event id, with the classifier's labels once D13 has written them, never its text.
+
+**Provider, cache and network.** The planner uses the drafting provider's setting and adapter: `LLM_PROVIDER` (`template`, the default, plans by rules alone and calls no model; `azure_openai` and `jais` use the adapters of section 3), the cache of section 3a (files under `<cache dir>/agency/<provider>/<prompt hash>.json`, so they cannot collide with draft files) and the network switch `LLM_NETWORK_ENABLED`. The cache is empty until someone records it, so with a model provider configured and nothing recorded every plan is the rule plan with the abstention reason `cache_miss`.
+
+**Checks and fallback.** The reply must be JSON with an `order` of integer indices (each in range, none repeated) and a `rationale` that is plain sentences: no line break, link, address, brace or run of seven or more digits (spaces, dashes, dots and slashes between them count). A reply that fails, a cache miss, a timeout or any provider error gives the rule order and a template rationale, with `fallback_used = true` and the reason on the department's dispatch row (`invalid_result`, `cache_miss`, `provider_error:<ExceptionName>`). The planner never raises into a run.
+
+**Counted and recorded.** Each plan is stored on its ledger row with its prompt hash, provider, model id and fallback flag, and the exact prompt can be rebuilt from the candidates. A fallback is counted by that flag in the ledger (it is not in the drafting abstention metric of section 6, which counts draft attempts). Drafts that agents request go through the drafting route and are counted in section 6 like any other.
+
+**Tests.** T-A66 (`api/tests/test_agency.py`: free text never reaches a planner or the ledger; plans identical whatever the ordering aid says; `test_model_planner_reorders_from_the_cache_and_cannot_drop_work`, `test_model_planner_falls_back_to_the_template_on_a_bad_reply`, `test_model_planner_with_no_cache_and_no_network_falls_back`).

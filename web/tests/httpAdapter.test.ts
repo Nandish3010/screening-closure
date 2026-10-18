@@ -238,3 +238,44 @@ describe("http adapter: auth", () => {
     await expect(createHttpAdapter("http://api.test", fn).login("coordinator", "")).rejects.toMatchObject({ status: 422 });
   });
 });
+
+describe("http adapter: agency (A22)", () => {
+  it("calls the agency endpoints with the contract's query strings and body", async () => {
+    const { fn, calls } = fakeFetch({
+      "GET /agency/org": { body: { departments: [] } },
+      "GET /agency/runs?limit=5": { body: [] },
+      "GET /agency/tasks?status=needs_human&department=outreach&case_id=c1&run_id=r1&limit=7": { body: [] },
+      "GET /agency/inbox": { body: [] },
+      "POST /agency/run": { body: { run_id: "r1", created: true } },
+      "GET /cases/c1/agency": { body: { case_id: "c1", total: 1, open: 1, needs_human: 1, tasks: [] } },
+    });
+    const api = createHttpAdapter("http://api.test", fn);
+    await api.agencyOrg();
+    await api.agencyRuns(5);
+    await api.agencyTasks({ status: "needs_human", department: "outreach", case_id: "c1", run_id: "r1", limit: 7 });
+    await api.agencyInbox();
+    expect(await api.runAgency()).toMatchObject({ created: true });
+    expect(await api.caseAgency("c1")).toMatchObject({ needs_human: 1 });
+    expect(calls.map((c) => `${c.init?.method ?? "GET"} ${c.url.replace("http://api.test", "")}`)).toEqual([
+      "GET /agency/org", "GET /agency/runs?limit=5",
+      "GET /agency/tasks?status=needs_human&department=outreach&case_id=c1&run_id=r1&limit=7",
+      "GET /agency/inbox", "POST /agency/run", "GET /cases/c1/agency",
+    ]);
+    expect(JSON.parse(String(calls[4].init?.body))).toEqual({});
+  });
+  it("degrades on a 404 (a backend without the agency): empty lists, a null case summary, and errors the page can word for org and run", async () => {
+    const api = createHttpAdapter("http://api.test", fakeFetch({}).fn);
+    expect(await api.agencyRuns()).toEqual([]);
+    expect(await api.agencyTasks()).toEqual([]);
+    expect(await api.agencyInbox()).toEqual([]);
+    expect(await api.caseAgency("c1")).toBeNull();
+    await expect(api.agencyOrg()).rejects.toMatchObject({ status: 404 });
+    await expect(api.runAgency()).rejects.toMatchObject({ status: 404 });
+  });
+  it("lets other failures through (a 403 is the role's answer, not a missing feature)", async () => {
+    const { fn } = fakeFetch({ "GET /agency/inbox": { status: 403, body: { detail: "no" } }, "GET /cases/c1/agency": { status: 403, body: { detail: "no" } } });
+    const api = createHttpAdapter("http://api.test", fn);
+    await expect(api.agencyInbox()).rejects.toMatchObject({ status: 403 });
+    await expect(api.caseAgency("c1")).rejects.toMatchObject({ status: 403 });
+  });
+});

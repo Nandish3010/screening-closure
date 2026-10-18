@@ -74,6 +74,21 @@ for (const scheme of ["light", "dark"] as const) {
       await audit(page, `patient ar (${scheme})`);
     });
 
+    test("agency page, as coordinator and as supervisor, and the chip on a case", async ({ page }) => {
+      await page.goto("/agency");
+      await page.getByTestId("run-detail").waitFor();
+      await page.getByTestId("run-group-outreach").waitFor();
+      await audit(page, `agency, coordinator (${scheme})`);
+      await page.getByLabel("Switch role").selectOption("supervisor");
+      await page.getByTestId("run-agency").click();
+      await page.getByTestId("run-result").waitFor();
+      await audit(page, `agency, supervisor after a run (${scheme})`);
+      await page.goto(`/coordinator/${OVERDUE_CASE}`);
+      await page.getByTestId("agency-chip").click();
+      await page.getByTestId("agency-chip-list").waitFor();
+      await audit(page, `case page with the agency chip open (${scheme})`);
+    });
+
     test("closure dashboard, with the scheduler banner", async ({ page }) => {
       await page.goto("/dashboard");
       await page.getByTestId("kpi-p50").waitFor();

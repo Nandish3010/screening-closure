@@ -449,6 +449,7 @@ def test_service_tokens_outside_dev_must_be_distinct_long_and_not_the_default(mo
     monkeypatch.setattr(app_settings, "scheduler_service_token", good["scheduler"])
     monkeypatch.setattr(app_settings, "watchdog_service_token", good["watchdog"])
     monkeypatch.setattr(app_settings, "automation_service_token", good["automation"])
+    monkeypatch.setattr(app_settings, "agency_service_token", "")  # A22: optional, empty switches it off
     assert auth.secure_config_problems() == []
     monkeypatch.setattr(app_settings, "automation_service_token", "a" * 31)
     assert any("AUTOMATION_SERVICE_TOKEN is shorter than 32" in p for p in auth.secure_config_problems())

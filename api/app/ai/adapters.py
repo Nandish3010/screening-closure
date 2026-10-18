@@ -106,24 +106,11 @@ class _ChatProvider:
 
     # -- shared flow -----------------------------------------------------------------------
     def draft(self, req: DraftRequest) -> DraftResult:
-        if not network_enabled():
-            raise ProviderUnavailable("LLM_NETWORK_ENABLED is not true: network calls are off")
-        import httpx  # lazy: the default configuration never needs it
-
         messages = [
             {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "user", "content": build_prompt(req)},
         ]
-        url, headers, body = self._request(messages, req)
-        _check_url(url, f"{self.name} endpoint")
-        try:
-            with httpx.Client(transport=self._transport, timeout=_timeout()) as client:
-                response = client.post(url, headers=headers, json=body)
-        except httpx.HTTPError as exc:  # timeout, connection refused, DNS, TLS, protocol
-            raise ProviderUnavailable(f"{self.name}: {type(exc).__name__}") from None
-        if response.status_code != 200:
-            raise ProviderUnavailable(f"{self.name}: HTTP {response.status_code}")
-        text = self._extract(response)
+        text = self._post(messages, req)
         return DraftResult(
             text=text,
             language=req.language,
@@ -133,6 +120,27 @@ class _ChatProvider:
             abstention_reason=None,
             prompt_hash=prompt_hash(req),
         )
+
+    def complete(self, system: str, user: str, max_tokens: int = 600) -> str:
+        """One chat completion for a caller that is not drafting a patient message (the agency's planner, A22):
+        same gate, timeout, https rule, key handling and error mapping as `draft`. The caller validates the text."""
+        return self._post([{"role": "system", "content": system}, {"role": "user", "content": user}], max_tokens)
+
+    def _post(self, messages: list[dict], budget) -> str:
+        if not network_enabled():
+            raise ProviderUnavailable("LLM_NETWORK_ENABLED is not true: network calls are off")
+        import httpx  # lazy: the default configuration never needs it
+
+        url, headers, body = self._request(messages, budget)
+        _check_url(url, f"{self.name} endpoint")
+        try:
+            with httpx.Client(transport=self._transport, timeout=_timeout()) as client:
+                response = client.post(url, headers=headers, json=body)
+        except httpx.HTTPError as exc:  # timeout, connection refused, DNS, TLS, protocol
+            raise ProviderUnavailable(f"{self.name}: {type(exc).__name__}") from None
+        if response.status_code != 200:
+            raise ProviderUnavailable(f"{self.name}: HTTP {response.status_code}")
+        return self._extract(response)
 
     def _extract(self, response) -> str:
         try:
@@ -148,7 +156,9 @@ class _ChatProvider:
         return text.strip()
 
     @staticmethod
-    def _max_tokens(req: DraftRequest) -> int:
+    def _max_tokens(req) -> int:
+        if isinstance(req, int):  # `complete`: the caller names its token budget
+            return min(1500, max(16, req))
         # Arabic can take about one token per character, so allow the channel's character limit
         # plus headroom; longer outputs fail validation anyway.
         return min(1500, CHANNEL_MAX_CHARS[req.channel] + 100)

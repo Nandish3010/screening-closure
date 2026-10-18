@@ -918,6 +918,158 @@ export interface ConfirmatoryResult {
 }
 
 // ---------------------------------------------------------------------------------------
+// Agency layer  (A22, PENDING)
+// ---------------------------------------------------------------------------------------
+
+/**
+ * A22: the "agency". A Supervisor agent dispatches work to five department heads; each head turns the dispatch
+ * into tasks for specialised executioner agents (one agent type per task). Agents are LABOUR, NOT AUTHORITY: they
+ * never change case state. Anything that needs a decision becomes a `needs_human` task that shows up in the inbox
+ * with prepared material, and a person then acts through the EXISTING case page controls (approve a draft,
+ * reassign, close...). The agency page therefore has no button that acts on a case, only links to the case page.
+ * All times are ISO-8601 strings in SIMULATED time. Actors are `system:agency:<department>` (and
+ * `system:agency:supervisor`).
+ *
+ * Endpoints (PENDING A22; all need the bearer token):
+ *   GET  /agency/org                       -> AgencyOrg                       (coordinator, supervisor)
+ *   GET  /agency/runs?limit=N              -> AgencyRun[], newest first       (coordinator, supervisor)
+ *   GET  /agency/tasks?status=&department=&case_id=&run_id=&limit=
+ *                                          -> AgencyTask[], oldest first      (coordinator, supervisor)
+ *   GET  /agency/inbox                     -> AgencyInboxItem[]; owner roles see only items on cases they own,
+ *                                             coordinator and supervisor see all, others 403
+ *   POST /agency/run   body {}             -> AgencyRun with `created`        (supervisor only in the UI)
+ *                                             `created: false` = a run already exists for this sim time
+ *   GET  /cases/{case_id}/agency           -> CaseAgencySummary               (owner roles on their own cases,
+ *                                             coordinator, supervisor)
+ * The http adapter degrades on a 404 (backend without A22): `agencyRuns`/`agencyTasks`/`agencyInbox` answer [],
+ * `caseAgency` answers null, `agencyOrg`/`runAgency` reject with the ApiError so the page can say "not available".
+ */
+export type AgencyDepartment = "outreach" | "referral_scheduling" | "evidence_closure" | "patient_support" | "quality_ops";
+export const AGENCY_DEPARTMENTS: readonly AgencyDepartment[] = ["outreach", "referral_scheduling", "evidence_closure", "patient_support", "quality_ops"];
+export const AGENCY_DEPARTMENT_LABEL: Record<AgencyDepartment, string> = {
+  outreach: "Outreach",
+  referral_scheduling: "Referral & Scheduling",
+  evidence_closure: "Evidence & Closure",
+  patient_support: "Patient Support",
+  quality_ops: "Quality & Operations",
+};
+export type AgencyTaskStatus = "queued" | "running" | "done" | "failed" | "needs_human";
+export const AGENCY_TASK_STATUSES: readonly AgencyTaskStatus[] = ["queued", "running", "done", "failed", "needs_human"];
+
+/** Where a model-written output came from. All null for a task that used no model. */
+export interface AgencyProvenance {
+  prompt_hash: string | null;
+  provider: string | null;
+  model_id: string | null;
+  fallback_used: boolean | null;
+}
+
+export interface AgencyTask {
+  task_id: string;
+  run_id: string;
+  parent_id: string | null;
+  /** `supervisor` for the root task, else a department. A department head's task is the dispatch row (agent_type `department_head`). */
+  department: AgencyDepartment | "supervisor";
+  agent_type: string;
+  case_id: string | null;
+  status: AgencyTaskStatus;
+  input: Record<string, unknown>;
+  output: Record<string, unknown> | null;
+  provenance: AgencyProvenance;
+  created_at: string;
+  started_at: string | null;
+  finished_at: string | null;
+  created_by: string;
+  resolved_at: string | null;
+  resolved_by: string | null;
+  resolution: Record<string, unknown> | null;
+}
+
+/** Every key present, 0 if none. */
+export type StatusCounts = Record<AgencyTaskStatus, number>;
+
+export interface AgencyRun {
+  run_id: string;
+  trigger: "manual" | "scheduler";
+  sim_at: string;
+  created_by: string;
+  status: "running" | "done" | "budget_exhausted" | "failed";
+  planner: AgencyProvenance;
+  started_at: string | null;
+  finished_at: string | null;
+  counts: {
+    total: number;
+    by_status: StatusCounts;
+    by_department: Record<AgencyDepartment, StatusCounts & { total: number }>;
+  };
+  /** Why the supervisor dispatched (or did not dispatch) to each department. */
+  rationale: Partial<Record<AgencyDepartment, string>>;
+  /** Only on the answer to POST /agency/run: false when a run for this sim time already existed. */
+  created?: boolean;
+}
+
+export interface AgencyExecutioner {
+  agent_type: string;
+  label: string;
+  /** The tool allow-list: the only API calls this agent may make. */
+  tools: string[];
+  output_schema: string;
+  /** The human actions this agent prepares or replaces (it never performs the deciding step). */
+  replaces: string[];
+  counts: StatusCounts;
+}
+
+export interface AgencyDepartmentNode {
+  department: AgencyDepartment;
+  label: string;
+  actor: string;
+  head_tools: string[];
+  capabilities: string[];
+  executioners: AgencyExecutioner[];
+  counts: StatusCounts;
+}
+
+export interface AgencyOrg {
+  supervisor: { actor: string; agent_type: "supervisor"; tools: string[] };
+  departments: AgencyDepartmentNode[];
+  last_run: AgencyRun | null;
+  /** One paragraph: agents prepare work, people decide. */
+  principle: string;
+}
+
+/** A `needs_human` task, with the material a person needs to decide. Nothing here acts on the case. */
+export interface AgencyInboxItem {
+  task_id: string;
+  run_id: string;
+  department: AgencyDepartment;
+  agent_type: string;
+  case_id: string | null;
+  created_at: string;
+  assignee_role: string;
+  title: string;
+  summary: string;
+  recommended_action: string;
+  material: Record<string, unknown>;
+  links: { draft_id?: string };
+}
+
+export interface CaseAgencySummary {
+  case_id: string;
+  total: number;
+  open: number;
+  needs_human: number;
+  tasks: { task_id: string; department: AgencyDepartment; agent_type: string; status: AgencyTaskStatus; created_at: string; title: string; summary: string }[];
+}
+
+export interface AgencyTaskParams {
+  status?: AgencyTaskStatus;
+  department?: AgencyDepartment;
+  case_id?: string;
+  run_id?: string;
+  limit?: number;
+}
+
+// ---------------------------------------------------------------------------------------
 // The client interface both adapters implement
 // ---------------------------------------------------------------------------------------
 
@@ -961,6 +1113,18 @@ export interface ApiClient {
   getEffortMetrics(): Promise<EffortMetrics | null>;
   /** GET /alerts: active and cleared platform alerts (scheduler down). */
   listAlerts(): Promise<Alert[]>;
+  /** GET /agency/org (A22): the org chart with live counts. Coordinator and supervisor; others 403. */
+  agencyOrg(): Promise<AgencyOrg>;
+  /** GET /agency/runs?limit=N (A22): newest first. */
+  agencyRuns(limit?: number): Promise<AgencyRun[]>;
+  /** GET /agency/tasks (A22): oldest first. */
+  agencyTasks(params?: AgencyTaskParams): Promise<AgencyTask[]>;
+  /** GET /agency/inbox (A22): tasks that need a person. Owner roles see only their own cases. */
+  agencyInbox(): Promise<AgencyInboxItem[]>;
+  /** POST /agency/run (A22): one run per sim time; `created: false` when it already ran. */
+  runAgency(): Promise<AgencyRun>;
+  /** GET /cases/{id}/agency (A22): null when the backend has no agency. */
+  caseAgency(caseId: string): Promise<CaseAgencySummary | null>;
   /** Mock only: restore the seeded fixtures. No-op for http. */
   resetDemo?(): Promise<void>;
   /** Mock only: file a new positive result (`case_created`); with automation on the mock then acknowledges and assigns it. Returns the case id. */

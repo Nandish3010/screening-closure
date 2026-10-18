@@ -8,6 +8,7 @@ _DEFAULT_PATHWAY = _REPO_ROOT / "config" / "pathways" / "colorectal_fit.yaml"
 _DEFAULT_CALENDAR = _REPO_ROOT / "config" / "calendar.yaml"
 _DEFAULT_PROVIDERS = _REPO_ROOT / "config" / "providers.yaml"
 _DEFAULT_OUTREACH_POLICY = _REPO_ROOT / "config" / "outreach_policy.yaml"
+_DEFAULT_AGENCY = _REPO_ROOT / "config" / "agency.yaml"
 
 
 # Development-only defaults. Shipping these values anywhere but a laptop is a bug, which is
@@ -17,6 +18,7 @@ DEV_AUTH_SECRET_DEFAULT = "dev-only-insecure-secret-change-me"
 SCHEDULER_TOKEN_DEFAULT = "dev-only-scheduler-service-token"
 WATCHDOG_TOKEN_DEFAULT = "dev-only-watchdog-service-token"
 AUTOMATION_TOKEN_DEFAULT = "dev-only-automation-service-token"
+AGENCY_TOKEN_DEFAULT = "dev-only-agency-service-token"
 
 
 class Settings(BaseSettings):
@@ -52,6 +54,16 @@ class Settings(BaseSettings):
     # templates the automation may send). Compose points them at /config/.
     providers_path: str = str(_DEFAULT_PROVIDERS)
     outreach_policy_path: str = str(_DEFAULT_OUTREACH_POLICY)
+    # The agency's supervisor agent (A22, ADR-033) may start an agency run (`POST /agency/run`) and nothing else.
+    # Empty disables the token (a supervisor can still start a run; the scheduler hook runs in process).
+    agency_service_token: str = AGENCY_TOKEN_DEFAULT
+    # --- the agency (A22, ADR-033): agents are labour, not authority -----------------------------
+    # The scheduler hook runs supervisor -> department heads -> executioners after every N-th sweep (0 = never).
+    agency_every_sweeps: int = 6
+    # Per-run limits: wall-clock seconds and executioner tasks; past either, the rest of the run is not started.
+    agency_run_budget_seconds: float = 20.0
+    agency_max_tasks: int = 300
+    agency_config_path: str = str(_DEFAULT_AGENCY)  # providers and the call script (config/agency.yaml)
     # In compose this is overridden to /config/pathways/colorectal_fit.yaml
     pathway_path: str = str(_DEFAULT_PATHWAY)
     # Closure evidence (A15, ADR-021): when true, `close` requires evidence_ref to resolve in HAPI.

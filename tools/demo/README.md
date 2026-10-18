@@ -61,6 +61,15 @@ EVENT LOG HASH cada77e1cf81a6fd96c9e2699f6900bb4c3b2c8e60d088e07bde071a2f493e2e
 
 The script refuses to run unless the clock is at its start and the case is at `result_received`; run `make demo-reset` first.
 
+## The agency (A22)
+
+The agency is the layer of agents that prepares work for people (one supervisor, five department heads, fourteen executioners; [docs/governance/agency.md](../../docs/governance/agency.md)). Agents are labour, not authority: the agency is preparation only. They write no case event, they draft messages only through the drafting route (the owner still approves), and the demo story above is unchanged by them.
+
+- **Run it.** Log in as the supervisor and call `POST /agency/run` (or use the agency service token, `AGENCY_SERVICE_TOKEN`), then open the `/agency` page in the web app: the org chart, the last run and the inbox of work that needs a person. A second call at the same simulated time returns the same run.
+- **Between sweeps.** The scheduler also starts a run on every `AGENCY_EVERY_SWEEPS`-th sweep (default 6).
+- **The T-E9 hash caveat.** A run drafts messages for cases in the contact phase, and a draft is a `message_drafted` event, so if the scheduler hook runs while the demo case is in the contact phase the event-log hash printed by `scenario.py` can differ from `cada77e1...` (the scenario calls the sweep route directly after each clock move, and every sixth sweep starts a run). For a hash-exact rehearsal (`make demo-scenario`, `make test-demo`) start the stack with `AGENCY_EVERY_SWEEPS=0`; to rehearse the agency itself, leave it at the default or call `POST /agency/run` by hand and accept the extra `message_drafted` events (they carry no text and nobody approves them unless you do).
+- **Reset.** The task ledger (`agency_tasks`) is in the application database, so `make demo-reset` restores it with the rest: it holds whatever the snapshot held (nothing, if the snapshot was taken before any run). The state fingerprint does not include it.
+
 ## The second case
 
 The live demo ends on a case that is ready to be reviewed and closed, so it has to exist before going on stage. `stage_second_case.py` (E9) prepares it through the real API; `make demo-stage` runs it, and `make demo-snapshot` runs it first, so the snapshot contains the staged case and every `make demo-reset` brings it back.

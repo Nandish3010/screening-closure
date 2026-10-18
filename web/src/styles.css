@@ -208,3 +208,31 @@ table.worklist { width: 100%; border-collapse: collapse; background: var(--surfa
 .meter { position: relative; height: 0.7rem; border-radius: 999px; background: var(--border); overflow: visible; margin: 0.3rem 0; }
 .meter-fill { height: 100%; border-radius: 999px; background: var(--ok); }
 .meter-target { position: absolute; top: -0.2rem; bottom: -0.2rem; width: 2px; background: var(--text); }
+/* A22 agency page and case chip */
+.agency-principle p { margin: 0.25rem 0; }
+.agency-line { margin: 0.25rem 0; font-size: 0.9rem; }
+.agency-counts, .agency-tools { display: flex; flex-wrap: wrap; gap: 0.3rem; margin: 0.4rem 0; }
+.agency-counts .chip strong { font-weight: 700; }
+.agency-tools li { font-size: 0.78rem; padding: 0.05rem 0.45rem; border-radius: 4px; background: var(--bg); border: 1px solid var(--border); }
+.agency-arrow { text-align: center; margin: 0.4rem 0; font-size: 0.85rem; }
+.agency-depts { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem; margin: 0; }
+.agency-dept { margin: 0; }
+.agency-dept h4 { margin: 0.6rem 0 0.2rem; font-size: 0.95rem; }
+.agency-capabilities { margin: 0.4rem 0; padding-inline-start: 1.2rem; font-size: 0.9rem; }
+.agency-agents > li { border-top: 1px solid var(--border); padding: 0.5rem 0; }
+.agency-agent-name { margin: 0; }
+.agency-inbox > li { border-top: 1px solid var(--border); padding: 0.6rem 0; }
+.agency-inbox h3 { margin: 0 0 0.25rem; }
+.agency-meta { margin: 0.2rem 0; font-size: 0.9rem; }
+.agency-material { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0.4rem 1rem; margin: 0.4rem 0; font-size: 0.9rem; }
+.agency-material dt { font-size: 0.72rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+.agency-material dd { margin: 0; overflow-wrap: anywhere; }
+.agency-tasks { padding-inline-start: 1.4rem; }
+.agency-tasks li { padding: 0.3rem 0; overflow-wrap: anywhere; }
+.agency-why { margin: 0.2rem 0 0; font-size: 0.9rem; }
+.agency-chip-row { margin: 0.25rem 0 0.5rem; }
+.agency-chip { font: inherit; font-size: 0.85rem; cursor: pointer; background: var(--surface); color: var(--text); }
+.agency-chip.chip-warn { background: var(--warn-bg); color: var(--warn); }
+.agency-chip-list { margin-top: 0.4rem; padding: 0.5rem 0.8rem; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; font-size: 0.9rem; }
+.agency-chip-list li { padding: 0.3rem 0; border-top: 1px solid var(--border); }
+.agency-chip-list li:first-child { border-top: 0; }

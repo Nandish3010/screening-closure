@@ -174,3 +174,65 @@ def test_the_table_is_read_when_an_event_is_applied(monkeypatch):
     monkeypatch.setitem(ACTOR_EVENTS, TRIAGE_ACTOR, frozenset())
     with pytest.raises(InvalidTransition, match="actor table"):
         step(model, flag, PATHWAY)
+
+
+# ---- M5 final merge: one grid over every row of the merged table (automation, triage, agency and the rest) ----------
+# For each row: one event of the row that the machine accepts in a state where it is valid (the table lets it through),
+# and every event NOT in the row refused by the table in that same state. The agency row accepts nothing and is refused
+# by name. Then the review reasons: each reason is accepted from its one emitter and refused from every other actor whose
+# row holds `review_requested`.
+_SRC = str(uuid4())
+_PENDING = {"to_provider": "X", "requested_by": "p:1", "from_owner": "p:1", "requested_at": AT.isoformat(),
+            "requested_event_id": "e"}
+ROW_PROBES = {
+    **{f"{role}:": ("acknowledge", {}, CaseModel(state="result_received")) for role in HUMAN_ROLES},
+    "system:scheduler": ("handoff_rejected", {"reason": PATHWAY.handoff_bounce_reason, "bounced": True, "to_provider": "X"},
+                         CaseModel(state="patient_acknowledged", pending_handoff=_PENDING)),
+    "system:watchdog": ("watchdog_flagged", {"reason": "idle"}, CaseModel(state="owner_accepted")),
+    "system:notifier": ("message_sent", {"notification_id": _SRC, "channel": "sms", "language": "en", "purpose": "reminder",
+                                         "draft_id": "d1"},
+                        CaseModel(state="owner_accepted", approved_unsent=("d1",))),
+    "system:consent": ("review_requested", {"reason": "consent_withdrawn", "source_event_id": _SRC},
+                       CaseModel(state="consent_withdrawn", consent_frozen=True)),
+    "system:automation": ("acknowledge", {"auto": True}, CaseModel(state="result_received")),
+    "model:": ("message_drafted", {}, CaseModel(state="owner_accepted")),
+    "system:triage": ("reply_received", {"channel": "sms", "text_ref": _SRC}, CaseModel(state="owner_accepted")),
+}
+
+
+def test_m5_grid_every_row_lets_its_own_events_through_and_nothing_else():
+    assert set(ROW_PROBES) | {"system:agency:"} == set(ACTOR_EVENTS), "a row of the table has no probe"
+    for key, (type_, payload, model) in ROW_PROBES.items():
+        actor = ROW_ACTORS[key]
+        assert type_ in ACTOR_EVENTS[key]
+        new = step(model, Event(CASE, type_, AT, actor, payload), PATHWAY)
+        assert new.last_event_at == AT, (key, type_)
+        for other in EVENT_TYPES:
+            if other not in ACTOR_EVENTS[key]:
+                assert refused_by_the_table(model, other, actor), (key, other)
+    for type_ in EVENT_TYPES:  # the agency: nothing, in any of the probe states, refused by name and by the table
+        for _, _, model in ROW_PROBES.values():
+            with pytest.raises(InvalidTransition, match="agency actor.*actor table"):
+                step(model, event(type_, "system:agency:outreach"), PATHWAY)
+
+
+def test_m5_grid_each_review_reason_has_exactly_one_emitter():
+    from app.state_machine import REVIEW_EMITTER, REVIEW_REASONS
+
+    assert REVIEW_EMITTER == {
+        "consent_withdrawn": CONSENT_ACTOR, "reroute_exhausted": AUTOMATION_ACTOR, "opt_out": TRIAGE_ACTOR,
+        "wrong_number": TRIAGE_ACTOR, "triage_uncertain": TRIAGE_ACTOR, "already_done": TRIAGE_ACTOR,
+    }
+    assert set(REVIEW_REASONS) == set(REVIEW_EMITTER) == set(payloads.REVIEW_REASONS)
+    flaggers = [key for key, events in ACTOR_EVENTS.items() if "review_requested" in events]
+    assert sorted(flaggers) == sorted({CONSENT_ACTOR, AUTOMATION_ACTOR, TRIAGE_ACTOR})
+    state_for = {"consent_withdrawn": CaseModel(state="consent_withdrawn", consent_frozen=True),
+                 "reroute_exhausted": CaseModel(state="referral_rejected", owner="primary_care_owner:p1")}
+    for reason, emitter in REVIEW_EMITTER.items():
+        model = state_for.get(reason, CaseModel(state="owner_accepted"))
+        payload = {"reason": reason, "source_event_id": _SRC}
+        assert step(model, Event(CASE, "review_requested", AT, emitter, payload), PATHWAY).last_event_at == AT
+        for actor in flaggers:
+            if actor != emitter:
+                with pytest.raises(InvalidTransition, match="emitted only by"):
+                    step(model, Event(CASE, "review_requested", AT, actor, payload), PATHWAY)
