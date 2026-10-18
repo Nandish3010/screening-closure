@@ -1,10 +1,14 @@
 # Behaviour-simulator parameters. Every leaf is {value, source, status[, notes]}; nothing is hard-coded
-# in simulator/sim/. status: sourced | sourced-adjacent | calibrated | assumed.
+# in simulator/sim/. status: sourced | sourced-adjacent | empirical | calibrated | assumed.
 #   sourced / sourced-adjacent: adopted from the E1 research proposal (research ticket B11; the proposal file was folded into this file at M1,
 #     evidence in docs/evidence.md on main); sources and caveats are in each leaf.
 #   calibrated: a placeholder tuned so the BASELINE arm reproduces the Mohl 2023 completion curve
 #     (see docs/results/results.md for how close it gets).
 #   assumed: no checkable public source (source: "assumed, no public source").
+#   empirical (ticket B18): fitted by a script in tools/calibration/ from an open dataset that was downloaded; the leaf also carries
+#     `fit_script` and `dataset_sha256` (the manifest in tools/calibration/manifest.json holds URL, licence, size and download time) and
+#     `make calibrate-check` re-runs the fit and fails if the value here differs. Relative effects and shapes only, from UK, Scottish and
+#     Brazilian populations (docs/results/calibration.md); never a replacement for a published Abu Dhabi or colonoscopy base rate.
 # Layer files at the CLI with repeated --params flags (later files override earlier keys).
 # fit_positivity_rate is read by simulator/generate_results.py (keep it in block style).
 # Time is in days (calendar days unless a key says working_days). Probabilities are in [0, 1].
@@ -62,7 +66,7 @@ fit_positivity_rate:
   value: 0.07
   source: "Ding et al., Cancers 2022;14(4):1073, pooled positivity 7.28% across 93 studies, https://pubmed.ncbi.nlm.nih.gov/35205821/ ; AltaMed FQHC 7.0%, https://pmc.ncbi.nlm.nih.gov/articles/PMC9716593/"
   status: sourced-adjacent
-  notes: "Cut-off dependent. England 2023-24 1.76% (gov.uk BCSP standards data report 2023-24, 120 ug/g), Netherlands 4.4% (RIVM/LECO 2018-2021, 47 ug/g), Scotland 2.8%, Kaiser N. California 3.4% (>20 ug/g). Abu Dhabi 2015-2016: 13.5% of those screened with FIT/gFOBT (Almansoori, BMC Cancer 2021, https://pmc.ncbi.nlm.nih.gov/articles/PMC8343888/, cut-off not stated). Sensitivity 0.018 to 0.135."
+  notes: "Cut-off dependent. England 2023-24 1.76% (gov.uk BCSP standards data report 2023-24, 120 ug/g), Netherlands 4.4% (RIVM/LECO 2018-2021, 47 ug/g), Scotland 2.8%, Kaiser N. California 3.4% (>20 ug/g). Abu Dhabi 2015-2016: 13.5% of those screened with FIT/gFOBT (Almansoori, BMC Cancer 2021, https://pmc.ncbi.nlm.nih.gov/articles/PMC8343888/, cut-off not stated). Sensitivity 0.018 to 0.135. B18: England 2024-25 positivity 1.71% at 120 ug/g (key fit_positivity_rate_england_120ug, empirical). Kept at 0.07: the UAE programme uses a lower cut-off and Abu Dhabi measured 13.5%."
 
 # ---------------------------------------------------------------- new keys
 colonoscopy_completion_3m:
@@ -81,7 +85,7 @@ colonoscopy_completion_12m:
   value: 0.56
   source: "Mohl et al. 2023, 56.1% at 360 d (median organisation 53.4%, range 17.4-71.8%). https://pmc.ncbi.nlm.nih.gov/articles/PMC9856942"
   status: sourced
-  notes: "Spread of published 12-month figures: Abu Dhabi 0.305 ever (2015-2016), AltaMed 0.333, Sea Mar 0.428, STOP CRC 0.528, safety net 0.556, PROSPR 0.581-0.838, Kaiser 0.832-0.837. Sensitivity 0.31 to 0.84."
+  notes: "Spread of published 12-month figures: Abu Dhabi 0.305 ever (2015-2016), AltaMed 0.333, Sea Mar 0.428, STOP CRC 0.528, safety net 0.556, PROSPR 0.581-0.838, Kaiser 0.832-0.837. Sensitivity 0.31 to 0.84. B18 cross-check: national managed programmes reach 0.75 (Scotland, colonoscopy of positives, partly censored) and 0.76 (England, diagnostic uptake after a positive FIT) with automatic referral; AIHW follow-up rates could not be downloaded (Cloudflare human verification). Mohl stays the baseline calibration: it is the unmanaged, multi-organisation US cohort the baseline arm represents."
 
 colonoscopy_never_completes_12m:
   value: 0.44
@@ -111,7 +115,7 @@ gi_referral_made_rate:
   value: 0.90
   source: "Sea Mar FQHC: 642 of 711 abnormal FIT (90%) had a GI referral. https://pmc.ncbi.nlm.nih.gov/articles/PMC8477359/"
   status: sourced-adjacent
-  notes: "Safety-net system: 87% referred (13% never referred), https://doi.org/10.1038/ajg.2016.555 . UAE guideline KPI: 90% acceptable, >95% desirable (Appendix 2)."
+  notes: "Safety-net system: 87% referred (13% never referred), https://doi.org/10.1038/ajg.2016.555 . UAE guideline KPI: 90% acceptable, >95% desirable (Appendix 2). B18: England refers automatically, SSP appointment offered within 14 days for 99.4% of referrals (NHS England 2024-25, Table 11); diagnostic uptake after the positive FIT 76.0% (colonoscopy_uptake_after_positive_england)."
 
 gi_referral_non_attendance_abu_dhabi:
   value: 0.25
@@ -123,7 +127,7 @@ time_to_colonoscopy_median_days:
   value: 83
   source: "Sea Mar FQHC, completers, median 83 d. BMC Gastroenterol 2021, https://pmc.ncbi.nlm.nih.gov/articles/PMC8477359/"
   status: sourced-adjacent
-  notes: "Completers only. Abu Dhabi 2015-2016: median 72 d (https://pmc.ncbi.nlm.nih.gov/articles/PMC8343888/). Kaiser 37 d (Corley), PROSPR 41-174 d, safety net 184 d (https://doi.org/10.1038/ajg.2016.555), AltaMed 94 d. Suggested parametric form: lognormal fitted to median and IQR (shape choice is an assumption)."
+  notes: "Completers only. Abu Dhabi 2015-2016: median 72 d (https://pmc.ncbi.nlm.nih.gov/articles/PMC8343888/). Kaiser 37 d (Corley), PROSPR 41-174 d, safety net 184 d (https://doi.org/10.1038/ajg.2016.555), AltaMed 94 d. Suggested parametric form: lognormal fitted to median and IQR (shape choice is an assumption). B18 check of the shape: Scotland (Public Health Scotland, OGL v3) 4- and 8-week shares fit a lognormal with median 39.9 d and sigma 0.63, and the reported median (40 d) was not used in the fit, so the lognormal form holds; the Scottish managed programme is faster (see time_to_colonoscopy_managed_ref_median_days). Kept at the Sea Mar value: the simulator compares its baseline arm (completer median about 61 d) to this target only in the report."
 
 time_to_colonoscopy_iqr_days:
   value: [52, 131]
@@ -138,12 +142,14 @@ dna_rate:
   notes: "Baseline (no electronic reminder) non-attendance at a booked colonoscopy. General outpatient DNA 5.6-5.9% in England 2023-25 (NHS Hospital Outpatient Activity, unverified, page blocked). Pre-booking loss is much larger, see gi_referral_non_attendance_abu_dhabi."
 
 sms_reminder_effect:
-  value: 0.25
-  source: "Relative reduction in colonoscopy non-attendance, (11.9 - 8.9) / 11.9, Lam et al. 2021. https://doi.org/10.1111/jgh.15218"
-  status: sourced-adjacent
+  value: 0.167
+  source: "Fitted (B18) from the Vitoria (Brazil, 2016) Medical Appointment No Shows data, OpenML 43439, CC BY-NC-SA 4.0: logistic regression of no-show on SMS_received, ln(lead days) and age, appointments booked at least 3 days ahead (60,017 of 110,527); standardised relative reduction in no-show probability 0.167 (95% CI 0.146 to 0.187), odds ratio 0.77. https://www.openml.org/search?type=data&id=43439"
+  status: empirical
+  fit_script: tools/calibration/fit_noshow.py
+  dataset_sha256: 8f1a0dd72291a26d91cd6cf51d792738e9daa3f39079ac48a7027ef8d1822061
   range: [0, 0.34]
   range_basis: "stated range: 0 (Mahmud, JAMA Netw Open 2021, no effect) to 0.34 (Cochrane CD007458), from this parameter's notes"
-  notes: "Sensitivity 0 (Mahmud et al., JAMA Netw Open 2021, 753 patients, no effect, https://doi.org/10.1001/jamanetworkopen.2020.34553) to 0.34 (Cochrane CD007458, non-attendance 21.4% text vs 32.2% no reminder, derived from 78.6% vs 67.8% attendance). Reminder to positive-FOBT patients to see the GP raised 120-day colonoscopy from 47.1% to 70.3% (Azulay, JMIR mHealth 2019, https://pmc.ncbi.nlm.nih.gov/articles/PMC6379817/): a different outcome, not used."
+  notes: "Replaces 0.25 (Lam et al., J Gastroenterol Hepatol 2021, RCT, 11.9% to 8.9%, sourced-adjacent), which sits inside the Cochrane 0.34 and above this fit. Observational, Brazilian primary care, any appointment type, confounded by who is sent a reminder: read it as a cross-check that an SMS effect of this size is not an artefact, not as a colonoscopy effect. Sensitivity 0 (Mahmud, no effect) to 0.34 (Cochrane CD007458, non-attendance 21.4% text vs 32.2% no reminder, derived from 78.6% vs 67.8% attendance). The literature-anchored overlay keeps 0.0. Reminder to positive-FOBT patients raised 120-day colonoscopy from 47.1% to 70.3% (Azulay, JMIR mHealth 2019, https://pmc.ncbi.nlm.nih.gov/articles/PMC6379817/): a different outcome, not used. Data are never published here, only this coefficient (licence)."
 
 navigation_effect:
   value: 1.27
@@ -198,6 +204,59 @@ malaffi_integration_assumption:
   source: "DoH Circular 2026/10, 19 Jan 2026: mandatory Malaffi minimum dataset listed as HL7 message types (ADT, PPR, ORU, OMP, RDS, RAS, VXU, SIU incl. future appointments). https://www.doh.gov.ae/-/media/84A213F71AA545D69E01A23A0A99C598.ashx"
   status: sourced
   notes: "No official DoH or Malaffi document names FHIR (checked DoH HIE standards page and Malaffi policies page). Vendor pages claiming FHIR are unverified. Confirm with ddg@doh.gov.ae or hie@doh.gov.ae. IFHAS visits are meant to be tagged for tracking through Malaffi (IFHAS V10 s.4.11.4.1)."
+
+# ======================================================================================
+# Part 1b: fitted from downloaded open datasets (ticket B18; reference values, none is read by the simulator)
+# ======================================================================================
+# They are managed-programme anchors (Scotland, England) for the quantities the Mohl-calibrated baseline does not describe.
+# Fits, checks and honesty notes: docs/results/calibration.md. `make calibrate-check` re-runs every fit from the local files.
+time_to_colonoscopy_managed_ref_median_days:
+  value: 39.9
+  source: "Fitted (B18) from Public Health Scotland, Scottish Bowel Screening Programme KPI report (2025-03-04; invites 2022-05 to 2024-04), OGL v3: lognormal through the 4-week and 8-week shares of KPI 4 (28.8% within 4 weeks, 29.6% over 8 weeks), checked against the reported median of 40 days. https://publichealthscotland.scot/media/31821/2025-03-04-bowel-screening-kpi-report.xlsx"
+  status: empirical
+  fit_script: tools/calibration/fit_bands.py
+  dataset_sha256: a25716b45849a27009f96f4fc6435d4485fe1a711e921fd7eb6dec691a1323bf
+  notes: "Clock runs from the screening-test REFERRAL date (a few days to two weeks after the positive result) to the colonoscopy, among positives who had one. Managed national programme: the orchestrated-arm reference, not the unmanaged baseline (time_to_colonoscopy_median_days 83 stays the baseline target). Board medians 19 to 113 days."
+
+time_to_colonoscopy_managed_ref_iqr_days:
+  value: [26.0, 61.1]
+  source: "Fitted (B18), same lognormal as time_to_colonoscopy_managed_ref_median_days (Public Health Scotland KPI report, OGL v3): 25th and 75th percentiles. https://publichealthscotland.scot/media/31821/2025-03-04-bowel-screening-kpi-report.xlsx"
+  status: empirical
+  fit_script: tools/calibration/fit_bands.py
+  dataset_sha256: a25716b45849a27009f96f4fc6435d4485fe1a711e921fd7eb6dec691a1323bf
+  notes: "90th percentile 90 days (fit); AIHW's published median of 62 days (positive result to assessment, 2022) was NOT cross-checked against the file because the AIHW site blocked the download (Cloudflare human verification)."
+
+time_to_colonoscopy_lognormal_sigma:
+  value: 0.63
+  source: "Fitted (B18), Public Health Scotland KPI report, OGL v3: log-scale SD of time from referral to colonoscopy, from the 4- and 8-week shares (0.63; the 31- and 62-day shares of appendix A6 give 0.64; the Sea Mar IQR 52-131 gives 0.69). https://publichealthscotland.scot/media/31821/2025-03-04-bowel-screening-kpi-report.xlsx"
+  status: empirical
+  fit_script: tools/calibration/fit_bands.py
+  dataset_sha256: a25716b45849a27009f96f4fc6435d4485fe1a711e921fd7eb6dec691a1323bf
+  notes: "Shape of the total time (staff steps plus booking lead plus the wait): an upper bound on the SD of any single component, so appointment.booking_lead_sigma (0.6) is inside it."
+
+colonoscopy_uptake_after_positive_scotland:
+  value: 0.75
+  source: "Fitted (B18), Public Health Scotland KPI report appendix A4, OGL v3: 26,358 colonoscopies performed of 35,133 positive tests (invites 2022-05 to 2024-04). https://publichealthscotland.scot/media/31821/2025-03-04-bowel-screening-kpi-report.xlsx"
+  status: empirical
+  fit_script: tools/calibration/fit_bands.py
+  dataset_sha256: a25716b45849a27009f96f4fc6435d4485fe1a711e921fd7eb6dec691a1323bf
+  notes: "Managed national programme, follow-up partly censored (the latest invitees had little time), so a lower bound on eventual uptake. Between Mohl (0.56 at 12 months, unmanaged) and Corley (0.83, integrated). Mohl stays the baseline calibration."
+
+fit_positivity_rate_england_120ug:
+  value: 0.0171
+  source: "Fitted (B18), NHS England Bowel cancer screening annual report 2024-25, Table 5 (BCSP-S02), OGL v3: 89,030 further tests needed of 5,195,407 adequately screened = 1.71% (95% CI 1.70 to 1.72). https://assets.publishing.service.gov.uk/media/6a4e6212f79c9db2eb438f07/Bowel_Cancer_Screening_Annual_Report_Tables_2024-25.xlsx"
+  status: empirical
+  fit_script: tools/calibration/fit_bcsp.py
+  dataset_sha256: c02d8b84c670f23ec396f3388a260accdf85510441bb61e568110b051033264c
+  notes: "England's FIT cut-off is 120 ug Hb/g, far above the Abu Dhabi cut-off, so this is a floor, not a transferable value: fit_positivity_rate stays 0.07 (sourced-adjacent; Abu Dhabi measured 13.5% in 2015-2016). The 2023-24 report gave 1.76%."
+
+colonoscopy_uptake_after_positive_england:
+  value: 0.76
+  source: "Fitted (B18), NHS England Bowel cancer screening annual report 2024-25, Table 12 (BCSP-S11), OGL v3: 69,956 diagnostic-test attendances of 92,107 definitive FOBt+ patients = 76.0% (95% CI 75.7 to 76.2). https://assets.publishing.service.gov.uk/media/6a4e6212f79c9db2eb438f07/Bowel_Cancer_Screening_Annual_Report_Tables_2024-25.xlsx"
+  status: empirical
+  fit_script: tools/calibration/fit_bcsp.py
+  dataset_sha256: c02d8b84c670f23ec396f3388a260accdf85510441bb61e568110b051033264c
+  notes: "England refers automatically (SSP appointment offered within 14 days for 99.4% of referrals), so gi_referral_made_rate is about 1.0 there against 0.90 in Sea Mar (kept); 50.4% of attended tests were within 14 days of the SSP clinic. Same band as Scotland (0.75); the orchestrated ceiling colonoscopy_completion_12m_integrated_ref 0.832 (Corley) is above both."
 
 # ======================================================================================
 # Part 2: model parameters with no public source (placeholders) or calibrated to Part 1
@@ -262,12 +321,20 @@ patient_response:
 
 # ---- appointment ------------------------------------------------------------------------------
 appointment:
-  booking_lead_median_days: {value: 24, source: "Calibrated to reproduce the Mohl 2023 baseline completion curve (see docs/results/results.md); placeholder was 14, no public source", status: calibrated, range: [12, 48], range_basis: "default rule: duration, value x0.5 and x2"}
-  booking_lead_sigma: {value: 0.6, source: "Calibrated to reproduce the Mohl 2023 baseline completion curve (see docs/results/results.md); placeholder was 0.5, no public source", status: calibrated, range: [0.3, 1.2], range_basis: "default rule: scale, value x0.5 and x2"}
+  booking_lead_median_days: {value: 24, source: "Calibrated to reproduce the Mohl 2023 baseline completion curve (see docs/results/results.md); placeholder was 14, no public source", status: calibrated, notes: "B18 bounds, not a refit: the booking lead is one part of the whole referral-to-colonoscopy time, so it cannot exceed it. England (DM01, March 2026, all colonoscopy referrals, 78,391 waiting) completed-wait median about 18 d by the stock fit and mean 31 to 45 d; Scotland (screening, referral date to colonoscopy) median 39.9 d. 24 d lies between them. docs/results/calibration.md.", range: [12, 48], range_basis: "default rule: duration, value x0.5 and x2"}
+  booking_lead_sigma: {value: 0.6, source: "Calibrated to reproduce the Mohl 2023 baseline completion curve (see docs/results/results.md); placeholder was 0.5, no public source", status: calibrated, notes: "B18 bound, not a refit: the whole referral-to-colonoscopy time has log-SD 0.63 in Scotland (time_to_colonoscopy_lognormal_sigma) and 1.04 in the England DM01 waiting stock (all indications); one component cannot be more spread than the total, 0.6 is inside both.", range: [0.3, 1.2], range_basis: "default rule: scale, value x0.5 and x2"}
   rebook_lead_median_days: {value: 7, source: "assumed, no public source", status: assumed, range: [3.5, 14], range_basis: "default rule: duration, value x0.5 and x2"}
   reminder_days_before: {value: [7, 1], source: "assumed, no public source", status: assumed, range: [[3.5, 0.5], [14, 2]], range_basis: "default rule: duration, value x0.5 and x2"}
   max_attempts: {value: 3, source: "assumed, no public source", status: assumed, range: [2, 4], range_basis: "default rule: count, value x0.5 and x2, rounded half up, at least 1, at most the engine limit"}                    # appointments before giving up (max 4)
-  responsiveness_noshow_shift: {value: 0.5, source: "assumed, no public source", status: assumed, range: [0.25, 1.0], range_basis: "default rule: scale, value x0.5 and x2"}   # logit shift per unit responsiveness
+  responsiveness_noshow_shift:       # logit shift per unit responsiveness (SD of the latent factor is 1), so also the between-patient SD of the no-show logit
+    value: 1.12
+    source: "Fitted (B18): between-patient SD (tau) of the logit of no-show, random-intercept logistic regression on SMS_received, ln(lead days) and age, 11,734 patients with at least two appointments booked 3+ days ahead (31,322 appointments), Vitoria (Brazil) 2016, OpenML 43439, CC BY-NC-SA 4.0. https://www.openml.org/search?type=data&id=43439"
+    status: empirical
+    fit_script: tools/calibration/fit_noshow.py
+    dataset_sha256: 8f1a0dd72291a26d91cd6cf51d792738e9daa3f39079ac48a7027ef8d1822061
+    range: [0.56, 2.24]
+    range_basis: "default rule: scale, value x0.5 and x2"
+    notes: "Replaces the assumed 0.5. tau 1.12 is the TOTAL between-patient spread, the only source of no-show heterogeneity in the simulator is this latent factor, so shift = tau. Shape only: the Brazilian base no-show rate (30% at 3+ day leads) is not used and the colonoscopy no-show base rates (no_show_rate_by_channel, dna_rate) are untouched. Changing 0.5 to 1.12 moves the baseline completion curve by about -1 point (Mohl calibration drift, reported in docs/results/calibration.md)."
 
 # ---- referral / handoff ------------------------------------------------------------------------
 handoff:
