@@ -67,7 +67,8 @@ def test_t_a30_a_case_idle_for_exactly_n_days_is_flagged_and_one_day_less_is_not
     (flag,) = flags(store, cid)
     assert flag.actor == WATCHDOG_ACTOR and flag.at == day(8)
     assert flag.payload == {"reason": "idle", "idle_days": 7, "last_activity_at": day(1).isoformat()}
-    assert flag.event_id == idle_flag_event_id(cid, day(1))
+    last_event = store.events_for(cid)[-2]  # the acknowledge the idle stretch runs from
+    assert flag.event_id == idle_flag_event_id(cid, last_event.event_id)
 
 
 def test_t_a30_a_flag_is_written_once_per_idle_episode(store):

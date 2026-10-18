@@ -12,21 +12,28 @@ replay of the event log produces:
     provider             the provider the owner acts for (set by handoff_accepted, or by
                          accept_ownership / reassign when the payload names one)
     pending_handoff      an unanswered handoff request {to_provider, requested_by, from_owner,
-                         requested_at}; ownership changes only when it is accepted (A5)
+                         requested_at, requested_event_id}; ownership changes only when it is accepted (A5)
     last_handoff         outcome of the latest answered or bounced handoff (A5)
     consent_frozen       outreach is frozen (state is consent_withdrawn)
     last_event_at        `at` of the latest event, including annotations
     last_activity_at     `at` of the latest event that is not a watchdog flag: the idle clock (A11)
+    last_activity_event_id  the `event_id` of that event: what the watchdog derives its flag id from, so a
+                         later episode that starts at the same instant is still a different episode (SEC-2)
     watchdog_flag        {reason, idle_days, at} while a watchdog_flagged is the newest word on the
                          case, None as soon as any other event arrives (A9, A11)
     resume_state         where the case returns to when consent is restored (side state only)
     clock_started_at     when the current state's SLA clock started: the event that entered the
                          state, or, for an SLA with `clock_start: handoff_accepted` (A13), the
                          latest referral acceptance when there was one
+    clock_started_event_id  the `event_id` of that event. The scheduler derives the ids of `mark_overdue`
+                         and the escalation rungs from it (never from a timestamp, SEC-2): re-entering a
+                         state is a new clock and so a new breach, even at the very same instant
     referral_accepted_at `at` of the latest handoff_accepted (A13), None before any
     breach_due_at        the due date of the open breach (set with overdue)
     backdated_events     how many accepted events had an `at` earlier than the previous event's `at`
-                         (T-F4, ADR-027): accepted and ordered by `seq`, never refused, but counted
+                         (T-F4, ADR-027): a user token's backdated event is refused at the API (SEC-2); only the
+                         service actors that legitimately post late (the sweep, the notifier) can still produce
+                         one, and it is accepted, ordered by `seq`, and counted
 
 `overdue` and `escalation_level` are flags, not states, because a case can be overdue AND in
 patient_contacted (ADR-011). Side states that change the path are real states.
@@ -37,6 +44,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
+from uuid import UUID
 
 from app.pathway import CLOCK_HANDOFF_ACCEPTED, RESUME_STATE, Pathway, Transition
 
@@ -111,11 +119,14 @@ class CaseModel:
     consent_frozen: bool = False
     last_event_at: datetime | None = None
     last_activity_at: datetime | None = None
+    last_activity_event_id: UUID | None = None
     watchdog_flag: dict | None = None
     resume_state: str | None = None
     clock_started_at: datetime | None = None
+    clock_started_event_id: UUID | None = None
     breach_due_at: datetime | None = None
     referral_accepted_at: datetime | None = None
+    referral_accepted_event_id: UUID | None = None
     provider: str | None = None
     pending_handoff: dict | None = None
     last_handoff: dict | None = None
@@ -162,7 +173,8 @@ def initial_model(pathway: Pathway) -> CaseModel:
 def genesis(model: CaseModel, event: Event) -> CaseModel:
     """The case_created marker starts the first state's SLA clock; it changes no state."""
     at = _aware(event.at)
-    return replace(model, last_event_at=at, last_activity_at=at, clock_started_at=at)
+    return replace(model, last_event_at=at, last_activity_at=at, last_activity_event_id=event.event_id,
+                   clock_started_at=at, clock_started_event_id=event.event_id)
 
 
 def replay_model(events, pathway: Pathway) -> CaseModel:
@@ -239,17 +251,23 @@ def _transition(model: CaseModel, event: Event, pathway: Pathway, t: Transition)
             escalation_level=0,
             escalation_accepted=False,
             breach_due_at=None,
-            clock_started_at=_sla_clock_start(pathway, target, _aware(event.at), model.referral_accepted_at),
         )
+        started_at, started_by = _sla_clock_start(
+            pathway, target, _aware(event.at), event.event_id, model.referral_accepted_at,
+            model.referral_accepted_event_id,
+        )
+        new = replace(new, clock_started_at=started_at, clock_started_event_id=started_by)
     return new
 
 
-def _sla_clock_start(pathway: Pathway, state: str, entry_at: datetime, referral_at: datetime | None):
-    """Where the SLA for `state` starts counting (A13): state entry, or the latest referral
-    acceptance for an SLA with `clock_start: handoff_accepted` (state entry if none)."""
+def _sla_clock_start(pathway: Pathway, state: str, entry_at: datetime, entry_event_id: UUID,
+                     referral_at: datetime | None, referral_event_id: UUID | None):
+    """Where the SLA for `state` starts counting (A13), and the event that started it: state entry,
+    or the latest referral acceptance for an SLA with `clock_start: handoff_accepted` (state entry if
+    none)."""
     if referral_at is not None and pathway.state_clock_start(state) == CLOCK_HANDOFF_ACCEPTED:
-        return referral_at
-    return entry_at
+        return referral_at, referral_event_id
+    return entry_at, entry_event_id
 
 
 # -- annotations ------------------------------------------------------------------------
@@ -445,7 +463,7 @@ def _finish(
                                           "idle_days": payload.get("idle_days"), "at": at.isoformat()})
     else:
         # Any other event is activity: the case is being looked at, so the flag clears.
-        out = replace(out, last_activity_at=at, watchdog_flag=None)
+        out = replace(out, last_activity_at=at, last_activity_event_id=event.event_id, watchdog_flag=None)
     if kind == "accept_ownership":
         out = replace(out, owner=event.actor, provider=payload.get("provider"))
     elif kind == "reassign":
@@ -457,20 +475,21 @@ def _finish(
             "requested_by": event.actor,
             "from_owner": model.owner,
             "requested_at": at.isoformat(),
+            "requested_event_id": str(event.event_id),
         })
     elif kind == "handoff_accepted":
         pending = (before or model).pending_handoff
         provider = (payload.get("provider") or pending["to_provider"]).strip()
         out = replace(out, owner=event.actor, provider=provider, pending_handoff=None,
-                      referral_accepted_at=at,
+                      referral_accepted_at=at, referral_accepted_event_id=event.event_id,
                       last_handoff={"outcome": "accepted", "to_provider": pending["to_provider"],
                                     "by": event.actor, "at": at.isoformat()})
         if (pathway is not None and out.state in pathway.open_states
                 and pathway.state_clock_start(out.state) == CLOCK_HANDOFF_ACCEPTED):
             # A referral accepted while the state's SLA runs from acceptance restarts that
             # clock: a new obligation, like a state change (A13, ADR-020).
-            out = replace(out, clock_started_at=at, overdue=False, escalation_level=0,
-                          escalation_accepted=False, breach_due_at=None)
+            out = replace(out, clock_started_at=at, clock_started_event_id=event.event_id, overdue=False,
+                          escalation_level=0, escalation_accepted=False, breach_due_at=None)
     elif kind == "handoff_rejected":
         pending = (before or model).pending_handoff
         out = replace(out, pending_handoff=None, last_handoff={

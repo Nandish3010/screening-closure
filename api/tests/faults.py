@@ -84,25 +84,25 @@ class FaultyStore:
             self.appends += 1
             return self.appends
 
-    def append(self, event, pathway, *, within=None):
+    def append(self, event, pathway, *, within=None, guard=None):
         n = self._tick()
         if self.faults.get("fail_before_insert") == n:
             self.injected += 1
             raise InjectedFault(f"injected: append #{n} refused before the insert")
         copies = self.faults.get("duplicate_delivery", 1)
-        result = self._deliver(copies, lambda: self._inner.append(event, pathway, within=within))
+        result = self._deliver(copies, lambda: self._inner.append(event, pathway, within=within, guard=guard))
         if self.faults.get("fail_after_insert") == n:
             self.injected += 1
             raise InjectedFault(f"injected: append #{n} committed, then the store failed before returning")
         return result
 
-    def _append_many(self, events, pathway, *, within=None):
+    def _append_many(self, events, pathway, *, within=None, guard=None):
         n = self._tick()
         if self.faults.get("fail_before_insert") == n:
             self.injected += 1
             raise InjectedFault(f"injected: append_many #{n} refused before the insert")
         copies = self.faults.get("duplicate_delivery", 1)
-        result = self._deliver(copies, lambda: self._inner.append_many(events, pathway, within=within))
+        result = self._deliver(copies, lambda: self._inner.append_many(events, pathway, within=within, guard=guard))
         if self.faults.get("fail_after_insert") == n:
             self.injected += 1
             raise InjectedFault(f"injected: append_many #{n} committed, then the store failed before returning")

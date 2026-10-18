@@ -7,8 +7,9 @@ scan (`POST /watchdog/scan`) with its own service token, which may emit `watchdo
 nothing else.
 
 An idle episode is the stretch since a case's last real event (`last_activity_at`: any event but
-a watchdog flag). The flag's id is a uuid5 of (case, that event's time), so scanning again, or two
-scans at once, flags an episode once. Any later event clears the flag (the read model drops
+a watchdog flag). The flag's id is a uuid5 of (case, that event's id), never its time (SEC-2): two
+quiet stretches that start at the same instant are different episodes. Scanning again, or two scans
+at once, flags an episode once. Any later event clears the flag (the read model drops
 `watchdog_flag`), and a new quiet stretch is a new episode with a new id. A closed case is never
 flagged.
 """
@@ -37,8 +38,9 @@ def _utc(dt: datetime) -> datetime:
     return dt.astimezone(UTC)
 
 
-def idle_flag_event_id(case_id: UUID, last_activity_at: datetime) -> UUID:
-    return uuid.uuid5(WATCHDOG_NAMESPACE, f"{case_id}|{_utc(last_activity_at).isoformat()}|idle")
+def idle_flag_event_id(case_id: UUID, started_by: UUID | str) -> UUID:
+    """One id per idle episode: `started_by` is the id of the event the quiet stretch runs from."""
+    return uuid.uuid5(WATCHDOG_NAMESPACE, f"{case_id}|{started_by}|idle")
 
 
 def plan_idle_flag(
@@ -63,7 +65,7 @@ def plan_idle_flag(
             "idle_days": idle.days,
             "last_activity_at": _utc(model.last_activity_at).isoformat(),
         },
-        idle_flag_event_id(case_id, model.last_activity_at),
+        idle_flag_event_id(case_id, model.last_activity_event_id),
     )
 
 

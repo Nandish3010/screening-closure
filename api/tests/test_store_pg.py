@@ -187,8 +187,9 @@ def test_concurrent_appends_exactly_one_wins(store, pool):
 def test_postgres_replay_matches_in_memory_fold(store, pool, events):
     case_id = new_case(store)
     memory = InMemoryEventStore()
+    genesis_id = store.events_for(case_id)[0].event_id  # the same genesis: ids are part of the read model
     memory.create_case(
-        case_id, PATHWAY.name, Event(case_id, CASE_CREATED, AT, "system:intake"),
+        case_id, PATHWAY.name, Event(case_id, CASE_CREATED, AT, "system:intake", {"patient_ref": "Patient/1"}, genesis_id),
         PATHWAY.initial_state,
     )
     for e in events:

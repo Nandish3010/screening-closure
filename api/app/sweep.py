@@ -7,10 +7,14 @@ reason `timeout`) events from `system:scheduler`; in particular it can never pro
 (T-A16). `run_sweep` feeds it
 every open case from a store and appends what it plans.
 
-Idempotency: each planned event has a deterministic id, uuid5 over (case, state, due date
-[, rung]). Running the sweep again, or two sweeps at once, therefore inserts each event once:
-the store treats a repeated event_id on the same case as a no-op. The state machine adds a
-second line of defence (a case that is already overdue refuses another `mark_overdue`).
+Idempotency: each planned event has a deterministic id, a uuid5 over (case, the `event_id` of the
+event that started the clock or made the request, kind [, rung]). Never over a timestamp (SEC-2):
+two different clocks that start at the same instant (a state entered, left and entered again; a
+handoff requested, bounced and requested again) are different obligations and must not share an
+id, or the second would be swallowed as a repeat of the first. Running the sweep again, or two
+sweeps at once, still inserts each event once: the store treats a repeated event_id on the same
+case as a no-op. The state machine adds a second line of defence (a case that is already overdue
+refuses another `mark_overdue`).
 
 Parallel sweep (A17). `run_sweep_parallel` splits the open cases into `n` disjoint slices swept by `n`
 spawned worker processes, each with its own connection pool; `SweepPool` keeps those processes alive for
@@ -48,9 +52,10 @@ def _utc(dt: datetime) -> datetime:
     return dt.astimezone(UTC)
 
 
-def sweep_event_id(case_id: UUID, state: str, due_at: datetime, kind: str) -> UUID:
-    """uuid5(case, state, due date, kind): one id per breach (and per rung)."""
-    return uuid.uuid5(SWEEP_NAMESPACE, f"{case_id}|{state}|{_utc(due_at).isoformat()}|{kind}")
+def sweep_event_id(case_id: UUID, started_by: UUID | str, kind: str) -> UUID:
+    """uuid5(case, event that started the clock or request, kind): one id per breach (and per rung),
+    one per unanswered handoff request. `started_by` is an event id, never a time."""
+    return uuid.uuid5(SWEEP_NAMESPACE, f"{case_id}|{started_by}|{kind}")
 
 
 def due_at_for(model: CaseModel, pathway: Pathway, calendar: WorkingCalendar) -> datetime | None:
@@ -107,7 +112,7 @@ def plan_bounce(
             "due_at": due.isoformat(),
             "working_days": pathway.handoff_response_working_days,
         },
-        sweep_event_id(case_id, "handoff", datetime.fromisoformat(pending["requested_at"]), "bounce"),
+        sweep_event_id(case_id, pending["requested_event_id"], "bounce"),
     )
 
 
@@ -140,7 +145,7 @@ def plan_case(
                     "sla_event": sla_event,
                     "sla_working_days": sla_days,
                 },
-                sweep_event_id(case_id, model.state, due, "mark_overdue"),
+                sweep_event_id(case_id, model.clock_started_event_id, "mark_overdue"),
             )
         )
     if not model.escalation_accepted:
@@ -184,7 +189,7 @@ def _plan_rungs(
                     "due_at": due.isoformat(),
                     "rung_due_at": rung_due.isoformat(),
                 },
-                sweep_event_id(case_id, model.state, due, f"escalate:{rung.rung}"),
+                sweep_event_id(case_id, model.clock_started_event_id, f"escalate:{rung.rung}"),
             )
         )
     return rungs
@@ -311,13 +316,13 @@ class _RecordingStore:
         if hasattr(inner, "append_many"):  # the sweep probes for it with hasattr
             self.append_many = self._append_many
 
-    def append(self, event, pathway, *, within=None):
-        state = self._inner.append(event, pathway, within=within)
+    def append(self, event, pathway, *, within=None, guard=None):
+        state = self._inner.append(event, pathway, within=within, guard=guard)
         self.refs.append((str(event.event_id), str(event.case_id)))
         return state
 
-    def _append_many(self, events, pathway, *, within=None):
-        state = self._inner.append_many(events, pathway, within=within)
+    def _append_many(self, events, pathway, *, within=None, guard=None):
+        state = self._inner.append_many(events, pathway, within=within, guard=guard)
         self.refs.extend((str(e.event_id), str(e.case_id)) for e in events)
         return state
 

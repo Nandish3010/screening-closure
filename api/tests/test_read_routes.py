@@ -308,9 +308,11 @@ def test_t_a28_a_flag_is_cleared_by_the_next_event(backend):
     assert next(r for r in listing() if r["case_id"] == cid)["watchdog_flagged"] is None
 
 
-def test_t_f4_a_backdated_event_is_accepted_flagged_in_the_timeline_and_counted_in_the_read_model(backend):
-    """ADR-027: an event whose `at` is earlier than the previous event's is accepted (ordered by seq), shown as
-    a `backdated` derived item, and counted in the read model; the sim-clock ceiling still holds."""
+def test_t_f4_a_service_actors_late_event_is_accepted_flagged_in_the_timeline_and_counted_in_the_read_model(backend):
+    """ADR-027 (amended by SEC-2): a USER's event dated before the case's latest event is refused (422); the
+    scheduler, whose `now` may have been read before a user's later event, is still accepted (ordered by seq),
+    shown as a `backdated` derived item, and counted in the read model; the sim-clock ceiling still holds."""
+    sched = {"Authorization": f"Bearer {app_settings.scheduler_service_token}"}
     cid = new_case("Patient/rr-bd")
     pco = login("primary_care_owner", "Dr Backdate")
     clock.advance(days=3)
@@ -318,19 +320,31 @@ def test_t_f4_a_backdated_event_is_accepted_flagged_in_the_timeline_and_counted_
     assert detail(cid)["read_model"]["backdated_events"] == 0
     assert not [i for i in timeline(cid)["items"] if i["kind"] == "backdated"]
     behind = (clock.now() - timedelta(days=2)).isoformat()
-    r = client.post(f"/cases/{cid}/events", json={"type": "accept_ownership", "payload": {}, "at": behind}, headers=pco)
+    refused = client.post(f"/cases/{cid}/events", json={"type": "accept_ownership", "payload": {}, "at": behind}, headers=pco)
+    assert refused.status_code == 422 and "backdated" in refused.json()["detail"], refused.text
+    assert detail(cid)["state"] == "acknowledged"
+    # a human annotation lands at the new sim time; the sweep had read `now` earlier and finds the breach late
+    due = datetime.fromisoformat(next(i for i in timeline(cid)["items"] if i["kind"] == "sla_started" and i["state"] == "acknowledged")["due_at"])
+    clock.advance(days=7)
+    assert post(cid, "callback_requested", COORD).status_code == 201
+    late = due + timedelta(hours=1)
+    assert late < clock.now() - timedelta(days=1)
+    r = client.post(f"/cases/{cid}/events", headers=sched, json={
+        "type": "mark_overdue", "at": late.isoformat(),
+        "payload": {"state": "acknowledged", "due_at": due.isoformat()}})
     assert r.status_code == 201, r.text
     d = detail(cid)
-    assert d["read_model"]["backdated_events"] == 1 and d["state"] == "owner_accepted"
+    assert d["read_model"]["backdated_events"] == 1 and d["read_model"]["overdue"] is True
     items = timeline(cid)["items"]
     (item,) = [i for i in items if i["kind"] == "backdated"]
     events = cases.store.events_for(UUID(cid))
-    assert item["event_id"] == str(events[-1].event_id) and item["event_type"] == "accept_ownership"
-    assert item["previous_event_id"] == str(events[-2].event_id) and item["behind_seconds"] == 2 * 86400
+    assert item["event_id"] == str(events[-1].event_id) and item["event_type"] == "mark_overdue"
+    assert item["previous_event_id"] == str(events[-2].event_id)
+    assert item["behind_seconds"] == int((events[-2].at - events[-1].at).total_seconds())
     assert item["at"] == events[-1].at.isoformat() and item["previous_at"] == events[-2].at.isoformat()
-    assert [e.seq for e in events] == [1, 2, 3]  # the log order is the insertion order
+    assert [e.seq for e in events] == [1, 2, 3, 4]  # the log order is the insertion order
     ahead = (clock.now() + timedelta(seconds=1)).isoformat()
-    r = client.post(f"/cases/{cid}/events", json={"type": "contact_patient", "payload": {}, "at": ahead}, headers=pco)
+    r = client.post(f"/cases/{cid}/events", json={"type": "callback_requested", "payload": {}, "at": ahead}, headers=COORD)
     assert r.status_code == 422  # a future `at` is still refused
     assert detail(cid)["read_model"]["backdated_events"] == 1
     assert next(r for r in listing() if r["case_id"] == cid)  # the worklist row is unchanged in shape

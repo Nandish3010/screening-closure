@@ -352,8 +352,9 @@ def test_replay_is_deterministic(events):
 @settings(max_examples=300, deadline=None)
 @given(event_sequences())
 def test_every_prefix_of_a_history_replays_to_the_incremental_model(events):
-    model = start_model()
-    log = [make_event(CASE_CREATED, "system:intake", {})]
+    created = make_event(CASE_CREATED, "system:intake", {})
+    model = genesis(initial_model(PATHWAY), created)
+    log = [created]
     for ev in events:
         try:
             model = step(model, ev, PATHWAY)

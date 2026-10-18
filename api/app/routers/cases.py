@@ -201,6 +201,28 @@ def _check_signature_and_evidence(identity: Identity, event_type: str, payload: 
             raise HTTPException(422, f"evidence_ref {ref!r} does not resolve to a resource of this case")
 
 
+def _refuse_backdated(model, at: datetime) -> None:
+    """SEC-2 (ADR-027 amended): a user's event may not be dated before the case's latest event. Evaluated
+    under the case's row lock on the replayed model, so two requests cannot both pass on a stale read."""
+    last = model.last_event_at
+    if last is not None and at < (last if last.tzinfo else last.replace(tzinfo=UTC)):
+        raise HTTPException(
+            422,
+            f"backdated: event time {at.isoformat()} is before the case's latest event ({last.isoformat()}); "
+            "the log runs forward in time",
+        )
+
+
+def _event_guard(identity: Identity, event_type: str, at: datetime):
+    """What the store re-checks under the case lock, before the state machine sees the event: for a
+    user token, that the event is not backdated. Raises HTTPException."""
+    def guard(model) -> None:
+        if identity.role in policy.ALL_USERS:
+            _refuse_backdated(model, at)
+
+    return guard
+
+
 @router.post("/{case_id}/events", status_code=201)
 def post_event(
     case_id: UUID, body: PostEvent, identity: Identity = Depends(require_identity)
@@ -225,7 +247,7 @@ def post_event(
         payloads.validate(body.type, body.payload)  # free text cannot enter the log (A14)
         validate_payload(event, pathway)  # malformed payload: 422 before anything is written
         _check_signature_and_evidence(identity, body.type, body.payload, case_id)
-        store.append(event, pathway)
+        store.append(event, pathway, guard=_event_guard(identity, body.type, at))
     except CaseNotFound:
         raise HTTPException(404, "case not found")
     except (PayloadError, payloads.PayloadSchemaError) as exc:

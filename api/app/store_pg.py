@@ -68,11 +68,11 @@ class PostgresEventStore:
                 raise CaseAlreadyExists(str(case_id)) from exc
             _insert_event(cur, genesis_event, 1)
 
-    def append(self, event: Event, pathway: Pathway, *, within=None) -> str:
-        return self.append_many([event], pathway, within=within)
+    def append(self, event: Event, pathway: Pathway, *, within=None, guard=None) -> str:
+        return self.append_many([event], pathway, within=within, guard=guard)
 
     def append_many(
-        self, events: Sequence[Event], pathway: Pathway, *, within=None
+        self, events: Sequence[Event], pathway: Pathway, *, within=None, guard=None
     ) -> str:
         """Append one or more events of ONE case in a single transaction: one row lock, one log
         read and replay, one commit. Each event is checked against the state the previous one
@@ -84,6 +84,12 @@ class PostgresEventStore:
 
         `within(cur)`, if given, runs in the same transaction after the events are inserted
         (D5 records a draft's approval there): if it raises, the events roll back with it.
+
+        `guard(model)`, if given, runs after the log is replayed and before the first event is
+        checked, under the same row lock: the caller's authorisation (owner scope) and time
+        (not backdated) checks are re-evaluated on the model the events will actually be applied
+        to, not on the read it made earlier. Whatever it raises propagates and nothing is written.
+        It is skipped when every event was already stored (an idempotent retry).
         """
         if not events:
             raise ValueError("append_many needs at least one event")
@@ -141,6 +147,8 @@ class PostgresEventStore:
                     f"but replay gives {model.state!r}"
                 )
 
+            if guard is not None:
+                guard(model)
             for e in fresh:
                 model = step(model, e, pathway)  # InvalidTransition -> rollback, nothing written
 

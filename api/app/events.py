@@ -87,11 +87,16 @@ class EventStore(Protocol):
         """Create a case and write its genesis event (seq 1) atomically."""
         ...
 
-    def append(self, event: Event, pathway: Pathway, *, within=None) -> str:
+    def append(self, event: Event, pathway: Pathway, *, within=None, guard=None) -> str:
         """Validate the event against the state machine and append it atomically.
 
         `within`, if given, is called inside the same atomic step once the event is accepted;
         if it raises, nothing is written (D5 records a draft's approval this way).
+
+        `guard(model)`, if given, is called inside the same atomic step, under the case lock, with the
+        read model replayed from the log as it stands, BEFORE the state machine sees the event. It
+        re-evaluates a decision the caller made on an earlier read (owner scope, backdating): whatever it
+        raises propagates, nothing is written. It is not called for a repeated event_id (a retry).
 
         Returns the new state. Raises CaseNotFound, InvalidTransition (nothing written),
         EventIdConflict or StateCorruption. A repeated event_id on the same case is a
@@ -166,7 +171,7 @@ class InMemoryEventStore:
             )
             self._event_ids[genesis_event.event_id] = case_id
 
-    def append(self, event: Event, pathway: Pathway, *, within=None) -> str:
+    def append(self, event: Event, pathway: Pathway, *, within=None, guard=None) -> str:
         # `within(None)`, if given, runs after the event is accepted and before anything is
         # stored, under the store lock: if it raises, nothing is written (see the Postgres store).
         with self._lock:
@@ -178,6 +183,8 @@ class InMemoryEventStore:
                 if owner == event.case_id:
                     return case.model.state
                 raise EventIdConflict(str(event.event_id))
+            if guard is not None:
+                guard(case.model)
             new_model = step(case.model, event, pathway)  # raises InvalidTransition
             if within is not None:
                 within(None)
