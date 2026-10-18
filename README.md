@@ -8,7 +8,16 @@ Every actionable screening result has a named owner, a clock, an audit trail, an
 
 This is a deterministic closure engine for one pathway: a positive FIT (faecal immunochemical test) result, then a confirmatory colonoscopy, then a clinician-signed closure. It tracks each case, nudges, escalates to humans, and closes only with evidence. It is not a diagnostic tool, and the only use of AI is to draft patient messages that a human approves before anything is sent.
 
-## Quickstart (about 60 seconds)
+## Quickstart (about 60 seconds, plus the one-time venv)
+
+A fresh clone has no `.venv`. The Makefile uses `.venv` when it exists and otherwise falls back to a bare `python3` with no packages, which is enough for `make up` and `make test` (the latter then runs inside the api container) but not for `make demo-seed`, `make evaluate` or `make demo-scenario`. Create it first, with two lines:
+
+```
+python3 -m venv .venv
+.venv/bin/pip install -e 'api[dev]'
+```
+
+Or run `sh tools/check/fresh_clone.sh` (`make fresh-clone`), which clones the committed state into a temporary directory, creates the venv there and runs the whole sequence below against its own compose project and ports.
 
 ```
 cp .env.example .env
@@ -21,7 +30,7 @@ The stack runs offline once the images are pulled. Postgres is on host port 5433
 
 The web app is not a compose service. Run `make web-install` once, then `make web-dev` and open http://localhost:5173. It uses the mock adapter by default. For the real API: `cd web && VITE_API_ADAPTER=http VITE_API_URL=http://localhost:8000 npm run dev`.
 
-`make evaluate` regenerates every number in `docs/results`; `make evaluate-check` proves the result is byte-for-byte reproducible. `make demo-seed` loads the Synthea cohort into HAPI and creates the cases in the API.
+`make evaluate` regenerates every number in `docs/results`; `make evaluate-check` proves the result is byte-for-byte reproducible. `make demo-seed` loads the Synthea cohort into HAPI and creates the cases in the API. **The first `make demo-seed` takes about 12 minutes**: Synthea runs in a container to generate the cohort, and then HAPI loads 364 patients. A rerun is fast: it reuses the Synthea output in `data/synthea/out` and skips the load when HAPI already has patients. After it, `make demo-snapshot` saves the demo state and `make demo-reset` brings it back in about 25 s.
 
 ## Architecture
 
