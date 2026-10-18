@@ -49,6 +49,9 @@ class Model:
             Column(c["feature"], c["kind"], c.get("level"), c["coef"], c["center"], c["scale"], c["mean_enc"])
             for c in raw["columns"]
         )
+        banned = sorted({c.feature for c in self.columns} & set(F.EXCLUDED_FEATURES))
+        if banned:
+            raise ValueError(f"model.json uses excluded feature(s) {banned}: language and other proxies must not be inputs (D12)")
         names = tuple(c.name for c in self.columns)
         if names != F.COLUMN_NAMES:
             raise ValueError("model.json columns do not match app.risk.features.COLUMNS: retrain the model")

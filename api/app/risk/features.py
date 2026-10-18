@@ -12,10 +12,16 @@ logs `escalate`, the simulator logs `escalated`; see the tuples below). A parity
 features.
 
 Features are the ones observable while the case is open and before a colonoscopy is done:
-language, preferred channel, age band, contact flag, pathway stage, days since the result,
-prior escalations, prior handoff bounces, consent withdrawal, provider change. Missing values
-(the API has no registry of patient attributes yet) are imputed with the training mean, which
-adds exactly zero to the logit relative to an average patient (see `score.py`).
+preferred channel, age band (a documented null feature), contact flag, pathway stage, days since
+the result, prior escalations, prior handoff bounces, consent withdrawal, provider change. Missing
+values (the API has no registry of patient attributes yet) are imputed with the training mean,
+which adds exactly zero to the logit relative to an average patient (see `score.py`).
+
+`language` is NOT a feature (D12): it is a proxy for nationality and must not rank patients. It is
+absent from `COLUMNS` and from `CaseFeatures`, so no caller can feed it to the model, and
+`model.Model` refuses a model.json that has a column for any name in `EXCLUDED_FEATURES`. The
+simulator's exporter still records each patient's language, but only to audit outcomes by group
+(see `docs/governance/risk-score-card.md`, section 6).
 
 Pure standard library: no pydantic, no numpy, nothing that reads a clock.
 """
@@ -25,6 +31,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 
+# Excluded from the model on purpose (D12). `LANGUAGES` lists the audit groups of the fairness check only.
+EXCLUDED_FEATURES = ("language",)
 LANGUAGES = ("ar", "en", "other")
 CHANNELS = ("sms", "whatsapp", "phone", "letter")
 AGE_BANDS = ("40-49", "50-59", "60-69", "70-75")
@@ -49,7 +57,6 @@ REASSIGN = "reassign"
 
 # The columns of the design matrix, in order. (feature, kind, level)
 COLUMNS: tuple[tuple[str, str, str | None], ...] = (
-    *(("language", "onehot", v) for v in LANGUAGES),
     *(("channel", "onehot", v) for v in CHANNELS),
     *(("age_band", "onehot", v) for v in AGE_BANDS),
     ("contact_valid", "bool", None),
@@ -81,7 +88,6 @@ class CaseFeatures:
     consent_withdrawn: bool = False
     provider_changed: bool = False
     contact_valid: bool | None = None
-    language: str | None = None
     channel: str | None = None
     age_band: str | None = None
 
@@ -135,7 +141,6 @@ class EventSummary:
     prior_bounces: int
     consent_withdrawn: bool
     provider_changed: bool
-    language_hint: str | None
     channel_hint: str | None
 
 
@@ -146,7 +151,7 @@ def summarise_events(events) -> EventSummary:
     escalations = bounces = accepted = reassigned = 0
     transfer = False
     withdrawn = False
-    language = channel = None
+    channel = None
     for ev in events:
         t, p = ev.type, ev.payload or {}
         if t in ESCALATION_EVENTS:
@@ -166,8 +171,6 @@ def summarise_events(events) -> EventSummary:
                 withdrawn = True
             elif p.get("withdrawn") is False:
                 withdrawn = False
-        elif t == "patient_acknowledge" and p.get("lang") in ("ar", "en"):
-            language = p["lang"]
         elif t == "contact_patient" and p.get("channel") in CHANNELS:
             channel = p["channel"]
     return EventSummary(
@@ -175,7 +178,6 @@ def summarise_events(events) -> EventSummary:
         prior_bounces=cap_count(bounces),
         consent_withdrawn=withdrawn,
         provider_changed=transfer or reassigned > 0 or accepted >= 2,
-        language_hint=language,
         channel_hint=channel,
     )
 
@@ -186,9 +188,9 @@ def features_from_case(
     """Features of an API case. `model` is the case's read model (`app.state_machine.CaseModel`),
     `events` its log, `created_at` the genesis time (result receipt), `now` the simulation clock.
 
-    `attributes` optionally carries registry values for `language`, `channel`, `age_band`
-    (and `contact_valid` to override the genesis flag); without them language and channel fall back to
-    what the log shows, and the rest stay unknown.
+    `attributes` optionally carries registry values for `channel`, `age_band` (and `contact_valid`
+    to override the genesis flag); without them the channel falls back to what the log shows and the
+    age band stays unknown. A `language` entry is ignored: language is not a feature (D12).
 
     Returns None when the colonoscopy is already done or the case closed: no loss left to predict.
     """
@@ -206,7 +208,6 @@ def features_from_case(
         consent_withdrawn=s.consent_withdrawn,
         provider_changed=s.provider_changed,
         contact_valid=attrs["contact_valid"] if "contact_valid" in attrs else contact_valid_of(genesis),
-        language=attrs.get("language") or s.language_hint,
         channel=attrs.get("channel") or s.channel_hint,
         age_band=attrs.get("age_band"),
     )

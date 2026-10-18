@@ -8,7 +8,7 @@ Status: draft for the provider, the clinical lead and the human owner to adjust.
 
 **In scope.** One programme: colorectal cancer screening, from a positive FIT result to colonoscopy and documented closure. Two to three providers: the screening or primary care provider, the endoscopy provider(s) that receive referrals, and optionally a laboratory. The pathway, states and SLAs are the ones in `config/pathways/colorectal_fit.yaml`, subject to clinician review (T-E13).
 
-**Out of scope.** Any diagnosis or clinical advice; screening invitation and recall; other programmes (a mammogram pathway exists only as a configuration example); integration with the health information exchange as a condition of the pilot; AI use beyond message drafting and worklist ordering (ADR-007).
+**Out of scope.** Any diagnosis or clinical advice; screening invitation and recall; other programmes (a mammogram pathway exists only as a configuration example); integration with the health information exchange as a condition of the pilot; AI use beyond the four uses listed in [governance/ai-boundary.md](governance/ai-boundary.md) (ADR-007).
 
 **Eligibility** follows the participating programme's own rules. The DoH IFHAS standard V10 (July 2025) sets the FIT package for ages 40 to 75, annually. The standard was read first-hand in the official DoH PDF during the evidence research (docs/evidence.md section 8a, check marker P); this plan cites it through evidence.md and its author did not re-read it. The prototype's synthetic cohort is also 40 to 75 (regenerated, [data-provenance](data-provenance.md)). To verify with the participating programme: that it applies the same range and exclusions.
 
@@ -37,8 +37,13 @@ Definitions use the event log, so each KPI is computed from stored events and no
 | K6 | Patient acknowledgement rate | Share of contacted patients who acknowledge within the configured SLA (5 working days, `patient_acknowledge`) | Retrospective audit where the provider records outreach; otherwise measured from the first weeks of active mode and labelled as such | Higher than baseline; the amount is set after the baseline | Proposed |
 | K7 | Escalations judged necessary by the coordinator | Share of a reviewed sample of escalations that a coordinator judges were needed (the case really lacked progress and was not already being handled). This differs from the simulator's "escalation acted-on rate (within 5 working days)" (43.5% literature-anchored, synthetic), which measures whether someone acted on an escalation, not whether it was needed | No baseline; measured in shadow mode by reviewing the engine's suggested escalations | At least 80 percent | Proposed |
 | K8 | Cases closed without evidence | Count of cases in `closed` that lack an `evidence_ref` or a human `signed_by`, from an audit query run daily | Not applicable | **Zero.** Any non-zero value stops active mode | Design invariant (T-A1) |
+| K9 | Staff minutes per case, by role | A time-and-motion study during shadow mode: observers time the actions that coordinators, owner clinicians and specialists take on a sample of cases today, giving minutes per case by role; repeated in active mode. Reported by role and wage-weighted (assumed ratios: clinician 3 times, specialist 4 times a coordinator) | Shadow mode, days 1 to 30, on today's manual process | No saving is promised before it is measured. **Stop rule:** if owner-clinician minutes per case rise above the shadow-mode baseline, active mode pauses until the routing is changed and the clinical lead agrees to resume. The simulation expects owner-clinician time to roughly double under the current routing, so this rule is expected to trigger unless escalations are routed to nurse navigators after the clinician review before active mode starts | Replaces the simulator's assumed minutes (synthetic) with measured ones; the stop rule protects clinician time |
 
-Supporting measures reported with the KPIs: shadow-mode flag agreement (how often a coordinator confirms the engine's overdue flag), cases found that no one was tracking, number of drafted messages and the share approved without change, abstentions (template fallbacks), approval time, and coordinator minutes per case.
+**Labour claim.** In the simulation: 37.5% fewer staff minutes per case the system handles (literature-anchored, in reach, 95% CI 36.5 to 38.5), 20.5% programme-level under the 0.55 reach assumption, 41.1% in the upper range; synthetic; minutes from published time studies and assumptions.\* The 40% target is not met in the anchored scenario (only the upper range, which is not a forecast, reaches it). Coordinator time falls 37 to 71 percent; specialist time rises because more patients reach colonoscopy, which is the outcome; owner-clinician time doubles in the current routing and the planned fix is routing escalations to nurse navigators after the clinician review. At assumed wage ratios (a clinician 3 times and a specialist 4 times a coordinator; the ratios are assumed, not sourced), weighted staff time per case is flat today: 84.6 coordinator-equivalent minutes at baseline against 85.0 under the literature-anchored scenario at programme level (84.7 and 85.5 in reach). K9 replaces these assumed minutes with measured ones.
+
+\* Current estimate from the effort model; regenerated at integration.
+
+Supporting measures reported with the KPIs: shadow-mode flag agreement (how often a coordinator confirms the engine's overdue flag), cases found that no one was tracking, number of drafted messages and the share approved without change, abstentions (template fallbacks), approval time, and staff minutes per case by role (K9).
 
 **How much the numbers can say.** With the placeholder volumes in the cost script (three providers at 3,000 FIT results per year each) about 155 actionable cases are expected to enter during the 90-day window. Percentages estimated on that many cases carry wide uncertainty and will be reported with intervals. The pilot is not a trial: the comparison is before and after plus the concurrent shadow period, with no randomisation, so differences are described as associations. Provider volumes are a data request below; the plan changes if they are much lower.
 
@@ -83,9 +88,9 @@ Thresholds are proposals for the sponsor and clinical lead to set.
 | G0 Start | Before day 1 | Data sharing agreement signed; regulator and provider approvals in place (to verify which are required); security assessment passed; hosting approved as in-country for health information; clinical safety sign-off of pathway and wording; Arabic review done; feed tested end to end with synthetic data; baseline audit done; named people for every role | Any item missing |
 | G1 End of shadow | Day 30 | No patient-safety incident attributable to the system; data feed complete and timely (completeness threshold to agree, for example 95 percent); coordinators confirm the flags are useful (agreement rate and K7, escalations judged necessary, at the agreed level); staff briefed and able to use the worklist | Unexplained gaps in the feed; flags mostly wrong; a safety incident; staff not ready |
 | G2 Mid-active | Day 60 | K8 is zero; no wrong-patient message; no unsafe drafted message sent; K7 (escalations judged necessary by the coordinator) not falling; staff workload acceptable | Any case closed without evidence (stop at once, investigate); any wrong-patient message |
-| G3 End | Day 90, readout at day 180 | KPI movement against baseline (K1 to K7) reported with intervals; K8 zero throughout; staff and patient feedback summarised | Provider decides not to continue, or a safety finding is unresolved |
+| G3 End | Day 90, readout at day 180 | KPI movement against baseline (K1 to K7) reported with intervals; K9 minutes by role reported; K8 zero throughout; staff and patient feedback summarised | Provider decides not to continue, or a safety finding is unresolved |
 
-Stop rules apply at any time: a case closed without evidence, a message to the wrong patient, or silent loss of the feed that the watchdog failed to flag stops active mode until a root cause is documented.
+Stop rules apply at any time: a case closed without evidence, a message to the wrong patient, or silent loss of the feed that the watchdog failed to flag stops active mode until a root cause is documented. Owner-clinician minutes per case above the shadow-mode baseline (K9) pause active mode until the routing is changed.
 
 ## 7. Risks
 
@@ -100,11 +105,15 @@ Stop rules apply at any time: a case closed without evidence, a message to the w
 | Consent withdrawal or opt-outs higher than expected | Fewer reachable patients | Consent ledger freezes outreach and flags a person; report separately |
 | Model drafting error | Unsafe or poor message | Validation, template fallback, owner approval (design-choices) |
 | Arabic wording misunderstood | Patients do not respond | Native-speaker review, plain language, "I don't understand" route to a human |
-| Staff workload rises | Resistance | Measure coordinator minutes per case; the cost model assumes a reduction that must be confirmed |
+| Staff workload rises | Resistance | Measure staff minutes per case by role (K9); the cost model assumes a reduction that must be confirmed, and the stop rule watches owner-clinician time |
 | Operator or regulator timelines | Delay | Pilot does not depend on health information exchange connectivity |
 | Prototype-to-production gap | Pilot software is not yet production grade | [Pilot-hardening checklist](governance/pilot-hardening.md) and the limitations table; pilot starts only after G0 |
 
 ## 8. Commercial model options
+
+**Lead with capacity.** The offer is to grow screening without growing coordinators, together with the outcomes: more patients reach colonoscopy and fewer are lost without anyone told (section 3, synthetic). In the simulation coordinator time falls 37 to 71 percent while the case count the programme can follow rises with the outcome; it is a capacity argument before it is a cost argument.
+
+**Wage-weighted note.** At assumed wage ratios (a clinician 3 times and a specialist 4 times a coordinator; the ratios are assumed, not sourced), weighted staff time per case is flat today: 84.6 coordinator-equivalent minutes at baseline against 85.0 under the literature-anchored scenario at programme level (84.7 and 85.5 in reach). The per-case cost saving is therefore close to zero today, and the coordinator-hour saving is not a cash saving until clinician and specialist minutes are brought down (the planned routing fix) or the freed coordinator hours are used to screen more members. The cost model below values every staff minute at the coordinator rate, which overstates the saving; read its provider-net lines as an upper bound. K9 measures the real minutes.
 
 Two options are compared; a hybrid (small platform fee plus a lower per-unit fee) is also possible. Fees in the script are illustrative placeholders, not an offer.
 
@@ -126,7 +135,7 @@ Nothing below has been discussed with any buyer. The buyer types are a way to th
 |---|---|---|---|
 | The DoH / ADPHC screening programme | Programme-level purchase: pays for members screened across the participating providers; fits a programme that already counts uptake | Pays for each FIT-positive case tracked; fits a programme that reports follow-up KPIs | Programme-level purchase with KPI reporting (the standards' KPIs are programme-level shares, section 3). Funding route to verify |
 | A payer such as Daman or Thiqa | Pays per covered member screened in the year | Pays per FIT-positive case tracked among covered members | To verify: whether a payer would fund follow-up tracking, and under which programme |
-| Provider groups (public and private hospital and clinic networks running screening) | The group pays per member it screens; the saving is its coordinators' time | The group pays per FIT-positive case it tracks; lower fixed outlay | The provider-net lines in the output below show the assumed saving against each fee |
+| Provider groups (public and private hospital and clinic networks running screening) | The group pays per member it screens; the benefit is coordinator capacity (hours freed) and outcomes | The group pays per FIT-positive case it tracks; lower fixed outlay | The provider-net lines in the output below set the assumed time saved, valued at the coordinator rate, against each fee; they are negative today, so the case rests on capacity and outcomes |
 
 ### A low-cost shadow-pilot option
 
@@ -143,7 +152,7 @@ Every input below is an assumption, not a quote, forecast or measured value.
 
 INPUTS
 input                                          value  status   unit
---------------------------------------------  ------  -------  ------------------------------------------------------------------
+--------------------------------------------  ------  -------  ----------------------------------------------------------------
 positivity_rate                                 0.07  assumed  share of screened members with a positive FIT
 hosting_fixed_aed_per_month                     9000  assumed  AED per month
 hosting_variable_aed_per_1000_cases_per_year     400  assumed  AED per 1,000 actionable cases per year
@@ -154,8 +163,8 @@ support_fte_loaded_cost_aed_per_year          300000  assumed  AED per FTE per y
 integration_one_off_aed_per_provider          120000  assumed  AED per participating provider, one-off
 members_per_provider                           20000  assumed  screened members per year per provider
 amortisation_years                                 3  assumed  years
-coordinator_minutes_per_case_manual               90  assumed  minutes of coordinator time per actionable case without the engine
-coordinator_minutes_per_case_with_engine          35  assumed  minutes of coordinator time per actionable case with the engine
+coordinator_minutes_per_case_manual             57.3  assumed  staff minutes (all roles) per actionable case without the engine
+coordinator_minutes_per_case_with_engine        45.5  assumed  staff minutes (all roles) per actionable case with the engine
 coordinator_cost_aed_per_hour                    120  assumed  AED per hour
 price_per_screened_member_per_year_aed           6.0  assumed  AED per screened member per year
 price_per_actionable_case_aed                     90  assumed  AED per actionable (FIT-positive) case
@@ -199,17 +208,17 @@ cost per screened member           33.73            9.57             4.94
 COORDINATOR TIME (assumed minutes per case, with vs without the engine)
 per year                 10,000 members  50,000 members  200,000 members
 -----------------------  --------------  --------------  ---------------
-coordinator hours saved             642           3,208           12,833
-value of time saved              77,000         385,000        1,540,000
+coordinator hours saved             138             688            2,753
+value of time saved              16,520          82,600          330,400
 
 COMMERCIAL OPTIONS (per year; illustrative fees from the inputs file)
 per year                         10,000 members  50,000 members  200,000 members
 -------------------------------  --------------  --------------  ---------------
 A: fee per screened member               60,000         300,000        1,200,000
-A: provider net (saving - fee)           17,000          85,000          340,000
+A: provider net (saving - fee)          -43,480        -217,400         -869,600
 A: operator margin (fee - cost)        -277,280        -178,400          212,400
 B: fee per actionable case               63,000         315,000        1,260,000
-B: provider net (saving - fee)           14,000          70,000          280,000
+B: provider net (saving - fee)          -46,480        -232,400         -929,600
 B: operator margin (fee - cost)        -274,280        -163,400          272,400
 
 90-DAY PILOT (enrolment window plus follow-up tail)
@@ -262,7 +271,7 @@ READ THIS FIRST: all inputs are assumed. Cost per case falls with volume because
 licences and the support base are fixed; the numbers show that shape, not a price.
 ```
 
-How to read it. At the smallest volume the operator's cost to serve is well above either illustrative fee, so a pilot would be priced as an investment or at cost recovery by agreement, not at a steady-state fee. At the largest volume both illustrative fees cover the operator's cost and still leave the provider better off than the assumed coordinator time saved, but that depends entirely on the assumed minutes per case, which the pilot measures (supporting measure: coordinator minutes per case).
+How to read it. At the smallest volume the operator's cost to serve is well above either illustrative fee, so a pilot would be priced as an investment or at cost recovery by agreement, not at a steady-state fee. At the largest volume both illustrative fees cover the operator's cost, but the assumed time saved, 11.8 staff minutes per case (57.3 against 45.5, from the simulator, synthetic), is worth far less than either fee when valued at the coordinator rate, so the provider-net lines are negative. The script values every staff minute at the coordinator rate and labels the rows "coordinator hours", although the minutes are all-role minutes; wage-weighted (assumed ratios, section 8 note) the saving is about zero. Read the output as a statement that today's illustrative fees cannot be justified by labour cost alone: the case for a buyer is capacity (grow screening without growing coordinators) and outcomes, and the fees would be set against those, or against measured minutes from K9, not against assumed labour savings.
 
 How to read the shadow pilot. Same three providers and the same placeholder volumes as the full pilot, so the same 155 expected cases in the window. The total is 105,828 against 577,624 for the full pilot, and 681 per case against 3,718. The difference comes from three assumed inputs: a much smaller one-off integration per provider (15,000 against 120,000, because it is an export mapping and not a live feed), less support, and a smaller hosting and licence footprint. These are assumptions chosen to be plausible, not quotes, and the export format each provider can actually produce is a data request (section 5).
 

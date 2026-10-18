@@ -68,7 +68,7 @@ add(1, 0.62, 95, [
   ["book_confirmatory", 70, KARIM_ACTOR, { appointment_ref: "APPT-2026-0412" }],
   ["complete_confirmatory", 30, KARIM_ACTOR, { result_ref: "DiagnosticReport/colonoscopy-0001" }],
 ]);
-// 2. Patient contacted 22 days ago; acknowledgement (7 working days) overdue.
+// 2. Patient contacted 22 days ago; acknowledgement (5 working days) overdue.
 add(2, 0.81, 40, [
   ["acknowledge", 39, "lab:Central Lab"],
   ["accept_ownership", 37, SARA_ACTOR, SARA],

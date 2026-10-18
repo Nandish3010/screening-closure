@@ -82,3 +82,26 @@ describe("C9: stale-scheduler banner", () => {
     expect(screen.queryByTestId("scheduler-banner")).toBeNull();
   });
 });
+
+describe("dashboard headline numbers and subtitle", () => {
+  it("shows n/a, not a bare 'days', when P50 and P90 are null (nothing has closed yet)", async () => {
+    const base = createMockAdapter(null);
+    const api = { ...base, closureMetrics: async () => ({ ...(await base.closureMetrics()), p50_days: null, p90_days: null }) };
+    renderWithApp(<DashboardPage />, { api });
+    const p50 = await screen.findByTestId("kpi-p50");
+    expect(p50).toHaveTextContent("n/a");
+    expect(p50).not.toHaveTextContent(/days/);
+    expect(screen.getByTestId("kpi-p90")).toHaveTextContent("n/a");
+  });
+
+  it("says fixture data for the mock adapter and live data from the API for the http adapter", async () => {
+    const base = createMockAdapter(null);
+    const { unmount } = renderWithApp(<DashboardPage />, { api: base });
+    expect(await screen.findByTestId("dashboard-subtitle")).toHaveTextContent(/fixture data.*fixed seed/i);
+    unmount();
+    renderWithApp(<DashboardPage />, { api: { ...base, adapter: "http" as const } });
+    const sub = await screen.findByTestId("dashboard-subtitle");
+    expect(sub).toHaveTextContent(/live data from the API/i);
+    expect(sub).not.toHaveTextContent(/fixed seed/i);
+  });
+});

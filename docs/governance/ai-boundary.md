@@ -2,7 +2,9 @@
 
 Where a language model may be used in this system, where it may not, how its output is checked, and how we count the times we did not use it. Design rationale: ADR-001 and ADR-007 in `project/DECISIONS.md`. Code: `api/app/ai/`.
 
-**One sentence.** The model drafts text for a human to approve. It never moves a case, closes a case, decides care or contacts a patient.
+**One sentence.** Models are used in four places, drafting patient messages for human approval, ordering the worklist by a calibrated risk score, planning the agency's work queue, and classifying inbound patient replies, plus automatic sending of clinician-pre-approved deterministic templates; no model and no agent can move a case between states, approve a message, change consent or close a case.
+
+The sections below set out the drafting model's boundary in full.
 
 ## 1. What the model may do
 

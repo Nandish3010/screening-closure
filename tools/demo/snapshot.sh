@@ -21,6 +21,9 @@
 # The event log is append-only (triggers forbid UPDATE and DELETE), so "undo the demo" can only mean
 # replacing the database, never deleting rows.
 #
+# Restore also deletes the `heartbeats` rows copied from the snapshot (they are stale by construction), so the
+# watchdog starts from "no heartbeat yet" instead of raising and then clearing a false `scheduler_down`.
+#
 # The fingerprint covers what a demo can change and nothing that changes by itself: cases, events (every column
 # that is data), drafts, notifications, the clock, and the number of live FHIR resources per type. Heartbeats,
 # alerts and the `users` directory (every dev login writes it) are left out on purpose.
@@ -141,6 +144,11 @@ case "$cmd" in
     done
     # a new database starts with the default CONNECT-for-everyone; HAPI's is for its owner only (SEC-1)
     psql_admin -c "REVOKE CONNECT ON DATABASE $HAPI_DB FROM PUBLIC" >/dev/null
+    # The copy carries the snapshot-time heartbeat rows, whose wall-clock age is minutes or days by now. The watchdog
+    # would read the scheduler's as stale on its first scan and open `scheduler_down` (and GET /alerts would derive
+    # `watchdog_down` from the watchdog's own) until the services beat again. No row means "warming" (60 s of
+    # forgiveness, api/app/ops.py), which is the truth: nothing has been seen since the restart.
+    echo "DELETE FROM heartbeats" | psql_db "$DB" >/dev/null
     t1=$(now)
     start_services "$t0"
     echo "snapshot: restored $DB and $HAPI_DB from $SNAP and $HAPI_SNAP (stop $(python3 -c "print(f'{$ts-$t0:.1f}')") s, database copy $(python3 -c "print(f'{$t1-$ts:.1f}')") s); API answering after $API_READY_S s, HAPI after $HAPI_READY_S s"

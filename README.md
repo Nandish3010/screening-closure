@@ -4,11 +4,17 @@ Every actionable screening result has a named owner, a clock, an audit trail, an
 
 **Outcome, in a simulation on synthetic data (literature-anchored scenario):** colonoscopy within 180 days rises from 52% to 66%; cases lost without anyone told fall from 44.5% to 0% for cases the programme reaches, and to 20% programme-level under a 0.55 reach assumption. Details and intervals: [docs/results/results.md](docs/results/results.md).
 
+**Capacity, in the same simulation (literature-anchored scenario):** 37.5% fewer staff minutes per case the system handles (literature-anchored, in reach, 95% CI 36.5 to 38.5), 20.5% programme-level under the 0.55 reach assumption, 41.1% in the upper range; synthetic; minutes from published time studies and assumptions.\* The 40% target is not met in the anchored scenario (only the upper range, which is not a forecast, reaches it). Coordinator time falls 37 to 71 percent; specialist time rises because more patients reach colonoscopy, which is the outcome; owner-clinician time doubles in the current routing and the planned fix is routing escalations to nurse navigators after the clinician review.
+
+\* Current estimate from the effort model; regenerated at integration.
+
 **All data in this repository is synthetic: a Synthea v3.3.0 cohort plus a seeded simulator, with no real patient, clinician or facility data.**
 
 ## What this is / is not
 
-This is a deterministic closure engine for one pathway: a positive FIT (faecal immunochemical test) result, then a confirmatory colonoscopy, then a clinician-signed closure. It tracks each case, nudges, escalates to humans, and closes only with evidence. It is not a diagnostic tool, and the only use of AI is to draft patient messages that a human approves before anything is sent.
+This is a deterministic closure engine for one pathway: a positive FIT (faecal immunochemical test) result, then a confirmatory colonoscopy, then a clinician-signed closure. It tracks each case, nudges, escalates to humans, and closes only with evidence. It is not a diagnostic tool. Models are used in four places, drafting patient messages for human approval, ordering the worklist by a calibrated risk score, planning the agency's work queue, and classifying inbound patient replies, plus automatic sending of clinician-pre-approved deterministic templates; no model and no agent can move a case between states, approve a message, change consent or close a case.
+
+People act on decisions and conversations; the system does the rest. The phone call after an escalation is the evidence-based intervention, not waste; automation prepares it, a person makes it.
 
 ## Judge path in 5 minutes
 
@@ -70,9 +76,15 @@ flowchart LR
 - A working-day SLA engine drives an escalation ladder to named humans.
 - The watchdog finds open cases nobody is touching, and heartbeats make a stopped scheduler raise an alert.
 - Every event is projected to HAPI FHIR R4 resources.
-- The model is confined to drafting patient messages. It cannot send, decide or close.
+- Models sit at the edges and cannot move a case, approve a message, change consent or close a case ([AI boundary](docs/governance/ai-boundary.md)).
 
 Detail: [docs/submission/technical-documentation.md](docs/submission/technical-documentation.md).
+
+## Why a programme would buy it
+
+Capacity first: grow screening without growing coordinators. The same engine that lifts colonoscopy completion from 52% to 66% takes over the routine steps of each case, so coordinator hours per handled case fall by more than a third in the literature-anchored scenario (synthetic, assumed minutes), and people keep the decisions and the conversations. Outcomes come with the capacity: more patients reach colonoscopy and fewer are lost without anyone told.
+
+The saving is in coordinator hours, not in cost per case. At assumed wage ratios (a clinician 3 times and a specialist 4 times a coordinator; the ratios are assumed, not sourced), weighted staff time per case is flat today: 84.6 coordinator-equivalent minutes at baseline against 85.0 under the literature-anchored scenario at programme level (84.7 and 85.5 in reach). The commercial claim is therefore capacity plus outcomes, and the pilot measures the minutes (time-and-motion study, KPI K9 in [docs/pilot-plan.md](docs/pilot-plan.md)).
 
 ## What is in the box
 

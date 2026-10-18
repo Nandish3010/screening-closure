@@ -10,7 +10,7 @@ Safety-critical state transitions are deterministic and replayable: every change
 
 ## Comparison
 
-Two architectures are compared for the same job: keeping every actionable screening result owned, timed and closed with evidence. The first is what this project builds, a deterministic engine in which state changes are decided by code and by people, with a model confined to drafting. The second is an agentic orchestration in which a language model, or a group of model-driven agents, decides what happens next to a case (routes it, escalates it, judges whether evidence is sufficient, and closes it) using tools. Agentic designs are a reasonable choice for many problems, especially where inputs are unstructured and mistakes are cheap to reverse. The comparison below concerns this particular job, where a wrong closure is a patient treated as finished when they are not. The judgments are reasoning about architectures, not measurements of any specific product. Figures marked "illustrative" are assumptions chosen to show the shape of the difference and are not benchmarks.
+Two architectures are compared for the same job: keeping every actionable screening result owned, timed and closed with evidence. The first is what this project builds, a deterministic engine in which state changes are decided by code and by people, with models confined to the edges (see "Where we do use a model" below). The second is an agentic orchestration in which a language model, or a group of model-driven agents, decides what happens next to a case (routes it, escalates it, judges whether evidence is sufficient, and closes it) using tools. Agentic designs are a reasonable choice for many problems, especially where inputs are unstructured and mistakes are cheap to reverse. The comparison below concerns this particular job, where a wrong closure is a patient treated as finished when they are not. The judgments are reasoning about architectures, not measurements of any specific product. Figures marked "illustrative" are assumptions chosen to show the shape of the difference and are not benchmarks.
 
 | Dimension | Deterministic engine + human gates | Agentic orchestration |
 |---|---|---|
@@ -49,7 +49,7 @@ When the model provider is down, slow or returns something that fails validation
 
 ### Regulator explainability
 
-A regulator or an auditor will ask three questions: what are the rules, who applied them to this patient, and how do you know they are applied every time. For the engine the answers are the pathway config (states, transitions, SLAs, escalation ladder, closure rule), the event log for the patient, and the property tests, respectively. They can be given on paper, and the config is short enough to read in one sitting. For an agentic design the first answer is a prompt and a set of tools, the second is a transcript, and the third is an evaluation on samples. Each can be right, but the answer to the third question is a statistical statement about behaviour at one model version, and it must be redone when the model changes, which for hosted models is outside the operator's control. The Abu Dhabi Responsible AI Standard asks for human oversight, traceability of inputs, outputs and versions, and clinician authority in AI-assisted decisions (see the regulatory mapping for references and what remains to verify). Confining the model to drafting behind an approval makes these requirements apply to a small surface.
+A regulator or an auditor will ask three questions: what are the rules, who applied them to this patient, and how do you know they are applied every time. For the engine the answers are the pathway config (states, transitions, SLAs, escalation ladder, closure rule), the event log for the patient, and the property tests, respectively. They can be given on paper, and the config is short enough to read in one sitting. For an agentic design the first answer is a prompt and a set of tools, the second is a transcript, and the third is an evaluation on samples. Each can be right, but the answer to the third question is a statistical statement about behaviour at one model version, and it must be redone when the model changes, which for hosted models is outside the operator's control. The Abu Dhabi Responsible AI Standard asks for human oversight, traceability of inputs, outputs and versions, and clinician authority in AI-assisted decisions (see the regulatory mapping for references and what remains to verify). Confining models to a few edges, none of which can change a case, makes these requirements apply to a small surface.
 
 ### Testability
 
@@ -61,10 +61,14 @@ A model-driven component is a better fit where the input is unstructured and the
 
 ## Where we do use a model and why it is safe
 
-A model is used in exactly two places (ADR-007), both at the edge of the system and neither able to change the state of a case.
+Models are used in four places, drafting patient messages for human approval, ordering the worklist by a calibrated risk score, planning the agency's work queue, and classifying inbound patient replies, plus automatic sending of clinician-pre-approved deterministic templates; no model and no agent can move a case between states, approve a message, change consent or close a case. All of them sit at the edge of the system (ADR-007).
 
 1. **Drafting patient messages (Arabic and English).** From the state of a case, the model proposes the text of a reminder or an explanation of next steps. The draft is only a proposal until the case owner approves it.
 2. **A single loss-to-follow-up risk score** (logistic regression on simulator features) used only to order the worklist. It is not a language model. It does not close, escalate or decide care. Without it the worklist is ordered by SLA breach.
+3. **Planning the agency's work queue.** The planner may reorder tasks and write a rationale; it holds no authority over a case.
+4. **Classifying inbound patient replies.** A small offline model labels a reply so that it reaches the right person. Low confidence, questions, opt-outs and anything unclear go to a person.
+
+Automatic sending is separate from these: the system may send a deterministic template that a clinician approved in advance, within the consent, frequency and version rules enforced by the state machine. No model writes or chooses that text.
 
 For drafting, the controls are these.
 
