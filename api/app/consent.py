@@ -45,7 +45,7 @@ def ensure_review_requested(
     appended (None if a review was already flagged or the case is not frozen).
     """
     model = store.read_model(case_id, pathway)
-    if model is None or not model.consent_frozen or model.review_reason is not None:
+    if model is None or not model.consent_frozen or model.review_reason == "consent_withdrawn":
         return None
     flag = Event(
         case_id,

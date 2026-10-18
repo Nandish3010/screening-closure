@@ -22,7 +22,7 @@ def test_every_openapi_route_has_a_policy_decision_and_no_decision_is_stale():
 
 def test_every_role_route_and_scope_behaves_as_the_policy_tables_say(result):
     assert result.problems == []
-    # 24 routes + 25 event types x 9 callers, own and other where scope applies: a sanity floor, not a count to maintain
+    # 29 routes + 28 event types x 10 callers, own and other where scope applies: a sanity floor, not a count to maintain
     assert result.probes > 400 and len(result.routes) == len(policy.ROUTE_POLICY)
 
 
@@ -44,12 +44,16 @@ def test_nobody_but_the_gate_can_post_message_sent_message_approved_or_review_re
 
 def test_service_tokens_reach_only_their_own_routes_and_events(result):
     for (method, path, role), cell in result.route_cells.items():
-        if role in ("scheduler", "watchdog") and cell.text() == "A":
+        if role in ("scheduler", "watchdog", "automation") and cell.text() == "A":
             entry = policy.ROUTE_POLICY[(method, path)]
             assert entry in (policy.PUBLIC, policy.ANY_IDENTITY) or role in entry
-    allowed_events = {role: {e for e in policy.EVENT_POLICY if result.event_cells[(e, role)].text() == "A"} for role in ("scheduler", "watchdog")}
+    allowed_events = {role: {e for e in policy.EVENT_POLICY if result.event_cells[(e, role)].text() == "A"} for role in ("scheduler", "watchdog", "automation")}
     assert allowed_events["scheduler"] == {"mark_overdue", "escalate", "handoff_rejected"}
     assert allowed_events["watchdog"] == {"watchdog_flagged"}
+    # A21: the automation token reaches exactly its five postable events; it can never close a case
+    assert allowed_events["automation"] == {"acknowledge", "assign_ownership", "complete_confirmatory",
+                                            "closure_proposed", "handoff_requested"}
+    assert result.event_cells[("close", "automation")].text() == "R"
 
 
 # ---- the check itself catches what it is for

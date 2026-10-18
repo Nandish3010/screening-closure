@@ -65,6 +65,12 @@ annotations:
   - message_sent
   - callback_requested
   - watchdog_flagged
+  # A21 (ADR-032), both emitted only by the automation actor `system:automation`: `assign_ownership` names the owner of
+  # a new case from the registration (the owner still accepts, and the ladder reaches them if they do not);
+  # `closure_proposed` records that the evidence scan found closure evidence. Neither changes the main state, and
+  # neither can close a case: `close` still needs a person, evidence and a signature.
+  - assign_ownership
+  - closure_proposed
 # Events an automated actor (system:, scheduler, watchdog, model:) may never emit.
 human_only_events:
   - escalation_accepted

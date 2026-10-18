@@ -2,7 +2,10 @@
 log and never sent. This module opens no network connection and imports nothing that could.
 
 `send` is the only code path that writes `message_sent` (no route can post it: EVENT_POLICY is
-empty for it, and the state machine accepts it only from `system:notifier`). The state machine also
+empty for it, and the state machine accepts it only from `system:notifier`, for an approved draft, or, since
+A21 (ADR-032), from `system:automation`, for a pre-approved deterministic template named in
+config/outreach_policy.yaml, within the weekly cap and the patient's consent: `send(..., auto=...)`, called by
+`app.automation` and by nothing else). The state machine also
 holds the approval gate (SEC-2, ADR-030): it accepts a `message_sent` only for a draft a human approved
 on that case and that has not gone out, on a channel the patient consents to at that moment. Approving a
 draft writes an outbox row (`app.outbox`) in the same transaction as the approval; `drain_outbox` calls
@@ -34,7 +37,7 @@ from app import payloads
 from app.clock import clock
 from app.consent import CHANNELS, channel_allowed
 from app.events import CaseNotFound, Event
-from app.state_machine import NOTIFIER_ACTOR, InvalidTransition
+from app.state_machine import AUTOMATION_ACTOR, NOTIFIER_ACTOR, InvalidTransition
 
 log_ = logging.getLogger("app.notify")
 
@@ -124,8 +127,9 @@ def outbox_notification_id(draft_id) -> UUID:
 
 def emit_message_sent(store, pathway, case_id: UUID, notification_id: UUID, channel: str,
                       language: str, purpose: str, at: datetime, draft_id: str | None = None,
-                      within=None) -> Event:
-    """Append `message_sent` as `system:notifier`. Python-level on purpose: there is no route.
+                      within=None, auto: dict | None = None) -> Event:
+    """Append `message_sent` as `system:notifier` (an approved draft) or, with `auto={"template_id", "template_version"}`,
+    as `system:automation` (a pre-approved template, A21). Python-level on purpose: there is no route.
 
     `within(cur)` runs in the same transaction as the event (the notification row and the outbox
     mark go there). The state machine accepts the event only for a draft a human approved on this
@@ -134,7 +138,9 @@ def emit_message_sent(store, pathway, case_id: UUID, notification_id: UUID, chan
                "language": language, "purpose": purpose}
     if draft_id is not None:
         payload["draft_id"] = draft_id
-    event = Event(case_id, "message_sent", at, NOTIFIER_ACTOR, payload,
+    if auto is not None:
+        payload.update({"auto": True, "template_id": auto["template_id"], "template_version": auto["template_version"]})
+    event = Event(case_id, "message_sent", at, AUTOMATION_ACTOR if auto is not None else NOTIFIER_ACTOR, payload,
                   uuid.uuid5(NOTIFY_NAMESPACE, str(notification_id)))
     payloads.validate(event.type, event.payload)
     store.append(event, pathway, within=within)  # InvalidTransition if the case cannot take it
@@ -155,11 +161,12 @@ def send(
     notification_log: NotificationLog | None = None,
     notification_id: UUID | None = None,
     also=None,
+    auto: dict | None = None,
 ) -> Notification:
     """Mock-send one message. Returns the logged `Notification` (status says what happened).
 
-    A message is sent only for an approved draft (`draft_id`): the state machine refuses the
-    `message_sent` otherwise (InvalidTransition). The `message_sent` event and the notification row are
+    A message is sent only for an approved draft (`draft_id`), or, with `auto` (A21), for a pre-approved template: the
+    state machine refuses the `message_sent` otherwise (InvalidTransition). The `message_sent` event and the notification row are
     written in ONE transaction (SEC-2): a failure between them leaves neither. `also(cur, row)`, if
     given, runs in that same transaction (the outbox drain marks its row there; `cur` is None where the
     store has no transaction to share, or for a blocked message, which has no event). `notification_id`
@@ -210,7 +217,7 @@ def send(
         wrote.append(True)
 
     emit_message_sent(store, pathway, case_id, notification_id, channel, language, purpose, at, draft_id,
-                      within=together)
+                      within=together, auto=auto)
     if not wrote:  # the event was already in the log (a retry): make sure its row and mark are too
         out.add(row)
         if also is not None:

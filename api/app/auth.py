@@ -24,6 +24,7 @@ from fastapi import Depends, HTTPException
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from app.config import (
+    AUTOMATION_TOKEN_DEFAULT,
     DEV_AUTH_SECRET_DEFAULT,
     SCHEDULER_TOKEN_DEFAULT,
     WATCHDOG_TOKEN_DEFAULT,
@@ -40,8 +41,9 @@ USER_ROLES = (
 )
 SCHEDULER_ROLE = "scheduler"  # service role; only reachable with the service token
 WATCHDOG_ROLE = "watchdog"  # service role; may emit watchdog_flagged and nothing else (A11)
+AUTOMATION_ROLE = "automation"  # service role; the A21 automation actor (system:automation), never closes a case
 # Names that can never be a user role, even by accident.
-AUTOMATED_ROLE_NAMES = ("system", "scheduler", "watchdog", "model")
+AUTOMATED_ROLE_NAMES = ("system", "scheduler", "watchdog", "model", "automation")
 
 NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9 ._@-]{0,63}$")  # no ":" so role:name parses
 PATIENT_REF_RE = re.compile(r"^Patient/[A-Za-z0-9-]{1,64}$")  # the same shape a case's patient_ref must have (SEC-1)
@@ -188,6 +190,10 @@ def service_identity(token: str) -> Identity | None:
         token.encode(), settings.watchdog_service_token.encode()
     ):
         return Identity("service", WATCHDOG_ROLE, "watchdog")
+    if settings.automation_service_token and hmac.compare_digest(
+        token.encode(), settings.automation_service_token.encode()
+    ):
+        return Identity("service", AUTOMATION_ROLE, "automation")
     return None
 
 
@@ -207,6 +213,7 @@ def secure_config_problems() -> list[str]:
         ("DEV_AUTH_SECRET", settings.dev_auth_secret, DEV_AUTH_SECRET_DEFAULT),
         ("SCHEDULER_SERVICE_TOKEN", settings.scheduler_service_token, SCHEDULER_TOKEN_DEFAULT),
         ("WATCHDOG_SERVICE_TOKEN", settings.watchdog_service_token, WATCHDOG_TOKEN_DEFAULT),
+        ("AUTOMATION_SERVICE_TOKEN", settings.automation_service_token, AUTOMATION_TOKEN_DEFAULT),
     )
     for name, value, default in secrets:
         if value == default:
@@ -215,8 +222,15 @@ def secure_config_problems() -> list[str]:
             problems.append(f"{name} is empty")
         elif len(value.encode()) < MIN_SECRET_BYTES:
             problems.append(f"{name} is shorter than {MIN_SECRET_BYTES} bytes")
-    if settings.scheduler_service_token == settings.watchdog_service_token:
-        problems.append("SCHEDULER_SERVICE_TOKEN and WATCHDOG_SERVICE_TOKEN are the same value")
+    tokens = (
+        ("SCHEDULER_SERVICE_TOKEN", settings.scheduler_service_token),
+        ("WATCHDOG_SERVICE_TOKEN", settings.watchdog_service_token),
+        ("AUTOMATION_SERVICE_TOKEN", settings.automation_service_token),
+    )
+    for i, (name_a, a) in enumerate(tokens):
+        for name_b, b in tokens[i + 1:]:
+            if a == b:
+                problems.append(f"{name_a} and {name_b} are the same value")
     return problems
 
 

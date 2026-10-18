@@ -23,14 +23,22 @@ is never blocked by a lookup.
 from __future__ import annotations
 
 import json
+import re
 import urllib.error
+import urllib.parse
 import urllib.request
+from datetime import UTC, datetime
 from typing import Protocol
 
 from app.auth import Identity
 
 CASE_IDENTIFIER_SYSTEM = "urn:screening-closure:case"
 MAX_BODY_BYTES = 1_000_000
+# The colonoscopy codes the recorder (app.confirmatory) writes and a HAPI search can match (A21).
+COLONOSCOPY_SNOMED = "http://snomed.info/sct|73761001"
+COLONOSCOPY_LOINC = "http://loinc.org|18746-8"
+_PATIENT_REF = re.compile(r"^Patient/[A-Za-z0-9-]{1,64}$")
+_FOUND_ID = re.compile(r"^[A-Za-z0-9-]{1,64}$")  # a reference the payload schemas accept (no dots)
 
 
 def well_formed_ref(ref: str) -> bool:
@@ -132,16 +140,127 @@ class FhirVerifier:
 verifier: EvidenceVerifier = AcceptAllVerifier()
 
 
+# ---- finding evidence (A21, ADR-032) -------------------------------------------------------------------------------
+#
+# The evidence scan asks HAPI whether a colonoscopy exists for a case, so a person does not have to hunt for it. It only
+# FINDS references; whether one is evidence for THIS case is the verifier's call (the same `exists` that `close` uses), and
+# whether the case may close stays a person's.
+
+
+class EvidenceFinder(Protocol):
+    def find(self, *, case_id, patient_ref: str | None, after: datetime | None) -> list[str]:
+        """Candidate closure-evidence references (`Procedure/<id>` first, then `DiagnosticReport/<id>`) for the case:
+        a resource carrying the case identifier, or a colonoscopy of the patient dated at or after `after` (the
+        booking). Raises EvidenceUnavailable if HAPI cannot answer."""
+        ...
+
+
+class NullFinder:
+    """No HAPI to ask: finds nothing, so the evidence scan does nothing."""
+
+    def find(self, *, case_id, patient_ref=None, after=None) -> list[str]:
+        return []
+
+
+class StaticFinder:
+    """Returns what it was given for a case id (unit tests)."""
+
+    def __init__(self, found=None, fail: str | None = None) -> None:
+        self.found = {str(k): list(v) for k, v in (found or {}).items()}
+        self.fail = fail
+        self.calls: list[tuple[str, str | None, datetime | None]] = []
+
+    def find(self, *, case_id, patient_ref=None, after=None) -> list[str]:
+        self.calls.append((str(case_id), patient_ref, after))
+        if self.fail:
+            raise EvidenceUnavailable(self.fail)
+        return list(self.found.get(str(case_id), []))
+
+
+def _when(resource: dict) -> datetime | None:
+    raw = resource.get("performedDateTime") or (resource.get("performedPeriod") or {}).get("start") \
+        or resource.get("effectiveDateTime") or (resource.get("effectivePeriod") or {}).get("start")
+    if not isinstance(raw, str):
+        return None
+    try:
+        parsed = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    return parsed if parsed.tzinfo else parsed.replace(tzinfo=UTC)
+
+
+class FhirFinder:
+    """GET <base>/Procedure and <base>/DiagnosticReport searches: first by the case identifier, then by the patient and
+    the colonoscopy code. A hit by identifier counts whatever its date (it names this case); a hit by code must be dated
+    at or after `after`. The client-side date test is the authority (HAPI's `date` search is only a pre-filter)."""
+
+    def __init__(self, base_url: str, timeout: float = 5.0) -> None:
+        self.base_url = base_url.rstrip("/")
+        self.timeout = timeout
+
+    def _search(self, resource_type: str, params: dict) -> list[dict]:
+        url = f"{self.base_url}/{resource_type}?{urllib.parse.urlencode({**params, '_count': 20})}"
+        request = urllib.request.Request(url, headers={"Accept": "application/fhir+json"}, method="GET")
+        try:
+            with urllib.request.urlopen(request, timeout=self.timeout) as resp:
+                raw = resp.read(MAX_BODY_BYTES + 1)
+        except urllib.error.HTTPError as exc:
+            raise EvidenceUnavailable(f"FHIR server answered HTTP {exc.code}") from exc
+        except Exception as exc:  # connection refused, timeout, DNS ...
+            raise EvidenceUnavailable(f"FHIR server unreachable: {exc}") from exc
+        if len(raw) > MAX_BODY_BYTES:
+            return []
+        try:
+            body = json.loads(raw)
+        except ValueError:
+            return []
+        if not isinstance(body, dict) or body.get("resourceType") != "Bundle":
+            return []
+        out = []
+        for entry in body.get("entry") or []:
+            res = entry.get("resource") if isinstance(entry, dict) else None
+            if isinstance(res, dict) and res.get("resourceType") == resource_type and _FOUND_ID.match(str(res.get("id"))):
+                out.append(res)
+        return out
+
+    def find(self, *, case_id, patient_ref=None, after=None) -> list[str]:
+        found: list[str] = []
+        floor = (after if after is None or after.tzinfo else after.replace(tzinfo=UTC))
+        for resource_type, code in (("Procedure", COLONOSCOPY_SNOMED), ("DiagnosticReport", COLONOSCOPY_LOINC)):
+            hits = self._search(resource_type, {"identifier": f"{CASE_IDENTIFIER_SYSTEM}|{case_id}"})
+            if patient_ref and _PATIENT_REF.match(patient_ref):
+                hits += self._search(resource_type, {"subject": patient_ref, "code": code})
+            for res in hits:
+                ref = f"{resource_type}/{res['id']}"
+                if ref in found:
+                    continue
+                named_case = any(isinstance(i, dict) and i.get("system") == CASE_IDENTIFIER_SYSTEM
+                                 and str(i.get("value")) == str(case_id) for i in (res.get("identifier") or []))
+                when = _when(res)
+                if named_case or (floor is None or (when is not None and when >= floor)):
+                    found.append(ref)
+        return found
+
+
+# Bound by app.main at start-up (FhirFinder when HAPI is in use); tests replace it.
+finder: EvidenceFinder = NullFinder()
+
+
 def signed_by_matches(identity: Identity, signed_by: str) -> bool:
     """`signed_by` is the caller's own actor string or the Practitioner mapped to their user id."""
     return signed_by in (identity.actor, f"Practitioner/{identity.user_id}")
 
 
 def configure(app_settings) -> EvidenceVerifier:
-    """Bind the module verifier from settings: HAPI lookups when FHIR_VERIFY_EVIDENCE is true."""
-    global verifier
+    """Bind the module verifier from settings: HAPI lookups when FHIR_VERIFY_EVIDENCE is true. The evidence finder
+    (A21) is bound with it: it asks HAPI when verification or projection is on, else it finds nothing."""
+    global verifier, finder
     if app_settings.fhir_verify_evidence:
         verifier = FhirVerifier(app_settings.fhir_base_url, app_settings.fhir_timeout_seconds)
     else:
         verifier = AcceptAllVerifier()
+    if app_settings.fhir_verify_evidence or app_settings.fhir_projection:
+        finder = FhirFinder(app_settings.fhir_base_url, app_settings.fhir_timeout_seconds)
+    else:
+        finder = NullFinder()
     return verifier

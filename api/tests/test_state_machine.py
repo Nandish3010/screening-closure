@@ -44,7 +44,7 @@ HUMANS = [
     "clinician:dr_a", "primary_care_owner:pc", "specialist_owner:sp", "coordinator:co",
     "supervisor:su", "patient:pa", "lab:lb",
 ]
-AUTOMATED = ["system:scheduler", "system:consent", "watchdog", "model:drafter"]
+AUTOMATED = ["system:scheduler", "system:consent", "watchdog", "model:drafter", "system:automation"]
 ACTORS = [*HUMANS, *AUTOMATED]
 SIGNED = {"evidence_ref": "DiagnosticReport/1", "signed_by": "Practitioner/9"}
 HUMAN_ONLY = {
@@ -446,6 +446,8 @@ def test_read_model_shape_and_values():
         "consent_history": [],
         "review_reason": None,
         "review_requested_at": None,
+        "closure_proposal": None,  # A21
+        "auto_messages_sent": 0,  # A21
         "backdated_events": 0,
         # A18: the referral clock runs from the result (case_created); the colonoscopy clock waits for a referral
         "milestones": {

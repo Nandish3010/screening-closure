@@ -99,6 +99,8 @@ UUID_A = "11111111-2222-4333-8444-555555555555"
 SAMPLES = {
     "case_created": {"patient_ref": "Patient/1", "result_ref": "DiagnosticReport/r1", "contact_valid": {"sms": False}},
     "acknowledge": {}, "accept_ownership": {"provider": "endo-1"},
+    "assign_ownership": {"owner": "primary_care_owner:abc123def456", "provider": "Riverside Primary Care", "auto": True},
+    "closure_proposed": {"evidence_ref": "Procedure/colonoscopy-1", "auto": True},
     "contact_patient": {"channel": "sms", "draft_id": UUID_A},
     "patient_acknowledge": {"lang": "ar"}, "book_confirmatory": {"appointment_ref": "Appointment/a1"},
     "complete_confirmatory": {"result_ref": "Procedure/p1"}, "clinician_review": {"signed_by": "Practitioner/abc"},

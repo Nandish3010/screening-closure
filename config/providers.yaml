@@ -1,0 +1,32 @@
+# Providers, registration owners and the referral reroute order (A21, ADR-032).
+#
+# Read by api/app/providers.py. Two things are decided here so that nobody has to decide them per case:
+#   * registration: a patient is registered with a primary-care provider; a new case is assigned (not accepted) to that
+#     provider's default owner by `assign_ownership {auto: true}` from system:automation. A genesis payload may carry
+#     `registered_provider`; the cohort pipeline (simulator/create_cases.py) sets one deterministically from the Synthea
+#     patient id. A case with no (or an unknown) registered provider goes to `default_provider`.
+#   * referral: when a referral is rejected or bounces, the automation re-requests the next provider in `reroute_order`
+#     for the pathway's specialty, skipping providers already asked. Only when the list is exhausted does it raise
+#     `review_requested {reason: reroute_exhausted}` for a coordinator. Rejections for the reasons not in
+#     `reroute_reasons` (missing information, patient declined) are human decisions and are left to the reassign SLA.
+#
+# The owners are the development seed users (the same logins as web/src/api/identities.ts and tools/demo/scenario.py;
+# names are synthetic). The event log never holds a name: the actor is `role:<opaque id>` derived from role and name
+# (api/app/auth.py `opaque_user_id`). Replace this file with the real registration feed before any pilot.
+version: 1
+status: development seed users, synthetic; the real provider and owner directory is a pilot task
+default_provider: Riverside Primary Care
+registration:
+  Riverside Primary Care:
+    owner: {role: primary_care_owner, name: "Dr. Layla Haddad"}
+  Marina Digestive Health:
+    owner: {role: primary_care_owner, name: "Dr. Huda Rahman"}
+referral:
+  specialty_by_pathway:
+    colorectal_fit: gastroenterology
+  reroute_reasons: [capacity, wrong_service, timeout]
+  reroute_order:
+    gastroenterology:
+      - Corniche Gastro Unit
+      - Al Noor Endoscopy Centre
+      - Marina Digestive Health

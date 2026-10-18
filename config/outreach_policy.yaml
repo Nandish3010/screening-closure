@@ -1,0 +1,36 @@
+# Pre-approved patient messages the system may send without a draft and without a per-message approval (A21, ADR-032).
+#
+# The automation sends only DETERMINISTIC templates (api/app/ai/templates/*.yaml, filled with the care owner's name, the
+# next step and, for a confirmation, the booked date). No model is involved. The state machine accepts a `message_sent`
+# from `system:automation` only if its `template_id` is listed here, with the version listed here, on a channel listed for
+# that template, with the patient's consent for that channel at the moment the event is applied, and with fewer than
+# `max_auto_messages_per_week` automatic messages in the previous seven days. A model-drafted message still goes through
+# the human approval gate (ADR-030) and is not affected by this file.
+#
+# H1: every `approved_by` below is a PLACEHOLDER for the clinical lead. Nothing here has been clinically reviewed; the
+# template texts are the same ones the clinician pack (docs/review/clinician-pack.md) puts in front of the reviewers, and
+# the Arabic ones await the native-speaker review (H2). `template_set_version` ties this approval to one version of the
+# template files: if a template is edited and its version bumped, the policy fails to load (automatic messaging switches
+# itself off, loudly) until someone re-approves.
+version: 1
+template_set_version: 2
+status: pending_h1_clinical_lead_signoff
+max_auto_messages_per_week: 2
+default_language: en
+templates:
+  - {id: result_notification.sms, purpose: result_notification, channel: sms, version: 1, approved_by: "clinical lead (placeholder, H1)"}
+  - {id: result_notification.whatsapp, purpose: result_notification, channel: whatsapp, version: 1, approved_by: "clinical lead (placeholder, H1)"}
+  - {id: result_notification.letter, purpose: result_notification, channel: letter, version: 1, approved_by: "clinical lead (placeholder, H1)"}
+  - {id: reminder.sms, purpose: reminder, channel: sms, version: 1, approved_by: "clinical lead (placeholder, H1)"}
+  - {id: reminder.whatsapp, purpose: reminder, channel: whatsapp, version: 1, approved_by: "clinical lead (placeholder, H1)"}
+  - {id: appointment_confirmation.sms, purpose: appointment_confirmation, channel: sms, version: 1, approved_by: "clinical lead (placeholder, H1)"}
+  - {id: appointment_confirmation.whatsapp, purpose: appointment_confirmation, channel: whatsapp, version: 1, approved_by: "clinical lead (placeholder, H1)"}
+# Triggers. `entered_state`: once, when the case enters `state` (keyed by the event that entered it).
+# `reminder`: once, `after_working_days` working days after the case entered `state`, if it is still there.
+# `escalation_rung`: once per escalation, when the ladder's current rung is `rung` (and unaccepted) while in `state`.
+# `channels` is the order of preference: the first channel the patient consents to and has valid contact details for.
+rules:
+  - {id: result_notice_on_owner_accepted, trigger: entered_state, state: owner_accepted, template: result_notification, channels: [sms, whatsapp, letter]}
+  - {id: reminder_patient_contacted_2d, trigger: reminder, state: patient_contacted, after_working_days: 2, template: reminder, channels: [sms, whatsapp]}
+  - {id: reminder_on_owner_rung, trigger: escalation_rung, state: patient_contacted, rung: reminder, template: reminder, channels: [sms, whatsapp]}
+  - {id: confirmation_on_booking, trigger: entered_state, state: confirmatory_booked, template: appointment_confirmation, channels: [sms, whatsapp]}

@@ -32,7 +32,7 @@ NOTE_MAX_LENGTH = 200
 REOPEN_REASONS = ("new_finding", "evidence_inadequate", "closed_in_error", "patient_request", "other")
 CALLBACK_REASONS = ("patient_does_not_understand", "wants_to_speak_to_clinician", "cannot_attend", "other")
 WATCHDOG_REASONS = ("idle", "scheduler_down")
-REVIEW_REASONS = ("consent_withdrawn",)
+REVIEW_REASONS = ("consent_withdrawn", "reroute_exhausted")  # reroute_exhausted: A21, system:automation
 # handoff_rejected: the human taxonomy is in the pathway YAML (handoff_reject_reasons) and is
 # enforced by the state machine; this model only requires a short code, so the YAML stays the
 # single source for it.
@@ -130,10 +130,12 @@ class CaseCreated(_Payload):
     result_ref: ResultRef | None = None
     contact_valid: bool | dict[Literal["sms", "whatsapp", "phone", "letter"], bool] | None = None
     pathway: Code | None = None
+    # A21: the primary-care provider the patient is registered with (config/providers.yaml maps it to the default owner)
+    registered_provider: Provider | None = None
 
 
 class Acknowledge(_Human):
-    pass
+    auto: Literal[True] | None = None  # A21: set only by system:automation (the state machine checks who)
 
 
 class AcceptOwnership(_Human):
@@ -157,6 +159,7 @@ class BookConfirmatory(_Human):
 
 class CompleteConfirmatory(_Human):
     result_ref: ConfirmatoryResultRef | None = None
+    auto: Literal[True] | None = None  # A21: the evidence scan found the colonoscopy in HAPI
 
 
 class ClinicianReview(_Human):
@@ -236,6 +239,23 @@ class EscalationAccepted(_Human):
 
 class HandoffRequested(_Human):
     to_provider: Provider
+    auto: Literal[True] | None = None  # A21: an automatic reroute after a rejected or bounced referral
+
+
+class AssignOwnership(_Payload):
+    """A21: the automation names the case's owner from config/providers.yaml, without the owner's acceptance. No
+    note: it is not a human's event. `owner` is the opaque `primary_care_owner:<id>` actor, never a name."""
+
+    owner: Annotated[str, StringConstraints(pattern=r"^primary_care_owner:[A-Za-z0-9_-]{1,64}$")]
+    provider: Provider | None = None
+    auto: Literal[True]
+
+
+class ClosureProposed(_Payload):
+    """A21: the evidence scan found closure evidence for the case. A proposal only: the clinician reviews and signs."""
+
+    evidence_ref: EvidenceRef
+    auto: Literal[True]
 
 
 class HandoffAccepted(_Human):
@@ -273,7 +293,7 @@ class MarkLostContact(_Human):
 
 
 class ReviewRequested(_Payload):
-    reason: Literal["consent_withdrawn"]
+    reason: Literal["consent_withdrawn", "reroute_exhausted"]
     source_event_id: Uuid
 
 
@@ -305,6 +325,11 @@ class MessageSent(_Payload):
     language: Literal["en", "ar"]
     purpose: Code
     draft_id: Uuid | None = None
+    # A21: a pre-approved deterministic template sent by system:automation, with no draft. The state machine accepts
+    # these only for a template in config/outreach_policy.yaml at the version listed there.
+    auto: Literal[True] | None = None
+    template_id: Annotated[str, StringConstraints(pattern=r"^[a-z][a-z0-9_]{0,63}\.[a-z]{2,16}$")] | None = None
+    template_version: int | None = Field(default=None, ge=1, le=10000)
 
 
 class CallbackRequested(_Human):
@@ -335,6 +360,8 @@ SCHEMAS: dict[str, type[BaseModel]] = {
     "handoff_requested": HandoffRequested,
     "handoff_accepted": HandoffAccepted,
     "handoff_rejected": HandoffRejected,
+    "assign_ownership": AssignOwnership,
+    "closure_proposed": ClosureProposed,
     "reassign": Reassign,
     "consent_updated": ConsentUpdated,
     "mark_lost_contact": MarkLostContact,

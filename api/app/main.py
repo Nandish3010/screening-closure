@@ -5,7 +5,7 @@ from contextlib import asynccontextmanager
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app import auth, confirmatory, evidence, fhir_projection, notify, ops, policy, users
+from app import auth, automation, confirmatory, evidence, fhir_projection, notify, ops, policy, users
 from app.clock import clock
 from app.config import settings
 from app.events import InMemoryEventStore
@@ -65,6 +65,7 @@ async def lifespan(app: FastAPI):
         log.info("FHIR projection is ON: events are written to %s", settings.fhir_base_url)
     else:
         log.warning("FHIR projection is OFF (FHIR_PROJECTION is not true)")
+    automation.configure(settings)
     try:
         yield
     finally:

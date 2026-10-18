@@ -34,6 +34,7 @@ def sched(monkeypatch):
     monkeypatch.setattr(mod, "post_heartbeat", lambda *a, **k: record("beat")(*a, **k))
     monkeypatch.setattr(mod, "write_heartbeat", record("write"))
     monkeypatch.setattr(mod, "drain_outbox", lambda: record("drain")() or None)
+    monkeypatch.setattr(mod, "run_automation", lambda path: record("scan:" + path)() or None)
     monkeypatch.setattr(mod, "BEAT_SECONDS", 0.05)
     return mod
 
@@ -54,6 +55,19 @@ def test_a_heartbeat_is_posted_before_the_sweep_starts(sched, monkeypatch):
     assert order[0] == "beat" and order.index("beat") < order.index("sweep")
     assert order.index("drain") < order.index("sweep")  # approved drafts are not stuck behind a long sweep
     assert sched.calls[0][2] == {"sweeping": True}
+
+
+def test_the_automation_scans_run_after_the_sweep_and_never_decide_whether_the_loop_worked(sched, monkeypatch):
+    """A21 (ADR-032): a bounce the sweep just wrote can be re-routed in the same loop; a scan that fails (None) is not
+    a failed sweep."""
+    monkeypatch.setattr(sched, "run_sweep", lambda: {"sim_time": "2026-01-05T08:00:00+00:00", "cases_evaluated": 0,
+                                                     "mark_overdue": 0, "escalate": 0, "rejected": 0, "errors": []})
+    state = sched.LoopState()
+    sched.loop_once(state)
+    order = names(sched)
+    assert order.index("scan:automation-scan") < order.index("scan:evidence-scan")
+    assert [n for n in order if n.startswith("scan:")] == ["scan:automation-scan", "scan:evidence-scan"]
+    assert state.sweep_ok is True and state.failures == 0  # the scans returned None (failed) and changed nothing
 
 
 def test_heartbeats_keep_coming_while_a_long_sweep_runs_and_stop_after_it(sched, monkeypatch):
