@@ -204,11 +204,11 @@ def test_a_bad_providers_file_is_refused_at_load(edit, needle):
         providers.parse_providers(raw)
 
 
-def test_the_shipped_outreach_policy_is_approved_versioned_and_matches_the_templates():
+def test_the_shipped_outreach_policy_is_unsigned_versioned_and_matches_the_templates():
     pol = outreach_policy.get_policy()
     assert pol.max_auto_messages_per_week == 2 and pol.default_language == "en"
-    assert pol.templates and all(t.approved_by and t.version >= 1 for t in pol.templates.values())
-    assert "placeholder" in next(iter(pol.templates.values())).approved_by  # H1: nobody has signed yet
+    assert pol.templates and all(t.version >= 1 for t in pol.templates.values())
+    assert pol.approved_by is None and not pol.signed  # H1: nobody has signed; A26: unsigned sends nothing
     assert {r.trigger for r in pol.rules} == {"entered_state", "reminder", "escalation_rung"}
     for rule in pol.rules:
         for channel in rule.channels:
@@ -216,7 +216,9 @@ def test_the_shipped_outreach_policy_is_approved_versioned_and_matches_the_templ
 
 
 @pytest.mark.parametrize("edit,needle", [
-    (lambda r: r["templates"][0].update(approved_by=""), "approved_by"),
+    (lambda r: r.update(approved_by=""), "approved_by"),
+    (lambda r: r.update(approved_by=outreach_policy.DEMO_APPROVER), "demo placeholder"),
+    (lambda r: r["templates"][0].update(approved_by="clinical lead"), "policy's"),
     (lambda r: r["templates"][0].update(version=0), "version"),
     (lambda r: r["rules"][0].update(template="escalation_notice"), "not in the approved list"),
     (lambda r: r.update(template_set_version=99), "re-approve"),
@@ -450,7 +452,11 @@ def test_service_tokens_outside_dev_must_be_distinct_long_and_not_the_default(mo
     monkeypatch.setattr(app_settings, "watchdog_service_token", good["watchdog"])
     monkeypatch.setattr(app_settings, "automation_service_token", good["automation"])
     monkeypatch.setattr(app_settings, "agency_service_token", "")  # A22: optional, empty switches it off
+    monkeypatch.setattr(app_settings, "outreach_demo_approval", False)
     assert auth.secure_config_problems() == []
+    monkeypatch.setattr(app_settings, "outreach_demo_approval", True)  # A26: a demo placeholder is not a signature
+    assert any("OUTREACH_DEMO_APPROVAL is on" in p for p in auth.secure_config_problems())
+    monkeypatch.setattr(app_settings, "outreach_demo_approval", False)
     monkeypatch.setattr(app_settings, "automation_service_token", "a" * 31)
     assert any("AUTOMATION_SERVICE_TOKEN is shorter than 32" in p for p in auth.secure_config_problems())
     monkeypatch.setattr(app_settings, "automation_service_token", good["watchdog"])

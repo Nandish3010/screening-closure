@@ -42,6 +42,15 @@ def _test_database_ready():
 
 
 @pytest.fixture(autouse=True)
+def _outreach_demo_approval_on(monkeypatch):
+    """The shipped outreach policy is unsigned (A26, ADR-037) and an unsigned policy sends nothing. Most tests exercise the
+    automatic path, as the compose demo does, under OUTREACH_DEMO_APPROVAL; the tests of the unsigned behaviour turn it off."""
+    from app.config import settings
+
+    monkeypatch.setattr(settings, "outreach_demo_approval", True)
+
+
+@pytest.fixture(autouse=True)
 def _agency_hook_off(monkeypatch):
     """The scheduler hook (A22) starts an agency run every AGENCY_EVERY_SWEEPS sweeps, in the background. Tests that
     sweep must not get agency drafts on their cases at an arbitrary moment, so it is off unless a test turns it on."""

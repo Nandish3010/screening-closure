@@ -29,6 +29,7 @@ def configure(monkeypatch, *, env, login, secret, sched=GOOD["y"], dog=GOOD["z"]
     monkeypatch.setattr(settings, "scheduler_service_token", sched)
     monkeypatch.setattr(settings, "watchdog_service_token", dog)
     monkeypatch.setattr(settings, "automation_service_token", auto)
+    monkeypatch.setattr(settings, "outreach_demo_approval", False)  # A26: the test session turns it on; a prod config must not
 
 
 def forge(claims, secret):
@@ -196,3 +197,15 @@ def test_the_agency_token_is_checked_like_the_others(monkeypatch, agency, needle
     configure(monkeypatch, env="prod", login=False, secret=GOOD["x"], agency="")
     auth.assert_secure_config()
     assert auth.service_identity("") is None
+
+
+def test_a_demo_approval_of_the_outreach_policy_is_refused_outside_dev(monkeypatch):
+    """A26 (ADR-037): OUTREACH_DEMO_APPROVAL stands in for the clinical lead's signature on a laptop and nowhere else."""
+    configure(monkeypatch, env="production", login=False, secret=GOOD["x"])
+    auth.assert_secure_config()  # a good production configuration starts ...
+    monkeypatch.setattr(settings, "outreach_demo_approval", True)
+    with pytest.raises(RuntimeError, match="OUTREACH_DEMO_APPROVAL"):  # ... and refuses to with the demo switch on
+        auth.assert_secure_config()
+    monkeypatch.setattr(settings, "app_env", "dev")
+    auth.assert_secure_config()  # dev may run the demo placeholder
+

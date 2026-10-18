@@ -214,6 +214,11 @@ export const STAFF = {
     already_done: "The patient says the colonoscopy is already done: a person must check and confirm",
   },
   incompleteProcedureHelp: "A colonoscopy counts as closure evidence only when a final report states it was complete (or a CT colonography was done). Arrange a repeat colonoscopy or a CT colonography, or record the complete result.",
+  /** A26: shown while the automatic messages run on the demo placeholder approval (`GET /health` -> `outreach.demo_approval`). */
+  outreachDemoBanner: {
+    fallback: "DEMO PLACEHOLDER (clinical sign-off pending, H1)",
+    explanation: "The automatic patient messages on this system run on a demo approval, not on a clinical lead's signature. No clinician has approved the message texts or the rules that send them. Real patients would receive nothing until the policy is signed.",
+  },
   contactUpdated: "Contact details confirmed by a person",
   /** D13: the reply triage (`system:triage`). The events carry no reply text; it is stored outside the log. */
   replyReceived: "Patient reply received",

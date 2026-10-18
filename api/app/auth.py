@@ -235,6 +235,9 @@ def secure_config_problems() -> list[str]:
             problems.append(f"{name} is empty")
         elif len(value.encode()) < MIN_SECRET_BYTES:
             problems.append(f"{name} is shorter than {MIN_SECRET_BYTES} bytes")
+    if settings.outreach_demo_approval:
+        problems.append("OUTREACH_DEMO_APPROVAL is on (a demo placeholder must not stand in for the clinical lead's "
+                        "signature on the outreach policy)")
     tokens = (
         ("SCHEDULER_SERVICE_TOKEN", settings.scheduler_service_token),
         ("WATCHDOG_SERVICE_TOKEN", settings.watchdog_service_token),

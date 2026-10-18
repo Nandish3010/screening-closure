@@ -10,27 +10,34 @@
 # no opt-out or wrong-number flag is open. A model-drafted message still goes through the human approval gate (ADR-030)
 # and is not affected by this file.
 #
-# H1: every `approved_by` below is a PLACEHOLDER for the clinical lead. Nothing here has been clinically reviewed; the
-# template texts are the same ones the clinician pack (docs/review/clinician-pack.md) puts in front of the reviewers, and
-# the Arabic ones await the native-speaker review (H2). `template_set_version` ties this approval to one version of the
-# template files: if a template is edited and its version bumped, the policy fails to load (automatic messaging switches
-# itself off, loudly) until someone re-approves.
+# H1, UNSIGNED BY DEFAULT (A26, ADR-037): `approved_by` below is null because nobody has signed. Nothing here has been
+# clinically reviewed; the template texts are the same ones the clinician pack (docs/review/clinician-pack.md) puts in front
+# of the reviewers, and the Arabic ones await the native-speaker review (H2). While `approved_by` is null the automation
+# sends NO message: the append-time guard refuses every automatic `message_sent`, and the scan only counts what it held back
+# and logs `outreach_held {reason: policy_unsigned}` once per case. To switch automatic messaging on, the clinical lead's
+# name goes in `approved_by` (the whole policy, at `template_set_version`, is what they sign). The compose demo sets
+# OUTREACH_DEMO_APPROVAL=1, which treats the unsigned policy as signed by "DEMO PLACEHOLDER (clinical sign-off pending, H1)"
+# and puts an amber banner with that text on the case page and the dashboard; it is refused outside APP_ENV=dev.
+# `template_set_version` ties the approval to one version of the template files: if a template is edited and its version
+# bumped, the policy fails to load (automatic messaging switches itself off, loudly) until someone re-approves.
 # Note (M5 final merge): the Arabic texts and five English strings were revised by the AI pre-reviews of 2026-10-18
 # (docs/governance/arabic-review.md, docs/governance/clinician-review.md) without a version bump, because the approvals
-# below were never real ones; H1 and H2 sign off on the texts as they now stand, and bump the version if they change them.
+# earlier placeholder approvals were never real ones; H1 and H2 sign off on the texts as they now stand, and bump the version
+# if they change them.
 version: 1
 template_set_version: 2
 status: pending_h1_clinical_lead_signoff
+approved_by: null
 max_auto_messages_per_week: 2
 default_language: en
 templates:
-  - {id: result_notification.sms, purpose: result_notification, channel: sms, version: 1, approved_by: "clinical lead (placeholder, H1)"}
-  - {id: result_notification.whatsapp, purpose: result_notification, channel: whatsapp, version: 1, approved_by: "clinical lead (placeholder, H1)"}
-  - {id: result_notification.letter, purpose: result_notification, channel: letter, version: 1, approved_by: "clinical lead (placeholder, H1)"}
-  - {id: reminder.sms, purpose: reminder, channel: sms, version: 1, approved_by: "clinical lead (placeholder, H1)"}
-  - {id: reminder.whatsapp, purpose: reminder, channel: whatsapp, version: 1, approved_by: "clinical lead (placeholder, H1)"}
-  - {id: appointment_confirmation.sms, purpose: appointment_confirmation, channel: sms, version: 1, approved_by: "clinical lead (placeholder, H1)"}
-  - {id: appointment_confirmation.whatsapp, purpose: appointment_confirmation, channel: whatsapp, version: 1, approved_by: "clinical lead (placeholder, H1)"}
+  - {id: result_notification.sms, purpose: result_notification, channel: sms, version: 1}
+  - {id: result_notification.whatsapp, purpose: result_notification, channel: whatsapp, version: 1}
+  - {id: result_notification.letter, purpose: result_notification, channel: letter, version: 1}
+  - {id: reminder.sms, purpose: reminder, channel: sms, version: 1}
+  - {id: reminder.whatsapp, purpose: reminder, channel: whatsapp, version: 1}
+  - {id: appointment_confirmation.sms, purpose: appointment_confirmation, channel: sms, version: 1}
+  - {id: appointment_confirmation.whatsapp, purpose: appointment_confirmation, channel: whatsapp, version: 1}
 # Triggers. `entered_state`: once, when the case enters `state` (keyed by the event that entered it).
 # `reminder`: once, `after_working_days` working days after the case entered `state`, if it is still there.
 # `escalation_rung`: once per escalation, when the ladder's current rung is `rung` (and unaccepted) while in `state`.

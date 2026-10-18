@@ -115,6 +115,10 @@ services:
       AUTOMATION_ENABLED: ${AUTOMATION_ENABLED:-true}
       PROVIDERS_PATH: /config/providers.yaml
       OUTREACH_POLICY_PATH: /config/outreach_policy.yaml
+      # A26 (ADR-037): the shipped outreach policy is UNSIGNED (`approved_by: null`) and an unsigned policy sends nothing.
+      # The demo runs the automatic path under "DEMO PLACEHOLDER (clinical sign-off pending, H1)": /health reports it and the
+      # web shows an amber banner on the case page and the dashboard. The API refuses to start with this on outside APP_ENV=dev.
+      OUTREACH_DEMO_APPROVAL: ${OUTREACH_DEMO_APPROVAL:-1}
       # The agency (A22, ADR-033): the scheduler hook starts an agency run every N-th sweep (the code default is 6). 0 = never, which
       # keeps the demo snapshot deterministic: no agency run (and so no agency-drafted message_drafted event on the demo case) fires from
       # the scheduler. Trigger one by hand with `make agency-run`; set AGENCY_EVERY_SWEEPS=6 to rehearse the scheduled runs.

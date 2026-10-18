@@ -12,9 +12,14 @@ token can use to post them.
 * reroute       a rejected or bounced referral (`referral_rejected`, no request pending) is re-requested from the next
                 provider in the reroute order (`handoff_requested {to_provider, auto}`); when the list is used up the
                 automation raises `review_requested {reason: reroute_exhausted}` and stops: a coordinator reassigns.
-* outreach      pre-approved deterministic templates (config/outreach_policy.yaml) sent through `notify.send(auto=...)`:
+* outreach      pre-approved deterministic templates (config/outreach_policy.yaml) sent through `notify.send(auto=...)`.
+                ONLY IF THE POLICY IS SIGNED (A26, ADR-037): the shipped file says `approved_by: null`, and then nothing is
+                sent. The scan counts what it held back (`outreach_held`, `outreach_held_policy_unsigned`) and logs
+                `outreach_held {reason: policy_unsigned}` once per case, a log line and no event, so the case history is
+                untouched and the people see the same worklist; `OUTREACH_DEMO_APPROVAL=1` (compose) runs the demo under a
+                placeholder approval that /health reports and the web shows. A sent message is
                 no draft, no approval, `message_sent {auto, template_id, template_version}`. Two gates, neither of them in
-                this module: at append time, inside the store transaction, the outreach policy (template allow-list and
+                this module: at append time, inside the store transaction, the outreach policy (signed, template allow-list and
                 version, weekly cap over ALL outbound messages: `outreach_policy.auto_message_guard`); in the state machine,
                 what the log decides (consent for the channel now, consent freeze, an open opt-out or wrong-number hold).
                 This module only decides what is due, and sends nothing while a hold is open.
@@ -37,6 +42,7 @@ fetch a case's log only when the model says something is due.
 
 from __future__ import annotations
 
+import json
 import logging
 import threading
 import uuid
@@ -109,6 +115,33 @@ class NegativeCache:
 
 
 evidence_negatives = NegativeCache()  # the evidence scan's; tests clear it
+
+
+class HeldLog:
+    """Cases whose held-back outreach has been logged already (A26): `outreach_held {reason: policy_unsigned}` is written
+    once per case per process, not once per scan. In memory: a restart logs each case once more, which is only a log line."""
+
+    LIMIT = 100_000
+
+    def __init__(self) -> None:
+        self._seen: set[UUID] = set()
+        self._lock = threading.Lock()
+
+    def first(self, case_id: UUID) -> bool:
+        with self._lock:
+            if case_id in self._seen:
+                return False
+            if len(self._seen) >= self.LIMIT:
+                self._seen.clear()
+            self._seen.add(case_id)
+            return True
+
+    def clear(self) -> None:
+        with self._lock:
+            self._seen.clear()
+
+
+outreach_held_logged = HeldLog()  # tests clear it
 
 
 @dataclass
@@ -260,6 +293,13 @@ def _outreach(store, pathway: Pathway, case_id: UUID, model, now: datetime, cale
               policy, result: ScanResult) -> None:
     due = [(r, k) for r in policy.rules if (k := _rule_key(r, model, pathway, calendar, now)) is not None]
     if not due:
+        return
+    if outreach_policy.signed_by(policy) is None:  # A26: an unsigned policy sends nothing, whatever is due
+        result.add("outreach_held", len(due))
+        result.add("outreach_held_policy_unsigned")
+        if outreach_held_logged.first(case_id):
+            log.warning("outreach_held %s", json.dumps({"reason": "policy_unsigned", "case_id": str(case_id),
+                                                        "rules": [r.id for r, _ in due]}, sort_keys=True))
         return
     if model.outreach_holds:  # an opt-out or a wrong number is flagged: nothing goes until a person clears it
         result.add("outreach_held", len(due))
@@ -459,7 +499,16 @@ def configure(app_settings) -> None:
              sorted(providers.reroute_order))
     try:
         policy = outreach_policy.get_policy()
-        log.info("automatic outreach: %d approved template(s), at most %d per patient per week (approval: %s)",
-                 len(policy.templates), policy.max_auto_messages_per_week, policy.status)
+        who = outreach_policy.signed_by(policy)
+        if who is None:
+            log.warning("automatic outreach is OFF: the outreach policy is not signed (approved_by is null; %s). Nothing is "
+                        "sent until the clinical lead signs it (H1); OUTREACH_DEMO_APPROVAL=1 runs the demo under a placeholder",
+                        policy.status)
+        elif who == outreach_policy.DEMO_APPROVER:
+            log.warning("automatic outreach runs on a DEMO approval: %s. %d template(s), at most %d per patient per week",
+                        who, len(policy.templates), policy.max_auto_messages_per_week)
+        else:
+            log.info("automatic outreach: %d approved template(s), at most %d per patient per week (signed by %s; %s)",
+                     len(policy.templates), policy.max_auto_messages_per_week, who, policy.status)
     except outreach_policy.OutreachPolicyError as exc:
         log.error("automatic outreach is OFF: the outreach policy is unusable: %s", exc)

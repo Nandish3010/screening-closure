@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import type { ApiClient, Me, Role } from "../api/contract";
+import type { ApiClient, Me, OutreachStatus, Role } from "../api/contract";
 import { BACKEND_ROLE, OWNER_SCOPED_ROLES, ROLES } from "../api/contract";
 import { ROLE_NAMES, ROLE_PROVIDERS, backendActor } from "../api/identities";
 
@@ -24,6 +24,8 @@ export interface AppState {
   userId: string | undefined;
   simTime: string | null;
   refreshSim: () => void;
+  /** `GET /health` -> `outreach` (A26): null until read, or on a server that does not report it. */
+  outreach: OutreachStatus | null;
 }
 
 const Ctx = createContext<AppState | null>(null);
@@ -41,6 +43,7 @@ export function AppProvider({ api, children, initialRole }: { api: ApiClient; ch
   const [role, setRoleState] = useState<Role>(initialRole ?? readRole() ?? "coordinator");
   const [me, setMe] = useState<Me | null>(null);
   const [simTime, setSimTime] = useState<string | null>(null);
+  const [outreach, setOutreach] = useState<OutreachStatus | null>(null);
 
   // Log in as the chosen role (http: POST /auth/dev-login, then the bearer token rides on every request;
   // mock: no-op). Runs on mount and on every role switch; the adapter makes requests wait for it.
@@ -64,7 +67,10 @@ export function AppProvider({ api, children, initialRole }: { api: ApiClient; ch
 
   const refreshSim = useCallback(() => {
     // /health is public and carries the sim clock; /metrics/closure is staff-only, so a clinician or patient would get a 403.
-    api.health().then((h) => (h.sim_time ? setSimTime(h.sim_time) : api.closureMetrics().then((m) => setSimTime(m.sim_time)))).catch(() => setSimTime(null));
+    api.health().then((h) => {
+      setOutreach(h.outreach ?? null);
+      return h.sim_time ? setSimTime(h.sim_time) : api.closureMetrics().then((m) => setSimTime(m.sim_time));
+    }).catch(() => setSimTime(null));
   }, [api]);
   useEffect(refreshSim, [refreshSim]);
 
@@ -82,8 +88,8 @@ export function AppProvider({ api, children, initialRole }: { api: ApiClient; ch
     // Against the real API the actor is `role:user_id` (opaque id, A14): compared with `owner.actor` to tell "mine".
     const userId = api.adapter === "http" && me && me.role === role ? me.user_id : undefined;
     const actor = userId ? `${BACKEND_ROLE[role]}:${userId}` : backendActor(role, actorName);
-    return { api, role, setRole, me, actorName, actor, provider: ROLE_PROVIDERS[role], userId, simTime, refreshSim };
-  }, [api, role, setRole, me, simTime, refreshSim]);
+    return { api, role, setRole, me, actorName, actor, provider: ROLE_PROVIDERS[role], userId, simTime, refreshSim, outreach };
+  }, [api, role, setRole, me, simTime, refreshSim, outreach]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

@@ -5,7 +5,7 @@ from contextlib import asynccontextmanager
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app import auth, automation, confirmatory, evidence, fhir_projection, notify, ops, policy, users
+from app import auth, automation, confirmatory, evidence, fhir_projection, notify, ops, outreach_policy, policy, users
 from app.clock import clock
 from app.config import settings
 from app.events import InMemoryEventStore
@@ -106,7 +106,10 @@ app.include_router(agency_router.router)  # A22: the agency (labour, not authori
 
 @app.get("/health")
 def health() -> dict:
-    return {"status": "ok", "sim_time": clock.now().isoformat()}
+    """Public, no patient data. `outreach` (A26, ADR-037) says whether automatic patient messages are signed off:
+    `demo_approval` is true while they run only on the demo placeholder, and the web shows an amber banner with
+    `approved_by`."""
+    return {"status": "ok", "sim_time": clock.now().isoformat(), "outreach": outreach_policy.public_status()}
 
 
 @app.get("/pathways")

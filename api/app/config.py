@@ -54,6 +54,11 @@ class Settings(BaseSettings):
     # templates the automation may send). Compose points them at /config/.
     providers_path: str = str(_DEFAULT_PROVIDERS)
     outreach_policy_path: str = str(_DEFAULT_OUTREACH_POLICY)
+    # A26 (ADR-037): the shipped outreach policy is UNSIGNED (`approved_by: null`) and the automation sends no message
+    # while it is. This switch treats an unsigned policy as signed by "DEMO PLACEHOLDER (clinical sign-off pending, H1)"
+    # so the demo can show the automatic path; /health reports it and the web shows an amber banner. Compose sets it;
+    # outside APP_ENV=dev the API refuses to start with it on, and a real signature in the file wins over it.
+    outreach_demo_approval: bool = False
     # The agency's supervisor agent (A22, ADR-033) may start an agency run (`POST /agency/run`) and nothing else.
     # Empty disables the token (a supervisor can still start a run; the scheduler hook runs in process).
     agency_service_token: str = AGENCY_TOKEN_DEFAULT

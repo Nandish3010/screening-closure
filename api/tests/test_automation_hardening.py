@@ -135,7 +135,7 @@ def test_an_edited_policy_changes_what_is_sent_from_now_on_not_what_replays(fres
     events = log(cid)
     pol = outreach_policy.get_policy()
     bumped = {**pol.templates, "reminder.sms": outreach_policy.AutoTemplate(
-        "reminder.sms", "reminder", "sms", 2, pol.templates["reminder.sms"].approved_by)}
+        "reminder.sms", "reminder", "sms", 2)}
     import dataclasses
 
     monkeypatch.setattr(outreach_policy, "get_policy", lambda path=None: dataclasses.replace(pol, templates=bumped))

@@ -11,6 +11,13 @@ fail to replay. Pure: a loaded file, no clock, no store.
 The file is validated hard at load time: every template exists in the message template files for every language, on
 that channel, and the approval names the template-set version it was given against, so editing a template without
 re-approving it makes the policy fail to load (the automation then sends nothing; `app.automation.configure` logs it).
+
+Signed or not (A26, ADR-037). The policy is signed when its top-level `approved_by` names the clinical lead (H1); the
+shipped file says `approved_by: null`, because nobody has signed. An unsigned policy sends nothing: `auto_message_guard`
+refuses every automatic `message_sent` and the automation only counts and logs what it held back (`outreach_held`,
+reason `policy_unsigned`). `OUTREACH_DEMO_APPROVAL=1` (compose) makes `signed_by` answer `DEMO_APPROVER` for an unsigned
+policy, so the demo shows the automatic path under a visible placeholder; a real signature in the file always wins, and the
+API refuses to start outside APP_ENV=dev with the switch on.
 """
 
 from __future__ import annotations
@@ -25,6 +32,8 @@ import yaml
 from app.state_machine import AUTO_MESSAGE_WINDOW, InvalidTransition
 
 TRIGGERS = ("entered_state", "reminder", "escalation_rung")
+# What /health, the web banner and the logs call an unsigned policy that runs on OUTREACH_DEMO_APPROVAL (A26).
+DEMO_APPROVER = "DEMO PLACEHOLDER (clinical sign-off pending, H1)"
 DEFAULT_MAX_PER_WEEK = 2
 AUTO_WINDOW_DAYS = 7  # "per week": the seven days before the message
 
@@ -39,7 +48,6 @@ class AutoTemplate:
     purpose: str
     channel: str
     version: int
-    approved_by: str
 
 
 @dataclass(frozen=True)
@@ -58,6 +66,7 @@ class OutreachPolicy:
     version: int
     template_set_version: int
     status: str
+    approved_by: str | None  # the clinical lead who signed it (H1), or None: unsigned, nothing is sent (A26)
     max_auto_messages_per_week: int
     default_language: str
     templates: dict[str, AutoTemplate]
@@ -69,6 +78,11 @@ class OutreachPolicy:
     def template_id(self, purpose: str, channel: str) -> str:
         return f"{purpose}.{channel}"
 
+    @property
+    def signed(self) -> bool:
+        """The file itself names an approver (the demo switch is not looked at here)."""
+        return self.approved_by is not None
+
 
 def parse_policy(raw: object, *, check_templates: bool = True) -> OutreachPolicy:
     if not isinstance(raw, dict):
@@ -79,6 +93,11 @@ def parse_policy(raw: object, *, check_templates: bool = True) -> OutreachPolicy
     language = raw.get("default_language", "en")
     if language not in ("en", "ar"):
         raise OutreachPolicyError("default_language must be en or ar")
+    approver = raw.get("approved_by")
+    if approver is not None and (not isinstance(approver, str) or not approver.strip()):
+        raise OutreachPolicyError("approved_by must be null (unsigned: nothing is sent) or the name of the clinical lead who signed")
+    if isinstance(approver, str) and approver.strip() == DEMO_APPROVER:
+        raise OutreachPolicyError("approved_by may not be the demo placeholder text: leave it null and use OUTREACH_DEMO_APPROVAL")
     set_version = raw.get("template_set_version")
     if isinstance(set_version, bool) or not isinstance(set_version, int):
         raise OutreachPolicyError("template_set_version (the version of api/app/ai/templates the approval is against) is required")
@@ -86,19 +105,19 @@ def parse_policy(raw: object, *, check_templates: bool = True) -> OutreachPolicy
     for t in raw.get("templates") or []:
         if not isinstance(t, dict):
             raise OutreachPolicyError("each template must be a mapping")
-        missing = {"id", "purpose", "channel", "version", "approved_by"} - set(t)
+        missing = {"id", "purpose", "channel", "version"} - set(t)
         if missing:
             raise OutreachPolicyError(f"template {t.get('id')!r} is missing {sorted(missing)}")
+        if "approved_by" in t:
+            raise OutreachPolicyError(f"template {t.get('id')!r}: approved_by is the policy's, at the top of the file (A26)")
         version = t["version"]
         if isinstance(version, bool) or not isinstance(version, int) or version < 1:
             raise OutreachPolicyError(f"template {t['id']!r}: version must be an integer >= 1")
-        if not isinstance(t["approved_by"], str) or not t["approved_by"].strip():
-            raise OutreachPolicyError(f"template {t['id']!r}: approved_by is required (the clinical lead; a placeholder until H1)")
         if t["id"] != f"{t['purpose']}.{t['channel']}":
             raise OutreachPolicyError(f"template id {t['id']!r} must be '<purpose>.<channel>'")
         if t["id"] in templates:
             raise OutreachPolicyError(f"template {t['id']!r} listed twice")
-        templates[t["id"]] = AutoTemplate(t["id"], t["purpose"], t["channel"], version, t["approved_by"].strip())
+        templates[t["id"]] = AutoTemplate(t["id"], t["purpose"], t["channel"], version)
     if not templates:
         raise OutreachPolicyError("the policy lists no template")
     rules: list[Rule] = []
@@ -136,8 +155,8 @@ def parse_policy(raw: object, *, check_templates: bool = True) -> OutreachPolicy
             for lang in ("en", "ar"):
                 if not ts.has(lang, t.purpose, t.channel, False):
                     raise OutreachPolicyError(f"template {t.id}: no {lang} text for it in api/app/ai/templates")
-    return OutreachPolicy(int(raw.get("version", 1)), set_version, str(raw.get("status", "")), cap, language,
-                          templates, tuple(rules))
+    return OutreachPolicy(int(raw.get("version", 1)), set_version, str(raw.get("status", "")),
+                          approver.strip() if isinstance(approver, str) else None, cap, language, templates, tuple(rules))
 
 
 def load_policy(path: str | Path, *, check_templates: bool = True) -> OutreachPolicy:
@@ -158,12 +177,36 @@ def get_policy(path: str | None = None) -> OutreachPolicy:
     return _cached(str(path))
 
 
+def signed_by(policy: OutreachPolicy) -> str | None:
+    """Who the policy is signed by NOW: the name in the file, else `DEMO_APPROVER` while OUTREACH_DEMO_APPROVAL is on, else
+    None (unsigned: the automation sends nothing). A real signature always wins over the demo switch."""
+    from app.config import settings
+
+    if policy.approved_by is not None:
+        return policy.approved_by
+    return DEMO_APPROVER if settings.outreach_demo_approval else None
+
+
+def public_status(path: str | None = None) -> dict:
+    """What `GET /health` says about automatic messaging (public, no patient data): whether the policy is signed, whether
+    it only runs on the demo placeholder (the web shows an amber banner with `approved_by`), and whether anything can be
+    sent at all. A policy that does not load is not usable: nothing is sent."""
+    try:
+        policy = get_policy(path)
+    except OutreachPolicyError:
+        return {"usable": False, "signed": False, "demo_approval": False, "approved_by": None, "automatic_sending": False}
+    who = signed_by(policy)
+    return {"usable": True, "signed": policy.signed, "demo_approval": who == DEMO_APPROVER, "approved_by": who,
+            "automatic_sending": who is not None}
+
+
 def auto_message_guard(event, path: str | None = None):
     """The append-time gate for an automatic `message_sent` (A21, ADR-032), as a store `guard(model)`: it runs inside the
     store's transaction, under the case lock, on the model replayed from the log as it stands, before the state machine
     sees the event, and raises InvalidTransition (nothing written) unless
 
     * the policy loads (otherwise nothing is sent: fail closed),
+    * the policy is signed, or runs on the demo placeholder (A26: otherwise nothing is sent),
     * the template id is listed, at the version in the event, with the event's purpose and channel, and
     * the patient has had fewer than `max_auto_messages_per_week` OUTBOUND messages in the seven days before the event,
       counting both automatic messages and approved drafts (`model.outbound_message_times`).
@@ -175,6 +218,10 @@ def auto_message_guard(event, path: str | None = None):
             policy = get_policy(path)
         except OutreachPolicyError as exc:
             raise InvalidTransition(f"message_sent: the outreach policy is not usable: {exc}") from exc
+        if signed_by(policy) is None:
+            raise InvalidTransition(
+                "message_sent: the outreach policy is not signed (approved_by is null): automatic messages are off "
+                "until the clinical lead signs it")
         payload = event.payload
         template = policy.template_for(payload.get("template_id"))
         if template is None:

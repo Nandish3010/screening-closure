@@ -11,6 +11,7 @@ import { ActionButton } from "../components/ActionButton";
 import { DraftsPanel, approvalMessage } from "../components/DraftsPanel";
 import { ClosureProposalBanner } from "../components/ClosureProposalBanner";
 import { EffortCounter } from "../components/EffortCounter";
+import { OutreachDemoBanner } from "../components/OutreachDemoBanner";
 import { SignOffPanel } from "../components/SignOffPanel";
 import { Timeline } from "../components/Timeline";
 import {
@@ -193,6 +194,7 @@ export function CaseDetailPage() {
     <main className="container">
       <p><Link to="/coordinator">&larr; Worklist</Link></p>
       <h1>Case <span className="mono">{detail.case_id.slice(0, 8)}</span> <StatePill state={state} /></h1>
+      <OutreachDemoBanner />
       <AgencyChip caseId={detail.case_id} version={`${detail.state}:${events.length}`} />
 
       {detail.effort && <EffortCounter effort={detail.effort} />}

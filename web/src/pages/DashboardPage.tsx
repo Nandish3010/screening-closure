@@ -4,6 +4,7 @@ import { useApp } from "../app/AppContext";
 import type { AgeBucket, Alert, CaseSummary, ClosureMetrics, EffortMetrics } from "../api/contract";
 import { BarChart } from "../components/BarChart";
 import { EffortCard } from "../components/EffortCard";
+import { OutreachDemoBanner } from "../components/OutreachDemoBanner";
 import { WatchdogMarker, watchdogDetail } from "../components/WatchdogMarker";
 import { fmtDateTime, shortId, titleCase } from "../lib/format";
 import { StatePill } from "./CoordinatorPage";
@@ -73,6 +74,7 @@ export function DashboardPage() {
   return (
     <main className="container">
       <h1>Closure dashboard</h1>
+      <OutreachDemoBanner />
       <p className="muted" data-testid="dashboard-subtitle">
         {api.adapter === "http"
           ? "Synthetic data on a simulated clock. Live data from the API."

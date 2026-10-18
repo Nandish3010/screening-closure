@@ -499,6 +499,20 @@ export interface CaseDetail extends Omit<CaseSummary, "pathway" | "created_at" |
   events: CaseEvent[];
 }
 
+/**
+ * `GET /health` -> `outreach` (A26, ADR-037). The shipped outreach policy is UNSIGNED and an unsigned policy sends no automatic
+ * message. `demo_approval` is true while the automation runs only on the demo placeholder (`OUTREACH_DEMO_APPROVAL=1`, compose):
+ * `approved_by` is then "DEMO PLACEHOLDER (clinical sign-off pending, H1)" and the web shows it in an amber banner on the case
+ * page and the dashboard. `signed` is true only when the policy file names the clinical lead.
+ */
+export interface OutreachStatus {
+  usable?: boolean;
+  signed: boolean;
+  demo_approval: boolean;
+  approved_by: string | null;
+  automatic_sending?: boolean;
+}
+
 /** `read_model.incomplete_procedure` (A24): the record that is not closure evidence, and when the automation flagged it. */
 export interface IncompleteProcedure {
   evidence_ref: string;
@@ -1124,8 +1138,11 @@ export interface ApiClient {
   readonly adapter: "mock" | "http";
   /** Mock only: whether the mock plays the automation actor (A21). Absent for http, where the backend decides. */
   readonly automation?: boolean;
-  /** GET /health (public): `sim_time` is the simulation clock, readable by every role (`/metrics/closure` is staff-only). */
-  health(): Promise<{ status: string; sim_time?: string }>;
+  /**
+   * GET /health (public): `sim_time` is the simulation clock, readable by every role (`/metrics/closure` is staff-only).
+   * `outreach` (A26, ADR-037) says whether automatic patient messages are signed off; absent on an older server.
+   */
+  health(): Promise<{ status: string; sim_time?: string; outreach?: OutreachStatus }>;
   /**
    * Switch identity. http: POST /auth/dev-login {role (backend role), name, provider?}, keep the bearer
    * token and attach it to every later request (requests wait for a login in flight). `provider` is sent

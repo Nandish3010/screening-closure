@@ -320,7 +320,13 @@ export function createMockAdapter(
     adapter: "mock",
     automation,
     async health() {
-      return { status: "ok", sim_time: SIM_NOW };
+      // The compose demo: the automation runs under the placeholder approval (A26). The manual-flow mock sends nothing.
+      return {
+        status: "ok", sim_time: SIM_NOW,
+        outreach: automation
+          ? { usable: true, signed: false, demo_approval: true, approved_by: "DEMO PLACEHOLDER (clinical sign-off pending, H1)", automatic_sending: true }
+          : { usable: true, signed: false, demo_approval: false, approved_by: null, automatic_sending: false },
+      };
     },
     async login(role, name, provider) {
       session = { role, name, provider: provider ?? ROLE_PROVIDERS[role] };

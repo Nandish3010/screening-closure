@@ -248,7 +248,7 @@ Four properties hold in structure rather than by procedure: no closure without e
 
 ## 6. Responsible AI
 
-Models are used in four places, drafting patient messages for human approval, ordering the worklist by a calibrated risk score, planning the agency's work queue, and classifying inbound patient replies, plus automatic sending of clinician-pre-approved deterministic templates; no model and no agent can move a case between states, approve a message, change consent or close a case.
+Models are used in four places, drafting patient messages for human approval, ordering the worklist by a calibrated risk score, planning the agency's work queue, and classifying inbound patient replies, plus automatic sending of deterministic templates, which is off until a clinician signs the outreach policy (the shipped policy is unsigned; the demo runs under a visible "DEMO PLACEHOLDER (clinical sign-off pending, H1)", section 6.7); no model and no agent can move a case between states, approve a message, change consent or close a case.
 
 People act on decisions and conversations; the system does the rest. The phone call after an escalation is the evidence-based intervention, not waste; automation prepares it, a person makes it.
 
@@ -280,7 +280,7 @@ It is a demonstration of the ordering pattern, not a validated model. It is trai
 
 ### 6.7 Human gates
 
-A human decides wherever a wrong decision could harm a patient: accepting ownership, a referral or an escalation rung; approving each model-drafted message (the fixed, pre-approved templates are sent automatically under a policy file the clinical lead signs off, a placeholder until H1: a `message_sent` is either an approved draft or an allow-listed template with consent and under the cap); changing consent; reopening; and closing with resolving evidence and the closer's own signature. Each is human-only in the state machine or the policy table, with a test (section 5).
+A human decides wherever a wrong decision could harm a patient: accepting ownership, a referral or an escalation rung; approving each model-drafted message (the fixed templates are sent automatically only under a policy file the clinical lead has signed: the shipped policy is **unsigned** (`approved_by: null`, H1 open) and an unsigned policy sends nothing, ADR-037; the compose demo sets `OUTREACH_DEMO_APPROVAL=1`, which treats the policy as signed by "DEMO PLACEHOLDER (clinical sign-off pending, H1)" and puts that text in a persistent amber banner on the case page and the dashboard; a `message_sent` is either an approved draft or an allow-listed template, under a signed or demo-approved policy, with consent and under the cap); changing consent; reopening; and closing with resolving evidence and the closer's own signature. Each is human-only in the state machine or the policy table, with a test (section 5).
 
 ## 7. Data governance
 
