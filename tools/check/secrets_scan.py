@@ -41,7 +41,7 @@ from typing import Iterable, Iterator
 ALLOW_MARKER = "secrets-scan: allow"
 MAX_FILE_BYTES = 2_000_000
 # The one password the repo documents as a local-only placeholder (.env.example, compose default).
-LOCAL_DEV_DEFAULTS = {"closure_dev_password"}
+LOCAL_DEV_DEFAULTS = {"closure_dev_password", "closure_app_dev_password"}
 
 # --- token shapes: apply to every file, in the tree and in history -------------------------------
 TOKEN_RULES: list[tuple[str, re.Pattern[str]]] = [

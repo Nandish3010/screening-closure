@@ -10,13 +10,13 @@ logs:
 	docker compose logs -f --tail=100
 
 # Unit tests only (no database needed). Uses the local .venv if present, otherwise
-# runs the api tests inside the api container (the api image installs the dev extras so this works
-# offline; the simulator tests need the venv).
+# runs the api tests in the `test` stage of the api image (service api-test, profile "tests"): the api image that
+# runs in compose has no pytest and no tests (SEC-1). The simulator tests need the venv.
 test:
 	@if [ -x .venv/bin/pytest ]; then \
 		.venv/bin/pytest api/tests simulator/tests -q -m "not integration and not chaos"; \
 	else \
-		docker compose run --rm --no-deps -e DATABASE_URL= api pytest tests -q -m "not integration and not chaos"; \
+		docker compose --profile tests run --rm --no-deps api-test pytest tests -q -m "not integration and not chaos"; \
 	fi
 
 # Integration tests run against their own database, `closure_test`, in the same compose postgres
@@ -183,10 +183,11 @@ tracker-lint:
 # phone-like digit runs (T-F10). The same scan against the running stack's container logs is `make test-phi-logs`.
 test-security:
 	$(PY) tools/check/secrets_scan.py
+	$(PY) tools/check/compose_lint.py
 	PYTHONPATH=api $(PY) tools/check/rbac_matrix.py --check
 	PYTHONPATH=api $(PY) tools/check/phi_scan.py routes
 	PYTHONPATH=api $(PY) tools/check/phi_scan.py walk
-	PYTHONPATH=api $(PY) -m pytest tests/test_rbac_matrix.py tests/test_phi_scan.py -q
+	PYTHONPATH=api $(PY) -m pytest tests/test_rbac_matrix.py tests/test_phi_scan.py tests/test_compose_lint.py -q
 
 rbac-matrix:
 	PYTHONPATH=api $(PY) tools/check/rbac_matrix.py --write

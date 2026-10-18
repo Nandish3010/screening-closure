@@ -25,6 +25,10 @@ services:
       LLM_NETWORK_ENABLED: "false"
       LLM_PROVIDER: ${OFFLINE_LLM_PROVIDER:-template}
       LLM_CACHE_MODE: replay
+  db-init:
+    networks: !override [offline]
+  migrate:
+    networks: !override [offline]
   scheduler:
     networks: !override [offline]
   watchdog:
@@ -35,8 +39,8 @@ services:
     volumes:
       - ./tools/check/tcp_forward.py:/forward.py:ro
     ports:
-      - "${API_PORT:-8000}:8000"
-      - "${FHIR_PORT:-8080}:8080"
+      - "127.0.0.1:${API_PORT:-8000}:8000"
+      - "127.0.0.1:${FHIR_PORT:-8080}:8080"
     depends_on:
       api:
         condition: service_healthy

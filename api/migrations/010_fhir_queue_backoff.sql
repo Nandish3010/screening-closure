@@ -23,11 +23,11 @@ CREATE TABLE fhir_projection_dead_letter (
 
 CREATE INDEX fhir_projection_dead_letter_case_idx ON fhir_projection_dead_letter (case_id);
 
--- The application role (009_app_role.sql) works the queue; it gets the same rights on the new table.
+-- The application role (009_app_role.sql) moves rows into the list and revives them out of it: no UPDATE.
 DO $$
 BEGIN
     IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'closure_app') THEN
-        GRANT SELECT, INSERT, UPDATE, DELETE ON fhir_projection_dead_letter TO closure_app;
+        GRANT SELECT, INSERT, DELETE ON fhir_projection_dead_letter TO closure_app;
     END IF;
 END
 $$;

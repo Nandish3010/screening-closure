@@ -15,6 +15,8 @@ log = logging.getLogger("app.db")
 # api/app/db.py -> api/migrations (also /app/migrations in the container image)
 DEFAULT_MIGRATIONS_DIR = Path(__file__).resolve().parents[1] / "migrations"
 
+APP_ROLE = "closure_app"  # the unprivileged role the API connects as (migration 009)
+
 # Arbitrary constant: serialises concurrent migration runners (e.g. several api replicas).
 _MIGRATION_LOCK_KEY = 727_001
 
@@ -86,7 +88,14 @@ def run_migrations(pool: ConnectionPool, migrations_dir: Path | None = None) -> 
             if row:
                 _check_one(version, row[0], contents[version])  # applied by a runner that held the lock before us
                 continue
-            conn.execute(contents[version].decode("utf-8"))  # no params: multi-statement script is allowed
+            try:
+                conn.execute(contents[version].decode("utf-8"))  # no params: multi-statement script is allowed
+            except psycopg.errors.InsufficientPrivilege as exc:
+                raise RuntimeError(
+                    f"migration {version} is pending and this database role may not change the schema ({exc}). "
+                    "Apply migrations as the owner: `python -m app.migrate` with the owner's DATABASE_URL "
+                    "(compose: the `migrate` service)."
+                ) from exc
             conn.execute(
                 "INSERT INTO schema_migrations (version, checksum) VALUES (%s, %s)",
                 (version, checksum(contents[version])),
