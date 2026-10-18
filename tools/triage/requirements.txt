@@ -1,0 +1,3 @@
+# Only for tools/triage/.venv (Apple silicon). The API's own virtualenv does not need these: it starts
+# api/app/triage/worker.py with this venv's interpreter. See README.md.
+mlx-lm==0.32.2

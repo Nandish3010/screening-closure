@@ -111,6 +111,9 @@ SAMPLES = {
     "reassign": {"owner": "primary_care_owner:abc123def456"}, "consent_updated": {"withdrawn": True},
     "mark_lost_contact": {"failed_attempts": 3},
     "review_requested": {"reason": "consent_withdrawn", "source_event_id": UUID_A},
+    "reply_received": {"channel": "whatsapp", "text_ref": UUID_A},
+    "reply_classified": {"intent": "reschedule", "confidence": 0.93, "model_id": "qwen2.5-1.5b-4bit+lora-8b5a49fc",
+                         "needs_human": False, "text_ref": UUID_A},
     "message_drafted": DRAFTED, "message_approved": {"draft_id": UUID_A},
     "message_rejected": {"draft_id": UUID_A, "reason": "tone"},
     "message_sent": {"notification_id": UUID_A, "channel": "sms", "language": "en", "purpose": "first_contact"},
@@ -163,7 +166,8 @@ def test_message_rejected_refuses_free_text_and_malformed_payloads(bad):
         payloads.validate("message_rejected", bad)
 
 
-@pytest.mark.parametrize("event_type", ["mark_overdue", "review_requested", "message_drafted", "message_sent", "watchdog_flagged"])
+@pytest.mark.parametrize("event_type", ["mark_overdue", "review_requested", "message_drafted", "message_sent", "watchdog_flagged",
+                                        "reply_received", "reply_classified"])
 def test_automated_events_take_no_note(event_type):
     with pytest.raises(payloads.PayloadSchemaError, match="Extra inputs"):
         payloads.validate(event_type, {**SAMPLES[event_type], "note": "hi"})
@@ -176,6 +180,10 @@ def test_automated_events_take_no_note(event_type):
     ("watchdog_flagged", "reason", "nobody looked"),
     ("handoff_rejected", "reason", "Patient Fatima declined"),
     ("review_requested", "reason", "because"),
+    ("reply_received", "channel", "pigeon"),
+    ("reply_received", "text_ref", "I will come tomorrow"),
+    ("reply_classified", "intent", "I will come tomorrow"),
+    ("reply_classified", "confidence", 7.5),
     ("close", "evidence_ref", "Patient/1"),
     ("close", "evidence_ref", "DiagnosticReport/has space"),
     ("close", "signed_by", "Dr Huda Rahman"),

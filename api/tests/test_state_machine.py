@@ -446,6 +446,8 @@ def test_read_model_shape_and_values():
         "consent_history": [],
         "review_reason": None,
         "review_requested_at": None,
+        "triage_review_reason": None,
+        "triage_review_requested_at": None,
         "backdated_events": 0,
         # A18: the referral clock runs from the result (case_created); the colonoscopy clock waits for a referral
         "milestones": {

@@ -1,0 +1,371 @@
+{"id": "va-00001", "label": "cannot_attend", "language": "arabizi", "template": "cannot_attend.arabizi.1", "text": "lil asaf ma bi2dar ajee ba3d bukra", "variant": "arabizi"}
+{"id": "va-00002", "label": "reschedule", "language": "en", "template": "reschedule.en.7", "text": "Please call me 10 am not now, I am busy", "variant": "en"}
+{"id": "va-00003", "label": "already_done", "language": "ar", "template": "already_done.ar_msa.1", "text": "أريت تنظيرا للقولون الشهر الماضي", "variant": "ar_msa"}
+{"id": "va-00004", "label": "confirm", "language": "en", "template": "confirm.en.7", "text": "received, thaank you. i will wait for the call in the evening", "variant": "en"}
+{"id": "va-00005", "label": "confirm", "language": "arabizi", "template": "confirm.arabizi.5", "text": "wasalat el resala, bantidhir ittisalkum ba3d el saa3a 4!!", "variant": "arabizi"}
+{"id": "va-00006", "label": "opt_out", "language": "ar", "template": "opt_out.ar_msa.2", "text": "احذفوا رقمي من القايمة. جزاكم الله خيرا 😞", "variant": "ar_msa"}
+{"id": "va-00007", "label": "already_done", "language": "arabizi", "template": "already_done.arabizi.7", "text": "alredy did it men usbou3ain", "variant": "arabizi"}
+{"id": "va-00008", "label": "question", "language": "en", "template": "question.en.8", "text": "What documets do I need to bring?", "variant": "en"}
+{"id": "va-00009", "label": "wrong_number", "language": "ar", "template": "wrong_number.ar_gulf.8", "text": "🤲 مشكورين بس الرسالة لشخص غلط", "variant": "ar_gulf"}
+{"id": "va-00010", "label": "question", "language": "ar", "template": "question.ar_gulf.0", "text": "وين موقع المركز؟", "variant": "ar_gulf"}
+{"id": "va-00011", "label": "wrong_number", "language": "ar", "template": "wrong_number.ar_gulf.8", "text": "مشكورين بس الرسالة لشخص غلط 👍", "variant": "ar_gulf"}
+{"id": "va-00012", "label": "reschedule", "language": "ar", "template": "reschedule.ar_gulf.7", "text": "ممكن تأجلون المكالم شوي؟ يوم الخميس أحسن", "variant": "ar_gulf"}
+{"id": "va-00013", "label": "reschedule", "language": "arabizi", "template": "reschedule.arabizi.0", "text": "marhaba momken nghayyer el maw3id ba3d bukra? tislam", "variant": "arabizi"}
+{"id": "va-00014", "label": "dont_understand", "language": "ar", "template": "dont_understand.ar_msa.6", "text": "الرسالة غير واضحة، أرجو التوضيح 😅", "variant": "ar_msa"}
+{"id": "va-00015", "label": "dont_understand", "language": "arabizi", "template": "dont_understand.arabizi.2", "text": "momken tersiloha bil 3arabi? ma a2ra englzii", "variant": "arabizi"}
+{"id": "va-00016", "label": "opt_out", "language": "en", "template": "opt_out.en.3", "text": "Hi team remove me from your list. Thank you", "variant": "en"}
+{"id": "va-00017", "label": "cannot_attend", "language": "ar", "template": "cannot_attend.ar_gulf.0", "text": "مرحبا آسف ما اقدر أجي بسبب الشغل. يعطيك العافية 😊", "variant": "ar_gulf"}
+{"id": "va-00018", "label": "other", "language": "en", "template": "other.en.4", "text": "Let me think abot it 😊", "variant": "en"}
+{"id": "va-00019", "label": "question", "language": "ar", "template": "question.ar_msa.5", "text": "هل النتيجة خطيرة؟ هل يجب أن أقلق؟", "variant": "ar_msa"}
+{"id": "va-00020", "label": "opt_out", "language": "ar", "template": "opt_out.ar_msa.2", "text": "مساء الخير احذفوا رقمي من القائمة. مع الشكر 😊", "variant": "ar_msa"}
+{"id": "va-00021", "label": "already_done", "language": "ar", "template": "already_done.ar_msa.1", "text": "أجريت تنظيرا للقولن قبل أسبوعين 🙏", "variant": "ar_msa"}
+{"id": "va-00022", "label": "opt_out", "language": "en", "template": "opt_out.en.3", "text": "Good morning remove me from your list. 🙏", "variant": "en"}
+{"id": "va-00023", "label": "already_done", "language": "ar", "template": "already_done.ar_msa.1", "text": "أجريت تنظيرا للقولون أمس!!", "variant": "ar_msa"}
+{"id": "va-00024", "label": "question", "language": "mixed", "template": "question.mixed.5", "text": "هل النتيجة serious? please teell me", "variant": "mixed"}
+{"id": "va-00025", "label": "dont_understand", "language": "ar", "template": "dont_understand.ar_msa.6", "text": "الرسالة غير واضحة، ارجو اتوضيح 🙂", "variant": "ar_msa"}
+{"id": "va-00026", "label": "opt_out", "language": "en", "template": "opt_out.en.2", "text": "Pleaes do not contact me again", "variant": "en"}
+{"id": "va-00027", "label": "dont_understand", "language": "arabizi", "template": "dont_understand.arabizi.2", "text": "momken tersiloha bil 3arabi? ma a2ra englizi", "variant": "arabizi"}
+{"id": "va-00028", "label": "question", "language": "ar", "template": "question.ar_gulf.0", "text": "وين موقع المستشى؟ 🤲", "variant": "ar_gulf"}
+{"id": "va-00029", "label": "opt_out", "language": "ar", "template": "opt_out.ar_msa.2", "text": "مساء الخير احذفوا رقمي من القائمة. شكرا لكم", "variant": "ar_msa"}
+{"id": "va-00030", "label": "confirm", "language": "ar", "template": "confirm.ar_msa.7", "text": "حاضر شكرًا جزيلا", "variant": "ar_msa"}
+{"id": "va-00031", "label": "wrong_number", "language": "ar", "template": "wrong_number.ar_msa.2", "text": "🙂 يبد أن الرسالة وصلت إلى الشخص الخطأ", "variant": "ar_msa"}
+{"id": "va-00032", "label": "cannot_attend", "language": "ar", "template": "cannot_attend.ar_gulf.0", "text": "🙏 هلا والله آسف ما اقدر أجي بسبب الشغل. مشكورين", "variant": "ar_gulf"}
+{"id": "va-00033", "label": "already_done", "language": "ar", "template": "already_done.ar_gulf.5", "text": "خلصت الفحص من كم يوم", "variant": "ar_gulf"}
+{"id": "va-00034", "label": "confirm", "language": "mixed", "template": "confirm.mixed.1", "text": "Confirmed، ماشي بعد بكرة", "variant": "mixed"}
+{"id": "va-00035", "label": "wrong_number", "language": "en", "template": "wrong_number.en.4", "text": "Hi team you havve the wrong number, I don't know who this is for 🤲", "variant": "en"}
+{"id": "va-00036", "label": "other", "language": "en", "template": "other.en.4", "text": "Let me thik about it 👍", "variant": "en"}
+{"id": "va-00037", "label": "other", "language": "mixed", "template": "other.mixed.2", "text": "maybe، يمكن 🌹", "variant": "mixed"}
+{"id": "va-00038", "label": "question", "language": "en", "template": "question.en.7", "text": "can i bring my wife with me", "variant": "en"}
+{"id": "va-00039", "label": "confirm", "language": "ar", "template": "confirm.ar_gulf.4", "text": "أأكد الموعد بكرة، مشكورين 😊", "variant": "ar_gulf"}
+{"id": "va-00040", "label": "confirm", "language": "en", "template": "confirm.en.7", "text": "RECEIVED, THANK YOU. I WILL WAIT FOR THE CALL BEFORE NOON", "variant": "en"}
+{"id": "va-00041", "label": "already_done", "language": "arabizi", "template": "already_done.arabizi.7", "text": "🌹 already did it el sana el madya", "variant": "arabizi"}
+{"id": "va-00042", "label": "already_done", "language": "ar", "template": "already_done.ar_gulf.5", "text": "خلصت الفحص الشهر اللي فات", "variant": "ar_gulf"}
+{"id": "va-00043", "label": "question", "language": "en", "template": "question.en.8", "text": "What documents do I need to bring? 😊", "variant": "en"}
+{"id": "va-00044", "label": "opt_out", "language": "ar", "template": "opt_out.ar_msa.2", "text": "السلام عليم احذفوا رقمي من القائمة. وشكرا 😔", "variant": "ar_msa"}
+{"id": "va-00045", "label": "already_done", "language": "ar", "template": "already_done.ar_msa.1", "text": "أجريت تنظيرا للقولون قبل أسبوعين", "variant": "ar_msa"}
+{"id": "va-00046", "label": "reschedule", "language": "en", "template": "reschedule.en.7", "text": "Please call me at 2:30 not now, I am buy", "variant": "en"}
+{"id": "va-00047", "label": "reschedule", "language": "en", "template": "reschedule.en.7", "text": "Please call me after work not now, I am busy", "variant": "en"}
+{"id": "va-00048", "label": "opt_out", "language": "en", "template": "opt_out.en.2", "text": "Pease do not contact me again", "variant": "en"}
+{"id": "va-00049", "label": "question", "language": "arabizi", "template": "question.arabizi.8", "text": "shu el awra2 elli lazim ajeebha?", "variant": "arabizi"}
+{"id": "va-00050", "label": "cannot_attend", "language": "ar", "template": "cannot_attend.ar_gulf.0", "text": "هلا والله آسف ما اقدر أجي بسبب الشغل. شكرا!!", "variant": "ar_gulf"}
+{"id": "va-00051", "label": "confirm", "language": "mixed", "template": "confirm.mixed.1", "text": "Confirmed، أوكي يوم الأحد", "variant": "mixed"}
+{"id": "va-00052", "label": "wrong_number", "language": "en", "template": "wrong_number.en.4", "text": "Good morning you have the wrong number, I don't know who this is for", "variant": "en"}
+{"id": "va-00053", "label": "opt_out", "language": "en", "template": "opt_out.en.3", "text": "Hello, remove me from your list.", "variant": "en"}
+{"id": "va-00054", "label": "already_done", "language": "ar", "template": "already_done.ar_msa.1", "text": "أجريت تنظيرا للقولون قبل أسبوعين؟؟", "variant": "ar_msa"}
+{"id": "va-00055", "label": "reschedule", "language": "ar", "template": "reschedule.ar_gulf.7", "text": "ممكن تأجلون الفحص شوي؟ يوم الاثنين أحسن", "variant": "ar_gulf"}
+{"id": "va-00056", "label": "confirm", "language": "ar", "template": "confirm.ar_msa.7", "text": "موفق شكرا لكم", "variant": "ar_msa"}
+{"id": "va-00057", "label": "wrong_number", "language": "ar", "template": "wrong_number.ar_msa.2", "text": "يبدو أن الرسالة وصلت إلى الشخص الخطأ!", "variant": "ar_msa"}
+{"id": "va-00058", "label": "question", "language": "mixed", "template": "question.mixed.5", "text": "هل النتيجة serious? please telll me!", "variant": "mixed"}
+{"id": "va-00059", "label": "reschedule", "language": "arabizi", "template": "reschedule.arabizi.0", "text": "momken nghayyer el mukalama yom el arb3a? thanks!!", "variant": "arabizi"}
+{"id": "va-00060", "label": "dont_understand", "language": "ar", "template": "dont_understand.ar_msa.6", "text": "الرسالة غير واضحة، أرجو التوضيح 🤲", "variant": "ar_msa"}
+{"id": "va-00061", "label": "wrong_number", "language": "en", "template": "wrong_number.en.4", "text": "Hi you hve the wrong number, I don't know who this is for", "variant": "en"}
+{"id": "va-00062", "label": "cannot_attend", "language": "ar", "template": "cannot_attend.ar_msa.5", "text": "لن أتمكن من الحضور يوم الأحد ولا يوم الثلاثاء بسبب السفر", "variant": "ar_msa"}
+{"id": "va-00063", "label": "dont_understand", "language": "arabizi", "template": "dont_understand.arabizi.2", "text": "momken tersiloha bil 3arabi? ma a2ra englizi???", "variant": "arabizi"}
+{"id": "va-00064", "label": "dont_understand", "language": "ar", "template": "dont_understand.ar_msa.6", "text": "🌹 الرسالة غير واضحة، أرجو التوضيح", "variant": "ar_msa"}
+{"id": "va-00065", "label": "cannot_attend", "language": "ar", "template": "cannot_attend.ar_gulf.0", "text": "يا هلا آسف ما اقدر أجي بسبب الاختبارات. الله يسلمك 😔", "variant": "ar_gulf"}
+{"id": "va-00066", "label": "question", "language": "en", "template": "question.en.8", "text": "whaat documents do i need to bring", "variant": "en"}
+{"id": "va-00067", "label": "question", "language": "en", "template": "question.en.8", "text": "WHAT DOCUMENTS DO I NEED TO BRING? 👍", "variant": "en"}
+{"id": "va-00068", "label": "cannot_attend", "language": "en", "template": "cannot_attend.en.7", "text": "Assalamu alaikum I am unable to attend. thx 😅", "variant": "en"}
+{"id": "va-00069", "label": "dont_understand", "language": "arabizi", "template": "dont_understand.arabizi.2", "text": "MOMKEN TERSILOHA BIL 3ARABI? MA A2RA ENGLIZI", "variant": "arabizi"}
+{"id": "va-00070", "label": "dont_understand", "language": "ar", "template": "dont_understand.ar_msa.6", "text": "الرساله غير واضحه، أرجو التوضيح 👍", "variant": "ar_msa"}
+{"id": "va-00071", "label": "cannot_attend", "language": "ar", "template": "cannot_attend.ar_gulf.0", "text": "السلام عليكم آسف ما اقدر أجي بسبب الاختبارات. تسلم 👍", "variant": "ar_gulf"}
+{"id": "va-00072", "label": "reschedule", "language": "mixed", "template": "reschedule.mixed.0", "text": "ممكن reschedule الفحص لعقب صلاة الجمعة!!", "variant": "mixed"}
+{"id": "va-00073", "label": "wrong_number", "language": "ar", "template": "wrong_number.ar_msa.2", "text": "يبدو أن الرسالة وصلت إلى الشخص الخطأ! 👍", "variant": "ar_msa"}
+{"id": "va-00074", "label": "other", "language": "mixed", "template": "other.mixed.2", "text": "maybe، يمكن 😊", "variant": "mixed"}
+{"id": "va-00075", "label": "other", "language": "en", "template": "other.en.4", "text": "Let me think about it 😅", "variant": "en"}
+{"id": "va-00076", "label": "already_done", "language": "arabizi", "template": "already_done.arabizi.7", "text": "already did it embarih", "variant": "arabizi"}
+{"id": "va-00077", "label": "dont_understand", "language": "ar", "template": "dont_understand.ar_gulf.3", "text": "ممكن ترسلونها بالانجليزي ما افهم عربي", "variant": "ar_gulf"}
+{"id": "va-00078", "label": "cannot_attend", "language": "en", "template": "cannot_attend.en.7", "text": "HELLO, I AM UNABLE TO ATTEND.", "variant": "en"}
+{"id": "va-00079", "label": "dont_understand", "language": "ar", "template": "dont_understand.ar_msa.6", "text": "الرسالة غير واضحة، أرجو التوضيح", "variant": "ar_msa"}
+{"id": "va-00080", "label": "confirm", "language": "ar", "template": "confirm.ar_gulf.4", "text": "هلا أأكد الموعد عقب الويكند، الله يسلمك", "variant": "ar_gulf"}
+{"id": "va-00081", "label": "question", "language": "en", "template": "question.en.7", "text": "Can I bring my father with me?", "variant": "en"}
+{"id": "va-00082", "label": "wrong_number", "language": "arabizi", "template": "wrong_number.arabizi.3", "text": "🙂 hatha el raqam mub 7a2 el shakhs elli tibooneh", "variant": "arabizi"}
+{"id": "va-00083", "label": "dont_understand", "language": "ar", "template": "dont_understand.ar_msa.6", "text": "👍 الرسالة غير واضحة، أرجو التوضيح", "variant": "ar_msa"}
+{"id": "va-00084", "label": "dont_understand", "language": "ar", "template": "dont_understand.ar_msa.6", "text": "🙏 الرسالة غير واضحة، أرجو التويح", "variant": "ar_msa"}
+{"id": "va-00085", "label": "question", "language": "ar", "template": "question.ar_msa.5", "text": "هل النتيجة خطيرة؟ هل يجب أن أقلق", "variant": "ar_msa"}
+{"id": "va-00086", "label": "confirm", "language": "arabizi", "template": "confirm.arabizi.5", "text": "wasalta el resala, bantidhir ittisalkum el 3ashira el subh", "variant": "arabizi"}
+{"id": "va-00087", "label": "cannot_attend", "language": "en", "template": "cannot_attend.en.7", "text": "I am unable to attend. Thhanks..", "variant": "en"}
+{"id": "va-00088", "label": "other", "language": "arabizi", "template": "other.arabizi.3", "text": "😞 mashkooreen wallah", "variant": "arabizi"}
+{"id": "va-00089", "label": "dont_understand", "language": "en", "template": "dont_understand.en.9", "text": "who is this and wht do you want from me? 😊", "variant": "en"}
+{"id": "va-00090", "label": "question", "language": "ar", "template": "question.ar_msa.5", "text": "هل النتيجة خطيرة؟ هل يجب ان اقلق؟", "variant": "ar_msa"}
+{"id": "va-00091", "label": "dont_understand", "language": "arabizi", "template": "dont_understand.arabizi.2", "text": "😞 momkne tersiloha bil 3arabi? ma a2ra englizi", "variant": "arabizi"}
+{"id": "va-00092", "label": "opt_out", "language": "en", "template": "opt_out.en.3", "text": "HI REMOVE ME FROM YOUR LIST. THANK YOU", "variant": "en"}
+{"id": "va-00093", "label": "confirm", "language": "ar", "template": "confirm.ar_gulf.4", "text": "أأكد اموعد يوم الأحد", "variant": "ar_gulf"}
+{"id": "va-00094", "label": "confirm", "language": "ar", "template": "confirm.ar_gulf.4", "text": "ااكد الموعد الاسبوع الجاي، تسلم", "variant": "ar_gulf"}
+{"id": "va-00095", "label": "wrong_number", "language": "ar", "template": "wrong_number.ar_gulf.8", "text": "مشكورين بس الرسالة لشخص غلط؟؟", "variant": "ar_gulf"}
+{"id": "va-00096", "label": "opt_out", "language": "ar", "template": "opt_out.ar_msa.2", "text": "صباح الخير احذفوا رقمي من القائمة. وشكرا..", "variant": "ar_msa"}
+{"id": "va-00097", "label": "other", "language": "ar", "template": "other.ar_msa.6", "text": "سأخبركم لاحقا", "variant": "ar_msa"}
+{"id": "va-00098", "label": "dont_understand", "language": "ar", "template": "dont_understand.ar_gulf.3", "text": "ممكن تسلونها بالانجليزي؟ ما افهم عربي", "variant": "ar_gulf"}
+{"id": "va-00099", "label": "already_done", "language": "ar", "template": "already_done.ar_msa.1", "text": "أجريت تنظيرا للقولون العام الماضي", "variant": "ar_msa"}
+{"id": "va-00100", "label": "reschedule", "language": "arabizi", "template": "reschedule.arabizi.0", "text": "salam momken nghayyer el maw3id el shahr el jay? thank u 😔", "variant": "arabizi"}
+{"id": "va-00101", "label": "opt_out", "language": "mixed", "template": "opt_out.mixed.3", "text": "I don't want any calls ولا رسايل بعد", "variant": "mixed"}
+{"id": "va-00102", "label": "dont_understand", "language": "arabizi", "template": "dont_understand.arabizi.2", "text": "mmoken tersiloha bil 3arabi? ma a2ra englizi", "variant": "arabizi"}
+{"id": "va-00103", "label": "dont_understand", "language": "ar", "template": "dont_understand.ar_msa.6", "text": "الرسالة غير واضحة، أرجو التوضيح 🌹", "variant": "ar_msa"}
+{"id": "va-00104", "label": "already_done", "language": "en", "template": "already_done.en.6", "text": "I completed the test a few days ago at the hospital", "variant": "en"}
+{"id": "va-00105", "label": "other", "language": "en", "template": "other.en.12", "text": "send me the dicsount code", "variant": "en"}
+{"id": "va-00106", "label": "dont_understand", "language": "en", "template": "dont_understand.en.9", "text": "who is this and what do you want from me? ❤️", "variant": "en"}
+{"id": "va-00107", "label": "other", "language": "mixed", "template": "other.mixed.2", "text": "maybe، يمكن 😅", "variant": "mixed"}
+{"id": "va-00108", "label": "wrong_number", "language": "en", "template": "wrong_number.en.4", "text": "Good morning you have the wrong number, I don't knwo who this is for", "variant": "en"}
+{"id": "va-00109", "label": "reschedule", "language": "ar", "template": "reschedule.ar_gulf.7", "text": "ممكن تأجلون الزيارة شوي؟ يوم الخميس أحسن", "variant": "ar_gulf"}
+{"id": "va-00110", "label": "reschedule", "language": "ar", "template": "reschedule.ar_msa.0", "text": "مرحبا هل يمكن تغيير الفحص إلى غدا؟ شكرا لكم", "variant": "ar_msa"}
+{"id": "va-00111", "label": "other", "language": "arabizi", "template": "other.arabizi.3", "text": "😔 mashkooreen wallah..", "variant": "arabizi"}
+{"id": "va-00112", "label": "wrong_number", "language": "arabizi", "template": "wrong_number.arabizi.3", "text": "hatha el raqam mub 7a2 el shakhs elli tibooneh??? 🙏", "variant": "arabizi"}
+{"id": "va-00113", "label": "reschedule", "language": "en", "template": "reschedule.en.7", "text": "😔 Please call me in the morning not now, I am busy", "variant": "en"}
+{"id": "va-00114", "label": "question", "language": "ar", "template": "question.ar_gulf.0", "text": "وين موقع المستشفى؟ 😞", "variant": "ar_gulf"}
+{"id": "va-00115", "label": "wrong_number", "language": "arabizi", "template": "wrong_number.arabizi.3", "text": "hatha el raqam mub 7a2 el shakhs ellli tibooneh ❤️", "variant": "arabizi"}
+{"id": "va-00116", "label": "wrong_number", "language": "en", "template": "wrong_number.en.4", "text": "you have the wrong number, I don't know who this is for", "variant": "en"}
+{"id": "va-00117", "label": "wrong_number", "language": "en", "template": "wrong_number.en.4", "text": "Hello, you have the wrong number, I don't know who this is for! 😔", "variant": "en"}
+{"id": "va-00118", "label": "other", "language": "ar", "template": "other.ar_msa.6", "text": "👍 سأخبركم لاحقا!!", "variant": "ar_msa"}
+{"id": "va-00119", "label": "opt_out", "language": "ar", "template": "opt_out.ar_gulf.10", "text": "وصلت الرسالة. شيلوا رقمي من القايمة", "variant": "ar_gulf"}
+{"id": "va-00120", "label": "question", "language": "en", "template": "question.en.7", "text": "Can I bring my wife with me? 😊", "variant": "en"}
+{"id": "va-00121", "label": "opt_out", "language": "ar", "template": "opt_out.ar_msa.2", "text": "مساء الخير احذفو رقمي من القايمة.", "variant": "ar_msa"}
+{"id": "va-00122", "label": "other", "language": "ar", "template": "other.ar_gulf.11", "text": "الله يعطيكم العافيه", "variant": "ar_gulf"}
+{"id": "va-00123", "label": "wrong_number", "language": "ar", "template": "wrong_number.ar_msa.2", "text": "يبدو أن الرسالة وصلت إلى الشخص الخطأ؟؟ 🤲", "variant": "ar_msa"}
+{"id": "va-00124", "label": "already_done", "language": "en", "template": "already_done.en.6", "text": "I completed the test last year at the clinic 🙂", "variant": "en"}
+{"id": "va-00125", "label": "cannot_attend", "language": "en", "template": "cannot_attend.en.7", "text": "Hi I am unable to attend. Thannk you", "variant": "en"}
+{"id": "va-00126", "label": "wrong_number", "language": "ar", "template": "wrong_number.ar_gulf.8", "text": "مشكورين بس الرسالة لشخص غلط 🙏", "variant": "ar_gulf"}
+{"id": "va-00127", "label": "cannot_attend", "language": "ar", "template": "cannot_attend.ar_msa.5", "text": "لن أتمكن من الحضور بعد نهاية الأسبوع ولا الأحد القادم بسبب المرض", "variant": "ar_msa"}
+{"id": "va-00128", "label": "other", "language": "mixed", "template": "other.emoji.2", "text": "❤️", "variant": "emoji"}
+{"id": "va-00129", "label": "confirm", "language": "en", "template": "confirm.en.7", "text": "Received, thnk you. I will wait for the call in the morning", "variant": "en"}
+{"id": "va-00130", "label": "wrong_number", "language": "en", "template": "wrong_number.en.4", "text": "Good mornng you have the wrong number, I don't know who this is for 😔", "variant": "en"}
+{"id": "va-00131", "label": "dont_understand", "language": "ar", "template": "dont_understand.ar_gulf.3", "text": "ممكن ترسلونا بالانجليزي؟ ما افهم عربي", "variant": "ar_gulf"}
+{"id": "va-00132", "label": "wrong_number", "language": "ar", "template": "wrong_number.ar_gulf.8", "text": "مشورين بس الرسالة لشخص غلط!!", "variant": "ar_gulf"}
+{"id": "va-00133", "label": "reschedule", "language": "ar", "template": "reschedule.ar_msa.0", "text": "مرحبا هل يمكن تغيير الموعد إلى بعد نهاية الأسبوع؟ جزاكم الله خيرا", "variant": "ar_msa"}
+{"id": "va-00134", "label": "cannot_attend", "language": "ar", "template": "cannot_attend.ar_gulf.0", "text": "هلا آسف ما اقدر أجي بسبب تعبان شوي. مشكورين", "variant": "ar_gulf"}
+{"id": "va-00135", "label": "reschedule", "language": "mixed", "template": "reschedule.mixed.0", "text": "ممكن reschedule الزيارة لالأسبوع الجاي", "variant": "mixed"}
+{"id": "va-00136", "label": "opt_out", "language": "arabizi", "template": "opt_out.arabizi.4", "text": "il8o ishtirakee fil rasa2il hathi 😔", "variant": "arabizi"}
+{"id": "va-00137", "label": "confirm", "language": "ar", "template": "confirm.ar_gulf.4", "text": "هلا والله أأكد الموعد الشهر الجاي", "variant": "ar_gulf"}
+{"id": "va-00138", "label": "reschedule", "language": "ar", "template": "reschedule.ar_gulf.7", "text": "ممكن تأجلون الفحص شوي؟ بعد بكرة أحسن", "variant": "ar_gulf"}
+{"id": "va-00139", "label": "question", "language": "mixed", "template": "question.mixed.5", "text": "هل النتيجة serious? please tell me", "variant": "mixed"}
+{"id": "va-00140", "label": "other", "language": "arabizi", "template": "other.arabizi.3", "text": "mashkkooreen wallah", "variant": "arabizi"}
+{"id": "va-00141", "label": "question", "language": "ar", "template": "question.ar_gulf.0", "text": "🙏 وين موقع المستشفى", "variant": "ar_gulf"}
+{"id": "va-00142", "label": "opt_out", "language": "arabizi", "template": "opt_out.arabizi.4", "text": "il8o ishtirakee fil rasa2il hathi 😞", "variant": "arabizi"}
+{"id": "va-00143", "label": "confirm", "language": "en", "template": "confirm.en.7", "text": "Received, thank you. I will wait for the caall in the morning", "variant": "en"}
+{"id": "va-00144", "label": "confirm", "language": "ar", "template": "confirm.ar_gulf.4", "text": "هلا أأكد الموعد الأسبوع الجاي، الله يعافيك", "variant": "ar_gulf"}
+{"id": "va-00145", "label": "reschedule", "language": "en", "template": "reschedule.en.7", "text": "Pllease call me 10 am not now, I am busy??? 🙏", "variant": "en"}
+{"id": "va-00146", "label": "already_done", "language": "ar", "template": "already_done.ar_msa.1", "text": "أجريت تنظيرا للقولون الأسبوع الماضي!! 🙂", "variant": "ar_msa"}
+{"id": "va-00147", "label": "cannot_attend", "language": "ar", "template": "cannot_attend.ar_gulf.0", "text": "السلام عليكم آسف ما اقدر أجي بسب الشغل. تسلم", "variant": "ar_gulf"}
+{"id": "va-00148", "label": "confirm", "language": "arabizi", "template": "confirm.arabizi.5", "text": "wasalat el resala, bantidhir ittisalkum ba3d el dawam 🤲", "variant": "arabizi"}
+{"id": "va-00149", "label": "other", "language": "arabizi", "template": "other.arabizi.3", "text": "❤️ mashkooreen wallah", "variant": "arabizi"}
+{"id": "va-00150", "label": "dont_understand", "language": "arabizi", "template": "dont_understand.arabizi.2", "text": "momken tersiloha bil 3arabi? ma a2ra englizi 👍", "variant": "arabizi"}
+{"id": "va-00151", "label": "question", "language": "en", "template": "question.en.7", "text": "Can I bring my wife with me?", "variant": "en"}
+{"id": "va-00152", "label": "wrong_number", "language": "ar", "template": "wrong_number.ar_msa.2", "text": "يبدو ان الرسالة وصلت إلى الشخص الخطا 🙂", "variant": "ar_msa"}
+{"id": "va-00153", "label": "opt_out", "language": "en", "template": "opt_out.en.3", "text": "Hi team remove me from your list. Regards", "variant": "en"}
+{"id": "va-00154", "label": "question", "language": "ar", "template": "question.ar_msa.5", "text": "🙏 هل النتيجة خطيرة؟ هل يجب أن أقلق؟", "variant": "ar_msa"}
+{"id": "va-00155", "label": "wrong_number", "language": "en", "template": "wrong_number.en.4", "text": "Hi team you have the wrong number, I don't know who thsi is for!", "variant": "en"}
+{"id": "va-00156", "label": "confirm", "language": "mixed", "template": "confirm.mixed.1", "text": "Confirmed، تمام عقب الويكند", "variant": "mixed"}
+{"id": "va-00157", "label": "dont_understand", "language": "ar", "template": "dont_understand.ar_gulf.3", "text": "ممكن ترسلونها بالانجليزي؟ ما افهم عري", "variant": "ar_gulf"}
+{"id": "va-00158", "label": "already_done", "language": "arabizi", "template": "already_done.arabizi.7", "text": "already did it el sana el madya", "variant": "arabizi"}
+{"id": "va-00159", "label": "dont_understand", "language": "ar", "template": "dont_understand.ar_gulf.3", "text": "ممكن ترسلونها بالانجليزي؟ ما افهم عربي 😔", "variant": "ar_gulf"}
+{"id": "va-00160", "label": "already_done", "language": "arabizi", "template": "already_done.arabizi.7", "text": "already did it men kam yom 😅", "variant": "arabizi"}
+{"id": "va-00161", "label": "question", "language": "arabizi", "template": "question.arabizi.8", "text": "shu el awra2 elli lazim ajeebha 🌹", "variant": "arabizi"}
+{"id": "va-00162", "label": "already_done", "language": "ar", "template": "already_done.ar_msa.1", "text": "❤️ اجريت تنظيرا للقولون قبل ايام", "variant": "ar_msa"}
+{"id": "va-00163", "label": "other", "language": "ar", "template": "other.ar_msa.6", "text": "🤲 سأخبركم لاحقا", "variant": "ar_msa"}
+{"id": "va-00164", "label": "wrong_number", "language": "arabizi", "template": "wrong_number.arabizi.3", "text": "hatha el raqam mub 7a2 el shakhs elli tibooneh", "variant": "arabizi"}
+{"id": "va-00165", "label": "opt_out", "language": "arabizi", "template": "opt_out.arabizi.4", "text": "🙏 il8o ishtirakee fil rasa2il hathi", "variant": "arabizi"}
+{"id": "va-00166", "label": "wrong_number", "language": "en", "template": "wrong_number.en.4", "text": "Hello, you hve the wrong number, I don't know who this is for", "variant": "en"}
+{"id": "va-00167", "label": "cannot_attend", "language": "arabizi", "template": "cannot_attend.arabizi.1", "text": "lil asaf ma bi2dar ajee el shahr el jay 😊", "variant": "arabizi"}
+{"id": "va-00168", "label": "confirm", "language": "ar", "template": "confirm.ar_gulf.4", "text": "مرحبا أأكد لموعد يوم الأحد، تسلم", "variant": "ar_gulf"}
+{"id": "va-00169", "label": "other", "language": "en", "template": "other.en.12", "text": "send me the discount code", "variant": "en"}
+{"id": "va-00170", "label": "already_done", "language": "en", "template": "already_done.en.6", "text": "i completed the test a few days ago at the centre", "variant": "en"}
+{"id": "va-00171", "label": "question", "language": "en", "template": "question.en.8", "text": "What documents do I need to bring", "variant": "en"}
+{"id": "va-00172", "label": "question", "language": "ar", "template": "question.ar_gulf.0", "text": "وين موقع المركز", "variant": "ar_gulf"}
+{"id": "va-00173", "label": "confirm", "language": "mixed", "template": "confirm.mixed.1", "text": "confirmed، حاضر الشهر الجاي", "variant": "mixed"}
+{"id": "va-00174", "label": "other", "language": "en", "template": "other.en.12", "text": "Send me the discount cdoe", "variant": "en"}
+{"id": "va-00175", "label": "wrong_number", "language": "en", "template": "wrong_number.en.4", "text": "Salam you have the wrong number, I don't know who this is for", "variant": "en"}
+{"id": "va-00176", "label": "cannot_attend", "language": "ar", "template": "cannot_attend.ar_msa.5", "text": "لن أتمكن من الحضور يوم الأربعاء ولا بعد أسبوعين بسبب الامتحانات", "variant": "ar_msa"}
+{"id": "va-00177", "label": "already_done", "language": "en", "template": "already_done.en.6", "text": "i completed the test last year at your clinc", "variant": "en"}
+{"id": "va-00178", "label": "wrong_number", "language": "en", "template": "wrong_number.en.4", "text": "hello you have the wrong number, i don't know who this is for 🤲", "variant": "en"}
+{"id": "va-00179", "label": "reschedule", "language": "en", "template": "reschedule.en.7", "text": "pleaase call me after work not now, i am busy", "variant": "en"}
+{"id": "va-00180", "label": "opt_out", "language": "en", "template": "opt_out.en.3", "text": "Good morning remove me from your list. Thank you very much", "variant": "en"}
+{"id": "va-00181", "label": "confirm", "language": "ar", "template": "confirm.ar_gulf.4", "text": "يا هلا أأد الموعد الشهر الجاي، مشكورين", "variant": "ar_gulf"}
+{"id": "va-00182", "label": "other", "language": "mixed", "template": "other.mixed.2", "text": "maybe، يمكن", "variant": "mixed"}
+{"id": "va-00183", "label": "question", "language": "mixed", "template": "question.mixed.5", "text": "هل النتيجه serious? pleease tell me", "variant": "mixed"}
+{"id": "va-00184", "label": "dont_understand", "language": "ar", "template": "dont_understand.ar_msa.6", "text": "الرساله غير واضحه، أرجو التضيح", "variant": "ar_msa"}
+{"id": "va-00185", "label": "reschedule", "language": "ar", "template": "reschedule.ar_msa.0", "text": "مرحبا هل يمكن تغيير الزيارة إلى الأسبوع القادم؟ شكرا لكم 😅", "variant": "ar_msa"}
+{"id": "va-00186", "label": "already_done", "language": "en", "template": "already_done.en.6", "text": "I completed the test last month at the hospital 😔", "variant": "en"}
+{"id": "va-00187", "label": "cannot_attend", "language": "en", "template": "cannot_attend.en.7", "text": "Hello I am unable to attend. 😊", "variant": "en"}
+{"id": "va-00188", "label": "cannot_attend", "language": "ar", "template": "cannot_attend.ar_msa.5", "text": "لن أتمكن من الحضور يوم الاثنين ولا بعد أسبوعين بسبب ظروف العمل", "variant": "ar_msa"}
+{"id": "va-00189", "label": "reschedule", "language": "ar", "template": "reschedule.ar_msa.0", "text": "صباح الخير هل يمكن تغيير المكالمة إلى يوم الأحد؟ وشكرا 😅", "variant": "ar_msa"}
+{"id": "va-00190", "label": "question", "language": "en", "template": "question.en.7", "text": "Can I bring my mother wth me?", "variant": "en"}
+{"id": "va-00191", "label": "opt_out", "language": "en", "template": "opt_out.en.3", "text": "😅 Hello doctor remove me from your list. Thank you", "variant": "en"}
+{"id": "va-00192", "label": "cannot_attend", "language": "arabizi", "template": "cannot_attend.arabizi.1", "text": "LIL ASAF MA BI2DAR AJEE BA3D BUKRA", "variant": "arabizi"}
+{"id": "va-00193", "label": "dont_understand", "language": "ar", "template": "dont_understand.ar_gulf.3", "text": "مكن ترسلونها بالانجليزي؟ ما افهم عربي", "variant": "ar_gulf"}
+{"id": "va-00194", "label": "question", "language": "en", "template": "question.en.7", "text": "Can I bing my husband with me", "variant": "en"}
+{"id": "va-00195", "label": "confirm", "language": "mixed", "template": "confirm.mixed.1", "text": "Confirmed، ان شاء الله عقب صلاة الجمعة", "variant": "mixed"}
+{"id": "va-00196", "label": "cannot_attend", "language": "en", "template": "cannot_attend.en.7", "text": "Hello, I am unable to attend???", "variant": "en"}
+{"id": "va-00197", "label": "dont_understand", "language": "en", "template": "dont_understand.en.9", "text": "Who is this and what do you want frm me? 😔", "variant": "en"}
+{"id": "va-00198", "label": "cannot_attend", "language": "ar", "template": "cannot_attend.ar_msa.5", "text": "لن أتمكن من الحضور يوم الأربعاء ولا يوم الثلاثاء بسبب ظرف عائلي طارئ", "variant": "ar_msa"}
+{"id": "va-00199", "label": "already_done", "language": "ar", "template": "already_done.ar_gulf.5", "text": "خلصت الفحص الشهر اللي فات 🙏", "variant": "ar_gulf"}
+{"id": "va-00200", "label": "other", "language": "ar", "template": "other.ar_gulf.11", "text": "الله يعطيكم العافية ❤️", "variant": "ar_gulf"}
+{"id": "va-00201", "label": "dont_understand", "language": "arabizi", "template": "dont_understand.arabizi.2", "text": "moomken tersiloha bil 3arabi? ma a2ra englizi", "variant": "arabizi"}
+{"id": "va-00202", "label": "cannot_attend", "language": "en", "template": "cannot_attend.en.7", "text": "assalamu alaikum i am unable to attend. thank you very much", "variant": "en"}
+{"id": "va-00203", "label": "other", "language": "mixed", "template": "other.mixed.2", "text": "maybe، يمكن 🤲", "variant": "mixed"}
+{"id": "va-00204", "label": "cannot_attend", "language": "en", "template": "cannot_attend.en.7", "text": "HELLO DOCTOR I AM UNABLE TO ATTEND. THANK YOU 🙂", "variant": "en"}
+{"id": "va-00205", "label": "confirm", "language": "ar", "template": "confirm.ar_msa.7", "text": "حاض جزاكم الله خيرا", "variant": "ar_msa"}
+{"id": "va-00206", "label": "cannot_attend", "language": "en", "template": "cannot_attend.en.7", "text": "Hi I am unable to attend!!", "variant": "en"}
+{"id": "va-00207", "label": "other", "language": "ar", "template": "other.ar_msa.6", "text": "سأخبركم احقا", "variant": "ar_msa"}
+{"id": "va-00208", "label": "other", "language": "arabizi", "template": "other.arabizi.3", "text": "mashkoroeen wallah", "variant": "arabizi"}
+{"id": "va-00209", "label": "question", "language": "en", "template": "question.en.8", "text": "What documents do I need to bring?", "variant": "en"}
+{"id": "va-00210", "label": "reschedule", "language": "ar", "template": "reschedule.ar_gulf.7", "text": "ممكن تاجلون الزيارة شوي؟ عقب صلاة الجمعة احسن", "variant": "ar_gulf"}
+{"id": "va-00211", "label": "reschedule", "language": "arabizi", "template": "reschedule.arabizi.0", "text": "momken nghayyer el fahs bukra? thank u 🙂", "variant": "arabizi"}
+{"id": "va-00212", "label": "other", "language": "en", "template": "other.en.12", "text": "Sed me the discount code 😔", "variant": "en"}
+{"id": "va-00213", "label": "wrong_number", "language": "en", "template": "wrong_number.en.4", "text": "Hello you have the wong number, I don't know who this is for 👍", "variant": "en"}
+{"id": "va-00214", "label": "already_done", "language": "ar", "template": "already_done.ar_msa.1", "text": "أجريت تنظيرا للقولون الأسبوع الماضي", "variant": "ar_msa"}
+{"id": "va-00215", "label": "dont_understand", "language": "ar", "template": "dont_understand.ar_gulf.3", "text": "ممكن ترسلونها الانجليزي؟ ما افهم عربي", "variant": "ar_gulf"}
+{"id": "va-00216", "label": "confirm", "language": "arabizi", "template": "confirm.arabizi.5", "text": "wasalat el resala, bantidhir ittisalkum ba3d el saa3a 4", "variant": "arabizi"}
+{"id": "va-00217", "label": "already_done", "language": "en", "template": "already_done.en.6", "text": "I completed the test last year at the centre 🌹", "variant": "en"}
+{"id": "va-00218", "label": "wrong_number", "language": "arabizi", "template": "wrong_number.arabizi.3", "text": "hatha el raqam mub 7a2 el shakhs elli tibooneh 😅", "variant": "arabizi"}
+{"id": "va-00219", "label": "cannot_attend", "language": "ar", "template": "cannot_attend.ar_msa.5", "text": "لن أتمكن من الحضور يوم الأربعاء ولا يوم السبت بسبب ظرف عائلي طارئ؟؟", "variant": "ar_msa"}
+{"id": "va-00220", "label": "question", "language": "arabizi", "template": "question.arabizi.8", "text": "shu el awra2 elli lazim ajeebha? 😔", "variant": "arabizi"}
+{"id": "va-00221", "label": "opt_out", "language": "mixed", "template": "opt_out.mixed.3", "text": "I don't want any calls ولا رسال بعد", "variant": "mixed"}
+{"id": "va-00222", "label": "wrong_number", "language": "ar", "template": "wrong_number.ar_msa.2", "text": "يبدو أن الرساله وصلت إلى الشخص الخطأ", "variant": "ar_msa"}
+{"id": "va-00223", "label": "opt_out", "language": "en", "template": "opt_out.en.2", "text": "Please do not contaact me again", "variant": "en"}
+{"id": "va-00224", "label": "already_done", "language": "ar", "template": "already_done.ar_gulf.5", "text": "خلصت الفحص الاسبوع اللي فات", "variant": "ar_gulf"}
+{"id": "va-00225", "label": "confirm", "language": "arabizi", "template": "confirm.arabizi.5", "text": "wasalat el resala, bantidhir ittisalkum el subh", "variant": "arabizi"}
+{"id": "va-00226", "label": "already_done", "language": "en", "template": "already_done.en.6", "text": "I completed the test yesterday at the clinic", "variant": "en"}
+{"id": "va-00227", "label": "other", "language": "arabizi", "template": "other.arabizi.3", "text": "mashkooreen wallha", "variant": "arabizi"}
+{"id": "va-00228", "label": "question", "language": "ar", "template": "question.ar_gulf.0", "text": "وين موقع المركز 😊", "variant": "ar_gulf"}
+{"id": "va-00229", "label": "cannot_attend", "language": "arabizi", "template": "cannot_attend.arabizi.1", "text": "lil asaf ma bi2dar ajee el shahr el jay 🙂", "variant": "arabizi"}
+{"id": "va-00230", "label": "reschedule", "language": "arabizi", "template": "reschedule.arabizi.0", "text": "momken nghayyer el mukalama el shahr el jay? thanks 🌹", "variant": "arabizi"}
+{"id": "va-00231", "label": "confirm", "language": "arabizi", "template": "confirm.arabizi.5", "text": "wasalat el resala, bantiidhir ittisalkum el subh", "variant": "arabizi"}
+{"id": "va-00232", "label": "wrong_number", "language": "en", "template": "wrong_number.en.4", "text": "Hi tem you have the wrong number, I don't know who this is for", "variant": "en"}
+{"id": "va-00233", "label": "reschedule", "language": "mixed", "template": "reschedule.mixed.0", "text": "ممكن reschedule المكالمة ليوم الانين؟", "variant": "mixed"}
+{"id": "va-00234", "label": "reschedule", "language": "en", "template": "reschedule.en.7", "text": "Please cal me in the morning not now, I am busy 🙏", "variant": "en"}
+{"id": "va-00235", "label": "already_done", "language": "ar", "template": "already_done.ar_gulf.5", "text": "خلصت الفحص من أسبوعين", "variant": "ar_gulf"}
+{"id": "va-00236", "label": "opt_out", "language": "arabizi", "template": "opt_out.arabizi.4", "text": "👍 il8o ishtirakee fil rasa2il hathi", "variant": "arabizi"}
+{"id": "va-00237", "label": "opt_out", "language": "en", "template": "opt_out.en.2", "text": "Please do not contact me agan", "variant": "en"}
+{"id": "va-00238", "label": "other", "language": "ar", "template": "other.ar_msa.6", "text": "سأخبركم لاحقا 👍", "variant": "ar_msa"}
+{"id": "va-00239", "label": "other", "language": "ar", "template": "other.ar_msa.6", "text": "سأخبرم لاحقا", "variant": "ar_msa"}
+{"id": "va-00240", "label": "wrong_number", "language": "arabizi", "template": "wrong_number.arabizi.3", "text": "hatha el raqma mub 7a2 el shakhs elli tibooneh", "variant": "arabizi"}
+{"id": "va-00241", "label": "reschedule", "language": "arabizi", "template": "reschedule.arabizi.0", "text": "marhaba momken nghayyer el fahs el usbou3 el jay?", "variant": "arabizi"}
+{"id": "va-00242", "label": "question", "language": "ar", "template": "question.ar_gulf.0", "text": "وين موقع العيادة؟", "variant": "ar_gulf"}
+{"id": "va-00243", "label": "opt_out", "language": "en", "template": "opt_out.en.2", "text": "Pleease do not contact me again", "variant": "en"}
+{"id": "va-00244", "label": "dont_understand", "language": "en", "template": "dont_understand.en.9", "text": "Who is this and what do you want frm me?", "variant": "en"}
+{"id": "va-00245", "label": "other", "language": "ar", "template": "other.ar_msa.6", "text": "ساخبركم لاحقا", "variant": "ar_msa"}
+{"id": "va-00246", "label": "reschedule", "language": "arabizi", "template": "reschedule.arabizi.0", "text": "hala wallah momken nghayyer el ziyara yom el khamis? shukran 🤲", "variant": "arabizi"}
+{"id": "va-00247", "label": "reschedule", "language": "ar", "template": "reschedule.ar_gulf.7", "text": "ممكن تأجلون الموعد شوي؟ عقب الويكند أحسن", "variant": "ar_gulf"}
+{"id": "va-00248", "label": "question", "language": "mixed", "template": "question.mixed.5", "text": "❤️ هل النتيجة serious? please tell me", "variant": "mixed"}
+{"id": "va-00249", "label": "opt_out", "language": "arabizi", "template": "opt_out.arabizi.4", "text": "il8o ishtirakee fil rasa2il hathi 🤲", "variant": "arabizi"}
+{"id": "va-00250", "label": "confirm", "language": "en", "template": "confirm.en.7", "text": "😊 Received, thank you. I will wait for the call in the evening", "variant": "en"}
+{"id": "va-00251", "label": "wrong_number", "language": "ar", "template": "wrong_number.ar_msa.2", "text": "🙏 يبدو أن الرسالة وصلت إلى الشخص الخطأ", "variant": "ar_msa"}
+{"id": "va-00252", "label": "other", "language": "ar", "template": "other.ar_gulf.11", "text": "الله يعطيكم العافية", "variant": "ar_gulf"}
+{"id": "va-00253", "label": "confirm", "language": "en", "template": "confirm.en.7", "text": "received, thank you. i will wait for the call before noon", "variant": "en"}
+{"id": "va-00254", "label": "dont_understand", "language": "en", "template": "dont_understand.en.9", "text": "Who is this and what do you want from me?", "variant": "en"}
+{"id": "va-00255", "label": "wrong_number", "language": "en", "template": "wrong_number.en.4", "text": "Hi you have the wrong number, I don't know who this is for", "variant": "en"}
+{"id": "va-00256", "label": "cannot_attend", "language": "arabizi", "template": "cannot_attend.arabizi.1", "text": "lil asaf ma bi2dar ajee yom el aahd", "variant": "arabizi"}
+{"id": "va-00257", "label": "dont_understand", "language": "ar", "template": "dont_understand.ar_gulf.3", "text": "ممكن ترسلونها بالانجليزي؟ ما افهم عربي 🤲", "variant": "ar_gulf"}
+{"id": "va-00258", "label": "already_done", "language": "en", "template": "already_done.en.6", "text": "I completed the test last month at the hospital", "variant": "en"}
+{"id": "va-00259", "label": "already_done", "language": "arabizi", "template": "already_done.arabizi.7", "text": "alreeady did it men usbou3ain 😅", "variant": "arabizi"}
+{"id": "va-00260", "label": "question", "language": "en", "template": "question.en.8", "text": "What documents do I neeed to bring? 😊", "variant": "en"}
+{"id": "va-00261", "label": "reschedule", "language": "ar", "template": "reschedule.ar_gulf.7", "text": "ممكن تأجلون الزيارة شوي؟ الأسبوع الجاي أحسن 😞", "variant": "ar_gulf"}
+{"id": "va-00262", "label": "opt_out", "language": "arabizi", "template": "opt_out.arabizi.4", "text": "IL8O ISHTIARKEE FIL RASA2IL HATHI", "variant": "arabizi"}
+{"id": "va-00263", "label": "already_done", "language": "ar", "template": "already_done.ar_msa.1", "text": "أجريت تنظيرا لقولون قبل أسبوعين", "variant": "ar_msa"}
+{"id": "va-00264", "label": "cannot_attend", "language": "ar", "template": "cannot_attend.ar_gulf.0", "text": "آسف ما اقدر أجي بسبب الدوام!!", "variant": "ar_gulf"}
+{"id": "va-00265", "label": "dont_understand", "language": "ar", "template": "dont_understand.ar_msa.6", "text": "الرسالة غير اضحة، أرجو التوضيح!!", "variant": "ar_msa"}
+{"id": "va-00266", "label": "opt_out", "language": "arabizi", "template": "opt_out.arabizi.4", "text": "il8o ishtirakeee fil rasa2il hathi", "variant": "arabizi"}
+{"id": "va-00267", "label": "opt_out", "language": "en", "template": "opt_out.en.3", "text": "Helllo remove me from your list. 🤲", "variant": "en"}
+{"id": "va-00268", "label": "question", "language": "arabizi", "template": "question.arabizi.8", "text": "❤️ shu el awra2 elli laziim ajeebha?", "variant": "arabizi"}
+{"id": "va-00269", "label": "dont_understand", "language": "en", "template": "dont_understand.en.9", "text": "Who is this and what do you want from me? ❤️", "variant": "en"}
+{"id": "va-00270", "label": "wrong_number", "language": "ar", "template": "wrong_number.ar_gulf.8", "text": "مشكورين بس الرسالة لشخص غلط", "variant": "ar_gulf"}
+{"id": "va-00271", "label": "question", "language": "en", "template": "question.en.8", "text": "What documents do I neeed to bring?", "variant": "en"}
+{"id": "va-00272", "label": "other", "language": "mixed", "template": "other.mixed.2", "text": "🌹 maybe، يمكن", "variant": "mixed"}
+{"id": "va-00273", "label": "confirm", "language": "arabizi", "template": "confirm.arabizi.5", "text": "wasalat el resala, bantidhir ittisalkum el 3ashira el subh", "variant": "arabizi"}
+{"id": "va-00274", "label": "cannot_attend", "language": "en", "template": "cannot_attend.en.7", "text": "assalamu alaikum i am unable to attend. thank you???", "variant": "en"}
+{"id": "va-00275", "label": "other", "language": "ar", "template": "other.ar_gulf.11", "text": "الل يعطيكم العافية", "variant": "ar_gulf"}
+{"id": "va-00276", "label": "other", "language": "ar", "template": "other.ar_msa.6", "text": "سأخبركم لاحقا! 👍", "variant": "ar_msa"}
+{"id": "va-00277", "label": "opt_out", "language": "ar", "template": "opt_out.ar_gulf.10", "text": "وصلت الرسالة. شيلوا رقمي من القائمة", "variant": "ar_gulf"}
+{"id": "va-00278", "label": "opt_out", "language": "en", "template": "opt_out.en.2", "text": "Please do not contact me again", "variant": "en"}
+{"id": "va-00279", "label": "dont_understand", "language": "en", "template": "dont_understand.en.9", "text": "who is this and what do you want from me", "variant": "en"}
+{"id": "va-00280", "label": "other", "language": "ar", "template": "other.ar_gulf.11", "text": "الله يعطيكم العافة", "variant": "ar_gulf"}
+{"id": "va-00281", "label": "cannot_attend", "language": "en", "template": "cannot_attend.en.7", "text": "SLAAM I AM UNABLE TO ATTEND. THANKS A LOT", "variant": "en"}
+{"id": "va-00282", "label": "other", "language": "arabizi", "template": "other.arabizi.3", "text": "mashkooreen wallah 😅", "variant": "arabizi"}
+{"id": "va-00283", "label": "confirm", "language": "en", "template": "confirm.en.7", "text": "received, thank you. i willl wait for the call at 2:30", "variant": "en"}
+{"id": "va-00284", "label": "opt_out", "language": "mixed", "template": "opt_out.mixed.3", "text": "I don't want any callls ولا رسايل بعد", "variant": "mixed"}
+{"id": "va-00285", "label": "reschedule", "language": "en", "template": "reschedule.en.7", "text": "please call me at 2:30 not now, i am busy", "variant": "en"}
+{"id": "va-00286", "label": "opt_out", "language": "ar", "template": "opt_out.ar_msa.2", "text": "مرحبا احذفوا رقمي من القايمة. شكرا لكم", "variant": "ar_msa"}
+{"id": "va-00287", "label": "dont_understand", "language": "en", "template": "dont_understand.en.9", "text": "Who is this and what do you wannt from me?", "variant": "en"}
+{"id": "va-00288", "label": "already_done", "language": "ar", "template": "already_done.ar_msa.1", "text": "أجريت تنظيرا للقولون الأسبوع الماضي!!", "variant": "ar_msa"}
+{"id": "va-00289", "label": "question", "language": "mixed", "template": "question.mixed.5", "text": "هل النتيجة SERIOUS? PLEASE TLEL ME", "variant": "mixed"}
+{"id": "va-00290", "label": "reschedule", "language": "ar", "template": "reschedule.ar_msa.0", "text": "👍 هل يمكن تغيير الزيارة إلى غدا؟ شكرا لكم", "variant": "ar_msa"}
+{"id": "va-00291", "label": "reschedule", "language": "ar", "template": "reschedule.ar_gulf.7", "text": "ممكن تأجلون الزيارة شوي؟ يوم الاثنين أحسن", "variant": "ar_gulf"}
+{"id": "va-00292", "label": "reschedule", "language": "ar", "template": "reschedule.ar_msa.0", "text": "هل يمكن تغيير الموعد إلى بعد نهاية الأسبوع؟ مع الشكر", "variant": "ar_msa"}
+{"id": "va-00293", "label": "other", "language": "arabizi", "template": "other.arabizi.3", "text": "mashkooreen wallah", "variant": "arabizi"}
+{"id": "va-00294", "label": "cannot_attend", "language": "ar", "template": "cannot_attend.ar_msa.5", "text": "لن أتمك من الحضور يوم الأحد ولا يوم السبت بسبب ظرف عائلي طارئ", "variant": "ar_msa"}
+{"id": "va-00295", "label": "confirm", "language": "ar", "template": "confirm.ar_msa.7", "text": "تم شكرًا جزيلا 😞", "variant": "ar_msa"}
+{"id": "va-00296", "label": "confirm", "language": "ar", "template": "confirm.ar_msa.7", "text": "حسنا جزاكم الله خيرا", "variant": "ar_msa"}
+{"id": "va-00297", "label": "confirm", "language": "ar", "template": "confirm.ar_msa.7", "text": "تم شكرًا جزيلا 😊", "variant": "ar_msa"}
+{"id": "va-00298", "label": "reschedule", "language": "ar", "template": "reschedule.ar_msa.0", "text": "مرحبا هل يمكن تغيير المكالمة إلي بعد نهاية الأسبوع؟ وشكرا 😅", "variant": "ar_msa"}
+{"id": "va-00299", "label": "cannot_attend", "language": "ar", "template": "cannot_attend.ar_gulf.0", "text": "آسف ما اقدر أجي بسبب ظرف طارئ. الله يسلمك", "variant": "ar_gulf"}
+{"id": "va-00300", "label": "already_done", "language": "arabizi", "template": "already_done.arabizi.7", "text": "already did it el sana el madya 😞", "variant": "arabizi"}
+{"id": "va-00301", "label": "confirm", "language": "en", "template": "confirm.en.7", "text": "Received, thank you. I will wait for the call in the evening 🌹", "variant": "en"}
+{"id": "va-00302", "label": "cannot_attend", "language": "arabizi", "template": "cannot_attend.arabizi.1", "text": "😅 lil asaf ma bi2dar aje yom el arb3a", "variant": "arabizi"}
+{"id": "va-00303", "label": "cannot_attend", "language": "arabizi", "template": "cannot_attend.arabizi.1", "text": "🌹 lil asaf ma bi2dar ajee yom el ithnain", "variant": "arabizi"}
+{"id": "va-00304", "label": "reschedule", "language": "en", "template": "reschedule.en.7", "text": "Please call me in the evening not now, I am busy", "variant": "en"}
+{"id": "va-00305", "label": "dont_understand", "language": "arabizi", "template": "dont_understand.arabizi.2", "text": "😊 MOMKEN TERSLIOHA BIL 3ARABI? MA A2RA ENGLIZI", "variant": "arabizi"}
+{"id": "va-00306", "label": "other", "language": "en", "template": "other.en.12", "text": "Send me the discount code 😞", "variant": "en"}
+{"id": "va-00307", "label": "confirm", "language": "arabizi", "template": "confirm.arabizi.5", "text": "wasalat el resala, bantidhir ittisalkum 9abl el dhuhr 😊", "variant": "arabizi"}
+{"id": "va-00308", "label": "question", "language": "ar", "template": "question.ar_gulf.0", "text": "وين موقع المستشفى", "variant": "ar_gulf"}
+{"id": "va-00309", "label": "confirm", "language": "mixed", "template": "confirm.mixed.1", "text": "Confirmed، حاضر الشهر الجاي 😅", "variant": "mixed"}
+{"id": "va-00310", "label": "cannot_attend", "language": "ar", "template": "cannot_attend.ar_msa.5", "text": "لن أتمكن من الحضور بعد نهاية الأسبوع ولا نهاية الشهر بسبب المرض", "variant": "ar_msa"}
+{"id": "va-00311", "label": "reschedule", "language": "arabizi", "template": "reschedule.arabizi.0", "text": "momken nghayyer el fahs yom el ahad? yaatik el afya", "variant": "arabizi"}
+{"id": "va-00312", "label": "question", "language": "en", "template": "question.en.8", "text": "What documetns do I need to bring? 😔", "variant": "en"}
+{"id": "va-00313", "label": "reschedule", "language": "mixed", "template": "reschedule.mixed.0", "text": "ممكن rsechedule المكالمه ليوم الاثنين؟", "variant": "mixed"}
+{"id": "va-00314", "label": "dont_understand", "language": "ar", "template": "dont_understand.ar_gulf.3", "text": "ممكن ترسلونها بالانجليزي؟ ما افهم عربي", "variant": "ar_gulf"}
+{"id": "va-00315", "label": "reschedule", "language": "mixed", "template": "reschedule.mixed.0", "text": "ممكن reschedule المكالمة ليوم الأحد 😊", "variant": "mixed"}
+{"id": "va-00316", "label": "dont_understand", "language": "ar", "template": "dont_understand.ar_msa.6", "text": "😞 الرسال غير واضحة، أرجو التوضيح", "variant": "ar_msa"}
+{"id": "va-00317", "label": "reschedule", "language": "mixed", "template": "reschedule.mixed.0", "text": "ممكن reschdeule الفحص لالشهر الجاي؟ 😔", "variant": "mixed"}
+{"id": "va-00318", "label": "wrong_number", "language": "ar", "template": "wrong_number.ar_gulf.8", "text": "مشكورين بس الرساله لشخص غلط ❤️", "variant": "ar_gulf"}
+{"id": "va-00319", "label": "confirm", "language": "ar", "template": "confirm.ar_msa.7", "text": "حسنا مع الشكر!!", "variant": "ar_msa"}
+{"id": "va-00320", "label": "confirm", "language": "mixed", "template": "confirm.mixed.1", "text": "Confirmed، أوكي الأسبوع الجاي", "variant": "mixed"}
+{"id": "va-00321", "label": "opt_out", "language": "ar", "template": "opt_out.ar_gulf.10", "text": "وصلت الرسالة. شيلوا رقمي من القائة", "variant": "ar_gulf"}
+{"id": "va-00322", "label": "dont_understand", "language": "en", "template": "dont_understand.en.9", "text": "Who is this and what do you want from me 😞", "variant": "en"}
+{"id": "va-00323", "label": "confirm", "language": "ar", "template": "confirm.ar_msa.7", "text": "تم شكرًا جزيلا", "variant": "ar_msa"}
+{"id": "va-00324", "label": "dont_understand", "language": "ar", "template": "dont_understand.ar_msa.6", "text": "الرسالة غير واحة، أرجو التوضيح", "variant": "ar_msa"}
+{"id": "va-00325", "label": "reschedule", "language": "ar", "template": "reschedule.ar_msa.0", "text": "هل يمكن تغيير المكالمة إلى بعد نهاية الأسبوع؟ جزاكم الله خيرا", "variant": "ar_msa"}
+{"id": "va-00326", "label": "opt_out", "language": "ar", "template": "opt_out.ar_msa.2", "text": "السلام عليكم احذفوا رقمي من القائمة. شكرًا جزيلا 😔", "variant": "ar_msa"}
+{"id": "va-00327", "label": "already_done", "language": "arabizi", "template": "already_done.arabizi.7", "text": "already did it ebarih 😅", "variant": "arabizi"}
+{"id": "va-00328", "label": "reschedule", "language": "mixed", "template": "reschedule.mixed.0", "text": "ممكن reschedule الفحص لعقب الويكند؟ 😞", "variant": "mixed"}
+{"id": "va-00329", "label": "opt_out", "language": "en", "template": "opt_out.en.2", "text": "Please do not contact me again???", "variant": "en"}
+{"id": "va-00330", "label": "already_done", "language": "en", "template": "already_done.en.6", "text": "i completed the test a few days ago at your clinic", "variant": "en"}
+{"id": "va-00331", "label": "already_done", "language": "ar", "template": "already_done.ar_gulf.5", "text": "🤲 خلصت الفحص السنه اللي فاتت", "variant": "ar_gulf"}
+{"id": "va-00332", "label": "other", "language": "ar", "template": "other.ar_msa.6", "text": "👍 سأخبركم لاحقا", "variant": "ar_msa"}
+{"id": "va-00333", "label": "opt_out", "language": "en", "template": "opt_out.en.2", "text": "Please do not cnotact me again 🙂", "variant": "en"}
+{"id": "va-00334", "label": "wrong_number", "language": "ar", "template": "wrong_number.ar_gulf.8", "text": "مشكورين بس الرسالة لشخص غلط 😅", "variant": "ar_gulf"}
+{"id": "va-00335", "label": "already_done", "language": "en", "template": "already_done.en.6", "text": "I completed the test last week at the clinic 🙏", "variant": "en"}
+{"id": "va-00336", "label": "opt_out", "language": "ar", "template": "opt_out.ar_gulf.10", "text": "وصلت الرساله. شيلوا رقمي من القائمه", "variant": "ar_gulf"}
+{"id": "va-00337", "label": "question", "language": "en", "template": "question.en.7", "text": "can i bring my fater with me?", "variant": "en"}
+{"id": "va-00338", "label": "other", "language": "en", "template": "other.en.12", "text": "Send me the discount code 👍", "variant": "en"}
+{"id": "va-00339", "label": "cannot_attend", "language": "ar", "template": "cannot_attend.ar_gulf.0", "text": "آسف ما اقدر أجي بسبب الاختبارات. تسلم 😞", "variant": "ar_gulf"}
+{"id": "va-00340", "label": "confirm", "language": "mixed", "template": "confirm.mixed.1", "text": "Confirmed، زين الشهر الجاي!!", "variant": "mixed"}
+{"id": "va-00341", "label": "confirm", "language": "en", "template": "confirm.en.7", "text": "Received, thank you. I will wait for the call at 2:30", "variant": "en"}
+{"id": "va-00342", "label": "cannot_attend", "language": "ar", "template": "cannot_attend.ar_msa.5", "text": "لن أتمكن من الحضور الشهر القادم ولا يم السبت بسبب المرض 👍", "variant": "ar_msa"}
+{"id": "va-00343", "label": "already_done", "language": "ar", "template": "already_done.ar_gulf.5", "text": "خلصت الفحص الأسبوع اللي فات", "variant": "ar_gulf"}
+{"id": "va-00344", "label": "already_done", "language": "arabizi", "template": "already_done.arabizi.7", "text": "alreday did it men kam yom", "variant": "arabizi"}
+{"id": "va-00345", "label": "wrong_number", "language": "en", "template": "wrong_number.en.4", "text": "😞 Good morning you have the wrrong number, I don't know who this is for", "variant": "en"}
+{"id": "va-00346", "label": "opt_out", "language": "mixed", "template": "opt_out.mixed.3", "text": "I don't watn any calls ولا رساي بعد 🙏", "variant": "mixed"}
+{"id": "va-00347", "label": "already_done", "language": "en", "template": "already_done.en.6", "text": "I completed the test yesterday at the hospital", "variant": "en"}
+{"id": "va-00348", "label": "wrong_number", "language": "ar", "template": "wrong_number.ar_msa.2", "text": "يبدو ان الرسالة وصلت إلى الشخص الخطا", "variant": "ar_msa"}
+{"id": "va-00349", "label": "cannot_attend", "language": "ar", "template": "cannot_attend.ar_msa.5", "text": "لن أتمكن من الحضور يوم الأحد ولا يوم الثلاثاء بسبب ظروف العمل 👍", "variant": "ar_msa"}
+{"id": "va-00350", "label": "wrong_number", "language": "ar", "template": "wrong_number.ar_msa.2", "text": "يبدو أن الرسالة وصلت إلى الشخص الخطأ", "variant": "ar_msa"}
+{"id": "va-00351", "label": "wrong_number", "language": "en", "template": "wrong_number.en.4", "text": "Hello you have the wrong number, I don't know who this is for", "variant": "en"}
+{"id": "va-00352", "label": "wrong_number", "language": "en", "template": "wrong_number.en.4", "text": "👍 Good morning you have the wrong number, I don't know who this is for!", "variant": "en"}
+{"id": "va-00353", "label": "question", "language": "en", "template": "question.en.7", "text": "Can I bring my father with me? 😔", "variant": "en"}
+{"id": "va-00354", "label": "other", "language": "en", "template": "other.en.4", "text": "Let me think about it", "variant": "en"}
+{"id": "va-00355", "label": "already_done", "language": "ar", "template": "already_done.ar_gulf.5", "text": "خلصت الفحص السنة اللي فاتت", "variant": "ar_gulf"}
+{"id": "va-00356", "label": "wrong_number", "language": "ar", "template": "wrong_number.ar_gulf.8", "text": "مشورين بس الرسالة لشخص غلط", "variant": "ar_gulf"}
+{"id": "va-00357", "label": "dont_understand", "language": "en", "template": "dont_understand.en.9", "text": "Who is this and what do you want from me", "variant": "en"}
+{"id": "va-00358", "label": "other", "language": "en", "template": "other.en.12", "text": "Send me the discount code", "variant": "en"}
+{"id": "va-00359", "label": "question", "language": "arabizi", "template": "question.arabizi.8", "text": "shu el awra2 elli lazim ajeebha", "variant": "arabizi"}
+{"id": "va-00360", "label": "other", "language": "ar", "template": "other.ar_gulf.11", "text": "👍 الله يعطيكم العافية", "variant": "ar_gulf"}
+{"id": "va-00361", "label": "reschedule", "language": "mixed", "template": "reschedule.mixed.0", "text": "ممكن reschedule الموعد ليوم الأحد؟", "variant": "mixed"}
+{"id": "va-00362", "label": "opt_out", "language": "arabizi", "template": "opt_out.arabizi.4", "text": "il8o ishtirakee fil rasa2il hathi", "variant": "arabizi"}
+{"id": "va-00363", "label": "cannot_attend", "language": "arabizi", "template": "cannot_attend.arabizi.1", "text": "lil asaf ma bi2dar ajee bukra", "variant": "arabizi"}
+{"id": "va-00364", "label": "already_done", "language": "en", "template": "already_done.en.6", "text": "I completed the test two weeks ago at the centre", "variant": "en"}
+{"id": "va-00365", "label": "already_done", "language": "arabizi", "template": "already_done.arabizi.7", "text": "already did it men kam yom", "variant": "arabizi"}
+{"id": "va-00366", "label": "cannot_attend", "language": "arabizi", "template": "cannot_attend.arabizi.1", "text": "❤️ lil asaf ma bi2dar ajee yom el ahad", "variant": "arabizi"}
+{"id": "va-00367", "label": "opt_out", "language": "en", "template": "opt_out.en.3", "text": "Hello remove me from your list. Thanks a lot", "variant": "en"}
+{"id": "va-00368", "label": "other", "language": "en", "template": "other.en.4", "text": "Let me think about it ❤️", "variant": "en"}
+{"id": "va-00369", "label": "confirm", "language": "mixed", "template": "confirm.emoji.2", "text": "✅", "variant": "emoji"}
+{"id": "va-00370", "label": "cannot_attend", "language": "ar", "template": "cannot_attend.ar_msa.5", "text": "لن أتمكن من الحضور يوم الأربعاء ولا نهاية الشهر بسبب المرض ❤️", "variant": "ar_msa"}
+{"id": "va-00371", "label": "question", "language": "en", "template": "question.en.7", "text": "can i bring my husband with me? 😊", "variant": "en"}

@@ -52,7 +52,9 @@ from app.clock import clock  # noqa: E402
 from app.config import settings  # noqa: E402
 from app.events import CASE_CREATED, Event, InMemoryEventStore  # noqa: E402
 from app.main import app  # noqa: E402
-from app.routers import cases, drafts  # noqa: E402
+from app.routers import cases, drafts, replies  # noqa: E402
+from app.triage import classify as triage  # noqa: E402
+from app.triage.reply_store import InMemoryReplyStore  # noqa: E402
 
 logging.getLogger("httpx").setLevel(logging.WARNING)
 
@@ -85,6 +87,10 @@ SCOPE_RULES: dict[tuple[str, str], frozenset[str]] = {
     ("GET", "/cases/{case_id}/drafts"): frozenset({"owner"}),
     # Recording the colonoscopy result is the owning clinician's act (decision-matrix.md, E8 route).
     ("POST", "/cases/{case_id}/confirmatory-result"): frozenset({"owner"}),
+    # Inbound patient replies (D13): the coordinator who received it, and the coordinator or supervisor who reads it.
+    # Neither is confined to a case: a coordinator sees every case.
+    ("POST", "/cases/{case_id}/replies"): frozenset(),
+    ("GET", "/cases/{case_id}/replies"): frozenset(),
     ("POST", "/drafts/{draft_id}/approve"): frozenset({"owner"}),
     ("POST", "/drafts/{draft_id}/reject"): frozenset({"owner"}),
 }
@@ -109,16 +115,20 @@ def actor_for(role: str, name: str) -> str:
 def world():
     """A fresh in-memory API: stores, notification log, ops store and clock restored afterwards."""
     saved = [(cases, "store", cases.store), (cases, "pathway", cases.pathway), (notify, "log", notify.log),
-             (ops, "store", ops.store), (drafts, "store", drafts.store), (users, "directory", users.directory)]
+             (ops, "store", ops.store), (drafts, "store", drafts.store), (users, "directory", users.directory),
+             (replies, "store", replies.store)]
     cases.store = InMemoryEventStore()
     notify.log = notify.InMemoryNotificationLog()
     ops.store = ops.InMemoryOpsStore()
     drafts.store = InMemoryDraftStore()
+    replies.store = InMemoryReplyStore()
+    triage.set_backend(None)  # the probes must never start the reply model: unavailable is the fail-safe answer
     users.directory = users.InMemoryUserDirectory()
     clock.reset()
     try:
         yield TestClient(app)
     finally:
+        triage.reset()
         for module, attr, value in saved:
             setattr(module, attr, value)
         clock.reset()
@@ -202,6 +212,7 @@ BODIES = {
     ("POST", "/scheduler/heartbeat"): {"sweep_ok": True},
     ("POST", "/cases/{case_id}/drafts"): {"purpose": "result_notification", "channel": "sms", "language": "en"},
     ("POST", "/drafts/{draft_id}/reject"): {"reason": "not_needed"},
+    ("POST", "/cases/{case_id}/replies"): {"channel": "sms", "text": "rbac probe"},
 }
 
 

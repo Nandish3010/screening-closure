@@ -1,0 +1,76 @@
+{
+  "counts": {
+    "test": {
+      "by_label": {
+        "already_done": 61,
+        "cannot_attend": 61,
+        "confirm": 62,
+        "dont_understand": 61,
+        "opt_out": 61,
+        "other": 62,
+        "question": 61,
+        "reschedule": 61,
+        "wrong_number": 61
+      },
+      "by_language": {
+        "ar": 194,
+        "arabizi": 99,
+        "en": 180,
+        "mixed": 78
+      },
+      "templates": 69,
+      "total": 551
+    },
+    "train": {
+      "by_label": {
+        "already_done": 238,
+        "cannot_attend": 238,
+        "confirm": 240,
+        "dont_understand": 238,
+        "opt_out": 238,
+        "other": 241,
+        "question": 238,
+        "reschedule": 238,
+        "wrong_number": 238
+      },
+      "by_language": {
+        "ar": 839,
+        "arabizi": 446,
+        "en": 588,
+        "mixed": 274
+      },
+      "templates": 288,
+      "total": 2147
+    },
+    "val": {
+      "by_label": {
+        "already_done": 41,
+        "cannot_attend": 41,
+        "confirm": 42,
+        "dont_understand": 41,
+        "opt_out": 41,
+        "other": 42,
+        "question": 41,
+        "reschedule": 41,
+        "wrong_number": 41
+      },
+      "by_language": {
+        "ar": 151,
+        "arabizi": 71,
+        "en": 115,
+        "mixed": 34
+      },
+      "templates": 46,
+      "total": 371
+    }
+  },
+  "files": {
+    "test.jsonl": "83451d0e4351b0457d8bd71737b2b1e5ee2c6cc6efc9468c66b70e73aadaed92",
+    "train.jsonl": "8791b59695b6adcd0209f6f3c5b16bc578f5d33a74b8a7ce38d7db7020a24c15",
+    "val.jsonl": "ed29eaead60c2fcaac85f92375406899b1de101ce0003c16dbd5cb59f5ddb231"
+  },
+  "per_intent": 340,
+  "seed": 20261018,
+  "synthetic": true,
+  "total": 3069
+}

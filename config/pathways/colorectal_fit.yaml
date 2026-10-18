@@ -65,6 +65,10 @@ annotations:
   - message_sent
   - callback_requested
   - watchdog_flagged
+  # D13: an inbound patient reply and what the triage made of it. `reply_received {channel, text_ref}` and
+  # `reply_classified {intent, confidence, model_id, needs_human}`: the text itself is never in the log.
+  - reply_received
+  - reply_classified
 # Events an automated actor (system:, scheduler, watchdog, model:) may never emit.
 human_only_events:
   - escalation_accepted

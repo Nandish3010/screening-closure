@@ -1,0 +1,35 @@
+{
+  "always_human": [
+    "opt_out",
+    "other",
+    "question"
+  ],
+  "auto_handled": [
+    "already_done",
+    "cannot_attend",
+    "confirm",
+    "dont_understand",
+    "reschedule",
+    "wrong_number"
+  ],
+  "base_model": "mlx-community/Qwen2.5-1.5B-Instruct-4bit",
+  "labels": [
+    "confirm",
+    "reschedule",
+    "cannot_attend",
+    "wrong_number",
+    "dont_understand",
+    "opt_out",
+    "question",
+    "already_done",
+    "other"
+  ],
+  "mass_floor": 0.5,
+  "model_id": "qwen2.5-1.5b-4bit+lora-8b5a49fc",
+  "synthetic_data_only": true,
+  "temperature": 1.7036,
+  "test_coverage": 0.5807622504537205,
+  "test_precision": 0.9625,
+  "threshold": 0.553,
+  "val_precision_target": 0.97
+}

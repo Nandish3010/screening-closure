@@ -1,0 +1,551 @@
+{"id": "te-00001", "label": "reschedule", "language": "en", "template": "reschedule.en.4", "text": "hello i would like another date for the call, on the 25th would wrk", "variant": "en"}
+{"id": "te-00002", "label": "wrong_number", "language": "en", "template": "wrong_number.en.10", "text": "Alright, wrong number, not me???", "variant": "en"}
+{"id": "te-00003", "label": "reschedule", "language": "ar", "template": "reschedule.ar_msa.7", "text": "مرحبًا يوم الأحد لا يناسبني، هل يتوفر موعد بعد أسبوعين؟", "variant": "ar_msa"}
+{"id": "te-00004", "label": "wrong_number", "language": "ar", "template": "wrong_number.ar_gulf.5", "text": "هالرسالة مب لي", "variant": "ar_gulf"}
+{"id": "te-00005", "label": "reschedule", "language": "mixed", "template": "reschedule.mixed.5", "text": "postpone appointment to this Thursday لو سمحتم!", "variant": "mixed"}
+{"id": "te-00006", "label": "opt_out", "language": "arabizi", "template": "opt_out.arabizi.0", "text": "battilo tersiloon li??? 🤲", "variant": "arabizi"}
+{"id": "te-00007", "label": "already_done", "language": "en", "template": "already_done.en.3", "text": "I did the camera test yesterday, no need 😊", "variant": "en"}
+{"id": "te-00008", "label": "wrong_number", "language": "en", "template": "wrong_number.en.10", "text": "Okay, wroong number, not me", "variant": "en"}
+{"id": "te-00009", "label": "confirm", "language": "en", "template": "confirm.en.8", "text": "I will come to the hospital the day after tomorrow in the morning. Thanks", "variant": "en"}
+{"id": "te-00010", "label": "wrong_number", "language": "en", "template": "wrong_number.en.6", "text": "i changed my number long ago, this is not their number", "variant": "en"}
+{"id": "te-00011", "label": "question", "language": "ar", "template": "question.ar_gulf.11", "text": "في موقف سيارات عند العيادة؟", "variant": "ar_gulf"}
+{"id": "te-00012", "label": "opt_out", "language": "en", "template": "opt_out.en.5", "text": "Unsubscirbe 🤲", "variant": "en"}
+{"id": "te-00013", "label": "reschedule", "language": "ar", "template": "reschedule.ar_msa.7", "text": "مساء الخير بعد نهاية الأسبوع لا يناسبني، هل يتوفر موعد يوم السبت؟ 🙏", "variant": "ar_msa"}
+{"id": "te-00014", "label": "other", "language": "arabizi", "template": "other.arabizi.10", "text": "irsilo li code el khsam", "variant": "arabizi"}
+{"id": "te-00015", "label": "wrong_number", "language": "arabizi", "template": "wrong_number.arabizi.8", "text": "SHUKRAN BAS EL RESALA LA SHAKHS GHALAT", "variant": "arabizi"}
+{"id": "te-00016", "label": "reschedule", "language": "arabizi", "template": "reschedule.arabizi.2", "text": "ma a2dar bukra, momken titasilo feeni ba3d usbou3ain 😅", "variant": "arabizi"}
+{"id": "te-00017", "label": "reschedule", "language": "ar", "template": "reschedule.ar_msa.7", "text": "😔 مرحبا يوم الأحد لا يناسبني، هل يتوفر موعد يوم السبت؟", "variant": "ar_msa"}
+{"id": "te-00018", "label": "other", "language": "arabizi", "template": "other.arabizi.5", "text": "yimkin", "variant": "arabizi"}
+{"id": "te-00019", "label": "wrong_number", "language": "en", "template": "wrong_number.en.10", "text": "CONFIRMED, WRONG NUMBER, NOT ME", "variant": "en"}
+{"id": "te-00020", "label": "cannot_attend", "language": "en", "template": "cannot_attend.en.1", "text": "I will not be able to come to the check-up because of being unwell", "variant": "en"}
+{"id": "te-00021", "label": "wrong_number", "language": "en", "template": "wrong_number.en.10", "text": "Yes, wrrong number, not me", "variant": "en"}
+{"id": "te-00022", "label": "confirm", "language": "ar", "template": "confirm.ar_msa.0", "text": "مرحبا تم، سأكون متاحا يوم الاثنين. مع الشكر", "variant": "ar_msa"}
+{"id": "te-00023", "label": "cannot_attend", "language": "ar", "template": "cannot_attend.ar_gulf.2", "text": "ما اقدر اوصل المستشفى، الاختبارات!!", "variant": "ar_gulf"}
+{"id": "te-00024", "label": "confirm", "language": "mixed", "template": "confirm.mixed.4", "text": "OK شكرا، وصلت الرسالة", "variant": "mixed"}
+{"id": "te-00025", "label": "dont_understand", "language": "arabizi", "template": "dont_understand.arabizi.7", "text": "😔 shino hatha? mub fahem shi", "variant": "arabizi"}
+{"id": "te-00026", "label": "cannot_attend", "language": "arabizi", "template": "cannot_attend.arabizi.5", "text": "ma a2dar ajee yom el arb3a wala akhir el shahr bsabab el shughul", "variant": "arabizi"}
+{"id": "te-00027", "label": "already_done", "language": "mixed", "template": "already_done.mixed.3", "text": "aleady تم الفحص الشهر اللي فات", "variant": "mixed"}
+{"id": "te-00028", "label": "cannot_attend", "language": "ar", "template": "cannot_attend.ar_gulf.2", "text": "ما اقدر اوصل المستشفى، الدوام", "variant": "ar_gulf"}
+{"id": "te-00029", "label": "reschedule", "language": "ar", "template": "reschedule.ar_gulf.5", "text": "اتصلوا فيني العاشرة الصبح، الحين مشغول؟؟", "variant": "ar_gulf"}
+{"id": "te-00030", "label": "cannot_attend", "language": "mixed", "template": "cannot_attend.mixed.4", "text": "للأسف I am out of the ciity so ما اقدر أحضر", "variant": "mixed"}
+{"id": "te-00031", "label": "reschedule", "language": "mixed", "template": "reschedule.mixed.5", "text": "postpone visit to after the weekend لو سمحتم", "variant": "mixed"}
+{"id": "te-00032", "label": "wrong_number", "language": "ar", "template": "wrong_number.ar_gulf.5", "text": "هالرسالة مب لي 😊", "variant": "ar_gulf"}
+{"id": "te-00033", "label": "dont_understand", "language": "ar", "template": "dont_understand.ar_msa.3", "text": "هل يمكن إرسالها بالإنجليزية؟ لا أفهم العربية", "variant": "ar_msa"}
+{"id": "te-00034", "label": "already_done", "language": "ar", "template": "already_done.ar_gulf.2", "text": "الفحص انسوى من قبل في مستشفى ثاني؟؟", "variant": "ar_gulf"}
+{"id": "te-00035", "label": "cannot_attend", "language": "arabizi", "template": "cannot_attend.arabizi.5", "text": "🌹 ma a2dar ajee ba3d bukra wala ba3d usbou3ain bsabab el dawam", "variant": "arabizi"}
+{"id": "te-00036", "label": "dont_understand", "language": "mixed", "template": "dont_understand.mixed.2", "text": "pleaes send in عربي, ما اقرا English", "variant": "mixed"}
+{"id": "te-00037", "label": "dont_understand", "language": "ar", "template": "dont_understand.ar_gulf.6", "text": "الرسالة مب واضحة، وضحوا لي 😅", "variant": "ar_gulf"}
+{"id": "te-00038", "label": "already_done", "language": "ar", "template": "already_done.ar_msa.5", "text": "تم، لقد انتهيت من الفحص قبل اسبوعين", "variant": "ar_msa"}
+{"id": "te-00039", "label": "question", "language": "en", "template": "question.en.12", "text": "Is parking available at your clinic?", "variant": "en"}
+{"id": "te-00040", "label": "wrong_number", "language": "ar", "template": "wrong_number.ar_gulf.7", "text": "زين بس الرقم غلط، مب أنا 😊", "variant": "ar_gulf"}
+{"id": "te-00041", "label": "already_done", "language": "mixed", "template": "already_done.mixed.3", "text": "alreaady ت الفحص أمس", "variant": "mixed"}
+{"id": "te-00042", "label": "wrong_number", "language": "mixed", "template": "wrong_number.mixed.0", "text": "wrong number، الرقم غلط ❤️", "variant": "mixed"}
+{"id": "te-00043", "label": "wrong_number", "language": "en", "template": "wrong_number.en.10", "text": "Confirmed, wrog number, not me", "variant": "en"}
+{"id": "te-00044", "label": "wrong_number", "language": "ar", "template": "wrong_number.ar_msa.8", "text": "علم، لكن الرسالة ليست لي", "variant": "ar_msa"}
+{"id": "te-00045", "label": "already_done", "language": "arabizi", "template": "already_done.arabizi.6", "text": "😅 sawwaytah khalas. yaatik el afa", "variant": "arabizi"}
+{"id": "te-00046", "label": "wrong_number", "language": "arabizi", "template": "wrong_number.arabizi.4", "text": "ma fi a7ad bhalesm hena, el raqam ghhalat 🙏", "variant": "arabizi"}
+{"id": "te-00047", "label": "confirm", "language": "en", "template": "confirm.en.4", "text": "SALAM I CONFIRM MY VISIT ON SUNDAY. THANKS A LOT", "variant": "en"}
+{"id": "te-00048", "label": "question", "language": "en", "template": "question.en.11", "text": "can i take my medicine befoe the test..", "variant": "en"}
+{"id": "te-00049", "label": "reschedule", "language": "arabizi", "template": "reschedule.arabizi.2", "text": "ma a2dar yom el khamis, momken titasilo feeni el ahhad el jay?", "variant": "arabizi"}
+{"id": "te-00050", "label": "confirm", "language": "mixed", "template": "confirm.mixed.4", "text": "alright شكرا، وصلت الرسالة 🙂", "variant": "mixed"}
+{"id": "te-00051", "label": "question", "language": "en", "template": "question.en.11", "text": "can i tke my medicine before the test!!", "variant": "en"}
+{"id": "te-00052", "label": "already_done", "language": "en", "template": "already_done.en.2", "text": "Already done, I did it last week at anothher hospital", "variant": "en"}
+{"id": "te-00053", "label": "dont_understand", "language": "arabizi", "template": "dont_understand.arabizi.7", "text": "shion hatha? mub fahem shi 😅", "variant": "arabizi"}
+{"id": "te-00054", "label": "other", "language": "ar", "template": "other.ar_gulf.9", "text": "هل الله يوفقكم", "variant": "ar_gulf"}
+{"id": "te-00055", "label": "confirm", "language": "ar", "template": "confirm.ar_gulf.3", "text": "زين بجي العيادة يوم الاثنين بعد الساعة ٤", "variant": "ar_gulf"}
+{"id": "te-00056", "label": "other", "language": "ar", "template": "other.ar_gulf.9", "text": "هلا رمضان كريم", "variant": "ar_gulf"}
+{"id": "te-00057", "label": "question", "language": "ar", "template": "question.ar_gulf.11", "text": "في موقف سيارات عند المركز؟", "variant": "ar_gulf"}
+{"id": "te-00058", "label": "wrong_number", "language": "arabizi", "template": "wrong_number.arabizi.8", "text": "😊 shukran bas el resala la shakhs ghalat", "variant": "arabizi"}
+{"id": "te-00059", "label": "opt_out", "language": "arabizi", "template": "opt_out.arabizi.5", "text": "😞 arja3t muwafa2ti, la titasilooon feeni", "variant": "arabizi"}
+{"id": "te-00060", "label": "already_done", "language": "arabizi", "template": "already_done.arabizi.6", "text": "sawwaytah khalas. thank u", "variant": "arabizi"}
+{"id": "te-00061", "label": "other", "language": "ar", "template": "other.ar_msa.1", "text": "أتمنى لكم يوما سعيدا!!", "variant": "ar_msa"}
+{"id": "te-00062", "label": "dont_understand", "language": "ar", "template": "dont_understand.ar_msa.3", "text": "هل يمكن إرسالها بالإنجليزيه؟ لا أفهم العربيه", "variant": "ar_msa"}
+{"id": "te-00063", "label": "cannot_attend", "language": "ar", "template": "cannot_attend.ar_msa.3", "text": "أعتذر عن عدم الحضور. المرض", "variant": "ar_msa"}
+{"id": "te-00064", "label": "dont_understand", "language": "arabizi", "template": "dont_understand.arabizi.7", "text": "shino hatha? mub faem shi", "variant": "arabizi"}
+{"id": "te-00065", "label": "already_done", "language": "en", "template": "already_done.en.2", "text": "Already done, I did it a few days ago at another hospital", "variant": "en"}
+{"id": "te-00066", "label": "opt_out", "language": "en", "template": "opt_out.en.6", "text": "Do not call me again, I do not consent to this 👍", "variant": "en"}
+{"id": "te-00067", "label": "other", "language": "en", "template": "other.en.8", "text": "😅 test!", "variant": "en"}
+{"id": "te-00068", "label": "wrong_number", "language": "en", "template": "wrong_number.en.6", "text": "I changed my number long ago, this is not their nmuber", "variant": "en"}
+{"id": "te-00069", "label": "already_done", "language": "ar", "template": "already_done.ar_gulf.2", "text": "الفحص انسوى من قبل في مستشفى ثاني 🤲", "variant": "ar_gulf"}
+{"id": "te-00070", "label": "already_done", "language": "ar", "template": "already_done.ar_gulf.2", "text": "الفحص انسوى من قبل في مستشفى ثاني..", "variant": "ar_gulf"}
+{"id": "te-00071", "label": "already_done", "language": "ar", "template": "already_done.ar_gulf.2", "text": "الفحص انسوى من قبل في مستشفى ثاني", "variant": "ar_gulf"}
+{"id": "te-00072", "label": "other", "language": "ar", "template": "other.ar_msa.8", "text": "😅 اختبار", "variant": "ar_msa"}
+{"id": "te-00073", "label": "wrong_number", "language": "ar", "template": "wrong_number.ar_msa.6", "text": "لست الشخص الذي تبحثون عنه 😅", "variant": "ar_msa"}
+{"id": "te-00074", "label": "already_done", "language": "mixed", "template": "already_done.mixed.3", "text": "already تم الفص الأسبوع اللي فات", "variant": "mixed"}
+{"id": "te-00075", "label": "wrong_number", "language": "arabizi", "template": "wrong_number.arabizi.4", "text": "ma fi a7ad balesm hena, el raqam ghalat", "variant": "arabizi"}
+{"id": "te-00076", "label": "question", "language": "en", "template": "question.en.11", "text": "Can I take my medicine before the test?", "variant": "en"}
+{"id": "te-00077", "label": "confirm", "language": "ar", "template": "confirm.ar_msa.0", "text": "السلام عليكم تم، سأكون متاحا الشهر القادم. شكرا لكم", "variant": "ar_msa"}
+{"id": "te-00078", "label": "question", "language": "ar", "template": "question.ar_gulf.11", "text": "في موقف سيارات عند العيادة؟ 😔", "variant": "ar_gulf"}
+{"id": "te-00079", "label": "question", "language": "arabizi", "template": "question.arabizi.1", "text": "ayy waqt lazim ajee? shukran", "variant": "arabizi"}
+{"id": "te-00080", "label": "confirm", "language": "en", "template": "confirm.en.8", "text": "i willl come to the hospital this thursday at 2:30. thanks", "variant": "en"}
+{"id": "te-00081", "label": "other", "language": "ar", "template": "other.ar_msa.1", "text": "عيد مبارك", "variant": "ar_msa"}
+{"id": "te-00082", "label": "other", "language": "ar", "template": "other.ar_msa.8", "text": "اختبار", "variant": "ar_msa"}
+{"id": "te-00083", "label": "confirm", "language": "ar", "template": "confirm.ar_msa.0", "text": "مرحبا تم، سأكون متاحا الشهر القادم. 😞", "variant": "ar_msa"}
+{"id": "te-00084", "label": "cannot_attend", "language": "en", "template": "cannot_attend.en.1", "text": "🙏 I will not be able to come to the caall because of travel", "variant": "en"}
+{"id": "te-00085", "label": "dont_understand", "language": "mixed", "template": "dont_understand.mixed.2", "text": "please sedn in عربي, ما اقرا English 🌹", "variant": "mixed"}
+{"id": "te-00086", "label": "other", "language": "ar", "template": "other.ar_msa.8", "text": "❤️ اختبار", "variant": "ar_msa"}
+{"id": "te-00087", "label": "cannot_attend", "language": "arabizi", "template": "cannot_attend.arabizi.5", "text": "ma a2dar ajee ba3d bukra wala el ahad el jay bsabab el safar 😞", "variant": "arabizi"}
+{"id": "te-00088", "label": "opt_out", "language": "ar", "template": "opt_out.ar_gulf.4", "text": "الغوا اشتراكي في الرسايل هذي 🙂", "variant": "ar_gulf"}
+{"id": "te-00089", "label": "cannot_attend", "language": "mixed", "template": "cannot_attend.mixed.4", "text": "للأسف I am out of the city so ما اقدر أضر", "variant": "mixed"}
+{"id": "te-00090", "label": "question", "language": "arabizi", "template": "question.arabizi.9", "text": "shu ta3ni natijati? 😅", "variant": "arabizi"}
+{"id": "te-00091", "label": "dont_understand", "language": "ar", "template": "dont_understand.ar_msa.3", "text": "هل يمكن إرسالها بالإنجليزية؟ لا فهم العربية 🙂", "variant": "ar_msa"}
+{"id": "te-00092", "label": "dont_understand", "language": "ar", "template": "dont_understand.ar_gulf.6", "text": "الرسالة مب واضحة، وضحو لي", "variant": "ar_gulf"}
+{"id": "te-00093", "label": "reschedule", "language": "en", "template": "reschedule.en.9", "text": "Hello doctor this Thursday does not suit me, any slot in two weeks! 😅", "variant": "en"}
+{"id": "te-00094", "label": "already_done", "language": "ar", "template": "already_done.ar_msa.5", "text": "تم، لقد انتهيت من الفحص العام الماضي 😞", "variant": "ar_msa"}
+{"id": "te-00095", "label": "dont_understand", "language": "ar", "template": "dont_understand.ar_gulf.6", "text": "الرسالة مب واضحة، وضحوا لي 🙏", "variant": "ar_gulf"}
+{"id": "te-00096", "label": "already_done", "language": "arabizi", "template": "already_done.arabizi.6", "text": "sawwaytah khalas. thank u..", "variant": "arabizi"}
+{"id": "te-00097", "label": "opt_out", "language": "ar", "template": "opt_out.ar_gulf.7", "text": "امسحوا بياناتي ولا تتصلون فيني ❤️", "variant": "ar_gulf"}
+{"id": "te-00098", "label": "other", "language": "ar", "template": "other.ar_gulf.9", "text": "هلا الله يوفقكم", "variant": "ar_gulf"}
+{"id": "te-00099", "label": "dont_understand", "language": "ar", "template": "dont_understand.ar_msa.3", "text": "هل يمكن إرسالها بالإنجليزية؟ لا أفهم العربية 🙂", "variant": "ar_msa"}
+{"id": "te-00100", "label": "wrong_number", "language": "ar", "template": "wrong_number.ar_gulf.7", "text": "ماشي بس الرقم غلط، مب أنا", "variant": "ar_gulf"}
+{"id": "te-00101", "label": "wrong_number", "language": "en", "template": "wrong_number.en.10", "text": "Alright, wrogn number, not me", "variant": "en"}
+{"id": "te-00102", "label": "confirm", "language": "en", "template": "confirm.en.4", "text": "Helol doctor I confirm my check-up on the 25th. Regards", "variant": "en"}
+{"id": "te-00103", "label": "other", "language": "en", "template": "other.en.8", "text": "🙂 test", "variant": "en"}
+{"id": "te-00104", "label": "other", "language": "ar", "template": "other.ar_msa.1", "text": "رمان كريم", "variant": "ar_msa"}
+{"id": "te-00105", "label": "other", "language": "arabizi", "template": "other.arabizi.10", "text": "irsilo li coode el khasm", "variant": "arabizi"}
+{"id": "te-00106", "label": "confirm", "language": "ar", "template": "confirm.ar_msa.0", "text": "السلام عليكم تم، سأكون تاحا بعد غد. شكرا لكم 😊", "variant": "ar_msa"}
+{"id": "te-00107", "label": "opt_out", "language": "arabizi", "template": "opt_out.arabizi.5", "text": "arja3t muwafa2ti, la titasiloon feeeni", "variant": "arabizi"}
+{"id": "te-00108", "label": "cannot_attend", "language": "ar", "template": "cannot_attend.ar_msa.3", "text": "أعتذر عن عدم الحضور. نوبة العمل", "variant": "ar_msa"}
+{"id": "te-00109", "label": "wrong_number", "language": "ar", "template": "wrong_number.ar_msa.8", "text": "علم، لكن الرساله ليست لي 🙏", "variant": "ar_msa"}
+{"id": "te-00110", "label": "already_done", "language": "arabizi", "template": "already_done.arabizi.6", "text": "🌹 sawwaytah khalas. shukran", "variant": "arabizi"}
+{"id": "te-00111", "label": "dont_understand", "language": "mixed", "template": "dont_understand.mixed.2", "text": "PLEASE SEND IN عربي, ما اقرا ENGLISH???", "variant": "mixed"}
+{"id": "te-00112", "label": "other", "language": "mixed", "template": "other.mixed.5", "text": "🙂 GOOD MORNING صباح الخير", "variant": "mixed"}
+{"id": "te-00113", "label": "confirm", "language": "en", "template": "confirm.en.8", "text": "I will come to the centre on Monday 10 am. Thanks", "variant": "en"}
+{"id": "te-00114", "label": "cannot_attend", "language": "mixed", "template": "cannot_attend.mixed.4", "text": "للأسف I am tarvelling so ما اقدر أحضر 😅", "variant": "mixed"}
+{"id": "te-00115", "label": "question", "language": "ar", "template": "question.ar_msa.6", "text": "كم تستغرق مدة الفحص", "variant": "ar_msa"}
+{"id": "te-00116", "label": "cannot_attend", "language": "mixed", "template": "cannot_attend.mixed.4", "text": "للأسف i am arboad so ما اقدر أحضر 🤲", "variant": "mixed"}
+{"id": "te-00117", "label": "cannot_attend", "language": "ar", "template": "cannot_attend.ar_gulf.2", "text": "ما اقدر اوصل المركز، تعان شوي", "variant": "ar_gulf"}
+{"id": "te-00118", "label": "dont_understand", "language": "arabizi", "template": "dont_understand.arabizi.7", "text": "shino hatha? mub fahem shi", "variant": "arabizi"}
+{"id": "te-00119", "label": "reschedule", "language": "en", "template": "reschedule.en.9", "text": "Hi the day after tomorrow does not suit me, any slot in two weeks?", "variant": "en"}
+{"id": "te-00120", "label": "already_done", "language": "mixed", "template": "already_done.mixed.3", "text": "already تم الفحص امس 😔", "variant": "mixed"}
+{"id": "te-00121", "label": "already_done", "language": "en", "template": "already_done.en.2", "text": "Already done, I did it yesterday at another hospital", "variant": "en"}
+{"id": "te-00122", "label": "question", "language": "mixed", "template": "question.mixed.0", "text": "whee is المستشفى؟", "variant": "mixed"}
+{"id": "te-00123", "label": "opt_out", "language": "arabizi", "template": "opt_out.arabizi.0", "text": "btatilo tersiloon li", "variant": "arabizi"}
+{"id": "te-00124", "label": "opt_out", "language": "ar", "template": "opt_out.ar_msa.1", "text": "أرجو عدم التواصل معي مرة أخرى ❤️", "variant": "ar_msa"}
+{"id": "te-00125", "label": "cannot_attend", "language": "en", "template": "cannot_attend.en.1", "text": "I will not be able to come to the visit because of a family emergency", "variant": "en"}
+{"id": "te-00126", "label": "confirm", "language": "en", "template": "confirm.en.4", "text": "i confirm my appointment on the 25th. thank you very much", "variant": "en"}
+{"id": "te-00127", "label": "other", "language": "ar", "template": "other.ar_msa.1", "text": "رمضان كريم 🙂", "variant": "ar_msa"}
+{"id": "te-00128", "label": "dont_understand", "language": "en", "template": "dont_understand.en.3", "text": "Can you send it in Arabic? I can't reda English", "variant": "en"}
+{"id": "te-00129", "label": "question", "language": "ar", "template": "question.ar_msa.3", "text": "كم تبلغ التكلفة", "variant": "ar_msa"}
+{"id": "te-00130", "label": "question", "language": "ar", "template": "question.ar_gulf.11", "text": "في موقف سيارات عند المستشفى؟ 😔", "variant": "ar_gulf"}
+{"id": "te-00131", "label": "opt_out", "language": "mixed", "template": "opt_out.mixed.4", "text": "please remove my number، شيلوا رقمي.. 🙏", "variant": "mixed"}
+{"id": "te-00132", "label": "confirm", "language": "ar", "template": "confirm.ar_gulf.3", "text": "تمام بجي امركز يوم الأحد بالليل", "variant": "ar_gulf"}
+{"id": "te-00133", "label": "confirm", "language": "en", "template": "confirm.en.4", "text": "Salam I confirm my check-up on the 25th. 😔", "variant": "en"}
+{"id": "te-00134", "label": "already_done", "language": "ar", "template": "already_done.ar_msa.5", "text": "تم، لقد انتهيت من الفحص قبل أيام 😞", "variant": "ar_msa"}
+{"id": "te-00135", "label": "dont_understand", "language": "arabizi", "template": "dont_understand.arabizi.7", "text": "shino hatha? mub faahem shi", "variant": "arabizi"}
+{"id": "te-00136", "label": "wrong_number", "language": "ar", "template": "wrong_number.ar_msa.6", "text": "لست الشخص الذي تبحثون عنه؟؟ 🙂", "variant": "ar_msa"}
+{"id": "te-00137", "label": "opt_out", "language": "ar", "template": "opt_out.ar_gulf.7", "text": "😅 امسحوا بياناتي ولا تتصلون فيني", "variant": "ar_gulf"}
+{"id": "te-00138", "label": "dont_understand", "language": "en", "template": "dont_understand.en.7", "text": "Sorry, which tset are you talking about? I am confused 🌹", "variant": "en"}
+{"id": "te-00139", "label": "confirm", "language": "arabizi", "template": "confirm.arabizi.2", "text": "salam aywa ittasilo feeni el 3asr. yaatik el afya", "variant": "arabizi"}
+{"id": "te-00140", "label": "already_done", "language": "mixed", "template": "already_done.mixed.3", "text": "already تم الفحص الأسبوع اللي فات..", "variant": "mixed"}
+{"id": "te-00141", "label": "already_done", "language": "arabizi", "template": "already_done.arabizi.6", "text": "sawwaytah khalas. shukran", "variant": "arabizi"}
+{"id": "te-00142", "label": "dont_understand", "language": "en", "template": "dont_understand.en.3", "text": "Can you send it in Arabic? I can't read English!!", "variant": "en"}
+{"id": "te-00143", "label": "cannot_attend", "language": "ar", "template": "cannot_attend.ar_msa.3", "text": "اعتذر عن عدم الحضور. السفر", "variant": "ar_msa"}
+{"id": "te-00144", "label": "already_done", "language": "mixed", "template": "already_done.mixed.3", "text": "already تم الفحص الشهر اللي فات", "variant": "mixed"}
+{"id": "te-00145", "label": "confirm", "language": "en", "template": "confirm.en.4", "text": "i confirm my check-up this thursday. thanks", "variant": "en"}
+{"id": "te-00146", "label": "dont_understand", "language": "arabizi", "template": "dont_understand.arabizi.7", "text": "🌹 shino hatha? mub fahem shi", "variant": "arabizi"}
+{"id": "te-00147", "label": "confirm", "language": "mixed", "template": "confirm.mixed.4", "text": "Alright شكرا، وصلت الرسالة", "variant": "mixed"}
+{"id": "te-00148", "label": "opt_out", "language": "en", "template": "opt_out.en.6", "text": "Do not call me again, I do not consent to this 🌹", "variant": "en"}
+{"id": "te-00149", "label": "question", "language": "ar", "template": "question.ar_msa.3", "text": "كم تبلغ التكلفه؟", "variant": "ar_msa"}
+{"id": "te-00150", "label": "cannot_attend", "language": "ar", "template": "cannot_attend.ar_msa.3", "text": "أعتذر عن عدم الحضور. الامتحانات 🌹", "variant": "ar_msa"}
+{"id": "te-00151", "label": "cannot_attend", "language": "ar", "template": "cannot_attend.ar_gulf.2", "text": "ما اقدر اوصل العيادة، تعبان شوي", "variant": "ar_gulf"}
+{"id": "te-00152", "label": "reschedule", "language": "en", "template": "reschedule.en.9", "text": "this Thursday does not sut me, any slot Tuesday?", "variant": "en"}
+{"id": "te-00153", "label": "confirm", "language": "en", "template": "confirm.en.8", "text": "I will come to the clinic this Thursday in the morning. Regards", "variant": "en"}
+{"id": "te-00154", "label": "confirm", "language": "mixed", "template": "confirm.mixed.4", "text": "fine شكرا، وصلت الرسالة", "variant": "mixed"}
+{"id": "te-00155", "label": "confirm", "language": "ar", "template": "confirm.ar_msa.0", "text": "حاضر، سأكون متاحا بعد نهاية الأسبوع", "variant": "ar_msa"}
+{"id": "te-00156", "label": "other", "language": "ar", "template": "other.ar_msa.8", "text": "اختبار ❤️", "variant": "ar_msa"}
+{"id": "te-00157", "label": "cannot_attend", "language": "en", "template": "cannot_attend.en.3", "text": "I am not able to come to the hospital, a family emergency 🌹", "variant": "en"}
+{"id": "te-00158", "label": "dont_understand", "language": "en", "template": "dont_understand.en.7", "text": "Sorry, which test are you talking about? I am cofnused", "variant": "en"}
+{"id": "te-00159", "label": "opt_out", "language": "arabizi", "template": "opt_out.arabizi.0", "text": "battio tersiloon li", "variant": "arabizi"}
+{"id": "te-00160", "label": "other", "language": "ar", "template": "other.ar_msa.1", "text": "اتمنى لكم يوما سعيدا", "variant": "ar_msa"}
+{"id": "te-00161", "label": "already_done", "language": "mixed", "template": "already_done.mixed.3", "text": "already تم الفحص من كم يوم", "variant": "mixed"}
+{"id": "te-00162", "label": "opt_out", "language": "ar", "template": "opt_out.ar_gulf.7", "text": "امسحوا بياناتي ولا تتصلون فيني", "variant": "ar_gulf"}
+{"id": "te-00163", "label": "dont_understand", "language": "mixed", "template": "dont_understand.mixed.2", "text": "please send in عربي, ما اقرا English ❤️", "variant": "mixed"}
+{"id": "te-00164", "label": "question", "language": "ar", "template": "question.ar_msa.3", "text": "كم تبلغ التكلفة!", "variant": "ar_msa"}
+{"id": "te-00165", "label": "reschedule", "language": "en", "template": "reschedule.en.9", "text": "🌹 Salam tomorrow does not suit me, any slot the end of the month?", "variant": "en"}
+{"id": "te-00166", "label": "reschedule", "language": "mixed", "template": "reschedule.mixed.5", "text": "postpone appointment to neext month لو سمحتم", "variant": "mixed"}
+{"id": "te-00167", "label": "opt_out", "language": "arabizi", "template": "opt_out.arabizi.0", "text": "battilo tersiloon li", "variant": "arabizi"}
+{"id": "te-00168", "label": "already_done", "language": "en", "template": "already_done.en.3", "text": "i did the camera test yesterday, no need", "variant": "en"}
+{"id": "te-00169", "label": "cannot_attend", "language": "en", "template": "cannot_attend.en.3", "text": "I am not able to come to your clinic, travle 👍", "variant": "en"}
+{"id": "te-00170", "label": "already_done", "language": "mixed", "template": "already_done.mixed.3", "text": "already تم الفحص من أسبوعين", "variant": "mixed"}
+{"id": "te-00171", "label": "dont_understand", "language": "ar", "template": "dont_understand.ar_msa.3", "text": "هل يمكن ارسالها بالانجليزية؟ لا أفهم العربية..", "variant": "ar_msa"}
+{"id": "te-00172", "label": "dont_understand", "language": "ar", "template": "dont_understand.ar_msa.3", "text": "هل يمكن إرسالها بالنجليزية؟ لا أفهم العربية", "variant": "ar_msa"}
+{"id": "te-00173", "label": "already_done", "language": "en", "template": "already_done.en.2", "text": "already done, i did it last wek at another hospital", "variant": "en"}
+{"id": "te-00174", "label": "already_done", "language": "en", "template": "already_done.en.3", "text": "I did the camera test a few days ago, no need 🙏", "variant": "en"}
+{"id": "te-00175", "label": "dont_understand", "language": "en", "template": "dont_understand.en.3", "text": "Can you send it in Arabic? I can't read English 😞", "variant": "en"}
+{"id": "te-00176", "label": "already_done", "language": "en", "template": "already_done.en.3", "text": "I did the camera test last week, no need", "variant": "en"}
+{"id": "te-00177", "label": "opt_out", "language": "arabizi", "template": "opt_out.arabizi.0", "text": "battilo tersiloon li 🌹", "variant": "arabizi"}
+{"id": "te-00178", "label": "question", "language": "en", "template": "question.en.12", "text": "Is praking available at your clinic..", "variant": "en"}
+{"id": "te-00179", "label": "dont_understand", "language": "mixed", "template": "dont_understand.mixed.2", "text": "please send in عربي, ما اقرا Engglish", "variant": "mixed"}
+{"id": "te-00180", "label": "confirm", "language": "ar", "template": "confirm.ar_gulf.3", "text": "حاضر بجي العيادة الشهر الجاي قبل الظهر", "variant": "ar_gulf"}
+{"id": "te-00181", "label": "cannot_attend", "language": "ar", "template": "cannot_attend.ar_gulf.2", "text": "😞 ما اقدر اوصل المركز، الدوام", "variant": "ar_gulf"}
+{"id": "te-00182", "label": "reschedule", "language": "mixed", "template": "reschedule.mixed.5", "text": "postpone check-up to nxet week لو سمحتم", "variant": "mixed"}
+{"id": "te-00183", "label": "confirm", "language": "arabizi", "template": "confirm.arabizi.2", "text": "😞 aywa ittasilo feeni bel layl.", "variant": "arabizi"}
+{"id": "te-00184", "label": "cannot_attend", "language": "en", "template": "cannot_attend.en.1", "text": "I will not be able to come to the check-up because of being unwell 🤲", "variant": "en"}
+{"id": "te-00185", "label": "question", "language": "mixed", "template": "question.mixed.0", "text": "where is العيادة 😅", "variant": "mixed"}
+{"id": "te-00186", "label": "cannot_attend", "language": "en", "template": "cannot_attend.en.1", "text": "I wiill not be able to come to the call because of my duty shift", "variant": "en"}
+{"id": "te-00187", "label": "opt_out", "language": "en", "template": "opt_out.en.10", "text": "🙏 I refuse any follow up, please delete my number", "variant": "en"}
+{"id": "te-00188", "label": "opt_out", "language": "mixed", "template": "opt_out.mixed.4", "text": "please remove my number، شيلوا رقمي", "variant": "mixed"}
+{"id": "te-00189", "label": "other", "language": "arabizi", "template": "other.arabizi.10", "text": "🙏 irsilo li code el khasm", "variant": "arabizi"}
+{"id": "te-00190", "label": "dont_understand", "language": "en", "template": "dont_understand.en.3", "text": "Can you seend it in Arabic? I can't read English 🌹", "variant": "en"}
+{"id": "te-00191", "label": "dont_understand", "language": "arabizi", "template": "dont_understand.arabizi.7", "text": "😊 shino hatha? mub fahem shi", "variant": "arabizi"}
+{"id": "te-00192", "label": "other", "language": "ar", "template": "other.ar_msa.1", "text": "بارك الله فيكم", "variant": "ar_msa"}
+{"id": "te-00193", "label": "already_done", "language": "en", "template": "already_done.en.3", "text": "I did the camera test a few days ago, no need", "variant": "en"}
+{"id": "te-00194", "label": "cannot_attend", "language": "ar", "template": "cannot_attend.ar_msa.3", "text": "أعتذر عن عدم الحضور. المرض ❤️", "variant": "ar_msa"}
+{"id": "te-00195", "label": "already_done", "language": "ar", "template": "already_done.ar_msa.5", "text": "تم، لقد انتهيت من الفحص الأسبوع الماضي", "variant": "ar_msa"}
+{"id": "te-00196", "label": "reschedule", "language": "ar", "template": "reschedule.ar_gulf.5", "text": "اتصلوا فيني بعد الساعة ٤، الحين مشغول 😅", "variant": "ar_gulf"}
+{"id": "te-00197", "label": "question", "language": "mixed", "template": "question.mixed.0", "text": "where is المركز", "variant": "mixed"}
+{"id": "te-00198", "label": "confirm", "language": "ar", "template": "confirm.ar_msa.0", "text": "علم، سأكون متاحا الشهر القادم. مع الشكر", "variant": "ar_msa"}
+{"id": "te-00199", "label": "question", "language": "en", "template": "question.en.11", "text": "Can I take my medicine before the test 😅", "variant": "en"}
+{"id": "te-00200", "label": "already_done", "language": "mixed", "template": "already_done.mixed.3", "text": "already تم الفحص من كم يوم ❤️", "variant": "mixed"}
+{"id": "te-00201", "label": "confirm", "language": "en", "template": "confirm.en.8", "text": "👍 I will come to the centre on the 25th after work. Thank you very much", "variant": "en"}
+{"id": "te-00202", "label": "wrong_number", "language": "arabizi", "template": "wrong_number.arabizi.4", "text": "❤️ ma fi a7ad bhalesm hena, el raqam ghalat", "variant": "arabizi"}
+{"id": "te-00203", "label": "dont_understand", "language": "en", "template": "dont_understand.en.7", "text": "Sorry, which tets are you talking about? I am confused 😅", "variant": "en"}
+{"id": "te-00204", "label": "opt_out", "language": "en", "template": "opt_out.en.6", "text": "DO NOT CALLL ME AGAIN, I DO NOT CONSENT TO THIS", "variant": "en"}
+{"id": "te-00205", "label": "question", "language": "ar", "template": "question.ar_gulf.11", "text": "في موقف سيارات عند المستشفى؟", "variant": "ar_gulf"}
+{"id": "te-00206", "label": "wrong_number", "language": "en", "template": "wrong_number.en.10", "text": "ALRIGHT, WRONG NUMBER, NOT ME", "variant": "en"}
+{"id": "te-00207", "label": "dont_understand", "language": "en", "template": "dont_understand.en.7", "text": "sorry, whcih test are you talking about? i am confused 🌹", "variant": "en"}
+{"id": "te-00208", "label": "question", "language": "en", "template": "question.en.12", "text": "Is parking available at the centre?", "variant": "en"}
+{"id": "te-00209", "label": "opt_out", "language": "mixed", "template": "opt_out.mixed.4", "text": "please remmove my number، شيلوا رقمي", "variant": "mixed"}
+{"id": "te-00210", "label": "already_done", "language": "en", "template": "already_done.en.2", "text": "Already done, I did it two weeks ago at another hospital", "variant": "en"}
+{"id": "te-00211", "label": "other", "language": "mixed", "template": "other.mixed.5", "text": "good morning صباح الخير!!", "variant": "mixed"}
+{"id": "te-00212", "label": "question", "language": "arabizi", "template": "question.arabizi.1", "text": "ayy waqt lazim ajee? 🤲", "variant": "arabizi"}
+{"id": "te-00213", "label": "opt_out", "language": "en", "template": "opt_out.en.10", "text": "I refuse any follow up, please deleete my number", "variant": "en"}
+{"id": "te-00214", "label": "other", "language": "ar", "template": "other.ar_msa.8", "text": "اختبار.. ❤️", "variant": "ar_msa"}
+{"id": "te-00215", "label": "opt_out", "language": "en", "template": "opt_out.en.10", "text": "I refusse any follow up, please delete my number 👍", "variant": "en"}
+{"id": "te-00216", "label": "wrong_number", "language": "ar", "template": "wrong_number.ar_msa.8", "text": "حاضر، لكن الرسالة ليست لي", "variant": "ar_msa"}
+{"id": "te-00217", "label": "dont_understand", "language": "mixed", "template": "dont_understand.mixed.2", "text": "please send in عربي, ما اقرا English", "variant": "mixed"}
+{"id": "te-00218", "label": "cannot_attend", "language": "en", "template": "cannot_attend.en.1", "text": "I will not be able to coe to the visit because of travel 👍", "variant": "en"}
+{"id": "te-00219", "label": "cannot_attend", "language": "en", "template": "cannot_attend.en.3", "text": "I am not able to come to your clinic, my duty shift", "variant": "en"}
+{"id": "te-00220", "label": "reschedule", "language": "en", "template": "reschedule.en.4", "text": "Hello, I woud like another date for the call, on Monday would work", "variant": "en"}
+{"id": "te-00221", "label": "already_done", "language": "arabizi", "template": "already_done.arabizi.6", "text": "🌹 sawwaytah khalas. thank u", "variant": "arabizi"}
+{"id": "te-00222", "label": "opt_out", "language": "ar", "template": "opt_out.ar_msa.7", "text": "أرجو حذف بياناتي وعدم الاتصال بي 🙂", "variant": "ar_msa"}
+{"id": "te-00223", "label": "confirm", "language": "mixed", "template": "confirm.emoji.3", "text": "🙏👍", "variant": "emoji"}
+{"id": "te-00224", "label": "opt_out", "language": "arabizi", "template": "opt_out.arabizi.5", "text": "❤️ arja3t muwafa2ti, la titasiloon feeni!!", "variant": "arabizi"}
+{"id": "te-00225", "label": "question", "language": "arabizi", "template": "question.arabizi.9", "text": "shu ta3ni natijati? 👍", "variant": "arabizi"}
+{"id": "te-00226", "label": "dont_understand", "language": "arabizi", "template": "dont_understand.arabizi.7", "text": "shino hatha? mub fhaem shi", "variant": "arabizi"}
+{"id": "te-00227", "label": "wrong_number", "language": "mixed", "template": "wrong_number.mixed.0", "text": "wrogn number، الرقم غلط", "variant": "mixed"}
+{"id": "te-00228", "label": "wrong_number", "language": "mixed", "template": "wrong_number.mixed.0", "text": "wong number، الرقم لط", "variant": "mixed"}
+{"id": "te-00229", "label": "already_done", "language": "arabizi", "template": "already_done.arabizi.6", "text": "sawwaytah khalas. yaatik el afya", "variant": "arabizi"}
+{"id": "te-00230", "label": "confirm", "language": "arabizi", "template": "confirm.arabizi.2", "text": "hala wallah aywa ittasilo feeni ba3d el dawam", "variant": "arabizi"}
+{"id": "te-00231", "label": "reschedule", "language": "ar", "template": "reschedule.ar_msa.7", "text": "مساء الخير يوم الخميس لا يناسبني، هل يتوفر موعد يوم السبت؟", "variant": "ar_msa"}
+{"id": "te-00232", "label": "wrong_number", "language": "arabizi", "template": "wrong_number.arabizi.4", "text": "ma fi a7ad bhalesm hena, el raqam gahlat???", "variant": "arabizi"}
+{"id": "te-00233", "label": "dont_understand", "language": "en", "template": "dont_understand.en.7", "text": "Sorry, which test are you talikng about? I am confused 🙂", "variant": "en"}
+{"id": "te-00234", "label": "cannot_attend", "language": "arabizi", "template": "cannot_attend.arabizi.5", "text": "ma a2dar ajeee bukra wala akhir el shahr bsabab ta3ban shway", "variant": "arabizi"}
+{"id": "te-00235", "label": "reschedule", "language": "mixed", "template": "reschedule.mixed.5", "text": "postpone test to on Wednesday لو سمحتم", "variant": "mixed"}
+{"id": "te-00236", "label": "confirm", "language": "arabizi", "template": "confirm.arabizi.2", "text": "marhaba aywa ittasilo feeni bel layl. shukran", "variant": "arabizi"}
+{"id": "te-00237", "label": "question", "language": "ar", "template": "question.ar_gulf.11", "text": "في موقف سيارات عند المستشفى؟ 🙏", "variant": "ar_gulf"}
+{"id": "te-00238", "label": "question", "language": "arabizi", "template": "question.arabizi.1", "text": "ayy waqt lazim ajee? thanks", "variant": "arabizi"}
+{"id": "te-00239", "label": "cannot_attend", "language": "en", "template": "cannot_attend.en.1", "text": "I WILL NOT BE ABLE TO COME TO THE VISIT BECAUSE OF MY DUTY SHIFT", "variant": "en"}
+{"id": "te-00240", "label": "question", "language": "en", "template": "question.en.12", "text": "Is praking available at your clinic?", "variant": "en"}
+{"id": "te-00241", "label": "already_done", "language": "arabizi", "template": "already_done.arabizi.6", "text": "sawwaytah khalas. thannk u", "variant": "arabizi"}
+{"id": "te-00242", "label": "opt_out", "language": "en", "template": "opt_out.en.10", "text": "i refuse any follow up, please delete my number", "variant": "en"}
+{"id": "te-00243", "label": "other", "language": "en", "template": "other.en.5", "text": "Mabe", "variant": "en"}
+{"id": "te-00244", "label": "other", "language": "ar", "template": "other.ar_gulf.9", "text": "صباح الخير الله يوفقكم", "variant": "ar_gulf"}
+{"id": "te-00245", "label": "dont_understand", "language": "mixed", "template": "dont_understand.mixed.2", "text": "please send in عربي, ما اقرا engllish", "variant": "mixed"}
+{"id": "te-00246", "label": "question", "language": "arabizi", "template": "question.arabizi.1", "text": "ayy waqt lazim ajee? thnks!!", "variant": "arabizi"}
+{"id": "te-00247", "label": "confirm", "language": "mixed", "template": "confirm.mixed.4", "text": "noted شكرا، وصلت الرسالة 🌹", "variant": "mixed"}
+{"id": "te-00248", "label": "dont_understand", "language": "mixed", "template": "dont_understand.mixed.2", "text": "please send in عربي, ما اقرا English 🤲", "variant": "mixed"}
+{"id": "te-00249", "label": "cannot_attend", "language": "en", "template": "cannot_attend.en.1", "text": "I will not be able to come to the call because of being unwell 😞", "variant": "en"}
+{"id": "te-00250", "label": "question", "language": "ar", "template": "question.ar_msa.3", "text": "كم تبلغ لتكلفة؟", "variant": "ar_msa"}
+{"id": "te-00251", "label": "opt_out", "language": "ar", "template": "opt_out.ar_msa.1", "text": "أرجو عدم التواصل معي مرة أخرى", "variant": "ar_msa"}
+{"id": "te-00252", "label": "cannot_attend", "language": "mixed", "template": "cannot_attend.mixed.4", "text": "للأسف i am abrod so ما اقدر أحضر 🌹", "variant": "mixed"}
+{"id": "te-00253", "label": "reschedule", "language": "ar", "template": "reschedule.ar_msa.7", "text": "مرحبا الأسبوع القادم لا يناسبني، هل يتوفر موعد يوم السبت", "variant": "ar_msa"}
+{"id": "te-00254", "label": "opt_out", "language": "en", "template": "opt_out.en.10", "text": "I refuse any follow up, please delete my number 😞", "variant": "en"}
+{"id": "te-00255", "label": "reschedule", "language": "ar", "template": "reschedule.ar_gulf.5", "text": "اتصلوا فيني الصبح، الحين مشغول", "variant": "ar_gulf"}
+{"id": "te-00256", "label": "confirm", "language": "en", "template": "confirm.en.4", "text": "I confirm my call this Thursday. thx", "variant": "en"}
+{"id": "te-00257", "label": "confirm", "language": "arabizi", "template": "confirm.arabizi.2", "text": "sabah el kheir aywa ittasilo feeni el 3asr. thanks", "variant": "arabizi"}
+{"id": "te-00258", "label": "question", "language": "en", "template": "question.en.11", "text": "Can I taek my medicine before the test 🌹", "variant": "en"}
+{"id": "te-00259", "label": "cannot_attend", "language": "ar", "template": "cannot_attend.ar_gulf.2", "text": "ما اقدر اوصل المستشفى، ظرف طارئ 👍", "variant": "ar_gulf"}
+{"id": "te-00260", "label": "dont_understand", "language": "en", "template": "dont_understand.en.3", "text": "🙏 Can you send it in Arabic? I can't read English", "variant": "en"}
+{"id": "te-00261", "label": "wrong_number", "language": "mixed", "template": "wrong_number.mixed.0", "text": "wrong number، الرقم غلط", "variant": "mixed"}
+{"id": "te-00262", "label": "reschedule", "language": "arabizi", "template": "reschedule.arabizi.2", "text": "MA A2DAR YOM EL KHAMIS, MOMKEN TITASILO FEENI AKHIR EL SHAHR", "variant": "arabizi"}
+{"id": "te-00263", "label": "dont_understand", "language": "en", "template": "dont_understand.en.7", "text": "Sorry, which test are you talking about? I am confused", "variant": "en"}
+{"id": "te-00264", "label": "reschedule", "language": "arabizi", "template": "reschedule.arabizi.2", "text": "🙏 ma a2dar bukra, momken titasilo feeni el ahad el jay?", "variant": "arabizi"}
+{"id": "te-00265", "label": "confirm", "language": "arabizi", "template": "confirm.arabizi.2", "text": "aywa ittasio feeni el 3ashira el subh. yaatik el afya", "variant": "arabizi"}
+{"id": "te-00266", "label": "opt_out", "language": "ar", "template": "opt_out.ar_msa.7", "text": "أرجو حذف بياناتي وعدم الاتصال بي 😞", "variant": "ar_msa"}
+{"id": "te-00267", "label": "confirm", "language": "mixed", "template": "confirm.mixed.4", "text": "🙂 ok شكرا، وصلت الرسالة", "variant": "mixed"}
+{"id": "te-00268", "label": "already_done", "language": "ar", "template": "already_done.ar_gulf.2", "text": "الفحص انسوى من قبل في مستشفى ثاني!", "variant": "ar_gulf"}
+{"id": "te-00269", "label": "already_done", "language": "mixed", "template": "already_done.mixed.3", "text": "already تم لفحص أمس", "variant": "mixed"}
+{"id": "te-00270", "label": "reschedule", "language": "mixed", "template": "reschedule.mixed.5", "text": "postpone call to next month لو سمحتم", "variant": "mixed"}
+{"id": "te-00271", "label": "other", "language": "arabizi", "template": "other.arabizi.5", "text": "yimkin ❤️", "variant": "arabizi"}
+{"id": "te-00272", "label": "cannot_attend", "language": "arabizi", "template": "cannot_attend.arabizi.5", "text": "👍 ma a2dar ajee el shahr el jay wala yom el sabt bsabab el imtihanat", "variant": "arabizi"}
+{"id": "te-00273", "label": "question", "language": "en", "template": "question.en.11", "text": "can i take my medicine before the test!!", "variant": "en"}
+{"id": "te-00274", "label": "confirm", "language": "ar", "template": "confirm.ar_gulf.3", "text": "أوكي بجي المستشفى بكرة قبل الظهر", "variant": "ar_gulf"}
+{"id": "te-00275", "label": "dont_understand", "language": "ar", "template": "dont_understand.ar_gulf.6", "text": "😊 الرسالة مب وضحة، وضحوا لي", "variant": "ar_gulf"}
+{"id": "te-00276", "label": "confirm", "language": "arabizi", "template": "confirm.arabizi.2", "text": "ayywa ittasilo feeni el 3asr. shukran", "variant": "arabizi"}
+{"id": "te-00277", "label": "other", "language": "ar", "template": "other.ar_gulf.9", "text": "صباح الخير الله يحفظك", "variant": "ar_gulf"}
+{"id": "te-00278", "label": "opt_out", "language": "ar", "template": "opt_out.ar_msa.7", "text": "أرجو حذف بياناتي ودم الاتصال بي", "variant": "ar_msa"}
+{"id": "te-00279", "label": "other", "language": "en", "template": "other.en.5", "text": "Maybe", "variant": "en"}
+{"id": "te-00280", "label": "reschedule", "language": "en", "template": "reschedule.en.9", "text": "Hello docotr on Monday does not suit me, any slot Saturday?", "variant": "en"}
+{"id": "te-00281", "label": "question", "language": "mixed", "template": "question.mixed.0", "text": "where is العياده؟", "variant": "mixed"}
+{"id": "te-00282", "label": "opt_out", "language": "en", "template": "opt_out.en.6", "text": "Do not call me again, I do not consent to this 😅", "variant": "en"}
+{"id": "te-00283", "label": "wrong_number", "language": "ar", "template": "wrong_number.ar_msa.8", "text": "🌹 تمام، لكن الرسالة ليست لي", "variant": "ar_msa"}
+{"id": "te-00284", "label": "question", "language": "ar", "template": "question.ar_msa.6", "text": "كم تستغرق مدة الفحص؟ 😔", "variant": "ar_msa"}
+{"id": "te-00285", "label": "cannot_attend", "language": "ar", "template": "cannot_attend.ar_msa.3", "text": "أعتذر عن عدم الحضور. ظروف العمل", "variant": "ar_msa"}
+{"id": "te-00286", "label": "confirm", "language": "ar", "template": "confirm.ar_msa.0", "text": "مرحبًا حاضر، سأكون متاحا بعد غد", "variant": "ar_msa"}
+{"id": "te-00287", "label": "cannot_attend", "language": "mixed", "template": "cannot_attend.mixed.4", "text": "للأسف I am abroad so ما اقدر أحضر", "variant": "mixed"}
+{"id": "te-00288", "label": "reschedule", "language": "mixed", "template": "reschedule.mixed.5", "text": "postpone test to net month لو سمحتم", "variant": "mixed"}
+{"id": "te-00289", "label": "other", "language": "ar", "template": "other.ar_msa.1", "text": "رمضان كريم", "variant": "ar_msa"}
+{"id": "te-00290", "label": "wrong_number", "language": "arabizi", "template": "wrong_number.arabizi.8", "text": "shukran bas el resala la shakhs ghalat ❤️", "variant": "arabizi"}
+{"id": "te-00291", "label": "question", "language": "arabizi", "template": "question.arabizi.1", "text": "ayy waqt lzaim ajee? thank u", "variant": "arabizi"}
+{"id": "te-00292", "label": "cannot_attend", "language": "ar", "template": "cannot_attend.ar_msa.3", "text": "👍 أعتذر عن عدم الحضور. ظروف العمل", "variant": "ar_msa"}
+{"id": "te-00293", "label": "reschedule", "language": "arabizi", "template": "reschedule.arabizi.2", "text": "ma a2dar ba3d el weekend, momken titasilo feeni ba3d usbou3ain!", "variant": "arabizi"}
+{"id": "te-00294", "label": "already_done", "language": "en", "template": "already_done.en.2", "text": "Already done, I did it last month at another hospital", "variant": "en"}
+{"id": "te-00295", "label": "opt_out", "language": "en", "template": "opt_out.en.10", "text": "I refuse any follow up, please delete my number 🤲", "variant": "en"}
+{"id": "te-00296", "label": "cannot_attend", "language": "en", "template": "cannot_attend.en.3", "text": "I am not able to come to the clinic, being abroad", "variant": "en"}
+{"id": "te-00297", "label": "already_done", "language": "arabizi", "template": "already_done.arabizi.6", "text": "sawwaytah khalas", "variant": "arabizi"}
+{"id": "te-00298", "label": "other", "language": "en", "template": "other.en.5", "text": "Mybe", "variant": "en"}
+{"id": "te-00299", "label": "opt_out", "language": "en", "template": "opt_out.en.5", "text": "😞 unsubscribe", "variant": "en"}
+{"id": "te-00300", "label": "question", "language": "ar", "template": "question.ar_msa.3", "text": "كم تبلغ التكلفة؟", "variant": "ar_msa"}
+{"id": "te-00301", "label": "reschedule", "language": "ar", "template": "reschedule.ar_gulf.5", "text": "اتصلوا فيني بعد الساعة ٤، الحين مشغول", "variant": "ar_gulf"}
+{"id": "te-00302", "label": "opt_out", "language": "arabizi", "template": "opt_out.arabizi.5", "text": "arja3t muwafa2ti, la titasiloon feeni", "variant": "arabizi"}
+{"id": "te-00303", "label": "cannot_attend", "language": "arabizi", "template": "cannot_attend.arabizi.5", "text": "😅 ma a2dar ajee ba3d el weekend wala yom el sabt basbab ta3ban shway", "variant": "arabizi"}
+{"id": "te-00304", "label": "reschedule", "language": "ar", "template": "reschedule.ar_gulf.5", "text": "اتصلوا فيني العصر، الحين مشغول 😊", "variant": "ar_gulf"}
+{"id": "te-00305", "label": "confirm", "language": "ar", "template": "confirm.ar_msa.0", "text": "السلام عليكم تمام، سأكون متاحا يوم الأربعاء. جزاكم الله خيرا؟؟", "variant": "ar_msa"}
+{"id": "te-00306", "label": "cannot_attend", "language": "en", "template": "cannot_attend.en.1", "text": "😊 I will not be able to come to the test because of a family emergency", "variant": "en"}
+{"id": "te-00307", "label": "wrong_number", "language": "ar", "template": "wrong_number.ar_gulf.7", "text": "حاضر بس الرقم غلط، مب أنا؟؟", "variant": "ar_gulf"}
+{"id": "te-00308", "label": "question", "language": "ar", "template": "question.ar_gulf.11", "text": "في موقف سيارات عند المستشفى؟ 😅", "variant": "ar_gulf"}
+{"id": "te-00309", "label": "question", "language": "mixed", "template": "question.mixed.0", "text": "where is المستشفى؟", "variant": "mixed"}
+{"id": "te-00310", "label": "other", "language": "arabizi", "template": "other.arabizi.5", "text": "YIMKIN", "variant": "arabizi"}
+{"id": "te-00311", "label": "dont_understand", "language": "arabizi", "template": "dont_understand.arabizi.7", "text": "shino hatha? mub fahhem shi", "variant": "arabizi"}
+{"id": "te-00312", "label": "question", "language": "en", "template": "question.en.11", "text": "can i take my medicine before the test", "variant": "en"}
+{"id": "te-00313", "label": "cannot_attend", "language": "arabizi", "template": "cannot_attend.arabizi.5", "text": "ma a2dar ajee el shahr el jay waala el ahad el jay bsabab el safar", "variant": "arabizi"}
+{"id": "te-00314", "label": "already_done", "language": "ar", "template": "already_done.ar_msa.5", "text": "تم، لقد انتهيت من الفحص الأسبوع الماضي 😅", "variant": "ar_msa"}
+{"id": "te-00315", "label": "wrong_number", "language": "ar", "template": "wrong_number.ar_msa.6", "text": "لست الشخص الذي تبحثون عنه", "variant": "ar_msa"}
+{"id": "te-00316", "label": "opt_out", "language": "en", "template": "opt_out.en.6", "text": "👍 Do not call me again, I do not consent to this", "variant": "en"}
+{"id": "te-00317", "label": "reschedule", "language": "en", "template": "reschedule.en.4", "text": "Hi team I would like another date for the test, on Monday would work", "variant": "en"}
+{"id": "te-00318", "label": "question", "language": "mixed", "template": "question.mixed.0", "text": "where is المستشفى", "variant": "mixed"}
+{"id": "te-00319", "label": "reschedule", "language": "en", "template": "reschedule.en.4", "text": "hello, i would like another date for the appointment, on wednesday would work", "variant": "en"}
+{"id": "te-00320", "label": "other", "language": "arabizi", "template": "other.arabizi.5", "text": "yimkn", "variant": "arabizi"}
+{"id": "te-00321", "label": "already_done", "language": "arabizi", "template": "already_done.arabizi.6", "text": "saawwaytah khalas.", "variant": "arabizi"}
+{"id": "te-00322", "label": "wrong_number", "language": "ar", "template": "wrong_number.ar_gulf.7", "text": "أوكي بس الرقم غلط، ب أنا؟؟", "variant": "ar_gulf"}
+{"id": "te-00323", "label": "dont_understand", "language": "ar", "template": "dont_understand.ar_msa.3", "text": "هل يمكن إرسالها بالإنجليزيه؟ لا أفهم العربه", "variant": "ar_msa"}
+{"id": "te-00324", "label": "dont_understand", "language": "ar", "template": "dont_understand.ar_gulf.6", "text": "الرسالة مب واضحة، وضحوا لي", "variant": "ar_gulf"}
+{"id": "te-00325", "label": "cannot_attend", "language": "en", "template": "cannot_attend.en.3", "text": "I am not able to come to the clinic, a family emergency", "variant": "en"}
+{"id": "te-00326", "label": "other", "language": "ar", "template": "other.ar_msa.1", "text": "بارك لله فيكم 😞", "variant": "ar_msa"}
+{"id": "te-00327", "label": "reschedule", "language": "en", "template": "reschedule.en.4", "text": "Hello doctor I would like another date for the check-up, on Sunday would work 😅", "variant": "en"}
+{"id": "te-00328", "label": "opt_out", "language": "ar", "template": "opt_out.ar_msa.1", "text": "أرجو عدم التواصل عي مرة أخرى", "variant": "ar_msa"}
+{"id": "te-00329", "label": "already_done", "language": "ar", "template": "already_done.ar_gulf.2", "text": "الفحص اسوي من قبل في مستشفي ثاني", "variant": "ar_gulf"}
+{"id": "te-00330", "label": "reschedule", "language": "ar", "template": "reschedule.ar_gulf.5", "text": "اتصلوا فيني بالليل، الحين مشغول 😔", "variant": "ar_gulf"}
+{"id": "te-00331", "label": "reschedule", "language": "arabizi", "template": "reschedule.arabizi.2", "text": "ma a2dar el shahr el jay, momken titasilo feeni el ahad el jay", "variant": "arabizi"}
+{"id": "te-00332", "label": "wrong_number", "language": "arabizi", "template": "wrong_number.arabizi.4", "text": "ma fi a7ad bhalesm hena, el raqam ghalat 🌹", "variant": "arabizi"}
+{"id": "te-00333", "label": "already_done", "language": "ar", "template": "already_done.ar_msa.5", "text": "تم، لقد انتهيت من الفحص قبل أيم!", "variant": "ar_msa"}
+{"id": "te-00334", "label": "wrong_number", "language": "arabizi", "template": "wrong_number.arabizi.8", "text": "shhukran bas el resala la shakhs ghalat", "variant": "arabizi"}
+{"id": "te-00335", "label": "already_done", "language": "ar", "template": "already_done.ar_msa.5", "text": "تم، لقد انتهيت من الفحص أمس", "variant": "ar_msa"}
+{"id": "te-00336", "label": "question", "language": "en", "template": "question.en.12", "text": "is paarking available at the centre?", "variant": "en"}
+{"id": "te-00337", "label": "opt_out", "language": "ar", "template": "opt_out.ar_gulf.4", "text": "الغوا اشتراكي في الرسايل هي 😅", "variant": "ar_gulf"}
+{"id": "te-00338", "label": "other", "language": "en", "template": "other.en.8", "text": "tet??? 😊", "variant": "en"}
+{"id": "te-00339", "label": "cannot_attend", "language": "arabizi", "template": "cannot_attend.arabizi.5", "text": "ma a2dar ajee bukra wala yom el thalatha bsabab ta3ban shway", "variant": "arabizi"}
+{"id": "te-00340", "label": "confirm", "language": "en", "template": "confirm.en.8", "text": "I will come to your clinic on Monday after 4 pm. Thank you very much 🙂", "variant": "en"}
+{"id": "te-00341", "label": "confirm", "language": "mixed", "template": "confirm.mixed.4", "text": "ok شرا، وصلت الرسالة!!", "variant": "mixed"}
+{"id": "te-00342", "label": "reschedule", "language": "ar", "template": "reschedule.ar_gulf.5", "text": "اتصلوا فيني العصر، الحين مشغول", "variant": "ar_gulf"}
+{"id": "te-00343", "label": "opt_out", "language": "en", "template": "opt_out.en.6", "text": "Do not call me again, I do not consent to this", "variant": "en"}
+{"id": "te-00344", "label": "wrong_number", "language": "arabizi", "template": "wrong_number.arabizi.8", "text": "shukran bas el resala la shakhs ghalat 👍", "variant": "arabizi"}
+{"id": "te-00345", "label": "question", "language": "en", "template": "question.en.12", "text": "Is parking available at the centre", "variant": "en"}
+{"id": "te-00346", "label": "cannot_attend", "language": "ar", "template": "cannot_attend.ar_gulf.2", "text": "ما اقدر اوصل العيادة، عبان شوي", "variant": "ar_gulf"}
+{"id": "te-00347", "label": "cannot_attend", "language": "arabizi", "template": "cannot_attend.arabizi.5", "text": "MA A2DAR AJEE BUKRA WALA EL AHAD EL JAY BSABAB ZARF TARE2", "variant": "arabizi"}
+{"id": "te-00348", "label": "reschedule", "language": "ar", "template": "reschedule.ar_msa.7", "text": "مرحبا بعد نهاية الأسبوع لا يناسبني، هل يتوفر موعد يوم الثلاثاء؟", "variant": "ar_msa"}
+{"id": "te-00349", "label": "opt_out", "language": "mixed", "template": "opt_out.mixed.4", "text": "👍 please remove my number، شيلوا رقمي", "variant": "mixed"}
+{"id": "te-00350", "label": "already_done", "language": "en", "template": "already_done.en.3", "text": "🌹 I did the camera test two weeks ago, no need", "variant": "en"}
+{"id": "te-00351", "label": "dont_understand", "language": "en", "template": "dont_understand.en.3", "text": "can you send it in arabic? i can't read eglish", "variant": "en"}
+{"id": "te-00352", "label": "reschedule", "language": "ar", "template": "reschedule.ar_msa.7", "text": "يوم الأربعاء لا يناسبني، هل يتفر موعد بعد أسبوعين", "variant": "ar_msa"}
+{"id": "te-00353", "label": "question", "language": "arabizi", "template": "question.arabizi.1", "text": "ayy waqt lazim ajee?", "variant": "arabizi"}
+{"id": "te-00354", "label": "other", "language": "ar", "template": "other.ar_gulf.9", "text": "هلا عيد مبارك", "variant": "ar_gulf"}
+{"id": "te-00355", "label": "wrong_number", "language": "arabizi", "template": "wrong_number.arabizi.8", "text": "shukran bas el resala la shakhs ghhalat", "variant": "arabizi"}
+{"id": "te-00356", "label": "question", "language": "ar", "template": "question.ar_gulf.8", "text": "شو الاوراق اللي لازم اجيبها؟", "variant": "ar_gulf"}
+{"id": "te-00357", "label": "question", "language": "arabizi", "template": "question.arabizi.1", "text": "ayy waqt lazim ajee? yaatik el afya", "variant": "arabizi"}
+{"id": "te-00358", "label": "reschedule", "language": "ar", "template": "reschedule.ar_msa.7", "text": "مرحبا يوم الاثنين لا يناسبني، هل يتوفر موعد الأحد القادم؟", "variant": "ar_msa"}
+{"id": "te-00359", "label": "question", "language": "mixed", "template": "question.mixed.0", "text": "whee is المركز؟", "variant": "mixed"}
+{"id": "te-00360", "label": "cannot_attend", "language": "mixed", "template": "cannot_attend.mixed.4", "text": "للأف I am travelling so ما اقدر أحضر", "variant": "mixed"}
+{"id": "te-00361", "label": "dont_understand", "language": "ar", "template": "dont_understand.ar_gulf.6", "text": "الرسالة مب واضحة، وضحوا لي!", "variant": "ar_gulf"}
+{"id": "te-00362", "label": "wrong_number", "language": "ar", "template": "wrong_number.ar_gulf.5", "text": "هالرساله مب لي", "variant": "ar_gulf"}
+{"id": "te-00363", "label": "wrong_number", "language": "arabizi", "template": "wrong_number.arabizi.8", "text": "shukran bas el resala la shkhs ghalat 😔", "variant": "arabizi"}
+{"id": "te-00364", "label": "already_done", "language": "en", "template": "already_done.en.3", "text": "I did the camera test last year, no ned", "variant": "en"}
+{"id": "te-00365", "label": "confirm", "language": "mixed", "template": "confirm.mixed.4", "text": "😔 Noted شكرا، وصلت ارسالة", "variant": "mixed"}
+{"id": "te-00366", "label": "question", "language": "arabizi", "template": "question.arabizi.9", "text": "shu ta3ni natijati?", "variant": "arabizi"}
+{"id": "te-00367", "label": "other", "language": "arabizi", "template": "other.arabizi.10", "text": "irsilo li code el khasm 🌹", "variant": "arabizi"}
+{"id": "te-00368", "label": "question", "language": "arabizi", "template": "question.arabizi.9", "text": "🤲 shu ta3ni natijati?", "variant": "arabizi"}
+{"id": "te-00369", "label": "confirm", "language": "en", "template": "confirm.en.4", "text": "Hello doctor I confirm my check-up on Sunday. 🌹", "variant": "en"}
+{"id": "te-00370", "label": "question", "language": "ar", "template": "question.ar_msa.3", "text": "كم تبلغ التكلفة؟ 👍", "variant": "ar_msa"}
+{"id": "te-00371", "label": "question", "language": "ar", "template": "question.ar_gulf.8", "text": "شو الاوراق اللي لازم اجبها؟", "variant": "ar_gulf"}
+{"id": "te-00372", "label": "wrong_number", "language": "en", "template": "wrong_number.en.6", "text": "I changed my number long ago, this is not their number 👍", "variant": "en"}
+{"id": "te-00373", "label": "cannot_attend", "language": "en", "template": "cannot_attend.en.3", "text": "i am not able to come to your clinic, my examms", "variant": "en"}
+{"id": "te-00374", "label": "reschedule", "language": "en", "template": "reschedule.en.9", "text": "Hello next month dooes not suit me, any slot Saturday? 🙂", "variant": "en"}
+{"id": "te-00375", "label": "opt_out", "language": "en", "template": "opt_out.en.6", "text": "Do not call me again, I do not consent to ths", "variant": "en"}
+{"id": "te-00376", "label": "wrong_number", "language": "en", "template": "wrong_number.en.6", "text": "i changed my number long ago, this is not their number..", "variant": "en"}
+{"id": "te-00377", "label": "cannot_attend", "language": "ar", "template": "cannot_attend.ar_gulf.2", "text": "😊 ما اقدر اوصل العيادة، السفر", "variant": "ar_gulf"}
+{"id": "te-00378", "label": "already_done", "language": "en", "template": "already_done.en.2", "text": "Already done, I did it yesterday at another hopsital", "variant": "en"}
+{"id": "te-00379", "label": "wrong_number", "language": "ar", "template": "wrong_number.ar_msa.8", "text": "تم، لكن الرسالة ليست لي.. 😔", "variant": "ar_msa"}
+{"id": "te-00380", "label": "confirm", "language": "en", "template": "confirm.en.8", "text": "I will come to the clinic neext week at 2:30. Thanks", "variant": "en"}
+{"id": "te-00381", "label": "opt_out", "language": "mixed", "template": "opt_out.mixed.4", "text": "please rmeove my number، شيلوا رقمي", "variant": "mixed"}
+{"id": "te-00382", "label": "cannot_attend", "language": "ar", "template": "cannot_attend.ar_gulf.2", "text": "ما اقدر اوصل العيادة، السفر", "variant": "ar_gulf"}
+{"id": "te-00383", "label": "wrong_number", "language": "en", "template": "wrong_number.en.10", "text": "🙂 Confirmed, wrrong number, not me", "variant": "en"}
+{"id": "te-00384", "label": "confirm", "language": "en", "template": "confirm.en.8", "text": "I will cmoe to the hospital the day after tomorrow 10 am. Thank you very much", "variant": "en"}
+{"id": "te-00385", "label": "other", "language": "en", "template": "other.en.8", "text": "tset", "variant": "en"}
+{"id": "te-00386", "label": "other", "language": "ar", "template": "other.ar_gulf.9", "text": "السلام عليكم كل عام وانتم بخير!", "variant": "ar_gulf"}
+{"id": "te-00387", "label": "reschedule", "language": "en", "template": "reschedule.en.9", "text": "Hello, next month does not suuit me, any slot the end of the month?", "variant": "en"}
+{"id": "te-00388", "label": "already_done", "language": "en", "template": "already_done.en.3", "text": "I DID THE CAMERA TEST LAST WEEK, NO NEED", "variant": "en"}
+{"id": "te-00389", "label": "wrong_number", "language": "ar", "template": "wrong_number.ar_msa.8", "text": "موافق، لكن الرسالة ليست لي", "variant": "ar_msa"}
+{"id": "te-00390", "label": "confirm", "language": "ar", "template": "confirm.ar_gulf.3", "text": "أكيد بجي المستشفى بعد بكرة قبل الظهر", "variant": "ar_gulf"}
+{"id": "te-00391", "label": "other", "language": "en", "template": "other.en.5", "text": "Maybe 😞", "variant": "en"}
+{"id": "te-00392", "label": "other", "language": "en", "template": "other.en.5", "text": "maybe", "variant": "en"}
+{"id": "te-00393", "label": "dont_understand", "language": "mixed", "template": "dont_understand.mixed.2", "text": "please sedn in عربي, م اقرا English", "variant": "mixed"}
+{"id": "te-00394", "label": "reschedule", "language": "ar", "template": "reschedule.ar_gulf.5", "text": "اتصلوا فيني عقب الدوام، الحين مشغول", "variant": "ar_gulf"}
+{"id": "te-00395", "label": "opt_out", "language": "arabizi", "template": "opt_out.arabizi.0", "text": "battilo trsiloon li 😊", "variant": "arabizi"}
+{"id": "te-00396", "label": "opt_out", "language": "en", "template": "opt_out.en.5", "text": "Unsubscrie", "variant": "en"}
+{"id": "te-00397", "label": "wrong_number", "language": "en", "template": "wrong_number.en.6", "text": "i changed my number long ago, this is not their number 😔", "variant": "en"}
+{"id": "te-00398", "label": "dont_understand", "language": "en", "template": "dont_understand.en.3", "text": "Can you send it in Arabic? I can't read English 👍", "variant": "en"}
+{"id": "te-00399", "label": "other", "language": "ar", "template": "other.ar_gulf.9", "text": "مرحبا رمضان كريم", "variant": "ar_gulf"}
+{"id": "te-00400", "label": "cannot_attend", "language": "en", "template": "cannot_attend.en.1", "text": "I will not be able to come to the call because of my exams 🙏", "variant": "en"}
+{"id": "te-00401", "label": "wrong_number", "language": "ar", "template": "wrong_number.ar_gulf.7", "text": "حاضر بس الرقم غلط، مب أنا 😔", "variant": "ar_gulf"}
+{"id": "te-00402", "label": "cannot_attend", "language": "ar", "template": "cannot_attend.ar_msa.3", "text": "أعتذر عن عدم الحضور. الامتحانات", "variant": "ar_msa"}
+{"id": "te-00403", "label": "confirm", "language": "ar", "template": "confirm.ar_msa.0", "text": "موافق، سأكون متاحا يوم الخميس. شكرا لكم", "variant": "ar_msa"}
+{"id": "te-00404", "label": "already_done", "language": "ar", "template": "already_done.ar_msa.5", "text": "👍 تم، قد انتهيت من الفحص قبل أسبوعين", "variant": "ar_msa"}
+{"id": "te-00405", "label": "cannot_attend", "language": "ar", "template": "cannot_attend.ar_gulf.2", "text": "ما اقدر اوصل المركز، تعبان شوي", "variant": "ar_gulf"}
+{"id": "te-00406", "label": "reschedule", "language": "en", "template": "reschedule.en.4", "text": "Hi team I would like another date for the appointment, next week would work???", "variant": "en"}
+{"id": "te-00407", "label": "question", "language": "en", "template": "question.en.12", "text": "IS PARKING AVAILABLE AT THE CENTRE? 🙂", "variant": "en"}
+{"id": "te-00408", "label": "confirm", "language": "ar", "template": "confirm.ar_msa.0", "text": "مساء الخير حسنا، سأكون متاحا يوم الاثنين. شكًا جزيلا", "variant": "ar_msa"}
+{"id": "te-00409", "label": "dont_understand", "language": "en", "template": "dont_understand.en.3", "text": "Can you send it in Arabic? I can't read English 😊", "variant": "en"}
+{"id": "te-00410", "label": "other", "language": "ar", "template": "other.ar_gulf.9", "text": "عيد مبارك 😅", "variant": "ar_gulf"}
+{"id": "te-00411", "label": "opt_out", "language": "en", "template": "opt_out.en.5", "text": "😅 Unsubsribe", "variant": "en"}
+{"id": "te-00412", "label": "confirm", "language": "en", "template": "confirm.en.4", "text": "I confirm my appointment the day after tomorrow.", "variant": "en"}
+{"id": "te-00413", "label": "confirm", "language": "ar", "template": "confirm.ar_msa.0", "text": "تم، سأكون متاحا بعد نهاية الأسبوع.", "variant": "ar_msa"}
+{"id": "te-00414", "label": "reschedule", "language": "en", "template": "reschedule.en.4", "text": "Hello I would like another date for the test, on Sunday would work ❤️", "variant": "en"}
+{"id": "te-00415", "label": "reschedule", "language": "en", "template": "reschedule.en.4", "text": "🌹 I would like another date for the visit, on Sunday would work", "variant": "en"}
+{"id": "te-00416", "label": "cannot_attend", "language": "ar", "template": "cannot_attend.ar_msa.3", "text": "أعتذر عن عدم الحضور. السفر 🤲", "variant": "ar_msa"}
+{"id": "te-00417", "label": "reschedule", "language": "arabizi", "template": "reschedule.arabizi.2", "text": "ma a2dar yom el arb3a, momken titasilo feeni akhir el shahr? 🙂", "variant": "arabizi"}
+{"id": "te-00418", "label": "wrong_number", "language": "ar", "template": "wrong_number.ar_gulf.7", "text": "ان شاء الله بس الرقم غلط، مب أنا", "variant": "ar_gulf"}
+{"id": "te-00419", "label": "cannot_attend", "language": "en", "template": "cannot_attend.en.3", "text": "I am not able to come to your clinic, my exams 🙂", "variant": "en"}
+{"id": "te-00420", "label": "reschedule", "language": "mixed", "template": "reschedule.mixed.5", "text": "POSTPONE TEST TO ON SUNDAY لو سمحتم", "variant": "mixed"}
+{"id": "te-00421", "label": "other", "language": "ar", "template": "other.ar_msa.1", "text": "أتمنى لكم يوما سعيدا", "variant": "ar_msa"}
+{"id": "te-00422", "label": "question", "language": "en", "template": "question.en.11", "text": "🤲 Can I take my medicine before the test?", "variant": "en"}
+{"id": "te-00423", "label": "wrong_number", "language": "en", "template": "wrong_number.en.10", "text": "Alright, wrong number, not me 🤲", "variant": "en"}
+{"id": "te-00424", "label": "confirm", "language": "en", "template": "confirm.en.8", "text": "I will coome to the hospital tomorrow after work. Thank you", "variant": "en"}
+{"id": "te-00425", "label": "reschedule", "language": "arabizi", "template": "reschedule.arabizi.2", "text": "ma a2dar ba3d el weekend, momken titasilo feei akhir el shahr?", "variant": "arabizi"}
+{"id": "te-00426", "label": "opt_out", "language": "ar", "template": "opt_out.ar_msa.1", "text": "أرجو عدم التواصل معي مرة أخرى 🤲", "variant": "ar_msa"}
+{"id": "te-00427", "label": "reschedule", "language": "en", "template": "reschedule.en.4", "text": "good morning i would like another date for the appointment, on the 25th would work", "variant": "en"}
+{"id": "te-00428", "label": "confirm", "language": "ar", "template": "confirm.ar_gulf.3", "text": "ماشي بجي المركز الشهر الجاي بالليل 🤲", "variant": "ar_gulf"}
+{"id": "te-00429", "label": "opt_out", "language": "ar", "template": "opt_out.ar_gulf.7", "text": "امسحوا بياناتي ولا تتصلون فيني 🤲", "variant": "ar_gulf"}
+{"id": "te-00430", "label": "dont_understand", "language": "en", "template": "dont_understand.en.3", "text": "Can you sed it in Arabic? I can't read English 🌹", "variant": "en"}
+{"id": "te-00431", "label": "wrong_number", "language": "arabizi", "template": "wrong_number.arabizi.4", "text": "ma fi a7ad bhalesm hena, el raqam ghalat", "variant": "arabizi"}
+{"id": "te-00432", "label": "confirm", "language": "ar", "template": "confirm.ar_gulf.3", "text": "ان شاء الله بجي المستشفى يوم الأحد العاشرة الصبح", "variant": "ar_gulf"}
+{"id": "te-00433", "label": "other", "language": "mixed", "template": "other.mixed.5", "text": "🌹 good morning صباح الخير", "variant": "mixed"}
+{"id": "te-00434", "label": "opt_out", "language": "ar", "template": "opt_out.ar_msa.7", "text": "ارجو حذف بياناتي وعدم الاتصال بي!! 🙂", "variant": "ar_msa"}
+{"id": "te-00435", "label": "confirm", "language": "ar", "template": "confirm.ar_gulf.3", "text": "اكيد بجي المركز الاسبوع الجاي قبل الظهر", "variant": "ar_gulf"}
+{"id": "te-00436", "label": "confirm", "language": "en", "template": "confirm.en.4", "text": "Assalamu alaikum I confirm my visit on Monday. Thank you very much", "variant": "en"}
+{"id": "te-00437", "label": "confirm", "language": "ar", "template": "confirm.ar_gulf.3", "text": "زين بجي المركز السبوع الجاي بعد الساعة ٤", "variant": "ar_gulf"}
+{"id": "te-00438", "label": "dont_understand", "language": "arabizi", "template": "dont_understand.arabizi.7", "text": "sihno hatha? mub fahem shi", "variant": "arabizi"}
+{"id": "te-00439", "label": "cannot_attend", "language": "en", "template": "cannot_attend.en.3", "text": "I am not able to come to your clinic, a family emrgency", "variant": "en"}
+{"id": "te-00440", "label": "dont_understand", "language": "ar", "template": "dont_understand.ar_gulf.6", "text": "الرسالة مب واضحة، وضحوا لي!!", "variant": "ar_gulf"}
+{"id": "te-00441", "label": "other", "language": "en", "template": "other.en.5", "text": "Maybbe", "variant": "en"}
+{"id": "te-00442", "label": "wrong_number", "language": "ar", "template": "wrong_number.ar_msa.8", "text": "تمام، لكن الرسالة ليست لي", "variant": "ar_msa"}
+{"id": "te-00443", "label": "opt_out", "language": "en", "template": "opt_out.en.10", "text": "i refuse any follow up, please deelte my number 😞", "variant": "en"}
+{"id": "te-00444", "label": "already_done", "language": "en", "template": "already_done.en.3", "text": "I did the camera test a few days ago, no need 🤲", "variant": "en"}
+{"id": "te-00445", "label": "dont_understand", "language": "ar", "template": "dont_understand.ar_msa.3", "text": "هل يمكن إرسالها بالإنجليزية؟ لا افهم العربية", "variant": "ar_msa"}
+{"id": "te-00446", "label": "already_done", "language": "ar", "template": "already_done.ar_gulf.2", "text": "الفحص انسوى من قبل في مستشفى ثاي", "variant": "ar_gulf"}
+{"id": "te-00447", "label": "other", "language": "mixed", "template": "other.mixed.5", "text": "good morning صباح الخير", "variant": "mixed"}
+{"id": "te-00448", "label": "wrong_number", "language": "ar", "template": "wrong_number.ar_gulf.7", "text": "ماشي س الرقم غلط، مب أنا 🙏", "variant": "ar_gulf"}
+{"id": "te-00449", "label": "other", "language": "arabizi", "template": "other.arabizi.10", "text": "irsilo li code el khasm", "variant": "arabizi"}
+{"id": "te-00450", "label": "already_done", "language": "en", "template": "already_done.en.3", "text": "I did the camera test last week, no need 🤲", "variant": "en"}
+{"id": "te-00451", "label": "other", "language": "en", "template": "other.en.5", "text": "😊 maybe", "variant": "en"}
+{"id": "te-00452", "label": "question", "language": "en", "template": "question.en.12", "text": "Is parking available at the centre? ❤️", "variant": "en"}
+{"id": "te-00453", "label": "other", "language": "mixed", "template": "other.mixed.5", "text": "good morning صباح الخير ❤️", "variant": "mixed"}
+{"id": "te-00454", "label": "already_done", "language": "mixed", "template": "already_done.mixed.3", "text": "already تم الفحص من أسبوعين ❤️", "variant": "mixed"}
+{"id": "te-00455", "label": "confirm", "language": "en", "template": "confirm.en.8", "text": "I will come to the hospital nxt month after 4 pm. thx 🤲", "variant": "en"}
+{"id": "te-00456", "label": "question", "language": "mixed", "template": "question.mixed.0", "text": "whre is المستشي؟", "variant": "mixed"}
+{"id": "te-00457", "label": "already_done", "language": "en", "template": "already_done.en.3", "text": "I did the cammera test yesterday, no need", "variant": "en"}
+{"id": "te-00458", "label": "wrong_number", "language": "ar", "template": "wrong_number.ar_gulf.7", "text": "أكيد بس الرقم غلط، مب أنا", "variant": "ar_gulf"}
+{"id": "te-00459", "label": "wrong_number", "language": "ar", "template": "wrong_number.ar_gulf.7", "text": "أكيد بس الرقم غلط، مب أنا!! 😔", "variant": "ar_gulf"}
+{"id": "te-00460", "label": "wrong_number", "language": "en", "template": "wrong_number.en.6", "text": "I changed my number long ago, this is not their number", "variant": "en"}
+{"id": "te-00461", "label": "question", "language": "ar", "template": "question.ar_msa.6", "text": "كم تستغرق مدة الفحص.. 🌹", "variant": "ar_msa"}
+{"id": "te-00462", "label": "dont_understand", "language": "en", "template": "dont_understand.en.7", "text": "sorry, which test are you talking about? i am confused", "variant": "en"}
+{"id": "te-00463", "label": "dont_understand", "language": "en", "template": "dont_understand.en.3", "text": "Can you send it in Arabic? I can't read English", "variant": "en"}
+{"id": "te-00464", "label": "confirm", "language": "en", "template": "confirm.en.8", "text": "I will come to the clinic next month before noon. Thanks a lot", "variant": "en"}
+{"id": "te-00465", "label": "other", "language": "mixed", "template": "other.mixed.5", "text": "good morning صباح الخير 😅", "variant": "mixed"}
+{"id": "te-00466", "label": "opt_out", "language": "en", "template": "opt_out.en.10", "text": "I refuse any follow up, please delete my number 😊", "variant": "en"}
+{"id": "te-00467", "label": "other", "language": "mixed", "template": "other.mixed.5", "text": "god morning صبح الخير??? 🙂", "variant": "mixed"}
+{"id": "te-00468", "label": "opt_out", "language": "ar", "template": "opt_out.ar_gulf.7", "text": "امسوا بياناتي ولا تتصلون فيني", "variant": "ar_gulf"}
+{"id": "te-00469", "label": "cannot_attend", "language": "mixed", "template": "cannot_attend.mixed.4", "text": "للأسف i am travelling so ما اقدر أحضر 😔", "variant": "mixed"}
+{"id": "te-00470", "label": "already_done", "language": "en", "template": "already_done.en.2", "text": "Already done, I did it last year at another hospital", "variant": "en"}
+{"id": "te-00471", "label": "other", "language": "ar", "template": "other.ar_gulf.4", "text": "خلني افكر.. ❤️", "variant": "ar_gulf"}
+{"id": "te-00472", "label": "opt_out", "language": "en", "template": "opt_out.en.10", "text": "I refuse any follow up, please delete my number 😅", "variant": "en"}
+{"id": "te-00473", "label": "dont_understand", "language": "ar", "template": "dont_understand.ar_gulf.6", "text": "الرسالة مب واضحة، وضحوا لي 😞", "variant": "ar_gulf"}
+{"id": "te-00474", "label": "dont_understand", "language": "mixed", "template": "dont_understand.mixed.2", "text": "please send in عربي, ما اقرا english 😔", "variant": "mixed"}
+{"id": "te-00475", "label": "wrong_number", "language": "en", "template": "wrong_number.en.10", "text": "ok, wrong number, not me ❤️", "variant": "en"}
+{"id": "te-00476", "label": "dont_understand", "language": "en", "template": "dont_understand.en.3", "text": "Can you send it in Arabic? I can't read English 🙏", "variant": "en"}
+{"id": "te-00477", "label": "already_done", "language": "en", "template": "already_done.en.2", "text": "already done, i did it yesterday at another hospital", "variant": "en"}
+{"id": "te-00478", "label": "wrong_number", "language": "en", "template": "wrong_number.en.10", "text": "😔 sure, wrong number, not me", "variant": "en"}
+{"id": "te-00479", "label": "opt_out", "language": "ar", "template": "opt_out.ar_msa.7", "text": "أرجو حذف بياناتي وعدم الاتصال بي", "variant": "ar_msa"}
+{"id": "te-00480", "label": "other", "language": "ar", "template": "other.ar_gulf.4", "text": "خلني افكر 😊", "variant": "ar_gulf"}
+{"id": "te-00481", "label": "reschedule", "language": "en", "template": "reschedule.en.4", "text": "I WOULD LIKE ANOTHER DAE FOR THE APPOINTMENT, THE DAY AFTER TOMORROW WOULD WORK", "variant": "en"}
+{"id": "te-00482", "label": "other", "language": "en", "template": "other.en.8", "text": "test", "variant": "en"}
+{"id": "te-00483", "label": "dont_understand", "language": "ar", "template": "dont_understand.ar_msa.3", "text": "هل يمكن إرسالها بالإنجليزية؟ لا أفهم العربية 😔", "variant": "ar_msa"}
+{"id": "te-00484", "label": "question", "language": "ar", "template": "question.ar_gulf.8", "text": "شو الاوراق اللي لازم اجيبها؟ 😞", "variant": "ar_gulf"}
+{"id": "te-00485", "label": "opt_out", "language": "en", "template": "opt_out.en.6", "text": "do not call me again, i do not consent to tis", "variant": "en"}
+{"id": "te-00486", "label": "cannot_attend", "language": "mixed", "template": "cannot_attend.mixed.4", "text": "للأسف I am on leave overseas so ما اقدر أحضر", "variant": "mixed"}
+{"id": "te-00487", "label": "reschedule", "language": "ar", "template": "reschedule.ar_msa.7", "text": "🙂 صباح الخير بعد نهاية الأسبوع لا يناسبني، هل يتوفر موعد الأحد القام؟", "variant": "ar_msa"}
+{"id": "te-00488", "label": "already_done", "language": "en", "template": "already_done.en.2", "text": "ALREADY DONE, I DID IT TWO WEEKS AGO AT ANOTHER HOSPTIAL", "variant": "en"}
+{"id": "te-00489", "label": "already_done", "language": "arabizi", "template": "already_done.arabizi.6", "text": "sawwaytah khalas.", "variant": "arabizi"}
+{"id": "te-00490", "label": "dont_understand", "language": "ar", "template": "dont_understand.ar_msa.3", "text": "هل يمكن إرسالها بالإنجليزية؟ لا أفهم العربية ❤️", "variant": "ar_msa"}
+{"id": "te-00491", "label": "question", "language": "arabizi", "template": "question.arabizi.1", "text": "ayy waqt lazim ajee? tislam 🤲", "variant": "arabizi"}
+{"id": "te-00492", "label": "other", "language": "mixed", "template": "other.emoji.3", "text": "🌹", "variant": "emoji"}
+{"id": "te-00493", "label": "reschedule", "language": "ar", "template": "reschedule.ar_msa.7", "text": "مساء الخير يوم الأربعاء لا يناسبني، هل يتوفر موعد نهاية الشهر؟", "variant": "ar_msa"}
+{"id": "te-00494", "label": "opt_out", "language": "ar", "template": "opt_out.ar_msa.7", "text": "أرجو حف بياناتي وعدم الاتصال بي 🙏", "variant": "ar_msa"}
+{"id": "te-00495", "label": "cannot_attend", "language": "en", "template": "cannot_attend.en.1", "text": "I will not be able to come to the appointment because of a family emergency 😅", "variant": "en"}
+{"id": "te-00496", "label": "other", "language": "en", "template": "other.en.8", "text": "😅 test", "variant": "en"}
+{"id": "te-00497", "label": "reschedule", "language": "en", "template": "reschedule.en.9", "text": "this Thursday does not suit me, any slot in two weeks 🌹", "variant": "en"}
+{"id": "te-00498", "label": "wrong_number", "language": "ar", "template": "wrong_number.ar_msa.8", "text": "😅 تمام، لكن الرسالة ليست لي", "variant": "ar_msa"}
+{"id": "te-00499", "label": "opt_out", "language": "en", "template": "opt_out.en.5", "text": "Unsubscrbe 😅", "variant": "en"}
+{"id": "te-00500", "label": "other", "language": "en", "template": "other.en.5", "text": "MAYBE", "variant": "en"}
+{"id": "te-00501", "label": "confirm", "language": "en", "template": "confirm.en.4", "text": "hello doctor i confirm my test on the 25th.", "variant": "en"}
+{"id": "te-00502", "label": "dont_understand", "language": "ar", "template": "dont_understand.ar_gulf.6", "text": "🌹 الرسالة مب واضحة، وضحوا لي", "variant": "ar_gulf"}
+{"id": "te-00503", "label": "cannot_attend", "language": "ar", "template": "cannot_attend.ar_msa.3", "text": "أعتذر عن عدم الحضور. السفر", "variant": "ar_msa"}
+{"id": "te-00504", "label": "dont_understand", "language": "ar", "template": "dont_understand.ar_msa.3", "text": "هل يمكن إرسالها بالإنجليزية؟ لا أفهم العربية 😞", "variant": "ar_msa"}
+{"id": "te-00505", "label": "opt_out", "language": "en", "template": "opt_out.en.5", "text": "Unsubcribe!", "variant": "en"}
+{"id": "te-00506", "label": "cannot_attend", "language": "en", "template": "cannot_attend.en.3", "text": "I am not able to come to the centre, work", "variant": "en"}
+{"id": "te-00507", "label": "opt_out", "language": "en", "template": "opt_out.en.6", "text": "Do not call me again, I do not consetn to this", "variant": "en"}
+{"id": "te-00508", "label": "opt_out", "language": "ar", "template": "opt_out.ar_msa.1", "text": "ارجو عدم التواصل معي مرة اخرى", "variant": "ar_msa"}
+{"id": "te-00509", "label": "reschedule", "language": "en", "template": "reschedule.en.9", "text": "Hi team on Sunday does not suit me, any slot next Sunday?", "variant": "en"}
+{"id": "te-00510", "label": "reschedule", "language": "en", "template": "reschedule.en.9", "text": "Hello doctor the day after tomorrow does not suit me, any slot Saturday? 🤲", "variant": "en"}
+{"id": "te-00511", "label": "other", "language": "arabizi", "template": "other.arabizi.5", "text": "yimkin 😔", "variant": "arabizi"}
+{"id": "te-00512", "label": "dont_understand", "language": "ar", "template": "dont_understand.ar_gulf.6", "text": "الرسالة مب واضحة، وضحوا لي 😊", "variant": "ar_gulf"}
+{"id": "te-00513", "label": "dont_understand", "language": "en", "template": "dont_understand.en.3", "text": "can you send it in arabic? i can't read english", "variant": "en"}
+{"id": "te-00514", "label": "other", "language": "ar", "template": "other.ar_gulf.9", "text": "صباح الخير رمضان كريم", "variant": "ar_gulf"}
+{"id": "te-00515", "label": "wrong_number", "language": "ar", "template": "wrong_number.ar_msa.8", "text": "حسنا، لكن الرسالة ليست لي", "variant": "ar_msa"}
+{"id": "te-00516", "label": "other", "language": "arabizi", "template": "other.arabizi.5", "text": "😊 yimkin!!", "variant": "arabizi"}
+{"id": "te-00517", "label": "wrong_number", "language": "ar", "template": "wrong_number.ar_gulf.7", "text": "أوكي بس الرقم غلط، مب أنا", "variant": "ar_gulf"}
+{"id": "te-00518", "label": "confirm", "language": "ar", "template": "confirm.ar_gulf.3", "text": "تمام بجي المركز الأسبوع الجاي عقب الدوام", "variant": "ar_gulf"}
+{"id": "te-00519", "label": "cannot_attend", "language": "arabizi", "template": "cannot_attend.arabizi.5", "text": "ma a2dar ajee yom el ithnain wala ba3d usbou3ain bsabab zarf tare2", "variant": "arabizi"}
+{"id": "te-00520", "label": "question", "language": "en", "template": "question.en.12", "text": "Is paring available at the clinic 🤲", "variant": "en"}
+{"id": "te-00521", "label": "cannot_attend", "language": "en", "template": "cannot_attend.en.3", "text": "I am not able to come to the hospital, being abroad 😊", "variant": "en"}
+{"id": "te-00522", "label": "confirm", "language": "mixed", "template": "confirm.mixed.4", "text": "Confirmed شكرا، وصلت الرسالة", "variant": "mixed"}
+{"id": "te-00523", "label": "opt_out", "language": "en", "template": "opt_out.en.5", "text": "Unsubscribe", "variant": "en"}
+{"id": "te-00524", "label": "already_done", "language": "ar", "template": "already_done.ar_msa.5", "text": "تم، لقد انتهيت من الفحص العام الماضي؟؟", "variant": "ar_msa"}
+{"id": "te-00525", "label": "question", "language": "ar", "template": "question.ar_gulf.8", "text": "شو الاوراق اللي لازم اجيبها", "variant": "ar_gulf"}
+{"id": "te-00526", "label": "wrong_number", "language": "en", "template": "wrong_number.en.10", "text": "ok, wong number, not me", "variant": "en"}
+{"id": "te-00527", "label": "confirm", "language": "arabizi", "template": "confirm.arabizi.2", "text": "🌹 hala aywa ittasilo feeni el 3ashira el subh.", "variant": "arabizi"}
+{"id": "te-00528", "label": "confirm", "language": "en", "template": "confirm.en.4", "text": "I confirm my visit tomorrow. Thanks a lot", "variant": "en"}
+{"id": "te-00529", "label": "already_done", "language": "ar", "template": "already_done.ar_msa.5", "text": "تم، لقد انتهيت من الفحص العام الماضي", "variant": "ar_msa"}
+{"id": "te-00530", "label": "cannot_attend", "language": "arabizi", "template": "cannot_attend.arabizi.5", "text": "ma a2dar ajee el shahr el jay wala akhir el shahr bsabab el dawam", "variant": "arabizi"}
+{"id": "te-00531", "label": "opt_out", "language": "ar", "template": "opt_out.ar_gulf.7", "text": "امسحوا بياناتي ولا تتصلون فيني 🌹", "variant": "ar_gulf"}
+{"id": "te-00532", "label": "opt_out", "language": "ar", "template": "opt_out.ar_msa.7", "text": "أرجو حذف بياناتي وعدم الاتصال بي 😔", "variant": "ar_msa"}
+{"id": "te-00533", "label": "reschedule", "language": "arabizi", "template": "reschedule.arabizi.2", "text": "ma a2dar bukra, momken titasilo feeni yom el thalatha 🙂", "variant": "arabizi"}
+{"id": "te-00534", "label": "dont_understand", "language": "mixed", "template": "dont_understand.mixed.2", "text": "🤲 please send in عربي, ما اقرا English", "variant": "mixed"}
+{"id": "te-00535", "label": "opt_out", "language": "ar", "template": "opt_out.ar_gulf.4", "text": "الغوا اشتراكي في الرسايل هذي", "variant": "ar_gulf"}
+{"id": "te-00536", "label": "question", "language": "en", "template": "question.en.12", "text": "Is parking available at your clinic? 🌹", "variant": "en"}
+{"id": "te-00537", "label": "reschedule", "language": "ar", "template": "reschedule.ar_msa.7", "text": "مساء الخير الشهر القادم لا يناسبني، هل يتوفر موعد الأحد القادم؟ 🌹", "variant": "ar_msa"}
+{"id": "te-00538", "label": "wrong_number", "language": "arabizi", "template": "wrong_number.arabizi.8", "text": "shukran bas el resala la shakhs ghalat", "variant": "arabizi"}
+{"id": "te-00539", "label": "reschedule", "language": "mixed", "template": "reschedule.mixed.5", "text": "postpone visit to tomorrow لو سمحتم???", "variant": "mixed"}
+{"id": "te-00540", "label": "reschedule", "language": "en", "template": "reschedule.en.4", "text": "Hi team I would like another date for the call, next week would work", "variant": "en"}
+{"id": "te-00541", "label": "reschedule", "language": "mixed", "template": "reschedule.mixed.5", "text": "postpone check-up to on Sunday لو سمحتم 🤲", "variant": "mixed"}
+{"id": "te-00542", "label": "already_done", "language": "mixed", "template": "already_done.mixed.3", "text": "arleady تم الفحص الشهر اللي فات 😊", "variant": "mixed"}
+{"id": "te-00543", "label": "other", "language": "ar", "template": "other.ar_gulf.4", "text": "خلني افكر؟؟", "variant": "ar_gulf"}
+{"id": "te-00544", "label": "confirm", "language": "arabizi", "template": "confirm.arabizi.2", "text": "marhaba aywa ittasilo feeni ba3d el saa3a 4.", "variant": "arabizi"}
+{"id": "te-00545", "label": "question", "language": "ar", "template": "question.ar_msa.6", "text": "كم تتغرق مدة الفحص؟", "variant": "ar_msa"}
+{"id": "te-00546", "label": "question", "language": "ar", "template": "question.ar_msa.6", "text": "كم تستغرق مدة الفحص؟", "variant": "ar_msa"}
+{"id": "te-00547", "label": "other", "language": "mixed", "template": "other.mixed.5", "text": "god morning صباح الخير", "variant": "mixed"}
+{"id": "te-00548", "label": "other", "language": "ar", "template": "other.ar_gulf.4", "text": "خلني افكر", "variant": "ar_gulf"}
+{"id": "te-00549", "label": "reschedule", "language": "en", "template": "reschedule.en.9", "text": "😅 on the 25th does not sut me, any slot Tuesday?", "variant": "en"}
+{"id": "te-00550", "label": "question", "language": "arabizi", "template": "question.arabizi.9", "text": "shu ta3ni natijati", "variant": "arabizi"}
+{"id": "te-00551", "label": "reschedule", "language": "arabizi", "template": "reschedule.arabizi.2", "text": "ma a2dar ba3d el weekend, momken titasilo feeni yom el sabt?", "variant": "arabizi"}

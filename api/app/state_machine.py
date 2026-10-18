@@ -91,8 +91,16 @@ CHANNELS = ("sms", "whatsapp", "phone", "letter")  # contact channels (the `chan
 CONSENT_FROZEN_EVENTS = frozenset(
     {"contact_patient", "message_drafted", "message_approved", "message_sent", "handoff_requested"}
 )
-CONSENT_ACTOR = "system:consent"  # emits review_requested, and nothing else
+CONSENT_ACTOR = "system:consent"  # emits review_requested {consent_withdrawn}, and nothing else
 REVIEW_REASONS = ("consent_withdrawn",)
+# Reply triage (D13): the API classifies an inbound patient reply as `system:triage`. That actor writes the
+# reply and its classification and may ask for a human to look at the case; it may do nothing else. Its review
+# reasons are separate from the consent one, so a triage flag can never be mistaken for, or hide, a consent flag.
+TRIAGE_ACTOR = "system:triage"
+TRIAGE_REVIEW_REASONS = ("opt_out", "wrong_number", "already_done", "triage_uncertain")
+TRIAGE_CALLBACK_REASONS = ("reschedule", "cannot_attend", "patient_does_not_understand")
+TRIAGE_ALLOWED_EVENTS = frozenset({"reply_received", "reply_classified", "review_requested", "callback_requested"})
+TRIAGE_ONLY_EVENTS = frozenset({"reply_received", "reply_classified"})  # nobody else may write these
 SCHEDULER_ACTOR_NAME = "system:scheduler"
 MODEL_ACTOR_PREFIX = "model:"
 MODEL_ALLOWED_EVENTS = frozenset({"message_drafted"})  # the only thing a drafting model may emit (T-D2)
@@ -193,6 +201,10 @@ class CaseModel:
     consent_history: tuple = ()
     review_reason: str | None = None  # human review flag (consent withdrawal), set by review_requested
     review_requested_at: datetime | None = None
+    # A triage flag (D13): the latest `review_requested` from system:triage. Kept apart from review_reason (consent) so
+    # neither can overwrite or hide the other. Nothing here changes the state; a person sees it on the worklist.
+    triage_review_reason: str | None = None
+    triage_review_requested_at: datetime | None = None
     backdated_events: int = 0  # T-F4, ADR-027: accepted events dated before the one just before them
     created_at: datetime | None = None  # the genesis event's `at` (a milestone may start there)
     created_event_id: UUID | None = None  # the genesis event's `event_id` (a milestone started there derives its ids from it)
@@ -235,6 +247,8 @@ class CaseModel:
             "consent_history": [dict(h) for h in self.consent_history],
             "review_reason": self.review_reason,
             "review_requested_at": iso(self.review_requested_at),
+            "triage_review_reason": self.triage_review_reason,
+            "triage_review_requested_at": iso(self.triage_review_requested_at),
             "backdated_events": self.backdated_events,
             "milestones": {name: m.to_json() for name, m in self.milestones.items()},
         }
@@ -282,7 +296,7 @@ def replay_model(events, pathway: Pathway) -> CaseModel:
 
 def step(model: CaseModel, event: Event, pathway: Pathway) -> CaseModel:
     """Return the new read model, or raise InvalidTransition. Never mutates anything."""
-    if event.type in pathway.human_only_events and is_automated(event.actor):
+    if event.type in pathway.human_only_events and is_automated(event.actor) and not _relays_patient_request(event):
         raise InvalidTransition(f"event {event.type!r} requires a human actor")
     if pathway.milestones:
         model = start_genesis_milestones(model, pathway)
@@ -302,6 +316,18 @@ def step(model: CaseModel, event: Event, pathway: Pathway) -> CaseModel:
             "the transition's conditions"
         )
     raise InvalidTransition(f"event {event.type!r} not allowed from state {model.state!r}")
+
+
+def _relays_patient_request(event: Event) -> bool:
+    """The one exception to "human only": `system:triage` passes on a callback the PATIENT asked for in their own reply
+    (reschedule, cannot attend, did not understand). The reason is from the triage list and the payload must name the
+    classification it came from (`source_event_id`), so the request can be traced to the reply."""
+    return (
+        event.actor == TRIAGE_ACTOR
+        and event.type == "callback_requested"
+        and event.payload.get("reason") in TRIAGE_CALLBACK_REASONS
+        and bool(event.payload.get("source_event_id"))
+    )
 
 
 def apply(state: str, event: Event, pathway: Pathway) -> str:
@@ -682,17 +708,25 @@ def validate_payload(event: Event, pathway: Pathway) -> None:
         if bad:
             raise PayloadError(f"consent_updated values must be booleans: {bad}")
     elif kind == "review_requested":
-        if payload.get("reason") not in REVIEW_REASONS:
-            raise PayloadError(f"review_requested reason must be one of {list(REVIEW_REASONS)}")
+        allowed = TRIAGE_REVIEW_REASONS if actor == TRIAGE_ACTOR else REVIEW_REASONS
+        if payload.get("reason") not in allowed:
+            raise PayloadError(f"review_requested reason must be one of {list(allowed)}")
 
 
 def _precheck(model: CaseModel, event: Event, pathway: Pathway) -> None:
     kind, actor = event.type, event.actor
-    # Only the consent service may flag a review, and it may flag nothing else.
-    if kind == "review_requested" and actor != CONSENT_ACTOR:
-        raise InvalidTransition(f"review_requested is emitted only by {CONSENT_ACTOR!r}")
+    # Only the consent service and the reply triage may flag a review, and each may flag nothing else.
+    if kind == "review_requested" and actor not in (CONSENT_ACTOR, TRIAGE_ACTOR):
+        raise InvalidTransition(f"review_requested is emitted only by {CONSENT_ACTOR!r} or {TRIAGE_ACTOR!r}")
     if actor == CONSENT_ACTOR and kind != "review_requested":
         raise InvalidTransition(f"{CONSENT_ACTOR!r} may only emit review_requested")
+    # Reply triage (D13): it writes the reply and what it made of it, may flag a review or relay the patient's own
+    # callback request, and writes nothing else; and nobody else writes a reply event, so a log entry saying "the
+    # patient replied" cannot be forged through the events route or by another service.
+    if actor == TRIAGE_ACTOR and kind not in TRIAGE_ALLOWED_EVENTS:
+        raise InvalidTransition(f"{TRIAGE_ACTOR!r} may only emit {sorted(TRIAGE_ALLOWED_EVENTS)}, not {kind!r}")
+    if kind in TRIAGE_ONLY_EVENTS and actor != TRIAGE_ACTOR:
+        raise InvalidTransition(f"{kind} is written only by {TRIAGE_ACTOR!r}, not {actor!r}")
     validate_payload(event, pathway)
     # A drafting model may annotate a case with its draft and do nothing else (T-D2).
     if actor.startswith(MODEL_ACTOR_PREFIX) and kind not in MODEL_ALLOWED_EVENTS:
@@ -825,6 +859,8 @@ def _finish(
         out = replace(out, approved_unsent=tuple(d for d in out.approved_unsent if d != payload.get("draft_id")))
     elif kind == "consent_updated":
         out = _consent_after(out, event, (before or model).consent_frozen)
+    elif kind == "review_requested" and event.actor == TRIAGE_ACTOR:
+        out = replace(out, triage_review_reason=payload["reason"], triage_review_requested_at=at)
     elif kind == "review_requested":
         out = replace(out, review_reason=payload["reason"], review_requested_at=at)
     return out
