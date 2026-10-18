@@ -180,7 +180,7 @@ class Demo:
         self.expect_state("patient_contacted")
 
     def s_overdue(self):
-        """Clock advances past the 7-working-day acknowledgement SLA: the scheduler marks the case overdue and sends rung 1 (reminder to the owner)."""
+        """Clock advances past the 5-working-day patient-acknowledgement SLA: the scheduler marks the case overdue and sends rung 1 (reminder to the owner)."""
         due = datetime.fromisoformat(self.case()["due_at"])
         self.advance_to(whole_hour_after(due))
         c = self.case()

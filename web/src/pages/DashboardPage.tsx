@@ -12,6 +12,12 @@ const BUCKETS: AgeBucket[] = ["0-30", "31-60", "61-90", "90+"];
 /** How often the dashboard re-reads the alerts: the stale-scheduler banner must appear within 60 s (T-C16). */
 export const ALERT_POLL_MS = 10_000;
 
+/** A time to closure in days, or "n/a" while nothing has closed yet (the API sends null then). */
+function Days({ value }: { value: number | null | undefined }) {
+  if (value === null || value === undefined) return <>n/a</>;
+  return <>{value}<small> days</small></>;
+}
+
 export function DashboardPage() {
   const { api } = useApp();
   const [m, setM] = useState<ClosureMetrics | null>(null);
@@ -54,7 +60,11 @@ export function DashboardPage() {
   return (
     <main className="container">
       <h1>Closure dashboard</h1>
-      <p className="muted">Synthetic data on a simulated clock. Every number is regenerated from a fixed seed.</p>
+      <p className="muted" data-testid="dashboard-subtitle">
+        {api.adapter === "http"
+          ? "Synthetic data on a simulated clock. Live data from the API."
+          : "Synthetic data on a simulated clock. Fixture data: every number is regenerated from a fixed seed."}
+      </p>
       {down.map((a) => (
         <p key={a.since} className="banner banner-watchdog" role="alert" data-testid="scheduler-banner">
           <strong>The scheduler is down.</strong> It has not reported since {fmtDateTime(a.since)}, so SLA clocks are not being checked and no case will be marked overdue or escalated until it is back.
@@ -83,8 +93,8 @@ export function DashboardPage() {
       {m && (
         <>
           <div className="kpis">
-            <div className="kpi" data-testid="kpi-p50"><span className="kpi-label">Median time to closure (P50)</span><span className="kpi-value">{m.p50_days}<small> days</small></span></div>
-            <div className="kpi" data-testid="kpi-p90"><span className="kpi-label">P90 time to closure</span><span className="kpi-value">{m.p90_days}<small> days</small></span></div>
+            <div className="kpi" data-testid="kpi-p50"><span className="kpi-label">Median time to closure (P50)</span><span className="kpi-value"><Days value={m.p50_days} /></span></div>
+            <div className="kpi" data-testid="kpi-p90"><span className="kpi-label">P90 time to closure</span><span className="kpi-value"><Days value={m.p90_days} /></span></div>
           </div>
           <div className="charts">
             <BarChart

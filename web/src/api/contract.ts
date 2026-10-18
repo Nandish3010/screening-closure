@@ -721,8 +721,8 @@ export type AgeBucket = "0-30" | "31-60" | "61-90" | "90+";
  * `p90_days` are null while nothing has closed. Definitions: api/app/metrics.py.
  */
 export interface ClosureMetrics {
-  p50_days: number;
-  p90_days: number;
+  p50_days: number | null;
+  p90_days: number | null;
   open_by_age_bucket: Record<AgeBucket, number>;
   breaches_by_provider: { provider: string; count: number }[];
   bottleneck_by_transition: { transition: string; median_days: number }[];

@@ -27,22 +27,22 @@ Everything the 7-minute GITEX demo needs to start from a known state, run the sa
 | 2 | `acknowledged` | The lab acknowledges the result. | 5 Jan 08:00 | 0.9 s |
 | 3 | `owner_accepted` | Dr. Layla Haddad (primary care) accepts ownership. | 5 Jan 08:00 | 0.3 s |
 | 4 | `patient_unreachable` | She phones the patient; nobody answers, so the patient never acknowledges. | 5 Jan 08:00 | 0.3 s |
-| 5 | `overdue` | The clock passes the 7-working-day SLA: the scheduler marks the case overdue and sends rung 1 (reminder to the owner). | 14 Jan 09:00 | 7.7 s |
-| 6 | `escalation_supervisor` | Three working days later, rung 2: the supervisor is notified. | 19 Jan 09:00 | 1.7 s |
-| 7 | `escalation_coordinator` | Seven working days after the breach, rung 3: the programme coordinator is notified. | 23 Jan 09:00 | 0.1 s |
-| 8 | `escalation_accepted` | The coordinator accepts rung 3. | 23 Jan 09:00 | 0.1 s |
-| 9 | `draft_sent` | An Arabic reminder is drafted for the patient; the owner approves it and it is sent. | 23 Jan 09:00 | 0.3 s |
-| 10 | `patient_acknowledged` | The patient taps "I understand" on the PWA. | 23 Jan 09:00 | 0.1 s |
-| 11 | `handoff_rejected` | The owner asks Al Noor Endoscopy Centre; they decline for capacity. Ownership stays with the referrer. | 23 Jan 09:00 | 0.2 s |
-| 12 | `handoff_bounced` | The owner asks Marina Digestive Health, who never answer; three working days later the scheduler bounces the request. | 28 Jan 10:00 | 0.3 s |
-| 13 | `reassigned` | The coordinator re-routes the case back to the owner. | 28 Jan 10:00 | 0.1 s |
-| 14 | `handoff_accepted` | The owner asks Corniche Gastro Unit; Dr. Karim Nasser accepts and becomes the owner. | 28 Jan 10:00 | 0.2 s |
-| 15 | `patient_reacknowledged` | The new owner phones the patient, who acknowledges again (a re-routed referral goes back through contact). | 28 Jan 10:00 | 0.2 s |
-| 16 | `booked` | The colonoscopy is booked, 14 days out. | 28 Jan 10:00 | 0.1 s |
-| 17 | `colonoscopy_done` | The clock advances to the appointment day. | 11 Feb 09:00 | 0.0 s |
-| 18 | `result_recorded` | The specialist records the colonoscopy: a `Procedure` and `DiagnosticReport` are created in HAPI and the case is told the result exists. | 11 Feb 09:00 | 0.2 s |
-| 19 | `clinician_review` | The clinician reviews and signs as themselves (`Practitioner/<own id>`). | 11 Feb 09:00 | 0.1 s |
-| 20 | `closed` | The clinician closes the case with the `Procedure` as evidence. | 11 Feb 09:00 | 0.1 s |
+| 5 | `overdue` | The clock passes the 5-working-day patient-acknowledgement SLA: the scheduler marks the case overdue and sends rung 1 (reminder to the owner). | 12 Jan 09:00 | 7.7 s |
+| 6 | `escalation_supervisor` | Three working days later, rung 2: the supervisor is notified. | 15 Jan 09:00 | 1.7 s |
+| 7 | `escalation_coordinator` | Seven working days after the breach, rung 3: the programme coordinator is notified. | 21 Jan 09:00 | 0.1 s |
+| 8 | `escalation_accepted` | The coordinator accepts rung 3. | 21 Jan 09:00 | 0.1 s |
+| 9 | `draft_sent` | An Arabic reminder is drafted for the patient; the owner approves it and it is sent. | 21 Jan 09:00 | 0.3 s |
+| 10 | `patient_acknowledged` | The patient taps "I understand" on the PWA. | 21 Jan 09:00 | 0.1 s |
+| 11 | `handoff_rejected` | The owner asks Al Noor Endoscopy Centre; they decline for capacity. Ownership stays with the referrer. | 21 Jan 09:00 | 0.2 s |
+| 12 | `handoff_bounced` | The owner asks Marina Digestive Health, who never answer; three working days later the scheduler bounces the request. | 26 Jan 10:00 | 0.3 s |
+| 13 | `reassigned` | The coordinator re-routes the case back to the owner. | 26 Jan 10:00 | 0.1 s |
+| 14 | `handoff_accepted` | The owner asks Corniche Gastro Unit; Dr. Karim Nasser accepts and becomes the owner. | 26 Jan 10:00 | 0.2 s |
+| 15 | `patient_reacknowledged` | The new owner phones the patient, who acknowledges again (a re-routed referral goes back through contact). | 26 Jan 10:00 | 0.2 s |
+| 16 | `booked` | The colonoscopy is booked, 14 days out. | 26 Jan 10:00 | 0.1 s |
+| 17 | `colonoscopy_done` | The clock advances to the appointment day. | 9 Feb 09:00 | 0.0 s |
+| 18 | `result_recorded` | The specialist records the colonoscopy: a `Procedure` and `DiagnosticReport` are created in HAPI and the case is told the result exists. | 9 Feb 09:00 | 0.2 s |
+| 19 | `clinician_review` | The clinician reviews and signs as themselves (`Practitioner/<own id>`). | 9 Feb 09:00 | 0.1 s |
+| 20 | `closed` | The clinician closes the case with the `Procedure` as evidence. | 9 Feb 09:00 | 0.1 s |
 
 Two things differ from the one-line version of the story in the demo script, because the engine says so:
 
@@ -76,7 +76,7 @@ HAPI stores its data in its own database (`hapi`) next to the application's (`cl
 
 The API, scheduler, watchdog and HAPI are stopped around the copy (Postgres will not copy a database someone is connected to, the API keeps the clock in memory and rereads it when it starts, and HAPI must not keep caches or preallocated resource ids from before the restore; it is killed rather than stopped since its database is about to be replaced).
 
-`make demo-reset` runs `snapshot.sh reset`: restore, `POST /clock/reset`, then compare the **state fingerprint** with the one stored at snapshot time (`data/demo-snapshot.fingerprint`). The fingerprint has the counts and md5 of cases, events, drafts and notifications, the sim clock, and the number of live FHIR resources per type; heartbeats, alerts and the users directory are left out because they change by themselves. Measured on the development machine:
+`make demo-reset` runs `snapshot.sh reset`: restore, `POST /clock/reset`, then compare the **state fingerprint** with the one stored at snapshot time (`data/demo-snapshot.fingerprint`). The fingerprint has the counts and md5 of cases, events, drafts and notifications, the sim clock, and the number of live FHIR resources per type; heartbeats, alerts and the users directory are left out because they change by themselves. The restore itself deletes the `heartbeats` rows it copied from the snapshot (they are stale by construction), so the watchdog starts from "no heartbeat yet" and does not raise and then clear a false `scheduler_down` in the first seconds after a reset. Measured on the development machine:
 
 | | Seconds |
 |---|---|

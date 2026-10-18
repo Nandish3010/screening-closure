@@ -111,7 +111,6 @@ export function CoordinatorPage() {
 }
 
 export function RiskBar({ value }: { value?: number | null }) {
-  // The real API returns `risk_score: null` until the risk model exists (D9).
   if (value === undefined || value === null) return <span className="muted">-</span>;
   return (
     <span className="risk" title="Loss-to-follow-up risk (orders the list only)">
