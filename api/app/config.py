@@ -46,6 +46,11 @@ class Settings(BaseSettings):
     # no-docker runs leave it off.
     fhir_projection: bool = False
     fhir_projection_drain_seconds: float = 20.0
+    # Retry of a failed projection (SEC-1): the first retry is at the next drain pass, then the wait doubles from
+    # the base up to the cap; after max_attempts the event is dead-lettered and GET /alerts reports it.
+    fhir_retry_base_seconds: float = 30.0
+    fhir_retry_cap_seconds: float = 3600.0
+    fhir_retry_max_attempts: int = 12
     # Browser origins allowed to call the API (comma separated). The web app runs on its own port
     # (vite dev 5173, vite preview 4173/4175), so the browser needs CORS including the Authorization
     # header. Local development origins only by default; never a wildcard.

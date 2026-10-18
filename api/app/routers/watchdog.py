@@ -10,7 +10,7 @@
 from fastapi import APIRouter
 from pydantic import BaseModel, ConfigDict, Field
 
-from app import ops
+from app import fhir_projection, ops
 from app.clock import clock
 from app.config import settings
 from app.routers import cases
@@ -72,4 +72,7 @@ def alerts(active: bool = False) -> list[dict]:
         rows.insert(0, {"id": None, "kind": ops.WATCHDOG_DOWN, "since": wd.last_beat_at.isoformat(),
                         "cleared_at": None, "derived": True,
                         "detail": {"age_seconds": round(wd.age_seconds, 1)}})
+    dead = fhir_projection.dead_letter_alert(cases.store)  # SEC-1: events given up on after repeated failures
+    if dead is not None:
+        rows.insert(0, dead)
     return rows

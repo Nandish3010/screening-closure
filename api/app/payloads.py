@@ -24,7 +24,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, StringConstraints, ValidationError, field_validator
+from pydantic import AfterValidator, BaseModel, ConfigDict, Field, StringConstraints, ValidationError, field_validator
 
 NOTE_MAX_LENGTH = 200
 
@@ -43,8 +43,23 @@ CHANNELS = ("sms", "whatsapp", "phone", "letter")
 LANGUAGES = ("en", "ar")
 
 # ---- value shapes: ids and codes, never prose ---------------------------------------------------
-_REF = r"^[A-Za-z0-9][A-Za-z0-9/._-]{0,99}$"  # FHIR-style reference or id: no spaces
-Ref = Annotated[str, StringConstraints(pattern=_REF)]
+def _no_dot_segment(value: str) -> str:
+    """No path segment of a reference may be made only of dots (`.`, `..`): such an id turns into a
+    traversal when it is put in a URL (SEC-1). The regex engine here has no lookahead, so it is a validator."""
+    if any(segment == "" or set(segment) == {"."} for segment in value.split("/")):
+        raise ValueError("a reference may not contain an empty or dots-only segment")
+    return value
+
+
+_REF = r"^[A-Za-z0-9][A-Za-z0-9/._-]{0,99}$"  # a generic id or reference (an appointment): no spaces
+Ref = Annotated[str, StringConstraints(pattern=_REF), AfterValidator(_no_dot_segment)]
+# The two references that are looked up in HAPI and put in request URLs (SEC-1): the resource type is fixed and
+# the id has no dots at all, so `Patient/..` and `DiagnosticReport/../x` cannot be written, let alone requested.
+PatientRef = Annotated[str, StringConstraints(pattern=r"^Patient/[A-Za-z0-9-]{1,64}$")]
+ResultRef = Annotated[str, StringConstraints(pattern=r"^DiagnosticReport/[A-Za-z0-9-]{1,64}$")]
+# complete_confirmatory carries the confirmatory result, which the recorder (E8) returns as the colonoscopy Procedure
+# (the same reference `close` later cites) or its DiagnosticReport; the same dot-free id rule.
+ConfirmatoryResultRef = Annotated[str, StringConstraints(pattern=r"^(DiagnosticReport|Procedure)/[A-Za-z0-9-]{1,64}$")]
 Code = Annotated[str, StringConstraints(pattern=r"^[a-z][a-z0-9_]{0,63}$")]  # a taxonomy value or state name
 Provider = Annotated[str, StringConstraints(pattern=r"^[A-Za-z0-9][A-Za-z0-9 ._@/-]{0,99}$", strip_whitespace=True)]
 ActorId = Annotated[str, StringConstraints(pattern=r"^[a-z_]{3,30}:[A-Za-z0-9_-]{1,64}$")]
@@ -53,9 +68,15 @@ Sha256 = Annotated[str, StringConstraints(pattern=r"^[0-9a-f]{64}$")]
 # A booked appointment's date for the patient message (D4): an ISO-8601 date or date-time, nothing else.
 IsoDate = Annotated[str, StringConstraints(pattern=r"^\d{4}-\d{2}-\d{2}(T[0-9:.+Zz-]{1,40})?$")]
 # Closure evidence is a FHIR report or procedure, by reference (A15).
-EvidenceRef = Annotated[str, StringConstraints(pattern=r"^(DiagnosticReport|Procedure)/[A-Za-z0-9.-]{1,64}$")]
+EvidenceRef = Annotated[
+    str, StringConstraints(pattern=r"^(DiagnosticReport|Procedure)/[A-Za-z0-9.-]{1,64}$"), AfterValidator(_no_dot_segment)
+]
 # The clinician who signs is an actor (`role:user_id`) or the Practitioner mapped to it (A15).
-Signer = Annotated[str, StringConstraints(pattern=r"^(Practitioner/[A-Za-z0-9.-]{1,64}|[a-z_]{3,30}:[A-Za-z0-9_-]{1,64})$")]
+Signer = Annotated[
+    str,
+    StringConstraints(pattern=r"^(Practitioner/[A-Za-z0-9.-]{1,64}|[a-z_]{3,30}:[A-Za-z0-9_-]{1,64})$"),
+    AfterValidator(_no_dot_segment),
+]
 Note = Annotated[str, StringConstraints(max_length=NOTE_MAX_LENGTH)]
 
 
@@ -97,8 +118,8 @@ class _Timed(_Payload):
 
 
 class CaseCreated(_Payload):
-    patient_ref: Ref | None = None
-    result_ref: Ref | None = None
+    patient_ref: PatientRef | None = None
+    result_ref: ResultRef | None = None
     contact_valid: bool | dict[Literal["sms", "whatsapp", "phone", "letter"], bool] | None = None
     pathway: Code | None = None
 
@@ -127,7 +148,7 @@ class BookConfirmatory(_Human):
 
 
 class CompleteConfirmatory(_Human):
-    result_ref: Ref | None = None
+    result_ref: ConfirmatoryResultRef | None = None
 
 
 class ClinicianReview(_Human):

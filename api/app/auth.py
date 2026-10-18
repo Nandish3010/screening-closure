@@ -44,7 +44,7 @@ WATCHDOG_ROLE = "watchdog"  # service role; may emit watchdog_flagged and nothin
 AUTOMATED_ROLE_NAMES = ("system", "scheduler", "watchdog", "model")
 
 NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9 ._@-]{0,63}$")  # no ":" so role:name parses
-PATIENT_REF_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9/._-]{0,99}$")
+PATIENT_REF_RE = re.compile(r"^Patient/[A-Za-z0-9-]{1,64}$")  # the same shape a case's patient_ref must have (SEC-1)
 PROVIDER_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9 ._@/-]{0,99}$")
 PROVIDER_ROLES = ("primary_care_owner", "specialist_owner")  # roles that act for a provider
 

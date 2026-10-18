@@ -32,6 +32,7 @@ import re
 import threading
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 from collections.abc import Callable
 from datetime import datetime
@@ -47,6 +48,7 @@ from app.sweep import due_at_for
 
 log = logging.getLogger("app.fhir_projection")
 
+DEAD_LETTER_ALERT = "fhir_projection_dead_letter"  # derived on read by GET /alerts
 SYSTEM_CASE = "urn:screening-closure:case"
 SYSTEM_EVENT = "urn:screening-closure:event"
 SYSTEM_USER = "urn:screening-closure:user"
@@ -74,6 +76,22 @@ TASK_STATUS = {
     "reopened": "in-progress",
 }
 _BAD_ID = re.compile(r"[^A-Za-z0-9.-]")
+# A reference that may be looked up in HAPI: `Type/id`, the id without a dot-only form (SEC-1). Anything else is
+# never put in a URL; the projection writes it as an identifier-only reference instead.
+_SAFE_REF = re.compile(r"^([A-Z][A-Za-z]{1,39})/([A-Za-z0-9.-]{1,64})$")
+
+
+def is_safe_ref(ref: object) -> bool:
+    m = _SAFE_REF.match(ref) if isinstance(ref, str) else None
+    return bool(m) and set(m.group(2)) != {"."}
+
+
+def safe_ref_url(base_url: str, ref: str) -> str:
+    """`base/Type/id` with each part URL-quoted. Raises FhirError for a reference that is not `Type/id`."""
+    if not is_safe_ref(ref):
+        raise FhirError("not a valid FHIR reference: refused before any request")
+    rtype, rid = ref.split("/", 1)
+    return f"{base_url}/{urllib.parse.quote(rtype, safe='')}/{urllib.parse.quote(rid, safe='')}"
 
 
 class FhirError(Exception):
@@ -112,7 +130,7 @@ class HttpFhirClient:
 
     def exists(self, ref: str) -> bool:
         try:
-            with self._call("GET", f"{self.base_url}/{ref}") as resp:
+            with self._call("GET", safe_ref_url(self.base_url, ref)) as resp:
                 resp.read()
                 return resp.status == 200
         except urllib.error.HTTPError as exc:
@@ -124,34 +142,89 @@ class HttpFhirClient:
 
 
 # ---- retry queue -------------------------------------------------------------------------------------
+#
+# A failed projection is retried with exponential backoff and given up on after `max_attempts` (SEC-1): the row
+# moves to the dead-letter list, which `GET /alerts` reports. Without that, one event HAPI will never accept sat at
+# the head of an oldest-first queue for ever and, with 100 of them, starved every event behind it.
+
+
+class RetryPolicy:
+    """When a failed projection is tried again, and when it is given up. Delays are in seconds."""
+
+    def __init__(self, base_seconds: float = 30.0, cap_seconds: float = 3600.0, max_attempts: int = 10) -> None:
+        if base_seconds < 0 or cap_seconds < base_seconds or max_attempts < 1:
+            raise ValueError("RetryPolicy: need 0 <= base <= cap and max_attempts >= 1")
+        self.base_seconds, self.cap_seconds, self.max_attempts = base_seconds, cap_seconds, max_attempts
+
+    def delay_after(self, attempts: int) -> float:
+        """Seconds to wait once `attempts` attempts have failed. The first failure is retried at the
+        next drain pass (the event was only just appended); after that the wait doubles up to the cap."""
+        if attempts <= 1:
+            return 0.0
+        return min(self.cap_seconds, self.base_seconds * 2 ** (attempts - 2))
+
+    def is_dead(self, attempts: int) -> bool:
+        return attempts >= self.max_attempts
 
 
 class ProjectionQueue(Protocol):
-    def add(self, event_id: UUID, case_id: UUID, error: str) -> None: ...
+    def add(self, event_id: UUID, case_id: UUID, error: str) -> bool:
+        """Record one failed attempt (a new row, or the next attempt of a queued one) and schedule the next
+        retry. True if the event has now used all its attempts and was moved to the dead-letter list."""
+        ...
 
-    def pending(self, limit: int = 100) -> list[tuple[UUID, UUID, int]]:
-        """(event_id, case_id, attempts), oldest first."""
+    def pending(self, limit: int = 100, *, due_only: bool = False) -> list[tuple[UUID, UUID, int]]:
+        """(event_id, case_id, attempts) ordered by when each is next due (`next_attempt_at`), earliest first.
+        `due_only` keeps only those whose time has come (what the background loop asks for)."""
         ...
 
     def remove(self, event_id: UUID) -> None: ...
 
-    def count(self, case_id: UUID | None = None) -> int: ...
+    def count(self, case_id: UUID | None = None) -> int:
+        """Events waiting to be retried (dead-lettered ones are not counted)."""
+        ...
+
+    def dead_count(self) -> int: ...
+
+    def dead_since(self) -> datetime | None:
+        """When the oldest dead-lettered event was given up on (None if there is none)."""
+        ...
+
+    def revive_dead(self) -> int:
+        """Put every dead-lettered event back in the queue with a fresh set of attempts; returns how many."""
+        ...
 
 
 class InMemoryProjectionQueue:
-    def __init__(self) -> None:
+    def __init__(self, policy: RetryPolicy | None = None, clock: Callable[[], float] | None = None) -> None:
+        self.policy = policy or RetryPolicy()
+        # Monotonic seconds: a retry schedule is about HAPI's health, never about a case.
+        self._now = clock or time.monotonic  # wall-clock-ok: retry backoff only
         self._lock = threading.Lock()
         self._rows: dict[UUID, dict] = {}
+        self._dead: dict[UUID, dict] = {}
+        self._n = 0
 
     def add(self, event_id, case_id, error):
         with self._lock:
-            row = self._rows.setdefault(event_id, {"case_id": case_id, "attempts": 0, "n": len(self._rows)})
+            row = self._rows.get(event_id)
+            if row is None:
+                self._n += 1
+                row = self._rows[event_id] = {"case_id": case_id, "attempts": 0, "n": self._n}
             row["attempts"] += 1
             row["error"] = error
+            row["next_attempt_at"] = self._now() + self.policy.delay_after(row["attempts"])
+            if self.policy.is_dead(row["attempts"]):
+                del self._rows[event_id]
+                self._dead[event_id] = {**row, "dead_n": len(self._dead) + 1}
+                return True
+            return False
 
-    def pending(self, limit=100):
+    def pending(self, limit=100, *, due_only=False):
         with self._lock:
-            rows = sorted(self._rows.items(), key=lambda kv: kv[1]["n"])
+            now = self._now()
+            rows = [(e, r) for e, r in self._rows.items() if not due_only or r["next_attempt_at"] <= now]
+            rows.sort(key=lambda kv: (kv[1]["next_attempt_at"], kv[1]["n"]))
             return [(e, r["case_id"], r["attempts"]) for e, r in rows[:limit]]
 
     def remove(self, event_id):
@@ -162,6 +235,22 @@ class InMemoryProjectionQueue:
         with self._lock:
             return sum(1 for r in self._rows.values() if case_id is None or r["case_id"] == case_id)
 
+    def dead_count(self):
+        with self._lock:
+            return len(self._dead)
+
+    def dead_since(self):
+        return None  # no wall-clock timestamp is kept in memory
+
+    def revive_dead(self):
+        with self._lock:
+            revived = len(self._dead)
+            for event_id, row in sorted(self._dead.items(), key=lambda kv: kv[1]["dead_n"]):
+                self._rows[event_id] = {"case_id": row["case_id"], "attempts": 0, "n": row["n"],
+                                        "error": row["error"], "next_attempt_at": self._now()}
+            self._dead.clear()
+            return revived
+
 
 # ---- mapping: events -> FHIR resources (pure, apart from the existence probe) --------------------------
 
@@ -171,7 +260,8 @@ def _iso(dt: datetime | None) -> str | None:
 
 
 def _fhir_id(raw: str) -> str:
-    return _BAD_ID.sub("-", raw)[:64] or "unknown"
+    out = _BAD_ID.sub("-", raw)[:64]
+    return "unknown" if not out or set(out) == {"."} else out  # never an empty or dots-only id
 
 
 def agent_of(actor: str) -> tuple[str, str, str, dict]:
@@ -207,7 +297,9 @@ class Mapper:
         if not ref:
             return None
         if ref not in self._resolved:
-            self._resolved[ref] = bool(self._exists(ref))
+            # A reference that is not a clean `Type/id` is never looked up (it would be part of a URL); it
+            # is written as an identifier, like a reference to a resource HAPI does not have (SEC-1).
+            self._resolved[ref] = bool(is_safe_ref(ref) and self._exists(ref))
         if self._resolved[ref]:
             return {"reference": ref}
         return {"identifier": {"system": identifier_system, "value": ref}, "display": ref}
@@ -493,11 +585,16 @@ class Projector:
                 log.error("FHIR projection queue unavailable; event %s will not be projected until a rebuild", event.event_id)
             return False
 
-    def drain(self, limit: int = 100) -> dict:
-        """Retry queued events (oldest first). Returns {tried, projected, still_queued}."""
+    def drain(self, limit: int = 100, *, due_only: bool = False) -> dict:
+        """Retry queued events, earliest due first. Returns {tried, projected, still_queued}.
+
+        A call you make yourself retries whatever is queued, backoff or not (an operator or a test saying "try
+        now"); the background loop passes `due_only=True` and so respects each event's `next_attempt_at`. Either
+        way a failure pushes that event's next attempt further out, so an event HAPI keeps refusing goes to the back
+        of the line and, after `max_attempts`, to the dead-letter list instead of starving the ones behind it."""
         tried = projected = 0
         self._down_until = 0.0  # a drain is an explicit retry: ignore the outage backoff
-        for event_id, case_id, _ in self.queue.pending(limit):
+        for event_id, case_id, _ in self.queue.pending(limit, due_only=due_only):
             tried += 1
             try:
                 event = next((e for e in self.store.events_for(case_id) if e.event_id == event_id), None)
@@ -506,7 +603,9 @@ class Projector:
                 self.queue.remove(event_id)
                 projected += 1
             except Exception as exc:
-                self.queue.add(event_id, case_id, str(exc)[:500])
+                if self.queue.add(event_id, case_id, str(exc)[:500]):
+                    log.error("FHIR projection of event %s given up after repeated failures (dead-lettered): %s",
+                              event_id, exc)
                 if isinstance(exc, FhirError) and "unreachable" in str(exc):
                     break  # HAPI is still down: do not hammer it
         return {"tried": tried, "projected": projected, "still_queued": self.queue.count()}
@@ -519,7 +618,7 @@ class Projector:
             while not self._stop.wait(interval_seconds):
                 try:
                     if self.queue.count():
-                        self.drain()
+                        self.drain(due_only=True)
                 except Exception:
                     log.exception("FHIR projection drain failed")
 
@@ -604,6 +703,25 @@ class ProjectingStore:
         return getattr(self._inner, name)
 
 
+def dead_letter_alert(store) -> dict | None:
+    """The derived `fhir_projection_dead_letter` alert for GET /alerts: events given up on after repeated
+    failures are in no log and no queue any more, so someone has to be told. None if there are none (or the
+    projection is off)."""
+    queue = getattr(getattr(store, "projector", None), "queue", None)
+    if queue is None:
+        return None
+    try:
+        count = queue.dead_count()
+        since = queue.dead_since() if count else None
+    except Exception:  # noqa: BLE001 - an alerts page must not fail because the queue is unreachable
+        log.exception("could not count the dead-lettered FHIR projections")
+        return None
+    if not count:
+        return None
+    return {"id": None, "kind": DEAD_LETTER_ALERT, "since": since.isoformat() if since else None,
+            "cleared_at": None, "derived": True, "detail": {"dead_lettered": count}}
+
+
 def wrap_store(store, app_settings, pathway: Pathway, calendar: WorkingCalendar, pool=None, tag: dict | None = None):
     """Wire the projection around `store` when FHIR_PROJECTION is on (what `app.main` does at start-up).
 
@@ -611,12 +729,14 @@ def wrap_store(store, app_settings, pathway: Pathway, calendar: WorkingCalendar,
     retry queue is the Postgres table when there is a pool, else in memory."""
     if not app_settings.fhir_projection:
         return store
+    policy = RetryPolicy(app_settings.fhir_retry_base_seconds, app_settings.fhir_retry_cap_seconds,
+                         app_settings.fhir_retry_max_attempts)
     if pool is not None:
         from app.store_pg import PostgresProjectionQueue
 
-        queue: ProjectionQueue = PostgresProjectionQueue(pool)
+        queue: ProjectionQueue = PostgresProjectionQueue(pool, policy)
     else:
-        queue = InMemoryProjectionQueue()
+        queue = InMemoryProjectionQueue(policy)
     projector = Projector(HttpFhirClient(app_settings.fhir_base_url), store, pathway, calendar, queue, tag=tag)
     wrapped = ProjectingStore(store, projector)
     projector.start_drain_loop(app_settings.fhir_projection_drain_seconds)

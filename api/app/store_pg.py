@@ -418,24 +418,48 @@ class PostgresOpsStore:
 
 
 class PostgresProjectionQueue:
-    """Retry queue for the FHIR projection (migration 006): ids and the last error, no clinical data."""
+    """Retry queue for the FHIR projection (migrations 006 and 010): ids and the last error, no clinical data.
 
-    def __init__(self, pool: ConnectionPool) -> None:
+    `next_attempt_at` is set by the database clock from the retry policy; a row that has used all its attempts
+    moves to `fhir_projection_dead_letter` in the same transaction."""
+
+    def __init__(self, pool: ConnectionPool, policy=None) -> None:
+        from app.fhir_projection import RetryPolicy
+
         self._pool = pool
+        self.policy = policy or RetryPolicy()
 
-    def add(self, event_id: UUID, case_id: UUID, error: str) -> None:
-        with self._pool.connection() as conn:
-            conn.execute(
-                "INSERT INTO fhir_projection_queue (event_id, case_id, last_error) VALUES (%s, %s, %s)"
+    def add(self, event_id: UUID, case_id: UUID, error: str) -> bool:
+        p = self.policy
+        with self._pool.connection() as conn, conn.transaction():
+            row = conn.execute(
+                "INSERT INTO fhir_projection_queue (event_id, case_id, last_error, next_attempt_at)"
+                " VALUES (%s, %s, %s, now())"
                 " ON CONFLICT (event_id) DO UPDATE SET attempts = fhir_projection_queue.attempts + 1,"
-                " last_error = EXCLUDED.last_error, last_attempt_at = now()",
-                (event_id, case_id, error),
+                " last_error = EXCLUDED.last_error, last_attempt_at = now(),"
+                # attempts after this failure = attempts + 1; the first failure is retried at once, then 2^k * base
+                " next_attempt_at = now() + make_interval(secs => LEAST(%s::float8,"
+                "   %s::float8 * power(2, GREATEST(fhir_projection_queue.attempts + 1 - 2, 0))))"
+                " RETURNING attempts",
+                (event_id, case_id, error, p.cap_seconds, p.base_seconds),
+            ).fetchone()
+            if row[0] < p.max_attempts:
+                return False
+            conn.execute(
+                "WITH gone AS (DELETE FROM fhir_projection_queue WHERE event_id = %s"
+                " RETURNING event_id, case_id, attempts, last_error, queued_at)"
+                " INSERT INTO fhir_projection_dead_letter (event_id, case_id, attempts, last_error, queued_at)"
+                " SELECT * FROM gone ON CONFLICT (event_id) DO NOTHING",
+                (event_id,),
             )
+            return True
 
-    def pending(self, limit: int = 100) -> list:
+    def pending(self, limit: int = 100, *, due_only: bool = False) -> list:
+        where = " WHERE next_attempt_at <= now()" if due_only else ""
         with self._pool.connection() as conn:
             rows = conn.execute(
-                "SELECT event_id, case_id, attempts FROM fhir_projection_queue ORDER BY queued_at, event_id LIMIT %s",
+                "SELECT event_id, case_id, attempts FROM fhir_projection_queue" + where
+                + " ORDER BY next_attempt_at, event_id LIMIT %s",
                 (limit,),
             ).fetchall()
         return [(r[0], r[1], r[2]) for r in rows]
@@ -450,3 +474,21 @@ class PostgresProjectionQueue:
             sql, params = sql + " WHERE case_id = %s", (case_id,)
         with self._pool.connection() as conn:
             return int(conn.execute(sql, params).fetchone()[0])
+
+    def dead_count(self) -> int:
+        with self._pool.connection() as conn:
+            return int(conn.execute("SELECT count(*) FROM fhir_projection_dead_letter").fetchone()[0])
+
+    def dead_since(self):
+        with self._pool.connection() as conn:
+            return conn.execute("SELECT min(dead_at) FROM fhir_projection_dead_letter").fetchone()[0]
+
+    def revive_dead(self) -> int:
+        with self._pool.connection() as conn, conn.transaction():
+            rows = conn.execute(
+                "WITH gone AS (DELETE FROM fhir_projection_dead_letter RETURNING event_id, case_id, last_error, queued_at)"
+                " INSERT INTO fhir_projection_queue (event_id, case_id, attempts, last_error, queued_at, next_attempt_at)"
+                " SELECT event_id, case_id, 1, last_error, queued_at, now() FROM gone"
+                " ON CONFLICT (event_id) DO NOTHING RETURNING event_id"
+            ).fetchall()
+        return len(rows)
