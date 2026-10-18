@@ -155,8 +155,9 @@ def read_ledger(ctx, status: str | None = None, agent_type: str | None = None) -
 
 
 def find_evidence(ctx, case_id: UUID, refs: list[str]) -> dict:
-    """Ask the closure-evidence verifier (the same check `close` runs, A15) which candidate references resolve for
-    this case. Read only: it never creates a resource. With verification switched off nothing is verified."""
+    """Ask the closure-evidence verifier (the same check `close` runs, A15 and A24) which candidate references are
+    complete closure evidence for this case. Read only: it never creates a resource. With verification switched off
+    nothing is verified."""
     from app import evidence
 
     c = _cases()
@@ -169,7 +170,7 @@ def find_evidence(ctx, case_id: UUID, refs: list[str]) -> dict:
         if not evidence.well_formed_ref(ref):
             continue
         try:
-            if evidence.verifier.exists(ref, case_id=case_id, patient_ref=patient_ref):
+            if evidence.verifier.assess(ref, case_id=case_id, patient_ref=patient_ref).acceptable:
                 found.append(ref)
         except evidence.EvidenceUnavailable as exc:
             raise ToolTransient(f"evidence server: {exc}") from None

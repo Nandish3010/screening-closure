@@ -29,8 +29,8 @@ const openCase = (api: ApiClient, id: string) =>
   renderWithApp(<CaseDetailPage />, { api, role: "coordinator", route: `/coordinator/${id}`, path: "/coordinator/:caseId" });
 
 describe("review reasons: the contract and the labels", () => {
-  it("lists exactly the six reasons the backend accepts", () => {
-    expect([...REVIEW_REASONS]).toEqual(["consent_withdrawn", "reroute_exhausted", "opt_out", "wrong_number", "triage_uncertain", "already_done"]);
+  it("lists exactly the seven reasons the backend accepts", () => {
+    expect([...REVIEW_REASONS]).toEqual(["consent_withdrawn", "reroute_exhausted", "opt_out", "wrong_number", "triage_uncertain", "already_done", "incomplete_procedure"]);
   });
   it("has an English label for every reason (the staff UI is English; no unreviewed Arabic is added)", () => {
     for (const r of REVIEW_REASONS) {

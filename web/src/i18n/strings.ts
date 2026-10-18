@@ -207,11 +207,13 @@ export const STAFF = {
   reviewReasons: {
     consent_withdrawn: "Flagged for human review (consent withdrawn)",
     reroute_exhausted: "Reroute list exhausted: a coordinator must reassign",
+    incomplete_procedure: "The colonoscopy record is incomplete: it cannot close the case, a person must decide the next step",
     opt_out: "The patient opted out: automatic messages are held until a person reviews consent",
     wrong_number: "The number is wrong: automatic messages are held until a person confirms the contact details",
     triage_uncertain: "The reply could not be read with confidence: a person must read it and decide",
     already_done: "The patient says the colonoscopy is already done: a person must check and confirm",
   },
+  incompleteProcedureHelp: "A colonoscopy counts as closure evidence only when a final report states it was complete (or a CT colonography was done). Arrange a repeat colonoscopy or a CT colonography, or record the complete result.",
   contactUpdated: "Contact details confirmed by a person",
   /** D13: the reply triage (`system:triage`). The events carry no reply text; it is stored outside the log. */
   replyReceived: "Patient reply received",

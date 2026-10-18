@@ -18,9 +18,13 @@ token can use to post them.
                 version, weekly cap over ALL outbound messages: `outreach_policy.auto_message_guard`); in the state machine,
                 what the log decides (consent for the channel now, consent freeze, an open opt-out or wrong-number hold).
                 This module only decides what is due, and sends nothing while a hold is open.
-* evidence      HAPI is asked whether the colonoscopy exists for the case; if so `complete_confirmatory {result_ref, auto}`
-                (from confirmatory_booked) and `closure_proposed {evidence_ref}`. The proposal gives the clinician a
-                one-click sign-off with the evidence prefilled. Closure stays human: this actor cannot emit `close`
+* evidence      HAPI is asked whether the colonoscopy exists for the case; if it is closure evidence (a final report of a
+                complete colonoscopy or a CT colonography, or a completed Procedure linked to one: `evidence.assess`, A24)
+                `complete_confirmatory {result_ref, auto}` (from confirmatory_booked) and `closure_proposed
+                {evidence_ref}`. A record that exists but is not closure evidence (incomplete, stopped, not final, no
+                final report) gets `review_requested {reason: incomplete_procedure, evidence_ref}` INSTEAD: no
+                completion, no proposal, and a person decides (repeat colonoscopy, CT colonography). The proposal gives
+                the clinician a one-click sign-off with the evidence prefilled. Closure stays human: this actor cannot emit `close`
                 (the state machine refuses every automated actor), and nothing here reads a proposal back. HAPI is asked
                 only about cases whose booked appointment has begun, at most once per `EVIDENCE_NEGATIVE_TTL` of simulated
                 time per case when it has nothing yet, and the scan stops at the first answer of "unavailable".
@@ -405,16 +409,29 @@ def scan_evidence(store, pathway: Pathway, now: datetime, finder=None, verifier=
             continue
         asked += 1
         patient_ref = events[0].payload.get("patient_ref") if events else None
+        ref = None  # the first reference that is complete closure evidence
+        incomplete_ref = None  # else the first that is the case's own record but is not (A24)
         try:
-            ref = next((r for r in finder.find(case_id=case_id, patient_ref=patient_ref, after=_booking_time(events))
-                        if verifier.exists(r, case_id=case_id, patient_ref=patient_ref)), None)
+            for candidate in finder.find(case_id=case_id, patient_ref=patient_ref, after=_booking_time(events)):
+                verdict = verifier.assess(candidate, case_id=case_id, patient_ref=patient_ref)
+                if verdict.acceptable:
+                    ref = candidate
+                    break
+                if verdict.incomplete and incomplete_ref is None:
+                    incomplete_ref = candidate
         except evidence.EvidenceUnavailable as exc:
             result.add("unavailable")
             log.warning("evidence scan: FHIR server cannot answer, stopping this scan: %s", exc)
             break
         result.add("asked")
         if ref is None:
-            negatives.remember(case_id, now)
+            negatives.remember(case_id, now)  # a definite no (or a record to flag): asked again after the TTL
+            if incomplete_ref is not None:
+                _append(store, pathway, Event(
+                    case_id, "review_requested", now, AUTOMATION_ACTOR,
+                    {"reason": "incomplete_procedure", "evidence_ref": incomplete_ref,
+                     "source_event_id": str(model.clock_started_event_id or events[0].event_id)},
+                    eid(case_id, incomplete_ref, "incomplete_procedure")), result, "incomplete_flagged")
             continue
         result.add("found")
         if model.state == "confirmatory_booked":

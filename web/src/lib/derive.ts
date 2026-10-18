@@ -1,6 +1,6 @@
 /** Derivations shared by the mock adapter and the UI (state, owner, SLA clock, handoffs, consent, drafts). */
 import type {
-  ActorKind, CaseDetail, CaseEvent, ClosureProposal, CaseSummary, Consent, ConsentChanges, ConsentHistoryEntry, DraftRecord, EscalationRung, Lang,
+  ActorKind, CaseDetail, CaseEvent, ClosureProposal, IncompleteProcedure, CaseSummary, Consent, ConsentChanges, ConsentHistoryEntry, DraftRecord, EscalationRung, Lang,
   LastHandoff, MilestoneClock, MilestoneName, PendingHandoff, TimelineItem, WatchdogFlag,
 } from "../api/contract";
 import { ApiError, AUTOMATION_ACTOR, CONSENT_KEYS, HANDOFF_REJECT_REASONS, OUTREACH_HOLD_REASONS, REVIEW_REASONS, TRIAGE_REVIEW_REASONS } from "../api/contract";
@@ -446,6 +446,20 @@ export function closureProposalOf(events: CaseEvent[]): ClosureProposal | null {
   return proposal;
 }
 
+/**
+ * The open `incomplete_procedure` flag (A24), by replay: set by a `review_requested` with that reason, cleared by a
+ * `closure_proposed` (complete evidence was found), a `close` or a `reopen`. Mirrors the API's `read_model.incomplete_procedure`.
+ */
+export function incompleteProcedureOf(events: CaseEvent[]): IncompleteProcedure | null {
+  let flag: IncompleteProcedure | null = null;
+  for (const ev of events) {
+    if (ev.type === "review_requested" && ev.payload.reason === "incomplete_procedure" && typeof ev.payload.evidence_ref === "string") {
+      flag = { evidence_ref: ev.payload.evidence_ref, flagged_at: ev.at };
+    } else if (ev.type === "closure_proposed" || ev.type === "close" || ev.type === "reopen") flag = null;
+  }
+  return flag;
+}
+
 /** The actor of the reply triage (D13): it writes `reply_received`, `reply_classified` and the triage review reasons. */
 export const TRIAGE_ACTOR = "system:triage";
 
@@ -453,6 +467,7 @@ export const TRIAGE_ACTOR = "system:triage";
 export const REVIEW_EMITTER: Record<string, string> = {
   consent_withdrawn: "system:consent",
   reroute_exhausted: AUTOMATION_ACTOR,
+  incomplete_procedure: AUTOMATION_ACTOR,
   ...Object.fromEntries(TRIAGE_REVIEW_REASONS.map((r) => [r, TRIAGE_ACTOR])),
 };
 
@@ -519,7 +534,9 @@ export function reviewOf(events: CaseEvent[]): { reason: string | null; at: stri
   if (triage.reason) return { reason: triage.reason, at: triage.at };
   const state = replayState(events);
   const lastExhausted = events.map((e) => e.type === "review_requested" && e.payload.reason === "reroute_exhausted").lastIndexOf(true);
-  return state === "referral_rejected" && lastExhausted >= 0 ? { reason: "reroute_exhausted", at: events[lastExhausted].at } : { reason: null, at: null };
+  if (state === "referral_rejected" && lastExhausted >= 0) return { reason: "reroute_exhausted", at: events[lastExhausted].at };
+  const incomplete = incompleteProcedureOf(events);
+  return incomplete ? { reason: "incomplete_procedure", at: incomplete.flagged_at } : { reason: null, at: null };
 }
 
 export function reviewReasonOf(events: CaseEvent[]): string | null {
@@ -581,6 +598,7 @@ export function completeDetail(raw: CaseDetail, simNow: string | null = null): C
     triage_review_requested_at: d.triage_review_requested_at !== undefined ? d.triage_review_requested_at : triage.at,
     outreach_holds: Array.isArray(d.outreach_holds) ? d.outreach_holds : triage.holds,
     closure_proposal: d.closure_proposal !== undefined ? d.closure_proposal : closureProposalOf(events),
+    incomplete_procedure: d.incomplete_procedure !== undefined ? d.incomplete_procedure : incompleteProcedureOf(events),
     milestones: d.milestones ?? milestonesOf(events, simNow),
     last_event_at: d.last_event_at ?? events.at(-1)?.at ?? d.updated_at ?? "",
     watchdog_flagged: d.watchdog_flagged !== undefined ? d.watchdog_flagged : watchdogFlag(events),

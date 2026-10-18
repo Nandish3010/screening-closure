@@ -10,6 +10,13 @@ Each resource carries the identifier `urn:screening-closure:case|<case_id>` (and
 subject): that is what ties the evidence to this case, and `app.evidence.FhirVerifier` refuses a
 closure whose evidence belongs to another case (SEC-2).
 
+Completeness (A24, ADR-036). The recorder says how the colonoscopy ended: `complete` (default), `incomplete`, or
+`ct_colonography` (a CT colonography done instead). The report is `final`, its `code` is LOINC 18746-8 (a colonoscopy
+report) or, for a CT colonography, plain text, and its `conclusionCode` carries `completeness` in our own code system
+(`urn:screening-closure:completeness`); the Procedure is `completed` and links to the report (`Procedure.report`), or
+`stopped` when the colonoscopy was incomplete. `app.evidence` reads exactly this back, so a case closes only on a
+complete colonoscopy (or a CT colonography) and an incomplete one cannot be closed by citing it.
+
 The ids are deterministic (`colonoscopy-<case_id>`, `colonoscopy-report-<case_id>`) and written
 with PUT inside one transaction, so recording twice is idempotent and a demo that is reset and
 replayed produces the same references. Nothing here decides anything about the case: it writes
@@ -27,12 +34,23 @@ from datetime import datetime
 from typing import Protocol
 from uuid import UUID
 
-from app.evidence import CASE_IDENTIFIER_SYSTEM
+from app.evidence import CASE_IDENTIFIER_SYSTEM, COMPLETENESS_SYSTEM, COMPLETENESS_VALUES
 from app.fhir_projection import DEFAULT_TAG, FhirClient, FhirError, HttpFhirClient, is_safe_ref
 
 SYSTEM_PATIENT_REF = "urn:screening-closure:patient-ref"
 COLONOSCOPY_SNOMED = {"system": "http://snomed.info/sct", "code": "73761001", "display": "Colonoscopy"}
 COLONOSCOPY_LOINC = {"system": "http://loinc.org", "code": "18746-8", "display": "Colonoscopy study"}
+# What each completeness writes: the report's plain text and conclusion, and the Procedure's status.
+_COMPLETENESS_TEXT = {
+    "complete": ("Colonoscopy report", "Colonoscopy complete",
+                 "Colonoscopy completed. Synthetic demonstration record; no clinical finding is encoded."),
+    "incomplete": ("Colonoscopy report", "Colonoscopy incomplete",
+                   "Colonoscopy incomplete. Synthetic demonstration record; no clinical finding is encoded."),
+    "ct_colonography": ("CT colonography report", "CT colonography complete",
+                        "CT colonography completed in place of colonoscopy. Synthetic demonstration record; "
+                        "no clinical finding is encoded."),
+}
+_PROCEDURE_STATUS = {"complete": "completed", "incomplete": "stopped", "ct_colonography": "completed"}
 
 
 class RecorderUnavailable(Exception):
@@ -47,29 +65,41 @@ def report_ref(case_id: UUID) -> str:
     return f"DiagnosticReport/colonoscopy-report-{case_id}"
 
 
-def build_resources(case_id: UUID, patient: dict | None, performed_at: datetime) -> tuple[dict, dict]:
-    """The Procedure and the DiagnosticReport for the case's colonoscopy (pure)."""
+def build_resources(case_id: UUID, patient: dict | None, performed_at: datetime,
+                    completeness: str = "complete") -> tuple[dict, dict]:
+    """The Procedure and the DiagnosticReport for the case's colonoscopy (pure). `completeness` is how it ended (A24):
+    `complete`, `incomplete` or `ct_colonography`."""
+    if completeness not in COMPLETENESS_VALUES:
+        raise ValueError(f"completeness must be one of {list(COMPLETENESS_VALUES)}")
+    report_text, conclusion_text, conclusion = _COMPLETENESS_TEXT[completeness]
     when = performed_at.isoformat()
     tagged = {"tag": [DEFAULT_TAG]}
+    is_ct = completeness == "ct_colonography"
     procedure = {
         "resourceType": "Procedure",
         "id": procedure_ref(case_id).split("/", 1)[1],
         "meta": tagged,
-        "status": "completed",
-        "code": {"coding": [COLONOSCOPY_SNOMED], "text": "Colonoscopy"},
+        "status": _PROCEDURE_STATUS[completeness],
+        "code": {"coding": [] if is_ct else [COLONOSCOPY_SNOMED], "text": "CT colonography" if is_ct else "Colonoscopy"},
         "performedDateTime": when,
         "identifier": [{"system": CASE_IDENTIFIER_SYSTEM, "value": str(case_id)}],
+        "report": [{"reference": report_ref(case_id)}],
     }
     report = {
         "resourceType": "DiagnosticReport",
         "id": report_ref(case_id).split("/", 1)[1],
         "meta": tagged,
         "status": "final",
-        "code": {"coding": [COLONOSCOPY_LOINC], "text": "Colonoscopy report"},
+        "code": {"coding": [] if is_ct else [COLONOSCOPY_LOINC], "text": report_text},
         "effectiveDateTime": when,
-        "conclusion": "Colonoscopy completed. Synthetic demonstration record; no clinical finding is encoded.",
+        "conclusion": conclusion,
+        "conclusionCode": [{"coding": [{"system": COMPLETENESS_SYSTEM, "code": completeness}], "text": conclusion_text}],
         "identifier": [{"system": CASE_IDENTIFIER_SYSTEM, "value": str(case_id)}],
     }
+    if not procedure["code"]["coding"]:
+        del procedure["code"]["coding"]
+    if not report["code"]["coding"]:
+        del report["code"]["coding"]
     if patient is not None:
         procedure["subject"] = patient
         report["subject"] = patient
@@ -77,16 +107,18 @@ def build_resources(case_id: UUID, patient: dict | None, performed_at: datetime)
 
 
 class Recorder(Protocol):
-    def record(self, case_id: UUID, patient_ref: str | None, performed_at: datetime) -> dict:
-        """Create the resources and return {"procedure_ref", "report_ref"}. Raises RecorderUnavailable."""
+    def record(self, case_id: UUID, patient_ref: str | None, performed_at: datetime,
+               completeness: str = "complete") -> dict:
+        """Create the resources and return {"procedure_ref", "report_ref", "completeness"}. Raises RecorderUnavailable."""
         ...
 
 
 class LocalRecorder:
     """No HAPI: returns the references the resources would have, writes nothing."""
 
-    def record(self, case_id, patient_ref, performed_at):
-        return {"procedure_ref": procedure_ref(case_id), "report_ref": report_ref(case_id), "written": False}
+    def record(self, case_id, patient_ref, performed_at, completeness="complete"):
+        return {"procedure_ref": procedure_ref(case_id), "report_ref": report_ref(case_id), "completeness": completeness,
+                "written": False}
 
 
 class StaticRecorder:
@@ -94,13 +126,16 @@ class StaticRecorder:
 
     def __init__(self, fail: str | None = None) -> None:
         self.calls: list[tuple[UUID, str | None, datetime]] = []
+        self.completeness: list[str] = []
         self.fail = fail
 
-    def record(self, case_id, patient_ref, performed_at):
+    def record(self, case_id, patient_ref, performed_at, completeness="complete"):
         if self.fail:
             raise RecorderUnavailable(self.fail)
         self.calls.append((case_id, patient_ref, performed_at))
-        return {"procedure_ref": procedure_ref(case_id), "report_ref": report_ref(case_id), "written": True}
+        self.completeness.append(completeness)
+        return {"procedure_ref": procedure_ref(case_id), "report_ref": report_ref(case_id), "completeness": completeness,
+                "written": True}
 
 
 class FhirRecorder:
@@ -122,8 +157,8 @@ class FhirRecorder:
             pass
         return {"identifier": {"system": SYSTEM_PATIENT_REF, "value": patient_ref}, "display": patient_ref}
 
-    def record(self, case_id, patient_ref, performed_at):
-        procedure, report = build_resources(case_id, self._patient(patient_ref), performed_at)
+    def record(self, case_id, patient_ref, performed_at, completeness="complete"):
+        procedure, report = build_resources(case_id, self._patient(patient_ref), performed_at, completeness)
         bundle = {
             "resourceType": "Bundle",
             "type": "transaction",
@@ -136,7 +171,8 @@ class FhirRecorder:
             self.client.transaction(bundle)
         except FhirError as exc:
             raise RecorderUnavailable(str(exc)) from exc
-        return {"procedure_ref": procedure_ref(case_id), "report_ref": report_ref(case_id), "written": True}
+        return {"procedure_ref": procedure_ref(case_id), "report_ref": report_ref(case_id), "completeness": completeness,
+                "written": True}
 
 
 # Bound by app.main at start-up; tests replace it.

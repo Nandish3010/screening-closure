@@ -293,6 +293,8 @@ def test_t_a62_a_transient_tool_error_is_tried_twice_then_the_task_fails(cohort)
             calls.append(ref)
             raise evidence.EvidenceUnavailable("HAPI is down")
 
+        assess = exists
+
     evidence.verifier = Down()
     runner.run_agency(trigger="manual")
     ev = [t for t in executioner_tasks() if t.agent_type in ("retrieve_evidence", "prepare_closure_pack")]

@@ -222,15 +222,19 @@ def test_m5_grid_each_review_reason_has_exactly_one_emitter():
     assert REVIEW_EMITTER == {
         "consent_withdrawn": CONSENT_ACTOR, "reroute_exhausted": AUTOMATION_ACTOR, "opt_out": TRIAGE_ACTOR,
         "wrong_number": TRIAGE_ACTOR, "triage_uncertain": TRIAGE_ACTOR, "already_done": TRIAGE_ACTOR,
+        "incomplete_procedure": AUTOMATION_ACTOR,
     }
     assert set(REVIEW_REASONS) == set(REVIEW_EMITTER) == set(payloads.REVIEW_REASONS)
     flaggers = [key for key, events in ACTOR_EVENTS.items() if "review_requested" in events]
     assert sorted(flaggers) == sorted({CONSENT_ACTOR, AUTOMATION_ACTOR, TRIAGE_ACTOR})
     state_for = {"consent_withdrawn": CaseModel(state="consent_withdrawn", consent_frozen=True),
-                 "reroute_exhausted": CaseModel(state="referral_rejected", owner="primary_care_owner:p1")}
+                 "reroute_exhausted": CaseModel(state="referral_rejected", owner="primary_care_owner:p1"),
+                 "incomplete_procedure": CaseModel(state="confirmatory_booked")}
     for reason, emitter in REVIEW_EMITTER.items():
         model = state_for.get(reason, CaseModel(state="owner_accepted"))
         payload = {"reason": reason, "source_event_id": _SRC}
+        if reason == "incomplete_procedure":
+            payload["evidence_ref"] = "Procedure/colonoscopy-x"
         assert step(model, Event(CASE, "review_requested", AT, emitter, payload), PATHWAY).last_event_at == AT
         for actor in flaggers:
             if actor != emitter:

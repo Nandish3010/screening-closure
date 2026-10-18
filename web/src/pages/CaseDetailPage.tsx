@@ -228,6 +228,12 @@ export function CaseDetailPage() {
           <strong>{STAFF.reviewReasons.reroute_exhausted}.</strong> Every provider on the automatic re-route list declined or did not answer.
         </p>
       )}
+      {detail.incomplete_procedure && !closed && (
+        <p className="banner banner-warn" role="status" data-testid="incomplete-procedure-banner" data-evidence={detail.incomplete_procedure.evidence_ref}>
+          <strong>{STAFF.reviewReasons.incomplete_procedure}.</strong> {STAFF.incompleteProcedureHelp}{" "}
+          <span className="muted">Record: {detail.incomplete_procedure.evidence_ref}. Flagged {fmtDateTime(detail.incomplete_procedure.flagged_at)} by the system.</span>
+        </p>
+      )}
       {detail.triage_review_reason && !closed && (
         <p className="banner banner-warn" role="status" data-testid="triage-review-banner" data-reason={detail.triage_review_reason}>
           <strong>{(STAFF.reviewReasons as Record<string, string>)[detail.triage_review_reason] ?? `Flagged for human review (${titleCase(detail.triage_review_reason)})`}.</strong>

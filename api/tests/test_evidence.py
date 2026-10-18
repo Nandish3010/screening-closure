@@ -101,6 +101,8 @@ def test_t_a37_when_the_fhir_server_cannot_answer_the_closure_is_refused_not_ass
         def exists(self, ref, *, case_id=None, patient_ref=None):
             raise evidence.EvidenceUnavailable("connection refused")
 
+        assess = exists
+
     evidence.verifier = Down()
     cid, spec = reviewed_case()
     n = count(cid)

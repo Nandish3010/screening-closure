@@ -254,14 +254,16 @@ export const ACTOR_KINDS: readonly ActorKind[] = ["human", "automation", "model"
 export const AUTOMATION_ACTOR = "system:automation";
 
 /**
- * `review_requested.reason`, exactly these six. Who gives each: consent withdrawn (`system:consent`), the automatic re-route
- * list ran out (`reroute_exhausted`, `system:automation`, A21), and four from the reply triage (`system:triage`, D13):
+ * `review_requested.reason`, exactly these seven. Who gives each: consent withdrawn (`system:consent`), the automatic re-route
+ * list ran out (`reroute_exhausted`, `system:automation`, A21), `incomplete_procedure` (`system:automation`, A24: the colonoscopy
+ * record in HAPI is incomplete, stopped, not final or has no final report, so it is not closure evidence; payload carries its
+ * `evidence_ref`), and four from the reply triage (`system:triage`, D13):
  * `opt_out`, `wrong_number`, `triage_uncertain` (the model was not sure, a person must read the reply) and `already_done`
  * (the patient says the colonoscopy is already done). `opt_out` and `wrong_number` are also outreach HOLDS: while one is open
  * the automation sends no automatic message. A person clears `opt_out` with a `consent_updated` and `wrong_number` with a
  * `contact_updated {contact_valid: true}`; each also clears the triage flag it came with (unless consent is withdrawn).
  */
-export const REVIEW_REASONS = ["consent_withdrawn", "reroute_exhausted", "opt_out", "wrong_number", "triage_uncertain", "already_done"] as const;
+export const REVIEW_REASONS = ["consent_withdrawn", "reroute_exhausted", "opt_out", "wrong_number", "triage_uncertain", "already_done", "incomplete_procedure"] as const;
 export type ReviewReason = (typeof REVIEW_REASONS)[number];
 /** The reasons only the triage actor gives (`triage_review_reason`). */
 export const TRIAGE_REVIEW_REASONS = ["opt_out", "wrong_number", "triage_uncertain", "already_done"] as const;
@@ -485,11 +487,22 @@ export interface CaseDetail extends Omit<CaseSummary, "pathway" | "created_at" |
    * It is a proposal only: a clinician still posts `clinician_review` and `close` with this `evidence_ref`.
    */
   closure_proposal?: ClosureProposal | null;
+  /**
+   * A24 (LIVE, `read_model.incomplete_procedure`): the evidence scan found the case's colonoscopy record and it is not closure
+   * evidence (incomplete, stopped, not final, or no final report). Cleared by a closure proposal, `close` and `reopen`.
+   */
+  incomplete_procedure?: IncompleteProcedure | null;
   /** A21 (LIVE, top level): human versus automated effort on this case. Absent for a patient login and on an older server. */
   effort?: CaseEffort | null;
   /** A18: referral within 15 working days of the result, colonoscopy within 31 working days of referral. */
   milestones?: Partial<Record<MilestoneName, MilestoneClock>>;
   events: CaseEvent[];
+}
+
+/** `read_model.incomplete_procedure` (A24): the record that is not closure evidence, and when the automation flagged it. */
+export interface IncompleteProcedure {
+  evidence_ref: string;
+  flagged_at: string;
 }
 
 /** `read_model.closure_proposal` (A21): the colonoscopy evidence the system found, offered to the clinician for sign-off. */

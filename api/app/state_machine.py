@@ -55,6 +55,10 @@ replay of the event log produces:
                          `consent_updated`, `wrong_number` by a human `contact_updated {contact_valid: true}`
     contact_confirmed_at `at` of the latest `contact_updated`: a person confirmed the contact details, which overrides a
                          `contact_valid: false` on the case_created payload
+    incomplete_procedure {evidence_ref, flagged_at} from a `review_requested` with reason `incomplete_procedure` (A24,
+                         ADR-036): the automation found the case's colonoscopy record in HAPI and it is incomplete,
+                         stopped, not final or without a final report. A flag for a person; it changes no state.
+                         Cleared by a closure proposal (a complete record was found), a close or a reopen
     reroute_exhausted_at when the automation found the reroute list used up (`review_requested`, reason
                          `reroute_exhausted`) until the case leaves `referral_rejected`
     backdated_events     how many accepted events had an `at` earlier than the previous event's `at`
@@ -109,7 +113,8 @@ CONSENT_ACTOR = "system:consent"  # emits review_requested (reason consent_withd
 # Why a case is flagged for a person (`review_requested.reason`), and the ONE actor that may give each reason
 # (`REVIEW_EMITTER`, enforced in `_precheck`): the consent service when consent is withdrawn (A6), the automation when
 # the reroute list is used up (A21), and the reply triage (D13) for what a patient's own reply says.
-REVIEW_REASONS = ("consent_withdrawn", "reroute_exhausted", "opt_out", "wrong_number", "triage_uncertain", "already_done")
+REVIEW_REASONS = ("consent_withdrawn", "reroute_exhausted", "opt_out", "wrong_number", "triage_uncertain", "already_done",
+                  "incomplete_procedure")
 OUTREACH_HOLD_REASONS = ("opt_out", "wrong_number")  # while one is open the automation sends nothing (A5)
 # Reply triage (D13): the API classifies an inbound patient reply as `system:triage`. That actor writes the reply and its
 # classification, may ask for a person to look at the case, and may relay a callback the PATIENT asked for in their own
@@ -184,6 +189,7 @@ AUTO_FLAGGED_EVENTS = AUTOMATION_ALLOWED_EVENTS - {"review_requested"}
 REVIEW_EMITTER: dict[str, str] = {
     "consent_withdrawn": CONSENT_ACTOR,
     "reroute_exhausted": AUTOMATION_ACTOR,
+    "incomplete_procedure": AUTOMATION_ACTOR,  # A24: the colonoscopy record in HAPI is not closure evidence
     **{reason: TRIAGE_ACTOR for reason in TRIAGE_REVIEW_REASONS},
 }
 assert set(REVIEW_EMITTER) == set(REVIEW_REASONS)
@@ -297,6 +303,9 @@ class CaseModel:
     review_reason: str | None = None  # human review flag (consent withdrawal), set by review_requested
     review_requested_at: datetime | None = None
     reroute_exhausted_at: datetime | None = None  # A21: the automation ran out of providers to reroute to
+    # A24: the evidence scan found the colonoscopy record and it is not closure evidence: {evidence_ref, flagged_at} until
+    # a closure proposal, the close or a reopen replaces it
+    incomplete_procedure: dict | None = None
     closure_proposal: dict | None = None  # A21: {evidence_ref, proposed_at, event_id} until close or reopen
     auto_message_times: tuple = ()  # A21: `at` of each message_sent by system:automation (the accounting)
     outbound_message_times: tuple = ()  # `at` of every message_sent, automatic or approved draft (the weekly cap counts all)
@@ -349,10 +358,13 @@ class CaseModel:
             # consent withdrawal takes precedence (it freezes outreach); then a triage flag; a reroute flag is shown when
             # there is no other. The two flags stay apart in the model (and below), so neither hides the other.
             "review_reason": (self.review_reason or self.triage_review_reason
-                              or ("reroute_exhausted" if self.reroute_exhausted_at else None)),
+                              or ("reroute_exhausted" if self.reroute_exhausted_at else None)
+                              or ("incomplete_procedure" if self.incomplete_procedure else None)),
             "review_requested_at": (iso(self.review_requested_at) if self.review_reason else
                                     iso(self.triage_review_requested_at) if self.triage_review_reason else
-                                    iso(self.reroute_exhausted_at)),
+                                    iso(self.reroute_exhausted_at) if self.reroute_exhausted_at else
+                                    self.incomplete_procedure["flagged_at"] if self.incomplete_procedure else None),
+            "incomplete_procedure": dict(self.incomplete_procedure) if self.incomplete_procedure else None,
             "triage_review_reason": self.triage_review_reason,
             "triage_review_requested_at": iso(self.triage_review_requested_at),
             "closure_proposal": dict(self.closure_proposal) if self.closure_proposal else None,
@@ -476,7 +488,7 @@ def _transition(model: CaseModel, event: Event, pathway: Pathway, t: Transition)
     resumable = pathway.resumable_states
     new = replace(model, state=target, consent_frozen=target == CONSENT_WITHDRAWN)
     if clears_proposal:
-        new = replace(new, closure_proposal=None)
+        new = replace(new, closure_proposal=None, incomplete_procedure=None)
     if model.state == "referral_rejected" and target != "referral_rejected" and target not in pathway.resumable_states:
         new = replace(new, reroute_exhausted_at=None)  # the human re-route the flag asked for has happened
     new = replace(new, resume_state=model.state if target in resumable else None)
@@ -785,6 +797,8 @@ def _assign_ownership(model: CaseModel, event: Event, pathway: Pathway) -> CaseM
 # States in which closure evidence can be proposed: the colonoscopy is completed (by a person, or by the automation in
 # the same scan) and the clinician has not yet closed the case.
 CLOSURE_PROPOSAL_STATES = ("confirmatory_completed", "clinician_reviewed")
+# States in which the evidence scan may flag an incomplete colonoscopy record (A24): the ones it scans.
+INCOMPLETE_PROCEDURE_STATES = ("confirmatory_booked", *CLOSURE_PROPOSAL_STATES)
 
 
 def _closure_proposed(model: CaseModel, event: Event, pathway: Pathway) -> CaseModel:
@@ -793,7 +807,7 @@ def _closure_proposed(model: CaseModel, event: Event, pathway: Pathway) -> CaseM
     Only the automation may write it: the actor table says so."""
     if model.state not in CLOSURE_PROPOSAL_STATES:
         raise InvalidTransition(f"closure_proposed: not allowed from state {model.state!r}")
-    return replace(model, closure_proposal={
+    return replace(model, incomplete_procedure=None, closure_proposal={  # complete evidence was found: the flag is moot
         "evidence_ref": event.payload["evidence_ref"],
         "proposed_at": _aware(event.at).isoformat(),
         "event_id": str(event.event_id),
@@ -904,6 +918,9 @@ def _precheck(model: CaseModel, event: Event, pathway: Pathway) -> None:
     if kind == "review_requested" and event.payload.get("reason") == "reroute_exhausted":
         if model.state != "referral_rejected" or model.pending_handoff is not None:
             raise InvalidTransition("reroute_exhausted: only a case in referral_rejected with no pending request")
+    if kind == "review_requested" and event.payload.get("reason") == "incomplete_procedure":
+        if model.state not in INCOMPLETE_PROCEDURE_STATES:
+            raise InvalidTransition(f"incomplete_procedure: not allowed from state {model.state!r}")
     # Consent withdrawn freezes outreach, and handing the patient to someone new (T-A23).
     if model.consent_frozen and kind in CONSENT_FROZEN_EVENTS:
         raise InvalidTransition(
@@ -1065,6 +1082,8 @@ def _finish(
         out = _clear_hold(replace(out, contact_confirmed_at=at), "wrong_number")
     elif kind == "review_requested" and payload["reason"] == "reroute_exhausted":
         out = replace(out, reroute_exhausted_at=at)
+    elif kind == "review_requested" and payload["reason"] == "incomplete_procedure":
+        out = replace(out, incomplete_procedure={"evidence_ref": payload["evidence_ref"], "flagged_at": at.isoformat()})
     elif kind == "review_requested" and event.actor == TRIAGE_ACTOR:
         out = replace(out, triage_review_reason=payload["reason"], triage_review_requested_at=at)
         if payload["reason"] in OUTREACH_HOLD_REASONS and payload["reason"] not in out.outreach_holds:

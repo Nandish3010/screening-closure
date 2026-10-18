@@ -74,6 +74,21 @@ def procedure(ident, *, case_id=None, patient=None, resource_type="Procedure"):
     return out
 
 
+def with_report(hapi, proc: dict, *, case_id=None, patient=None, completeness="complete") -> str:
+    """Put `proc` (a Procedure) and a final report linked to it (A24: a Procedure alone is not closure evidence)."""
+    rid = f"report-{proc['id']}"
+    body = {"resourceType": "DiagnosticReport", "id": rid, "status": "final",
+            "code": {"coding": [{"system": "http://loinc.org", "code": "18746-8"}], "text": "Colonoscopy report"},
+            "conclusionCode": [{"coding": [{"system": evidence.COMPLETENESS_SYSTEM, "code": completeness}]}]}
+    if case_id is not None:
+        body["identifier"] = [{"system": evidence.CASE_IDENTIFIER_SYSTEM, "value": str(case_id)}]
+    if patient is not None:
+        body["subject"] = {"reference": patient}
+    hapi.put(body)
+    proc["report"] = [{"reference": f"DiagnosticReport/{rid}"}]
+    return hapi.put(proc)
+
+
 def close(cid, spec, ref, name="Dr Closer"):
     return post(cid, "close", spec, {"evidence_ref": ref, "signed_by": actor_of("specialist_owner", name)})
 
@@ -98,10 +113,10 @@ def test_another_case_of_the_same_patient_is_not_this_cases_evidence(hapi):
 
 def test_a_resource_with_the_case_identifier_or_the_patient_subject_closes_its_own_case(hapi):
     own, spec = reviewed_case("Dr Own", patient_ref="Patient/own")
-    ref = hapi.put(procedure("by-identifier", case_id=own))  # no subject at all
+    ref = with_report(hapi, procedure("by-identifier", case_id=own), case_id=own)  # no subject at all
     assert close(own, spec, ref, "Dr Own").status_code == 201
     other, spec2 = reviewed_case("Dr Own2", patient_ref="Patient/own2")
-    ref2 = hapi.put(procedure("by-subject", patient="Patient/own2"))  # names no case: the patient decides
+    ref2 = with_report(hapi, procedure("by-subject", patient="Patient/own2"), patient="Patient/own2")  # names no case: the patient decides
     assert close(other, spec2, ref2, "Dr Own2").status_code == 201
 
 
@@ -177,7 +192,8 @@ def test_the_recorded_resources_carry_the_case_identifier_and_the_patient():
 def test_the_evidence_a_case_records_closes_that_case_only(hapi):
     a, spec_a = reviewed_case("Dr Rec A", patient_ref="Patient/rec")
     b, spec_b = reviewed_case("Dr Rec B", patient_ref="Patient/rec")
-    proc, _ = confirmatory.build_resources(UUID(a), {"reference": "Patient/rec"}, datetime(2026, 1, 5, tzinfo=UTC))
+    proc, report = confirmatory.build_resources(UUID(a), {"reference": "Patient/rec"}, datetime(2026, 1, 5, tzinfo=UTC))
+    hapi.put(report)
     ref = hapi.put(proc)
     assert close(b, spec_b, ref, "Dr Rec B").status_code == 422
     assert close(a, spec_a, ref, "Dr Rec A").status_code == 201

@@ -10,6 +10,10 @@ It shares `app.confirmatory` with the API, so the ids are the same (`Procedure/c
 `DiagnosticReport/colonoscopy-report-<case_id>`) and running it twice is harmless (PUT). It prints the
 Procedure reference, which is what `close` takes as `evidence_ref`.
 
+`--completeness complete|incomplete|ct_colonography` (A24, ADR-036) says how the colonoscopy ended. `close` refuses
+evidence that is not a complete colonoscopy or a CT colonography (422), and the evidence scan flags an incomplete one
+(`review_requested {incomplete_procedure}`) instead of proposing a closure.
+
   FHIR_BASE_URL  default http://localhost:8080/fhir (the compose port on the host)
 """
 
@@ -32,12 +36,15 @@ def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--case-id", required=True, type=UUID)
     ap.add_argument("--patient-ref", help="Patient/<id> the colonoscopy belongs to")
+    ap.add_argument("--completeness", choices=("complete", "incomplete", "ct_colonography"), default="complete",
+                    help="how the colonoscopy ended (A24): a case closes only on complete or ct_colonography; "
+                         "incomplete writes a stopped Procedure and a final report that says so (default: complete)")
     ap.add_argument("--at", help="ISO-8601 time the colonoscopy was performed (default: now, UTC)")
     ap.add_argument("--fhir", default=os.environ.get("FHIR_BASE_URL", "http://localhost:8080/fhir"))
     args = ap.parse_args(argv)
     performed = datetime.fromisoformat(args.at.replace("Z", "+00:00")) if args.at else datetime.now(UTC)  # wall-clock-ok: CLI default
     try:
-        refs = FhirRecorder(HttpFhirClient(args.fhir)).record(args.case_id, args.patient_ref, performed)
+        refs = FhirRecorder(HttpFhirClient(args.fhir)).record(args.case_id, args.patient_ref, performed, args.completeness)
     except RecorderUnavailable as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 1

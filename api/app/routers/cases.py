@@ -1,5 +1,6 @@
 import logging
 from datetime import UTC, datetime
+from typing import Literal
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -219,11 +220,13 @@ def _check_signature_and_evidence(identity: Identity, event_type: str, payload: 
         if not evidence.well_formed_ref(ref):  # `Procedure/.`: the URL would collapse to a search
             raise HTTPException(422, f"evidence_ref {ref!r} is not a resource reference")
         try:
-            resolves = evidence.verifier.exists(ref, case_id=case_id, patient_ref=_patient_ref(case_id))
+            verdict = evidence.verifier.assess(ref, case_id=case_id, patient_ref=_patient_ref(case_id))
         except evidence.EvidenceUnavailable as exc:
             raise HTTPException(503, f"cannot verify closure evidence: {exc}")
-        if not resolves:
+        if not verdict.resolves:
             raise HTTPException(422, f"evidence_ref {ref!r} does not resolve to a resource of this case")
+        if not verdict.acceptable:  # A24: it is the case's own record, but not a complete colonoscopy
+            raise HTTPException(422, f"evidence_ref {ref!r} is not closure evidence: {verdict.reason}")
 
 
 def _refuse_backdated(model, at: datetime) -> None:
@@ -364,11 +367,18 @@ RESULT_STATES = frozenset({"confirmatory_booked", "confirmatory_completed", "cli
 
 
 @router.post("/{case_id}/confirmatory-result", status_code=201)
-def record_confirmatory_result(case_id: UUID, identity: Identity = Depends(require_identity)) -> dict:
+def record_confirmatory_result(
+    case_id: UUID,
+    completeness: Literal["complete", "incomplete", "ct_colonography"] = "complete",
+    identity: Identity = Depends(require_identity),
+) -> dict:
     """Record the confirmatory colonoscopy (demo, E8): creates a synthetic `Procedure` and
     `DiagnosticReport` in HAPI for the case's patient and returns their references. The case owner
     only (a primary_care_owner or specialist_owner who owns it). It appends no event: the owner
-    then posts `complete_confirmatory {result_ref}` and `close {evidence_ref}` with the reference."""
+    then posts `complete_confirmatory {result_ref}` and `close {evidence_ref}` with the reference.
+
+    `?completeness=` (A24, ADR-036) says how the colonoscopy ended: `complete` (default), `incomplete` or
+    `ct_colonography`. The report states it, and `close` accepts only a complete colonoscopy or a CT colonography."""
     model = store.read_model(case_id, pathway)
     if model is None:
         raise HTTPException(404, "case not found")
@@ -376,7 +386,7 @@ def record_confirmatory_result(case_id: UUID, identity: Identity = Depends(requi
     if model.state not in RESULT_STATES:
         raise HTTPException(409, f"no colonoscopy to record in state {model.state!r}")
     try:
-        refs = confirmatory.recorder.record(case_id, _patient_ref(case_id), clock.now())
+        refs = confirmatory.recorder.record(case_id, _patient_ref(case_id), clock.now(), completeness)
     except confirmatory.RecorderUnavailable as exc:
         raise HTTPException(503, f"cannot record the colonoscopy result: {exc}")
     return {"case_id": str(case_id), "evidence_ref": refs["procedure_ref"], **refs, "recorded_at": clock.now().isoformat()}

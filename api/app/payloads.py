@@ -35,7 +35,10 @@ WATCHDOG_REASONS = ("idle", "scheduler_down")
 # review_requested, one emitter per reason (state_machine.REVIEW_EMITTER): consent_withdrawn by system:consent (A6);
 # reroute_exhausted by system:automation (A21); opt_out, wrong_number, triage_uncertain and already_done by system:triage
 # (D13) from a patient's inbound reply. An opt_out or wrong_number holds automatic messages until a person clears it.
-REVIEW_REASONS = ("consent_withdrawn", "reroute_exhausted", "opt_out", "wrong_number", "triage_uncertain", "already_done")
+# incomplete_procedure by system:automation (A24, ADR-036): the evidence scan found the case's colonoscopy record in HAPI
+# and it is not closure evidence (incomplete, stopped, not final, or no final report): a person decides what comes next.
+REVIEW_REASONS = ("consent_withdrawn", "reroute_exhausted", "opt_out", "wrong_number", "triage_uncertain", "already_done",
+                  "incomplete_procedure")
 REPLY_INTENTS = ("confirm", "reschedule", "cannot_attend", "wrong_number", "dont_understand", "opt_out", "question",
                  "already_done", "other")
 # handoff_rejected: the human taxonomy is in the pathway YAML (handoff_reject_reasons) and is
@@ -306,10 +309,19 @@ class ContactUpdated(_Human):
 
 
 class ReviewRequested(_Payload):
-    reason: Literal["consent_withdrawn", "reroute_exhausted", "opt_out", "wrong_number", "triage_uncertain", "already_done"]
-    # the withdrawal (consent), the rejection the reroute ran out after (automation) or the `reply_classified` event
-    # (triage) that caused the flag
+    reason: Literal["consent_withdrawn", "reroute_exhausted", "opt_out", "wrong_number", "triage_uncertain", "already_done",
+                    "incomplete_procedure"]
+    # the withdrawal (consent), the rejection the reroute ran out after (automation), the `reply_classified` event
+    # (triage) that caused the flag, or, for incomplete_procedure, the event whose clock the evidence was awaited under
     source_event_id: Uuid
+    # incomplete_procedure only (A24): the colonoscopy record in HAPI that is not closure evidence, by reference.
+    evidence_ref: EvidenceRef | None = None
+
+    @model_validator(mode="after")
+    def _evidence_ref_iff_incomplete(self) -> "ReviewRequested":
+        if (self.reason == "incomplete_procedure") != (self.evidence_ref is not None):
+            raise ValueError("evidence_ref belongs to reason incomplete_procedure, and that reason needs it")
+        return self
 
 
 class ReplyReceived(_Payload):
