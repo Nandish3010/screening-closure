@@ -1,11 +1,11 @@
 # Evaluation results: baseline vs orchestrated
 
-generated_at: 2026-10-18 05:00:13 UTC (this line is the only non-deterministic content; `results.json` is byte-for-byte reproducible)
+generated_at: 2026-10-18 08:32:14 UTC (this line is the only non-deterministic content; `results.json` is byte-for-byte reproducible)
 
 All data are synthetic. Reproduce every number here with `make evaluate`; verify reproducibility with `make evaluate-check`.
 
 - Seed 20261017, 20 replications x 2,000 cases x 360 days of follow-up, 1000 bootstrap resamples
-- Parameters hash `3d2d984bb4cb25aa` (upper range), `edb40020bea5b7b7` (literature anchored), pathway `colorectal_fit` v0.2 hash `610903ae1b24a5de`, git commit `a579301940dc`
+- Parameters hash `3d2d984bb4cb25aa` (upper range), `edb40020bea5b7b7` (literature anchored), pathway `colorectal_fit` v0.2 hash `610903ae1b24a5de`, git commit `3ff0b0212406`
 - Intervals are percentile bootstrap 95% CIs over replications; differences are orchestrated minus baseline, paired by replication (same patients and random numbers in both arms).
 
 ## Headline: baseline vs the two orchestrated scenarios
@@ -39,7 +39,7 @@ Metric definitions (numerator, denominator, clocks, censoring) are in [`metrics.
 
 ## Capacity caveat: escalations cost nothing in this model
 
-**Every gain above is a gain before capacity constraints.** Cases are independent in the simulator: there are no shared endoscopy slots, no staff workload and no queueing, and a supervisor or coordinator acts on an escalation with a fixed probability however many others are open. The orchestrated arm raises about 205 escalations per 100 cases in the upper-range scenario (119 in the literature-anchored one), roughly one for every case. A real programme needs people and colonoscopy slots to work them, and the completion and time gains would shrink if they are not there. A capacity model (staff time per escalation, slot supply, queueing) is future work; until it exists, use `escalations_per_100_cases` to size a pilot rather than the completion gains. Definitions: [`metrics.md`](metrics.md).
+**Every gain above is a gain before capacity constraints.** Cases are independent in the simulator: there are no shared endoscopy slots, no staff workload and no queueing, and a supervisor or coordinator acts on an escalation with a fixed probability however many others are open. The orchestrated arm raises about 205 escalations per 100 cases in the upper-range scenario (119 in the literature-anchored one), roughly one for every case. A real programme needs people and colonoscopy slots to work them, and the completion and time gains would shrink if they are not there. A capacity model (staff time per escalation, slot supply, queueing) is future work; until it exists, use `escalations_per_100_cases` to size a pilot rather than the completion gains. The staff minutes an escalation takes are counted in the Human effort section, but still without any queue or shared capacity. Definitions: [`metrics.md`](metrics.md).
 
 ## Summary
 
@@ -116,6 +116,106 @@ Metric definitions (numerator, denominator, clocks, censoring) are in [`metrics.
 | Cases within the programme's reach (denominator of the in-reach rows) | 100.0% (100.0% to 100.0%) | 100.0% (100.0% to 100.0%) | +0.0pp (+0.0pp to +0.0pp) |
 
 Open = not currently closed; a closed case that is reopened counts as open again. Time to closure is conditional on closing within the follow-up window. Lost to follow-up = no confirmatory colonoscopy by the end of follow-up and either an explicit lost-contact flag or no pathway progress for 30+ days. `n/a` means the arm has no such events by design (the baseline has no named owner and no escalations) or no input from the AI cut yet.
+
+## Human effort
+
+Human minutes per case in each arm and the reduction automation buys, from the event logs of the same replications as the rest of this report (95% CIs are percentile bootstrap over replications; the reduction is paired by replication). Definitions: [`metrics.md`](metrics.md) section 11. Sources and grades of every minutes figure: [`evidence.md`](../evidence.md) section 11.
+
+| Measure | Baseline | Orchestrated, literature anchored | Orchestrated, upper range |
+|---|---|---|---|
+| Human minutes per case | 57.3 (57.1 to 57.5) | 45.5 (45.3 to 45.8) | 33.7 (33.4 to 34.1) |
+| Human minutes per closed case | 107.4 (106.5 to 108.3) | 68.0 (67.3 to 68.7) | 42.3 (41.7 to 42.9) |
+| Human actions per case | 9.72 (9.68 to 9.76) | 9.03 (8.96 to 9.10) | 7.88 (7.77 to 7.98) |
+| Automation share (automated actions / all actions) | 0.0% (0.0% to 0.0%) | 59.1% (58.9% to 59.4%) | 74.9% (74.7% to 75.1%) |
+| **Labour reduction**, minutes per case (1 - orchestrated / baseline) | - | 20.5% (20.0% to 21.0%) | 41.1% (40.3% to 41.9%) |
+| Labour reduction, minutes per closed case | - | 36.6% (36.1% to 37.2%) | 60.6% (60.2% to 61.1%) |
+| Reduction in human actions per case | - | 7.1% (6.1% to 7.9%) | 18.9% (17.6% to 20.1%) |
+| Among the cases the programme reaches: human minutes per case | 57.3 (57.0 to 57.6) | 35.8 (35.4 to 36.2) | 33.7 (33.4 to 34.1) |
+| Among the cases the programme reaches: **labour reduction** | - | 37.5% (36.5% to 38.5%) | 41.1% (40.4% to 41.9%) |
+
+**What is counted.** Staff minutes per case in each arm, computed from the simulated event log (`simulator/sim/effort.py`; no outcome in this report depends on it). A person's time is counted only when a person acts. Today's process is manual at every step (look up and acknowledge the result, phone or write to the patient, send the referral, book, record that the patient called back, review the report, file the closure), and the model adds the chasing that leaves no event in the log (up to 3 attempts every 14 days when a patient, a referral or a colonoscopy is overdue). In the orchestrated process the engine does the following by machine and they cost no human minutes: acknowledge on ingest; owner auto-assignment; pre-approved template outreach and reminders; evidence detection; closure proposal; referral acceptance carries the appointment; reroute down a provider list; bounce; overdue; escalation emission; reply handling; consent ledger; delivery tracking; de-duplication; state machine. A person acts only to accept an escalation, approve a drafted message, sign the closure and handle an exhausted reroute list, plus the steps automation cannot do (recording a patient's call-back, a consent withdrawal, a transfer decision, a rebooking, a corrected contact, a reopened case, and the specialist's own accept or reject). In the literature-anchored scenario only 55% of orchestrated-arm cases receive the orchestrated process (`programme_reach`); the rest stay manual, so the programme-level reduction is diluted by construction and the in-reach figure is the one that describes the automation itself.
+
+**Result.** In the literature-anchored scenario the programme-level reduction is 20.5%, 95% CI 20.0% to 21.0%: the 40% target is **not met**. Among the cases the programme reaches it is 37.5%, 95% CI 36.5% to 38.5% (target not met); per closed case it is 36.6%, 95% CI 36.1% to 37.2%. In the upper-range scenario the reduction is 41.1%, 95% CI 40.3% to 41.9% (target met; the lower end of the interval is 40.3%); per closed case it is 60.6%, 95% CI 60.2% to 61.1%.
+
+**What drives the remaining minutes.** In the literature-anchored scenario the orchestrated arm needs 45.5 human minutes per case against 57.3 at baseline. The largest orchestrated contributors are specialist review of referrals (7.3 min per case), coordinator alternate-route contacts (4.4 min per case), hand-over to a clinician (4.2 min per case), chasing patients (3.9 min per case). Escalation handling alone (accepting, phoning, approving) is 10.8 minutes per case, because the orchestrated arm escalates far more than today's process ever does; the orchestrated arm also takes 13.1 automated actions per case that the baseline does not do at all, so the reduction is in people's time, not in the work done. 9.0 human actions per case remain, many of them short. The time also moves between roles: coordinator minutes change by -37% but owner-clinician minutes by +96% (accepting escalations, calling, approving and signing are clinician decisions) and specialist minutes by +20%; whether that is cheaper depends on wages, which are not in the model.
+
+**How far to trust the minutes.** 66% of baseline minutes and 62% of orchestrated minutes rest on a published minutes figure from an adjacent setting (care coordinators and navigators in Australia and the United States); none was measured in the Abu Dhabi pathway, and none is graded `sourced` (a direct measurement of the same task in the same population). The rest (34% of baseline and 38% of orchestrated minutes) is assumed. Moving every figure to its low or its high end together barely changes the reduction, because it is a ratio, but the relative sizes matter: the table above shows how far individual figures move it, and the least favourable corner (baseline-only actions at their low end, orchestrated-only actions at their high end) gives -40%. Three modelling choices carry most of the weight: the baseline's chasing (without it the reduction is 13.1%, and baseline chasing was 10.3 minutes per case), whether a person still records every booking in the orchestrated arm (if so, 14.2%), and whether the human escalation outreach is a phone call or a drafted message that a person only approves (if only approved, 30.9%). All three are flagged for confirmation with the engine ticket (A21).
+
+**Limits.** Human minutes are not capacity: there is no queue, no shift pattern and no shared workload, so a coordinator who accepts three escalations in an hour is not slowed down (see the capacity caveat). The orchestrated escalation volume is a simulator output (the SLA timers breach often), and a real programme could reduce it by batching or by tuning the ladder. The simulator has no model-drafted messages (every message is a pre-approved template), so the approval charge is a proxy placed on the human-contact messages. Time spent by patients, the endoscopy unit's procedure and reception work, and management or training time are outside the count.
+
+### Human minutes per case by role
+
+| Measure | Baseline | Orchestrated, literature anchored | Orchestrated, upper range |
+|---|---|---|---|
+| Coordinator: minutes per case | 46.7 (46.5 to 46.9) | 29.4 (29.2 to 29.7) | 13.4 (13.1 to 13.7) |
+| Owner clinician: minutes per case | 4.5 (4.4 to 4.5) | 8.8 (8.7 to 8.9) | 12.0 (11.9 to 12.1) |
+| Specialist: minutes per case | 6.1 (6.0 to 6.2) | 7.3 (7.2 to 7.4) | 8.3 (8.3 to 8.4) |
+| Coordinator: reduction | - | 37.0% (36.5% to 37.5%) | 71.3% (70.6% to 72.0%) |
+| Owner clinician: reduction | - | -96.4% (-99.6% to -93.4%) | -168.1% (-173.0% to -163.1%) |
+| Specialist: reduction | - | -19.5% (-20.2% to -18.9%) | -36.5% (-37.7% to -35.5%) |
+
+### How robust is the reduction
+
+| Variant (labour reduction, minutes per case, point estimate) | Orchestrated, literature anchored | Orchestrated, upper range |
+|---|---|---|
+| Headline (the table above) | +20.5% | +41.1% |
+| Baseline chasing not costed (only logged events count in the baseline) | +13.1% | +28.3% |
+| Baseline chases harder (up to 5 attempts, every 7 days) | +24.8% | +48.4% |
+| Specialist minutes left out (coordinator and owner clinician only) | +25.3% | +50.4% |
+| Orchestrated arm: a person still records every booking | +14.2% | +29.5% |
+| No charge for approving drafts (a phone call needs no approval) | +22.7% | +44.7% |
+| Escalation outreach is an approved drafted message, not a phone call (calls cost no minutes) | +30.9% | +58.2% |
+| Every minutes figure at its low end | +19.9% | +40.0% |
+| Every minutes figure at its high end | +20.2% | +40.7% |
+| Least favourable corner: baseline-only actions at their low end, orchestrated-only at their high end | -40.4% | -62.7% |
+
+The five minutes figures that move the literature anchored reduction most, one at a time (central 20.5%):
+
+| Minutes figure (top 5 by swing) | Grade | Low / central / high (min) | Reduction at low | Reduction at high |
+|---|---|---|---|---|
+| Coordinator contacts the patient by the alternate route (`O_COORDINATOR_CALL`) | sourced-adjacent | 3.9 / 7.2 / 12.1 | 24.0% | 15.3% |
+| Look up the positive result, review the chart, open a work item (`M_RESULT_LOOKUP`) | assumed | 3 / 5 / 14 | 19.3% | 25.2% |
+| Chase a patient who has not answered (phone call, up to N attempts) (`M_CHASE_PATIENT`) | sourced-adjacent | 3.9 / 7.2 / 12.1 | 18.0% | 23.7% |
+| Coordinator accepts an escalation or a watchdog flag (`O_ACCEPT_ESC_COORDINATOR`) | assumed | 1 / 2 / 4 | 22.3% | 17.0% |
+| Send or fax the referral to the endoscopy service (`M_REFERRAL_SEND`) | sourced-adjacent | 6.2 / 12.4 / 18.6 | 17.8% | 22.9% |
+
+### The minutes table
+
+Every human action, the minutes used, the range used in the sweep and where the figure comes from. `sourced-adjacent` = a published figure for a related task or setting; `assumed` = no published figure found. Steps the engine automates cost no human minutes and are listed in `results.json` under `effort.model.automated_steps`.
+
+| Human action | Role | Process | Minutes (range) | Grade | Basis |
+|---|---|---|---|---|---|
+| `M_RESULT_LOOKUP` Look up the positive result, review the chart, open a work item | coordinator | today's process | 5 (3 to 14) | assumed | assumed: 5 minutes; E11-1 'reading medical history/report' (14.0 minutes, complex-care coordinators) is the upper bound |
+| `M_RESULT_ACK` Acknowledge the result in the record | coordinator | today's process | 2 (1 to 4) | assumed | assumed: no time study of result acknowledgement found |
+| `M_HANDOVER` Decide who follows the case up and hand it over (no named owner today) | coordinator | today's process | 9.5 (4.75 to 10.3) | sourced-adjacent | E11-1 'handover' 9.5 minutes (SD 4.1), 'prioritising patients' 10.3; care coordinators in a hospital-community service |
+| `M_PHONE_ATTEMPT` Phone the patient (one attempt, with documentation) | coordinator | today's process | 7.2 (3.9 to 12.1) | sourced-adjacent | E11-1 'follow-up call after discharge' 7.2 minutes (SD 3.5); E11-2: 15.5 minutes on calls over a typical 4 calls = 3.9 (low), 48.5 total per patient / 4 = 12.1 (high) |
+| `M_SMS_ATTEMPT` Send the patient an SMS or WhatsApp message by hand | coordinator | today's process | 1.5 (1 to 3) | assumed | assumed: 1.5 minutes; E11-5 assumed 1 minute per reminder call (the floor) |
+| `M_LETTER` Prepare and post a letter | coordinator | today's process | 4 (2 to 8) | assumed | assumed: 4 minutes; E11-4 reports 17.5 minutes to compile and mail materials per woman over 18 months (number of mailings not reported) |
+| `M_REFERRAL_SEND` Send or fax the referral to the endoscopy service | coordinator | today's process | 12.4 (6.2 to 18.6) | sourced-adjacent | E11-1 'referral - external' 12.4 minutes (SD 9.1, n=102); E11-6 about 12 minutes per manual referral corroborates (secondary report) |
+| `M_COMPLETION_RECORD` Record that the colonoscopy happened (find and file the report) | coordinator | today's process | 5 (2.5 to 10) | assumed | assumed: 5 minutes |
+| `M_CHASE_PATIENT` Chase a patient who has not answered (phone call, up to N attempts) | coordinator | today's process | 7.2 (3.9 to 12.1) | sourced-adjacent | as M_PHONE_ATTEMPT: E11-1 follow-up call 7.2 minutes; E11-2 3.9 to 12.1 per call |
+| `M_CHASE_SPECIALIST` Chase the specialist's office that has not replied (up to N attempts) | coordinator | today's process | 8.1 (4 to 12.2) | sourced-adjacent | E11-1 'contracting/liaising with provider - external' 8.1 minutes (SD 11.7, n=192) |
+| `M_CHASE_COMPLETION` Check whether an overdue colonoscopy happened (up to N attempts) | coordinator | today's process | 5 (2.5 to 10) | assumed | assumed: 5 minutes |
+| `M_DUPLICATE_ITEM` Process a duplicate result from a second lab as a new work item | coordinator | today's process | 5 (3 to 14) | assumed | assumed: same as M_RESULT_LOOKUP |
+| `M_CLINICIAN_REVIEW` Clinician reads the colonoscopy report and documents the finding | owner clinician | today's process | 5 (3 to 10) | assumed | assumed: 5 minutes |
+| `M_CLOSE_FILE` Clinician files the closure | owner clinician | today's process | 3 (2 to 6) | assumed | assumed: 3 minutes |
+| `X_RECORD_CONTACT` Record that the patient called back or walked in | coordinator | both | 2 (1 to 4) | assumed | assumed: 2 minutes |
+| `X_BOOK_APPT` Book or rebook the colonoscopy appointment | coordinator | both | 8 (4 to 15.1) | sourced-adjacent | E11-4 'scheduling appointments and sending reminders' 8.0 minutes per woman; E11-3 'scheduling or rescheduling appointments' 15.1 minutes (high) |
+| `X_SPECIALIST_REVIEW` Specialist reviews a referral and accepts or rejects it | specialist | both | 9.5 (4.75 to 15.7) | sourced-adjacent | E11-1 'accepting/discussing referral' 9.5 minutes (SD 6.2, n=230); range is the mean plus or minus 1 SD (low halved) |
+| `X_REOPEN_REVIEW` Clinician reviews a late finding that reopens a closed case | owner clinician | both | 5 (3 to 10) | assumed | assumed: 5 minutes |
+| `O_ACCEPT_ESC_SUPERVISOR` Supervisor accepts an escalation | owner clinician | orchestrated | 2 (1 to 4) | assumed | assumed: 2 minutes to open the case, read the context and accept |
+| `O_ACCEPT_ESC_COORDINATOR` Coordinator accepts an escalation or a watchdog flag | coordinator | orchestrated | 2 (1 to 4) | assumed | assumed: 2 minutes |
+| `O_SUPERVISOR_CALL` Supervisor phones the patient after an escalation | owner clinician | orchestrated | 7.2 (3.9 to 12.1) | sourced-adjacent | as M_PHONE_ATTEMPT: E11-1 follow-up call 7.2 minutes; E11-2 3.9 to 12.1 per call |
+| `O_COORDINATOR_CALL` Coordinator contacts the patient by the alternate route | coordinator | orchestrated | 7.2 (3.9 to 12.1) | sourced-adjacent | as M_PHONE_ATTEMPT: E11-1 follow-up call 7.2 minutes; E11-2 3.9 to 12.1 per call |
+| `O_APPROVE_DRAFT` Approve a model-drafted message before it is sent | owner clinician | orchestrated | 1.5 (1 to 3) | assumed | assumed: 1.5 minutes. The simulator has no model drafts (every message is a pre-approved template), so one approval is charged on every human-contact message, the only non-template outreach |
+| `O_SIGN_CLOSURE` Review the machine-prepared evidence and sign the closure | owner clinician | orchestrated | 5 (3 to 8) | assumed | assumed: 5 minutes (the clinician still reads the evidence the engine attached; 8 minutes = today's review plus filing) |
+| `O_EXHAUSTED_REROUTE` Handle an exhausted reroute list (find another service by hand) | coordinator | orchestrated | 15 (8 to 30) | assumed | assumed: 15 minutes, about one external referral plus follow-up calls (E11-1 12.4 and 8.1) |
+| `O_LOST_REVIEW` Review a case flagged lost (unreachable, declined, repeated no-show) and record the outcome | coordinator | orchestrated | 8 (4 to 15) | assumed | assumed: 8 minutes |
+| `O_CONSENT_REVIEW` Review a consent withdrawal | owner clinician | orchestrated | 5 (3 to 10) | assumed | assumed: 5 minutes |
+| `O_CONTACT_RECOVERED` Find and record a corrected contact for an unreachable patient | coordinator | orchestrated | 5 (3 to 10) | assumed | assumed: 5 minutes |
+| `O_TRANSFER_DECISION` Receiving clinician decides on a transfer of the case after a provider switch | owner clinician | orchestrated | 5 (3 to 9.5) | assumed | assumed: 5 minutes; E11-1 'accepting/discussing referral' (9.5) is the upper bound |
+
+Work that today's process never does (so it costs the baseline nothing, and the orchestrated arm does it by machine): appointment reminders before the colonoscopy; noticing a missed appointment and rebooking it; overdue tracking against working-day SLAs and the escalation ladder; noticing a rejected referral and rerouting it (only a share of rejections is noticed today); recording a consent withdrawal and stopping outreach; merging duplicate results and resolving conflicting ownership claims; surfacing a lost case to a human.
 
 ## Calibration check: does the baseline reproduce published completion?
 

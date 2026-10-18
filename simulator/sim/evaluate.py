@@ -19,6 +19,7 @@ from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 
 from . import DEFAULT_CONSERVATIVE, REPO_ROOT
+from .effort import aggregate_effort, arm_effort, model_description
 from .engine import ARMS, BASELINE, ORCHESTRATED
 from .metrics import percentile
 from .rng import derive_seed, stream
@@ -60,6 +61,7 @@ def _run_rep(job: tuple) -> dict:
                 "event_hash": res.event_hash[:16],
                 "n_events": res.n_events,
                 "counters": dict(res.counters),
+                "effort": arm_effort(res.cases, ctx.mp.programme_reach, days),
             }
         out["scenarios"][name] = {"arms": arms}
     return out
@@ -201,6 +203,15 @@ def evaluate(
         ]
 
     agg = aggregate(view(UPPER), seed, resamples)
+    effort = {
+        "model": model_description(),
+        "scenarios": {
+            name: aggregate_effort(
+                [{a: r["scenarios"][name]["arms"][a]["effort"] for a in ARMS} for r in rep_results], seed, resamples, _summ, name,
+            )
+            for name, _ in scen
+        },
+    }
     meta_up = _meta_for(ctx, params_paths)
     result = {
         "meta": {
@@ -223,6 +234,7 @@ def evaluate(
         "arms": agg["arms"],
         "difference": agg["difference"],
         "per_replication": per_rep(UPPER),
+        "effort": effort,
         "parameters": [
             {"key": p.key, "value": p.value, "source": p.source, "status": p.status, "notes": p.notes}
             for p in ctx.params.rows()

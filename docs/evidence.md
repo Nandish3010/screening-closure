@@ -252,3 +252,65 @@ What I could not find, with what each gap means for the submission:
 8. **Rows I could not verify (marked S):** NHS e-RS "about 2%" rejection, NHS outpatient DNA 5.9%/5.6%, STOP CRC median 72 (49-120), the Springer environmental scan, Latin American positivity by threshold, the Pulse 26% survey, centralised navigation 13% non-contact, and the Kaggle licence. Re-check these before citing.
 9. **Source inconsistencies to be aware of:** AltaMed (IQR and the 122 vs 108 completers), Abu Dhabi audit (933 vs about 992 denominator; IQR stated as one number), National Guideline (15 vs 31 working days), VA mortality CI, LA County navigation odds ratio.
 10. **Simulator-versus-policy mismatches discovered along the way:** eligible age 45 in `generate_results.py` against 40 in Abu Dhabi policy; a looser colonoscopy SLA than the 31-working-day national KPI. Both are resolved (M1 integration commit "A-fix: align eligibility age and confirmatory SLA with DoH standard", then A18): the generator and Synthea default are 40-75, and the colonoscopy clock is the 31-working-day `confirmatory_completed` milestone, measured from the referral acceptance (see the last paragraph of section 8).
+
+---
+
+## 11. Human effort per action
+
+Research compiled 2026-10-18 for ticket B17 (the effort model in `simulator/sim/effort.py`, results in the "Human effort" section of `docs/results/results.md`). Question: how many minutes of staff time does one action in a positive-FIT follow-up take (a phone outreach attempt, a referral, a chart review, a result acknowledgement, an appointment booking, a whole navigator case), so that the simulator can count human minutes per case in the baseline and the orchestrated arm. Time-boxed to 30 minutes of searching.
+
+**Headline of the search.** There is no published time-and-motion study of positive-FIT follow-up that gives minutes per task. What exists is (a) navigator logs that give minutes per navigated patient, (b) one activity log of care coordinators that gives minutes per task, and (c) one timed telephone-support programme in community health centres. Every minutes figure used in the model is therefore **sourced-adjacent** (a measured figure for a related task or setting) or **assumed**; none is graded **sourced**. The grades are those of the top of this file.
+
+### 11.1 Sources used for a minutes figure
+
+| Id | Source | URL | Publication, year | Population | Number | Check |
+|---|---|---|---|---|---|---|
+| E11-1 | Heslop, Power, Cranwell: "Building workforce capacity for complex care coordination: a function analysis of workflow activity" | https://pmc.ncbi.nlm.nih.gov/articles/PMC4171555/ | Hum Resour Health 2014;12:52 (data collected 2013) | Care coordinators of five specialist care-coordination services, Western Health, Melbourne (hospital and community; four professional groups); two-day activity log, 3,520 recorded functions | Mean minutes per function (SD, n): **referral, external 12.4** (9.1, 102); **accepting/discussing a referral 9.5** (6.2, 230); referral, internal 12.1; **follow-up call after discharge 7.2** (3.5, 47); **handover 9.5** (4.1, 21); **liaison with an external provider 8.1** (11.7, 192); liaison with a GP 11.5; prioritising patients 10.3; **reading medical history/report 14.0** (10.0, 92); patient monitoring 11.1; documentation 15.2; all direct-care functions 14.6 | P (Europe PMC full text, Table 2) |
+| E11-2 | O'Leary et al.: "Reach and effectiveness of a centralized navigation program for patients with positive fecal immunochemical tests requiring follow-up colonoscopy" | https://pmc.ncbi.nlm.nih.gov/articles/PMC10196769/ (PMID 37214164) | Prev Med Rep 2023;34:102211 (navigation June 2020 to September 2021) | 26 patients with an abnormal mailed FIT who accepted phone navigation, North Carolina FQHCs; navigator call logs | **Median 48.5 minutes** (range 24 to 277) of navigator time per navigated patient, preparation 12 to 173 and time on calls 7 to 104; **15.5 minutes** spent talking with the patient and care team; typically **four structured calls**; self-pay patients median 102.0; scheduling the colonoscopy and financial navigation were the largest contributors | P (Europe PMC full text) |
+| E11-3 | Rohan et al.: "Refining the patient navigation role in a colorectal cancer screening program" | https://pmc.ncbi.nlm.nih.gov/articles/PMC5419036/ (PMID 27799508) | JNCCN 2016;14(11):1371-8 (data 2012 to 2014) | 404 navigated patients, colonoscopy screening trial, Boston Medical Center (safety net); time recorded in 15-minute increments | **43.7 minutes** per patient (SD 31.3, median 35); **scheduling or rescheduling appointments 15.1** minutes (among the 71% who received it); assessment and planning 27.2; education 14.4; reviewing bowel prep 13.6 | P (page text) |
+| E11-4 | Robinson et al.: "Staffing time required to increase cancer-screening rates through telephone support" | https://pmc.ncbi.nlm.nih.gov/articles/PMC2905842/ (PMID 20228638) | J Ambul Care Manage 2010;33(2):143-54 | 38 women whose prevention care manager time was logged over 18 months, community and migrant health centres, New York City (breast, cervical and colorectal screening) | **99.2 minutes** per woman (phone 64.4, follow-up tasks 34.7); initial follow-up call 16, later calls 14; compiling and mailing materials 17.5; **scheduling appointments and sending reminders 8.0**; other legwork 9.3; colorectal-specific 28.1 (record checks, 23 minutes per woman, are not in the total) | P (page text) |
+
+### 11.2 Sources used only as an assumption or for context
+
+| Id | Source | URL | Year | What it says | Use | Check |
+|---|---|---|---|---|---|---|
+| E11-5 | Hashim, Franks, Fiscella: telephone reminders and no-shows | https://www.jabfm.org/content/jabfp/14/3/193.full.pdf | J Am Board Fam Pract 2001;14:193-6 (family practice residency clinic, Rochester NY; 479 patients called) | The cost analysis **assumes one minute per reminder call** (medical assistant at $12.10 per hour). It is the authors' assumption, not a measurement | Floor for a manual SMS or message (the model uses 1.5 minutes, graded assumed) | P (PDF text) |
+| E11-6 | UCSF Pediatric Access Center referral time-and-motion, as reported by a staffing site and a UCSF blog | https://stealthagents.com/research/healthcare-referral-intake-workload-statistics-2026 and https://cdhi.ucsf.edu/node/1376 | reported as 2020 | 719 plus or minus 48 seconds (about 12 minutes) of staff work per manual referral, seven staff observed; the UCSF post describes faxed referrals re-keyed through a 13-screen process | Corroborates E11-1 referral 12.4; **the primary paper was not located** | S |
+| | Meenan et al.: cost-effectiveness of STOP CRC in safety-net clinics | https://pmc.ncbi.nlm.nih.gov/articles/PMC6392039/ | Prev Med 2019;120:119-25 | Staff logged hours in activity-based costing sheets; delivery cost $14.43 per screening-eligible patient (range $10.37 to $19.10); mailing preparation the largest category. Minutes per task are not in the abstract | Not used (no minutes) | P (abstract) |
+| | AHRQ-funded electronic-referral project, San Francisco General | https://digital.ahrq.gov/ahrq-funded-projects/use-electronic-referral-system-improve-outpatient-primary-care-specialty-care/annual-summary/2009 | 2009 | A specialist reviewer spends about 9.4 minutes per referral request (estimate) | Corroborates E11-1 "accepting a referral 9.5" for the specialist role | S |
+| | Poon et al.: physicians' test-result management | (survey summary only) | Arch Intern Med 2004 | Physicians report about 74 minutes per clinical day managing test results | Context only: a per-day, self-reported figure | S |
+| | Elder et al.: management of laboratory test results in family practice | https://www.mdedge.com/jfponline/article/60868/management-laboratory-test-results-family-practice | J Fam Pract 2000;49(8):709-15 | A time-motion costing of the best method: about $5.19 per set of tests; the per-step minutes were not retrievable | Not used (no minutes) | S |
+| | CAQH Index: manual prior authorisation | (secondary reports) | 2024 | 24 minutes manual against 16 portal and 10 electronic | Not used (a different task) | S |
+
+### 11.3 Searched and not found
+
+- **NHS cancer-pathway tracker or MDT-coordinator staffing.** No published patients-per-tracker ratio or minutes per case. Job adverts describe the role (monitor pathways against waiting-time targets, escalate patients at risk of breach); an NHS FOI return (Dudley) defines capacity in whole-time equivalents only. A request to a Cancer Alliance or a Freedom of Information request with tracker WTE and new-patient counts would settle it.
+- **Sea Mar and STOP CRC process evaluations.** The Sea Mar PRECISE trial (navigation after abnormal FIT) reports completion and cost; navigator minutes per patient were not retrievable. STOP CRC reports costs, not minutes per task.
+- **Minutes per result acknowledgement, per chart review of a screening result, per appointment-scheduling call.** No peer-reviewed measure. Scheduling is covered by E11-3 and E11-4; chart review by E11-1 (14.0, complex-care coordinators, so an upper bound); acknowledgement is assumed. Vendor blogs quote 8 minutes per scheduling call and 3 minutes per reminder call with no method; they are not used.
+- **An FQHC care-coordination time study for positive-FIT follow-up.** Not found.
+
+### 11.4 What the model uses
+
+Full table (central, low and high minutes, role, process, grade, basis) in `simulator/sim/effort.py` and in the Human effort section of `docs/results/results.md`. Summary:
+
+| Action | Minutes (low to high) | Grade | Basis |
+|---|---|---|---|
+| Phone the patient, one attempt (also a chase call, a supervisor call, a coordinator call) | 7.2 (3.9 to 12.1) | sourced-adjacent | E11-1 follow-up call 7.2; E11-2 3.9 minutes on calls and 12.1 minutes per call including preparation, derived from 15.5 and 48.5 over four calls |
+| Send or fax a referral | 12.4 (6.2 to 18.6) | sourced-adjacent | E11-1 referral, external; E11-6 corroborates |
+| Specialist reviews and answers a referral | 9.5 (4.75 to 15.7) | sourced-adjacent | E11-1 accepting a referral, mean plus or minus 1 SD |
+| Book or rebook the appointment | 8.0 (4.0 to 15.1) | sourced-adjacent | E11-4 scheduling and reminders 8.0; E11-3 scheduling 15.1 |
+| Hand a case over, no named owner | 9.5 (4.75 to 10.3) | sourced-adjacent | E11-1 handover, prioritising patients |
+| Chase a specialist's office | 8.1 (4.0 to 12.2) | sourced-adjacent | E11-1 liaison with an external provider |
+| Look up the result and review the chart | 5 (3 to 14) | assumed | upper bound E11-1 reading history/report |
+| Acknowledge a result | 2 (1 to 4) | assumed | none found |
+| SMS by hand, letter by hand | 1.5 (1 to 3), 4 (2 to 8) | assumed | floor E11-5; E11-4 mailing 17.5 per woman |
+| Record the colonoscopy, check an overdue one, review the report, file or sign the closure, accept an escalation, approve a draft, handle an exhausted reroute list or a lost case, review a consent withdrawal, recover a contact, decide on a transfer, review a reopened case, record a patient's call-back | 1.5 to 15 | assumed | none found |
+
+Sanity check on scale: a whole navigated patient costs 43.7 minutes (E11-3) to 48.5 minutes (E11-2) of navigator time in the published logs, plus referral processing; the baseline of the simulator costs about 57 minutes per case (all human work, including the specialist's review), which is the same order.
+
+### 11.5 Caveats
+
+1. **Setting.** E11-1 is a hospital-community care-coordination service in Australia (complex patients; every function includes preparation and documentation), E11-2 to E11-4 are United States safety-net clinics. None is the Abu Dhabi pathway, and the roles do not map one to one. The coordinator, owner clinician and specialist split in the model is an assignment by task, not an observed staffing pattern.
+2. **Means of skewed times.** E11-1 and E11-3 report means; the standard deviations are as large as the means for several tasks, so the ranges used in the sweep are wide.
+3. **Chasing is assumed.** No study gives how often a coordinator chases a patient, a referral or a colonoscopy; the model uses up to three attempts every 14 days (`CHASE_DEFAULT`) and tests none and five attempts every seven days.
+4. **About a third of the minutes are assumed.** In the literature-anchored scenario 34% of baseline minutes and 38% of orchestrated minutes rest on assumed figures and the rest on sourced-adjacent ones (the Human effort section of `docs/results/results.md` reports the split, regenerated with every `make evaluate`).

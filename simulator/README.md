@@ -24,6 +24,8 @@ make evaluate                  # 20 replications x 2 arms x 2 scenarios x 2,000 
 make evaluate-check            # evaluate twice into temp dirs (once multi-process, once single) and diff results.json
 make sensitivity               # one-at-a-time parameter sweep (about 1.5 minutes, 8 workers) -> docs/results/sensitivity.{json,md,svg}
 make sensitivity-check         # rerun the sweep and fail unless the three committed files are byte-identical
+make effort                    # print the "Human effort" section from the committed results.json (the numbers come from make evaluate)
+make effort-check              # fail if results.json predates simulator/sim/effort.py or evidence.md section 11 lacks a source; runs the effort tests
 
 python -m simulator.sim.cli run --arm orchestrated --cases 2000 --days 120 --seed 20261017
 python -m simulator.sim.cli evaluate --reps 20
@@ -100,6 +102,17 @@ rate (`n/a` until the AI cut supplies a hook, see `metrics.AbstentionHook`), los
 the 270-day delay-harm threshold, consent breaches, fairness by language and channel (completion, time to closure, and the max-gap
 statistic = largest minus smallest group), and per-messy-case handling. Hand-checked arithmetic: `scenario.py` and
 `tests/test_sim_metrics.py`.
+
+## Human effort (`effort.py`, ticket B17)
+
+A post-processing step on the event logs: it changes no outcome and no event-log hash. Each case follows the **manual** process (today's: a person does every step,
+plus the chasing that leaves no event) or the **orchestrated** process (the engine acts; a person accepts an escalation, approves a drafted message, signs the closure,
+handles an exhausted reroute list, and does the steps automation cannot: record a call-back, review a consent withdrawal, decide on a transfer, rebook). The baseline arm and
+the unreached cases of the orchestrated arm are manual. `ACTIONS` is the table of human actions (minutes with a low and a high end, role, grade sourced / sourced-adjacent / assumed,
+basis in `docs/evidence.md` section 11); `EVENT_MAP` maps every event type to a human action or an automated step for each process. `make evaluate` adds the `effort` block to
+`results.json` (human minutes per case and per closed case, human actions per case, automation share, labour reduction with bootstrap CIs, a robustness table and a one-at-a-time sweep of the
+minutes figures) and a "Human effort" section to `results.md`; the definitions are in `docs/results/metrics.md` section 11. Counts of actions are stored per replication and minutes are applied afterwards,
+so changing a minutes figure needs `make evaluate` only to refresh the committed files, not a different simulation.
 
 ## What is and is not modelled
 

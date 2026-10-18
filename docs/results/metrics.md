@@ -385,3 +385,63 @@ third decimal place, because the bootstrap stream is seeded from the metric name
 |---|---|---|
 | `escalation_precision` | `escalation_acted_on_rate` | The pilot plan uses "precision" for a human-judged definition (pilot plan K7: the share of escalations a coordinator reviewer judges to have been needed). This simulator quantity is the share of escalations followed by any pathway action within 5 working days, which is not that. Label: "Escalation acted-on rate (within 5 working days)". |
 | `metrics.escalation_precision_window_working_days` | (not renamed) | The parameter that sets the five-working-day window keeps its key, with a note in `simulator/params.yaml`: renaming it would change the parameter hash that the risk model (`api/app/risk/model.json`) records and force a retrain outside this ticket. |
+
+## 11. Human effort (ticket B17)
+
+The quantities in the "Human effort" section of [`results.md`](results.md) and under the `effort` key of [`results.json`](results.json). The code is
+`simulator/sim/effort.py`; the minutes and where they come from are in [evidence.md](../evidence.md) section 11. They are computed from the event
+logs after the run, so they change no outcome in sections 2 to 8. They sit under `effort`, not under `arms`, so the test that matches section
+headings to metric keys does not cover them; `simulator/tests/test_effort.py` checks that every effort key below is defined here.
+
+**Unit and process.** One case = one positive FIT result, as everywhere. A case follows one of two *processes* whatever its arm: the **manual** process (today's: every
+step done by a person) or the **orchestrated** process (the engine acts, a person decides). The baseline arm is all manual; in the orchestrated arm the cases
+within `orchestration.programme_reach` are orchestrated and the rest are manual, exactly as in the engine. The `effort.scenarios.<scenario>.all` block is the programme level (every case);
+`effort.scenarios.<scenario>.in_reach` counts only the cases within the reach (in the baseline column, the same patients under today's process).
+
+**Human action.** An event, or a piece of chasing, that costs a person minutes. Each event type maps to a human action, an automated step or nothing
+for each process (`effort.model.event_map`). Minutes per human action, with a low and a high end, a role (coordinator, owner clinician, specialist), a grade
+(sourced, sourced-adjacent, assumed) and a basis are `effort.model.actions`. The human steps of the orchestrated process are: accept an escalation (supervisor or coordinator, also a watchdog
+flag), the phone call that follows it, approve a drafted message, sign the closure, handle an exhausted reroute list or a lost case, plus what automation cannot do (record that
+a patient called back, review a consent withdrawal, decide on a transfer, rebook, record a corrected contact, review a reopened case, and the specialist's accept or reject of a referral). Automated
+steps (`effort.model.automated_steps`) cost no human minutes and are only counted.
+
+**Chasing.** In the manual process a coordinator chases when something is overdue and no event records it: one attempt for each full `interval_days` (14) that a patient has not
+answered an outreach, a referral has not been answered, or a colonoscopy has not been recorded since the appointment date, up to `max_attempts` (3) per waiting episode. The simulator gives the baseline no
+outcome for this work (its response and delay parameters already describe today's chasing), so it is an effort only. Variants `none` and `intensive` (5 attempts every 7 days) are in `effort.model.chase`.
+
+### Human minutes per case: minutes_per_case
+
+Total human minutes of all human actions (events plus chasing) divided by the cases of the arm. Per role: minutes_per_case.coordinator, minutes_per_case.owner_clinician, minutes_per_case.specialist
+(`minutes_per_case.<role>`). By grade: minutes_per_case.status.sourced, minutes_per_case.status.sourced-adjacent, minutes_per_case.status.assumed
+(`minutes_per_case.status.<grade>`): the minutes that rest on figures of that grade, so they sum to `minutes_per_case`. Reported as a mean over replications with a bootstrap 95% CI.
+
+### Human minutes per closed case: minutes_per_closed_case
+
+Total human minutes divided by the cases that have at least one `close` event in the follow-up (the same cases as `closed_share`). A case that never closes still costs minutes, so an arm that
+closes fewer cases pays more per closed case.
+
+### Human actions per case: human_actions_per_case, automated_actions_per_case
+
+The number of human actions (events and chasing attempts) and of automated steps per case. An escalation that the engine emits and a person accepts counts as one automated step and one human action.
+
+### Automation share: automation_share
+
+Automated steps divided by all steps (automated steps plus human actions) of the arm. It is 0 for the baseline by construction. It counts steps, not minutes; the orchestrated arm takes
+many more steps than the baseline because it does work (reminders, escalation, bounce) that today's process never does.
+
+### Labour reduction: labour_reduction, labour_reduction_per_closed_case, human_actions_reduction
+
+For each replication, 1 - orchestrated / baseline of `minutes_per_case`, of `minutes_per_closed_case` and of `human_actions_per_case` (same patients, same random numbers in both arms), then the
+mean and percentile bootstrap 95% CI over replications. Per role: labour_reduction.coordinator, labour_reduction.owner_clinician, labour_reduction.specialist (`labour_reduction.<role>`);
+negative where the orchestrated arm needs more of that role's time (the specialist reviews more referrals because fewer are silently lost). The 40% target is met in a scenario when the lower end of the CI of `labour_reduction` is above 40%.
+
+### Robustness and the minutes sweep
+
+`effort.scenarios.<scenario>.robustness` recomputes `labour_reduction` (point estimate over replications) with the baseline's chasing not costed, with a harder chase, with the specialist left out, with a person still
+recording every booking in the orchestrated arm, without the draft-approval charge, with every minutes figure at its low or its high end, and in the least favourable corner (baseline-only actions at their low
+end, orchestrated-only actions at their high end). `effort.scenarios.<scenario>.tornado` moves each minutes figure alone to its low and high end. Both are exact (counts are stored, minutes applied afterwards), not simulated again.
+
+### Not in the count
+
+Patients' time, the endoscopy unit's procedure and reception work, training, management and IT time, queueing and shift patterns (no capacity model, see the capacity caveat), and the work
+that today's process never does (listed in `effort.model.never_done_in_baseline`).

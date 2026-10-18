@@ -2200,12 +2200,2340 @@
     "time_to_ownership_median": null,
     "time_to_ownership_p90": null
   },
+  "effort": {
+    "model": {
+      "actions": [
+        {
+          "chase": false,
+          "high": 14.0,
+          "id": "M_RESULT_LOOKUP",
+          "label": "Look up the positive result, review the chart, open a work item",
+          "low": 3.0,
+          "minutes": 5.0,
+          "process": "manual",
+          "role": "coordinator",
+          "short": "result look-up and chart review",
+          "source": "assumed: 5 minutes; E11-1 'reading medical history/report' (14.0 minutes, complex-care coordinators) is the upper bound",
+          "status": "assumed"
+        },
+        {
+          "chase": false,
+          "high": 4.0,
+          "id": "M_RESULT_ACK",
+          "label": "Acknowledge the result in the record",
+          "low": 1.0,
+          "minutes": 2.0,
+          "process": "manual",
+          "role": "coordinator",
+          "short": "result acknowledgement",
+          "source": "assumed: no time study of result acknowledgement found",
+          "status": "assumed"
+        },
+        {
+          "chase": false,
+          "high": 10.3,
+          "id": "M_HANDOVER",
+          "label": "Decide who follows the case up and hand it over (no named owner today)",
+          "low": 4.75,
+          "minutes": 9.5,
+          "process": "manual",
+          "role": "coordinator",
+          "short": "hand-over to a clinician",
+          "source": "E11-1 'handover' 9.5 minutes (SD 4.1), 'prioritising patients' 10.3; care coordinators in a hospital-community service",
+          "status": "sourced-adjacent"
+        },
+        {
+          "chase": false,
+          "high": 12.1,
+          "id": "M_PHONE_ATTEMPT",
+          "label": "Phone the patient (one attempt, with documentation)",
+          "low": 3.9,
+          "minutes": 7.2,
+          "process": "manual",
+          "role": "coordinator",
+          "short": "phone attempts",
+          "source": "E11-1 'follow-up call after discharge' 7.2 minutes (SD 3.5); E11-2: 15.5 minutes on calls over a typical 4 calls = 3.9 (low), 48.5 total per patient / 4 = 12.1 (high)",
+          "status": "sourced-adjacent"
+        },
+        {
+          "chase": false,
+          "high": 3.0,
+          "id": "M_SMS_ATTEMPT",
+          "label": "Send the patient an SMS or WhatsApp message by hand",
+          "low": 1.0,
+          "minutes": 1.5,
+          "process": "manual",
+          "role": "coordinator",
+          "short": "manual SMS messages",
+          "source": "assumed: 1.5 minutes; E11-5 assumed 1 minute per reminder call (the floor)",
+          "status": "assumed"
+        },
+        {
+          "chase": false,
+          "high": 8.0,
+          "id": "M_LETTER",
+          "label": "Prepare and post a letter",
+          "low": 2.0,
+          "minutes": 4.0,
+          "process": "manual",
+          "role": "coordinator",
+          "short": "letters",
+          "source": "assumed: 4 minutes; E11-4 reports 17.5 minutes to compile and mail materials per woman over 18 months (number of mailings not reported)",
+          "status": "assumed"
+        },
+        {
+          "chase": false,
+          "high": 18.6,
+          "id": "M_REFERRAL_SEND",
+          "label": "Send or fax the referral to the endoscopy service",
+          "low": 6.2,
+          "minutes": 12.4,
+          "process": "manual",
+          "role": "coordinator",
+          "short": "sending referrals",
+          "source": "E11-1 'referral - external' 12.4 minutes (SD 9.1, n=102); E11-6 about 12 minutes per manual referral corroborates (secondary report)",
+          "status": "sourced-adjacent"
+        },
+        {
+          "chase": false,
+          "high": 10.0,
+          "id": "M_COMPLETION_RECORD",
+          "label": "Record that the colonoscopy happened (find and file the report)",
+          "low": 2.5,
+          "minutes": 5.0,
+          "process": "manual",
+          "role": "coordinator",
+          "short": "recording completion",
+          "source": "assumed: 5 minutes",
+          "status": "assumed"
+        },
+        {
+          "chase": true,
+          "high": 12.1,
+          "id": "M_CHASE_PATIENT",
+          "label": "Chase a patient who has not answered (phone call, up to N attempts)",
+          "low": 3.9,
+          "minutes": 7.2,
+          "process": "manual",
+          "role": "coordinator",
+          "short": "chasing patients",
+          "source": "as M_PHONE_ATTEMPT: E11-1 follow-up call 7.2 minutes; E11-2 3.9 to 12.1 per call",
+          "status": "sourced-adjacent"
+        },
+        {
+          "chase": true,
+          "high": 12.2,
+          "id": "M_CHASE_SPECIALIST",
+          "label": "Chase the specialist's office that has not replied (up to N attempts)",
+          "low": 4.0,
+          "minutes": 8.1,
+          "process": "manual",
+          "role": "coordinator",
+          "short": "chasing specialists",
+          "source": "E11-1 'contracting/liaising with provider - external' 8.1 minutes (SD 11.7, n=192)",
+          "status": "sourced-adjacent"
+        },
+        {
+          "chase": true,
+          "high": 10.0,
+          "id": "M_CHASE_COMPLETION",
+          "label": "Check whether an overdue colonoscopy happened (up to N attempts)",
+          "low": 2.5,
+          "minutes": 5.0,
+          "process": "manual",
+          "role": "coordinator",
+          "short": "chasing overdue colonoscopies",
+          "source": "assumed: 5 minutes",
+          "status": "assumed"
+        },
+        {
+          "chase": false,
+          "high": 14.0,
+          "id": "M_DUPLICATE_ITEM",
+          "label": "Process a duplicate result from a second lab as a new work item",
+          "low": 3.0,
+          "minutes": 5.0,
+          "process": "manual",
+          "role": "coordinator",
+          "short": "duplicate results",
+          "source": "assumed: same as M_RESULT_LOOKUP",
+          "status": "assumed"
+        },
+        {
+          "chase": false,
+          "high": 10.0,
+          "id": "M_CLINICIAN_REVIEW",
+          "label": "Clinician reads the colonoscopy report and documents the finding",
+          "low": 3.0,
+          "minutes": 5.0,
+          "process": "manual",
+          "role": "owner_clinician",
+          "short": "clinician review of reports",
+          "source": "assumed: 5 minutes",
+          "status": "assumed"
+        },
+        {
+          "chase": false,
+          "high": 6.0,
+          "id": "M_CLOSE_FILE",
+          "label": "Clinician files the closure",
+          "low": 2.0,
+          "minutes": 3.0,
+          "process": "manual",
+          "role": "owner_clinician",
+          "short": "filing closures",
+          "source": "assumed: 3 minutes",
+          "status": "assumed"
+        },
+        {
+          "chase": false,
+          "high": 4.0,
+          "id": "X_RECORD_CONTACT",
+          "label": "Record that the patient called back or walked in",
+          "low": 1.0,
+          "minutes": 2.0,
+          "process": "both",
+          "role": "coordinator",
+          "short": "recording call-backs",
+          "source": "assumed: 2 minutes",
+          "status": "assumed"
+        },
+        {
+          "chase": false,
+          "high": 15.1,
+          "id": "X_BOOK_APPT",
+          "label": "Book or rebook the colonoscopy appointment",
+          "low": 4.0,
+          "minutes": 8.0,
+          "process": "both",
+          "role": "coordinator",
+          "short": "booking and rebooking",
+          "source": "E11-4 'scheduling appointments and sending reminders' 8.0 minutes per woman; E11-3 'scheduling or rescheduling appointments' 15.1 minutes (high)",
+          "status": "sourced-adjacent"
+        },
+        {
+          "chase": false,
+          "high": 15.7,
+          "id": "X_SPECIALIST_REVIEW",
+          "label": "Specialist reviews a referral and accepts or rejects it",
+          "low": 4.75,
+          "minutes": 9.5,
+          "process": "both",
+          "role": "specialist",
+          "short": "specialist review of referrals",
+          "source": "E11-1 'accepting/discussing referral' 9.5 minutes (SD 6.2, n=230); range is the mean plus or minus 1 SD (low halved)",
+          "status": "sourced-adjacent"
+        },
+        {
+          "chase": false,
+          "high": 10.0,
+          "id": "X_REOPEN_REVIEW",
+          "label": "Clinician reviews a late finding that reopens a closed case",
+          "low": 3.0,
+          "minutes": 5.0,
+          "process": "both",
+          "role": "owner_clinician",
+          "short": "reopened cases",
+          "source": "assumed: 5 minutes",
+          "status": "assumed"
+        },
+        {
+          "chase": false,
+          "high": 4.0,
+          "id": "O_ACCEPT_ESC_SUPERVISOR",
+          "label": "Supervisor accepts an escalation",
+          "low": 1.0,
+          "minutes": 2.0,
+          "process": "orchestrated",
+          "role": "owner_clinician",
+          "short": "supervisors accepting escalations",
+          "source": "assumed: 2 minutes to open the case, read the context and accept",
+          "status": "assumed"
+        },
+        {
+          "chase": false,
+          "high": 4.0,
+          "id": "O_ACCEPT_ESC_COORDINATOR",
+          "label": "Coordinator accepts an escalation or a watchdog flag",
+          "low": 1.0,
+          "minutes": 2.0,
+          "process": "orchestrated",
+          "role": "coordinator",
+          "short": "coordinators accepting escalations and flags",
+          "source": "assumed: 2 minutes",
+          "status": "assumed"
+        },
+        {
+          "chase": false,
+          "high": 12.1,
+          "id": "O_SUPERVISOR_CALL",
+          "label": "Supervisor phones the patient after an escalation",
+          "low": 3.9,
+          "minutes": 7.2,
+          "process": "orchestrated",
+          "role": "owner_clinician",
+          "short": "supervisor phone calls",
+          "source": "as M_PHONE_ATTEMPT: E11-1 follow-up call 7.2 minutes; E11-2 3.9 to 12.1 per call",
+          "status": "sourced-adjacent"
+        },
+        {
+          "chase": false,
+          "high": 12.1,
+          "id": "O_COORDINATOR_CALL",
+          "label": "Coordinator contacts the patient by the alternate route",
+          "low": 3.9,
+          "minutes": 7.2,
+          "process": "orchestrated",
+          "role": "coordinator",
+          "short": "coordinator alternate-route contacts",
+          "source": "as M_PHONE_ATTEMPT: E11-1 follow-up call 7.2 minutes; E11-2 3.9 to 12.1 per call",
+          "status": "sourced-adjacent"
+        },
+        {
+          "chase": false,
+          "high": 3.0,
+          "id": "O_APPROVE_DRAFT",
+          "label": "Approve a model-drafted message before it is sent",
+          "low": 1.0,
+          "minutes": 1.5,
+          "process": "orchestrated",
+          "role": "owner_clinician",
+          "short": "draft approvals",
+          "source": "assumed: 1.5 minutes. The simulator has no model drafts (every message is a pre-approved template), so one approval is charged on every human-contact message, the only non-template outreach",
+          "status": "assumed"
+        },
+        {
+          "chase": false,
+          "high": 8.0,
+          "id": "O_SIGN_CLOSURE",
+          "label": "Review the machine-prepared evidence and sign the closure",
+          "low": 3.0,
+          "minutes": 5.0,
+          "process": "orchestrated",
+          "role": "owner_clinician",
+          "short": "signing closures",
+          "source": "assumed: 5 minutes (the clinician still reads the evidence the engine attached; 8 minutes = today's review plus filing)",
+          "status": "assumed"
+        },
+        {
+          "chase": false,
+          "high": 30.0,
+          "id": "O_EXHAUSTED_REROUTE",
+          "label": "Handle an exhausted reroute list (find another service by hand)",
+          "low": 8.0,
+          "minutes": 15.0,
+          "process": "orchestrated",
+          "role": "coordinator",
+          "short": "exhausted reroute lists",
+          "source": "assumed: 15 minutes, about one external referral plus follow-up calls (E11-1 12.4 and 8.1)",
+          "status": "assumed"
+        },
+        {
+          "chase": false,
+          "high": 15.0,
+          "id": "O_LOST_REVIEW",
+          "label": "Review a case flagged lost (unreachable, declined, repeated no-show) and record the outcome",
+          "low": 4.0,
+          "minutes": 8.0,
+          "process": "orchestrated",
+          "role": "coordinator",
+          "short": "lost-case reviews",
+          "source": "assumed: 8 minutes",
+          "status": "assumed"
+        },
+        {
+          "chase": false,
+          "high": 10.0,
+          "id": "O_CONSENT_REVIEW",
+          "label": "Review a consent withdrawal",
+          "low": 3.0,
+          "minutes": 5.0,
+          "process": "orchestrated",
+          "role": "owner_clinician",
+          "short": "consent reviews",
+          "source": "assumed: 5 minutes",
+          "status": "assumed"
+        },
+        {
+          "chase": false,
+          "high": 10.0,
+          "id": "O_CONTACT_RECOVERED",
+          "label": "Find and record a corrected contact for an unreachable patient",
+          "low": 3.0,
+          "minutes": 5.0,
+          "process": "orchestrated",
+          "role": "coordinator",
+          "short": "corrected contacts",
+          "source": "assumed: 5 minutes",
+          "status": "assumed"
+        },
+        {
+          "chase": false,
+          "high": 9.5,
+          "id": "O_TRANSFER_DECISION",
+          "label": "Receiving clinician decides on a transfer of the case after a provider switch",
+          "low": 3.0,
+          "minutes": 5.0,
+          "process": "orchestrated",
+          "role": "owner_clinician",
+          "short": "transfer decisions",
+          "source": "assumed: 5 minutes; E11-1 'accepting/discussing referral' (9.5) is the upper bound",
+          "status": "assumed"
+        }
+      ],
+      "automated_steps": [
+        {
+          "id": "A_INGEST",
+          "label": "Case created from the result on ingest",
+          "step": "acknowledge on ingest"
+        },
+        {
+          "id": "A_ACK",
+          "label": "Result acknowledged on ingest",
+          "step": "acknowledge on ingest"
+        },
+        {
+          "id": "A_ASSIGN_OWNER",
+          "label": "Owner assigned automatically",
+          "step": "owner auto-assignment"
+        },
+        {
+          "id": "A_TEMPLATE_OUTREACH",
+          "label": "Pre-approved template outreach, reminder and appointment reminder sent",
+          "step": "pre-approved template outreach and reminders"
+        },
+        {
+          "id": "A_REMINDER_EMIT",
+          "label": "Reminder rung emitted to the owner",
+          "step": "pre-approved template outreach and reminders"
+        },
+        {
+          "id": "A_EVIDENCE_DETECT",
+          "label": "Colonoscopy completion and its evidence detected",
+          "step": "evidence detection"
+        },
+        {
+          "id": "A_CLOSURE_PROPOSAL",
+          "label": "Closure proposed to the clinician",
+          "step": "closure proposal"
+        },
+        {
+          "id": "A_BOOKING_CONFIRMED",
+          "label": "Appointment recorded from the unit's acceptance",
+          "step": "referral acceptance carries the appointment"
+        },
+        {
+          "id": "A_REFERRAL_REROUTE",
+          "label": "Referral sent and rerouted down the provider list",
+          "step": "reroute down a provider list"
+        },
+        {
+          "id": "A_BOUNCE",
+          "label": "Unanswered referral bounced",
+          "step": "bounce"
+        },
+        {
+          "id": "A_OVERDUE",
+          "label": "Overdue raised at a missed SLA or appointment",
+          "step": "overdue"
+        },
+        {
+          "id": "A_ESCALATION_EMIT",
+          "label": "Escalation, watchdog flag or lost-contact flag emitted",
+          "step": "escalation emission"
+        },
+        {
+          "id": "A_REPLY_DETECT",
+          "label": "Patient's reply to a message detected",
+          "step": "reply handling"
+        },
+        {
+          "id": "A_CONSENT_LEDGER",
+          "label": "Consent withdrawal recorded, outreach blocked",
+          "step": "consent ledger"
+        },
+        {
+          "id": "A_DELIVERY_FAIL",
+          "label": "Delivery failure detected",
+          "step": "delivery tracking"
+        },
+        {
+          "id": "A_DEDUP",
+          "label": "Duplicate result merged",
+          "step": "de-duplication"
+        },
+        {
+          "id": "A_CLAIM_GUARD",
+          "label": "Conflicting ownership claim rejected by the state machine",
+          "step": "state machine"
+        }
+      ],
+      "chase": {
+        "default": {
+          "interval_days": 14.0,
+          "max_attempts": 3
+        },
+        "intensive": {
+          "interval_days": 7.0,
+          "max_attempts": 5
+        },
+        "none": {
+          "interval_days": 14.0,
+          "max_attempts": 0
+        }
+      },
+      "chase_default": "default",
+      "effort_hash": "61da3c0996ebccec7c312722e6f6cef4b92bce18843f9626d93e5440be69204b",
+      "event_map": {
+        "accept_ownership": {
+          "manual": [
+            "M_HANDOVER"
+          ],
+          "orchestrated": [
+            "auto:A_ASSIGN_OWNER"
+          ]
+        },
+        "acknowledge": {
+          "manual": [
+            "M_RESULT_ACK"
+          ],
+          "orchestrated": [
+            "auto:A_ACK"
+          ]
+        },
+        "appointment_missed": {
+          "manual": [],
+          "orchestrated": []
+        },
+        "appointment_rebooked": {
+          "manual": [],
+          "orchestrated": [
+            "X_BOOK_APPT"
+          ]
+        },
+        "book_confirmatory": {
+          "manual": [
+            "X_BOOK_APPT"
+          ],
+          "orchestrated": [
+            "auto:A_BOOKING_CONFIRMED"
+          ]
+        },
+        "case_created": {
+          "manual": [
+            "M_RESULT_LOOKUP"
+          ],
+          "orchestrated": [
+            "auto:A_INGEST"
+          ]
+        },
+        "clinician_review": {
+          "manual": [
+            "M_CLINICIAN_REVIEW"
+          ],
+          "orchestrated": [
+            "auto:A_CLOSURE_PROPOSAL"
+          ]
+        },
+        "close": {
+          "manual": [
+            "M_CLOSE_FILE"
+          ],
+          "orchestrated": [
+            "O_SIGN_CLOSURE"
+          ]
+        },
+        "complete_confirmatory": {
+          "manual": [
+            "M_COMPLETION_RECORD"
+          ],
+          "orchestrated": [
+            "auto:A_EVIDENCE_DETECT"
+          ]
+        },
+        "conflicting_ack_rejected": {
+          "manual": [],
+          "orchestrated": [
+            "auto:A_CLAIM_GUARD"
+          ]
+        },
+        "conflicting_ack_unresolved": {
+          "manual": [],
+          "orchestrated": []
+        },
+        "consent_review_completed": {
+          "manual": [],
+          "orchestrated": [
+            "O_CONSENT_REVIEW"
+          ]
+        },
+        "consent_updated": {
+          "manual": [],
+          "orchestrated": [
+            "auto:A_CONSENT_LEDGER"
+          ]
+        },
+        "contact_patient": {
+          "manual": [],
+          "orchestrated": []
+        },
+        "contact_recovered": {
+          "manual": [],
+          "orchestrated": [
+            "O_CONTACT_RECOVERED"
+          ]
+        },
+        "delivery_failed": {
+          "manual": [],
+          "orchestrated": [
+            "auto:A_DELIVERY_FAIL"
+          ]
+        },
+        "duplicate_result_merged": {
+          "manual": [],
+          "orchestrated": [
+            "auto:A_DEDUP"
+          ]
+        },
+        "duplicate_result_received": {
+          "manual": [
+            "M_DUPLICATE_ITEM"
+          ],
+          "orchestrated": []
+        },
+        "escalated": {
+          "manual": [],
+          "orchestrated": "by payload"
+        },
+        "handoff_accepted": {
+          "manual": "by payload",
+          "orchestrated": "by payload"
+        },
+        "handoff_rejected": {
+          "manual": "by payload",
+          "orchestrated": "by payload"
+        },
+        "handoff_requested": {
+          "manual": [
+            "M_REFERRAL_SEND"
+          ],
+          "orchestrated": [
+            "auto:A_REFERRAL_REROUTE"
+          ]
+        },
+        "lost_contact": {
+          "manual": [],
+          "orchestrated": "by payload"
+        },
+        "message_blocked": {
+          "manual": [],
+          "orchestrated": [
+            "auto:A_CONSENT_LEDGER"
+          ]
+        },
+        "message_sent": {
+          "manual": "by payload",
+          "orchestrated": "by payload"
+        },
+        "overdue": {
+          "manual": [],
+          "orchestrated": "by payload"
+        },
+        "patient_acknowledge": {
+          "manual": [
+            "X_RECORD_CONTACT"
+          ],
+          "orchestrated": "by payload"
+        },
+        "provider_switched": {
+          "manual": [],
+          "orchestrated": []
+        },
+        "reminder_sent": {
+          "manual": [],
+          "orchestrated": [
+            "auto:A_REMINDER_EMIT"
+          ]
+        },
+        "reopened": {
+          "manual": [
+            "X_REOPEN_REVIEW"
+          ],
+          "orchestrated": [
+            "X_REOPEN_REVIEW"
+          ]
+        },
+        "watchdog_flagged": {
+          "manual": [],
+          "orchestrated": [
+            "auto:A_ESCALATION_EMIT",
+            "O_ACCEPT_ESC_COORDINATOR"
+          ]
+        }
+      },
+      "never_done_in_baseline": [
+        {
+          "automated_by": "A_TEMPLATE_OUTREACH",
+          "work": "Appointment reminders before the colonoscopy"
+        },
+        {
+          "automated_by": "A_OVERDUE",
+          "work": "Noticing a missed appointment and rebooking it"
+        },
+        {
+          "automated_by": "A_ESCALATION_EMIT",
+          "work": "Overdue tracking against working-day SLAs and the escalation ladder"
+        },
+        {
+          "automated_by": "A_REFERRAL_REROUTE",
+          "work": "Noticing a rejected referral and rerouting it (only a share of rejections is noticed today)"
+        },
+        {
+          "automated_by": "A_CONSENT_LEDGER",
+          "work": "Recording a consent withdrawal and stopping outreach"
+        },
+        {
+          "automated_by": "A_DEDUP",
+          "work": "Merging duplicate results and resolving conflicting ownership claims"
+        },
+        {
+          "automated_by": "A_ESCALATION_EMIT",
+          "work": "Surfacing a lost case to a human"
+        }
+      ],
+      "sources": {
+        "E11-1": "Heslop, Power, Cranwell, Hum Resour Health 2014;12:52, care coordinators' two-day activity log, 3,520 functions (Western Health, Melbourne)",
+        "E11-2": "O'Leary et al., Prev Med Rep 2023;34:102211, centralized navigation after abnormal mailed FIT, North Carolina FQHCs, navigator call logs (26 patients)",
+        "E11-3": "Rohan et al., JNCCN 2016;14(11):1371-8, navigators at Boston Medical Center, 404 patients, time per patient and per activity",
+        "E11-4": "Robinson et al., J Ambul Care Manage 2010;33(2):143-54, prevention care managers' timed phone support, NYC community health centers (38 women)",
+        "E11-5": "Hashim, Franks, Fiscella, J Am Board Fam Pract 2001;14:193-6, reminder calls (1 minute per call is the authors' assumption)",
+        "E11-6": "UCSF Pediatric Access Center referral time-and-motion, about 12 minutes per manual referral (secondary report only, primary not located)"
+      }
+    },
+    "scenarios": {
+      "literature_anchored": {
+        "all": {
+          "actions_per_case": {
+            "baseline": {
+              "M_CHASE_COMPLETION": 0.184225,
+              "M_CHASE_PATIENT": 1.199025,
+              "M_CHASE_SPECIALIST": 0.086875,
+              "M_CLINICIAN_REVIEW": 0.553475,
+              "M_CLOSE_FILE": 0.544325,
+              "M_COMPLETION_RECORD": 0.562625,
+              "M_DUPLICATE_ITEM": 0.059775,
+              "M_HANDOVER": 0.968225,
+              "M_LETTER": 0.477525,
+              "M_REFERRAL_SEND": 0.67205,
+              "M_RESULT_ACK": 0.98415,
+              "M_RESULT_LOOKUP": 1.0,
+              "M_SMS_ATTEMPT": 0.487625,
+              "X_BOOK_APPT": 0.60925,
+              "X_RECORD_CONTACT": 0.668175,
+              "X_REOPEN_REVIEW": 0.015875,
+              "X_SPECIALIST_REVIEW": 0.64335
+            },
+            "orchestrated": {
+              "M_CHASE_COMPLETION": 0.08355,
+              "M_CHASE_PATIENT": 0.544075,
+              "M_CHASE_SPECIALIST": 0.04215,
+              "M_CLINICIAN_REVIEW": 0.249675,
+              "M_CLOSE_FILE": 0.245425,
+              "M_COMPLETION_RECORD": 0.2539,
+              "M_DUPLICATE_ITEM": 0.02765,
+              "M_HANDOVER": 0.438425,
+              "M_LETTER": 0.21565,
+              "M_REFERRAL_SEND": 0.3039,
+              "M_RESULT_ACK": 0.44525,
+              "M_RESULT_LOOKUP": 0.452725,
+              "M_SMS_ATTEMPT": 0.22105,
+              "O_ACCEPT_ESC_COORDINATOR": 1.021125,
+              "O_ACCEPT_ESC_SUPERVISOR": 0.770525,
+              "O_APPROVE_DRAFT": 0.82575,
+              "O_CONSENT_REVIEW": 0.0178,
+              "O_CONTACT_RECOVERED": 0.036825,
+              "O_COORDINATOR_CALL": 0.607075,
+              "O_EXHAUSTED_REROUTE": 0.02755,
+              "O_LOST_REVIEW": 0.10405,
+              "O_SIGN_CLOSURE": 0.437875,
+              "O_SUPERVISOR_CALL": 0.218675,
+              "O_TRANSFER_DECISION": 0.015,
+              "X_BOOK_APPT": 0.327625,
+              "X_RECORD_CONTACT": 0.30795,
+              "X_REOPEN_REVIEW": 0.019875,
+              "X_SPECIALIST_REVIEW": 0.768875,
+              "auto:A_ACK": 0.547175,
+              "auto:A_ASSIGN_OWNER": 0.54705,
+              "auto:A_BOOKING_CONFIRMED": 0.45355,
+              "auto:A_BOUNCE": 0.3284,
+              "auto:A_CLAIM_GUARD": 0.0217,
+              "auto:A_CLOSURE_PROPOSAL": 0.438125,
+              "auto:A_CONSENT_LEDGER": 0.079,
+              "auto:A_DEDUP": 0.03215,
+              "auto:A_DELIVERY_FAIL": 0.0859,
+              "auto:A_ESCALATION_EMIT": 1.92325,
+              "auto:A_EVIDENCE_DETECT": 0.43835,
+              "auto:A_INGEST": 0.547275,
+              "auto:A_OVERDUE": 2.2107,
+              "auto:A_REFERRAL_REROUTE": 0.91975,
+              "auto:A_REMINDER_EMIT": 2.124175,
+              "auto:A_REPLY_DETECT": 0.47755,
+              "auto:A_TEMPLATE_OUTREACH": 1.89095
+            }
+          },
+          "arms": {
+            "baseline": {
+              "automated_actions_per_case": {
+                "ci_high": 0.0,
+                "ci_low": 0.0,
+                "mean": 0.0,
+                "n_reps": 20,
+                "of_reps": 20
+              },
+              "automation_share": {
+                "ci_high": 0.0,
+                "ci_low": 0.0,
+                "mean": 0.0,
+                "n_reps": 20,
+                "of_reps": 20
+              },
+              "human_actions_per_case": {
+                "ci_high": 9.75515,
+                "ci_low": 9.676862,
+                "mean": 9.71655,
+                "n_reps": 20,
+                "of_reps": 20
+              },
+              "minutes_per_case": {
+                "ci_high": 57.539017,
+                "ci_low": 57.064085,
+                "mean": 57.313088,
+                "n_reps": 20,
+                "of_reps": 20
+              },
+              "minutes_per_case.coordinator": {
+                "ci_high": 46.873557,
+                "ci_low": 46.549529,
+                "mean": 46.721537,
+                "n_reps": 20,
+                "of_reps": 20
+              },
+              "minutes_per_case.owner_clinician": {
+                "ci_high": 4.531873,
+                "ci_low": 4.426149,
+                "mean": 4.479725,
+                "n_reps": 20,
+                "of_reps": 20
+              },
+              "minutes_per_case.specialist": {
+                "ci_high": 6.172388,
+                "ci_low": 6.044132,
+                "mean": 6.111825,
+                "n_reps": 20,
+                "of_reps": 20
+              },
+              "minutes_per_case.status.assumed": {
+                "ci_high": 19.569598,
+                "ci_low": 19.350591,
+                "mean": 19.459038,
+                "n_reps": 20,
+                "of_reps": 20
+              },
+              "minutes_per_case.status.sourced": {
+                "ci_high": 0.0,
+                "ci_low": 0.0,
+                "mean": 0.0,
+                "n_reps": 20,
+                "of_reps": 20
+              },
+              "minutes_per_case.status.sourced-adjacent": {
+                "ci_high": 38.0051,
+                "ci_low": 37.696977,
+                "mean": 37.85405,
+                "n_reps": 20,
+                "of_reps": 20
+              },
+              "minutes_per_closed_case": {
+                "ci_high": 108.255553,
+                "ci_low": 106.506588,
+                "mean": 107.357052,
+                "n_reps": 20,
+                "of_reps": 20
+              }
+            },
+            "orchestrated": {
+              "automated_actions_per_case": {
+                "ci_high": 13.177784,
+                "ci_low": 12.950622,
+                "mean": 13.06505,
+                "n_reps": 20,
+                "of_reps": 20
+              },
+              "automation_share": {
+                "ci_high": 0.59381,
+                "ci_low": 0.588845,
+                "mean": 0.591291,
+                "n_reps": 20,
+                "of_reps": 20
+              },
+              "human_actions_per_case": {
+                "ci_high": 9.103476,
+                "ci_low": 8.964114,
+                "mean": 9.03,
+                "n_reps": 20,
+                "of_reps": 20
+              },
+              "minutes_per_case": {
+                "ci_high": 45.816886,
+                "ci_low": 45.282703,
+                "mean": 45.541665,
+                "n_reps": 20,
+                "of_reps": 20
+              },
+              "minutes_per_case.coordinator": {
+                "ci_high": 29.679808,
+                "ci_low": 29.204243,
+                "mean": 29.445817,
+                "n_reps": 20,
+                "of_reps": 20
+              },
+              "minutes_per_case.owner_clinician": {
+                "ci_high": 8.868469,
+                "ci_low": 8.717951,
+                "mean": 8.791535,
+                "n_reps": 20,
+                "of_reps": 20
+              },
+              "minutes_per_case.specialist": {
+                "ci_high": 7.366068,
+                "ci_low": 7.241844,
+                "mean": 7.304312,
+                "n_reps": 20,
+                "of_reps": 20
+              },
+              "minutes_per_case.status.assumed": {
+                "ci_high": 17.580294,
+                "ci_low": 17.383193,
+                "mean": 17.4788,
+                "n_reps": 20,
+                "of_reps": 20
+              },
+              "minutes_per_case.status.sourced": {
+                "ci_high": 0.0,
+                "ci_low": 0.0,
+                "mean": 0.0,
+                "n_reps": 20,
+                "of_reps": 20
+              },
+              "minutes_per_case.status.sourced-adjacent": {
+                "ci_high": 28.236412,
+                "ci_low": 27.866143,
+                "mean": 28.062865,
+                "n_reps": 20,
+                "of_reps": 20
+              },
+              "minutes_per_closed_case": {
+                "ci_high": 68.749415,
+                "ci_low": 67.296601,
+                "mean": 68.0216,
+                "n_reps": 20,
+                "of_reps": 20
+              }
+            }
+          },
+          "reduction": {
+            "human_actions_reduction": {
+              "ci_high": 0.079328,
+              "ci_low": 0.060936,
+              "mean": 0.070562,
+              "n_reps": 20,
+              "of_reps": 20
+            },
+            "labour_reduction": {
+              "ci_high": 0.210078,
+              "ci_low": 0.199581,
+              "mean": 0.205331,
+              "n_reps": 20,
+              "of_reps": 20
+            },
+            "labour_reduction.coordinator": {
+              "ci_high": 0.375007,
+              "ci_low": 0.36451,
+              "mean": 0.369739,
+              "n_reps": 20,
+              "of_reps": 20
+            },
+            "labour_reduction.owner_clinician": {
+              "ci_high": -0.933723,
+              "ci_low": -0.995784,
+              "mean": -0.964125,
+              "n_reps": 20,
+              "of_reps": 20
+            },
+            "labour_reduction.specialist": {
+              "ci_high": -0.188588,
+              "ci_low": -0.202166,
+              "mean": -0.195335,
+              "n_reps": 20,
+              "of_reps": 20
+            },
+            "labour_reduction_per_closed_case": {
+              "ci_high": 0.371886,
+              "ci_low": 0.360577,
+              "mean": 0.366346,
+              "n_reps": 20,
+              "of_reps": 20
+            }
+          }
+        },
+        "in_reach": {
+          "actions_per_case": {
+            "baseline": {
+              "M_CHASE_COMPLETION": 0.183957,
+              "M_CHASE_PATIENT": 1.196748,
+              "M_CHASE_SPECIALIST": 0.081723,
+              "M_CLINICIAN_REVIEW": 0.555114,
+              "M_CLOSE_FILE": 0.546161,
+              "M_COMPLETION_RECORD": 0.564113,
+              "M_DUPLICATE_ITEM": 0.0587,
+              "M_HANDOVER": 0.968069,
+              "M_LETTER": 0.478507,
+              "M_REFERRAL_SEND": 0.672697,
+              "M_RESULT_ACK": 0.984697,
+              "M_RESULT_LOOKUP": 1.0,
+              "M_SMS_ATTEMPT": 0.487095,
+              "X_BOOK_APPT": 0.610525,
+              "X_RECORD_CONTACT": 0.668174,
+              "X_REOPEN_REVIEW": 0.016811,
+              "X_SPECIALIST_REVIEW": 0.645653
+            },
+            "orchestrated": {
+              "O_ACCEPT_ESC_COORDINATOR": 1.865835,
+              "O_ACCEPT_ESC_SUPERVISOR": 1.40793,
+              "O_APPROVE_DRAFT": 1.508839,
+              "O_CONSENT_REVIEW": 0.032525,
+              "O_CONTACT_RECOVERED": 0.067288,
+              "O_COORDINATOR_CALL": 1.109269,
+              "O_EXHAUSTED_REROUTE": 0.05034,
+              "O_LOST_REVIEW": 0.190124,
+              "O_SIGN_CLOSURE": 0.8001,
+              "O_SUPERVISOR_CALL": 0.399571,
+              "O_TRANSFER_DECISION": 0.027409,
+              "X_BOOK_APPT": 0.09593,
+              "X_RECORD_CONTACT": 0.009958,
+              "X_REOPEN_REVIEW": 0.02412,
+              "X_SPECIALIST_REVIEW": 0.875017,
+              "auto:A_ACK": 0.999817,
+              "auto:A_ASSIGN_OWNER": 0.999589,
+              "auto:A_BOOKING_CONFIRMED": 0.828742,
+              "auto:A_BOUNCE": 0.600064,
+              "auto:A_CLAIM_GUARD": 0.039651,
+              "auto:A_CLOSURE_PROPOSAL": 0.800557,
+              "auto:A_CONSENT_LEDGER": 0.144352,
+              "auto:A_DEDUP": 0.058746,
+              "auto:A_DELIVERY_FAIL": 0.156959,
+              "auto:A_ESCALATION_EMIT": 3.51423,
+              "auto:A_EVIDENCE_DETECT": 0.800968,
+              "auto:A_INGEST": 1.0,
+              "auto:A_OVERDUE": 4.039468,
+              "auto:A_REFERRAL_REROUTE": 1.680599,
+              "auto:A_REMINDER_EMIT": 3.881367,
+              "auto:A_REPLY_DETECT": 0.872596,
+              "auto:A_TEMPLATE_OUTREACH": 3.45521
+            }
+          },
+          "arms": {
+            "baseline": {
+              "automated_actions_per_case": {
+                "ci_high": 0.0,
+                "ci_low": 0.0,
+                "mean": 0.0,
+                "n_reps": 20,
+                "of_reps": 20
+              },
+              "automation_share": {
+                "ci_high": 0.0,
+                "ci_low": 0.0,
+                "mean": 0.0,
+                "n_reps": 20,
+                "of_reps": 20
+              },
+              "human_actions_per_case": {
+                "ci_high": 9.758484,
+                "ci_low": 9.670639,
+                "mean": 9.718848,
+                "n_reps": 20,
+                "of_reps": 20
+              },
+              "minutes_per_case": {
+                "ci_high": 57.571507,
+                "ci_low": 57.021681,
+                "mean": 57.317692,
+                "n_reps": 20,
+                "of_reps": 20
+              },
+              "minutes_per_case.coordinator": {
+                "ci_high": 46.887228,
+                "ci_low": 46.47186,
+                "mean": 46.685322,
+                "n_reps": 20,
+                "of_reps": 20
+              },
+              "minutes_per_case.owner_clinician": {
+                "ci_high": 4.555389,
+                "ci_low": 4.437092,
+                "mean": 4.498455,
+                "n_reps": 20,
+                "of_reps": 20
+              },
+              "minutes_per_case.specialist": {
+                "ci_high": 6.184983,
+                "ci_low": 6.075988,
+                "mean": 6.133915,
+                "n_reps": 20,
+                "of_reps": 20
+              },
+              "minutes_per_case.status.assumed": {
+                "ci_high": 19.578575,
+                "ci_low": 19.367869,
+                "mean": 19.483016,
+                "n_reps": 20,
+                "of_reps": 20
+              },
+              "minutes_per_case.status.sourced": {
+                "ci_high": 0.0,
+                "ci_low": 0.0,
+                "mean": 0.0,
+                "n_reps": 20,
+                "of_reps": 20
+              },
+              "minutes_per_case.status.sourced-adjacent": {
+                "ci_high": 38.040842,
+                "ci_low": 37.633222,
+                "mean": 37.834676,
+                "n_reps": 20,
+                "of_reps": 20
+              },
+              "minutes_per_closed_case": {
+                "ci_high": 108.275534,
+                "ci_low": 106.050746,
+                "mean": 107.093117,
+                "n_reps": 20,
+                "of_reps": 20
+              }
+            },
+            "orchestrated": {
+              "automated_actions_per_case": {
+                "ci_high": 23.952694,
+                "ci_low": 23.800954,
+                "mean": 23.87398,
+                "n_reps": 20,
+                "of_reps": 20
+              },
+              "automation_share": {
+                "ci_high": 0.741516,
+                "ci_low": 0.735233,
+                "mean": 0.738378,
+                "n_reps": 20,
+                "of_reps": 20
+              },
+              "human_actions_per_case": {
+                "ci_high": 8.603014,
+                "ci_low": 8.324981,
+                "mean": 8.462135,
+                "n_reps": 20,
+                "of_reps": 20
+              },
+              "minutes_per_case": {
+                "ci_high": 36.247472,
+                "ci_low": 35.357744,
+                "mean": 35.799905,
+                "n_reps": 20,
+                "of_reps": 20
+              },
+              "minutes_per_case.coordinator": {
+                "ci_high": 15.535594,
+                "ci_low": 14.681198,
+                "mean": 15.110475,
+                "n_reps": 20,
+                "of_reps": 20
+              },
+              "minutes_per_case.owner_clinician": {
+                "ci_high": 12.489644,
+                "ci_low": 12.25606,
+                "mean": 12.375691,
+                "n_reps": 20,
+                "of_reps": 20
+              },
+              "minutes_per_case.specialist": {
+                "ci_high": 8.382423,
+                "ci_low": 8.254545,
+                "mean": 8.313739,
+                "n_reps": 20,
+                "of_reps": 20
+              },
+              "minutes_per_case.status.assumed": {
+                "ci_high": 16.026986,
+                "ci_low": 15.702273,
+                "mean": 15.862059,
+                "n_reps": 20,
+                "of_reps": 20
+              },
+              "minutes_per_case.status.sourced": {
+                "ci_high": 0.0,
+                "ci_low": 0.0,
+                "mean": 0.0,
+                "n_reps": 20,
+                "of_reps": 20
+              },
+              "minutes_per_case.status.sourced-adjacent": {
+                "ci_high": 20.268017,
+                "ci_low": 19.615145,
+                "mean": 19.937847,
+                "n_reps": 20,
+                "of_reps": 20
+              },
+              "minutes_per_closed_case": {
+                "ci_high": 46.590237,
+                "ci_low": 44.866355,
+                "mean": 45.722215,
+                "n_reps": 20,
+                "of_reps": 20
+              }
+            }
+          },
+          "reduction": {
+            "human_actions_reduction": {
+              "ci_high": 0.144597,
+              "ci_low": 0.112904,
+              "mean": 0.129115,
+              "n_reps": 20,
+              "of_reps": 20
+            },
+            "labour_reduction": {
+              "ci_high": 0.384502,
+              "ci_low": 0.365292,
+              "mean": 0.37528,
+              "n_reps": 20,
+              "of_reps": 20
+            },
+            "labour_reduction.coordinator": {
+              "ci_high": 0.685568,
+              "ci_low": 0.667235,
+              "mean": 0.67628,
+              "n_reps": 20,
+              "of_reps": 20
+            },
+            "labour_reduction.owner_clinician": {
+              "ci_high": -1.6989,
+              "ci_low": -1.812841,
+              "mean": -1.754636,
+              "n_reps": 20,
+              "of_reps": 20
+            },
+            "labour_reduction.specialist": {
+              "ci_high": -0.343145,
+              "ci_low": -0.369731,
+              "mean": -0.35582,
+              "n_reps": 20,
+              "of_reps": 20
+            },
+            "labour_reduction_per_closed_case": {
+              "ci_high": 0.580438,
+              "ci_low": 0.565638,
+              "mean": 0.572999,
+              "n_reps": 20,
+              "of_reps": 20
+            }
+          }
+        },
+        "n_reps": 20,
+        "robustness": {
+          "all_minutes_high": 0.202239,
+          "all_minutes_low": 0.198945,
+          "baseline_chasing_intensive": 0.247572,
+          "baseline_chasing_not_costed": 0.131415,
+          "coordinator_and_clinician_only": 0.253147,
+          "escalation_outreach_is_an_approved_draft_not_a_call": 0.309113,
+          "headline": 0.205331,
+          "least_favourable_minutes": -0.404055,
+          "no_draft_approval_charge": 0.226952,
+          "orchestrated_bookings_keyed_by_hand": 0.142018
+        },
+        "tornado": [
+          {
+            "action": "O_COORDINATOR_CALL",
+            "high_minutes": 12.1,
+            "low_minutes": 3.9,
+            "reduction_at_high": 0.153403,
+            "reduction_at_low": 0.240303,
+            "status": "sourced-adjacent",
+            "swing": 0.0869
+          },
+          {
+            "action": "M_RESULT_LOOKUP",
+            "high_minutes": 14.0,
+            "low_minutes": 3.0,
+            "reduction_at_high": 0.251753,
+            "reduction_at_low": 0.192962,
+            "status": "assumed",
+            "swing": 0.058791
+          },
+          {
+            "action": "M_CHASE_PATIENT",
+            "high_minutes": 12.1,
+            "low_minutes": 3.9,
+            "reduction_at_high": 0.23704,
+            "reduction_at_low": 0.180033,
+            "status": "sourced-adjacent",
+            "swing": 0.057006
+          },
+          {
+            "action": "O_ACCEPT_ESC_COORDINATOR",
+            "high_minutes": 4.0,
+            "low_minutes": 1.0,
+            "reduction_at_high": 0.169685,
+            "reduction_at_low": 0.223154,
+            "status": "assumed",
+            "swing": 0.053469
+          },
+          {
+            "action": "M_REFERRAL_SEND",
+            "high_minutes": 18.6,
+            "low_minutes": 6.2,
+            "reduction_at_high": 0.228539,
+            "reduction_at_low": 0.178485,
+            "status": "sourced-adjacent",
+            "swing": 0.050054
+          },
+          {
+            "action": "X_SPECIALIST_REVIEW",
+            "high_minutes": 15.7,
+            "low_minutes": 4.75,
+            "reduction_at_high": 0.179267,
+            "reduction_at_low": 0.227892,
+            "status": "sourced-adjacent",
+            "swing": 0.048626
+          },
+          {
+            "action": "O_ACCEPT_ESC_SUPERVISOR",
+            "high_minutes": 4.0,
+            "low_minutes": 1.0,
+            "reduction_at_high": 0.178438,
+            "reduction_at_low": 0.218777,
+            "status": "assumed",
+            "swing": 0.040339
+          },
+          {
+            "action": "O_SIGN_CLOSURE",
+            "high_minutes": 8.0,
+            "low_minutes": 3.0,
+            "reduction_at_high": 0.182408,
+            "reduction_at_low": 0.220612,
+            "status": "assumed",
+            "swing": 0.038204
+          },
+          {
+            "action": "M_HANDOVER",
+            "high_minutes": 10.3,
+            "low_minutes": 4.75,
+            "reduction_at_high": 0.209891,
+            "reduction_at_low": 0.175494,
+            "status": "sourced-adjacent",
+            "swing": 0.034396
+          },
+          {
+            "action": "O_SUPERVISOR_CALL",
+            "high_minutes": 12.1,
+            "low_minutes": 3.9,
+            "reduction_at_high": 0.186629,
+            "reduction_at_low": 0.217926,
+            "status": "sourced-adjacent",
+            "swing": 0.031297
+          },
+          {
+            "action": "X_BOOK_APPT",
+            "high_minutes": 15.1,
+            "low_minutes": 4.0,
+            "reduction_at_high": 0.223354,
+            "reduction_at_low": 0.193926,
+            "status": "sourced-adjacent",
+            "swing": 0.029428
+          },
+          {
+            "action": "O_APPROVE_DRAFT",
+            "high_minutes": 3.0,
+            "low_minutes": 1.0,
+            "reduction_at_high": 0.183709,
+            "reduction_at_low": 0.212538,
+            "status": "assumed",
+            "swing": 0.028828
+          },
+          {
+            "action": "M_COMPLETION_RECORD",
+            "high_minutes": 10.0,
+            "low_minutes": 2.5,
+            "reduction_at_high": 0.221392,
+            "reduction_at_low": 0.196694,
+            "status": "assumed",
+            "swing": 0.024698
+          },
+          {
+            "action": "M_CLINICIAN_REVIEW",
+            "high_minutes": 10.0,
+            "low_minutes": 3.0,
+            "reduction_at_high": 0.221151,
+            "reduction_at_low": 0.198567,
+            "status": "assumed",
+            "swing": 0.022584
+          },
+          {
+            "action": "O_LOST_REVIEW",
+            "high_minutes": 15.0,
+            "low_minutes": 4.0,
+            "reduction_at_high": 0.192617,
+            "reduction_at_low": 0.212596,
+            "status": "assumed",
+            "swing": 0.019978
+          },
+          {
+            "action": "M_RESULT_ACK",
+            "high_minutes": 4.0,
+            "low_minutes": 1.0,
+            "reduction_at_high": 0.216698,
+            "reduction_at_low": 0.199349,
+            "status": "assumed",
+            "swing": 0.017349
+          },
+          {
+            "action": "M_LETTER",
+            "high_minutes": 8.0,
+            "low_minutes": 2.0,
+            "reduction_at_high": 0.216394,
+            "reduction_at_low": 0.199518,
+            "status": "assumed",
+            "swing": 0.016876
+          },
+          {
+            "action": "M_CLOSE_FILE",
+            "high_minutes": 6.0,
+            "low_minutes": 2.0,
+            "reduction_at_high": 0.214852,
+            "reduction_at_low": 0.202035,
+            "status": "assumed",
+            "swing": 0.012816
+          },
+          {
+            "action": "X_RECORD_CONTACT",
+            "high_minutes": 4.0,
+            "low_minutes": 1.0,
+            "reduction_at_high": 0.212936,
+            "reduction_at_low": 0.201394,
+            "status": "assumed",
+            "swing": 0.011542
+          },
+          {
+            "action": "O_EXHAUSTED_REROUTE",
+            "high_minutes": 30.0,
+            "low_minutes": 8.0,
+            "reduction_at_high": 0.198121,
+            "reduction_at_low": 0.208695,
+            "status": "assumed",
+            "swing": 0.010575
+          },
+          {
+            "action": "M_CHASE_COMPLETION",
+            "high_minutes": 10.0,
+            "low_minutes": 2.5,
+            "reduction_at_high": 0.210727,
+            "reduction_at_low": 0.202567,
+            "status": "assumed",
+            "swing": 0.00816
+          },
+          {
+            "action": "M_SMS_ATTEMPT",
+            "high_minutes": 3.0,
+            "low_minutes": 1.0,
+            "reduction_at_high": 0.209635,
+            "reduction_at_low": 0.203871,
+            "status": "assumed",
+            "swing": 0.005763
+          },
+          {
+            "action": "O_CONTACT_RECOVERED",
+            "high_minutes": 10.0,
+            "low_minutes": 3.0,
+            "reduction_at_high": 0.202119,
+            "reduction_at_low": 0.206615,
+            "status": "assumed",
+            "swing": 0.004496
+          },
+          {
+            "action": "M_CHASE_SPECIALIST",
+            "high_minutes": 12.2,
+            "low_minutes": 4.0,
+            "reduction_at_high": 0.207244,
+            "reduction_at_low": 0.203393,
+            "status": "sourced-adjacent",
+            "swing": 0.00385
+          },
+          {
+            "action": "M_DUPLICATE_ITEM",
+            "high_minutes": 14.0,
+            "low_minutes": 3.0,
+            "reduction_at_high": 0.208424,
+            "reduction_at_low": 0.204635,
+            "status": "assumed",
+            "swing": 0.003788
+          },
+          {
+            "action": "O_CONSENT_REVIEW",
+            "high_minutes": 10.0,
+            "low_minutes": 3.0,
+            "reduction_at_high": 0.203779,
+            "reduction_at_low": 0.205951,
+            "status": "assumed",
+            "swing": 0.002173
+          },
+          {
+            "action": "O_TRANSFER_DECISION",
+            "high_minutes": 9.5,
+            "low_minutes": 3.0,
+            "reduction_at_high": 0.204154,
+            "reduction_at_low": 0.205854,
+            "status": "assumed",
+            "swing": 0.0017
+          },
+          {
+            "action": "X_REOPEN_REVIEW",
+            "high_minutes": 10.0,
+            "low_minutes": 3.0,
+            "reduction_at_high": 0.204698,
+            "reduction_at_low": 0.205584,
+            "status": "assumed",
+            "swing": 0.000887
+          },
+          {
+            "action": "M_PHONE_ATTEMPT",
+            "high_minutes": 12.1,
+            "low_minutes": 3.9,
+            "reduction_at_high": 0.205331,
+            "reduction_at_low": 0.205331,
+            "status": "sourced-adjacent",
+            "swing": 0.0
+          }
+        ],
+        "tornado_base": 0.205331
+      },
+      "upper_range": {
+        "all": {
+          "actions_per_case": {
+            "baseline": {
+              "M_CHASE_COMPLETION": 0.184225,
+              "M_CHASE_PATIENT": 1.199025,
+              "M_CHASE_SPECIALIST": 0.086875,
+              "M_CLINICIAN_REVIEW": 0.553475,
+              "M_CLOSE_FILE": 0.544325,
+              "M_COMPLETION_RECORD": 0.562625,
+              "M_DUPLICATE_ITEM": 0.059775,
+              "M_HANDOVER": 0.968225,
+              "M_LETTER": 0.477525,
+              "M_REFERRAL_SEND": 0.67205,
+              "M_RESULT_ACK": 0.98415,
+              "M_RESULT_LOOKUP": 1.0,
+              "M_SMS_ATTEMPT": 0.487625,
+              "X_BOOK_APPT": 0.60925,
+              "X_RECORD_CONTACT": 0.668175,
+              "X_REOPEN_REVIEW": 0.015875,
+              "X_SPECIALIST_REVIEW": 0.64335
+            },
+            "orchestrated": {
+              "O_ACCEPT_ESC_COORDINATOR": 1.64365,
+              "O_ACCEPT_ESC_SUPERVISOR": 1.369425,
+              "O_APPROVE_DRAFT": 1.3634,
+              "O_CONSENT_REVIEW": 0.03185,
+              "O_CONTACT_RECOVERED": 0.075275,
+              "O_COORDINATOR_CALL": 0.984925,
+              "O_EXHAUSTED_REROUTE": 0.05625,
+              "O_LOST_REVIEW": 0.16765,
+              "O_SIGN_CLOSURE": 0.815625,
+              "O_SUPERVISOR_CALL": 0.378475,
+              "O_TRANSFER_DECISION": 0.0254,
+              "X_BOOK_APPT": 0.0569,
+              "X_RECORD_CONTACT": 0.005725,
+              "X_REOPEN_REVIEW": 0.02445,
+              "X_SPECIALIST_REVIEW": 0.878175,
+              "auto:A_ACK": 1.0,
+              "auto:A_ASSIGN_OWNER": 1.0,
+              "auto:A_BOOKING_CONFIRMED": 0.83195,
+              "auto:A_BOUNCE": 0.61475,
+              "auto:A_CLAIM_GUARD": 0.0399,
+              "auto:A_CLOSURE_PROPOSAL": 0.815725,
+              "auto:A_CONSENT_LEDGER": 0.144975,
+              "auto:A_DEDUP": 0.0598,
+              "auto:A_DELIVERY_FAIL": 0.1538,
+              "auto:A_ESCALATION_EMIT": 3.236975,
+              "auto:A_EVIDENCE_DETECT": 0.815775,
+              "auto:A_INGEST": 1.0,
+              "auto:A_OVERDUE": 3.986275,
+              "auto:A_REFERRAL_REROUTE": 1.72115,
+              "auto:A_REMINDER_EMIT": 3.825875,
+              "auto:A_REPLY_DETECT": 0.88615,
+              "auto:A_TEMPLATE_OUTREACH": 3.362175
+            }
+          },
+          "arms": {
+            "baseline": {
+              "automated_actions_per_case": {
+                "ci_high": 0.0,
+                "ci_low": 0.0,
+                "mean": 0.0,
+                "n_reps": 20,
+                "of_reps": 20
+              },
+              "automation_share": {
+                "ci_high": 0.0,
+                "ci_low": 0.0,
+                "mean": 0.0,
+                "n_reps": 20,
+                "of_reps": 20
+              },
+              "human_actions_per_case": {
+                "ci_high": 9.758457,
+                "ci_low": 9.682416,
+                "mean": 9.71655,
+                "n_reps": 20,
+                "of_reps": 20
+              },
+              "minutes_per_case": {
+                "ci_high": 57.545212,
+                "ci_low": 57.075955,
+                "mean": 57.313088,
+                "n_reps": 20,
+                "of_reps": 20
+              },
+              "minutes_per_case.coordinator": {
+                "ci_high": 46.884165,
+                "ci_low": 46.567675,
+                "mean": 46.721537,
+                "n_reps": 20,
+                "of_reps": 20
+              },
+              "minutes_per_case.owner_clinician": {
+                "ci_high": 4.529836,
+                "ci_low": 4.423532,
+                "mean": 4.479725,
+                "n_reps": 20,
+                "of_reps": 20
+              },
+              "minutes_per_case.specialist": {
+                "ci_high": 6.175718,
+                "ci_low": 6.047445,
+                "mean": 6.111825,
+                "n_reps": 20,
+                "of_reps": 20
+              },
+              "minutes_per_case.status.assumed": {
+                "ci_high": 19.562188,
+                "ci_low": 19.346062,
+                "mean": 19.459038,
+                "n_reps": 20,
+                "of_reps": 20
+              },
+              "minutes_per_case.status.sourced": {
+                "ci_high": 0.0,
+                "ci_low": 0.0,
+                "mean": 0.0,
+                "n_reps": 20,
+                "of_reps": 20
+              },
+              "minutes_per_case.status.sourced-adjacent": {
+                "ci_high": 38.019006,
+                "ci_low": 37.69824,
+                "mean": 37.85405,
+                "n_reps": 20,
+                "of_reps": 20
+              },
+              "minutes_per_closed_case": {
+                "ci_high": 108.193054,
+                "ci_low": 106.459856,
+                "mean": 107.357052,
+                "n_reps": 20,
+                "of_reps": 20
+              }
+            },
+            "orchestrated": {
+              "automated_actions_per_case": {
+                "ci_high": 23.550978,
+                "ci_low": 23.448225,
+                "mean": 23.495275,
+                "n_reps": 20,
+                "of_reps": 20
+              },
+              "automation_share": {
+                "ci_high": 0.751432,
+                "ci_low": 0.746597,
+                "mean": 0.748959,
+                "n_reps": 20,
+                "of_reps": 20
+              },
+              "human_actions_per_case": {
+                "ci_high": 7.97988,
+                "ci_low": 7.766626,
+                "mean": 7.877175,
+                "n_reps": 20,
+                "of_reps": 20
+              },
+              "minutes_per_case": {
+                "ci_high": 34.109328,
+                "ci_low": 33.374153,
+                "mean": 33.744993,
+                "n_reps": 20,
+                "of_reps": 20
+              },
+              "minutes_per_case.coordinator": {
+                "ci_high": 13.731745,
+                "ci_low": 13.083959,
+                "mean": 13.406735,
+                "n_reps": 20,
+                "of_reps": 20
+              },
+              "minutes_per_case.owner_clinician": {
+                "ci_high": 12.096929,
+                "ci_low": 11.8867,
+                "mean": 11.995595,
+                "n_reps": 20,
+                "of_reps": 20
+              },
+              "minutes_per_case.specialist": {
+                "ci_high": 8.392781,
+                "ci_low": 8.293494,
+                "mean": 8.342662,
+                "n_reps": 20,
+                "of_reps": 20
+              },
+              "minutes_per_case.status.assumed": {
+                "ci_high": 15.254924,
+                "ci_low": 15.002497,
+                "mean": 15.13065,
+                "n_reps": 20,
+                "of_reps": 20
+              },
+              "minutes_per_case.status.sourced": {
+                "ci_high": 0.0,
+                "ci_low": 0.0,
+                "mean": 0.0,
+                "n_reps": 20,
+                "of_reps": 20
+              },
+              "minutes_per_case.status.sourced-adjacent": {
+                "ci_high": 18.852186,
+                "ci_low": 18.351216,
+                "mean": 18.614342,
+                "n_reps": 20,
+                "of_reps": 20
+              },
+              "minutes_per_closed_case": {
+                "ci_high": 42.873872,
+                "ci_low": 41.667482,
+                "mean": 42.27737,
+                "n_reps": 20,
+                "of_reps": 20
+              }
+            }
+          },
+          "reduction": {
+            "human_actions_reduction": {
+              "ci_high": 0.200897,
+              "ci_low": 0.17622,
+              "mean": 0.189137,
+              "n_reps": 20,
+              "of_reps": 20
+            },
+            "labour_reduction": {
+              "ci_high": 0.418744,
+              "ci_low": 0.403127,
+              "mean": 0.411102,
+              "n_reps": 20,
+              "of_reps": 20
+            },
+            "labour_reduction.coordinator": {
+              "ci_high": 0.720071,
+              "ci_low": 0.705738,
+              "mean": 0.713006,
+              "n_reps": 20,
+              "of_reps": 20
+            },
+            "labour_reduction.owner_clinician": {
+              "ci_high": -1.630856,
+              "ci_low": -1.730441,
+              "mean": -1.680541,
+              "n_reps": 20,
+              "of_reps": 20
+            },
+            "labour_reduction.specialist": {
+              "ci_high": -0.354717,
+              "ci_low": -0.377312,
+              "mean": -0.365485,
+              "n_reps": 20,
+              "of_reps": 20
+            },
+            "labour_reduction_per_closed_case": {
+              "ci_high": 0.611042,
+              "ci_low": 0.601596,
+              "mean": 0.606197,
+              "n_reps": 20,
+              "of_reps": 20
+            }
+          }
+        },
+        "in_reach": {
+          "actions_per_case": {
+            "baseline": {
+              "M_CHASE_COMPLETION": 0.184225,
+              "M_CHASE_PATIENT": 1.199025,
+              "M_CHASE_SPECIALIST": 0.086875,
+              "M_CLINICIAN_REVIEW": 0.553475,
+              "M_CLOSE_FILE": 0.544325,
+              "M_COMPLETION_RECORD": 0.562625,
+              "M_DUPLICATE_ITEM": 0.059775,
+              "M_HANDOVER": 0.968225,
+              "M_LETTER": 0.477525,
+              "M_REFERRAL_SEND": 0.67205,
+              "M_RESULT_ACK": 0.98415,
+              "M_RESULT_LOOKUP": 1.0,
+              "M_SMS_ATTEMPT": 0.487625,
+              "X_BOOK_APPT": 0.60925,
+              "X_RECORD_CONTACT": 0.668175,
+              "X_REOPEN_REVIEW": 0.015875,
+              "X_SPECIALIST_REVIEW": 0.64335
+            },
+            "orchestrated": {
+              "O_ACCEPT_ESC_COORDINATOR": 1.64365,
+              "O_ACCEPT_ESC_SUPERVISOR": 1.369425,
+              "O_APPROVE_DRAFT": 1.3634,
+              "O_CONSENT_REVIEW": 0.03185,
+              "O_CONTACT_RECOVERED": 0.075275,
+              "O_COORDINATOR_CALL": 0.984925,
+              "O_EXHAUSTED_REROUTE": 0.05625,
+              "O_LOST_REVIEW": 0.16765,
+              "O_SIGN_CLOSURE": 0.815625,
+              "O_SUPERVISOR_CALL": 0.378475,
+              "O_TRANSFER_DECISION": 0.0254,
+              "X_BOOK_APPT": 0.0569,
+              "X_RECORD_CONTACT": 0.005725,
+              "X_REOPEN_REVIEW": 0.02445,
+              "X_SPECIALIST_REVIEW": 0.878175,
+              "auto:A_ACK": 1.0,
+              "auto:A_ASSIGN_OWNER": 1.0,
+              "auto:A_BOOKING_CONFIRMED": 0.83195,
+              "auto:A_BOUNCE": 0.61475,
+              "auto:A_CLAIM_GUARD": 0.0399,
+              "auto:A_CLOSURE_PROPOSAL": 0.815725,
+              "auto:A_CONSENT_LEDGER": 0.144975,
+              "auto:A_DEDUP": 0.0598,
+              "auto:A_DELIVERY_FAIL": 0.1538,
+              "auto:A_ESCALATION_EMIT": 3.236975,
+              "auto:A_EVIDENCE_DETECT": 0.815775,
+              "auto:A_INGEST": 1.0,
+              "auto:A_OVERDUE": 3.986275,
+              "auto:A_REFERRAL_REROUTE": 1.72115,
+              "auto:A_REMINDER_EMIT": 3.825875,
+              "auto:A_REPLY_DETECT": 0.88615,
+              "auto:A_TEMPLATE_OUTREACH": 3.362175
+            }
+          },
+          "arms": {
+            "baseline": {
+              "automated_actions_per_case": {
+                "ci_high": 0.0,
+                "ci_low": 0.0,
+                "mean": 0.0,
+                "n_reps": 20,
+                "of_reps": 20
+              },
+              "automation_share": {
+                "ci_high": 0.0,
+                "ci_low": 0.0,
+                "mean": 0.0,
+                "n_reps": 20,
+                "of_reps": 20
+              },
+              "human_actions_per_case": {
+                "ci_high": 9.754888,
+                "ci_low": 9.676592,
+                "mean": 9.71655,
+                "n_reps": 20,
+                "of_reps": 20
+              },
+              "minutes_per_case": {
+                "ci_high": 57.570112,
+                "ci_low": 57.068624,
+                "mean": 57.313088,
+                "n_reps": 20,
+                "of_reps": 20
+              },
+              "minutes_per_case.coordinator": {
+                "ci_high": 46.890764,
+                "ci_low": 46.550682,
+                "mean": 46.721537,
+                "n_reps": 20,
+                "of_reps": 20
+              },
+              "minutes_per_case.owner_clinician": {
+                "ci_high": 4.532952,
+                "ci_low": 4.425738,
+                "mean": 4.479725,
+                "n_reps": 20,
+                "of_reps": 20
+              },
+              "minutes_per_case.specialist": {
+                "ci_high": 6.172886,
+                "ci_low": 6.044803,
+                "mean": 6.111825,
+                "n_reps": 20,
+                "of_reps": 20
+              },
+              "minutes_per_case.status.assumed": {
+                "ci_high": 19.560721,
+                "ci_low": 19.345743,
+                "mean": 19.459038,
+                "n_reps": 20,
+                "of_reps": 20
+              },
+              "minutes_per_case.status.sourced": {
+                "ci_high": 0.0,
+                "ci_low": 0.0,
+                "mean": 0.0,
+                "n_reps": 20,
+                "of_reps": 20
+              },
+              "minutes_per_case.status.sourced-adjacent": {
+                "ci_high": 37.998713,
+                "ci_low": 37.69542,
+                "mean": 37.85405,
+                "n_reps": 20,
+                "of_reps": 20
+              },
+              "minutes_per_closed_case": {
+                "ci_high": 108.345937,
+                "ci_low": 106.464563,
+                "mean": 107.357052,
+                "n_reps": 20,
+                "of_reps": 20
+              }
+            },
+            "orchestrated": {
+              "automated_actions_per_case": {
+                "ci_high": 23.543379,
+                "ci_low": 23.450176,
+                "mean": 23.495275,
+                "n_reps": 20,
+                "of_reps": 20
+              },
+              "automation_share": {
+                "ci_high": 0.751317,
+                "ci_low": 0.746438,
+                "mean": 0.748959,
+                "n_reps": 20,
+                "of_reps": 20
+              },
+              "human_actions_per_case": {
+                "ci_high": 7.985078,
+                "ci_low": 7.773145,
+                "mean": 7.877175,
+                "n_reps": 20,
+                "of_reps": 20
+              },
+              "minutes_per_case": {
+                "ci_high": 34.102057,
+                "ci_low": 33.361744,
+                "mean": 33.744993,
+                "n_reps": 20,
+                "of_reps": 20
+              },
+              "minutes_per_case.coordinator": {
+                "ci_high": 13.697617,
+                "ci_low": 13.085994,
+                "mean": 13.406735,
+                "n_reps": 20,
+                "of_reps": 20
+              },
+              "minutes_per_case.owner_clinician": {
+                "ci_high": 12.09839,
+                "ci_low": 11.891917,
+                "mean": 11.995595,
+                "n_reps": 20,
+                "of_reps": 20
+              },
+              "minutes_per_case.specialist": {
+                "ci_high": 8.393737,
+                "ci_low": 8.291119,
+                "mean": 8.342662,
+                "n_reps": 20,
+                "of_reps": 20
+              },
+              "minutes_per_case.status.assumed": {
+                "ci_high": 15.256746,
+                "ci_low": 15.003918,
+                "mean": 15.13065,
+                "n_reps": 20,
+                "of_reps": 20
+              },
+              "minutes_per_case.status.sourced": {
+                "ci_high": 0.0,
+                "ci_low": 0.0,
+                "mean": 0.0,
+                "n_reps": 20,
+                "of_reps": 20
+              },
+              "minutes_per_case.status.sourced-adjacent": {
+                "ci_high": 18.859133,
+                "ci_low": 18.371869,
+                "mean": 18.614342,
+                "n_reps": 20,
+                "of_reps": 20
+              },
+              "minutes_per_closed_case": {
+                "ci_high": 42.895892,
+                "ci_low": 41.618521,
+                "mean": 42.27737,
+                "n_reps": 20,
+                "of_reps": 20
+              }
+            }
+          },
+          "reduction": {
+            "human_actions_reduction": {
+              "ci_high": 0.20132,
+              "ci_low": 0.175506,
+              "mean": 0.189137,
+              "n_reps": 20,
+              "of_reps": 20
+            },
+            "labour_reduction": {
+              "ci_high": 0.418693,
+              "ci_low": 0.403535,
+              "mean": 0.411102,
+              "n_reps": 20,
+              "of_reps": 20
+            },
+            "labour_reduction.coordinator": {
+              "ci_high": 0.719678,
+              "ci_low": 0.706682,
+              "mean": 0.713006,
+              "n_reps": 20,
+              "of_reps": 20
+            },
+            "labour_reduction.owner_clinician": {
+              "ci_high": -1.635804,
+              "ci_low": -1.727599,
+              "mean": -1.680541,
+              "n_reps": 20,
+              "of_reps": 20
+            },
+            "labour_reduction.specialist": {
+              "ci_high": -0.355102,
+              "ci_low": -0.377581,
+              "mean": -0.365485,
+              "n_reps": 20,
+              "of_reps": 20
+            },
+            "labour_reduction_per_closed_case": {
+              "ci_high": 0.610843,
+              "ci_low": 0.601491,
+              "mean": 0.606197,
+              "n_reps": 20,
+              "of_reps": 20
+            }
+          }
+        },
+        "n_reps": 20,
+        "robustness": {
+          "all_minutes_high": 0.4069,
+          "all_minutes_low": 0.399738,
+          "baseline_chasing_intensive": 0.484274,
+          "baseline_chasing_not_costed": 0.282577,
+          "coordinator_and_clinician_only": 0.503781,
+          "escalation_outreach_is_an_approved_draft_not_a_call": 0.582444,
+          "headline": 0.411102,
+          "least_favourable_minutes": -0.626983,
+          "no_draft_approval_charge": 0.446798,
+          "orchestrated_bookings_keyed_by_hand": 0.294971
+        },
+        "tornado": [
+          {
+            "action": "O_COORDINATOR_CALL",
+            "high_minutes": 12.1,
+            "low_minutes": 3.9,
+            "reduction_at_high": 0.326861,
+            "reduction_at_low": 0.467836,
+            "status": "sourced-adjacent",
+            "swing": 0.140975
+          },
+          {
+            "action": "M_RESULT_LOOKUP",
+            "high_minutes": 14.0,
+            "low_minutes": 3.0,
+            "reduction_at_high": 0.491046,
+            "reduction_at_low": 0.389802,
+            "status": "assumed",
+            "swing": 0.101244
+          },
+          {
+            "action": "M_CHASE_PATIENT",
+            "high_minutes": 12.1,
+            "low_minutes": 3.9,
+            "reduction_at_high": 0.46589,
+            "reduction_at_low": 0.367388,
+            "status": "sourced-adjacent",
+            "swing": 0.098502
+          },
+          {
+            "action": "X_SPECIALIST_REVIEW",
+            "high_minutes": 15.7,
+            "low_minutes": 4.75,
+            "reduction_at_high": 0.360584,
+            "reduction_at_low": 0.454831,
+            "status": "sourced-adjacent",
+            "swing": 0.094248
+          },
+          {
+            "action": "O_ACCEPT_ESC_COORDINATOR",
+            "high_minutes": 4.0,
+            "low_minutes": 1.0,
+            "reduction_at_high": 0.353728,
+            "reduction_at_low": 0.439789,
+            "status": "assumed",
+            "swing": 0.08606
+          },
+          {
+            "action": "M_REFERRAL_SEND",
+            "high_minutes": 18.6,
+            "low_minutes": 6.2,
+            "reduction_at_high": 0.451,
+            "reduction_at_low": 0.364949,
+            "status": "sourced-adjacent",
+            "swing": 0.08605
+          },
+          {
+            "action": "O_ACCEPT_ESC_SUPERVISOR",
+            "high_minutes": 4.0,
+            "low_minutes": 1.0,
+            "reduction_at_high": 0.363309,
+            "reduction_at_low": 0.434999,
+            "status": "assumed",
+            "swing": 0.07169
+          },
+          {
+            "action": "O_SIGN_CLOSURE",
+            "high_minutes": 8.0,
+            "low_minutes": 3.0,
+            "reduction_at_high": 0.368407,
+            "reduction_at_low": 0.439566,
+            "status": "assumed",
+            "swing": 0.071159
+          },
+          {
+            "action": "M_HANDOVER",
+            "high_minutes": 10.3,
+            "low_minutes": 4.75,
+            "reduction_at_high": 0.418957,
+            "reduction_at_low": 0.359707,
+            "status": "sourced-adjacent",
+            "swing": 0.059251
+          },
+          {
+            "action": "X_BOOK_APPT",
+            "high_minutes": 15.1,
+            "low_minutes": 4.0,
+            "reduction_at_high": 0.445857,
+            "reduction_at_low": 0.38911,
+            "status": "sourced-adjacent",
+            "swing": 0.056747
+          },
+          {
+            "action": "O_SUPERVISOR_CALL",
+            "high_minutes": 12.1,
+            "low_minutes": 3.9,
+            "reduction_at_high": 0.378736,
+            "reduction_at_low": 0.4329,
+            "status": "sourced-adjacent",
+            "swing": 0.054164
+          },
+          {
+            "action": "O_APPROVE_DRAFT",
+            "high_minutes": 3.0,
+            "low_minutes": 1.0,
+            "reduction_at_high": 0.375406,
+            "reduction_at_low": 0.423001,
+            "status": "assumed",
+            "swing": 0.047595
+          },
+          {
+            "action": "M_COMPLETION_RECORD",
+            "high_minutes": 10.0,
+            "low_minutes": 2.5,
+            "reduction_at_high": 0.43864,
+            "reduction_at_low": 0.396294,
+            "status": "assumed",
+            "swing": 0.042346
+          },
+          {
+            "action": "M_CLINICIAN_REVIEW",
+            "high_minutes": 10.0,
+            "low_minutes": 3.0,
+            "reduction_at_high": 0.438213,
+            "reduction_at_low": 0.39951,
+            "status": "assumed",
+            "swing": 0.038703
+          },
+          {
+            "action": "O_LOST_REVIEW",
+            "high_minutes": 15.0,
+            "low_minutes": 4.0,
+            "reduction_at_high": 0.390621,
+            "reduction_at_low": 0.422806,
+            "status": "assumed",
+            "swing": 0.032184
+          },
+          {
+            "action": "M_RESULT_ACK",
+            "high_minutes": 4.0,
+            "low_minutes": 1.0,
+            "reduction_at_high": 0.43066,
+            "reduction_at_low": 0.40081,
+            "status": "assumed",
+            "swing": 0.02985
+          },
+          {
+            "action": "M_LETTER",
+            "high_minutes": 8.0,
+            "low_minutes": 2.0,
+            "reduction_at_high": 0.430093,
+            "reduction_at_low": 0.401123,
+            "status": "assumed",
+            "swing": 0.02897
+          },
+          {
+            "action": "M_CLOSE_FILE",
+            "high_minutes": 6.0,
+            "low_minutes": 2.0,
+            "reduction_at_high": 0.427408,
+            "reduction_at_low": 0.405458,
+            "status": "assumed",
+            "swing": 0.02195
+          },
+          {
+            "action": "O_EXHAUSTED_REROUTE",
+            "high_minutes": 30.0,
+            "low_minutes": 8.0,
+            "reduction_at_high": 0.396378,
+            "reduction_at_low": 0.417973,
+            "status": "assumed",
+            "swing": 0.021595
+          },
+          {
+            "action": "X_RECORD_CONTACT",
+            "high_minutes": 4.0,
+            "low_minutes": 1.0,
+            "reduction_at_high": 0.424321,
+            "reduction_at_low": 0.404259,
+            "status": "assumed",
+            "swing": 0.020062
+          },
+          {
+            "action": "M_CHASE_COMPLETION",
+            "high_minutes": 10.0,
+            "low_minutes": 2.5,
+            "reduction_at_high": 0.420416,
+            "reduction_at_low": 0.406331,
+            "status": "assumed",
+            "swing": 0.014085
+          },
+          {
+            "action": "M_SMS_ATTEMPT",
+            "high_minutes": 3.0,
+            "low_minutes": 1.0,
+            "reduction_at_high": 0.418526,
+            "reduction_at_low": 0.408585,
+            "status": "assumed",
+            "swing": 0.009942
+          },
+          {
+            "action": "O_CONTACT_RECOVERED",
+            "high_minutes": 10.0,
+            "low_minutes": 3.0,
+            "reduction_at_high": 0.404536,
+            "reduction_at_low": 0.413729,
+            "status": "assumed",
+            "swing": 0.009193
+          },
+          {
+            "action": "M_CHASE_SPECIALIST",
+            "high_minutes": 12.2,
+            "low_minutes": 4.0,
+            "reduction_at_high": 0.41474,
+            "reduction_at_low": 0.407418,
+            "status": "sourced-adjacent",
+            "swing": 0.007322
+          },
+          {
+            "action": "M_DUPLICATE_ITEM",
+            "high_minutes": 14.0,
+            "low_minutes": 3.0,
+            "reduction_at_high": 0.416583,
+            "reduction_at_low": 0.40987,
+            "status": "assumed",
+            "swing": 0.006713
+          },
+          {
+            "action": "O_CONSENT_REVIEW",
+            "high_minutes": 10.0,
+            "low_minutes": 3.0,
+            "reduction_at_high": 0.408325,
+            "reduction_at_low": 0.412213,
+            "status": "assumed",
+            "swing": 0.003888
+          },
+          {
+            "action": "O_TRANSFER_DECISION",
+            "high_minutes": 9.5,
+            "low_minutes": 3.0,
+            "reduction_at_high": 0.409108,
+            "reduction_at_low": 0.411988,
+            "status": "assumed",
+            "swing": 0.00288
+          },
+          {
+            "action": "X_REOPEN_REVIEW",
+            "high_minutes": 10.0,
+            "low_minutes": 3.0,
+            "reduction_at_high": 0.409785,
+            "reduction_at_low": 0.41163,
+            "status": "assumed",
+            "swing": 0.001845
+          },
+          {
+            "action": "M_PHONE_ATTEMPT",
+            "high_minutes": 12.1,
+            "low_minutes": 3.9,
+            "reduction_at_high": 0.411102,
+            "reduction_at_low": 0.411102,
+            "status": "sourced-adjacent",
+            "swing": 0.0
+          }
+        ],
+        "tornado_base": 0.411102
+      }
+    }
+  },
   "meta": {
     "bootstrap_resamples": 1000,
     "cases_per_replication": 2000,
     "ci_method": "percentile bootstrap over replications; differences are paired by replication (common random numbers)",
     "follow_up_days": 360,
-    "git_commit": "a579301940dc301aed695a23b45c2b3dfe42eb72",
+    "git_commit": "3ff0b0212406430c690959b01d62898f01a681db",
     "parameter_status_counts": {
       "assumed": 88,
       "calibrated": 16,
