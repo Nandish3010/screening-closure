@@ -45,10 +45,11 @@ PII_DIGITS = "pii_digits"
 PII_EMAIL = "pii_email"
 PII_IDENTIFIER = "pii_identifier"
 URL = "url"
+INVISIBLE_CHARACTER = "invisible_character"
 
 RULE_CODES: tuple[str, ...] = (
     EMPTY, UNFILLED_PLACEHOLDER, TOO_LONG, WRONG_LANGUAGE, MISSING_OWNER_NAME, MISSING_NEXT_STEP,
-    MISSING_APPOINTMENT_DATE, FORBIDDEN_PHRASE, PII_DIGITS, PII_EMAIL, PII_IDENTIFIER, URL,
+    MISSING_APPOINTMENT_DATE, FORBIDDEN_PHRASE, PII_DIGITS, PII_EMAIL, PII_IDENTIFIER, URL, INVISIBLE_CHARACTER,
 )
 
 # Abstention reasons for the fallback (not validation rules).
@@ -58,9 +59,7 @@ VALIDATION_FAILED = "validation_failed"
 INVALID_RESULT = "invalid_result"
 CACHE_MISS = "cache_miss"  # replay mode had no recorded output (D6)
 
-ARABIC_MIN_RATIO = 0.8
-LATIN_MIN_RATIO = 0.9
-MIN_LETTERS = 5
+MIN_LETTERS = 5  # fewer letters than this once our own values are removed is not a message
 
 
 @dataclass(frozen=True)
@@ -71,15 +70,31 @@ class ValidationResult:
 
 # ---------------------------------------------------------------- text helpers
 
-_ARABIC_DIGITS = str.maketrans("٠١٢٣٤٥٦٧٨٩۰۱۲۳۴۵۶۷۸۹", "01234567890123456789")
 _TASHKEEL = re.compile("[ً-ْـٰ]")  # diacritics and tatweel
-_ARABIC_LETTER = re.compile("[ء-يٱ-ۓۺ-ۿݐ-ݿﭐ-﷿ﹰ-﻿]")
-_LATIN_LETTER = re.compile("[A-Za-zÀ-ɏ]")
+# Persian and Urdu letter forms that look like (and are typed instead of) the Arabic ones.
+_ARABIC_VARIANTS = str.maketrans({"ک": "ك", "ی": "ي", "ې": "ي", "ے": "ي", "ہ": "ه", "ھ": "ه", "ۀ": "ه", "ۃ": "ة"})
+
+# Characters a reader cannot see (or that reorder, join or hide text). None of them belongs in a message to a
+# patient, and each is a way to slip a forbidden word past a matcher: Cf format (zero-width space/joiner, bidi marks and
+# overrides, soft hyphen, tag characters), Cc control, Co private use; plus Cs/Cn (never valid text) and the
+# Zl/Zp line and paragraph separators. A message with any of them is refused outright (SEC-1). The one exception is
+# the plain line feed U+000A, which the vetted WhatsApp and letter templates use for paragraphs; tab and carriage
+# return are not allowed.
+_INVISIBLE_CATEGORIES = frozenset({"Cf", "Cc", "Co", "Cs", "Cn", "Zl", "Zp"})
+_ALLOWED_CONTROLS = frozenset("\n")
+
+
+def _invisible(char: str) -> bool:
+    return unicodedata.category(char) in _INVISIBLE_CATEGORIES and char not in _ALLOWED_CONTROLS
+
+
+def has_invisible_character(text: str) -> bool:
+    return any(_invisible(c) for c in text)
 
 
 def normalise_arabic(text: str) -> str:
     text = unicodedata.normalize("NFKC", text)
-    text = _TASHKEEL.sub("", text)
+    text = _TASHKEEL.sub("", text).translate(_ARABIC_VARIANTS)
     for src in "أإآٱ":
         text = text.replace(src, "ا")
     return text.replace("ى", "ي")
@@ -89,11 +104,51 @@ def _collapse(text: str) -> str:
     return re.sub(r"\s+", " ", normalise_arabic(text)).strip().casefold()
 
 
+# A small Latin/Cyrillic/Greek homoglyph map (the letters that are drawn alike, after casefolding): the "skeleton" of a
+# text folds them to the Latin letter, so "cаncer" (Cyrillic а) and "cαncer" (Greek α) match the forbidden "cancer".
+# Not the full Unicode confusables table, deliberately: it is the Latin look-alikes that matter for the English list.
+_CONFUSABLES = {
+    # Cyrillic (lower case; capitals fold to these)
+    "а": "a", "в": "b", "г": "r", "е": "e", "ё": "e", "з": "3", "и": "u", "й": "u", "к": "k", "м": "m", "н": "h",
+    "о": "o", "п": "n", "р": "p", "с": "c", "т": "t", "у": "y", "х": "x", "ч": "4", "ь": "b", "ы": "bl", "ѕ": "s",
+    "і": "i", "ї": "i", "ј": "j", "ӏ": "l", "ԁ": "d", "ԛ": "q", "ԝ": "w", "ӓ": "a", "ӧ": "o", "ѵ": "v", "һ": "h",
+    "ɡ": "g", "ɑ": "a", "ɩ": "i", "ʋ": "v", "ս": "u", "օ": "o", "ո": "n", "ꞵ": "b",
+    # Greek
+    "α": "a", "β": "b", "γ": "y", "ε": "e", "ζ": "z", "η": "n", "ι": "i", "κ": "k", "μ": "u", "ν": "v", "ο": "o",
+    "π": "n", "ρ": "p", "σ": "o", "ς": "c", "τ": "t", "υ": "u", "φ": "o", "χ": "x", "ω": "w", "ϲ": "c", "ϳ": "j",
+    "ϵ": "e", "ϑ": "o", "ϰ": "k", "ϱ": "p", "ϖ": "n",
+    # Latin look-alikes outside plain ASCII
+    "ı": "i", "ȷ": "j", "ł": "l", "ø": "o", "đ": "d", "ƒ": "f", "ʀ": "r", "ɴ": "n", "ɢ": "g", "ʜ": "h", "ᴀ": "a",
+    "ᴄ": "c", "ᴇ": "e", "ʟ": "l", "ᴍ": "m", "ᴏ": "o", "ᴘ": "p", "ᴛ": "t", "ᴜ": "u", "ᴠ": "v", "ᴡ": "w", "ᴢ": "z",
+    "ǀ": "l", "|": "l",
+}
+_CONFUSABLE_TABLE = str.maketrans(_CONFUSABLES)
+
+
+def skeleton(text: str) -> str:
+    """The text as a reader would take it for Latin: NFKC, invisible characters dropped, combining marks dropped,
+    case folded, Cyrillic/Greek homoglyphs folded to the Latin letter they imitate. Only for matching against the
+    forbidden list; the message itself is never rewritten."""
+    text = unicodedata.normalize("NFKC", text)
+    text = "".join(c for c in text if not _invisible(c))
+    text = "".join(c for c in unicodedata.normalize("NFKD", text) if unicodedata.category(c) != "Mn")
+    # Fold twice: normalisation and case folding both rewrite some letters (U+03F2 becomes a final sigma, then sigma).
+    text = unicodedata.normalize("NFKC", text).translate(_CONFUSABLE_TABLE)
+    return text.casefold().translate(_CONFUSABLE_TABLE)
+
+
+# A request value (owner name, next step...) is masked only where it stands alone as a token. Without this, an owner
+# named "Om" removed the "om" of "evil.com" and let the link through (SEC-1). A neighbouring word character, `@`, `/`,
+# `:` or `-` joins the match to a longer token, and so does a dot with a word character beyond it.
+_TOKEN_BEFORE = r"(?<![\w@/:\-])(?<!\w\.)"
+_TOKEN_AFTER = r"(?![\w@/:\-])(?!\.\w)"
+
+
 def _strip_values(text: str, req: DraftRequest) -> str:
-    """Remove the request's own values (name, next step, date, role) from the text."""
+    """Remove the request's own values (name, next step, date, role) from the text, as whole tokens only."""
     for value in (req.owner_name, req.next_step, req.appointment_date, req.owner_role):
         if value:
-            text = re.sub(re.escape(value), " ", text, flags=re.IGNORECASE)
+            text = re.sub(_TOKEN_BEFORE + re.escape(value) + _TOKEN_AFTER, " ", text, flags=re.IGNORECASE)
     return text
 
 
@@ -145,16 +200,22 @@ def load_forbidden_phrases() -> tuple[ForbiddenPhrase, ...]:
 
 
 def forbidden_hits(text: str) -> list[ForbiddenPhrase]:
-    """Every forbidden-phrase entry (either language) found in `text`."""
+    """Every forbidden-phrase entry (either language) found in `text`. English entries are matched on the
+    text's skeleton, so look-alike Cyrillic or Greek letters and hidden characters do not hide a word."""
     plain = text.casefold()
-    arabic = normalise_arabic(text)
-    return [fp for fp in load_forbidden_phrases() if fp.pattern.search(arabic if fp.language == "ar" else plain)]
+    latin = skeleton(text)
+    arabic = normalise_arabic("".join(c for c in text if not _invisible(c)))
+    return [
+        fp for fp in load_forbidden_phrases()
+        if (fp.pattern.search(arabic) if fp.language == "ar" else (fp.pattern.search(plain) or fp.pattern.search(latin)))
+    ]
 
 
 # ---------------------------------------------------------------- personal data and links
 
 _PLACEHOLDER = re.compile(r"[{}]|\[[^\]]{0,40}\]|<[^>]{0,40}>")
-_LONG_DIGITS = re.compile(r"(?<![\w])\+?\d(?:[\s\-.()]*\d){6,}")
+# Seven digits, however they are punctuated: space, dash, dot, brackets, and `/` and `,` (050/123/4567, 050,123,4567).
+_LONG_DIGITS = re.compile(r"(?<![\w])\+?\d(?:[\s\-.()/,]*\d){6,}")
 _EMAIL = re.compile(r"@|\b[\w.+-]+\s*(?:\[at\]|\(at\))\s*[\w-]+")
 _ID_WORDS = re.compile(
     r"\b(?:mrn|emirates\s*id|eid|passport|nhs\s*number|id\s*(?:no|number|card)|file\s*(?:no|number)|"
@@ -170,13 +231,31 @@ _URL = re.compile(
 )
 
 
+_SCRIPT_PREFIX = {"en": "LATIN", "ar": "ARABIC"}
+
+
+@lru_cache(maxsize=4096)
+def _script_of(char: str) -> str:
+    """The script word of a letter's Unicode name (LATIN, ARABIC, CYRILLIC, GREEK...), '' if it has no name."""
+    try:
+        return unicodedata.name(char).split(" ", 1)[0]
+    except ValueError:
+        return ""
+
+
+def _ascii_digits(text: str) -> str:
+    """Every decimal digit of every script (Arabic-Indic, Devanagari, Bengali, fullwidth...) as 0-9."""
+    return "".join(str(unicodedata.decimal(c)) if unicodedata.category(c) == "Nd" else c for c in text)
+
+
 def _language_ok(text: str, language: str) -> bool:
+    """Every letter must belong to the language's script: Latin for English, Arabic for Arabic. No ratio: one
+    Cyrillic or Greek letter among Latin ones is how a look-alike word is made, so one is too many."""
     letters = [c for c in text if c.isalpha()]
     if len(letters) < MIN_LETTERS:
         return False
-    if language == "ar":
-        return sum(1 for c in letters if _ARABIC_LETTER.match(c)) / len(letters) >= ARABIC_MIN_RATIO
-    return sum(1 for c in letters if _LATIN_LETTER.match(c)) / len(letters) >= LATIN_MIN_RATIO
+    want = _SCRIPT_PREFIX[language]
+    return all(_script_of(c) == want for c in letters)
 
 
 def validate(text: str, req: DraftRequest) -> ValidationResult:
@@ -185,6 +264,8 @@ def validate(text: str, req: DraftRequest) -> ValidationResult:
         return ValidationResult(False, (EMPTY,))
     reasons: list[str] = []
 
+    if has_invisible_character(text):
+        reasons.append(INVISIBLE_CHARACTER)
     if _PLACEHOLDER.search(text):
         reasons.append(UNFILLED_PLACEHOLDER)
     if len(text) > CHANNEL_MAX_CHARS[req.channel]:
@@ -205,7 +286,7 @@ def validate(text: str, req: DraftRequest) -> ValidationResult:
     for hit in forbidden_hits(text):
         reasons.append(f"{FORBIDDEN_PHRASE}:{hit.id}")
 
-    scan = unicodedata.normalize("NFKC", residue).translate(_ARABIC_DIGITS)
+    scan = _ascii_digits(unicodedata.normalize("NFKC", residue))
     if _LONG_DIGITS.search(scan):
         reasons.append(PII_DIGITS)
     if _EMAIL.search(scan):
