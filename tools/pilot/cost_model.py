@@ -1,18 +1,22 @@
 #!/usr/bin/env python3
 """Cost-per-case model for the 90-day pilot and for steady-state volumes.
 
-Usage:  python3 tools/pilot/cost_model.py [--inputs tools/pilot/inputs.yaml]
+Usage:  python3 tools/pilot/cost_model.py [--inputs tools/pilot/inputs.yaml] [--results docs/results/results.json]
 
-Deterministic: no randomness, no clock, no network, standard library only. Every number it prints is
+Deterministic: no randomness, no clock, no network, standard library only. Every cost number it prints is
 arithmetic on tools/pilot/inputs.yaml, and every input there is an assumption (see that file). The output
-is illustrative; it is not a quote, a forecast or a result from the simulator.
+is illustrative; it is not a quote or a forecast. The one exception is the value table, which also reads the
+simulated shares of cases with no colonoscopy by day 270 from docs/results/results.json (synthetic).
 """
 import argparse
+import json
 import math
 import sys
 from pathlib import Path
 
 DEFAULT_INPUTS = Path(__file__).with_name("inputs.yaml")
+REPO_ROOT = Path(__file__).resolve().parents[2]
+DEFAULT_RESULTS = REPO_ROOT / "docs" / "results" / "results.json"
 ALLOWED_STATUS = ("assumed", "sourced")
 
 
@@ -59,7 +63,7 @@ def parse_yaml_subset(text):
 def load_inputs(path):
     data = parse_yaml_subset(Path(path).read_text(encoding="utf-8"))
     flat = {}
-    for section in ("inputs", "pilot"):
+    for section in ("inputs", "pilot", "shadow_pilot", "value"):
         for name, spec in data.get(section, {}).items():
             for field in ("value", "unit", "status", "basis"):
                 if field not in spec:
@@ -112,6 +116,52 @@ def pilot(v):
             "cost_per_case": total / cases}
 
 
+def shadow_pilot(v):
+    """Shadow-only run fed by a periodic flat-file or HL7 v2 export: nothing is sent, nothing is assigned."""
+    n = v["pilot_providers"]
+    days = v["shadow_days"]
+    fits = n * v["pilot_fit_screened_per_provider_per_year"] * days / 365
+    cases = fits * v["positivity_rate"]
+    share = v["shadow_hosting_share_of_full"]
+    hosting = share * (v["hosting_fixed_aed_per_month"] * 12 * days / 365
+                       + v["hosting_variable_aed_per_1000_cases_per_year"] * cases / 1000)
+    licences = v["third_party_licences_aed_per_year"] * v["shadow_licences_share_of_full"] * days / 365
+    support = v["support_fte_loaded_cost_aed_per_year"] * v["shadow_support_fte"] * days / 365
+    integration = n * v["shadow_integration_one_off_aed_per_provider"]
+    governance = v["shadow_governance_review_one_off_aed"]
+    total = hosting + licences + support + integration + governance
+    return {"fits": fits, "cases": cases, "days": days, "hosting": hosting, "licences": licences,
+            "support": support, "integration": integration, "governance": governance, "total": total,
+            "cost_per_case": total / cases}
+
+
+def odds_ratio_risk(p, odds_ratio):
+    """Risk after applying an odds ratio to a baseline risk p."""
+    odds = p / (1 - p) * odds_ratio
+    return odds / (1 + odds)
+
+
+def load_delay_shares(path):
+    """Simulated share of cases with no colonoscopy by day 270 (delay_harm_share mean), from results.json."""
+    data = json.loads(Path(path).read_text(encoding="utf-8"))
+    scen = data["scenarios"]
+    out = {"baseline": scen["literature_anchored"]["arms"]["baseline"]["delay_harm_share"]["mean"],
+           "literature_anchored": scen["literature_anchored"]["arms"]["orchestrated"]["delay_harm_share"]["mean"]}
+    if "upper_range" in scen:
+        out["upper_range"] = scen["upper_range"]["arms"]["orchestrated"]["delay_harm_share"]["mean"]
+    return out
+
+
+def value_case(cases, shares, scenario_key, v, case_label):
+    """Cancers potentially avoided for `cases` positive FIT cases (illustrative, synthetic shares x published ORs)."""
+    suffix = "10_to_12_months" if case_label == "10-12 month ORs" else "over_12_months"
+    p_any, p_adv = v["crc_risk_on_time"], v["advanced_stage_risk_on_time"]
+    excess_any = odds_ratio_risk(p_any, v["or_any_crc_" + suffix]) - p_any
+    excess_adv = odds_ratio_risk(p_adv, v["or_advanced_stage_" + suffix]) - p_adv
+    moved = (shares["baseline"] - shares[scenario_key]) * cases
+    return {"moved": moved, "earlier": moved * excess_any, "late_stage": moved * excess_adv}
+
+
 # --- output -------------------------------------------------------------------------------------------------
 
 def money(x):
@@ -128,10 +178,13 @@ def table(headers, rows, left=(0,)):
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--inputs", default=str(DEFAULT_INPUTS), help="inputs file (default: tools/pilot/inputs.yaml)")
+    ap.add_argument("--results", default=str(DEFAULT_RESULTS),
+                    help="simulator results (default: docs/results/results.json in the repo)")
     args = ap.parse_args(argv)
     try:
         data, spec = load_inputs(args.inputs)
-    except (OSError, ValueError) as exc:
+        shares = load_delay_shares(args.results)
+    except (OSError, ValueError, KeyError) as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 2
     v = {k: s["value"] for k, s in spec.items()}
@@ -199,6 +252,42 @@ def main(argv=None):
         ["total pilot cost", money(p["total"])],
         ["pilot cost per actionable case", f"{p['cost_per_case']:,.0f}"],
     ]))
+
+    sp = shadow_pilot(v)
+    print("\nSHADOW PILOT (flat-file or HL7 v2 export, no outbound messages)")
+    print(table(["item", "value"], [
+        ["FIT results in window", f"{sp['fits']:,.0f}"],
+        ["cases in window (FIT-positive)", f"{sp['cases']:,.0f}"],
+        ["days", f"{sp['days']}"],
+        ["hosting", money(sp["hosting"])],
+        ["third-party licences", money(sp["licences"])],
+        ["support", money(sp["support"])],
+        ["integration (one-off, export mapping)", money(sp["integration"])],
+        ["governance review (one-off)", money(sp["governance"])],
+        ["total shadow pilot cost", money(sp["total"])],
+        ["shadow pilot cost per case", f"{sp['cost_per_case']:,.0f}"],
+    ]))
+
+    print("\nVALUE SIDE: late-stage cancers potentially avoided (ILLUSTRATIVE, SYNTHETIC)")
+    print("Simulated shares x published odds ratios; not a forecast, not a clinical claim; observational ORs,")
+    print("confounding by indication; never-completers treated as if completing late.")
+    print(f"Shares with no colonoscopy by day 270, read from {Path(args.results).name} (synthetic): "
+          f"baseline {shares['baseline']:.1%}, literature-anchored orchestrated {shares['literature_anchored']:.1%}"
+          + (f", upper-range orchestrated {shares['upper_range']:.1%}." if "upper_range" in shares else "."))
+    print(f"On-time risk (assumed): any CRC {v['crc_risk_on_time']:.3f}, advanced stage {v['advanced_stage_risk_on_time']:.3f}.")
+    vol_head = ["item", "per 1,000 cases"] + [f"{r['cases']:,.0f} cases a year" for r in res]
+    vol_cases = [1000] + [r["cases"] for r in res]
+    vrows = []
+    for scen_key, scen_label in (("literature_anchored", "literature-anchored"), ("upper_range", "upper-range")):
+        if scen_key not in shares:
+            continue
+        vrows.append([f"{scen_label}: cases moved to colonoscopy by day 270"]
+                     + [f"{value_case(c, shares, scen_key, v, '10-12 month ORs')['moved']:,.1f}" for c in vol_cases])
+        for case_label in ("10-12 month ORs", ">12 month ORs"):
+            vals = [value_case(c, shares, scen_key, v, case_label) for c in vol_cases]
+            vrows.append([f"  {case_label}: cancers diagnosed earlier"] + [f"{x['earlier']:,.2f}" for x in vals])
+            vrows.append([f"  {case_label}: late-stage potentially avoided"] + [f"{x['late_stage']:,.2f}" for x in vals])
+    print(table(vol_head, vrows))
 
     print("\nREAD THIS FIRST: all inputs are assumed. Cost per case falls with volume because hosting,")
     print("licences and the support base are fixed; the numbers show that shape, not a price.")

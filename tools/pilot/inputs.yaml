@@ -146,3 +146,87 @@ pilot:
     unit: AED, one-off
     status: assumed
     basis: Clinical safety review, security assessment, legal review of data agreements.
+
+# Shadow-only pilot: the engine reads a periodic flat-file (CSV) or HL7 v2 export of FIT results, referrals and
+# colonoscopy records instead of a full integration, computes owners, clocks, overdue flags and escalation
+# suggestions, and sends and assigns nothing. Coordinators review the flags weekly. These inputs are assumptions
+# chosen to be plausible relative to the full-pilot inputs above; none is a quote. The model also reuses
+# pilot_providers, pilot_fit_screened_per_provider_per_year, positivity_rate, the hosting inputs, the licence
+# input and support_fte_loaded_cost_aed_per_year.
+shadow_pilot:
+  shadow_integration_one_off_aed_per_provider:
+    value: 15000
+    unit: AED per participating provider, one-off
+    status: assumed
+    basis: Mapping and validating one periodic export (flat file or HL7 v2) per provider; no live interface, no outbound channel, no role set-up for messaging. Much lower than the 120,000 for a full integration. Not a quote.
+
+  shadow_days:
+    value: 90
+    unit: days
+    status: assumed
+    basis: Length of the shadow-only run. Cases are not followed to closure by the engine, so no follow-up tail is funded.
+
+  shadow_support_fte:
+    value: 0.3
+    unit: FTE during the shadow run
+    status: assumed
+    basis: Loading and checking the periodic export, tuning flags and a weekly review with the coordinator. Lower than the 1.0 FTE of the full pilot because nothing is sent or assigned.
+
+  shadow_governance_review_one_off_aed:
+    value: 25000
+    unit: AED, one-off
+    status: assumed
+    basis: Data sharing agreement and security assessment for a read-only export; no clinical safety review of outbound wording. Lower than the 60,000 of the full pilot.
+
+  shadow_hosting_share_of_full:
+    value: 0.4
+    unit: share of the full-stack hosting cost
+    status: assumed
+    basis: A single copy without a standby, and no messaging or web channel. Applied to both the fixed and the variable hosting inputs.
+
+  shadow_licences_share_of_full:
+    value: 0.5
+    unit: share of the third-party licence cost
+    status: assumed
+    basis: Monitoring, backup and logging for a smaller footprint.
+
+# Value side (illustrative only): the simulated shares of cases with no colonoscopy by day 270 are READ from
+# docs/results/results.json by the script (they are synthetic outputs, not inputs here); these inputs turn a
+# shift in that share into cancers using published odds ratios from Corley et al., JAMA 2017 (docs/evidence.md
+# section 9). Observational odds ratios, applied to a different population, so every value is assumed here.
+value:
+  crc_risk_on_time:
+    value: 0.030
+    unit: risk, any CRC, colonoscopy at 8-30 days
+    status: assumed
+    basis: Corley 2017 any CRC at 8-30 days (docs/evidence.md section 9). Applied to a different population, so assumed here.
+
+  advanced_stage_risk_on_time:
+    value: 0.008
+    unit: risk, advanced stage, colonoscopy at 8-30 days
+    status: assumed
+    basis: Placeholder, to verify against Corley 2017 (not recorded in docs/evidence.md).
+
+  or_any_crc_10_to_12_months:
+    value: 1.48
+    unit: odds ratio, any CRC, 10-12 months vs 8-30 days
+    status: assumed
+    basis: Corley 2017 (docs/evidence.md section 9); the lower illustrative case. Observational, confounding by indication.
+
+  or_advanced_stage_10_to_12_months:
+    value: 1.97
+    unit: odds ratio, advanced stage, 10-12 months vs 8-30 days
+    status: assumed
+    basis: Corley 2017 (docs/evidence.md section 9); the lower illustrative case.
+
+  or_any_crc_over_12_months:
+    value: 2.25
+    unit: odds ratio, any CRC, over 12 months vs 8-30 days
+    status: assumed
+    basis: Corley 2017 (docs/evidence.md section 9); the higher illustrative case.
+
+  or_advanced_stage_over_12_months:
+    value: 3.22
+    unit: odds ratio, advanced stage, over 12 months vs 8-30 days
+    status: assumed
+    basis: Corley 2017 (docs/evidence.md section 9); the higher illustrative case.
