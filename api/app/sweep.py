@@ -34,6 +34,8 @@ that is repeated, overlapped or killed part-way only ever leaves each planned ev
 
 from __future__ import annotations
 
+import hashlib
+import json
 import logging
 import os
 import threading
@@ -108,6 +110,77 @@ def handoff_due_at(
         return None
     requested = datetime.fromisoformat(pending["requested_at"])
     return _utc(calendar.add_working_days(requested, pathway.handoff_response_working_days))
+
+
+# ---- when can a case next be due? (A20) ----------------------------------------------------------------------
+
+# Stored in `cases.next_due_at` for a case with nothing left to watch. A real instant (not a database `infinity`) so
+# every driver reads it back; NULL in that column means "not computed", which the sweep always evaluates.
+NEVER = datetime(9999, 12, 31, tzinfo=UTC)
+# Bump when the rules in `next_due_at` change, so every stored value is recomputed by the next sweep.
+NEXT_DUE_RULES_VERSION = 1
+
+
+def _next_trigger(
+    due: datetime, overdue: bool, accepted: bool, level: int, pathway: Pathway, calendar: WorkingCalendar
+) -> datetime | None:
+    """The earliest instant at which one ladder (the state's, or a milestone's) has something to plan.
+
+    Mirrors `plan_case`: the breach itself once `now > due` while it is not yet marked; afterwards the next rung
+    (`level + 1`) at its due time, unless a human accepted the ladder or the ladder is exhausted."""
+    if not overdue:
+        return due
+    if accepted or level >= len(pathway.escalation_ladder):
+        return None
+    rung = pathway.escalation_ladder[level]
+    return max(due, _utc(calendar.add_working_days(due, rung.after_breach_days)))
+
+
+def next_due_at(model: CaseModel, pathway: Pathway, calendar: WorkingCalendar) -> datetime | None:
+    """The earliest instant `t` such that `plan_case(..., now=t)` can be non-empty; None if it never can be (nothing
+    left to watch until another event arrives).
+
+    A lower bound that is exact up to the boundary (the planner needs `now > due`, this returns `due`): for every
+    `now`, `plan_case(model, now)` is empty whenever `now < next_due_at(model)`, so a sweep that evaluates only the
+    cases with `next_due_at <= now` plans exactly what a sweep of every case plans (property-tested). It is a pure
+    function of the model, the pathway and the calendar, recomputed by the store on every append."""
+    triggers: list[datetime] = []
+    bounce = handoff_due_at(model, pathway, calendar)
+    if bounce is not None:
+        triggers.append(bounce)
+    due = due_at_for(model, pathway, calendar)
+    if due is not None:
+        t = _next_trigger(due, model.overdue, model.escalation_accepted, model.escalation_level, pathway, calendar)
+        if t is not None:
+            triggers.append(t)
+    if model.state in pathway.open_states and model.state != CONSENT_WITHDRAWN:
+        for name in pathway.milestones:
+            due = milestone_due_at(model, name, pathway, calendar)
+            if due is None:
+                continue
+            ms = model.milestones[name]
+            t = _next_trigger(due, ms.overdue, ms.escalation_accepted, ms.escalation_level, pathway, calendar)
+            if t is not None:
+                triggers.append(t)
+    return min(triggers) if triggers else None
+
+
+def timing_fingerprint(pathway: Pathway, calendar: WorkingCalendar) -> str:
+    """A short hash of everything `next_due_at` depends on besides the event log: the calendar (weekend, holidays,
+    time zone) and the pathway's states, SLAs, escalation ladder, milestones and handoff window. Stored beside
+    `cases.next_due_at`; a sweep with another fingerprint re-evaluates (and re-indexes) the cases stored under the old one."""
+    material = {
+        "rules": NEXT_DUE_RULES_VERSION,
+        "open": list(pathway.open_states),
+        "sla": {s: pathway.sla_for_state(s) for s in pathway.open_states},
+        "ladder": [(r.rung, r.after_breach_days) for r in pathway.escalation_ladder],
+        "milestones": [(m.name, m.from_event, m.until_event, m.working_days) for m in pathway.milestones.values()],
+        "handoff_days": pathway.handoff_response_working_days,
+        "weekend": sorted(calendar.weekend),
+        "holidays": sorted(h.isoformat() for h in calendar.holidays),
+        "tz": getattr(calendar.tz, "key", None) or str(calendar.tz),
+    }
+    return hashlib.sha256(json.dumps(material, sort_keys=True, default=str).encode()).hexdigest()[:16]
 
 
 def plan_bounce(
@@ -424,6 +497,7 @@ def _plan_rungs(
 class SweepResult:
     sim_time: str
     cases_evaluated: int = 0
+    cases_skipped: int = 0  # open cases not read because `next_due_at` says nothing can be due (A20)
     mark_overdue: int = 0
     escalate: int = 0
     handoff_bounced: int = 0
@@ -438,12 +512,120 @@ class SweepResult:
         return {
             "sim_time": self.sim_time,
             "cases_evaluated": self.cases_evaluated,
+            "cases_skipped": self.cases_skipped,
             "mark_overdue": self.mark_overdue,
             "escalate": self.escalate,
             "handoff_bounced": self.handoff_bounced,
             "rejected": self.rejected,
             "errors": list(self.errors),
         }
+
+
+DEFAULT_BATCH_CASES = 100
+
+
+def _env_int(name: str, default: int) -> int:
+    try:
+        return max(int(os.environ.get(name, "").strip() or default), 0)
+    except ValueError:
+        return default
+
+
+def _check_planned(planned: list[Event], pathway: Pathway) -> None:
+    for event in planned:
+        if event.type not in SCHEDULER_EVENT_TYPES or event.actor != SCHEDULER_ACTOR:
+            raise RuntimeError(f"scheduler planned a forbidden event: {event.type}")
+        if event.type == "handoff_rejected" and (
+            event.payload.get("reason") != pathway.handoff_bounce_reason
+            or event.payload.get("bounced") is not True
+        ):
+            raise RuntimeError("scheduler planned a handoff_rejected that is not a bounce")
+
+
+def _valid_payloads(planned: list[Event]) -> bool:
+    try:
+        for event in planned:
+            payloads.validate(event.type, event.payload)
+    except payloads.PayloadSchemaError:
+        return False  # the per-event path reports it
+    return True
+
+
+def _count(result: SweepResult, planned: list[Event]) -> None:
+    for event in planned:
+        if event.type == "mark_overdue":
+            result.mark_overdue += 1
+        elif event.type == "handoff_rejected":
+            result.handoff_bounced += 1
+        else:
+            result.escalate += 1
+
+
+def _emit_case(
+    store, pathway: Pathway, calendar: WorkingCalendar, now: datetime, result: SweepResult,
+    case_id: UUID, model: CaseModel, planned: list[Event],
+) -> None:
+    """Append what was planned for one case, on its own: the original per-case path. `planned` is the first plan; a
+    bounce can move the case to another state, so the case is re-planned once from the new model."""
+    for attempt in range(2):
+        bounced = False
+        # Fast path: several events for one case (a breach and its first rung) go in one
+        # transaction instead of one each. All-or-nothing; if the batch is refused for any
+        # reason we fall back to the one-by-one loop below, which keeps its exact behaviour.
+        if (
+            len(planned) > 1
+            and hasattr(store, "append_many")
+            and not any(e.type == "handoff_rejected" for e in planned)
+            and _valid_payloads(planned)
+        ):
+            try:
+                store.append_many(planned, pathway)
+            except (InvalidTransition, CaseNotFound, EventIdConflict):
+                pass
+            else:
+                _count(result, planned)
+                planned = []
+        for event in planned:
+            try:
+                # Whatever the sweep plans must also pass the payload schema (A14), so a bug
+                # here cannot put free text in the log. A planned event that does not is
+                # reported and skipped, not allowed to stop the sweep for every other case.
+                payloads.validate(event.type, event.payload)
+            except payloads.PayloadSchemaError as exc:
+                result.errors.append(f"{case_id}: {exc}")
+                log.error("case %s: planned %s refused by the payload schema: %s", case_id, event.type, exc)
+                break
+            try:
+                store.append(event, pathway)
+            except InvalidTransition as exc:
+                # Another writer moved the case between our read and our write; the next
+                # sweep re-plans from the new state.
+                result.rejected += 1
+                log.info("case %s: %s refused: %s", case_id, event.type, exc)
+                break
+            except EventContentConflict as exc:
+                # Another detector appended this id with different content a moment ago: a race, like
+                # the refusal above; the next sweep re-plans from the log.
+                result.rejected += 1
+                log.info("case %s: %s refused: %s", case_id, event.type, exc)
+                break
+            except (CaseNotFound, EventIdConflict) as exc:
+                result.errors.append(f"{case_id}: {type(exc).__name__}: {exc}")
+                break
+            if event.type == "mark_overdue":
+                result.mark_overdue += 1
+            elif event.type == "handoff_rejected":
+                result.handoff_bounced += 1
+                bounced = True
+            else:
+                result.escalate += 1
+        if not bounced or attempt == 1:
+            return
+        model = store.read_model(case_id, pathway)
+        if model is None:
+            return
+        planned = plan_case(case_id, model, pathway, calendar, now)
+        _check_planned(planned, pathway)
 
 
 def run_sweep(
@@ -453,88 +635,76 @@ def run_sweep(
     now: datetime,
     only=None,
     shard: tuple[int, int] | None = None,
+    full_scan: bool | None = None,
+    batch_cases: int | None = None,
 ) -> SweepResult:
-    """Evaluate every open case (or only those in `only`, or only slice `shard=(k, n)`) at sim
-    time `now` and append the planned events. Safe to run repeatedly and concurrently."""
+    """Evaluate the open cases (or only those in `only`, or only slice `shard=(k, n)`) at sim
+    time `now` and append the planned events. Safe to run repeatedly and concurrently.
+
+    With the Postgres store the cases read are those that can have something to do (A20): `next_due_at <= now`, or
+    no due time stored yet (`PostgresEventStore.iter_due_case_models`). The events emitted are exactly those of a
+    sweep of every case. `full_scan=True` (or the environment variable `SWEEP_FULL_SCAN=1`, for an operator who
+    distrusts the index) reads and replays every open case as before; so does `only=` and any store without the index.
+
+    The events of up to `batch_cases` cases (default 100, `SWEEP_BATCH_CASES`) are appended in one transaction when the
+    store offers `append_batches`; a case the store refuses is handled on its own, exactly as an unbatched sweep would,
+    and never loses the other cases' events."""
+    batch_cases = DEFAULT_BATCH_CASES if batch_cases is None else batch_cases
+    if batch_cases == DEFAULT_BATCH_CASES:
+        batch_cases = _env_int("SWEEP_BATCH_CASES", DEFAULT_BATCH_CASES)
     result = SweepResult(sim_time=_utc(now).isoformat())
     # `shard` is only passed to stores that support it (Postgres); the in-memory store sweeps all.
     kwargs = {"shard": shard} if shard is not None else {}
-    for case_id, model, error in store.iter_open_case_models(pathway, only=only, **kwargs):
+    if full_scan is None:
+        full_scan = os.environ.get("SWEEP_FULL_SCAN", "").strip() == "1"
+    if only is None and not full_scan and hasattr(store, "iter_due_case_models"):
+        cases = store.iter_due_case_models(pathway, calendar, now, **kwargs)
+        if hasattr(store, "count_open_cases"):
+            result.cases_skipped = store.count_open_cases(pathway, **kwargs)  # the evaluated ones are taken off below
+    else:
+        cases = store.iter_open_case_models(pathway, only=only, **kwargs)
+    skipped_base = result.cases_skipped
+    # Several cases' planned events go to the store in one transaction (A20): `append_batches`, per-case locking and
+    # checks unchanged, a refused case costs only itself. Without it (the in-memory store, a wrapper that does not
+    # offer it) or with `batch_cases` < 2 every case is appended on its own, as before.
+    batching = batch_cases > 1 and hasattr(store, "append_batches")
+    pending: list[tuple[UUID, CaseModel, list[Event]]] = []
+
+    def flush() -> None:
+        batch, pending[:] = list(pending), []
+        if not batch:
+            return
+        try:
+            outcomes = store.append_batches([planned for _, _, planned in batch], pathway)
+        except Exception as exc:  # noqa: BLE001 - nothing of the batch was written; do each case on its own
+            log.warning("batched append of %d cases failed (%s: %s); appending them one by one", len(batch),
+                        type(exc).__name__, exc)
+            outcomes = [None] * len(batch)
+        for (case_id, model, planned), outcome in zip(batch, outcomes):
+            if isinstance(outcome, str):
+                _count(result, planned)
+            else:  # refused in the batch (or the batch failed): the per-case path classifies and reports it
+                _emit_case(store, pathway, calendar, now, result, case_id, model, planned)
+
+    for case_id, model, error in cases:
         result.cases_evaluated += 1
         if model is None:
             result.errors.append(f"{case_id}: {error}")
             log.error("case %s does not replay: %s", case_id, error)
             continue
-        # A bounce can move the case to another state, so re-plan once from the new model.
-        for _ in range(2):
-            bounced = False
-            planned = plan_case(case_id, model, pathway, calendar, now)
-            for event in planned:
-                if event.type not in SCHEDULER_EVENT_TYPES or event.actor != SCHEDULER_ACTOR:
-                    raise RuntimeError(f"scheduler planned a forbidden event: {event.type}")
-                if event.type == "handoff_rejected" and (
-                    event.payload.get("reason") != pathway.handoff_bounce_reason
-                    or event.payload.get("bounced") is not True
-                ):
-                    raise RuntimeError("scheduler planned a handoff_rejected that is not a bounce")
-            # Fast path: several events for one case (a breach and its first rung) go in one
-            # transaction instead of one each. All-or-nothing; if the batch is refused for any
-            # reason we fall back to the one-by-one loop below, which keeps its exact behaviour.
-            if (
-                len(planned) > 1
-                and hasattr(store, "append_many")
-                and not any(e.type == "handoff_rejected" for e in planned)
-            ):
-                try:
-                    store.append_many(planned, pathway)
-                except (InvalidTransition, CaseNotFound, EventIdConflict):
-                    pass
-                else:
-                    for event in planned:
-                        if event.type == "mark_overdue":
-                            result.mark_overdue += 1
-                        else:
-                            result.escalate += 1
-                    planned = []
-            for event in planned:
-                try:
-                    # Whatever the sweep plans must also pass the payload schema (A14), so a bug
-                    # here cannot put free text in the log. A planned event that does not is
-                    # reported and skipped, not allowed to stop the sweep for every other case.
-                    payloads.validate(event.type, event.payload)
-                except payloads.PayloadSchemaError as exc:
-                    result.errors.append(f"{case_id}: {exc}")
-                    log.error("case %s: planned %s refused by the payload schema: %s", case_id, event.type, exc)
-                    break
-                try:
-                    store.append(event, pathway)
-                except InvalidTransition as exc:
-                    # Another writer moved the case between our read and our write; the next
-                    # sweep re-plans from the new state.
-                    result.rejected += 1
-                    log.info("case %s: %s refused: %s", case_id, event.type, exc)
-                    break
-                except EventContentConflict as exc:
-                    # Another detector appended this id with different content a moment ago: a race, like
-                    # the refusal above; the next sweep re-plans from the log.
-                    result.rejected += 1
-                    log.info("case %s: %s refused: %s", case_id, event.type, exc)
-                    break
-                except (CaseNotFound, EventIdConflict) as exc:
-                    result.errors.append(f"{case_id}: {type(exc).__name__}: {exc}")
-                    break
-                if event.type == "mark_overdue":
-                    result.mark_overdue += 1
-                elif event.type == "handoff_rejected":
-                    result.handoff_bounced += 1
-                    bounced = True
-                else:
-                    result.escalate += 1
-            if not bounced:
-                break
-            model = store.read_model(case_id, pathway)
-            if model is None:
-                break
+        planned = plan_case(case_id, model, pathway, calendar, now)
+        if not planned:
+            continue
+        _check_planned(planned, pathway)
+        if batching and not any(e.type == "handoff_rejected" for e in planned) and _valid_payloads(planned):
+            pending.append((case_id, model, planned))
+            if len(pending) >= batch_cases:
+                flush()
+            continue
+        _emit_case(store, pathway, calendar, now, result, case_id, model, planned)
+    flush()
+    if skipped_base:
+        result.cases_skipped = max(skipped_base - result.cases_evaluated, 0)
     return result
 
 
@@ -546,6 +716,8 @@ class _RecordingStore:
         self.refs: list[tuple[str, str]] = []
         if hasattr(inner, "append_many"):  # the sweep probes for it with hasattr
             self.append_many = self._append_many
+        if hasattr(inner, "append_batches"):
+            self.append_batches = self._append_batches
 
     def append(self, event, pathway, *, within=None, guard=None):
         state = self._inner.append(event, pathway, within=within, guard=guard)
@@ -556,6 +728,13 @@ class _RecordingStore:
         state = self._inner.append_many(events, pathway, within=within, guard=guard)
         self.refs.extend((str(e.event_id), str(e.case_id)) for e in events)
         return state
+
+    def _append_batches(self, batches, pathway):
+        outcomes = self._inner.append_batches(batches, pathway)
+        for events, outcome in zip(batches, outcomes):
+            if isinstance(outcome, str):  # committed; a refused case wrote nothing
+                self.refs.extend((str(e.event_id), str(e.case_id)) for e in events)
+        return outcomes
 
     def __getattr__(self, name):
         return getattr(self._inner, name)
@@ -571,7 +750,7 @@ def _sweep_shard(args: tuple) -> dict:
     pool = ConnectionPool(database_url, min_size=1, max_size=2, open=True)
     try:
         pool.wait(timeout=30)
-        store = PostgresEventStore(pool)
+        store = PostgresEventStore(pool, calendar=calendar)
         if record:
             store = _RecordingStore(store)
         out = run_sweep(store, pathway, calendar, now, shard=(index, count)).to_json()
@@ -632,6 +811,7 @@ def run_sweep_parallel(
     try:
         for part in executor.map(_sweep_shard, jobs):
             total.cases_evaluated += part["cases_evaluated"]
+            total.cases_skipped += part.get("cases_skipped", 0)
             total.mark_overdue += part["mark_overdue"]
             total.escalate += part["escalate"]
             total.handoff_bounced += part["handoff_bounced"]

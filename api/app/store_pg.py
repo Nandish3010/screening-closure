@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Sequence
 from uuid import UUID
 
@@ -24,6 +25,8 @@ from app.events import (
 )
 from app.pathway import Pathway
 from app.state_machine import CaseModel, InvalidTransition, replay_model, step
+
+log = logging.getLogger("app.store_pg")
 
 _EVENT_COLS = "seq, event_id, type, at, actor, payload"
 _INSERT_EVENT = (
@@ -52,9 +55,55 @@ def _insert_event(cur, event: Event, seq: int) -> None:
         raise
 
 
+def _fresh_events(case_id: UUID, events: Sequence[Event], known: dict) -> list[Event]:
+    """The events not yet stored, after the idempotency checks: one already on this case with the same content is
+    skipped (a retry), with different content EventContentConflict, on another case EventIdConflict."""
+    for e in events:
+        stored = known.get(e.event_id)
+        if stored is None:
+            continue
+        if stored[0] != case_id:
+            raise EventIdConflict(str(e.event_id))
+        if stored[1] != event_digest(e.type, e.at, e.actor, e.payload):
+            raise EventContentConflict(
+                f"event_id {e.event_id} is already used by a different event on this case")
+    return [e for e in events if e.event_id not in known]
+
+
+def _replay_verified(case_id: UUID, rows: list, stored_state: str, pathway: Pathway) -> CaseModel:
+    """Replay the stored log and check it against `cases.current_state` (the engine's safety property)."""
+    history = [_event_from_row(case_id, r) for r in rows]
+    try:
+        model = replay_model(history, pathway)
+    except InvalidTransition as exc:
+        raise StateCorruption(f"case {case_id}: stored log does not replay: {exc}") from exc
+    if model.state != stored_state:
+        raise StateCorruption(
+            f"case {case_id}: cases.current_state={stored_state!r} but replay gives {model.state!r}"
+        )
+    return model
+
+
 class PostgresEventStore:
-    def __init__(self, pool: ConnectionPool) -> None:
+    def __init__(self, pool: ConnectionPool, calendar=None) -> None:
         self._pool = pool
+        # The working-day calendar `cases.next_due_at` is computed with (A20); the configured one when not given.
+        self._calendar = calendar
+        self._basis_cache: tuple | None = None  # (pathway, calendar, fingerprint)
+
+    def _timing(self, pathway: Pathway):
+        """(calendar, fingerprint) that `cases.next_due_at` is written under for this pathway."""
+        from app.sweep import timing_fingerprint
+
+        calendar = self._calendar
+        if calendar is None:
+            from app.calendar import default_calendar
+
+            calendar = default_calendar()
+        cached = self._basis_cache
+        if cached is None or cached[0] is not pathway or cached[1] is not calendar:
+            cached = self._basis_cache = (pathway, calendar, timing_fingerprint(pathway, calendar))
+        return calendar, cached[2]
 
     def create_case(
         self, case_id: UUID, pathway_name: str, genesis_event: Event, initial_state: str
@@ -129,16 +178,7 @@ class PostgresEventStore:
                 ([e.event_id for e in events],),
             )
             known = {r[0]: (r[1], event_digest(r[2], r[3], r[4], r[5])) for r in cur.fetchall()}
-            for e in events:
-                stored = known.get(e.event_id)
-                if stored is None:
-                    continue
-                if stored[0] != case_id:
-                    raise EventIdConflict(str(e.event_id))
-                if stored[1] != event_digest(e.type, e.at, e.actor, e.payload):
-                    raise EventContentConflict(
-                        f"event_id {e.event_id} is already used by a different event on this case")
-            fresh = [e for e in events if e.event_id not in known]
+            fresh = _fresh_events(case_id, events, known)
             if not fresh:
                 return stored_state
 
@@ -146,18 +186,7 @@ class PostgresEventStore:
                 f"SELECT {_EVENT_COLS} FROM events WHERE case_id = %s ORDER BY seq", (case_id,)
             )
             rows = cur.fetchall()
-            history = [_event_from_row(case_id, r) for r in rows]
-            try:
-                model = replay_model(history, pathway)
-            except InvalidTransition as exc:
-                raise StateCorruption(
-                    f"case {case_id}: stored log does not replay: {exc}"
-                ) from exc
-            if model.state != stored_state:
-                raise StateCorruption(
-                    f"case {case_id}: cases.current_state={stored_state!r} "
-                    f"but replay gives {model.state!r}"
-                )
+            model = _replay_verified(case_id, rows, stored_state, pathway)
 
             if guard is not None:
                 guard(model)
@@ -167,13 +196,138 @@ class PostgresEventStore:
             next_seq = (rows[-1][0] if rows else 0) + 1
             for offset, e in enumerate(fresh):
                 _insert_event(cur, e, next_seq + offset)
+            due, basis = self._next_due(model, pathway)
             cur.execute(
-                "UPDATE cases SET current_state = %s, updated_at = now() WHERE id = %s",
-                (model.state, case_id),
+                "UPDATE cases SET current_state = %s, updated_at = now(), next_due_at = %s, next_due_basis = %s"
+                " WHERE id = %s",
+                (model.state, due, basis, case_id),
             )
             if within is not None:
                 within(cur)
             return model.state
+
+    def append_batches(self, batches: Sequence[Sequence[Event]], pathway: Pathway) -> list:
+        """`append_many` for several cases at once, in ONE transaction (A20, the sweep's write path).
+
+        `batches` holds one list of events per case (each list is what `append_many` would take: events of a single
+        case, applied in order). Each case keeps the per-case semantics of `append_many`: its row is locked
+        (`FOR UPDATE`, taken in case-id order, so two overlapping batches cannot deadlock each other), its stored log
+        is re-read, replayed and checked against `cases.current_state`, an event already stored with the same content is a
+        no-op, one with different content is `EventContentConflict`, and every event must be a valid step from the
+        state the one before it produced. What is shared is only the round trips and the commit.
+
+        A case that is refused does not lose the others. The refusal is returned in that case's slot of the result
+        (an exception instance: InvalidTransition, EventContentConflict, EventIdConflict, CaseNotFound,
+        StateCorruption or ValueError, as `append_many` would have raised) and nothing is written for that case; every
+        other case's events are committed together. A successful slot is the case's state afterwards, as `append_many`
+        returns it. The row locks of all the cases are held until the single commit.
+
+        Anything that is not a per-case refusal (a lost connection, a deadlock, an event id taken by a concurrent
+        writer between the check and the insert) raises, and then NOTHING of the batch is written: the caller falls
+        back to `append_many` case by case, which finds each case in a known state. `within` and `guard` are not
+        offered here: they exist for the API's single-case writes."""
+        if not batches:
+            return []
+        for events in batches:
+            if not events:
+                raise ValueError("append_batches needs at least one event per case")
+        outcomes: list = [None] * len(batches)
+        slots: dict[UUID, int] = {}
+        for i, events in enumerate(batches):
+            case_id = events[0].case_id
+            if case_id in slots:
+                raise ValueError(f"append_batches takes each case once; {case_id} appears twice")
+            slots[case_id] = i
+            if any(e.case_id != case_id for e in events):
+                outcomes[i] = ValueError("append_many takes events of a single case")
+            else:
+                try:
+                    check_batch_ids(events)
+                except EventIdConflict as exc:
+                    outcomes[i] = exc
+        live = [cid for cid, i in slots.items() if outcomes[i] is None]
+        if not live:
+            return outcomes
+        with self._pool.connection() as conn, conn.cursor() as cur:
+            cur.execute(
+                "SELECT id, pathway, current_state FROM cases WHERE id = ANY(%s) ORDER BY id FOR UPDATE",
+                (live,),
+            )
+            case_rows = {r[0]: (r[1], r[2]) for r in cur.fetchall()}
+            for cid in live:
+                row = case_rows.get(cid)
+                if row is None:
+                    outcomes[slots[cid]] = CaseNotFound(str(cid))
+                elif row[0] != pathway.name:
+                    outcomes[slots[cid]] = ValueError(
+                        f"case {cid} belongs to pathway {row[0]!r}, not {pathway.name!r}")
+            live = [cid for cid in live if outcomes[slots[cid]] is None]
+            if not live:
+                return outcomes
+            cur.execute(
+                "SELECT event_id, case_id, type, at, actor, payload FROM events WHERE event_id = ANY(%s)",
+                ([e.event_id for cid in live for e in batches[slots[cid]]],),
+            )
+            known = {r[0]: (r[1], event_digest(r[2], r[3], r[4], r[5])) for r in cur.fetchall()}
+            fresh_by_case: dict[UUID, list[Event]] = {}
+            for cid in live:
+                try:
+                    fresh = _fresh_events(cid, batches[slots[cid]], known)
+                except (EventIdConflict, EventContentConflict) as exc:
+                    outcomes[slots[cid]] = exc
+                    continue
+                if fresh:
+                    fresh_by_case[cid] = fresh
+                else:
+                    outcomes[slots[cid]] = case_rows[cid][1]  # every event already stored: an idempotent retry
+            if not fresh_by_case:
+                return outcomes
+            cur.execute(
+                f"SELECT case_id, {_EVENT_COLS} FROM events WHERE case_id = ANY(%s) ORDER BY case_id, seq",
+                (list(fresh_by_case),),
+            )
+            logs: dict[UUID, list] = {}
+            for row in cur.fetchall():
+                logs.setdefault(row[0], []).append(row[1:])
+            insert_rows: list[tuple] = []
+            updates: list[tuple] = []
+            for cid, fresh in fresh_by_case.items():
+                rows = logs.get(cid, [])
+                try:
+                    model = _replay_verified(cid, rows, case_rows[cid][1], pathway)
+                    for e in fresh:
+                        model = step(model, e, pathway)
+                except (InvalidTransition, StateCorruption) as exc:
+                    outcomes[slots[cid]] = exc
+                    continue
+                next_seq = (rows[-1][0] if rows else 0) + 1
+                for offset, e in enumerate(fresh):
+                    insert_rows.append((e.event_id, cid, next_seq + offset, e.type, e.at, e.actor, Jsonb(e.payload)))
+                due, basis = self._next_due(model, pathway)
+                updates.append((model.state, due, basis, cid))
+                outcomes[slots[cid]] = model.state
+            if insert_rows:
+                cur.executemany(_INSERT_EVENT, insert_rows)
+                cur.executemany(
+                    "UPDATE cases SET current_state = %s, updated_at = now(), next_due_at = %s, next_due_basis = %s"
+                    " WHERE id = %s",
+                    updates,
+                )
+        return outcomes
+
+    def _next_due(self, model: CaseModel, pathway: Pathway):
+        """(next_due_at, basis) for the model as the sweep index stores them (A20). NEVER when nothing is left to
+        watch. A failure to compute leaves both NULL ("not computed": the sweep always evaluates such a case), so a
+        bug here can cost time but cannot hide a breach."""
+        from app.sweep import NEVER, next_due_at
+
+        calendar, basis = self._timing(pathway)
+        try:
+            due = next_due_at(model, pathway, calendar)
+        except Exception:  # noqa: BLE001 - the index is derived; never let it fail an append
+            log.exception("next_due_at failed for a case in state %s; leaving it uncomputed", model.state)
+            return None, None
+        return (NEVER if due is None else due), basis
 
     def events_for(self, case_id: UUID) -> list[Event]:
         with self._pool.connection() as conn:
@@ -185,6 +339,27 @@ class PostgresEventStore:
     def read_model(self, case_id: UUID, pathway: Pathway) -> CaseModel | None:
         events = self.events_for(case_id)
         return replay_model(events, pathway) if events else None
+
+    @staticmethod
+    def _shard_sql(shard) -> tuple[str, list]:
+        if shard is None:
+            return "", []
+        index, count = shard
+        if not (isinstance(count, int) and isinstance(index, int) and 0 <= index < count):
+            raise ValueError(f"shard must be (index, count) with 0 <= index < count, got {shard!r}")
+        return " AND mod(hashtext(id::text)::bigint & 2147483647, %s) = %s", [count, index]
+
+    def _read_chunk(self, part: list[UUID]) -> dict[UUID, list[Event]]:
+        with self._pool.connection() as conn:
+            rows = conn.execute(
+                f"SELECT case_id, {_EVENT_COLS} FROM events"
+                " WHERE case_id = ANY(%s) ORDER BY case_id, seq",
+                (part,),
+            ).fetchall()
+        by_case: dict[UUID, list[Event]] = {}
+        for row in rows:
+            by_case.setdefault(row[0], []).append(_event_from_row(row[0], row[1:]))
+        return by_case
 
     def iter_open_case_models(self, pathway: Pathway, only=None, chunk: int = 500, shard=None):
         """Yield (case_id, model | None, error | None) for every non-closed case of the pathway.
@@ -199,30 +374,91 @@ class PostgresEventStore:
         if only is not None:
             sql += " AND id = ANY(%s)"
             params.append(list(only))
-        if shard is not None:
-            index, count = shard
-            if not (isinstance(count, int) and isinstance(index, int) and 0 <= index < count):
-                raise ValueError(f"shard must be (index, count) with 0 <= index < count, got {shard!r}")
-            sql += " AND mod(hashtext(id::text)::bigint & 2147483647, %s) = %s"
-            params += [count, index]
+        shard_sql, shard_params = self._shard_sql(shard)
+        sql, params = sql + shard_sql, params + shard_params
         with self._pool.connection() as conn:
             ids = [r[0] for r in conn.execute(sql + " ORDER BY id", params).fetchall()]
         for i in range(0, len(ids), chunk):
             part = ids[i : i + chunk]
-            with self._pool.connection() as conn:
-                rows = conn.execute(
-                    f"SELECT case_id, {_EVENT_COLS} FROM events"
-                    " WHERE case_id = ANY(%s) ORDER BY case_id, seq",
-                    (part,),
-                ).fetchall()
-            by_case: dict[UUID, list[Event]] = {}
-            for row in rows:
-                by_case.setdefault(row[0], []).append(_event_from_row(row[0], row[1:]))
+            by_case = self._read_chunk(part)
             for case_id in part:
                 try:
                     yield case_id, replay_model(by_case.get(case_id, []), pathway), None
                 except InvalidTransition as exc:
                     yield case_id, None, str(exc)
+
+    def count_open_cases(self, pathway: Pathway, shard=None) -> int:
+        """How many non-closed cases of the pathway (in the shard) there are: what a full scan would read."""
+        sql = "SELECT count(*) FROM cases WHERE pathway = %s AND current_state <> %s"
+        params: list = [pathway.name, pathway.terminal_state]
+        shard_sql, shard_params = self._shard_sql(shard)
+        with self._pool.connection() as conn:
+            return int(conn.execute(sql + shard_sql, params + shard_params).fetchone()[0])
+
+    def iter_due_case_models(self, pathway: Pathway, calendar, now, chunk: int = 500, shard=None):
+        """Like `iter_open_case_models`, but only the cases the scheduler can have something to do for at `now` (A20).
+
+        Selected: `next_due_at <= now`, and every case whose `next_due_at` is NULL or was written under another
+        timing fingerprint (a case created since the last sweep, a row from before migration 012, a changed calendar
+        or pathway). Those "not computed" cases are replayed like the rest and their due time is written back
+        before they are yielded (under the row lock, and only if no event arrived since the read; a case locked by
+        a writer is skipped, since that writer sets its own value), so the next sweep skips them. A case whose log does
+        not replay is yielded with its error on every sweep and stays NULL, as in the full scan.
+
+        Everything not selected has `next_due_at > now`: `plan_case` would return nothing for it
+        (`app.sweep.next_due_at`, property-tested), so the events a sweep emits are those of a full scan."""
+        from app.sweep import NEVER, next_due_at, timing_fingerprint
+
+        basis = timing_fingerprint(pathway, calendar)
+        sql = (
+            "SELECT id, (next_due_at IS NULL OR next_due_basis IS DISTINCT FROM %s) FROM cases"
+            " WHERE pathway = %s AND current_state <> %s"
+            " AND (next_due_at IS NULL OR next_due_basis IS DISTINCT FROM %s OR next_due_at <= %s)"
+        )
+        params: list = [basis, pathway.name, pathway.terminal_state, basis, now]
+        shard_sql, shard_params = self._shard_sql(shard)
+        with self._pool.connection() as conn:
+            rows = conn.execute(sql + shard_sql + " ORDER BY id", params + shard_params).fetchall()
+        for i in range(0, len(rows), chunk):
+            part = [r[0] for r in rows[i : i + chunk]]
+            stale = {r[0] for r in rows[i : i + chunk] if r[1]}
+            by_case = self._read_chunk(part)
+            out: list[tuple] = []
+            heal: list[tuple] = []  # (case_id, last seq read, next_due_at)
+            for case_id in part:
+                events = by_case.get(case_id, [])
+                try:
+                    model = replay_model(events, pathway)
+                except InvalidTransition as exc:
+                    out.append((case_id, None, str(exc)))
+                    continue
+                out.append((case_id, model, None))
+                if case_id in stale and events:
+                    try:
+                        due = next_due_at(model, pathway, calendar)
+                    except Exception:  # noqa: BLE001 - leave it uncomputed: evaluated again next time
+                        log.exception("next_due_at failed for case %s; leaving it uncomputed", case_id)
+                        continue
+                    heal.append((case_id, events[-1].seq, NEVER if due is None else due))
+            if heal:
+                self._write_next_due(heal, basis)
+            yield from out
+
+    def _write_next_due(self, heal: list[tuple], basis: str) -> None:
+        """Store `next_due_at` for cases the sweep evaluated without one. Each is locked first and written only if
+        its log is still as long as when it was read; a case a writer holds is left to that writer."""
+        ids = [h[0] for h in heal]
+        with self._pool.connection() as conn, conn.cursor() as cur:
+            cur.execute("SELECT id FROM cases WHERE id = ANY(%s) FOR UPDATE SKIP LOCKED", (ids,))
+            locked = {r[0] for r in cur.fetchall()}
+            cur.execute(
+                "SELECT case_id, max(seq) FROM events WHERE case_id = ANY(%s) GROUP BY case_id", (list(locked),)
+            )
+            current = dict(cur.fetchall())
+            cur.executemany(
+                "UPDATE cases SET next_due_at = %s, next_due_basis = %s WHERE id = %s",
+                [(due, basis, cid) for cid, seq, due in heal if cid in locked and current.get(cid) == seq],
+            )
 
     def has_events_after(self, at) -> bool:
         with self._pool.connection() as conn:
