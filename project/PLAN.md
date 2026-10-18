@@ -99,7 +99,7 @@ Six independent workstreams. Each cut owns its directories and touches nothing e
 - LLM message drafting behind owner approval, with a Provenance record (prompt, draft, approver, timestamp).
 - Deterministic template fallback, output validation, and cached outputs so the demo runs offline.
 - Provider switch `LLM_PROVIDER=template|azure_openai|jais`; `template` is the default and needs no network.
-- One simple calibrated loss-to-follow-up risk score (logistic regression on simulator features: stage, days since result, prior escalations, prior referral bounces, consent withdrawn, contact valid, provider changed, preferred channel and age band, the last kept as the documented null feature; language is excluded because it is a proxy for nationality, D12, on the cut-risk branch and not yet merged; trained on simulator output only) used only to order the worklist, with a reliability plot and a risk score card. It never closes, escalates or decides care.
+- One simple calibrated loss-to-follow-up risk score (logistic regression on simulator features: stage, days since result, prior escalations, prior referral bounces, consent withdrawn, contact valid, provider changed, preferred channel and age band, the last kept as the documented null feature; language is excluded because it is a proxy for nationality, D12; trained on simulator output only) used only to order the worklist, with a reliability plot and a risk score card. It never closes, escalates or decides care.
 - Governance write-ups that belong with the code.
 
 **Owning directories.** `api/app/ai/`, `docs/governance/`.

@@ -14,7 +14,7 @@ One row per ticket. Tickets come from this file and nowhere else. Plan: [PLAN.md
 | M5 | Hardening, docs, demo | 18 Oct 22:30 | 21 | 15 | doing |
 | Total | | | 86 | 71 | |
 
-Tickets per cut: A 19, B 16, C 11, D 11, E 13, F 12 (82, including A13 to A19, B12 to B16 and E14 added after the first plan, plus the 3 done M0 tickets). Human-owner tasks are listed separately at the bottom.
+Tickets per cut: A 19, B 16, C 11, D 12, E 13, F 12 (83, including A13 to A19, B12 to B16, D12 and E14 added after the first plan, plus the 3 done M0 tickets). Human-owner tasks are listed separately at the bottom.
 
 ## How to update
 
