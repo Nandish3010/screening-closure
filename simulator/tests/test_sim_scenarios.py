@@ -43,7 +43,7 @@ def test_overlay_pins_the_three_requested_caps():
     assert mp.human_dropout_residual_multiplier == mp.dropout_residual_multiplier
     assert 0.0 < mp.programme_reach < 1.0
     up = load_context(warn=False).mp
-    assert up.programme_reach == 1.0 and up.sms_reminder_effect == 0.25
+    assert up.programme_reach == 1.0 and up.sms_reminder_effect == 0.167  # the B18 fit (was 0.25, Lam 2021)
 
 
 # ---- programme reach -------------------------------------------------------------------------------

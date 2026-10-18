@@ -1,0 +1,711 @@
+{
+ "aihw-nbcsp-2024": {
+  "status": "not downloaded (Cloudflare human verification); see tools/calibration/manifest.json not_downloaded"
+ },
+ "derived_params": {
+  "appointment.responsiveness_noshow_shift": {
+   "dataset": "openml-noshow",
+   "dataset_sha256": "8f1a0dd72291a26d91cd6cf51d792738e9daa3f39079ac48a7027ef8d1822061",
+   "fit_script": "tools/calibration/fit_noshow.py",
+   "value": 1.12
+  },
+  "colonoscopy_uptake_after_positive_england": {
+   "dataset": "nhs-bcsp",
+   "dataset_sha256": "c02d8b84c670f23ec396f3388a260accdf85510441bb61e568110b051033264c",
+   "fit_script": "tools/calibration/fit_bcsp.py",
+   "value": 0.76
+  },
+  "colonoscopy_uptake_after_positive_scotland": {
+   "dataset": "phs",
+   "dataset_sha256": "a25716b45849a27009f96f4fc6435d4485fe1a711e921fd7eb6dec691a1323bf",
+   "fit_script": "tools/calibration/fit_bands.py",
+   "value": 0.75
+  },
+  "fit_positivity_rate_england_120ug": {
+   "dataset": "nhs-bcsp",
+   "dataset_sha256": "c02d8b84c670f23ec396f3388a260accdf85510441bb61e568110b051033264c",
+   "fit_script": "tools/calibration/fit_bcsp.py",
+   "value": 0.0171
+  },
+  "sms_reminder_effect": {
+   "dataset": "openml-noshow",
+   "dataset_sha256": "8f1a0dd72291a26d91cd6cf51d792738e9daa3f39079ac48a7027ef8d1822061",
+   "fit_script": "tools/calibration/fit_noshow.py",
+   "value": 0.167
+  },
+  "time_to_colonoscopy_lognormal_sigma": {
+   "dataset": "phs",
+   "dataset_sha256": "a25716b45849a27009f96f4fc6435d4485fe1a711e921fd7eb6dec691a1323bf",
+   "fit_script": "tools/calibration/fit_bands.py",
+   "value": 0.63
+  },
+  "time_to_colonoscopy_managed_ref_iqr_days": {
+   "dataset": "phs",
+   "dataset_sha256": "a25716b45849a27009f96f4fc6435d4485fe1a711e921fd7eb6dec691a1323bf",
+   "fit_script": "tools/calibration/fit_bands.py",
+   "value": [
+    26.0,
+    61.1
+   ]
+  },
+  "time_to_colonoscopy_managed_ref_median_days": {
+   "dataset": "phs",
+   "dataset_sha256": "a25716b45849a27009f96f4fc6435d4485fe1a711e921fd7eb6dec691a1323bf",
+   "fit_script": "tools/calibration/fit_bands.py",
+   "value": 39.9
+  }
+ },
+ "nhs-bcsp": {
+  "dataset_sha256": "c02d8b84c670f23ec396f3388a260accdf85510441bb61e568110b051033264c",
+  "fit": {
+   "attended_diagnostic_within_14d_of_ssp": 0.5038954,
+   "attended_within_14d_counts": [
+    35185.0,
+    69826.0
+   ],
+   "cutoff_note": "England uses a FIT cut-off of 120 ug Hb/g faeces; positivity is cut-off dependent",
+   "diagnostic_test_offered_within_14d_of_ssp": 0.89209025,
+   "diagnostic_uptake_after_positive": 0.75950796,
+   "diagnostic_uptake_ci95": [
+    0.75673712,
+    0.76225716
+   ],
+   "diagnostic_uptake_counts": [
+    69956.0,
+    92107.0
+   ],
+   "further_tests_needed": 89030.0,
+   "invited": 7963115.0,
+   "positivity": 0.01713629,
+   "positivity_ci95": [
+    0.017025052,
+    0.017248242
+   ],
+   "screened": 5195407.0,
+   "ssp_appointment_offered_within_14d_of_referral": 0.99444177,
+   "uptake_of_invited": 0.652434
+  }
+ },
+ "nhs-dm01": {
+  "dataset_sha256": "7ad11252a41fa9378f578edd58347d82d88d34bbb1f3801218fcf5a52012e5d3",
+  "fit": {
+   "band_check_6plus_matches": true,
+   "band_check_sum_matches_total": true,
+   "fitted_band_shares": [
+    0.21016707,
+    0.15841439,
+    0.11616079,
+    0.087215724,
+    0.067155434,
+    0.052851438,
+    0.042367599,
+    0.034496703,
+    0.028464261,
+    0.023758053,
+    0.020029641,
+    0.017035966,
+    0.014603676,
+    0.12727925
+   ],
+   "little_law_mean_wait_days": 44.599196,
+   "max_abs_band_error": 0.022625281,
+   "mean_days": 31.050998,
+   "median_days": 18.093182,
+   "mu": 2.8955352,
+   "neg_loglik": 181335.24,
+   "observed_band_shares": [
+    0.20937353,
+    0.15284918,
+    0.11537039,
+    0.090941562,
+    0.089780715,
+    0.053666875,
+    0.0322486,
+    0.026801546,
+    0.032771619,
+    0.019313442,
+    0.016149813,
+    0.01482313,
+    0.013470934,
+    0.13243867
+   ],
+   "p90_days": 68.544331,
+   "period": "March 2026",
+   "providers": 229,
+   "share_over_13w_fit": 0.12727925,
+   "share_over_13w_observed": 0.13243867,
+   "share_over_6w_fit": 0.30803515,
+   "share_over_6w_observed": 0.28801776,
+   "sigma": 1.0393226,
+   "total_waiting": 78391.0,
+   "waiting_list_tests_in_month": 54488.0
+  }
+ },
+ "openml-noshow": {
+  "dataset_sha256": "8f1a0dd72291a26d91cd6cf51d792738e9daa3f39079ac48a7027ef8d1822061",
+  "fit": {
+   "mixed": {
+    "appointments": 31322,
+    "coef": {
+     "age_per_decade": -0.0881458,
+     "intercept": -1.5463034,
+     "log_lead_days": 0.2636511,
+     "sms_received": -0.25678134
+    },
+    "neg_loglik": 18485.327,
+    "patients": 11734,
+    "sms_conditional_odds_ratio": 0.77353734,
+    "tau": 1.124823,
+    "tau_profile_delta_nll": {
+     "0.675": 154.75302,
+     "0.900": 37.670261,
+     "1.125": 0.0,
+     "1.406": 50.114582,
+     "1.800": 246.97466
+    }
+   },
+   "n_kept_lead_ge_3": 60017,
+   "n_raw": 110527,
+   "n_sms": 35481,
+   "no_show_rate": 0.29664928,
+   "no_show_rate_no_sms": 0.32686664,
+   "no_show_rate_sms": 0.27575322,
+   "patients_total": 40429,
+   "pooled": {
+    "coef": {
+     "age_per_decade": -0.095491307,
+     "intercept": -1.1840277,
+     "log_lead_days": 0.18149326,
+     "sms_received": -0.26463194
+    },
+    "loglik": -35951.518,
+    "se": {
+     "age_per_decade": 0.0039885752,
+     "intercept": 0.030565638,
+     "log_lead_days": 0.010694469,
+     "sms_received": 0.018241193
+    },
+    "sms_odds_ratio": 0.76748838,
+    "sms_odds_ratio_ci95": [
+     0.7405333,
+     0.79542461
+    ],
+    "sms_relative_reduction": 0.16650919,
+    "sms_relative_reduction_ci95": [
+     0.14611928,
+     0.1868991
+    ]
+   },
+   "raw_relative_reduction": 0.15637394
+  }
+ },
+ "phs": {
+  "dataset_sha256": "a25716b45849a27009f96f4fc6435d4485fe1a711e921fd7eb6dec691a1323bf",
+  "fit": {
+   "board_median_range_days": [
+    19.00678,
+    113.04907
+   ],
+   "boards": {
+    "Ayrshire and Arran": {
+     "completion_from_referral": {
+      "180": 0.82541969,
+      "360": 0.82577563,
+      "90": 0.80325076
+     },
+     "fit_days_bands": {
+      "mean": 39.588579,
+      "median": 35.398723,
+      "mu": 3.5666757,
+      "p25": 25.729585,
+      "p75": 48.701508,
+      "p90": 64.900203,
+      "sigma": 0.47300087
+     },
+     "fit_weeks_bands": {
+      "mean": 39.45247,
+      "median": 34.955969,
+      "mu": 3.5540893,
+      "p25": 25.085099,
+      "p75": 48.710981,
+      "p90": 65.66385,
+      "sigma": 0.49195
+     },
+     "pi_never_in_window": 0.17422349,
+     "reported_median_days_a6": 37.0,
+     "reported_median_days_kpi4": 37.0,
+     "share_over_8w": 0.16904453,
+     "share_within_4w": 0.32598357
+    },
+    "Borders": {
+     "completion_from_referral": {
+      "180": 0.8099606,
+      "360": 0.80996068,
+      "90": 0.80881832
+     },
+     "fit_days_bands": {
+      "mean": 37.281063,
+      "median": 35.064619,
+      "mu": 3.5571926,
+      "p25": 27.689092,
+      "p75": 44.404761,
+      "p90": 54.920832,
+      "sigma": 0.35012256
+     },
+     "fit_weeks_bands": {
+      "mean": 36.946078,
+      "median": 35.161229,
+      "mu": 3.559944,
+      "p25": 28.436901,
+      "p75": 43.475624,
+      "p90": 52.627447,
+      "sigma": 0.3146918
+     },
+     "pi_never_in_window": 0.19003932,
+     "reported_median_days_a6": 35.0,
+     "reported_median_days_kpi4": 35.0,
+     "share_over_8w": 0.069579288,
+     "share_within_4w": 0.23462783
+    },
+    "Dumfries and Galloway": {
+     "completion_from_referral": {
+      "180": 0.81735591,
+      "360": 0.81736793,
+      "90": 0.81569273
+     },
+     "fit_days_bands": {
+      "mean": 20.404627,
+      "median": 16.859516,
+      "mu": 2.8249152,
+      "p25": 11.114012,
+      "p75": 25.575216,
+      "p90": 37.213606,
+      "sigma": 0.61781301
+     },
+     "fit_weeks_bands": {
+      "mean": 22.608591,
+      "median": 19.64346,
+      "mu": 2.9777445,
+      "p25": 13.736994,
+      "p75": 28.089516,
+      "p90": 38.75634,
+      "sigma": 0.53025559
+     },
+     "pi_never_in_window": 0.18263205,
+     "reported_median_days_a6": 22.0,
+     "reported_median_days_kpi4": 22.0,
+     "share_over_8w": 0.024096386,
+     "share_within_4w": 0.74808324
+    },
+    "Fife": {
+     "completion_from_referral": {
+      "180": 0.79692511,
+      "360": 0.79872886,
+      "90": 0.77854943
+     },
+     "fit_days_bands": {
+      "mean": 25.643409,
+      "median": 18.363555,
+      "mu": 2.910368,
+      "p25": 10.582125,
+      "p75": 31.866963,
+      "p90": 52.335172,
+      "sigma": 0.81721302
+     },
+     "fit_weeks_bands": {
+      "mean": 26.090395,
+      "median": 19.00678,
+      "mu": 2.9447957,
+      "p25": 11.110969,
+      "p75": 32.513607,
+      "p90": 52.712469,
+      "sigma": 0.79595416
+     },
+     "pi_never_in_window": 0.20118343,
+     "reported_median_days_a6": 24.0,
+     "reported_median_days_kpi4": 24.0,
+     "share_over_8w": 0.087301587,
+     "share_within_4w": 0.68677249
+    },
+    "Forth Valley": {
+     "completion_from_referral": {
+      "180": 0.76838279,
+      "360": 0.76838811,
+      "90": 0.76505907
+     },
+     "fit_days_bands": {
+      "mean": 34.541229,
+      "median": 31.775162,
+      "mu": 3.4586849,
+      "p25": 24.121463,
+      "p75": 41.857367,
+      "p90": 53.640321,
+      "sigma": 0.40857982
+     },
+     "fit_weeks_bands": {
+      "mean": 33.917486,
+      "median": 31.276575,
+      "mu": 3.4428694,
+      "p25": 23.838212,
+      "p75": 41.035969,
+      "p90": 52.398556,
+      "sigma": 0.40264446
+     },
+     "pi_never_in_window": 0.23161189,
+     "reported_median_days_a6": 32.0,
+     "reported_median_days_kpi4": 32.0,
+     "share_over_8w": 0.073998642,
+     "share_within_4w": 0.39171758
+    },
+    "Grampian": {
+     "completion_from_referral": {
+      "180": 0.51531228,
+      "360": 0.65441577,
+      "90": 0.2530615
+     },
+     "fit_days_bands": {
+      "mean": 131.12141,
+      "median": 106.16932,
+      "mu": 4.6650352,
+      "p25": 68.496625,
+      "p75": 164.56175,
+      "p90": 244.13594,
+      "sigma": 0.64975149
+     },
+     "fit_weeks_bands": {
+      "mean": 142.76863,
+      "median": 113.04907,
+      "mu": 4.727822,
+      "p25": 71.306585,
+      "p75": 179.22739,
+      "p90": 271.35277,
+      "sigma": 0.68323251
+     },
+     "pi_never_in_window": 0.31474104,
+     "reported_median_days_a6": 109.0,
+     "reported_median_days_kpi4": 109.0,
+     "share_over_8w": 0.84806202,
+     "share_within_4w": 0.020542636
+    },
+    "Greater Glasgow and Clyde": {
+     "completion_from_referral": {
+      "180": 0.74202559,
+      "360": 0.75201187,
+      "90": 0.64548612
+     },
+     "fit_days_bands": {
+      "mean": 54.478579,
+      "median": 45.673072,
+      "mu": 3.8215089,
+      "p25": 30.599922,
+      "p75": 68.171072,
+      "p90": 97.757809,
+      "sigma": 0.59379912
+     },
+     "fit_weeks_bands": {
+      "mean": 56.370968,
+      "median": 46.77615,
+      "mu": 3.8453735,
+      "p25": 30.980197,
+      "p75": 70.626026,
+      "p90": 102.33322,
+      "sigma": 0.61086957
+     },
+     "pi_never_in_window": 0.24767378,
+     "reported_median_days_a6": 49.0,
+     "reported_median_days_kpi4": 49.0,
+     "share_over_8w": 0.38413969,
+     "share_within_4w": 0.20043652
+    },
+    "Highland": {
+     "completion_from_referral": {
+      "180": 0.75624285,
+      "360": 0.75647416,
+      "90": 0.73715012
+     },
+     "fit_days_bands": {
+      "mean": 41.087138,
+      "median": 36.319086,
+      "mu": 3.5923434,
+      "p25": 25.980062,
+      "p75": 50.772629,
+      "p90": 68.640344,
+      "sigma": 0.49669251
+     },
+     "fit_weeks_bands": {
+      "mean": 40.192076,
+      "median": 35.992061,
+      "mu": 3.5832984,
+      "p25": 26.216812,
+      "p75": 49.412127,
+      "p90": 65.720672,
+      "sigma": 0.46983294
+     },
+     "pi_never_in_window": 0.24352548,
+     "reported_median_days_a6": 36.0,
+     "reported_median_days_kpi4": 36.0,
+     "share_over_8w": 0.17338487,
+     "share_within_4w": 0.29652126
+    },
+    "Lanarkshire": {
+     "completion_from_referral": {
+      "180": 0.67308116,
+      "360": 0.71314334,
+      "90": 0.53251238
+     },
+     "fit_days_bands": {
+      "mean": 70.136675,
+      "median": 52.400264,
+      "mu": 3.9589116,
+      "p25": 31.308154,
+      "p75": 87.702,
+      "p90": 139.41994,
+      "sigma": 0.76358917
+     },
+     "fit_weeks_bands": {
+      "mean": 73.857367,
+      "median": 54.067283,
+      "mu": 3.9902292,
+      "p25": 31.737688,
+      "p75": 92.107247,
+      "p90": 148.77308,
+      "sigma": 0.78981834
+     },
+     "pi_never_in_window": 0.28096871,
+     "reported_median_days_a6": 55.0,
+     "reported_median_days_kpi4": 55.0,
+     "share_over_8w": 0.48226528,
+     "share_within_4w": 0.2023845
+    },
+    "Lothian": {
+     "completion_from_referral": {
+      "180": 0.68321013,
+      "360": 0.68327473,
+      "90": 0.67057867
+     },
+     "fit_days_bands": {
+      "mean": 41.547326,
+      "median": 38.215858,
+      "mu": 3.6432505,
+      "p25": 29.005333,
+      "p75": 50.351147,
+      "p90": 64.536035,
+      "sigma": 0.40885846
+     },
+     "fit_weeks_bands": {
+      "mean": 40.943874,
+      "median": 37.482206,
+      "mu": 3.6238663,
+      "p25": 28.229357,
+      "p75": 49.767897,
+      "p90": 64.233985,
+      "sigma": 0.42032341
+     },
+     "pi_never_in_window": 0.31672524,
+     "reported_median_days_a6": 40.0,
+     "reported_median_days_kpi4": 40.0,
+     "share_over_8w": 0.16974281,
+     "share_within_4w": 0.24387292
+    },
+    "Orkney": {
+     "completion_from_referral": {
+      "180": 0.79253918,
+      "360": 0.79594917,
+      "90": 0.7510966
+     },
+     "fit_days_bands": {
+      "mean": 38.626388,
+      "median": 32.00116,
+      "mu": 3.4657722,
+      "p25": 21.157682,
+      "p75": 48.402006,
+      "p90": 70.241994,
+      "sigma": 0.61345498
+     },
+     "fit_weeks_bands": {
+      "mean": 38.926946,
+      "median": 31.087978,
+      "mu": 3.4368212,
+      "p25": 19.776511,
+      "p75": 48.869204,
+      "p90": 73.424316,
+      "sigma": 0.67061989
+     },
+     "pi_never_in_window": 0.20394737,
+     "reported_median_days_a6": 33.0,
+     "reported_median_days_kpi4": 33.0,
+     "share_over_8w": 0.19008264,
+     "share_within_4w": 0.43801653
+    },
+    "Scotland": {
+     "completion_from_referral": {
+      "180": 0.74375795,
+      "360": 0.75004403,
+      "90": 0.67577002
+     },
+     "fit_days_bands": {
+      "mean": 49.058646,
+      "median": 39.885837,
+      "mu": 3.6860213,
+      "p25": 25.843021,
+      "p75": 61.559366,
+      "p90": 90.976223,
+      "sigma": 0.64342076
+     },
+     "fit_weeks_bands": {
+      "mean": 48.730263,
+      "median": 39.885602,
+      "mu": 3.6860154,
+      "p25": 26.026804,
+      "p75": 61.123955,
+      "p90": 89.757967,
+      "sigma": 0.63290578
+     },
+     "pi_never_in_window": 0.24976518,
+     "reported_median_days_a6": 40.0,
+     "reported_median_days_kpi4": 40.0,
+     "share_over_8w": 0.29592534,
+     "share_within_4w": 0.28807193
+    },
+    "Shetland": {
+     "completion_from_referral": {
+      "180": 0.84298162,
+      "360": 0.84313603,
+      "90": 0.83701758
+     },
+     "fit_days_bands": {
+      "mean": 23.784817,
+      "median": 19.005219,
+      "mu": 2.9447137,
+      "p25": 12.096577,
+      "p75": 29.859551,
+      "p90": 44.841357,
+      "sigma": 0.66982651
+     },
+     "fit_weeks_bands": {
+      "mean": 23.940383,
+      "median": 19.74733,
+      "mu": 2.9830183,
+      "p25": 12.993585,
+      "p75": 30.011505,
+      "p90": 43.741623,
+      "sigma": 0.6205617
+     },
+     "pi_never_in_window": 0.15686275,
+     "reported_median_days_a6": 22.0,
+     "reported_median_days_kpi4": 22.0,
+     "share_over_8w": 0.046511628,
+     "share_within_4w": 0.71317829
+    },
+    "Tayside": {
+     "completion_from_referral": {
+      "180": 0.81554636,
+      "360": 0.81556304,
+      "90": 0.80886251
+     },
+     "fit_days_bands": {
+      "mean": 37.66688,
+      "median": 34.294748,
+      "mu": 3.5349922,
+      "p25": 25.60708,
+      "p75": 45.929865,
+      "p90": 59.742023,
+      "sigma": 0.43310272
+     },
+     "fit_weeks_bands": {
+      "mean": 36.825934,
+      "median": 33.898988,
+      "mu": 3.5233852,
+      "p25": 25.761471,
+      "p75": 44.60698,
+      "p90": 57.108534,
+      "sigma": 0.40698198
+     },
+     "pi_never_in_window": 0.18443696,
+     "reported_median_days_a6": 34.0,
+     "reported_median_days_kpi4": 34.0,
+     "share_over_8w": 0.1087156,
+     "share_within_4w": 0.31926606
+    },
+    "Western Isles": {
+     "completion_from_referral": {
+      "180": 0.77786272,
+      "360": 0.77827414,
+      "90": 0.76833159
+     },
+     "fit_days_bands": {
+      "mean": 24.176503,
+      "median": 17.458838,
+      "mu": 2.859846,
+      "p25": 10.131074,
+      "p75": 30.086742,
+      "p90": 49.102814,
+      "sigma": 0.8068894
+     },
+     "fit_weeks_bands": {
+      "mean": 25.318703,
+      "median": 20.256362,
+      "mu": 3.0084689,
+      "p25": 12.909295,
+      "p75": 31.784863,
+      "p90": 47.678157,
+      "sigma": 0.66794384
+     },
+     "pi_never_in_window": 0.22171946,
+     "reported_median_days_a6": 24.5,
+     "reported_median_days_kpi4": 24.5,
+     "share_over_8w": 0.063953488,
+     "share_within_4w": 0.68604651
+    }
+   },
+   "kpi3_persons": {
+    "2007/09": 1.9416141,
+    "2008/10": 2.0312723,
+    "2009/11": 2.3950649,
+    "2010/12": 2.8150228,
+    "2011/13": 2.619553,
+    "2012/14": 2.1743211,
+    "2013/15": 1.9832034,
+    "2014/16": 2.0586735,
+    "2015/17": 2.1097898,
+    "2016/18": 2.3045135,
+    "2017/19": 2.755964,
+    "2018/20": 2.8281616,
+    "2019/21": 2.7107633,
+    "2020/22": 2.7845465,
+    "2021/23": 2.8114416
+   },
+   "note": "time from screening-test referral date to colonoscopy performed, among positives with a colonoscopy performed",
+   "scotland": {
+    "completion_from_referral": {
+     "180": 0.74375795,
+     "360": 0.75004403,
+     "90": 0.67577002
+    },
+    "fit_days_bands": {
+     "mean": 49.058646,
+     "median": 39.885837,
+     "mu": 3.6860213,
+     "p25": 25.843021,
+     "p75": 61.559366,
+     "p90": 90.976223,
+     "sigma": 0.64342076
+    },
+    "fit_weeks_bands": {
+     "mean": 48.730263,
+     "median": 39.885602,
+     "mu": 3.6860154,
+     "p25": 26.026804,
+     "p75": 61.123955,
+     "p90": 89.757967,
+     "sigma": 0.63290578
+    },
+    "pi_never_in_window": 0.24976518,
+    "reported_median_days_a6": 40.0,
+    "reported_median_days_kpi4": 40.0,
+    "share_over_8w": 0.29592534,
+    "share_within_4w": 0.28807193
+   }
+  }
+ }
+}

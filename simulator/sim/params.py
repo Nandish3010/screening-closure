@@ -21,7 +21,9 @@ from typing import Any
 import yaml
 
 LEAF_KEYS = ("value", "source", "status")
-OPTIONAL_LEAF_KEYS = ("notes", "range", "range_basis")  # notes: free text, ignored by the simulator; range: see Param
+OPTIONAL_LEAF_KEYS = ("notes", "range", "range_basis", "fit_script", "dataset_sha256")  # notes: free text, ignored by the simulator; range: see Param
+# fit_script and dataset_sha256 are required for status `empirical` (ticket B18) and ignored by the simulator.
+STATUSES = ("sourced", "sourced-adjacent", "empirical", "calibrated", "assumed")
 WEEKDAYS = {"mon": 0, "tue": 1, "wed": 2, "thu": 3, "fri": 4, "sat": 5, "sun": 6}
 
 
@@ -93,6 +95,15 @@ def _walk(node: Any, prefix: str, out: dict[str, Param], origin: str) -> None:
                 raise ParamError(f"{origin}: parameter {prefix!r} has an empty or non-text {k!r}")
         if node["value"] is None:
             raise ParamError(f"{origin}: parameter {prefix!r} has a null value")
+        status = node["status"].strip()
+        if status not in STATUSES:
+            raise ParamError(f"{origin}: parameter {prefix!r} has status {status!r}, expected one of {', '.join(STATUSES)}")
+        if status == "empirical":
+            sha = node.get("dataset_sha256")
+            if not isinstance(node.get("fit_script"), str) or not node["fit_script"].strip():
+                raise ParamError(f"{origin}: empirical parameter {prefix!r} needs a fit_script")
+            if not isinstance(sha, str) or len(sha) != 64 or any(c not in "0123456789abcdef" for c in sha):
+                raise ParamError(f"{origin}: empirical parameter {prefix!r} needs dataset_sha256 (64 lowercase hex characters)")
         rng, basis = _parse_range(prefix, node, origin)
         out[prefix] = Param(prefix, node["value"], node["source"].strip(), node["status"].strip(),
                             str(node.get("notes") or "").strip(), rng, basis)

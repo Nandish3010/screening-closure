@@ -1,0 +1,61 @@
+{
+  "files": [
+    {
+      "attribution": "Contains public sector information licensed under the Open Government Licence v3.0. Source: Public Health Scotland.",
+      "downloaded_utc": "2026-10-18T07:57:09Z",
+      "id": "phs",
+      "licence": "Open Government Licence v3.0 (https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/)",
+      "licence_evidence": "Statement 'Open Government Licence v3.0' on https://publichealthscotland.scot/publications/scottish-bowel-screening-programme-statistics/ (checked 2026-10-18)",
+      "path": "data/external/phs/2025-03-04-bowel-screening-kpi-report.xlsx",
+      "sha256": "a25716b45849a27009f96f4fc6435d4485fe1a711e921fd7eb6dec691a1323bf",
+      "size_bytes": 751317,
+      "title": "Public Health Scotland, Scottish Bowel Screening Programme KPI report (published 2025-03-04)",
+      "url": "https://publichealthscotland.scot/media/31821/2025-03-04-bowel-screening-kpi-report.xlsx"
+    },
+    {
+      "attribution": "Contains public sector information licensed under the Open Government Licence v3.0. Source: NHS England.",
+      "downloaded_utc": "2026-10-18T07:57:11Z",
+      "id": "nhs-bcsp",
+      "licence": "Open Government Licence v3.0 (https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/)",
+      "licence_evidence": "'All content is available under the Open Government Licence v3.0, except where otherwise stated' on https://www.gov.uk/government/statistics/bowel-cancer-screening-annual-report-2024-to-2025 (checked 2026-10-18)",
+      "path": "data/external/nhs-bcsp/Bowel_Cancer_Screening_Annual_Report_Tables_2024-25.xlsx",
+      "sha256": "c02d8b84c670f23ec396f3388a260accdf85510441bb61e568110b051033264c",
+      "size_bytes": 204585,
+      "title": "NHS England, Bowel cancer screening annual report 2024 to 2025, tables",
+      "url": "https://assets.publishing.service.gov.uk/media/6a4e6212f79c9db2eb438f07/Bowel_Cancer_Screening_Annual_Report_Tables_2024-25.xlsx"
+    },
+    {
+      "attribution": "Contains public sector information licensed under the Open Government Licence v3.0. Source: NHS England.",
+      "downloaded_utc": "2026-10-18T07:57:12Z",
+      "id": "nhs-dm01",
+      "licence": "Open Government Licence v3.0 (https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/)",
+      "licence_evidence": "NHS England statistics pages are published under the Open Government Licence v3.0 (per the ticket; the page was fetched in a browser on 2026-10-18 and lists the file)",
+      "path": "data/external/nhs-dm01/Monthly-Diagnostics-Provider-March-2026_5WSGC.xls",
+      "sha256": "7ad11252a41fa9378f578edd58347d82d88d34bbb1f3801218fcf5a52012e5d3",
+      "size_bytes": 1113088,
+      "title": "NHS England, Monthly Diagnostics (DM01), Provider workbook, March 2026 (revised 10.09.26)",
+      "url": "https://www.england.nhs.uk/statistics/wp-content/uploads/sites/2/2026/09/Monthly-Diagnostics-Provider-March-2026_5WSGC.xls"
+    },
+    {
+      "attribution": "Medical Appointment No Shows, J. Hoppen / Aquarela Advanced Analytics, via OpenML dataset 43439, CC BY-NC-SA 4.0. Only fitted coefficients derived from it are published, never the data.",
+      "downloaded_utc": "2026-10-18T07:59:51Z",
+      "id": "openml-noshow",
+      "licence": "CC BY-NC-SA 4.0 (non-commercial, share-alike)",
+      "licence_evidence": "OpenML API dataset description field `licence` = 'CC BY-NC-SA 4.0' (https://www.openml.org/api/v1/json/data/43439, checked 2026-10-18); the Kaggle page shows no licence (third-party statement, unconfirmed at source)",
+      "path": "data/external/openml-noshow/Medical-Appointment-No-Shows.arff",
+      "sha256": "8f1a0dd72291a26d91cd6cf51d792738e9daa3f39079ac48a7027ef8d1822061",
+      "size_bytes": 10994060,
+      "title": "Medical Appointment No Shows (OpenML dataset 43439; Vitoria, Brazil, 2016; 110,527 appointments; uploaded from Kaggle, J. Hoppen / Aquarela)",
+      "url": "https://openml.org/data/v1/download/22102264/Medical-Appointment-No-Shows.arff"
+    }
+  ],
+  "not_downloaded": [
+    {
+      "id": "aihw-nbcsp-2024",
+      "licence": "CC BY 4.0 (per the ticket; could not be confirmed on the page)",
+      "page": "https://www.aihw.gov.au/reports/cancer-screening/nbcsp-monitoring-2024/data",
+      "reason": "The AIHW site answered every request (curl with a browser User-Agent: HTTP 403; browser pane: Cloudflare 'Verify you are human' challenge). Completing a bot-detection challenge is not done by this project, so nothing was downloaded. The owner can place the XLSX by hand in data/external/aihw/ and re-run `make calibrate-fit`."
+    }
+  ],
+  "note": "External datasets are untrusted input: kept only under data/external/ (gitignored), read only by tools/calibration scripts run with python3 -I."
+}

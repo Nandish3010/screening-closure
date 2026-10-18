@@ -22,7 +22,7 @@ sms_reminder_effect:
   status: sourced-adjacent
   range: [0, 0.34]
   range_basis: "stated range: 0 (Mahmud, JAMA Netw Open 2021, no effect) to 0.34 (Cochrane CD007458), from this parameter's notes"
-  notes: "Upper-range value 0.25 (Lam et al. 2021, relative reduction 11.9% -> 8.9%). At 0 the orchestrated arm's no-show is the no-reminder rate dna_rate (0.119) for every patient, which is above the baseline's 0.089 for SMS and phone patients (those baseline rates already embed Lam's SMS arm); the scenario therefore slightly understates orchestrated attendance for them. Left as is: we do not re-estimate the baseline."
+  notes: "Upper-range value 0.167 (B18 fit, empirical, OpenML Medical Appointment No Shows; was 0.25 from Lam et al. 2021, relative reduction 11.9% -> 8.9%). At 0 the orchestrated arm's no-show is the no-reminder rate dna_rate (0.119) for every patient, which is above the baseline's 0.089 for SMS and phone patients (those baseline rates already embed Lam's SMS arm); the scenario therefore slightly understates orchestrated attendance for them. Left as is: we do not re-estimate the baseline."
 
 # 2. Patient navigation effect (RR 1.27) applied to completion propensity.
 #    Reach = the share of orchestrated-arm cases that actually get the orchestrated process; the rest follow today's process.

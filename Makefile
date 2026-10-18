@@ -1,4 +1,4 @@
-.PHONY: test-demo test-e2e-live demo-scenario demo-stage demo-snapshot demo-restore demo-reset demo-kill-scheduler check docs-check tracker-lint test-security test-tools test-load load-check up down logs test test-db test-db-create test-db-reset test-chaos synthea demo-seed demo-seed-clean evaluate simulate evaluate-check sensitivity sensitivity-check reset web-install web-dev web-build web-test web-e2e test-e2e review-packs review-packs-check test-review-packs test-phi-logs rbac-matrix test-offline fresh-clone risk-report risk-check
+.PHONY: test-demo test-e2e-live demo-scenario demo-stage demo-snapshot demo-restore demo-reset demo-kill-scheduler check docs-check tracker-lint test-security test-tools test-load load-check up down logs test test-db test-db-create test-db-reset test-chaos synthea demo-seed demo-seed-clean evaluate simulate evaluate-check sensitivity sensitivity-check reset web-install web-dev web-build web-test web-e2e test-e2e review-packs review-packs-check test-review-packs test-phi-logs rbac-matrix test-offline fresh-clone risk-report risk-check calibrate-fetch calibrate-fit calibrate-check
 
 up:
 	docker compose up -d --build
@@ -287,3 +287,20 @@ test-e2e-live:
 	else \
 		cd web && npx playwright test -c playwright.live.config.ts; \
 	fi
+
+# ---- calibration from open external datasets (ticket B18) -------------------------------------------------
+# The downloaded files are UNTRUSTED input: they live only under data/external/<source>/ (gitignored), are only parsed (zip, OLE2, text), never
+# executed, and every script that reads them runs as `python3 -I` (isolated mode). Manifest (URL, licence, sha256, size, download time):
+# tools/calibration/manifest.json. Results: tools/calibration/fitted.json and docs/results/calibration.md.
+#   calibrate-fetch  download (skips files already present) and rewrite the manifest
+#   calibrate-fit    fit every dataset from the local files and write tools/calibration/fitted.json (about 1 minute)
+#   calibrate-check  fixture tests, then re-run the fits and diff them against fitted.json and the `empirical` leaves of simulator/params.yaml
+calibrate-fetch:
+	python3 -I tools/calibration/fetch.py
+
+calibrate-fit:
+	python3 -I tools/calibration/calibrate.py fit
+
+calibrate-check:
+	PYTHONPATH=$(CURDIR)/api:$(CURDIR) $(PY) -m pytest tools/calibration/tests -q
+	python3 -I tools/calibration/calibrate.py check
