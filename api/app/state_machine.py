@@ -12,21 +12,33 @@ replay of the event log produces:
     provider             the provider the owner acts for (set by handoff_accepted, or by
                          accept_ownership / reassign when the payload names one)
     pending_handoff      an unanswered handoff request {to_provider, requested_by, from_owner,
-                         requested_at}; ownership changes only when it is accepted (A5)
+                         requested_at, requested_event_id}; ownership changes only when it is accepted (A5)
     last_handoff         outcome of the latest answered or bounced handoff (A5)
     consent_frozen       outreach is frozen (state is consent_withdrawn)
+    approved_unsent      draft ids a human approved whose `message_sent` has not been written yet (SEC-2, ADR-030):
+                         the approval gate lives HERE, so a `message_sent` is accepted only for a draft in this set
     last_event_at        `at` of the latest event, including annotations
     last_activity_at     `at` of the latest event that is not a watchdog flag: the idle clock (A11)
-    watchdog_flag        {reason, idle_days, at} while a watchdog_flagged is the newest word on the
-                         case, None as soon as any other event arrives (A9, A11)
+    last_human_activity_at  `at` of the latest event written by a person (not the scheduler, the notifier, the
+                         consent service, a drafting model or the watchdog): the idle clock (A11, SEC-2). An
+                         overdue case the sweep keeps escalating is not being looked at, so its idle clock runs
+    last_human_activity_event_id  the `event_id` of that event: what the watchdog derives its flag id from, so a
+                         later episode that starts at the same instant is still a different episode (SEC-2)
+    watchdog_flag        {reason, idle_days, at} from a watchdog_flagged until a person acts on the case,
+                         then None (A9, A11, SEC-2: an automated event does not clear it)
     resume_state         where the case returns to when consent is restored (side state only)
     clock_started_at     when the current state's SLA clock started: the event that entered the
                          state, or, for an SLA with `clock_start: handoff_accepted` (A13), the
                          latest referral acceptance when there was one
+    clock_started_event_id  the `event_id` of that event. The scheduler derives the ids of `mark_overdue`
+                         and the escalation rungs from it (never from a timestamp, SEC-2): re-entering a
+                         state is a new clock and so a new breach, even at the very same instant
     referral_accepted_at `at` of the latest handoff_accepted (A13), None before any
     breach_due_at        the due date of the open breach (set with overdue)
     backdated_events     how many accepted events had an `at` earlier than the previous event's `at`
-                         (T-F4, ADR-027): accepted and ordered by `seq`, never refused, but counted
+                         (T-F4, ADR-027): a user token's backdated event is refused at the API (SEC-2); only the
+                         service actors that legitimately post late (the sweep, the notifier) can still produce
+                         one, and it is accepted, ordered by `seq`, and counted
 
 `overdue` and `escalation_level` are flags, not states, because a case can be overdue AND in
 patient_contacted (ADR-011). Side states that change the path are real states.
@@ -37,6 +49,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
+from uuid import UUID
 
 from app.pathway import CLOCK_HANDOFF_ACCEPTED, RESUME_STATE, Pathway, Transition
 
@@ -65,6 +78,7 @@ DEFAULT_CONSENT = {
     "share_with_specialist": True,
     "withdrawn": False,
 }
+CHANNELS = ("sms", "whatsapp", "phone", "letter")  # contact channels (the `channel_*` consent keys)
 # Events refused while consent is withdrawn (outreach and handing the patient to someone new).
 CONSENT_FROZEN_EVENTS = frozenset(
     {"contact_patient", "message_drafted", "message_approved", "message_sent", "handoff_requested"}
@@ -111,14 +125,19 @@ class CaseModel:
     consent_frozen: bool = False
     last_event_at: datetime | None = None
     last_activity_at: datetime | None = None
+    last_human_activity_at: datetime | None = None
+    last_human_activity_event_id: UUID | None = None
     watchdog_flag: dict | None = None
     resume_state: str | None = None
     clock_started_at: datetime | None = None
+    clock_started_event_id: UUID | None = None
     breach_due_at: datetime | None = None
     referral_accepted_at: datetime | None = None
+    referral_accepted_event_id: UUID | None = None
     provider: str | None = None
     pending_handoff: dict | None = None
     last_handoff: dict | None = None
+    approved_unsent: tuple = ()  # draft ids approved by a human and not yet sent (ADR-030)
     # Consent ledger (A6): current values, and every change in order (append-only by replay).
     consent: dict = field(default_factory=lambda: {**DEFAULT_CONSENT, "updated_at": None, "updated_by": None})
     consent_history: tuple = ()
@@ -137,8 +156,10 @@ class CaseModel:
             "escalation_accepted": self.escalation_accepted,
             "owner": self.owner,
             "consent_frozen": self.consent_frozen,
+            "approved_unsent_drafts": list(self.approved_unsent),
             "last_event_at": iso(self.last_event_at),
             "last_activity_at": iso(self.last_activity_at),
+            "last_human_activity_at": iso(self.last_human_activity_at),
             "watchdog_flag": dict(self.watchdog_flag) if self.watchdog_flag else None,
             "resume_state": self.resume_state,
             "clock_started_at": iso(self.clock_started_at),
@@ -162,7 +183,9 @@ def initial_model(pathway: Pathway) -> CaseModel:
 def genesis(model: CaseModel, event: Event) -> CaseModel:
     """The case_created marker starts the first state's SLA clock; it changes no state."""
     at = _aware(event.at)
-    return replace(model, last_event_at=at, last_activity_at=at, clock_started_at=at)
+    return replace(model, last_event_at=at, last_activity_at=at, last_human_activity_at=at,
+                   last_human_activity_event_id=event.event_id,
+                   clock_started_at=at, clock_started_event_id=event.event_id)
 
 
 def replay_model(events, pathway: Pathway) -> CaseModel:
@@ -239,17 +262,23 @@ def _transition(model: CaseModel, event: Event, pathway: Pathway, t: Transition)
             escalation_level=0,
             escalation_accepted=False,
             breach_due_at=None,
-            clock_started_at=_sla_clock_start(pathway, target, _aware(event.at), model.referral_accepted_at),
         )
+        started_at, started_by = _sla_clock_start(
+            pathway, target, _aware(event.at), event.event_id, model.referral_accepted_at,
+            model.referral_accepted_event_id,
+        )
+        new = replace(new, clock_started_at=started_at, clock_started_event_id=started_by)
     return new
 
 
-def _sla_clock_start(pathway: Pathway, state: str, entry_at: datetime, referral_at: datetime | None):
-    """Where the SLA for `state` starts counting (A13): state entry, or the latest referral
-    acceptance for an SLA with `clock_start: handoff_accepted` (state entry if none)."""
+def _sla_clock_start(pathway: Pathway, state: str, entry_at: datetime, entry_event_id: UUID,
+                     referral_at: datetime | None, referral_event_id: UUID | None):
+    """Where the SLA for `state` starts counting (A13), and the event that started it: state entry,
+    or the latest referral acceptance for an SLA with `clock_start: handoff_accepted` (state entry if
+    none)."""
     if referral_at is not None and pathway.state_clock_start(state) == CLOCK_HANDOFF_ACCEPTED:
-        return referral_at
-    return entry_at
+        return referral_at, referral_event_id
+    return entry_at, entry_event_id
 
 
 # -- annotations ------------------------------------------------------------------------
@@ -398,6 +427,21 @@ def _precheck(model: CaseModel, event: Event, pathway: Pathway) -> None:
             f"consent withdrawn: {kind!r} is refused while the patient's consent is withdrawn; "
             "a human must review the case"
         )
+    # The approval gate, in the machine (SEC-2, ADR-030): a message goes out only for a draft a human
+    # approved on THIS case and that has not gone out yet, on a channel the patient consents to NOW (at
+    # apply time, under the case lock), not when the approval was given. A bug or a stray caller in the
+    # notifier cannot send what nobody approved, send it twice, or send it past an opt-out.
+    if kind == "message_approved" and event.payload.get("draft_id") in model.approved_unsent:
+        raise InvalidTransition(f"message_approved: draft {event.payload.get('draft_id')!r} is already approved")
+    if kind == "message_sent":
+        draft_id = event.payload.get("draft_id")
+        if draft_id is None or draft_id not in model.approved_unsent:
+            raise InvalidTransition(
+                f"message_sent: draft {draft_id!r} is not an approved, unsent draft of this case"
+            )
+        consented, why = channel_consent(model, event.payload.get("channel"))
+        if not consented:
+            raise InvalidTransition(f"message_sent: {why}")
     pending = model.pending_handoff
     if kind == "handoff_requested":
         if model.owner is None:
@@ -412,6 +456,18 @@ def _precheck(model: CaseModel, event: Event, pathway: Pathway) -> None:
             raise InvalidTransition(f"{kind}: there is no pending handoff request")
         if kind == "handoff_accepted" and actor in (pending["requested_by"], pending["from_owner"]):
             raise InvalidTransition("a handoff cannot be accepted by the party that requested it")
+
+
+def channel_consent(model: CaseModel, channel) -> tuple[bool, str]:
+    """(allowed, reason): may the patient be contacted on `channel` given the consent ledger as it stands.
+    Not allowed when consent is withdrawn, the channel is unknown, or the channel is switched off."""
+    if model.consent_frozen or model.consent.get("withdrawn"):
+        return False, "consent withdrawn"
+    if channel not in CHANNELS:
+        return False, f"unknown channel {channel!r}"
+    if not model.consent.get(f"channel_{channel}", False):
+        return False, f"patient has not consented to contact by {channel}"
+    return True, "ok"
 
 
 def _consent_after(model: CaseModel, event: Event, was_frozen: bool) -> CaseModel:
@@ -444,8 +500,13 @@ def _finish(
         out = replace(out, watchdog_flag={"reason": payload.get("reason"),
                                           "idle_days": payload.get("idle_days"), "at": at.isoformat()})
     else:
-        # Any other event is activity: the case is being looked at, so the flag clears.
-        out = replace(out, last_activity_at=at, watchdog_flag=None)
+        out = replace(out, last_activity_at=at)
+        if not is_automated(event.actor):
+            # A person acted: the case is being looked at, so the idle clock restarts and the flag clears.
+            # An automated event (the sweep's mark_overdue and escalations, a drafted message, the notifier)
+            # is not anyone looking at the case: it neither restarts the idle clock nor clears the flag.
+            out = replace(out, last_human_activity_at=at, last_human_activity_event_id=event.event_id,
+                          watchdog_flag=None)
     if kind == "accept_ownership":
         out = replace(out, owner=event.actor, provider=payload.get("provider"))
     elif kind == "reassign":
@@ -457,20 +518,21 @@ def _finish(
             "requested_by": event.actor,
             "from_owner": model.owner,
             "requested_at": at.isoformat(),
+            "requested_event_id": str(event.event_id),
         })
     elif kind == "handoff_accepted":
         pending = (before or model).pending_handoff
         provider = (payload.get("provider") or pending["to_provider"]).strip()
         out = replace(out, owner=event.actor, provider=provider, pending_handoff=None,
-                      referral_accepted_at=at,
+                      referral_accepted_at=at, referral_accepted_event_id=event.event_id,
                       last_handoff={"outcome": "accepted", "to_provider": pending["to_provider"],
                                     "by": event.actor, "at": at.isoformat()})
         if (pathway is not None and out.state in pathway.open_states
                 and pathway.state_clock_start(out.state) == CLOCK_HANDOFF_ACCEPTED):
             # A referral accepted while the state's SLA runs from acceptance restarts that
             # clock: a new obligation, like a state change (A13, ADR-020).
-            out = replace(out, clock_started_at=at, overdue=False, escalation_level=0,
-                          escalation_accepted=False, breach_due_at=None)
+            out = replace(out, clock_started_at=at, clock_started_event_id=event.event_id, overdue=False,
+                          escalation_level=0, escalation_accepted=False, breach_due_at=None)
     elif kind == "handoff_rejected":
         pending = (before or model).pending_handoff
         out = replace(out, pending_handoff=None, last_handoff={
@@ -478,6 +540,10 @@ def _finish(
             "bounced": payload.get("bounced") is True, "to_provider": pending["to_provider"],
             "by": event.actor, "at": at.isoformat(),
         })
+    elif kind == "message_approved" and isinstance(payload.get("draft_id"), str):
+        out = replace(out, approved_unsent=(*out.approved_unsent, payload["draft_id"]))
+    elif kind == "message_sent":
+        out = replace(out, approved_unsent=tuple(d for d in out.approved_unsent if d != payload.get("draft_id")))
     elif kind == "consent_updated":
         out = _consent_after(out, event, (before or model).consent_frozen)
     elif kind == "review_requested":

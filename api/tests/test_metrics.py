@@ -247,8 +247,9 @@ def test_t_a29_the_route_returns_the_pure_functions_over_every_case(served):
     body = r.json()
     records = [metrics.build_record(lc.events, cases.pathway) for lc in served.store.load_cases(cases.pathway)]
     expected = metrics.closure_metrics(records, NOW, CAL)
-    assert {k: v for k, v in body.items() if k not in ("sim_time", "abstention")} == expected
+    assert {k: v for k, v in body.items() if k not in ("sim_time", "abstention", "replay_failures")} == expected
     assert body["sim_time"] == NOW.isoformat() and body["abstention"] is None  # no drafts table in memory
+    assert body["replay_failures"] == {"count": 0, "cases": []}
     assert body["cases_total"] == 18 and body["p50_days"] == 24.0 and body["cases_flagged"] == 2
     assert body["open_by_age_bucket"]["90+"] >= 4
     assert client.get("/metrics/closure", headers=H("supervisor")).status_code == 200
@@ -349,7 +350,7 @@ def test_t_a29_the_route_over_postgres_agrees_with_the_pure_functions():
         clock.advance(days=147)
         body = client.get("/metrics/closure", headers=H("coordinator")).json()
         records = [metrics.build_record(lc.events, cases.pathway) for lc in pg.load_cases(cases.pathway) if lc.model]
-        assert {k: v for k, v in body.items() if k not in ("sim_time", "abstention")} == metrics.closure_metrics(records, NOW, CAL)
+        assert {k: v for k, v in body.items() if k not in ("sim_time", "abstention", "replay_failures")} == metrics.closure_metrics(records, NOW, CAL)
         assert body["cases_total"] >= 5 and body["closures_measured"] >= 5
         counts = pg.abstention_counts()
         assert body["abstention"] is None if counts is None else body["abstention"]["attempts"] == counts[0]

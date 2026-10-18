@@ -26,7 +26,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from app import ops
 from app.calendar import default_calendar
 from app.clock import clock
-from app.routers import cases
+from app.routers import cases, drafts
 from app.sweep import SweepPool, run_sweep, sweep_workers_from_env
 
 log = logging.getLogger("app.scheduler")
@@ -88,6 +88,7 @@ class Heartbeat(BaseModel):
     consecutive_failures: int = Field(default=0, ge=0, le=100000)
     interval_seconds: float = Field(default=10, gt=0, le=3600)
     sim_time: str | None = Field(default=None, max_length=40)
+    sweeping: bool = False  # posted before and during a sweep (a long one must not look like a dead scheduler)
 
 
 @router.post("/sweep")
@@ -105,6 +106,18 @@ def sweep() -> dict:
     out = result.to_json()
     out["workers"] = pool.workers
     return out
+
+
+@router.post("/outbox/drain")
+def drain_outbox() -> dict:
+    """Send every approved draft that has not gone out yet (ADR-030). The approve route drains its own
+    row at the end of the request; this is the safety net for an approval whose drain never ran (the
+    process died after the approval committed) or failed. Idempotent: a row is sent once. Counts only."""
+    outcomes = drafts.drain_outbox()
+    counts = {"sent": 0, "blocked": 0, "pending": 0}
+    for o in outcomes:
+        counts[o.status] = counts.get(o.status, 0) + 1
+    return {"drained": len(outcomes), **counts}
 
 
 @router.post("/heartbeat")

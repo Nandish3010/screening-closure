@@ -15,9 +15,12 @@ from app.events import (
     CaseNotFound,
     CaseSummary,
     Event,
+    EventContentConflict,
     EventIdConflict,
     LoadedCase,
     StateCorruption,
+    check_batch_ids,
+    event_digest,
 )
 from app.pathway import Pathway
 from app.state_machine import CaseModel, InvalidTransition, replay_model, step
@@ -68,28 +71,37 @@ class PostgresEventStore:
                 raise CaseAlreadyExists(str(case_id)) from exc
             _insert_event(cur, genesis_event, 1)
 
-    def append(self, event: Event, pathway: Pathway, *, within=None) -> str:
-        return self.append_many([event], pathway, within=within)
+    def append(self, event: Event, pathway: Pathway, *, within=None, guard=None) -> str:
+        return self.append_many([event], pathway, within=within, guard=guard)
 
     def append_many(
-        self, events: Sequence[Event], pathway: Pathway, *, within=None
+        self, events: Sequence[Event], pathway: Pathway, *, within=None, guard=None
     ) -> str:
         """Append one or more events of ONE case in a single transaction: one row lock, one log
         read and replay, one commit. Each event is checked against the state the previous one
         produced, exactly as if appended one after another, but the batch is all-or-nothing:
         the first invalid event raises InvalidTransition and nothing is written.
 
-        An event whose event_id is already on this case is skipped (idempotent retry); one that
-        is on another case raises EventIdConflict. Returns the case's state afterwards.
+        An event whose event_id is already on this case with the same content (type, actor,
+        payload, time) is skipped (idempotent retry); with different content it raises
+        EventContentConflict, and one that is on another case raises EventIdConflict, as does an
+        id that appears twice in the batch. Returns the case's state afterwards.
 
         `within(cur)`, if given, runs in the same transaction after the events are inserted
         (D5 records a draft's approval there): if it raises, the events roll back with it.
+
+        `guard(model)`, if given, runs after the log is replayed and before the first event is
+        checked, under the same row lock: the caller's authorisation (owner scope) and time
+        (not backdated) checks are re-evaluated on the model the events will actually be applied
+        to, not on the read it made earlier. Whatever it raises propagates and nothing is written.
+        It is skipped when every event was already stored (an idempotent retry).
         """
         if not events:
             raise ValueError("append_many needs at least one event")
         case_id = events[0].case_id
         if any(e.case_id != case_id for e in events):
             raise ValueError("append_many takes events of a single case")
+        check_batch_ids(events)  # a duplicate would be dropped as a "retry" of its twin
         # `with pool.connection()` commits on clean exit and rolls back on any exception,
         # so an InvalidTransition (or any other error) leaves no row and no state change.
         #
@@ -113,13 +125,19 @@ class PostgresEventStore:
             # Idempotent retry: checked under the case lock, before the transition check
             # (a retried event is usually no longer valid from the state it produced).
             cur.execute(
-                "SELECT event_id, case_id FROM events WHERE event_id = ANY(%s)",
+                "SELECT event_id, case_id, type, at, actor, payload FROM events WHERE event_id = ANY(%s)",
                 ([e.event_id for e in events],),
             )
-            known = dict(cur.fetchall())
+            known = {r[0]: (r[1], event_digest(r[2], r[3], r[4], r[5])) for r in cur.fetchall()}
             for e in events:
-                if known.get(e.event_id, case_id) != case_id:
+                stored = known.get(e.event_id)
+                if stored is None:
+                    continue
+                if stored[0] != case_id:
                     raise EventIdConflict(str(e.event_id))
+                if stored[1] != event_digest(e.type, e.at, e.actor, e.payload):
+                    raise EventContentConflict(
+                        f"event_id {e.event_id} is already used by a different event on this case")
             fresh = [e for e in events if e.event_id not in known]
             if not fresh:
                 return stored_state
@@ -141,6 +159,8 @@ class PostgresEventStore:
                     f"but replay gives {model.state!r}"
                 )
 
+            if guard is not None:
+                guard(model)
             for e in fresh:
                 model = step(model, e, pathway)  # InvalidTransition -> rollback, nothing written
 
@@ -282,13 +302,19 @@ class PostgresNotificationLog:
     def __init__(self, pool: ConnectionPool) -> None:
         self._pool = pool
 
-    def add(self, n) -> None:
+    def add(self, n, cur=None) -> None:
+        """Insert the row; idempotent on `id` (the outbox drain uses a deterministic id, so a drain that
+        is run again after a crash cannot log the same notification twice). With `cur`, the insert is part
+        of the caller's transaction (the `message_sent` event commits with it, or neither does)."""
+        sql = (f"INSERT INTO notifications ({self._COLS}) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)"
+               " ON CONFLICT (id) DO NOTHING")
+        params = (n.id, n.case_id, n.channel, n.language, n.purpose, n.body, n.status, n.reason,
+                  n.event_id, n.created_at)
+        if cur is not None:
+            cur.execute(sql, params)
+            return
         with self._pool.connection() as conn:
-            conn.execute(
-                f"INSERT INTO notifications ({self._COLS}) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
-                (n.id, n.case_id, n.channel, n.language, n.purpose, n.body, n.status, n.reason,
-                 n.event_id, n.created_at),
-            )
+            conn.execute(sql, params)
 
     def for_case(self, case_id: UUID) -> list:
         from app.notify import Notification

@@ -115,23 +115,16 @@ def test_an_overdue_case_is_not_planned_again():
     assert [e.payload["rung"] for e in later] == ["supervisor", "coordinator"]
 
 
-def test_event_ids_are_deterministic_and_distinct_per_breach():
-    due = at(2)
-    a = sweep_event_id(CASE, "result_received", due, "mark_overdue")
-    assert a == sweep_event_id(CASE, "result_received", due, "mark_overdue")
-    assert a != sweep_event_id(CASE, "acknowledged", due, "mark_overdue")
-    assert a != sweep_event_id(CASE, "result_received", due + timedelta(days=1), "mark_overdue")
-    assert a != sweep_event_id(uuid4(), "result_received", due, "mark_overdue")
-    assert a != sweep_event_id(CASE, "result_received", due, "escalate:reminder")
-    # the same instant expressed in another time zone gives the same id
-    other = due.astimezone(timezone_plus_4())
-    assert a == sweep_event_id(CASE, "result_received", other, "mark_overdue")
-
-
-def timezone_plus_4():
-    from datetime import timezone
-
-    return timezone(timedelta(hours=4))
+def test_event_ids_are_deterministic_and_distinct_per_clock_start_and_kind():
+    """SEC-2: the id comes from the event that started the clock or request, never from a time."""
+    started_by = uuid4()
+    a = sweep_event_id(CASE, started_by, "mark_overdue")
+    assert a == sweep_event_id(CASE, started_by, "mark_overdue")
+    assert a == sweep_event_id(CASE, str(started_by), "mark_overdue")
+    assert a != sweep_event_id(CASE, uuid4(), "mark_overdue")  # another clock start, even at the same instant
+    assert a != sweep_event_id(uuid4(), started_by, "mark_overdue")
+    assert a != sweep_event_id(CASE, started_by, "escalate:reminder")
+    assert a != sweep_event_id(CASE, started_by, "bounce")
 
 
 # ---- run_sweep on the in-memory store ----------------------------------------------------------

@@ -663,7 +663,14 @@ def test_the_invariant_checker_catches_a_send_that_skipped_the_gate(fresh):
     """Guards the property test against passing vacuously: forge the violation and see it fail."""
     cid, did = drafted_case()
     check_gate_invariant(cid)
-    notify.send(UUID(cid), "sms", "en", "reminder", "forged", draft_id=did)  # bypasses the route
+    # SEC-2 / ADR-030: the state machine itself now refuses a send that skipped the approval ...
+    with pytest.raises(InvalidTransition, match="not an approved, unsent draft"):
+        notify.send(UUID(cid), "sms", "en", "reminder", "forged", draft_id=did)  # bypasses the route
+    # ... so to prove the checker is not vacuous, forge the violation into the log behind the machine's back
+    case = cases.store._cases[UUID(cid)]
+    case.events.append(Event(UUID(cid), "message_sent", clock.now(), NOTIFIER_ACTOR,
+                             {"notification_id": str(uuid4()), "channel": "sms", "language": "en",
+                              "purpose": "reminder", "draft_id": did}, seq=len(case.events) + 1))
     with pytest.raises(AssertionError, match="without a prior approval"):
         check_gate_invariant(cid)
     cid2, did2 = drafted_case()

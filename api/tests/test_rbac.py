@@ -171,8 +171,9 @@ def test_events_cannot_be_dated_after_the_simulation_clock():
     case_id = new_case()
     r = post(case_id, "acknowledge", H("lab"), at="2099-01-01T00:00:00Z")
     assert r.status_code == 422
-    r = post(case_id, "acknowledge", H("lab"), at="2026-01-04T00:00:00Z")  # backdating is allowed
-    assert r.status_code == 201
+    r = post(case_id, "acknowledge", H("lab"), at="2026-01-04T00:00:00Z")  # SEC-2: a user may not backdate
+    assert r.status_code == 422 and "backdated" in r.json()["detail"]
+    assert post(case_id, "acknowledge", H("lab")).status_code == 201
 
 
 # -- wrong role is refused and nothing is written --------------------------------------------

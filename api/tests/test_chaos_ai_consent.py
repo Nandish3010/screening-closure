@@ -207,10 +207,10 @@ class HookStore:
     def __init__(self, inner, hook):
         self._inner, self.hook = inner, hook
 
-    def append(self, event, pathway, *, within=None):
+    def append(self, event, pathway, *, within=None, guard=None):
         if event.type == "message_sent":
             self.hook(event)
-        return self._inner.append(event, pathway, within=within)
+        return self._inner.append(event, pathway, within=within, guard=guard)
 
     def __getattr__(self, name):
         return getattr(self._inner, name)

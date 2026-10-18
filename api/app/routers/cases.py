@@ -15,6 +15,7 @@ from app.events import (
     CaseAlreadyExists,
     CaseNotFound,
     Event,
+    EventContentConflict,
     EventIdConflict,
     EventStore,
     InMemoryEventStore,
@@ -105,6 +106,10 @@ def _case_json(case_id: UUID, identity: Identity | None = None) -> dict:
     row = readmodel.case_row(
         LoadedCase(case_id, pathway.name, events[0].at, events, model), pathway, default_calendar()
     )
+    if identity is not None and identity.role == "patient":
+        # SEC-2: a patient's case page is the redacted one (no staff notes or reasons, no escalation
+        # internals, no staff names: roles only).
+        return readmodel.patient_case_json(row, model, events)
     explained = _risk_explained(model, events, clock.now()) if _sees_risk(identity) else None
     row["risk_score"] = explained["score"] if explained else None
     return {
@@ -168,7 +173,7 @@ def list_cases(
         if row is not None and readmodel.matches(row, owner=owner, overdue=overdue, provider=provider, flagged=flagged):
             if with_risk:  # D9: filled last, so no filter or order above depends on it
                 row["risk_score"] = _risk_score(lc, now)
-            rows.append(row)
+            rows.append(readmodel.patient_case_row(row) if identity.role == "patient" else row)  # SEC-2: redacted for a patient
     return rows
 
 
@@ -178,8 +183,9 @@ def _patient_ref(case_id: UUID) -> str | None:
     return events[0].payload.get("patient_ref") if events else None
 
 
-def _check_signature_and_evidence(identity: Identity, event_type: str, payload: dict) -> None:
-    """A15 (ADR-021): a signature is the signer's own, and closure evidence must resolve."""
+def _check_signature_and_evidence(identity: Identity, event_type: str, payload: dict, case_id: UUID) -> None:
+    """A15 (ADR-021): a signature is the signer's own, and closure evidence must resolve AND be this
+    case's own (SEC-2: the resource must be the one named, and belong to this case or its patient)."""
     signed_by = payload.get("signed_by")
     if event_type in ("clinician_review", "close") and signed_by is not None:
         if not evidence.signed_by_matches(identity, signed_by):
@@ -190,12 +196,41 @@ def _check_signature_and_evidence(identity: Identity, event_type: str, payload: 
             )
     if event_type == "close":
         ref = payload["evidence_ref"]  # shape already checked by the payload schema
+        if not evidence.well_formed_ref(ref):  # `Procedure/.`: the URL would collapse to a search
+            raise HTTPException(422, f"evidence_ref {ref!r} is not a resource reference")
         try:
-            resolves = evidence.verifier.exists(ref)
+            resolves = evidence.verifier.exists(ref, case_id=case_id, patient_ref=_patient_ref(case_id))
         except evidence.EvidenceUnavailable as exc:
             raise HTTPException(503, f"cannot verify closure evidence: {exc}")
         if not resolves:
-            raise HTTPException(422, f"evidence_ref {ref!r} does not resolve to a resource")
+            raise HTTPException(422, f"evidence_ref {ref!r} does not resolve to a resource of this case")
+
+
+def _refuse_backdated(model, at: datetime) -> None:
+    """SEC-2 (ADR-027 amended): a user's event may not be dated before the case's latest event. Evaluated
+    under the case's row lock on the replayed model, so two requests cannot both pass on a stale read."""
+    last = model.last_event_at
+    if last is not None and at < (last if last.tzinfo else last.replace(tzinfo=UTC)):
+        raise HTTPException(
+            422,
+            f"backdated: event time {at.isoformat()} is before the case's latest event ({last.isoformat()}); "
+            "the log runs forward in time",
+        )
+
+
+def _event_guard(identity: Identity, event_type: str, at: datetime):
+    """What the store re-checks under the case lock, before the state machine sees the event, on the
+    model replayed from the log as it now stands: the caller's owner scope (SEC-2: a reassignment or a
+    handoff accepted between our read and our write is seen, 403 and no row), and, for a user token,
+    that the event is not backdated. Raises HTTPException."""
+    owner = policy.owner_guard(identity, event_type)
+
+    def guard(model) -> None:
+        owner(model)  # a no-op for roles that are not owner-scoped
+        if identity.role in policy.ALL_USERS:
+            _refuse_backdated(model, at)
+
+    return guard
 
 
 @router.post("/{case_id}/events", status_code=201)
@@ -207,6 +242,7 @@ def post_event(
         raise HTTPException(404, "case not found")
     policy.authorize_case_access(identity, _patient_ref(case_id))
     if identity.role in policy.OWNER_SCOPED:
+        # An early answer without the lock; the authoritative check is the guard handed to the store.
         model = store.read_model(case_id, pathway)
         if model is None:
             raise HTTPException(404, "case not found")
@@ -221,14 +257,17 @@ def post_event(
     try:
         payloads.validate(body.type, body.payload)  # free text cannot enter the log (A14)
         validate_payload(event, pathway)  # malformed payload: 422 before anything is written
-        _check_signature_and_evidence(identity, body.type, body.payload)
-        store.append(event, pathway)
+        _check_signature_and_evidence(identity, body.type, body.payload, case_id)
+        store.append(event, pathway, guard=_event_guard(identity, body.type, at))
     except CaseNotFound:
         raise HTTPException(404, "case not found")
     except (PayloadError, payloads.PayloadSchemaError) as exc:
         raise HTTPException(422, str(exc))
     except InvalidTransition as exc:
         raise HTTPException(409, str(exc))
+    except EventContentConflict:
+        raise HTTPException(409, "event_id already used by a different event on this case: a retry repeats "
+                                 "the same type, payload and time; use a new event_id for a new event")
     except EventIdConflict:
         raise HTTPException(409, "event_id already used by another case")
     if body.type == "consent_updated":
@@ -258,6 +297,10 @@ def case_timeline(case_id: UUID, identity: Identity = Depends(require_identity))
     events = store.events_for(case_id)
     if not events:
         raise HTTPException(404, "case not found")
+    if identity.role == "patient":
+        # SEC-2: the patient's own timeline, redacted: visible steps only, roles instead of names.
+        return {"case_id": str(case_id), **readmodel.patient_timeline(events, clock.now()),
+                "actors": readmodel.patient_actors(events)}
     model = replay_model(events, pathway)
     return {
         "case_id": str(case_id),

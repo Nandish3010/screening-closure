@@ -10,6 +10,7 @@ from api_helpers import DRAFT_ID, DRAFTED, actor_of, login_headers, make_client,
 from app import payloads, policy, users
 from app.auth import opaque_user_id
 from app.config import settings as app_settings
+from app.events import Event
 from app.pathway import load_pathway
 from app.routers import cases
 
@@ -238,7 +239,10 @@ def test_scheduler_and_consent_and_notify_events_pass_the_schema_too():
     post(cid, "consent_updated", H("patient", "pat", "Patient/77"), {"withdrawn": True})
     post(cid, "consent_updated", H("coordinator"), {"withdrawn": False})
     post(cid, "contact_patient", owner)
-    notify.send(UUID(cid), "sms", "en", "first_contact", "text stays in the notifications log")
+    draft = "5b6c1f3e-8d2a-4c47-9e10-2a7f4b9d3c11"
+    cases.store.append(Event(UUID(cid), "message_approved", clock.now(), actor_of("primary_care_owner", "Dr Scan"),
+                             {"draft_id": draft}), cases.pathway)
+    notify.send(UUID(cid), "sms", "en", "first_contact", "text stays in the notifications log", draft_id=draft)
     run_sweep(cases.store, cases.pathway, default_calendar(), clock.now() + timedelta(days=60), only=[UUID(cid)])
     types = {e.type for e in stored(cid)}
     assert {"mark_overdue", "escalate", "review_requested", "message_sent"} <= types

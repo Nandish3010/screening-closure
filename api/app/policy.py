@@ -58,6 +58,8 @@ ROUTE_POLICY: dict[tuple[str, str], object] = {
     # The scheduler service's periodic sweep and its heartbeat.
     ("POST", "/scheduler/sweep"): SCHEDULER,
     ("POST", "/scheduler/heartbeat"): SCHEDULER,
+    # The send outbox (ADR-030): the scheduler loop drains approved drafts that have not gone out yet.
+    ("POST", "/scheduler/outbox/drain"): SCHEDULER,
     # The watchdog service's scan (idle cases, scheduler liveness); its own token, nobody else.
     ("POST", "/watchdog/scan"): WATCHDOG,
     # Liveness for the dashboard (A11): coordinator and supervisor; the watchdog may read it too.
@@ -149,6 +151,18 @@ def authorize_case_access(identity: Identity, patient_ref: str | None) -> None:
         identity.patient_ref is None or identity.patient_ref != patient_ref
     ):
         raise HTTPException(404, "case not found")
+
+
+def owner_guard(identity: Identity, event_type: str):
+    """An `append` guard (SEC-2): re-evaluates owner scope on the replayed model INSIDE the store's
+    transaction, under the case's row lock, before the state machine sees the event. A check made on
+    an earlier read can be stale by the time the write happens (the case may have been handed to
+    someone else in between); this one cannot. Raises the same 403 as `authorize_owner_scope`, and
+    the store then writes nothing."""
+    def guard(model) -> None:
+        authorize_owner_scope(identity, event_type, model)
+
+    return guard
 
 
 def authorize_owner_scope(identity: Identity, event_type: str, model) -> None:

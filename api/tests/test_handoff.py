@@ -2,7 +2,7 @@
 the referral handoff contract, per-owner scoping, and the scheduler's bounce."""
 
 from datetime import UTC, datetime, timedelta
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import pytest
 
@@ -62,8 +62,9 @@ def test_ownership_changes_only_on_acceptance():
     assert m.owner == OWNER and m.provider is None  # asking changes nothing
     assert m.pending_handoff == {
         "to_provider": "endo-1", "requested_by": OWNER, "from_owner": OWNER,
-        "requested_at": AT.isoformat(),
+        "requested_at": AT.isoformat(), "requested_event_id": m.pending_handoff["requested_event_id"],
     }
+    assert UUID(m.pending_handoff["requested_event_id"])
     acc = step(m, make_event("handoff_accepted", "specialist_owner:dr_s", {}, at(1)), PATHWAY)
     assert acc.owner == "specialist_owner:dr_s" and acc.provider == "endo-1"
     assert acc.pending_handoff is None and acc.state == m.state

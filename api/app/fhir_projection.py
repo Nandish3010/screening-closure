@@ -648,20 +648,20 @@ class ProjectingStore:
             raise
         self.projector.project(case_id, genesis_event)
 
-    def append(self, event, pathway, *, within=None):
+    def append(self, event, pathway, *, within=None, guard=None):
         try:
-            state = self._inner.append(event, pathway, within=within)
+            state = self._inner.append(event, pathway, within=within, guard=guard)
         except BaseException:
             self._queue_if_committed(event.case_id, [event])
             raise
         self.projector.project(event.case_id, event)
         return state
 
-    def _append_many(self, events, pathway, *, within=None):
+    def _append_many(self, events, pathway, *, within=None, guard=None):
         """The sweep's batched append (F6), offered only when the inner store has one. Projects
         every event of the batch after the commit (idempotent by event id, so a retry is harmless)."""
         try:
-            state = self._inner.append_many(events, pathway, within=within)
+            state = self._inner.append_many(events, pathway, within=within, guard=guard)
         except BaseException:
             for event in events:
                 self._queue_if_committed(event.case_id, [event])

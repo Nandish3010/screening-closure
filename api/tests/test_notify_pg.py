@@ -12,6 +12,7 @@ from app.db import create_pool, run_migrations
 from app.events import CASE_CREATED, Event
 from app.notify import Notification, send
 from app.pathway import load_pathway
+from app.state_machine import InvalidTransition
 from app.store_pg import PostgresEventStore, PostgresNotificationLog
 
 pytestmark = [
@@ -57,7 +58,13 @@ def contacted_case(store, genesis=None):
 
 
 def do_send(store, log, cid, channel="sms", when=at(1), body="Hello"):
-    return send(cid, channel, "en", "reminder", body, store=store, pathway=PATHWAY, notification_log=log, at=when)
+    draft = str(uuid4())  # ADR-030: a message_sent needs a draft a human approved first
+    try:
+        store.append(Event(cid, "message_approved", when, "primary_care_owner:dr_a", {"draft_id": draft}), PATHWAY)
+    except InvalidTransition:
+        pass  # consent withdrawn: the approval is refused too, and the send reports blocked_consent
+    return send(cid, channel, "en", "reminder", body, store=store, pathway=PATHWAY, notification_log=log, at=when,
+                draft_id=draft)
 
 
 def test_sent_rows_round_trip_and_point_at_their_event(store, log, pool):

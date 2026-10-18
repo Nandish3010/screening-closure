@@ -123,6 +123,8 @@ def summary_paragraph(res: dict, scen: str = UPPER, caveat: bool = True) -> str:
     def verdict(dd: dict | None, unit: str = "percentage points", scale: float = 100.0) -> str:
         if not dd:
             return ""
+        if dd["ci_low"] is None or dd["ci_high"] is None:  # a single replication: no interval to speak of
+            return f"{dd['mean'] * scale:+.1f} {unit} (one replication: no confidence interval)"
         lo, hi = dd["ci_low"] * scale, dd["ci_high"] * scale
         m = dd["mean"] * scale
         sign = "excludes zero" if (lo > 0 or hi < 0) else "includes zero"

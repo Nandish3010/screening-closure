@@ -129,6 +129,9 @@ def test_the_same_events_are_fine_while_consent_stands():
         payload = {"to_provider": "endo-1"} if kind == "handoff_requested" else {}
         if kind == "contact_patient":
             continue  # a state transition, not valid from patient_contacted
+        if kind == "message_sent":  # only for a draft a human approved (ADR-030)
+            m = step(m, make_event("message_approved", OWNER, {"draft_id": "d-1"}, at(6)), PATHWAY)
+            payload = {"draft_id": "d-1", "channel": "sms"}
         step(m, make_event(kind, OWNER if kind != "message_sent" else "system:notifier", payload, at(6)), PATHWAY)
 
 
@@ -273,8 +276,11 @@ def test_t_a23_withdrawal_freezes_outreach_and_flags_the_case_for_review():
     cid = new_case()
     r = post(cid, "consent_updated", PATIENT, {"withdrawn": True})
     assert r.status_code == 201
-    body = r.json()
-    assert body["state"] == "consent_withdrawn"
+    patient_body = r.json()  # SEC-2: the patient's answer is the redacted one: no review flag, no staff events
+    assert patient_body["state"] == "consent_withdrawn" and patient_body["read_model"]["consent_frozen"] is True
+    assert "review_reason" not in patient_body["read_model"]
+    assert [(e["type"], e["actor"]) for e in patient_body["events"][-1:]] == [("consent_updated", "patient")]
+    body = case(cid)  # staff see the whole case
     rm = body["read_model"]
     assert rm["consent_frozen"] is True and rm["review_reason"] == "consent_withdrawn"
     assert [(e["type"], e["actor"]) for e in body["events"][-2:]] == [

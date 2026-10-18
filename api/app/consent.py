@@ -19,22 +19,16 @@ from uuid import UUID
 from app import payloads
 from app.events import Event, EventStore
 from app.pathway import Pathway
-from app.state_machine import CONSENT_ACTOR, CaseModel
+from app.state_machine import CHANNELS, CONSENT_ACTOR, CaseModel, channel_consent
 
 # Fixed namespace for deterministic event ids (never change: it would break idempotency).
 CONSENT_NAMESPACE = uuid.UUID("0b0f3b86-5a63-4f0a-9a43-3c1d3f5e7a10")
-CHANNELS = ("sms", "whatsapp", "phone", "letter")
 
 
 def channel_allowed(model: CaseModel, channel: str) -> tuple[bool, str]:
-    """(allowed, reason). Not allowed when consent is withdrawn or the channel is switched off."""
-    if model.consent_frozen or model.consent.get("withdrawn"):
-        return False, "consent withdrawn"
-    if channel not in CHANNELS:
-        return False, f"unknown channel {channel!r}"
-    if not model.consent.get(f"channel_{channel}", False):
-        return False, f"patient has not consented to contact by {channel}"
-    return True, "ok"
+    """(allowed, reason). Not allowed when consent is withdrawn or the channel is switched off. The same
+    rule the state machine applies to `message_sent` at apply time (`state_machine.channel_consent`)."""
+    return channel_consent(model, channel)
 
 
 def review_event_id(trigger_event_id: UUID) -> UUID:
