@@ -6,6 +6,7 @@ import type {
 } from "../api/contract";
 import { ApiError, DRAFTS_OWNER_ONLY, HANDOFF_REJECT_REASONS, PROVIDERS, REOPEN_REASONS, type ReopenReason } from "../api/contract";
 import { REASSIGN_TARGETS, ROLE_NAMES, ROLE_PROVIDERS } from "../api/identities";
+import { AgencyChip } from "../components/AgencyChip";
 import { ActionButton } from "../components/ActionButton";
 import { DraftsPanel, approvalMessage } from "../components/DraftsPanel";
 import { SignOffPanel } from "../components/SignOffPanel";
@@ -180,6 +181,7 @@ export function CaseDetailPage() {
     <main className="container">
       <p><Link to="/coordinator">&larr; Worklist</Link></p>
       <h1>Case <span className="mono">{detail.case_id.slice(0, 8)}</span> <StatePill state={state} /></h1>
+      <AgencyChip caseId={detail.case_id} version={`${detail.state}:${events.length}`} />
 
       <dl className="facts">
         <div><dt>Owner</dt><dd data-testid="owner">{detail.owner ?? "Unowned"}{detail.provider ? <span className="muted"> · {detail.provider}</span> : null}</dd></div>

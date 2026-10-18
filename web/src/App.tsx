@@ -2,6 +2,7 @@ import { Link, Navigate, Route, Routes } from "react-router-dom";
 import { Header } from "./components/Header";
 import { CoordinatorPage } from "./pages/CoordinatorPage";
 import { CaseDetailPage } from "./pages/CaseDetailPage";
+import { AgencyPage } from "./pages/AgencyPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { PatientPage, PatientHome } from "./pages/PatientPage";
 import { DEMO_PATIENT_CASE_ID } from "./api/fixtures";
@@ -31,6 +32,7 @@ export default function App() {
           <Route path="/coordinator" element={<CoordinatorPage />} />
           <Route path="/coordinator/:caseId" element={<CaseDetailPage />} />
           <Route path="/dashboard" element={<DashboardPage />} />
+          <Route path="/agency" element={<AgencyPage />} />
           <Route path="/patient" element={<PatientHome />} />
           <Route path="/patient/:caseId" element={<PatientPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />

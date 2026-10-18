@@ -1,6 +1,6 @@
 /** HTTP adapter: the real API at VITE_API_URL, with bearer-token auth from POST /auth/dev-login. */
 import type {
-  Alert, ApiClient, CaseDetail, CaseEvent, CaseListParams, CaseSummary, CaseTimeline, ClosureMetrics, ConfirmatoryResult, Draft,
+  AgencyInboxItem, AgencyOrg, AgencyRun, AgencyTask, AgencyTaskParams, Alert, ApiClient, CaseAgencySummary, CaseDetail, CaseEvent, CaseListParams, CaseSummary, CaseTimeline, ClosureMetrics, ConfirmatoryResult, Draft,
   DraftApproval, DraftRecord, DraftRejection, DraftRequestBody, Me, PostEventBody, Role, TimelineItem,
 } from "./contract";
 import { ApiError, BACKEND_ROLE, OWNER_SCOPED_ROLES, ROLES } from "./contract";
@@ -15,6 +15,16 @@ function storedPatientRef(): string | undefined {
     return localStorage.getItem(PATIENT_REF_KEY) ?? undefined;
   } catch {
     return undefined;
+  }
+}
+
+/** A22: a 404 means the backend has no agency yet; answer `fallback` instead of failing. */
+async function notFoundAs<T>(p: Promise<T>, fallback: T): Promise<T> {
+  try {
+    return await p;
+  } catch (e) {
+    if (e instanceof ApiError && e.status === 404) return fallback;
+    throw e;
   }
 }
 
@@ -261,5 +271,20 @@ export function createHttpAdapter(baseUrl: string, fetchImpl: typeof fetch = (..
       }
     },
     closureMetrics: () => request<ClosureMetrics>("/metrics/closure"),
+    // A22 agency layer. A backend without it answers 404: the lists degrade to empty, the case summary to null, and
+    // agencyOrg / runAgency let the ApiError through so the page can say "agency not available".
+    agencyOrg: () => request<AgencyOrg>("/agency/org"),
+    agencyRuns: (limit?: number) => notFoundAs<AgencyRun[]>(request(`/agency/runs${qs({ limit: limit === undefined ? undefined : String(limit) })}`), []),
+    agencyTasks: (params: AgencyTaskParams = {}) =>
+      notFoundAs<AgencyTask[]>(
+        request(`/agency/tasks${qs({
+          status: params.status, department: params.department, case_id: params.case_id, run_id: params.run_id,
+          limit: params.limit === undefined ? undefined : String(params.limit),
+        })}`),
+        [],
+      ),
+    agencyInbox: () => notFoundAs<AgencyInboxItem[]>(request("/agency/inbox"), []),
+    runAgency: () => request<AgencyRun>("/agency/run", { method: "POST", body: JSON.stringify({}) }),
+    caseAgency: (id: string) => notFoundAs<CaseAgencySummary | null>(request(`/cases/${encodeURIComponent(id)}/agency`), null),
   };
 }

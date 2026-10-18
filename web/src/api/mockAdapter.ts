@@ -7,11 +7,14 @@
  * who is acting, because the real API decides who may approve a draft from the bearer token.
  */
 import type {
-  Alert, ApiClient, CaseDetail, CaseEvent, CaseListParams, CaseSummary, CaseTimeline, ClosureMetrics, ConfirmatoryResult, Draft, DraftApproval,
+  AgencyInboxItem, AgencyOrg, AgencyRun, AgencyTask, AgencyTaskParams, Alert, ApiClient, CaseAgencySummary, CaseDetail, CaseEvent, CaseListParams, CaseSummary, CaseTimeline, ClosureMetrics, ConfirmatoryResult, Draft, DraftApproval,
   DraftRecord, DraftRejection, DraftRequestBody, Me, PostEventBody, Role, TimelineItem,
 } from "./contract";
 import { ApiError, BACKEND_ROLE, OWNER_SCOPED_ROLES, REJECT_NOTE_MAX, REJECT_REASONS, ROLES } from "./contract";
 import { FIXTURE_RISK, SEED_ALERTS, SEED_METRICS, SIM_NOW, seedDrafts, seedEvents } from "./fixtures";
+import {
+  type AgencyLedger, type CaseFact, caseSummaryOf, executeRun, fakePromptHash, inboxOf, orgOf, runsOf, seedLedger, tasksOf,
+} from "./mockAgency";
 import { PROVIDER_CLINICIANS, ROLE_NAMES, ROLE_PROVIDERS, backendActor } from "./identities";
 import { ESCALATION_LADDER } from "../lib/pathway";
 import {
@@ -31,23 +34,14 @@ interface MockDb {
   draftCounter: number;
   notificationCounter: number;
   tick: number;
+  /** A22 agency ledger; absent in a database stored before it existed (seeded on first use). */
+  agency?: AgencyLedger;
 }
 
 interface Session {
   role: Role;
   name: string;
   provider?: string;
-}
-
-/** A stable 64-hex digest of the prompt inputs (a stand-in for the backend's SHA-256 of system + user prompt). */
-function fakePromptHash(input: string): string {
-  let out = "";
-  for (let round = 0; out.length < 64; round++) {
-    let h = 0x811c9dc5 ^ (round * 0x9e3779b1);
-    for (let i = 0; i < input.length; i++) h = Math.imul(h ^ input.charCodeAt(i), 0x01000193) >>> 0;
-    out += h.toString(16).padStart(8, "0");
-  }
-  return out.slice(0, 64);
 }
 
 /**
@@ -128,9 +122,19 @@ export function createMockAdapter(storage: Pick<Storage, "getItem" | "setItem" |
       /* quota or private mode: keep in memory */
     }
   }
-  const fresh = (): MockDb => ({
-    events: seedEvents(), drafts: seedDrafts(), alerts: structuredClone(SEED_ALERTS), draftCounter: 0, notificationCounter: 0, tick: 0,
-  });
+  const fresh = (): MockDb => {
+    const db: MockDb = {
+      events: seedEvents(), drafts: seedDrafts(), alerts: structuredClone(SEED_ALERTS), draftCounter: 0, notificationCounter: 0, tick: 0,
+    };
+    db.agency = seedLedger(factsOf(db), db.drafts);
+    return db;
+  };
+  const factsOf = (db: MockDb): CaseFact[] =>
+    Object.keys(db.events).map((id) => ({ summary: summarise(id, db.events[id], SIM_NOW, FIXTURE_RISK[id] ?? 0.2), events: db.events[id] }));
+  const ledgerOf = (db: MockDb): AgencyLedger => {
+    if (!db.agency) db.agency = seedLedger(factsOf(db), db.drafts);
+    return db.agency;
+  };
 
   function must(db: MockDb, id: string): CaseEvent[] {
     const evs = db.events[id];
@@ -209,6 +213,10 @@ export function createMockAdapter(storage: Pick<Storage, "getItem" | "setItem" |
 
   function requireStaff() {
     if (session.role === "patient") throw new ApiError(403, "role 'patient' may not call this route");
+  }
+  /** A22: the org chart, runs and task ledger are for the coordinator and the supervisor. */
+  function requireAgencyStaff(route: string) {
+    if (session.role !== "coordinator" && session.role !== "supervisor") throw new ApiError(403, `role '${BACKEND_ROLE[session.role]}' may not call ${route}`);
   }
 
   return {
@@ -449,6 +457,44 @@ export function createMockAdapter(storage: Pick<Storage, "getItem" | "setItem" |
       if (down && !active) db.alerts.push({ kind: "scheduler_down", since: new Date(new Date(SIM_NOW).getTime() - 120_000).toISOString(), cleared_at: null });
       if (!down && active) active.cleared_at = SIM_NOW;
       save(db);
+    },
+    async agencyOrg(): Promise<AgencyOrg> {
+      requireAgencyStaff("GET /agency/org");
+      return orgOf(ledgerOf(load()));
+    },
+    async agencyRuns(limit?: number): Promise<AgencyRun[]> {
+      requireAgencyStaff("GET /agency/runs");
+      return runsOf(ledgerOf(load()), limit);
+    },
+    async agencyTasks(params: AgencyTaskParams = {}): Promise<AgencyTask[]> {
+      requireAgencyStaff("GET /agency/tasks");
+      const db = load();
+      return tasksOf(ledgerOf(db), factsOf(db), db.drafts, params);
+    },
+    async agencyInbox(): Promise<AgencyInboxItem[]> {
+      // Owner roles see only the items on cases they own; the coordinator and the supervisor see all; everyone else 403.
+      const owner = OWNER_SCOPED_ROLES.includes(session.role);
+      if (!owner) requireAgencyStaff("GET /agency/inbox");
+      const db = load();
+      return inboxOf(ledgerOf(db), factsOf(db), db.drafts, owner ? actor() : undefined);
+    },
+    async runAgency(): Promise<AgencyRun> {
+      requireAgencyStaff("POST /agency/run");
+      const db = load();
+      const ledger = ledgerOf(db);
+      // One run per sim time: asking again at the same time answers the run that exists.
+      const existing = ledger.runs.find((r) => r.sim_at === SIM_NOW);
+      if (existing) return { ...runsOf(ledger).find((r) => r.run_id === existing.run_id)!, created: false };
+      const run = executeRun(ledger, factsOf(db), db.drafts, { simAt: SIM_NOW, trigger: "manual", createdBy: actor() });
+      save(db);
+      return { ...structuredClone(run), created: true };
+    },
+    async caseAgency(id): Promise<CaseAgencySummary | null> {
+      requireStaff();
+      const db = load();
+      must(db, id);
+      requireOwnerScope(db, id);
+      return caseSummaryOf(ledgerOf(db), factsOf(db), db.drafts, id);
     },
     async resetDemo() {
       save(fresh());

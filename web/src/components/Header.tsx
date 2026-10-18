@@ -68,6 +68,7 @@ export function Header() {
         <nav aria-label="Main">
           <NavLink to="/coordinator">Coordinator</NavLink>
           <NavLink to="/dashboard">Dashboard</NavLink>
+          {(role === "coordinator" || role === "supervisor") && <NavLink to="/agency">Agency</NavLink>}
           <NavLink to={`/patient/${DEMO_PATIENT_CASE_ID}`}>Patient view</NavLink>
         </nav>
         <div className="header-tools">
