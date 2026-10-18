@@ -238,7 +238,7 @@ def test_list_drafts_in_order_and_empty_for_a_new_case():
     assert client.get(f"/cases/{cid}/drafts", headers=H("coordinator")).json() == []
     a = create(cid).json()["draft_id"]
     b = create(cid, {**BODY, "channel": "letter"}).json()["draft_id"]
-    listed = client.get(f"/cases/{cid}/drafts", headers=H("primary_care_owner")).json()
+    listed = client.get(f"/cases/{cid}/drafts", headers=H("primary_care_owner", "Dr Sara Khan")).json()  # the owner (SEC-2: owner-scoped)
     assert [d["draft_id"] for d in listed] == [a, b]
     assert listed[1]["channel"] == "letter" and listed[0]["provider"] == "template"
     assert {"prompt_hash", "created_by", "created_at", "approved_at", "approved_by"} <= set(listed[0])

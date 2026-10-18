@@ -25,7 +25,7 @@ Every cell is what the running API did, not what the policy table says: the scri
 | `POST /cases` | U | A | R | R | A | R | A | R | R |
 | `GET /cases/{case_id}` | U | A | A | A | A | A/S | A | R | R |
 | `POST /cases/{case_id}/confirmatory-result` | U | R | A/S | A/S | R | R | R | R | R |
-| `GET /cases/{case_id}/drafts` | U | R | A | A | A | R | A | R | R |
+| `GET /cases/{case_id}/drafts` | U | R | A/S | A/S | A | R | A | R | R |
 | `POST /cases/{case_id}/drafts` | U | R | A/S | A/S | A | R | A | R | R |
 | `POST /cases/{case_id}/events` (the event rows below decide) | U | A | A | A | A | A | A | A | A |
 | `GET /cases/{case_id}/fhir` | U | R | A/S | A/S | A | R | A | R | R |
@@ -89,7 +89,7 @@ Routes that name a case or a draft, with the scope rule the matrix enforces (dec
 |---|---|
 | `GET /cases/{case_id}` | a patient only for their own case |
 | `POST /cases/{case_id}/confirmatory-result` | a clinician only for a case they own |
-| `GET /cases/{case_id}/drafts` | none (the role gate is the whole rule) |
+| `GET /cases/{case_id}/drafts` | a clinician only for a case they own |
 | `POST /cases/{case_id}/drafts` | a clinician only for a case they own |
 | `POST /cases/{case_id}/events` | a patient only for their own case; a clinician only for a case they own |
 | `GET /cases/{case_id}/fhir` | a clinician only for a case they own |

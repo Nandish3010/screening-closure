@@ -80,8 +80,9 @@ SCOPE_RULES: dict[tuple[str, str], frozenset[str]] = {
     ("GET", "/cases/{case_id}/fhir"): frozenset({"owner"}),
     # decision-matrix.md: "a clinician only on a case they own".
     ("POST", "/cases/{case_id}/drafts"): frozenset({"owner"}),
-    # Reading the drafts of a case is open to the roles that may draft (the approval is what is owner-scoped).
-    ("GET", "/cases/{case_id}/drafts"): frozenset(),
+    # Reading the drafts of a case (their text is the message to the patient) is owner-scoped too (SEC-2): a clinician
+    # reads the drafts of cases they own; coordinators and supervisors read any.
+    ("GET", "/cases/{case_id}/drafts"): frozenset({"owner"}),
     # Recording the colonoscopy result is the owning clinician's act (decision-matrix.md, E8 route).
     ("POST", "/cases/{case_id}/confirmatory-result"): frozenset({"owner"}),
     ("POST", "/drafts/{draft_id}/approve"): frozenset({"owner"}),

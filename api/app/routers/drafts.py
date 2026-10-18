@@ -19,7 +19,7 @@ moment (SEC-2, ADR-030).
 Routes (roles in `app.policy.ROUTE_POLICY`, registered below so a missing entry fails closed):
 
 * `POST /cases/{id}/drafts`        primary_care_owner, specialist_owner (the case's owner), coordinator, supervisor
-* `GET  /cases/{id}/drafts`        same roles
+* `GET  /cases/{id}/drafts`        same roles; a clinician only on a case they own
 * `POST /drafts/{id}/approve`      primary_care_owner, specialist_owner (the case's owner), supervisor
 * `POST /drafts/{id}/reject`       same roles; body {reason, note?} (reason from the A16 taxonomy)
 * `GET  /metrics/abstention`       coordinator, supervisor
@@ -367,9 +367,13 @@ def create_draft(
 
 
 @router.get("/cases/{case_id}/drafts")
-def list_drafts(case_id: UUID) -> list[dict]:
-    if cases.store.current_state(case_id) is None:
+def list_drafts(case_id: UUID, identity: Identity = Depends(require_identity)) -> list[dict]:
+    """The case's drafts, text included. Owner-scoped like every other owner action (SEC-2): a clinician
+    reads the drafts of cases they own; a coordinator or supervisor reads any."""
+    model = cases.store.read_model(case_id, cases.pathway)
+    if model is None:
         raise HTTPException(404, "case not found")
+    policy.authorize_owner_scope(identity, "view_drafts", model)
     return [_draft_json(d) for d in draft_store().list_for_case(case_id)]
 
 

@@ -104,7 +104,7 @@ def test_draft_row_prompt_row_and_event_are_all_written(client, pool):
 def test_list_route_reads_from_postgres(client):
     cid = owned_case(client)
     a, b = draft(client, cid)["draft_id"], draft(client, cid, language="ar")["draft_id"]
-    listed = client.get(f"/cases/{cid}/drafts", headers=H(client, "primary_care_owner")).json()
+    listed = client.get(f"/cases/{cid}/drafts", headers=H(client, "primary_care_owner", "Dr Sara Khan")).json()  # the owner
     assert [d["draft_id"] for d in listed] == [a, b]
     assert listed[1]["text_ar"] == listed[1]["text"] and listed[1]["text_en"] is None
 
