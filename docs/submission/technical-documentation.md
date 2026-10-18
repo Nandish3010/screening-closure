@@ -137,7 +137,7 @@ Consent is an append-only history of `consent_updated` events (four channels, sh
 
 ### 4.9 Notification mock
 
-The only outbound path, `app.notify.send`, writes messages to an append-only `notifications` table and opens no network connection (T-A25, ADR-018). It re-checks consent and contact validity at send time, logs blocked attempts as `blocked_consent` or `blocked_contact`, and is the only writer of `message_sent`.
+The only outbound path, `app.notify.send`, writes messages to an append-only `notifications` table and opens no network connection (T-A25, ADR-018). It re-checks consent and contact validity at send time, logs blocked attempts as `blocked_consent` or `blocked_contact`, and is the only writer of `message_sent`, which it writes in one transaction with the notification row. The state machine itself accepts a `message_sent` only for a draft a human approved on that case, once, on a channel the patient consents to at that moment (SEC-2, ADR-030).
 
 ### 4.10 RBAC and opaque actors
 
@@ -145,7 +145,7 @@ Six user roles (`lab`, `primary_care_owner`, `specialist_owner`, `coordinator`, 
 
 ### 4.11 Watchdog and heartbeats
 
-The watchdog calls `POST /watchdog/scan` every 10 seconds with a token that may emit only `watchdog_flagged`. It flags open cases idle for `WATCHDOG_IDLE_DAYS` (7 in `.env.example`) of simulated time, once per idle episode (T-A30). The scheduler posts a heartbeat every loop; older than 60 seconds opens a persistent `scheduler_down` alert (`GET /alerts`) that a fresh heartbeat clears, and a live but failing scheduler raises `scheduler_failing` (T-A31, ADR-023). The dashboard shows "Cases nobody is looking at" and a red banner.
+The watchdog calls `POST /watchdog/scan` every 10 seconds with a token that may emit only `watchdog_flagged`. It flags open cases nobody has acted on for `WATCHDOG_IDLE_DAYS` (7 in `.env.example`) of simulated time, once per idle episode (T-A30); the scheduler's and the notifier's own events do not count as anyone acting (SEC-2, ADR-023). The scheduler posts a heartbeat at the start of every loop, from a thread while the sweep runs, and when it ends; older than 60 seconds opens a persistent `scheduler_down` alert (`GET /alerts`) that a fresh heartbeat clears, and a live but failing scheduler raises `scheduler_failing` (T-A31, ADR-023). The dashboard shows "Cases nobody is looking at" and a red banner.
 
 ### 4.12 FHIR projection
 
@@ -153,7 +153,7 @@ After each append the API projects to HAPI FHIR R4: a `Task` per case (status mi
 
 ### 4.13 Drafts pipeline
 
-`POST /cases/{id}/drafts` builds a minimal prompt from the read model, drafts through `draft_with_fallback`, validates, stores the draft and prompt, and appends `message_drafted` as `model:<provider>` with ids and a hash only (D4). `POST /drafts/{id}/approve` (case owner or supervisor, never the coordinator) commits the approval and `message_approved` in one transaction before `notify.send` writes `message_sent` (D5). `POST /drafts/{id}/reject` takes `{reason, note?}`, with the reason one of `inaccurate`, `tone`, `wrong_language`, `not_needed` or `other_with_note`; in one transaction it records the rejection on the draft row and appends `message_rejected {draft_id, reason}` as the rejecting human, and the note stays on the draft row, never in the event (A16, `api/tests/test_approval_gate.py`, `test_reject_records_the_decision_and_appends_message_rejected`).
+`POST /cases/{id}/drafts` builds a minimal prompt from the read model, drafts through `draft_with_fallback`, validates, stores the draft and prompt, and appends `message_drafted` as `model:<provider>` with ids and a hash only (D4). `POST /drafts/{id}/approve` (case owner or supervisor, never the coordinator) commits the approval, `message_approved` and an outbox row in one transaction; the outbox drain then has `notify.send` write `message_sent`, and the scheduler loop drains whatever an interrupted request left (D5, ADR-030). `POST /drafts/{id}/reject` takes `{reason, note?}`, with the reason one of `inaccurate`, `tone`, `wrong_language`, `not_needed` or `other_with_note`; in one transaction it records the rejection on the draft row and appends `message_rejected {draft_id, reason}` as the rejecting human, and the note stays on the draft row, never in the event (A16, `api/tests/test_approval_gate.py`, `test_reject_records_the_decision_and_appends_message_rejected`).
 
 ### 4.14 The catch-and-close flow
 
