@@ -88,13 +88,15 @@ test("worklist to reopen against the real API", async ({ page }) => {
   await expect(page.getByTestId("flash")).toContainText("Booking recorded");
   expect((await events()).find((e) => e.type === "book_confirmatory")?.payload).toMatchObject({ appointment_date: "2026-03-02" });
 
-  // 7. A supervisor moves the clock past the 31-working-day SLA; the sweep marks the case overdue and escalates.
+  // 7. A supervisor moves the clock past the 31 working days; the sweep marks the case overdue and escalates. Since A18
+  // (ADR-028) the colonoscopy clock is the confirmatory_completed milestone, so the breach is a milestone breach.
   await advanceClock(60);
   await sweep();
   await page.reload();
   await expect(page.getByTestId("sla-clock")).toContainText("overdue");
   await expect(page.getByTestId("escalation-level")).toContainText(/Level [1-3] of 3/);
-  await expect(page.getByTestId("timeline")).toContainText("SLA breached");
+  await expect(page.getByTestId("timeline")).toContainText("Milestone missed");
+  await expect(page.getByTestId("timeline")).toContainText("Colonoscopy within 31 working days of referral was due");
   // The coordinator (target of the last rung) accepts the escalation.
   await as(page, "coordinator", "Maryam Al Suwaidi");
   await page.getByTestId("accept-escalation").click();
