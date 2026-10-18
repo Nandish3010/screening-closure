@@ -1,9 +1,9 @@
 /** Derivations shared by the mock adapter and the UI (state, owner, SLA clock, handoffs, consent, drafts). */
 import type {
-  CaseDetail, CaseEvent, CaseSummary, Consent, ConsentChanges, ConsentHistoryEntry, DraftRecord, EscalationRung, Lang,
+  ActorKind, CaseDetail, CaseEvent, ClosureProposal, CaseSummary, Consent, ConsentChanges, ConsentHistoryEntry, DraftRecord, EscalationRung, Lang,
   LastHandoff, MilestoneClock, MilestoneName, PendingHandoff, TimelineItem, WatchdogFlag,
 } from "../api/contract";
-import { ApiError, CONSENT_KEYS, HANDOFF_REJECT_REASONS } from "../api/contract";
+import { ApiError, AUTOMATION_ACTOR, CONSENT_KEYS, HANDOFF_REJECT_REASONS } from "../api/contract";
 import {
   MILESTONES, REFERRAL_STATES, SLA_WORKING_DAYS, addWorkingDays, nextTransition,
   rungLevel, transitionFor, wholeDaysBetween,
@@ -18,6 +18,27 @@ const AUTOMATED_ROLES = new Set(["system", "model", "watchdog", "scheduler"]);
 export function actorRole(actor: string): string {
   const i = actor.indexOf(":");
   return i < 0 ? actor : actor.slice(0, i);
+}
+
+const SERVICE_ACTORS = new Set(["scheduler", "watchdog"]);
+
+/**
+ * Who wrote an event (A21), derived from the actor string with the API's rule: `system:automation` is automation, `model:*`
+ * a model, any other `system:*` (scheduler, watchdog, notifier, consent, intake) and a bare `scheduler` / `watchdog` a
+ * service, and every user role (lab, primary_care_owner, specialist_owner, coordinator, supervisor, patient) a human.
+ * The wire's own `actor_kind` wins where there is one (`kindOfEvent`).
+ */
+export function actorKindOf(actor: string): ActorKind {
+  if (actor === AUTOMATION_ACTOR) return "automation";
+  const role = actorRole(actor);
+  if (role === "model") return "model";
+  if (role === "system" || SERVICE_ACTORS.has(role)) return "service";
+  return "human";
+}
+
+/** The kind of an event's actor: the API's `actor_kind` when present, else derived from the actor string. */
+export function kindOfEvent(ev: { actor: string; actor_kind?: ActorKind }): ActorKind {
+  return ev.actor_kind ?? actorKindOf(ev.actor);
 }
 
 /**
@@ -120,6 +141,10 @@ export function replayHandoffs(events: CaseEvent[]): HandoffReplay {
   for (const ev of events) {
     if (ev.type === "accept_ownership") {
       if (!isAutomatedActor(ev.actor)) owner = ownerFrom(ev);
+    } else if (ev.type === "assign_ownership" && typeof ev.payload.owner === "string") {
+      // A21: the automation actor sets the owner WITHOUT acceptance (the state stays `acknowledged`).
+      const actor = ev.payload.owner;
+      owner = { actor, name: actorName(actor), role: ROLE_LABEL[actorRole(actor)] ?? actorRole(actor) };
     } else if (ev.type === "reassign" && typeof ev.payload.owner === "string") {
       const actor = ev.payload.owner.includes(":") ? ev.payload.owner : `primary_care_owner:${ev.payload.owner}`;
       owner = { actor, name: actorName(actor), role: ROLE_LABEL[actorRole(actor)] ?? "Primary care physician" };
@@ -407,6 +432,31 @@ export function normalizeOwner(raw: unknown): { owner: string | null; owner_acto
   return { owner: null, owner_actor: null, owner_role: null };
 }
 
+/**
+ * The open closure proposal (A21): the latest `closure_proposed`, unless a `close` or `reopen` came after it. The real read
+ * model reports `closure_proposal` itself; this is the mock's answer and the fallback for a server that sends none.
+ */
+export function closureProposalOf(events: CaseEvent[]): ClosureProposal | null {
+  let proposal: ClosureProposal | null = null;
+  events.forEach((ev, i) => {
+    if (ev.type === "closure_proposed" && typeof ev.payload.evidence_ref === "string") {
+      proposal = { evidence_ref: ev.payload.evidence_ref, proposed_at: ev.at, event_id: ev.event_id ?? `seq-${ev.seq ?? i + 1}` };
+    } else if (ev.type === "close" || ev.type === "reopen") proposal = null;
+  });
+  return proposal;
+}
+
+/**
+ * Why the case is on the human-review list (A21), by replay: consent withdrawn while it is, else `reroute_exhausted` while the
+ * case still waits in `referral_rejected` after the re-route list ran out. Null when no human review is pending.
+ */
+export function reviewReasonOf(events: CaseEvent[]): string | null {
+  if (consentOf(events).withdrawn) return "consent_withdrawn";
+  const state = replayState(events);
+  const lastExhausted = events.map((e) => e.type === "review_requested" && e.payload.reason === "reroute_exhausted").lastIndexOf(true);
+  return state === "referral_rejected" && lastExhausted >= 0 ? "reroute_exhausted" : null;
+}
+
 /** Fill read-model fields a backend row lacks (older server, partial rows) so the UI never crashes. */
 export function completeSummary(row: Partial<CaseSummary> & Pick<CaseSummary, "case_id">): CaseSummary {
   const o = normalizeOwner((row as { owner?: unknown }).owner);
@@ -455,7 +505,8 @@ export function completeDetail(raw: CaseDetail, simNow: string | null = null): C
     consent_frozen: frozen,
     consent,
     consent_history: d.consent_history ?? consentHistoryOf(events),
-    review_reason: d.review_reason !== undefined ? d.review_reason : frozen ? "consent_withdrawn" : null,
+    review_reason: d.review_reason !== undefined ? d.review_reason : frozen ? "consent_withdrawn" : reviewReasonOf(events),
+    closure_proposal: d.closure_proposal !== undefined ? d.closure_proposal : closureProposalOf(events),
     milestones: d.milestones ?? milestonesOf(events, simNow),
     last_event_at: d.last_event_at ?? events.at(-1)?.at ?? d.updated_at ?? "",
     watchdog_flagged: d.watchdog_flagged !== undefined ? d.watchdog_flagged : watchdogFlag(events),
@@ -469,8 +520,10 @@ export function completeDetail(raw: CaseDetail, simNow: string | null = null): C
 export const ANNOTATION_EVENTS = [
   "handoff_requested", "handoff_accepted", "handoff_rejected", "escalate", "escalation_accepted",
   "callback_requested", "consent_updated", "message_drafted", "message_approved", "message_rejected", "message_sent",
-  "mark_overdue", "watchdog_flagged", "mark_lost_contact", "review_requested",
+  "mark_overdue", "watchdog_flagged", "mark_lost_contact", "review_requested", "assign_ownership", "closure_proposed",
 ];
+/** Events only the automation actor (or another service) writes: nobody may post them through the events route. */
+const SERVICE_ONLY_EVENTS = ["message_approved", "message_rejected", "message_sent", "review_requested", "assign_ownership", "closure_proposed"];
 
 /** Backend roles that are owner-scoped (A5): they act only on cases they own. */
 const OWNER_BACKEND_ROLES = new Set(["primary_care_owner", "specialist_owner"]);
@@ -501,7 +554,7 @@ export function validateAppend(events: CaseEvent[], type: string, actor: string,
   const frozen = consentOf(events).withdrawn;
 
   if (!ctx.internal) {
-    if (["message_approved", "message_rejected", "message_sent", "review_requested"].includes(type)) {
+    if (SERVICE_ONLY_EVENTS.includes(type)) {
       throw new ApiError(403, `nobody may post '${type}' through the events route`);
     }
     if (isOwnerScopedActor(actor)) {

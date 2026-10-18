@@ -82,6 +82,11 @@ export function Header() {
           <span className="who" title="Acting as">{actorName}</span>
           {role === "supervisor" && <ClockControl />}
           <span className={`adapter adapter-${api.adapter}`} title="API adapter">{api.adapter}</span>
+          {api.automation !== undefined && (
+            <span className="adapter" title="The mock plays the automation actor (system:automation); add ?automation=off to the URL to switch it off" data-testid="automation-mode">
+              automation {api.automation ? "on" : "off"}
+            </span>
+          )}
           {api.resetDemo && (
             <button className="btn btn-small" onClick={() => api.resetDemo!().then(() => location.reload())}>
               Reset demo

@@ -169,3 +169,60 @@ const ROLE_AR: Record<string, string> = {
 export function roleLabel(role: string, lang: Lang): string {
   return lang === "ar" ? ROLE_AR[role] ?? role : role;
 }
+
+/**
+ * Staff-console strings for the automation features (A21): the "Automated" chip, the closure-proposed banner, the per-case
+ * effort counter, the dashboard's human-effort card and the human-review reasons. The staff console is English only (the
+ * rest of it is inline English too), so there is no Arabic here and nothing for the native-speaker review above; nothing in
+ * this block is shown to a patient. Plain, calm wording: the system proposes, a person decides.
+ */
+export const STAFF = {
+  automatedChip: "Automated",
+  automatedChipLabel: "Automated action: done by the system, not by a person",
+  modelChip: "AI model",
+  modelChipLabel: "Written by an AI model; a person must approve it before it is used",
+  serviceChip: "Service",
+  serviceChipLabel: "Done by a background service (scheduler, watchdog or notifier)",
+  templateMessageSent: "Template message sent to the patient",
+  assignOwnership: "Case assigned to an owner (not yet accepted)",
+  closureProposed: "Closure proposed from the colonoscopy evidence",
+  autoHandoff: "Hand-off requested automatically (re-route)",
+  reviewReasons: {
+    consent_withdrawn: "Flagged for human review (consent withdrawn)",
+    reroute_exhausted: "Reroute list exhausted: a coordinator must reassign",
+  },
+  closureBanner: {
+    heading: "Closure proposed",
+    found: "The system found the colonoscopy evidence in the record:",
+    humanStep: "Nothing has been closed. The case closes only when a clinician reviews the evidence and signs off.",
+    button: "Review and sign off",
+    buttonHint: "Opens the sign-off panel with this evidence reference already filled in.",
+    notClinician: "Only the case owner (a clinician) can sign off.",
+    notOwner: "Only the case owner can sign off",
+  },
+  effort: {
+    label: "Effort on this case",
+    human: "Human actions",
+    automated: "Automated actions",
+    share: "Automation share",
+    saved: "Estimated minutes saved",
+    assumed: "assumed minutes, to source",
+    summary: (human: number, automated: number) => `Human actions ${human} / Automated actions ${automated}`,
+  },
+  effortCard: {
+    heading: "Human effort",
+    intro: "How much routine work the system now does so that people act only at final decisions.",
+    reduction: "Reduction in human time",
+    target: "Target",
+    met: "Target met",
+    notMet: "Below target",
+    noData: "No effort data yet.",
+    humanActions: "Human actions",
+    automatedActions: "Automated actions",
+    share: "Automation share",
+    minutes: "Human minutes / baseline minutes",
+    saved: "Minutes saved",
+    caveat: "Assumed minutes, to source: the minutes behind these figures are estimates, not measurements.",
+    unavailable: "Effort metrics are not available for this role or this server.",
+  },
+} as const;

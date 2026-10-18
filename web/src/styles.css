@@ -195,3 +195,16 @@ table.worklist { width: 100%; border-collapse: collapse; background: var(--surfa
 .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 .nobody li { padding: 0.5rem 0; border-top: 1px solid var(--border); }
 .tl { overflow-wrap: anywhere; }
+
+/* A21: automation. The "Automated" chip is solid (the system did it) and apart from the dashed model/service chips. */
+.chip-automation { background: var(--ok-bg); color: var(--ok); border-color: var(--ok); font-size: 0.72rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+.chip-model { border-style: dotted; }
+.effort-counter { margin: 0.25rem 0 0.75rem; font-size: 0.95rem; }
+.effort-label { color: var(--muted); }
+.effort-assumed { font-style: italic; }
+.closure-proposal h3 { margin: 0 0 0.25rem; }
+.closure-proposal p { margin: 0.25rem 0; }
+.effort-headline { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.5rem; margin-bottom: 0.4rem; }
+.meter { position: relative; height: 0.7rem; border-radius: 999px; background: var(--border); overflow: visible; margin: 0.3rem 0; }
+.meter-fill { height: 100%; border-radius: 999px; background: var(--ok); }
+.meter-target { position: absolute; top: -0.2rem; bottom: -0.2rem; width: 2px; background: var(--text); }

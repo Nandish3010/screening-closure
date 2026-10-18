@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useApp } from "../app/AppContext";
-import type { AgeBucket, Alert, CaseSummary, ClosureMetrics } from "../api/contract";
+import type { AgeBucket, Alert, CaseSummary, ClosureMetrics, EffortMetrics } from "../api/contract";
 import { BarChart } from "../components/BarChart";
+import { EffortCard } from "../components/EffortCard";
 import { WatchdogMarker, watchdogDetail } from "../components/WatchdogMarker";
 import { fmtDateTime, shortId, titleCase } from "../lib/format";
 import { StatePill } from "./CoordinatorPage";
@@ -13,7 +14,8 @@ const BUCKETS: AgeBucket[] = ["0-30", "31-60", "61-90", "90+"];
 export const ALERT_POLL_MS = 10_000;
 
 export function DashboardPage() {
-  const { api } = useApp();
+  const { api, role } = useApp();
+  const [effort, setEffort] = useState<EffortMetrics | null>(null);
   const [m, setM] = useState<ClosureMetrics | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [flagged, setFlagged] = useState<CaseSummary[] | null>(null);
@@ -27,6 +29,17 @@ export function DashboardPage() {
       live = false;
     };
   }, [api]);
+
+  // A21: the human-effort card is for the coordinator and the supervisor (the API refuses the other roles).
+  const seesEffort = role === "coordinator" || role === "supervisor";
+  useEffect(() => {
+    let live = true;
+    setEffort(null);
+    if (seesEffort) api.getEffortMetrics().then((x) => live && setEffort(x)).catch(() => live && setEffort(null));
+    return () => {
+      live = false;
+    };
+  }, [api, seesEffort, role]);
 
   // "Cases nobody is looking at": the watchdog's open flags, longest idle first.
   const loadFlagged = useCallback(() => {
@@ -78,6 +91,7 @@ export function DashboardPage() {
           </button>
         </p>
       )}
+      {seesEffort && <EffortCard metrics={effort} />}
       {error && <p className="banner banner-bad" role="alert">Could not load metrics: {error}</p>}
       {!m && !error && <p role="status">Loading metrics...</p>}
       {m && (

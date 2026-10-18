@@ -39,8 +39,12 @@ test("worklist to reopen against the real API", async ({ page }) => {
   expect(await page.getByTestId("worklist-row").count()).toBeGreaterThanOrEqual(22);
   await expect(page.getByTestId("sim-badge")).toContainText("SIMULATED TIME");
   await page.goto(`/coordinator/${caseId}`);
-  await page.getByTestId("acknowledge").click();
-  await expect(page.getByTestId("flash")).toContainText("acknowledged");
+  // A21: the automation actor has normally acknowledged the new case already; the manual acknowledge stays for the older flow.
+  await page.getByTestId("owner").waitFor();
+  if (await page.getByTestId("acknowledge").count()) {
+    await page.getByTestId("acknowledge").click();
+    await expect(page.getByTestId("flash")).toContainText("acknowledged");
+  }
 
   // 2. Owner accepts ownership: the body carries no owner (the API takes the caller).
   await as(page, "owner", "Dr. Layla Haddad");
