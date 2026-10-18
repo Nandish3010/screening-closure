@@ -2,11 +2,31 @@
 
 Every actionable screening result has a named owner, a clock, an audit trail, and a clinician-signed closure. Nothing is diagnosed.
 
+**Outcome, in a simulation on synthetic data (literature-anchored scenario):** colonoscopy within 180 days rises from 52% to 66%; cases lost without anyone told fall from 44.5% to 0% for cases the programme reaches, and to 20% programme-level under a 0.55 reach assumption. Details and intervals: [docs/results/results.md](docs/results/results.md).
+
 **All data in this repository is synthetic: a Synthea v3.3.0 cohort plus a seeded simulator, with no real patient, clinician or facility data.**
 
 ## What this is / is not
 
 This is a deterministic closure engine for one pathway: a positive FIT (faecal immunochemical test) result, then a confirmatory colonoscopy, then a clinician-signed closure. It tracks each case, nudges, escalates to humans, and closes only with evidence. It is not a diagnostic tool, and the only use of AI is to draft patient messages that a human approves before anything is sent.
+
+## Judge path in 5 minutes
+
+Prerequisites: Docker, the `.venv` from the Quickstart below, and `make web-install` once. The first time only, the demo needs a saved state (the first seed takes about 12 minutes; later runs are fast):
+
+```
+make demo-seed && make demo-stage && make demo-snapshot
+```
+
+Then:
+
+1. `make up` starts the stack.
+2. `make demo-reset` brings the database, the FHIR store and the simulation clock back to the snapshot (about 25 s).
+3. Start the web app against the real API, not the in-browser mock that `make web-dev` serves by default: `cd web && VITE_API_ADAPTER=http VITE_API_URL=http://localhost:8000 npm run dev`. Open the three surfaces at http://localhost:5173: the coordinator app at `/coordinator`, the closure dashboard at `/dashboard`, and the patient PWA (switch the role to Patient from a case page, or open `/patient/<caseId>`).
+4. `make evaluate` regenerates every evaluation number in `docs/results` (about 10 s on 10 cores, simulator/README.md).
+5. `make check` runs all 14 gates (stages listed under Tests and checks).
+
+The scripted walkthrough is [docs/submission/demo-script.md](docs/submission/demo-script.md).
 
 ## Quickstart (about 60 seconds, plus the one-time venv)
 
@@ -97,6 +117,7 @@ project/     plan, tracker, decisions, log, test cases
 | Test | `test-e2e-live` | Playwright against the running stack: the full flow, the declined-handoff re-route and T-C16 (stops the scheduler container); skips if the API is down |
 | Test | `test-load`, `load-check` | Sweep timing at 1k, 10k, 100k cases and rewrite `docs/results/load.md`; the 1k size only |
 | Evaluation | `evaluate`, `simulate`, `evaluate-check` | Regenerate `docs/results`; one arm, one run; prove reproducibility |
+| Evaluation | `sensitivity`, `sensitivity-check` | One-at-a-time parameter sensitivity sweep, written to `docs/results/sensitivity.*`; prove it reproduces |
 | Docs and checks | `check` | Run every stage below in order |
 | Docs and checks | `docs-check`, `tracker-lint` | Links, tables and markers in docs; tracker and test-case consistency |
 | Web | `web-install`, `web-dev`, `web-build`, `web-test`, `web-e2e` (`test-e2e`) | Install, dev server, build, unit tests, Playwright |
@@ -113,7 +134,7 @@ project/     plan, tracker, decisions, log, test cases
 
 `make check` runs 14 stages in this order: test, test-db, web-test, web-build, evaluate-check, docs-check, tracker-lint, test-security, test-tools, load-check, risk-check, review-packs-check, test-review-packs, web-e2e. It stops at the first failure; `CHECK_KEEP_GOING=1` runs all of them.
 
-At the M4/M5 integration, project/LOG.md records: "make check: green, 14 stages (1263 api and simulator tests, 103 integration, 164 web unit, 33 e2e, 106 tool tests, 47 security-gate tests, 17 pack tests)".
+At the M5 fix wave (project/LOG.md, line "M5-fix-wave", 2026-10-18 11:55 IST), `make check` was green over 14 of 14 stages: 1805 api and simulator tests, 198 integration, 186 web unit, 35 e2e, 164 tool tests, 72 security-gate tests, 19 pack tests. Outside it: `make test-chaos` 45 passed, `make test-demo` 2 passed, `make test-e2e-live` 3 passed, `make test-offline` 17 of 17.
 
 The closure rule has its own property test: `api/tests/test_state_machine.py::test_never_closed_without_evidence_and_human_signoff`.
 
@@ -122,13 +143,13 @@ The closure rule has its own property test: `api/tests/test_state_machine.py::te
 - [Submission index](docs/submission/README.md), [technical documentation](docs/submission/technical-documentation.md), [demo script](docs/submission/demo-script.md)
 - Results: [results](docs/results/results.md), [metrics](docs/results/metrics.md), [load test](docs/results/load.md)
 - Basis: [evidence](docs/evidence.md), [assumptions and limitations](docs/assumptions-limitations.md), [design choices](docs/design-choices.md), [data provenance](docs/data-provenance.md), [pilot plan](docs/pilot-plan.md)
-- Governance: [decision matrix](docs/governance/decision-matrix.md), [hazard log](docs/governance/hazard-log.md), [AI boundary](docs/governance/ai-boundary.md), [regulatory mapping](docs/governance/regulatory-mapping.md), [Malaffi adapter plan](docs/governance/malaffi-adapter-plan.md)
+- Governance: [decision matrix](docs/governance/decision-matrix.md), [hazard log](docs/governance/hazard-log.md), [AI boundary](docs/governance/ai-boundary.md), [regulatory mapping](docs/governance/regulatory-mapping.md), [Malaffi adapter plan](docs/governance/malaffi-adapter-plan.md), [pilot hardening checklist](docs/governance/pilot-hardening.md) (what must change before real patients)
 - Review packs: [clinician pack](docs/review/clinician-pack.md), [Arabic pack](docs/review/arabic-pack.md)
 - Project: [plan](project/PLAN.md), [tracker](project/TRACKER.md), [decisions](project/DECISIONS.md)
 
 ## Status
 
-As of the M4/M5 integration on 18 Oct 2026, built: the core loop, the simulator and evaluation, the interfaces (on the mock adapter and against the real stack), the AI drafting edge, the risk score, the reviewer packs, the governance documents, the chaos, RBAC, PHI and offline checks, and the demo scenario with its one-click reset.
+As of the M5 fix wave on 18 Oct 2026, built: the core loop, the simulator and evaluation, the interfaces (on the mock adapter and against the real stack), the AI drafting edge, the risk score, the reviewer packs, the governance documents, the chaos, RBAC, PHI and offline checks, and the demo scenario with its one-click reset.
 
 Open (project/TRACKER.md):
 
@@ -136,6 +157,7 @@ Open (project/TRACKER.md):
 - The 100,000-case sweep misses its 5 s target. The committed run in docs/results/load.md shows 20.38 s single process, 6.76 s through `POST /scheduler/sweep` with 4 workers (the default, A17) and 5.21 s with 10 workers.
 - In review, not done: the messy-case scenarios have no dedicated test (B5); the parameter-override metadata test and the docs-numbers checker are missing (B10).
 - Clinician review (H1) and native Arabic review (H2) are pending. The Arabic text is an unreviewed draft.
+- Not ready for real patients: login is dev-only (OIDC or UAE PASS is not built), tokens do not expire, the clock is a simulation clock on a single API replica, and there is no Malaffi adapter or DoH cloud authorisation. The checklist is [docs/governance/pilot-hardening.md](docs/governance/pilot-hardening.md).
 
 ## Licence
 
