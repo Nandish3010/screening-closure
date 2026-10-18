@@ -88,6 +88,7 @@ class Heartbeat(BaseModel):
     consecutive_failures: int = Field(default=0, ge=0, le=100000)
     interval_seconds: float = Field(default=10, gt=0, le=3600)
     sim_time: str | None = Field(default=None, max_length=40)
+    sweeping: bool = False  # posted before and during a sweep (a long one must not look like a dead scheduler)
 
 
 @router.post("/sweep")

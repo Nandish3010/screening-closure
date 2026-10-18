@@ -6,8 +6,10 @@ the event store and reads time from the sim clock only; the watchdog *service* j
 scan (`POST /watchdog/scan`) with its own service token, which may emit `watchdog_flagged` and
 nothing else.
 
-An idle episode is the stretch since a case's last real event (`last_activity_at`: any event but
-a watchdog flag). The flag's id is a uuid5 of (case, that event's id), never its time (SEC-2): two
+An idle episode is the stretch since a case's last HUMAN event (`last_human_activity_at`: an event
+written by a person, SEC-2). The scheduler's `mark_overdue` and escalations, drafted messages, the
+notifier and a watchdog flag are not anyone looking at the case; counting them made a case the sweep
+kept escalating look alive for ever. The flag's id is a uuid5 of (case, that event's id), never its time: two
 quiet stretches that start at the same instant are different episodes. Scanning again, or two scans
 at once, flags an episode once. Any later event clears the flag (the read model drops
 `watchdog_flag`), and a new quiet stretch is a new episode with a new id. A closed case is never
@@ -46,13 +48,13 @@ def idle_flag_event_id(case_id: UUID, started_by: UUID | str) -> UUID:
 def plan_idle_flag(
     case_id: UUID, model: CaseModel, pathway: Pathway, now: datetime, idle_days: int
 ) -> Event | None:
-    """`watchdog_flagged {reason: idle}` for an open case quiet for at least `idle_days`, once per
-    episode; None otherwise. Pure."""
-    if model.state == pathway.terminal_state or model.last_activity_at is None:
+    """`watchdog_flagged {reason: idle}` for an open case no person has acted on for at least `idle_days`,
+    once per episode; None otherwise. Pure."""
+    if model.state == pathway.terminal_state or model.last_human_activity_at is None:
         return None
     if model.watchdog_flag is not None:
-        return None  # already flagged since the last real event
-    idle = _utc(now) - _utc(model.last_activity_at)
+        return None  # already flagged since a person last acted
+    idle = _utc(now) - _utc(model.last_human_activity_at)
     if idle < timedelta(days=idle_days):
         return None
     return Event(
@@ -63,9 +65,9 @@ def plan_idle_flag(
         {
             "reason": "idle",
             "idle_days": idle.days,
-            "last_activity_at": _utc(model.last_activity_at).isoformat(),
+            "last_activity_at": _utc(model.last_human_activity_at).isoformat(),
         },
-        idle_flag_event_id(case_id, model.last_activity_event_id),
+        idle_flag_event_id(case_id, model.last_human_activity_event_id),
     )
 
 

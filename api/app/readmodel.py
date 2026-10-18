@@ -14,6 +14,7 @@ from app.events import Event, LoadedCase
 from app.pathway import Pathway
 from app.state_machine import CASE_CREATED, CaseModel, genesis, initial_model, step
 from app.state_machine import _aware as _utc
+from app.state_machine import is_automated
 from app.sweep import due_at_for
 
 
@@ -107,7 +108,7 @@ def timeline(
     the clock start, which is the referral acceptance for the confirmatory SLA), `sla_breached`
     (`at` is the due date, `detected_at` when the sweep recorded it), `escalation` (a ladder rung),
     `handoff_bounce` (the scheduler returned an unanswered referral), `watchdog_flag` (idle
-    case; `cleared_at` once anything else happened) and `backdated` (T-F4, ADR-027: an event accepted
+    case; `cleared_at` once a person acted) and `backdated` (T-F4, ADR-027: an event accepted
     with an `at` earlier than the previous event's; `behind_seconds` says by how much). Derived items are computed from the log, not
     stored. Ties are broken by the source event's position, the event first.
     """
@@ -134,7 +135,8 @@ def timeline(
             })
         previous = ev
 
-        if open_flag is not None and ev.type != "watchdog_flagged":
+        if open_flag is not None and ev.type != "watchdog_flagged" and not is_automated(ev.actor):
+            # only a person acting on the case clears the flag (the read model does the same, SEC-2)
             open_flag["cleared_at"] = ev.at.isoformat()
             open_flag = None
         if ev.type == "watchdog_flagged":

@@ -19,10 +19,13 @@ replay of the event log produces:
                          the approval gate lives HERE, so a `message_sent` is accepted only for a draft in this set
     last_event_at        `at` of the latest event, including annotations
     last_activity_at     `at` of the latest event that is not a watchdog flag: the idle clock (A11)
-    last_activity_event_id  the `event_id` of that event: what the watchdog derives its flag id from, so a
+    last_human_activity_at  `at` of the latest event written by a person (not the scheduler, the notifier, the
+                         consent service, a drafting model or the watchdog): the idle clock (A11, SEC-2). An
+                         overdue case the sweep keeps escalating is not being looked at, so its idle clock runs
+    last_human_activity_event_id  the `event_id` of that event: what the watchdog derives its flag id from, so a
                          later episode that starts at the same instant is still a different episode (SEC-2)
-    watchdog_flag        {reason, idle_days, at} while a watchdog_flagged is the newest word on the
-                         case, None as soon as any other event arrives (A9, A11)
+    watchdog_flag        {reason, idle_days, at} from a watchdog_flagged until a person acts on the case,
+                         then None (A9, A11, SEC-2: an automated event does not clear it)
     resume_state         where the case returns to when consent is restored (side state only)
     clock_started_at     when the current state's SLA clock started: the event that entered the
                          state, or, for an SLA with `clock_start: handoff_accepted` (A13), the
@@ -122,7 +125,8 @@ class CaseModel:
     consent_frozen: bool = False
     last_event_at: datetime | None = None
     last_activity_at: datetime | None = None
-    last_activity_event_id: UUID | None = None
+    last_human_activity_at: datetime | None = None
+    last_human_activity_event_id: UUID | None = None
     watchdog_flag: dict | None = None
     resume_state: str | None = None
     clock_started_at: datetime | None = None
@@ -155,6 +159,7 @@ class CaseModel:
             "approved_unsent_drafts": list(self.approved_unsent),
             "last_event_at": iso(self.last_event_at),
             "last_activity_at": iso(self.last_activity_at),
+            "last_human_activity_at": iso(self.last_human_activity_at),
             "watchdog_flag": dict(self.watchdog_flag) if self.watchdog_flag else None,
             "resume_state": self.resume_state,
             "clock_started_at": iso(self.clock_started_at),
@@ -178,7 +183,8 @@ def initial_model(pathway: Pathway) -> CaseModel:
 def genesis(model: CaseModel, event: Event) -> CaseModel:
     """The case_created marker starts the first state's SLA clock; it changes no state."""
     at = _aware(event.at)
-    return replace(model, last_event_at=at, last_activity_at=at, last_activity_event_id=event.event_id,
+    return replace(model, last_event_at=at, last_activity_at=at, last_human_activity_at=at,
+                   last_human_activity_event_id=event.event_id,
                    clock_started_at=at, clock_started_event_id=event.event_id)
 
 
@@ -494,8 +500,13 @@ def _finish(
         out = replace(out, watchdog_flag={"reason": payload.get("reason"),
                                           "idle_days": payload.get("idle_days"), "at": at.isoformat()})
     else:
-        # Any other event is activity: the case is being looked at, so the flag clears.
-        out = replace(out, last_activity_at=at, last_activity_event_id=event.event_id, watchdog_flag=None)
+        out = replace(out, last_activity_at=at)
+        if not is_automated(event.actor):
+            # A person acted: the case is being looked at, so the idle clock restarts and the flag clears.
+            # An automated event (the sweep's mark_overdue and escalations, a drafted message, the notifier)
+            # is not anyone looking at the case: it neither restarts the idle clock nor clears the flag.
+            out = replace(out, last_human_activity_at=at, last_human_activity_event_id=event.event_id,
+                          watchdog_flag=None)
     if kind == "accept_ownership":
         out = replace(out, owner=event.actor, provider=payload.get("provider"))
     elif kind == "reassign":

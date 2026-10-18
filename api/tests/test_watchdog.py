@@ -96,13 +96,60 @@ def test_t_a30_new_activity_clears_the_flag_and_a_later_quiet_spell_is_a_new_epi
     assert scan(store, cid, 50).flagged == 0 and len(flags(store, cid)) == 2
 
 
-def test_t_a30_a_scheduler_event_is_also_activity(store):
+def test_t_a30_a_scheduler_event_is_not_activity_and_does_not_clear_the_flag(store):
+    """SEC-2: only a person looking at the case counts. The sweep's mark_overdue used to restart the idle
+    clock and clear the flag, so a case the scheduler kept escalating could never be flagged idle."""
     cid = new_case(store, [("acknowledge", LAB, 1, None)])
     scan(store, cid, 8)
+    assert store.read_model(cid, PATHWAY).watchdog_flag is not None
     due = day(1) + timedelta(days=4)  # accept_ownership is 2 working days; the sweep marks it overdue on day 8
     store.append(Event(cid, "mark_overdue", day(8.5), "system:scheduler",
                        {"state": "acknowledged", "due_at": due.isoformat()}), PATHWAY)
-    assert store.read_model(cid, PATHWAY).watchdog_flag is None
+    m = store.read_model(cid, PATHWAY)
+    assert m.watchdog_flag is not None  # still flagged: nobody has looked
+    assert m.last_activity_at == day(8.5) and m.last_human_activity_at == day(1)
+    assert scan(store, cid, 9).flagged == 0  # and not flagged twice
+    store.append(Event(cid, "callback_requested", day(9.5), "coordinator:co", {}), PATHWAY)  # a person acts
+    m = store.read_model(cid, PATHWAY)
+    assert m.watchdog_flag is None and m.last_human_activity_at == day(9.5)
+
+
+def test_t_a30_a_case_the_sweep_keeps_escalating_is_still_idle(store):
+    """The review's scenario: acknowledged on day 1, then only automated events. The idle clock runs from
+    day 1, so the flag appears at day 8 whatever the scheduler wrote on days 5-7."""
+    cid = new_case(store, [("acknowledge", LAB, 1, None)])
+    due = day(1) + timedelta(days=4)
+    store.append(Event(cid, "mark_overdue", day(5.5), "system:scheduler",
+                       {"state": "acknowledged", "due_at": due.isoformat()}), PATHWAY)
+    store.append(Event(cid, "escalate", day(6), "system:scheduler",
+                       {"rung": "reminder", "state": "acknowledged", "level": 1, "target": "owner"}), PATHWAY)
+    assert scan(store, cid, 7.9).flagged == 0  # 6.9 days since a person acted
+    assert scan(store, cid, 8).flagged == 1
+    (flag,) = flags(store, cid)
+    assert flag.payload["last_activity_at"] == day(1).isoformat() and flag.payload["idle_days"] == 7
+
+
+def test_t_a30_the_notifier_a_drafting_model_and_the_consent_service_are_not_activity(store):
+    cid = new_case(store, [("acknowledge", LAB, 1, None), ("accept_ownership", OWNER, 2, None)])
+    store.append(Event(cid, "message_drafted", day(5), "model:template",
+                       {"draft_id": "5b6c1f3e-8d2a-4c47-9e10-2a7f4b9d3c11", "provider": "template", "fallback_used": False,
+                        "prompt_hash": "0" * 64, "language": "en"}), PATHWAY)
+    assert store.read_model(cid, PATHWAY).last_human_activity_at == day(2)
+    assert scan(store, cid, 9).flagged == 1  # 7 days after the owner accepted
+
+
+def test_t_a30_the_idle_flag_id_comes_from_the_event_not_the_time(store):
+    """Two different episodes that start at the same instant must not share a flag id."""
+    cid = new_case(store, [("acknowledge", LAB, 1, None)])
+    scan(store, cid, 8)
+    (first,) = flags(store, cid)
+    store.append(Event(cid, "callback_requested", day(9), "coordinator:co", {}), PATHWAY)  # clears it
+    store.append(Event(cid, "callback_requested", day(9), "coordinator:co", {}), PATHWAY)  # same instant again
+    assert scan(store, cid, 16).flagged == 1
+    second = flags(store, cid)[-1]
+    assert second.event_id != first.event_id
+    last_human = [e for e in store.events_for(cid) if e.type == "callback_requested"][-1]
+    assert second.event_id == idle_flag_event_id(cid, last_human.event_id)
 
 
 def test_t_a30_closed_cases_are_never_flagged(store):

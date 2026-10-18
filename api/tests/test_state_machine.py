@@ -429,6 +429,7 @@ def test_read_model_shape_and_values():
         "last_event_at": (AT + timedelta(days=3)).isoformat(),
         "resume_state": None,
         "last_activity_at": (AT + timedelta(days=3)).isoformat(),
+        "last_human_activity_at": (AT + timedelta(days=3)).isoformat(),
         "watchdog_flag": None,
         "referral_accepted_at": None,
         "clock_started_at": (AT + timedelta(days=3)).isoformat(),

@@ -4,8 +4,9 @@ Every interval it asks the API for one scan (`POST /watchdog/scan`) with its own
 which the API accepts for nothing else and which may emit `watchdog_flagged` and nothing else.
 The scan, which runs in the API next to the event store and on the simulation clock:
 
-  1. flags open cases with no events for WATCHDOG_IDLE_DAYS (once per idle episode; any new
-     event clears the flag; closed cases are never flagged), and
+  1. flags open cases nobody has acted on for WATCHDOG_IDLE_DAYS (the scheduler's and the notifier's own
+     events do not count as anyone acting; once per idle episode; a person acting clears the flag; closed
+     cases are never flagged), and
   2. judges the scheduler from the age of its latest heartbeat (wall clock, stored by the API):
      older than 60 seconds, or missing once this process has been up for 60 seconds, opens a
      `scheduler_down` row in `system_alerts` (`GET /alerts`); a fresh heartbeat clears it.
