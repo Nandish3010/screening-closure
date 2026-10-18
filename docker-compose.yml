@@ -105,6 +105,11 @@ services:
     environment:
       PATHWAY_PATH: /config/pathways/colorectal_fit.yaml
       CALENDAR_PATH: /config/calendar.yaml
+      # The automation actor (A21, ADR-032): acknowledge and assign on ingest, re-route, pre-approved outreach, evidence scan.
+      # Its files are config/providers.yaml and config/outreach_policy.yaml; its token is AUTOMATION_SERVICE_TOKEN (.env).
+      AUTOMATION_ENABLED: ${AUTOMATION_ENABLED:-true}
+      PROVIDERS_PATH: /config/providers.yaml
+      OUTREACH_POLICY_PATH: /config/outreach_policy.yaml
       # Set explicitly so a missing .env cannot silently fall back to the in-memory store. The unprivileged role, not the
       # owner (SEC-1): it can add events, not alter or delete them, and cannot change the schema.
       DATABASE_URL: postgresql://closure_app:${APP_DB_PASSWORD:-closure_app_dev_password}@postgres:5432/${POSTGRES_DB:-closure}

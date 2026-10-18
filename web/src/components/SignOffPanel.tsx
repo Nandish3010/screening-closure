@@ -59,7 +59,7 @@ export function SignOffPanel({
   };
 
   return (
-    <fieldset className="panel signoff">
+    <fieldset className="panel signoff" id="signoff-panel" tabIndex={-1} data-testid="signoff-panel">
       <legend>Clinician sign-off and closure</legend>
       <p className="muted">
         A case closes only with evidence and a named human sign-off. Nothing automated can close a case.

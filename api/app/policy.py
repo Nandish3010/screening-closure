@@ -16,7 +16,7 @@ from __future__ import annotations
 
 from fastapi import Depends, HTTPException, Request
 
-from app.auth import SCHEDULER_ROLE, USER_ROLES, WATCHDOG_ROLE, Identity, optional_identity
+from app.auth import AUTOMATION_ROLE, SCHEDULER_ROLE, USER_ROLES, WATCHDOG_ROLE, Identity, optional_identity
 
 PUBLIC = "public"
 ANY_IDENTITY = "any_identity"  # any valid user or service token
@@ -27,6 +27,7 @@ STAFF = frozenset(USER_ROLES) - {PATIENT}
 ALL_USERS = frozenset(USER_ROLES)
 SCHEDULER = frozenset({SCHEDULER_ROLE})
 WATCHDOG = frozenset({WATCHDOG_ROLE})
+AUTOMATION = frozenset({AUTOMATION_ROLE})  # A21, ADR-032: system:automation
 
 # (method, path template) -> PUBLIC | ANY_IDENTITY | frozenset of roles
 ROUTE_POLICY: dict[tuple[str, str], object] = {
@@ -45,10 +46,13 @@ ROUTE_POLICY: dict[tuple[str, str], object] = {
     ("GET", "/cases/{case_id}/notifications"): frozenset({PCO, SPEC, COORD, SUPER}),
     # The FHIR resources projected for a case (A12): owners (own case), coordinators, supervisors.
     ("GET", "/cases/{case_id}/fhir"): frozenset({PCO, SPEC, COORD, SUPER}),
-    # Every role may try; EVENT_POLICY decides per event type.
+    # Every role may try; EVENT_POLICY decides per event type. The automation token is not among them: the automation
+    # scans write their events in process (A21, ADR-032), so there is no route by which a token can be used to emit one.
     ("POST", "/cases/{case_id}/events"): ALL_USERS | SCHEDULER | WATCHDOG,
     # Closure metrics for the dashboard (A10).
     ("GET", "/metrics/closure"): frozenset({COORD, SUPER}),
+    # Human effort versus automation (A21): per-case counts of human and automated actions, assumed minutes.
+    ("GET", "/metrics/effort"): frozenset({COORD, SUPER}),
     # Record the confirmatory colonoscopy as FHIR evidence (E8): the case's owner (checked in the handler).
     ("POST", "/cases/{case_id}/confirmatory-result"): frozenset({PCO, SPEC}),
     # Demo clock: supervisor only. The router is registered only when APP_ENV=dev (app.main); outside dev
@@ -60,6 +64,11 @@ ROUTE_POLICY: dict[tuple[str, str], object] = {
     ("POST", "/scheduler/heartbeat"): SCHEDULER,
     # The send outbox (ADR-030): the scheduler loop drains approved drafts that have not gone out yet.
     ("POST", "/scheduler/outbox/drain"): SCHEDULER,
+    # The automation scans (A21, ADR-032): intake heal (acknowledge, assign owner), auto-reroute, auto-outreach with the
+    # pre-approved templates, and the evidence scan in HAPI. The scheduler loop calls them; the automation token may too.
+    # They are how the automation acts: the events are appended inside the API process, never posted by a token.
+    ("POST", "/scheduler/automation-scan"): SCHEDULER | AUTOMATION,
+    ("POST", "/scheduler/evidence-scan"): SCHEDULER | AUTOMATION,
     # The watchdog service's scan (idle cases, scheduler liveness); its own token, nobody else.
     ("POST", "/watchdog/scan"): WATCHDOG,
     # Liveness for the dashboard (A11): coordinator and supervisor; the watchdog may read it too.
@@ -71,23 +80,32 @@ ROUTE_POLICY: dict[tuple[str, str], object] = {
 EVENT_POLICY: dict[str, frozenset[str]] = {
     "acknowledge": frozenset({LAB, COORD, SUPER}),
     "accept_ownership": frozenset({PCO, SPEC, SUPER}),
+    # A21: the automation sets the owner from config/providers.yaml without acceptance; the owner still accepts. In
+    # process only (the scans, the ingest hook): nobody can post it.
+    "assign_ownership": frozenset(),
     "contact_patient": frozenset({PCO, SPEC, COORD, SUPER}),
     "patient_acknowledge": frozenset({PATIENT, COORD}),
     "book_confirmatory": frozenset({PCO, SPEC, COORD}),
-    "complete_confirmatory": frozenset({SPEC}),
+    "complete_confirmatory": frozenset({SPEC}),  # the automation writes it in process, on evidence found in HAPI (A21)
+    # A21: the evidence scan proposes a closure (one-click sign-off, evidence prefilled). Closure itself stays human. In
+    # process only: nobody can post it.
+    "closure_proposed": frozenset(),
     "clinician_review": CLINICIANS,
     "close": CLINICIANS,
     "reopen": CLINICIANS,
     "mark_overdue": SCHEDULER,
     "escalate": frozenset({SCHEDULER_ROLE, COORD, SUPER}),
     "escalation_accepted": frozenset({PCO, SPEC, SUPER, COORD}),
-    "handoff_requested": frozenset({PCO, SPEC, SUPER}),
+    "handoff_requested": frozenset({PCO, SPEC, SUPER}),  # the automation re-routes in process (A21)
     "handoff_accepted": CLINICIANS,
     # Humans reject with a reason from the taxonomy; the scheduler may emit exactly the bounce
     # (reason `timeout`, bounced: true); the state machine enforces both (A5, ADR-016).
     "handoff_rejected": CLINICIANS | {SCHEDULER_ROLE},
     "reassign": frozenset({SUPER, COORD}),
     "consent_updated": frozenset({PATIENT, COORD}),
+    # A person confirms the patient's contact details (the wrong number was put right): clears a wrong_number hold on
+    # automatic messages and lifts a contact_valid: false on the case. Owner scoping applies to clinicians.
+    "contact_updated": frozenset({PCO, SPEC, COORD, SUPER}),
     "mark_lost_contact": frozenset({PCO, SPEC, COORD, SUPER}),
     "message_drafted": frozenset({PCO, SPEC, COORD}),
     # Only the draft approval route (D5) writes message_approved, because it must come with the
@@ -99,8 +117,8 @@ EVENT_POLICY: dict[str, frozenset[str]] = {
     # Only the approval-gated send path (D5) writes message_sent; nobody may post it.
     "message_sent": frozenset(),
     "callback_requested": frozenset({PATIENT, COORD}),
-    # Emitted in process by the API itself as `system:consent` when consent is withdrawn (A6);
-    # nobody can post it.
+    # Emitted in process: by the API itself as `system:consent` when consent is withdrawn (A6), by the automation when the
+    # reroute list is used up (A21) and by the triage actor for an opt-out or wrong number; nobody can post it.
     "review_requested": frozenset(),
     # Only the watchdog service (A11); the scheduler no longer holds it.
     "watchdog_flagged": WATCHDOG,

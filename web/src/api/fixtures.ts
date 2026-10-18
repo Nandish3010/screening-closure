@@ -47,10 +47,13 @@ const sentPayload = (draft_id: string, channel = "sms", language = "en", purpose
 
 export const FIXTURE_RISK: Record<string, number> = {};
 const defs: { id: string; risk: number; events: CaseEvent[] }[] = [];
-function add(n: number, risk: number, createdDaysAgo: number, steps: Step[]) {
-  const id = `c${String(n).padStart(7, "0")}-0000-4000-8000-${String(n).padStart(12, "0")}`;
+/** Cases that exist only in a demo with automation on (A21): they show what the automation actor already did. */
+const autoDefs: { id: string; risk: number; events: CaseEvent[] }[] = [];
+export const caseIdFor = (n: number) => `c${String(n).padStart(7, "0")}-0000-4000-8000-${String(n).padStart(12, "0")}`;
+function add(n: number, risk: number, createdDaysAgo: number, steps: Step[], into = defs) {
+  const id = caseIdFor(n);
   FIXTURE_RISK[id] = risk;
-  defs.push({ id, risk, events: build(id, createdDaysAgo, steps) });
+  into.push({ id, risk, events: build(id, createdDaysAgo, steps) });
 }
 
 // 1. Most overdue: confirmatory completed 30 days ago, clinician review (5 working days) not done.
@@ -173,6 +176,50 @@ add(16, 0.33, 8, [
   ["handoff_requested", 1, LAYLA_ACTOR, { to_provider: "Corniche Gastro Unit" }],
 ]);
 
+/** The actor of every automatic step (A21). */
+const AUTO = "system:automation";
+const TEMPLATE_SMS = { channel: "sms", language: "en", purpose: "result_notification", auto: true, template_id: "result_notification.sms", template_version: 1 };
+
+/** Case 17 (automation demo): the evidence scan found the colonoscopy and proposed closure; Dr. Huda Rahman, the owner, signs off. */
+export const DEMO_CLOSURE_PROPOSED_CASE_ID = caseIdFor(17);
+/** Case 18 (automation demo): the re-route list ran out; a coordinator must reassign. */
+export const DEMO_REROUTE_EXHAUSTED_CASE_ID = caseIdFor(18);
+/** Case 19 (automation demo): filed and assigned automatically this morning; Dr. Layla Haddad has not accepted it yet. */
+export const DEMO_ASSIGNED_CASE_ID = caseIdFor(19);
+
+add(17, 0.28, 14, [
+  ["acknowledge", 13.9, AUTO, { auto: true }],
+  ["assign_ownership", 13.9, AUTO, { owner: HUDA_ACTOR, provider: "Marina Digestive Health", auto: true }],
+  ["accept_ownership", 13, HUDA_ACTOR, HUDA],
+  ["message_sent", 13, AUTO, { ...TEMPLATE_SMS, notification_id: "n-auto-17-1" }],
+  ["contact_patient", 11, COORD, { channel: "phone" }],
+  ["patient_acknowledge", 10, "patient:c0000017", { lang: "en" }],
+  ["handoff_requested", 8, HUDA_ACTOR, { to_provider: "Corniche Gastro Unit" }],
+  ["handoff_accepted", 7, HUDA_ACTOR, {}],
+  ["book_confirmatory", 6, COORD, { appointment_ref: "APPT-2026-0618" }],
+  ["complete_confirmatory", 0.5, AUTO, { result_ref: "Procedure/colonoscopy-0017", auto: true }],
+  ["closure_proposed", 0.5, AUTO, { evidence_ref: "Procedure/colonoscopy-0017", auto: true }],
+], autoDefs);
+add(18, 0.52, 20, [
+  ["acknowledge", 19.9, AUTO, { auto: true }],
+  ["assign_ownership", 19.9, AUTO, { owner: LAYLA_ACTOR, provider: "Riverside Primary Care", auto: true }],
+  ["accept_ownership", 19, LAYLA_ACTOR, LAYLA],
+  ["message_sent", 19, AUTO, { ...TEMPLATE_SMS, notification_id: "n-auto-18-1" }],
+  ["contact_patient", 17, COORD, { channel: "phone" }],
+  ["patient_acknowledge", 16, "patient:c0000018", { lang: "ar" }],
+  ["handoff_requested", 3, LAYLA_ACTOR, { to_provider: "Al Noor Endoscopy Centre" }],
+  ["handoff_rejected", 1.4, "specialist_owner:Dr. Rana Farouk", { reason: "capacity" }],
+  ["handoff_requested", 1.4, AUTO, { to_provider: "Corniche Gastro Unit", auto: true }],
+  ["handoff_rejected", 1, KARIM_ACTOR, { reason: "wrong_service" }],
+  ["handoff_requested", 1, AUTO, { to_provider: "Marina Digestive Health", auto: true }],
+  ["handoff_rejected", 0.6, HUDA_ACTOR, { reason: "capacity" }],
+  ["review_requested", 0.6, AUTO, { reason: "reroute_exhausted", source_event_id: "seed-reroute-18" }],
+], autoDefs);
+add(19, 0.38, 1, [
+  ["acknowledge", 0.9, AUTO, { auto: true }],
+  ["assign_ownership", 0.9, AUTO, { owner: LAYLA_ACTOR, provider: "Riverside Primary Care", auto: true }],
+], autoDefs);
+
 /** The scheduler's `mark_overdue` for every seeded case whose SLA clock has already passed. */
 function withOverdueMarkers(events: CaseEvent[]): CaseEvent[] {
   const clock = slaClock(events, replayState(events), SIM_NOW);
@@ -185,8 +232,10 @@ function withOverdueMarkers(events: CaseEvent[]): CaseEvent[] {
   return marked.map((e, i) => ({ ...e, seq: i + 1 }));
 }
 
-export function seedEvents(): Record<string, CaseEvent[]> {
-  return structuredClone(Object.fromEntries(defs.map((d) => [d.id, withOverdueMarkers(d.events)])));
+/** The seeded cases; with `automation` the demo also gets the cases the automation actor has already worked on (A21). */
+export function seedEvents(automation = false): Record<string, CaseEvent[]> {
+  const all = automation ? [...defs, ...autoDefs] : defs;
+  return structuredClone(Object.fromEntries(all.map((d) => [d.id, withOverdueMarkers(d.events)])));
 }
 
 export const SEED_METRICS: Omit<ClosureMetrics, "sim_time"> = {

@@ -8,6 +8,8 @@ import { ApiError, DRAFTS_OWNER_ONLY, HANDOFF_REJECT_REASONS, PROVIDERS, REOPEN_
 import { REASSIGN_TARGETS, ROLE_NAMES, ROLE_PROVIDERS } from "../api/identities";
 import { ActionButton } from "../components/ActionButton";
 import { DraftsPanel, approvalMessage } from "../components/DraftsPanel";
+import { ClosureProposalBanner } from "../components/ClosureProposalBanner";
+import { EffortCounter } from "../components/EffortCounter";
 import { SignOffPanel } from "../components/SignOffPanel";
 import { Timeline } from "../components/Timeline";
 import {
@@ -15,6 +17,7 @@ import {
   patientLang, pendingEscalation, rejectionReasons,
 } from "../lib/derive";
 import { fmtDate, fmtDateTime, titleCase } from "../lib/format";
+import { STAFF } from "../i18n/strings";
 import { ESCALATION_LADDER, HANDOFF_RESPONSE_WORKING_DAYS, MILESTONES, RUNG_LABEL, handoffReasonLabel } from "../lib/pathway";
 import type { MilestoneDef } from "../lib/pathway";
 import { WatchdogMarker, watchdogDetail } from "../components/WatchdogMarker";
@@ -173,6 +176,15 @@ export function CaseDetailPage() {
   const pendingApprovedDraft = draftList.find((d) => d.status === "approved");
   const answersHandoff = !!pending && ownerScoped && !!myProvider && pending.to_provider === myProvider && pending.requested_by !== actor && pending.from_owner !== actor;
   const allowed = allowedChannels(consent);
+  /** A21: the system found the colonoscopy evidence and proposes closure; a clinician who owns the case signs off. */
+  const proposal = !closed ? detail.closure_proposal ?? null : null;
+  const canReviewProposal = can(role, "signOff") && !scopeWhy;
+  /** Opens the sign-off panel (its evidence field is already filled with the proposed reference) and moves focus into it. */
+  const reviewProposal = () => {
+    const panel = document.getElementById("signoff-panel");
+    panel?.scrollIntoView?.({ block: "center", behavior: "smooth" });
+    panel?.focus();
+  };
   /** The Procedure/DiagnosticReport the confirmatory result named, offered as the closure evidence. */
   const recordedEvidence = [...events].reverse().find((e) => e.type === "complete_confirmatory" && /^(Procedure|DiagnosticReport)\//.test(String(e.payload.result_ref ?? "")))?.payload.result_ref as string | undefined;
 
@@ -180,6 +192,8 @@ export function CaseDetailPage() {
     <main className="container">
       <p><Link to="/coordinator">&larr; Worklist</Link></p>
       <h1>Case <span className="mono">{detail.case_id.slice(0, 8)}</span> <StatePill state={state} /></h1>
+
+      {detail.effort && <EffortCounter effort={detail.effort} />}
 
       <dl className="facts">
         <div><dt>Owner</dt><dd data-testid="owner">{detail.owner ?? "Unowned"}{detail.provider ? <span className="muted"> · {detail.provider}</span> : null}</dd></div>
@@ -200,6 +214,18 @@ export function CaseDetailPage() {
         </div>
       </dl>
 
+      {proposal && (
+        <ClosureProposalBanner
+          proposal={proposal}
+          onReview={canReviewProposal ? reviewProposal : undefined}
+          whyNot={scopeWhy ?? (can(role, "signOff") ? null : STAFF.closureBanner.notClinician)}
+        />
+      )}
+      {detail.review_reason === "reroute_exhausted" && state === "referral_rejected" && !closed && (
+        <p className="banner banner-bad" role="alert" data-testid="reroute-exhausted-banner">
+          <strong>{STAFF.reviewReasons.reroute_exhausted}.</strong> Every provider on the automatic re-route list declined or did not answer.
+        </p>
+      )}
       {watchdog && !closed && (
         <p className="banner banner-watchdog" role="alert" data-testid="watchdog-banner">
           <WatchdogMarker flag={watchdog} /> {watchdogDetail(watchdog)} Someone needs to take it.
@@ -212,7 +238,7 @@ export function CaseDetailPage() {
       )}
       {frozen && !closed && (
         <p className="banner banner-warn" role="status" data-testid="consent-frozen-banner">
-          Patient consent is frozen{detail.review_reason ? " and the case is flagged for human review (the patient withdrew consent)" : ""}. Contacting the patient, drafting and sending messages, and new hand-offs are disabled until consent is re-confirmed.
+          Patient consent is frozen{detail.review_reason === "consent_withdrawn" ? " and the case is flagged for human review (the patient withdrew consent)" : ""}. Contacting the patient, drafting and sending messages, and new hand-offs are disabled until consent is re-confirmed.
         </p>
       )}
       {bounced && (
@@ -249,9 +275,16 @@ export function CaseDetailPage() {
               </ActionButton>
             )}
             {state === "acknowledged" && (
-              <ActionButton primary testId="accept-ownership" busy={busy} disabledReason={why("accept", "owner, specialist or clinician")} onClick={() => act(() => post("accept_ownership", {}), "You now own this case.")}>
-                Accept ownership
-              </ActionButton>
+              <>
+                {detail.owner && (
+                  <p className="muted" data-testid="assigned-note">
+                    Assigned to {detail.owner}{detail.provider ? ` (${detail.provider})` : ""}. {mine ? "Accept the case to own it." : `${detail.owner} must accept it.`} If nobody does, the escalation ladder runs.
+                  </p>
+                )}
+                <ActionButton primary testId="accept-ownership" busy={busy} disabledReason={why("accept", "owner, specialist or clinician") ?? (notMine ? `This case is assigned to ${detail.owner}, who must accept it.` : null)} onClick={() => act(() => post("accept_ownership", {}), "You now own this case.")}>
+                  Accept ownership
+                </ActionButton>
+              </>
             )}
             {(state === "owner_accepted" || state === "lost_contact") && (
               <>
@@ -293,7 +326,7 @@ export function CaseDetailPage() {
                 busy={busy}
                 needsReview={state !== "clinician_reviewed"}
                 extraWhy={scopeWhy}
-                defaultEvidence={recordedEvidence}
+                defaultEvidence={proposal?.evidence_ref ?? recordedEvidence}
                 signer={userId ? `Practitioner/${userId}` : undefined}
                 onRecordResult={can(role, "recordColonoscopy") && !scopeWhy ? async () => {
                   const r = await api.recordConfirmatoryResult(caseId);

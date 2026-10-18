@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-from app import users
+from app import effort, users
 from app.calendar import WorkingCalendar
 from app.events import Event, LoadedCase
 from app.pathway import Pathway
@@ -29,6 +29,7 @@ def event_json(e: Event) -> dict:
         "type": e.type,
         "at": e.at.isoformat(),
         "actor": e.actor,
+        "actor_kind": effort.actor_kind(e.actor),  # A21: human | automation | model | service
         "payload": e.payload,
     }
 

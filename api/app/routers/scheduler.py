@@ -23,7 +23,7 @@ from uuid import UUID
 from fastapi import APIRouter
 from pydantic import BaseModel, ConfigDict, Field
 
-from app import ops
+from app import automation, ops
 from app.calendar import default_calendar
 from app.clock import clock
 from app.routers import cases, drafts
@@ -118,6 +118,21 @@ def drain_outbox() -> dict:
     for o in outcomes:
         counts[o.status] = counts.get(o.status, 0) + 1
     return {"drained": len(outcomes), **counts}
+
+
+@router.post("/automation-scan")
+def automation_scan() -> dict:
+    """One pass of the automation over the open cases (A21, ADR-032): acknowledge and assign anything still waiting,
+    re-route rejected referrals, send the due pre-approved messages. Idempotent (deterministic event ids); counts only.
+    A no-op, answering `{"enabled": false}`, unless AUTOMATION_ENABLED is true."""
+    return automation.run_automation_scan(cases.store, cases.pathway, clock.now(), default_calendar())
+
+
+@router.post("/evidence-scan")
+def evidence_scan() -> dict:
+    """Ask HAPI whether the colonoscopy exists for each booked or completed case; complete the confirmatory step and
+    propose the closure when it does (A21). Closure itself stays a person's. Counts only; a no-op unless enabled."""
+    return automation.scan_evidence(cases.store, cases.pathway, clock.now())
 
 
 @router.post("/heartbeat")

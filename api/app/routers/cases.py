@@ -5,7 +5,7 @@ from uuid import UUID, uuid4
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, ConfigDict, Field
 
-from app import confirmatory, consent, evidence, fhir_projection, notify, payloads, policy, readmodel, users
+from app import automation, confirmatory, consent, effort, evidence, fhir_projection, notify, payloads, policy, readmodel, users
 from app.calendar import default_calendar
 from app.config import settings as app_settings
 from app.auth import Identity, require_identity
@@ -44,6 +44,8 @@ class CreateCase(BaseModel):
     # Known contact problem (A7): false = no valid contact details, or {"sms": false} per channel.
     # The notification mock refuses to "send" on a flagged channel. Absent = no known problem.
     contact_valid: bool | dict[str, bool] | None = None
+    # A21: the primary-care provider the patient is registered with (config/providers.yaml maps it to a default owner).
+    registered_provider: str | None = None
 
 
 class PostEvent(BaseModel):
@@ -126,6 +128,8 @@ def _case_json(case_id: UUID, identity: Identity | None = None) -> dict:
         "milestones": readmodel.milestones_json(model, pathway, default_calendar()),
         "actors": _actors_json(events, model),
         "events": [_event_json(e) for e in events],
+        # A21: who did the work of this case, people or the automation, and the (assumed) minutes either way.
+        "effort": effort.case_effort(events),
         # D9: {score, top_factors: [{feature, value, contribution}]}; null for a patient or if unscorable.
         "risk": explained,
     }
@@ -135,7 +139,7 @@ def _case_json(case_id: UUID, identity: Identity | None = None) -> dict:
 def create_case(body: CreateCase) -> dict:
     case_id = body.case_id or uuid4()
     payload = body.model_dump(exclude={"case_id"})
-    for key in ("patient_ref", "result_ref", "contact_valid"):
+    for key in ("patient_ref", "result_ref", "contact_valid", "registered_provider"):
         if payload.get(key) is None:
             payload.pop(key, None)
     try:
@@ -147,6 +151,9 @@ def create_case(body: CreateCase) -> dict:
         store.create_case(case_id, pathway.name, genesis, pathway.initial_state)
     except CaseAlreadyExists:
         raise HTTPException(409, "CaseAlreadyExists")
+    # A21 (ADR-032): the result is acknowledged and its owner named at once, by the automation, not by a person. A no-op
+    # unless AUTOMATION_ENABLED; it never fails the ingest (a failure is healed by the scheduler's automation scan).
+    automation.on_ingest(store, pathway, case_id, payload, clock.now())
     return _case_json(case_id)
 
 

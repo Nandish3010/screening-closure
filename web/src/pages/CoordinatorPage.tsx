@@ -17,6 +17,8 @@ export function CoordinatorPage() {
   const [cases, setCases] = useState<CaseSummary[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [filters, setFilters] = useState<WorklistFilters>(DEFAULT_FILTERS);
+  const [reloads, setReloads] = useState(0);
+  const [filed, setFiled] = useState<string | null>(null);
 
   useEffect(() => {
     let live = true;
@@ -24,7 +26,13 @@ export function CoordinatorPage() {
     return () => {
       live = false;
     };
-  }, [api, simTime]);
+  }, [api, simTime, reloads]);
+
+  // Demo only (mock adapter): file a positive result and watch the automation actor acknowledge and assign it.
+  const fileResult = () =>
+    api.createCase!()
+      .then((id) => { setFiled(id); setReloads((n) => n + 1); })
+      .catch((e) => setError(String(e.message ?? e)));
 
   // "Now" for overdue days: the sim clock; if it is unavailable, the newest event on any case.
   const now = useMemo(
@@ -39,6 +47,16 @@ export function CoordinatorPage() {
     <main className="container">
       <h1>Worklist</h1>
       <p className="muted">Most overdue first, then highest risk of loss to follow-up. The risk score only orders this list; it never closes, escalates or decides care.</p>
+
+      {api.createCase && (
+        <p className="muted">
+          Demo only (mock adapter):{" "}
+          <button type="button" className="btn btn-small" data-testid="file-result" onClick={fileResult}>File a new positive result</button>
+          {filed && (
+            <span role="status" data-testid="filed-note"> Filed <Link to={`/coordinator/${filed}`}>{shortId(filed)}</Link>{api.automation ? ": the system acknowledged it and assigned an owner." : ": it waits to be acknowledged."}</span>
+          )}
+        </p>
+      )}
 
       <form className="filters" aria-label="Worklist filters" onSubmit={(e) => e.preventDefault()}>
         <label className="field">

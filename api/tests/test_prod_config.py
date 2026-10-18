@@ -9,17 +9,24 @@ import pytest
 from api_helpers import make_client
 
 from app import auth
-from app.config import DEV_AUTH_SECRET_DEFAULT, SCHEDULER_TOKEN_DEFAULT, WATCHDOG_TOKEN_DEFAULT, settings
+from app.config import (
+    AUTOMATION_TOKEN_DEFAULT,
+    DEV_AUTH_SECRET_DEFAULT,
+    SCHEDULER_TOKEN_DEFAULT,
+    WATCHDOG_TOKEN_DEFAULT,
+    settings,
+)
 
-GOOD = {"x": "a" * 32, "y": "b" * 32, "z": "c" * 32}
+GOOD = {"x": "a" * 32, "y": "b" * 32, "z": "c" * 32, "w": "d" * 32}
 
 
-def configure(monkeypatch, *, env, login, secret, sched=GOOD["y"], dog=GOOD["z"]):
+def configure(monkeypatch, *, env, login, secret, sched=GOOD["y"], dog=GOOD["z"], auto=GOOD["w"]):
     monkeypatch.setattr(settings, "app_env", env)
     monkeypatch.setattr(settings, "dev_login_enabled", login)
     monkeypatch.setattr(settings, "dev_auth_secret", secret)
     monkeypatch.setattr(settings, "scheduler_service_token", sched)
     monkeypatch.setattr(settings, "watchdog_service_token", dog)
+    monkeypatch.setattr(settings, "automation_service_token", auto)
 
 
 def forge(claims, secret):
@@ -74,6 +81,26 @@ def test_service_tokens_are_checked(monkeypatch, sched, dog, needle):
     with pytest.raises(RuntimeError, match=needle):
         auth.assert_secure_config()
     configure(monkeypatch, env="dev", login=True, secret=DEV_AUTH_SECRET_DEFAULT, sched=sched, dog=dog)
+    auth.assert_secure_config()  # dev accepts anything
+
+
+@pytest.mark.parametrize(
+    ("auto", "needle"),
+    [
+        (AUTOMATION_TOKEN_DEFAULT, "AUTOMATION_SERVICE_TOKEN is the built-in"),
+        ("", "AUTOMATION_SERVICE_TOKEN is empty"),
+        ("a" * 31, "AUTOMATION_SERVICE_TOKEN is shorter than 32"),
+        (GOOD["y"], "SCHEDULER_SERVICE_TOKEN and AUTOMATION_SERVICE_TOKEN are the same value"),
+        (GOOD["z"], "WATCHDOG_SERVICE_TOKEN and AUTOMATION_SERVICE_TOKEN are the same value"),
+    ],
+)
+def test_the_automation_token_is_checked_like_the_other_service_tokens(monkeypatch, auto, needle):
+    """A21 (ADR-032): system:automation has its own token; outside dev it is not the default, not empty, at least 32
+    bytes and different from the scheduler's and the watchdog's."""
+    configure(monkeypatch, env="prod", login=False, secret=GOOD["x"], auto=auto)
+    with pytest.raises(RuntimeError, match=needle):
+        auth.assert_secure_config()
+    configure(monkeypatch, env="dev", login=True, secret=DEV_AUTH_SECRET_DEFAULT, auto=auto)
     auth.assert_secure_config()  # dev accepts anything
 
 
@@ -143,7 +170,9 @@ def test_an_empty_service_token_never_authenticates(monkeypatch):
 
 def test_the_default_service_tokens_still_work_in_dev(monkeypatch):
     configure(monkeypatch, env="dev", login=True, secret=DEV_AUTH_SECRET_DEFAULT,
-              sched=SCHEDULER_TOKEN_DEFAULT, dog=WATCHDOG_TOKEN_DEFAULT)
+              sched=SCHEDULER_TOKEN_DEFAULT, dog=WATCHDOG_TOKEN_DEFAULT, auto=AUTOMATION_TOKEN_DEFAULT)
     assert auth.service_identity(SCHEDULER_TOKEN_DEFAULT).role == "scheduler"
     assert auth.service_identity(WATCHDOG_TOKEN_DEFAULT).role == "watchdog"
+    assert auth.service_identity(AUTOMATION_TOKEN_DEFAULT).role == "automation"
+    assert auth.service_identity(AUTOMATION_TOKEN_DEFAULT).actor == "system:automation"
 

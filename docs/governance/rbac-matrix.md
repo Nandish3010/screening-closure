@@ -12,39 +12,42 @@ Every cell is what the running API did, not what the policy table says: the scri
 - `U` 401, no valid identity.
 - `X/Y` two letters: `X` for the caller's own case, `Y` for another case. One letter: scope makes no difference (the role has no case scope, or the route does not name a case).
 - `*` after a letter: the cell is a documented gap, observed behaviour that differs from the intended rule (see Findings).
-- Columns: `anon` no token; the six user roles (`pco` = `primary_care_owner`, `spec` = `specialist_owner`, `coord` = `coordinator`, `super` = `supervisor`); `sched` the scheduler service token; `wdog` the watchdog service token.
+- Columns: `anon` no token; the six user roles (`pco` = `primary_care_owner`, `spec` = `specialist_owner`, `coord` = `coordinator`, `super` = `supervisor`); `sched` the scheduler service token; `wdog` the watchdog service token; `auto` the automation service token (`system:automation`, A21): it reaches the two scan routes and no event type, because the automation writes its events in process.
 - "Own case": for a clinician, a case they own; for a patient, the case with their `patient_ref`. "Other": a case owned by another clinician, or another patient's.
 
 ## Routes by role
 
-|  | anon | lab | pco | spec | coord | patient | super | sched | wdog |
-|---|---|---|---|---|---|---|---|---|---|
-| `GET /alerts` | U | R | R | R | A | R | A | R | A |
-| `POST /auth/dev-login` | A | A | A | A | A | A | A | A | A |
-| `GET /cases` | U | A | A | A | A | A | A | R | R |
-| `POST /cases` | U | A | R | R | A | R | A | R | R |
-| `GET /cases/{case_id}` | U | A | A | A | A | A/S | A | R | R |
-| `POST /cases/{case_id}/confirmatory-result` | U | R | A/S | A/S | R | R | R | R | R |
-| `GET /cases/{case_id}/drafts` | U | R | A/S | A/S | A | R | A | R | R |
-| `POST /cases/{case_id}/drafts` | U | R | A/S | A/S | A | R | A | R | R |
-| `POST /cases/{case_id}/events` (the event rows below decide) | U | A | A | A | A | A | A | A | A |
-| `GET /cases/{case_id}/fhir` | U | R | A/S | A/S | A | R | A | R | R |
-| `GET /cases/{case_id}/notifications` | U | R | A/S | A/S | A | R | A | R | R |
-| `GET /cases/{case_id}/timeline` | U | A | A | A | A | A/S | A | R | R |
-| `POST /clock/advance` | U | R | R | R | R | R | A | R | R |
-| `POST /clock/reset` | U | R | R | R | R | R | A | R | R |
-| `POST /drafts/{draft_id}/approve` | U | R | A/S | A/S | R | R | A | R | R |
-| `POST /drafts/{draft_id}/reject` | U | R | A/S | A/S | R | R | A | R | R |
-| `GET /health` | A | A | A | A | A | A | A | A | A |
-| `GET /heartbeats` | U | R | R | R | A | R | A | R | A |
-| `GET /me` | U | A | A | A | A | A | A | A | A |
-| `GET /metrics/abstention` | U | R | R | R | A | R | A | R | R |
-| `GET /metrics/closure` | U | R | R | R | A | R | A | R | R |
-| `GET /pathways` | U | A | A | A | A | A | A | A | A |
-| `POST /scheduler/heartbeat` | U | R | R | R | R | R | R | A | R |
-| `POST /scheduler/outbox/drain` | U | R | R | R | R | R | R | A | R |
-| `POST /scheduler/sweep` | U | R | R | R | R | R | R | A | R |
-| `POST /watchdog/scan` | U | R | R | R | R | R | R | R | A |
+|  | anon | lab | pco | spec | coord | patient | super | sched | wdog | auto |
+|---|---|---|---|---|---|---|---|---|---|---|
+| `GET /alerts` | U | R | R | R | A | R | A | R | A | R |
+| `POST /auth/dev-login` | A | A | A | A | A | A | A | A | A | A |
+| `GET /cases` | U | A | A | A | A | A | A | R | R | R |
+| `POST /cases` | U | A | R | R | A | R | A | R | R | R |
+| `GET /cases/{case_id}` | U | A | A | A | A | A/S | A | R | R | R |
+| `POST /cases/{case_id}/confirmatory-result` | U | R | A/S | A/S | R | R | R | R | R | R |
+| `GET /cases/{case_id}/drafts` | U | R | A/S | A/S | A | R | A | R | R | R |
+| `POST /cases/{case_id}/drafts` | U | R | A/S | A/S | A | R | A | R | R | R |
+| `POST /cases/{case_id}/events` (the event rows below decide) | U | A | A | A | A | A | A | A | A | R |
+| `GET /cases/{case_id}/fhir` | U | R | A/S | A/S | A | R | A | R | R | R |
+| `GET /cases/{case_id}/notifications` | U | R | A/S | A/S | A | R | A | R | R | R |
+| `GET /cases/{case_id}/timeline` | U | A | A | A | A | A/S | A | R | R | R |
+| `POST /clock/advance` | U | R | R | R | R | R | A | R | R | R |
+| `POST /clock/reset` | U | R | R | R | R | R | A | R | R | R |
+| `POST /drafts/{draft_id}/approve` | U | R | A/S | A/S | R | R | A | R | R | R |
+| `POST /drafts/{draft_id}/reject` | U | R | A/S | A/S | R | R | A | R | R | R |
+| `GET /health` | A | A | A | A | A | A | A | A | A | A |
+| `GET /heartbeats` | U | R | R | R | A | R | A | R | A | R |
+| `GET /me` | U | A | A | A | A | A | A | A | A | A |
+| `GET /metrics/abstention` | U | R | R | R | A | R | A | R | R | R |
+| `GET /metrics/closure` | U | R | R | R | A | R | A | R | R | R |
+| `GET /metrics/effort` | U | R | R | R | A | R | A | R | R | R |
+| `GET /pathways` | U | A | A | A | A | A | A | A | A | A |
+| `POST /scheduler/automation-scan` | U | R | R | R | R | R | R | A | R | A |
+| `POST /scheduler/evidence-scan` | U | R | R | R | R | R | R | A | R | A |
+| `POST /scheduler/heartbeat` | U | R | R | R | R | R | R | A | R | R |
+| `POST /scheduler/outbox/drain` | U | R | R | R | R | R | R | A | R | R |
+| `POST /scheduler/sweep` | U | R | R | R | R | R | R | A | R | R |
+| `POST /watchdog/scan` | U | R | R | R | R | R | R | R | A | R |
 
 Framework routes `/openapi.json`, `/docs`, `/docs/oauth2-redirect` and `/redoc` are served by FastAPI, are not in the OpenAPI document and need no token. They carry no patient data; the route list they expose is this document. Whether to switch them off outside a development environment is a deployment decision.
 
@@ -52,34 +55,37 @@ Framework routes `/openapi.json`, `/docs`, `/docs/oauth2-redirect` and `/redoc` 
 
 The route admits every role and both service tokens; the event policy then decides per event type. `R` on a row means the role may never emit that event through this route. The state machine decides separately whether an allowed event is valid in the case's state (see [decision-matrix.md](decision-matrix.md)).
 
-|  | anon | lab | pco | spec | coord | patient | super | sched | wdog |
-|---|---|---|---|---|---|---|---|---|---|
-| `accept_ownership` | U | R | A/S | A/S | R | R | A | R | R |
-| `acknowledge` | U | A | R | R | A | R | A | R | R |
-| `book_confirmatory` | U | R | A/S | A/S | A | R | R | R | R |
-| `callback_requested` | U | R | R | R | A | A/S | R | R | R |
-| `clinician_review` | U | R | A/S | A/S | R | R | R | R | R |
-| `close` | U | R | A/S | A/S | R | R | R | R | R |
-| `complete_confirmatory` | U | R | R | A/S | R | R | R | R | R |
-| `consent_updated` | U | R | R | R | A | A/S | R | R | R |
-| `contact_patient` | U | R | A/S | A/S | A | R | A | R | R |
-| `escalate` | U | R | R | R | A | R | A | A | R |
-| `escalation_accepted` | U | R | A/S | A/S | A | R | A | R | R |
-| `handoff_accepted` | U | R | A/S | A/S | R | R | R | R | R |
-| `handoff_rejected` | U | R | A/S | A/S | R | R | R | A | R |
-| `handoff_requested` | U | R | A/S | A/S | R | R | A | R | R |
-| `mark_lost_contact` | U | R | A/S | A/S | A | R | A | R | R |
-| `mark_overdue` | U | R | R | R | R | R | R | A | R |
-| `message_approved` | U | R | R | R | R | R | R | R | R |
-| `message_drafted` | U | R | A/S | A/S | A | R | R | R | R |
-| `message_rejected` | U | R | R | R | R | R | R | R | R |
-| `message_sent` | U | R | R | R | R | R | R | R | R |
-| `patient_acknowledge` | U | R | R | R | A | A/S | R | R | R |
-| `reassign` | U | R | R | R | A | R | A | R | R |
-| `reopen` | U | R | A/S | A/S | R | R | R | R | R |
-| `review_requested` | U | R | R | R | R | R | R | R | R |
-| `watchdog_flagged` | U | R | R | R | R | R | R | R | A |
-| `not_a_real_event` (no such event: the policy refuses it) | U | R | R | R | R | R | R | R | R |
+|  | anon | lab | pco | spec | coord | patient | super | sched | wdog | auto |
+|---|---|---|---|---|---|---|---|---|---|---|
+| `accept_ownership` | U | R | A/S | A/S | R | R | A | R | R | R |
+| `acknowledge` | U | A | R | R | A | R | A | R | R | R |
+| `assign_ownership` | U | R | R | R | R | R | R | R | R | R |
+| `book_confirmatory` | U | R | A/S | A/S | A | R | R | R | R | R |
+| `callback_requested` | U | R | R | R | A | A/S | R | R | R | R |
+| `clinician_review` | U | R | A/S | A/S | R | R | R | R | R | R |
+| `close` | U | R | A/S | A/S | R | R | R | R | R | R |
+| `closure_proposed` | U | R | R | R | R | R | R | R | R | R |
+| `complete_confirmatory` | U | R | R | A/S | R | R | R | R | R | R |
+| `consent_updated` | U | R | R | R | A | A/S | R | R | R | R |
+| `contact_patient` | U | R | A/S | A/S | A | R | A | R | R | R |
+| `contact_updated` | U | R | A/S | A/S | A | R | A | R | R | R |
+| `escalate` | U | R | R | R | A | R | A | A | R | R |
+| `escalation_accepted` | U | R | A/S | A/S | A | R | A | R | R | R |
+| `handoff_accepted` | U | R | A/S | A/S | R | R | R | R | R | R |
+| `handoff_rejected` | U | R | A/S | A/S | R | R | R | A | R | R |
+| `handoff_requested` | U | R | A/S | A/S | R | R | A | R | R | R |
+| `mark_lost_contact` | U | R | A/S | A/S | A | R | A | R | R | R |
+| `mark_overdue` | U | R | R | R | R | R | R | A | R | R |
+| `message_approved` | U | R | R | R | R | R | R | R | R | R |
+| `message_drafted` | U | R | A/S | A/S | A | R | R | R | R | R |
+| `message_rejected` | U | R | R | R | R | R | R | R | R | R |
+| `message_sent` | U | R | R | R | R | R | R | R | R | R |
+| `patient_acknowledge` | U | R | R | R | A | A/S | R | R | R | R |
+| `reassign` | U | R | R | R | A | R | A | R | R | R |
+| `reopen` | U | R | A/S | A/S | R | R | R | R | R | R |
+| `review_requested` | U | R | R | R | R | R | R | R | R | R |
+| `watchdog_flagged` | U | R | R | R | R | R | R | R | A | R |
+| `not_a_real_event` (no such event: the policy refuses it) | U | R | R | R | R | R | R | R | R | R |
 
 ## Case-scoped routes
 
@@ -104,6 +110,6 @@ None.
 
 ## What was checked
 
-- 26 routes in the OpenAPI document, 26 entries in `ROUTE_POLICY`: every route has a decision and no decision is stale.
-- 25 event types in `EVENT_POLICY`, plus one unknown type that must be refused for every role.
-- 564 role, route and scope combinations probed with real requests; 0 differ from the policy tables; 0 are documented gaps (see Findings).
+- 29 routes in the OpenAPI document, 29 entries in `ROUTE_POLICY`: every route has a decision and no decision is stale.
+- 28 event types in `EVENT_POLICY`, plus one unknown type that must be refused for every role.
+- 684 role, route and scope combinations probed with real requests; 0 differ from the policy tables; 0 are documented gaps (see Findings).

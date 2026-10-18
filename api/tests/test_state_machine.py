@@ -21,10 +21,13 @@ from app.config import settings as app_settings
 from app.events import CASE_CREATED, Event, InMemoryEventStore, replay, replay_model
 from app.pathway import PathwayError, load_pathway
 from app.state_machine import (
+    AUTOMATION_ACTOR,
+    AUTOMATION_ALLOWED_EVENTS,
     CaseModel,
     CONSENT_FROZEN_EVENTS,
     InvalidTransition,
     PayloadError,
+    allowed_events,
     apply,
     genesis,
     initial_model,
@@ -41,10 +44,13 @@ SIDE = list(PATHWAY.side_states)
 OPEN = [*MAIN[:-1], *SIDE]
 ALL_EVENT_TYPES = [*PATHWAY.event_types, "bogus_event", CASE_CREATED]
 HUMANS = [
-    "clinician:dr_a", "primary_care_owner:pc", "specialist_owner:sp", "coordinator:co",
+    "primary_care_owner:dr_a", "primary_care_owner:pc", "specialist_owner:sp", "coordinator:co",
     "supervisor:su", "patient:pa", "lab:lb",
 ]
-AUTOMATED = ["system:scheduler", "system:consent", "watchdog", "model:drafter"]
+AUTOMATED = [
+    "system:scheduler", "system:consent", "system:watchdog", "model:drafter", AUTOMATION_ACTOR, "system:notifier",
+    "system:triage", "system:agency:acme",
+]
 ACTORS = [*HUMANS, *AUTOMATED]
 SIGNED = {"evidence_ref": "DiagnosticReport/1", "signed_by": "Practitioner/9"}
 HUMAN_ONLY = {
@@ -127,7 +133,9 @@ def check_step(prev: CaseModel, ev: Event, new: CaseModel) -> None:
     if new.escalation_accepted and not prev.escalation_accepted:
         assert ev.type == "escalation_accepted" and prev.escalation_level >= 1
     if new.owner != prev.owner:
-        assert ev.type in ("accept_ownership", "handoff_accepted", "reassign")
+        assert ev.type in ("accept_ownership", "handoff_accepted", "reassign", "assign_ownership")
+        if ev.type == "assign_ownership":  # A21: only the automation, only while nobody owns the case
+            assert ev.actor == AUTOMATION_ACTOR and prev.owner is None
     # (e) referral handoff contract (A5): ownership moves only on acceptance of a pending request
     if ev.type == "handoff_requested":
         assert prev.owner is not None and prev.pending_handoff is None
@@ -230,6 +238,15 @@ def plausible_event(draw, model: CaseModel, at: datetime):
     if type_ == "escalation_accepted" and model.escalation_level:
         payload["rung"] = PATHWAY.rung_at(model.escalation_level).rung
     actor = draw(st.sampled_from(HUMANS * 4 + AUTOMATED))
+    capable = [a for a in ACTORS if type_ in allowed_events(a)]  # an actor the table lets write this type
+    if capable and draw(st.integers(0, 3)) > 0:
+        actor = draw(st.sampled_from(capable))
+    if type_ in AUTOMATION_ALLOWED_EVENTS and draw(st.integers(0, 2)) == 0:
+        actor = AUTOMATION_ACTOR  # the automation actor is tried at every event it may write
+    if actor == AUTOMATION_ACTOR:
+        payload["auto"] = True
+        if type_ == "message_sent":
+            payload.update({"channel": "sms", "purpose": "reminder", "template_id": "reminder.sms", "template_version": 1})
     if model.escalation_level and draw(st.booleans()):  # a likely-valid acceptor
         role = PATHWAY.rung_at(model.escalation_level).accepted_by[0]
         actor = f"{role}:x"
@@ -307,10 +324,37 @@ def test_never_closed_without_evidence_and_human_signoff(events):
         last = closers[-1]
         assert last.payload.get("evidence_ref"), "closed without evidence_ref"
         assert last.payload.get("signed_by"), "closed without signed_by"
-        assert not last.actor.startswith(("system:", "scheduler", "watchdog", "model:"))
+        assert not is_automated(last.actor), "a closure signed by an automated actor"
+        assert last.actor != AUTOMATION_ACTOR
         # nothing happened after the last close except annotations that cannot reopen
         after = applied[applied.index(last) + 1:]
         assert all(e.type not in ("reopen",) for e in after)
+
+
+@settings(max_examples=1500, deadline=None)
+@given(event_sequences())
+def test_only_whitelisted_actor_event_pairs_are_ever_applied_and_the_automation_never_closes(events):
+    """A3: whatever the sequence, every event that got in is a pair of the actor table, and the automation actor (which
+    the generator tries at every event it may write, with `auto: true`) is never the one that closed a case or that
+    left the case closed."""
+    state, applied = fold(events)
+    assert all(e.type in allowed_events(e.actor) for e in applied)
+    assert all(e.type != "close" for e in applied if e.actor == AUTOMATION_ACTOR)
+    if state == "closed":
+        assert [e for e in applied if e.type == "close" and not is_automated(e.actor)]
+
+
+def test_the_generator_does_exercise_the_automation_actor():
+    """Guard against the property above passing vacuously: the shared strategy does produce accepted automation events."""
+    seen = []
+
+    @settings(max_examples=200, deadline=None, database=None, derandomize=True)
+    @given(event_sequences())
+    def collect(events):
+        seen.extend(e for e in fold(events)[1] if e.actor == AUTOMATION_ACTOR)
+
+    collect()
+    assert {"acknowledge", "closure_proposed", "message_sent"} <= {e.type for e in seen}, sorted({e.type for e in seen})
 
 
 @settings(max_examples=1500, deadline=None)
@@ -370,7 +414,7 @@ def test_every_prefix_of_a_history_replays_to_the_incremental_model(events):
 def test_every_pathway_transition_is_reachable_in_order():
     state = PATHWAY.initial_state
     for t in PATHWAY.main_transitions:
-        state = apply(state, make_event(t.event, "clinician:dr_a", dict(SIGNED)), PATHWAY)
+        state = apply(state, make_event(t.event, "primary_care_owner:dr_a", dict(SIGNED)), PATHWAY)
         assert state == t.to_state
     assert state == "closed"
 
@@ -381,7 +425,7 @@ def test_every_pathway_transition_is_reachable_in_order():
 )
 def test_close_rejected_without_both_evidence_and_signoff(payload):
     with pytest.raises(InvalidTransition):
-        apply("clinician_reviewed", make_event("close", "clinician:dr_a", payload), PATHWAY)
+        apply("clinician_reviewed", make_event("close", "primary_care_owner:dr_a", payload), PATHWAY)
 
 
 def test_automated_actor_cannot_close():
@@ -395,7 +439,7 @@ def test_automated_actor_cannot_close():
 def test_close_is_rejected_from_every_other_open_state(state):
     model = dataclasses.replace(start_model(), state=state)
     with pytest.raises(InvalidTransition):
-        step(model, make_event("close", "clinician:dr_a", dict(SIGNED)), PATHWAY)
+        step(model, make_event("close", "primary_care_owner:dr_a", dict(SIGNED)), PATHWAY)
 
 
 # ---- unit tests: read model and flags ------------------------------------------------------
@@ -446,6 +490,11 @@ def test_read_model_shape_and_values():
         "consent_history": [],
         "review_reason": None,
         "review_requested_at": None,
+        "closure_proposal": None,  # A21
+        "auto_messages_sent": 0,  # A21
+        "outbound_messages_sent": 0,
+        "outreach_holds": [],
+        "contact_confirmed_at": None,
         "backdated_events": 0,
         # A18: the referral clock runs from the result (case_created); the colonoscopy clock waits for a referral
         "milestones": {
@@ -608,7 +657,7 @@ def test_escalate_needs_an_overdue_case_in_the_named_state():
 def test_only_a_human_in_the_target_role_accepts_a_rung_and_it_stops_the_ladder():
     m = over_model(rung_steps=2)  # supervisor rung emitted
     accept = lambda actor, **p: make_event("escalation_accepted", actor, p, AT + timedelta(days=40))  # noqa: E731
-    for bad in ["system:scheduler", "watchdog", "model:drafter", "coordinator:co", OWNER, "patient:p"]:
+    for bad in ["system:scheduler", "system:watchdog", "model:drafter", "coordinator:co", OWNER, "patient:p"]:
         with pytest.raises(InvalidTransition):
             step(m, accept(bad), PATHWAY)
     accepted = step(m, accept("supervisor:su"), PATHWAY)
@@ -757,7 +806,7 @@ ANNOTATIONS_WITHOUT_RULES = [
 )
 def test_annotations_are_allowed_in_any_open_state_without_changing_it(state, type_):
     model = dataclasses.replace(start_model(), state=state)
-    actor = "system:notifier" if type_ == "message_sent" else "supervisor:su"
+    actor = {"message_sent": "system:notifier", "watchdog_flagged": "system:watchdog"}.get(type_, "supervisor:su")
     payload = {"withdrawn": False} if type_ == "consent_updated" else {}
     if state == "consent_withdrawn" and type_ == "consent_updated":
         payload = {"withdrawn": True}  # (False would be the resume transition)
@@ -783,7 +832,7 @@ def test_nothing_but_reopen_works_on_a_closed_case(type_):
 def test_last_event_at_tracks_annotations_too():
     m = drive(*TO_CONTACTED)
     later = AT + timedelta(days=9)
-    flagged = step(m, make_event("watchdog_flagged", "watchdog", {}, later), PATHWAY)
+    flagged = step(m, make_event("watchdog_flagged", "system:watchdog", {}, later), PATHWAY)
     assert flagged.last_event_at == later and flagged.state == m.state
     assert flagged.clock_started_at == m.clock_started_at
 

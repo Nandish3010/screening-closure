@@ -13,6 +13,7 @@ from typing import Sequence
 from app.events import CASE_CREATED
 from app.pathway import Pathway
 from app.state_machine import AUTOMATED_ACTOR_PREFIXES, InvalidTransition, apply
+from .actors import as_machine_event
 
 OVERLAY_NO_STATE_CHANGE = None  # overlay events are anything outside the pathway's main chain
 
@@ -55,7 +56,7 @@ def check_case_log(events: Sequence, pathway: Pathway) -> list[str]:
             continue
         if ev.type in pathway_events:
             try:
-                new_state = apply(state, ev, pathway)
+                new_state = apply(state, as_machine_event(ev), pathway)
             except InvalidTransition as exc:
                 problems.append(f"seq {ev.seq}: {exc}")
                 continue

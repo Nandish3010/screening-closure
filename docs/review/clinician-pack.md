@@ -76,12 +76,12 @@ Overdue and escalated are not states. A case can be overdue and in any state, so
 
 | State | Type | Meaning | How the case leaves it, and who may do that | Time limit in this state |
 |---|---|---|---|---|
-| `result_received` | main path | A positive FIT (stool blood test) result has arrived from the laboratory. Nobody has taken responsibility yet. | `acknowledge` (Laboratory, coordinator, supervisor)<br>`consent_updated` with withdrawal (patient or coordinator) moves the case to `consent_withdrawn` | 2 working days to `acknowledge` |
+| `result_received` | main path | A positive FIT (stool blood test) result has arrived from the laboratory. Nobody has taken responsibility yet. | `acknowledge` (Laboratory, coordinator, supervisor; the automation does it when the result arrives)<br>`consent_updated` with withdrawal (patient or coordinator) moves the case to `consent_withdrawn` | 2 working days to `acknowledge` |
 | `acknowledged` | main path | The laboratory, coordinator or supervisor has confirmed the result is logged and is being routed. Still no named owner. | `accept_ownership` (Primary care owner, specialist owner, supervisor)<br>`consent_updated` with withdrawal (patient or coordinator) moves the case to `consent_withdrawn` | 1 working days to `accept_ownership` |
 | `owner_accepted` | main path | A named clinician or service has accepted responsibility (the care owner). From here one named person owns the next step. | `contact_patient` (Care owner, coordinator, supervisor)<br>`consent_updated` with withdrawal (patient or coordinator) moves the case to `consent_withdrawn` | 3 working days to `contact_patient` |
 | `patient_contacted` | main path | The care owner or coordinator has contacted the patient (call, message or letter) with the result and the next step. | `patient_acknowledge` (Patient, coordinator)<br>`mark_lost_contact` (Care owner, coordinator, supervisor)<br>`consent_updated` with withdrawal (patient or coordinator) moves the case to `consent_withdrawn` | 5 working days to `patient_acknowledge` |
 | `patient_acknowledged` | main path | The patient has confirmed they understood (tapped "I understand" or told the coordinator). The colonoscopy can now be booked. | `book_confirmatory` (Care owner, coordinator)<br>`handoff_rejected` (Receiving clinician; scheduler (timeout only))<br>`consent_updated` with withdrawal (patient or coordinator) moves the case to `consent_withdrawn` | 5 working days to `book_confirmatory` |
-| `confirmatory_booked` | main path | A confirmatory colonoscopy appointment is booked. If the booking went through a referral to another provider, that provider has accepted it. | `complete_confirmatory` (Specialist owner)<br>`handoff_rejected` (Receiving clinician; scheduler (timeout only))<br>`consent_updated` with withdrawal (patient or coordinator) moves the case to `consent_withdrawn` | no time limit |
+| `confirmatory_booked` | main path | A confirmatory colonoscopy appointment is booked. If the booking went through a referral to another provider, that provider has accepted it. | `complete_confirmatory` (Specialist owner; the automation when it finds the colonoscopy report)<br>`handoff_rejected` (Receiving clinician; scheduler (timeout only))<br>`consent_updated` with withdrawal (patient or coordinator) moves the case to `consent_withdrawn` | no time limit |
 | `confirmatory_completed` | main path | The specialist has recorded that the colonoscopy was done. Findings are not yet reviewed. | `clinician_review` (Primary care owner, specialist owner)<br>`consent_updated` with withdrawal (patient or coordinator) moves the case to `consent_withdrawn` | 5 working days to `clinician_review` |
 | `clinician_reviewed` | main path | A clinician has reviewed the colonoscopy outcome. The case can now be closed, but only with evidence and a signature. | `close` (Primary care owner, specialist owner (never automated))<br>`consent_updated` with withdrawal (patient or coordinator) moves the case to `consent_withdrawn` | 3 working days to `close` |
 | `closed` | main path | The loop is closed. Only possible with an evidence reference and a named clinician's sign-off. No automated actor can do this. | `reopen` (Primary care owner, specialist owner (human only)) | no time limit |
@@ -96,12 +96,12 @@ Events are the facts the system records. The "who" column follows the authorisat
 
 | Event | Meaning | Who may do it | Kind | Human only |
 |---|---|---|---|---|
-| `acknowledge` | Confirm the positive result is received and logged. | Laboratory, coordinator, supervisor | changes state |  |
+| `acknowledge` | Confirm the positive result is received and logged. | Laboratory, coordinator, supervisor; the automation does it when the result arrives | changes state |  |
 | `accept_ownership` | A clinician or service accepts responsibility for the case. | Primary care owner, specialist owner, supervisor | changes state |  |
 | `contact_patient` | Contact the patient with the result and next step. | Care owner, coordinator, supervisor | changes state |  |
 | `patient_acknowledge` | The patient confirms they understood. | Patient, coordinator | changes state |  |
 | `book_confirmatory` | Book the confirmatory colonoscopy. | Care owner, coordinator | changes state |  |
-| `complete_confirmatory` | Record that the colonoscopy was done. | Specialist owner | changes state |  |
+| `complete_confirmatory` | Record that the colonoscopy was done. | Specialist owner; the automation when it finds the colonoscopy report | changes state |  |
 | `clinician_review` | Review the colonoscopy outcome. | Primary care owner, specialist owner | changes state |  |
 | `close` | Close the case. Needs an evidence reference and a signature. | Primary care owner, specialist owner (never automated) | changes state |  |
 | `handoff_rejected` | The receiving provider refuses, with a reason from the fixed list. The scheduler may also bounce a request that got no answer. | Receiving clinician; scheduler (timeout only) | changes state or annotates |  |
@@ -113,14 +113,16 @@ Events are the facts the system records. The "who" column follows the authorisat
 | `mark_overdue` | Flag that the time limit for the current step has passed. | Scheduler only | annotation |  |
 | `escalate` | Send the late case up one rung of the ladder. | Scheduler, coordinator, supervisor | annotation |  |
 | `escalation_accepted` | A person accepts an escalation, which stops further rungs for that delay. | A human in the rung's target role (human only) | annotation | yes |
-| `handoff_requested` | Ask another provider to take over the case (an annotation; ownership has not moved). | Care owner, supervisor | annotation |  |
-| `review_requested` | Flag the case for human review (used when consent is withdrawn). | The system itself; nobody can post it | annotation |  |
+| `handoff_requested` | Ask another provider to take over the case (an annotation; ownership has not moved). | Care owner, supervisor; the automation, to the next provider on the list after a refusal or no answer | annotation |  |
+| `review_requested` | Flag the case for human review (consent withdrawn, or every provider on the reroute list has refused). | The system itself; nobody can post it | annotation |  |
 | `message_drafted` | A message draft is prepared (by a template or a language model) for a person to approve. | Care owner, coordinator, model drafting provider | annotation |  |
 | `message_approved` | A person approves a draft. Nothing is sent without this. | Care owner (human only) | annotation | yes |
 | `message_rejected` | A person rejects a draft, giving a reason from a fixed list. Nothing is sent. | Care owner (human only) | annotation | yes |
-| `message_sent` | The message is sent through the notification mock. | The approval-gated send path only; nobody can post it | annotation |  |
+| `message_sent` | The message is sent through the notification mock: an approved draft, or a pre-approved template the automation sends within the weekly limit. | The approval-gated send path, or the automation for a listed template; nobody can post it | annotation |  |
 | `callback_requested` | The patient asks for a person to call because they do not understand. | Patient, coordinator (human only) | annotation | yes |
 | `watchdog_flagged` | The watchdog flags a case that has been idle too long. | Watchdog / scheduler | annotation |  |
+| `assign_ownership` | The automation names the case's owner from the patient's registered provider. The owner still has to accept; nothing waits on the naming. | The automation only | annotation |  |
+| `closure_proposed` | The automation found the colonoscopy report and proposes closing the case. The clinician still reviews and signs; this closes nothing. | The automation only | annotation |  |
 
 Events listed as human only in the configuration: `escalation_accepted`, `handoff_accepted`, `consent_updated`, `message_approved`, `message_rejected`, `callback_requested`, `reopen`. Also: no automated actor may emit `close` (checked separately by the state machine).
 

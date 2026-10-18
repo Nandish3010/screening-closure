@@ -294,7 +294,8 @@ def test_message_sent_is_unreachable_through_any_event_route(fresh):
 def test_only_the_approve_route_leads_to_notify_send():
     """Structural: the sources that can write message_sent. Nothing but the gate calls send."""
     root = Path(app_package.__file__).parent
-    allowed_send_callers = {"routers/drafts.py"}  # the gate
+    # the gate, and (A21, ADR-032) the automation, which may send only a pre-approved template: its call passes `auto=`
+    allowed_send_callers = {"routers/drafts.py", "automation.py"}
     allowed_notifier_refs = {"notify.py", "state_machine.py", "routers/drafts.py"}
     offenders = []
     for path in root.rglob("*.py"):
@@ -306,6 +307,10 @@ def test_only_the_approve_route_leads_to_notify_send():
         if re.search(r"NOTIFIER_ACTOR|system:notifier", text) and rel not in allowed_notifier_refs:
             offenders.append((rel, "uses the notifier actor"))
     assert offenders == []
+    automation_src = (root / "automation.py").read_text()
+    sends = re.findall(r"notify\.send\((.*?)\n\s*\)", automation_src, re.S)
+    assert sends and all("auto=" in call for call in sends), "the automation may call notify.send only with auto=<template>"
+    assert "draft_id" not in "".join(sends)
     # the events route cannot be talked into it either
     assert policy.EVENT_POLICY["message_sent"] == frozenset()
     assert policy.EVENT_POLICY["message_approved"] == frozenset()

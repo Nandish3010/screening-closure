@@ -361,10 +361,11 @@ class PostgresEventStore:
             by_case.setdefault(row[0], []).append(_event_from_row(row[0], row[1:]))
         return by_case
 
-    def iter_open_case_models(self, pathway: Pathway, only=None, chunk: int = 500, shard=None):
+    def iter_open_case_models(self, pathway: Pathway, only=None, chunk: int = 500, shard=None, states=None):
         """Yield (case_id, model | None, error | None) for every non-closed case of the pathway.
 
-        `only` restricts the sweep to those case ids. `shard=(k, n)` restricts it to the k-th
+        `only` restricts the sweep to those case ids; `states` to the cases whose `current_state` is one of them (a
+        SQL filter: no log of any other case is read). `shard=(k, n)` restricts it to the k-th
         of n disjoint, exhaustive slices of the cases (a stable hash of the case id), so n
         workers can sweep in parallel without overlap. Cases are replayed in chunks so memory
         stays bounded; a log that does not replay yields (case_id, None, error).
@@ -374,6 +375,9 @@ class PostgresEventStore:
         if only is not None:
             sql += " AND id = ANY(%s)"
             params.append(list(only))
+        if states is not None:
+            sql += " AND current_state = ANY(%s)"
+            params.append(list(states))
         shard_sql, shard_params = self._shard_sql(shard)
         sql, params = sql + shard_sql, params + shard_params
         with self._pool.connection() as conn:

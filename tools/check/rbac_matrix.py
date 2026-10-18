@@ -59,9 +59,10 @@ logging.getLogger("httpx").setLevel(logging.WARNING)
 PATIENT = policy.PATIENT
 OWNER_ROLES = sorted(policy.OWNER_SCOPED)
 USER_ROLES = list(auth.USER_ROLES)
-COLUMNS = ["anonymous", *USER_ROLES, auth.SCHEDULER_ROLE, auth.WATCHDOG_ROLE]
+COLUMNS = ["anonymous", *USER_ROLES, auth.SCHEDULER_ROLE, auth.WATCHDOG_ROLE, auth.AUTOMATION_ROLE]
 SHORT = {"anonymous": "anon", "lab": "lab", "primary_care_owner": "pco", "specialist_owner": "spec",
-         "coordinator": "coord", "patient": "patient", "supervisor": "super", "scheduler": "sched", "watchdog": "wdog"}
+         "coordinator": "coord", "patient": "patient", "supervisor": "super", "scheduler": "sched", "watchdog": "wdog",
+         "automation": "auto"}
 
 EVENTS_ROUTE = ("POST", "/cases/{case_id}/events")
 UNKNOWN_EVENT = "not_a_real_event"
@@ -137,6 +138,8 @@ class Probe:
             return {"Authorization": f"Bearer {settings.scheduler_service_token}"}
         if role == auth.WATCHDOG_ROLE:
             return {"Authorization": f"Bearer {settings.watchdog_service_token}"}
+        if role == auth.AUTOMATION_ROLE:
+            return {"Authorization": f"Bearer {settings.automation_service_token}"}
         key = (role, patient_ref)
         if key not in self._headers:
             body = {"role": role, "name": f"rbac {role}"}
@@ -404,7 +407,8 @@ def render(result: Result) -> str:
         "(the role has no case scope, or the route does not name a case).",
         "- `*` after a letter: the cell is a documented gap, observed behaviour that differs from the intended rule (see Findings).",
         "- Columns: `anon` no token; the six user roles (`pco` = `primary_care_owner`, `spec` = `specialist_owner`, "
-        "`coord` = `coordinator`, `super` = `supervisor`); `sched` the scheduler service token; `wdog` the watchdog service token.",
+        "`coord` = `coordinator`, `super` = `supervisor`); `sched` the scheduler service token; `wdog` the watchdog service token; "
+        "`auto` the automation service token (`system:automation`, A21): it reaches the two scan routes and no event type, because the automation writes its events in process.",
         "- \"Own case\": for a clinician, a case they own; for a patient, the case with their `patient_ref`. "
         "\"Other\": a case owned by another clinician, or another patient's.",
         "",

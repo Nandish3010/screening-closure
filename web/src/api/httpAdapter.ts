@@ -1,7 +1,7 @@
 /** HTTP adapter: the real API at VITE_API_URL, with bearer-token auth from POST /auth/dev-login. */
 import type {
   Alert, ApiClient, CaseDetail, CaseEvent, CaseListParams, CaseSummary, CaseTimeline, ClosureMetrics, ConfirmatoryResult, Draft,
-  DraftApproval, DraftRecord, DraftRejection, DraftRequestBody, Me, PostEventBody, Role, TimelineItem,
+  DraftApproval, DraftRecord, DraftRejection, DraftRequestBody, EffortMetrics, Me, PostEventBody, Role, TimelineItem,
 } from "./contract";
 import { ApiError, BACKEND_ROLE, OWNER_SCOPED_ROLES, ROLES } from "./contract";
 import { completeDetail, completeSummary, registerActors } from "../lib/derive";
@@ -261,5 +261,14 @@ export function createHttpAdapter(baseUrl: string, fetchImpl: typeof fetch = (..
       }
     },
     closureMetrics: () => request<ClosureMetrics>("/metrics/closure"),
+    async getEffortMetrics(): Promise<EffortMetrics | null> {
+      try {
+        return await request<EffortMetrics>("/metrics/effort");
+      } catch (e) {
+        // Not shipped yet (404) or not readable by this role (403): the dashboard just leaves the card out.
+        if (e instanceof ApiError && (e.status === 404 || e.status === 403)) return null;
+        throw e;
+      }
+    },
   };
 }

@@ -43,6 +43,20 @@ replay of the event log produces:
                          that spans states (referral within 15 working days of the result, colonoscopy within
                          31 working days of referral); it has its own overdue flag and ladder position, kept
                          apart from the state-level ones above. `overdue` above stays the state's
+    closure_proposal     {evidence_ref, proposed_at, event_id} from a `closure_proposed` (A21, ADR-032) until the case closes
+                         or is reopened: the evidence scan found closure evidence and the clinician has a one-click
+                         sign-off. A proposal only: `close` does not read it and still needs a human and evidence
+    auto_message_times   `at` of every `message_sent` the automation sent (A21), for the accounting
+    outbound_message_times  `at` of EVERY `message_sent`, automatic or an approved draft: the weekly cap on automatic
+                         messages counts all outbound messages (A5 of the engineering review), checked at append time
+                         against the policy's limit (`outreach_policy.auto_message_guard`), never during replay
+    outreach_holds       the open outreach holds, `opt_out` and/or `wrong_number` (`review_requested` from the triage
+                         actor): while any is open the automation sends nothing. `opt_out` is cleared by a human
+                         `consent_updated`, `wrong_number` by a human `contact_updated {contact_valid: true}`
+    contact_confirmed_at `at` of the latest `contact_updated`: a person confirmed the contact details, which overrides a
+                         `contact_valid: false` on the case_created payload
+    reroute_exhausted_at when the automation found the reroute list used up (`review_requested`, reason
+                         `reroute_exhausted`) until the case leaves `referral_rejected`
     backdated_events     how many accepted events had an `at` earlier than the previous event's `at`
                          (T-F4, ADR-027): a user token's backdated event is refused at the API (SEC-2); only the
                          service actors that legitimately post late (the sweep, the notifier) can still produce
@@ -55,7 +69,7 @@ patient_contacted (ADR-011). Side states that change the path are real states.
 from __future__ import annotations
 
 from dataclasses import dataclass, field, replace
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 from uuid import UUID
 
@@ -91,12 +105,80 @@ CHANNELS = ("sms", "whatsapp", "phone", "letter")  # contact channels (the `chan
 CONSENT_FROZEN_EVENTS = frozenset(
     {"contact_patient", "message_drafted", "message_approved", "message_sent", "handoff_requested"}
 )
-CONSENT_ACTOR = "system:consent"  # emits review_requested, and nothing else
-REVIEW_REASONS = ("consent_withdrawn",)
+CONSENT_ACTOR = "system:consent"  # emits review_requested (reason consent_withdrawn), and nothing else
+# Why a case is flagged for a person (`review_requested.reason`). The triage reasons (an inbound reply that opts out, or
+# says the number is wrong) are emitted by the triage actor (branch cut-triage); they are defined here so the automation
+# can honour them (an outreach hold) and the vocabulary has one definition.
+REVIEW_REASONS = ("consent_withdrawn", "reroute_exhausted", "opt_out", "wrong_number")
+OUTREACH_HOLD_REASONS = ("opt_out", "wrong_number")  # while one is open the automation sends nothing (A5)
 SCHEDULER_ACTOR_NAME = "system:scheduler"
+WATCHDOG_ACTOR = "system:watchdog"  # emits watchdog_flagged, and nothing else
 MODEL_ACTOR_PREFIX = "model:"
-MODEL_ALLOWED_EVENTS = frozenset({"message_drafted"})  # the only thing a drafting model may emit (T-D2)
-NOTIFIER_ACTOR = "system:notifier"  # the notification mock: the only actor that writes message_sent
+NOTIFIER_ACTOR = "system:notifier"  # the notification mock: writes message_sent for an approved draft
+TRIAGE_ACTOR = "system:triage"  # branch cut-triage: classifies inbound replies. Placeholder here: may emit nothing yet
+AGENCY_ACTOR_PREFIX = "system:agency:"  # branch cut-agency: an outside agency's agent. Placeholder here: nothing yet
+# A21, ADR-032: the automation actor. It does the steps that are not a human decision and nothing else. It can never
+# close a case (the closure guard refuses every automated actor) and none of the human-only events.
+AUTOMATION_ACTOR = "system:automation"
+AUTO_MESSAGE_WINDOW = timedelta(days=7)  # "per week" in max_auto_messages_per_week
+
+# The roles a person can act in (equals app.auth.USER_ROLES; tests/test_actor_table.py keeps the two in step).
+HUMAN_ROLES = ("lab", "primary_care_owner", "specialist_owner", "coordinator", "patient", "supervisor")
+# What a person may emit as far as the machine is concerned: every event except the ones only a service writes. WHICH
+# person (which role, on whose case) is app.policy's job (EVENT_POLICY, owner scope): the machine's table says only that
+# a service-only event is never a person's, whatever route it came through.
+HUMAN_EVENTS = frozenset({
+    "acknowledge", "accept_ownership", "contact_patient", "patient_acknowledge", "book_confirmatory",
+    "complete_confirmatory", "clinician_review", "close", "reopen", "escalate", "escalation_accepted",
+    "handoff_requested", "handoff_accepted", "handoff_rejected", "reassign", "consent_updated", "contact_updated",
+    "mark_lost_contact", "message_drafted", "message_approved", "message_rejected", "callback_requested",
+})
+
+# THE table of who may write what (A3 of the engineering review): actor -> the event types the machine accepts from it.
+# Default deny: an actor that matches no key, or an event type its row does not list, is refused before anything else is
+# looked at, in `step`, so no store, route or in-process caller can skip it. A key that ends in ":" is a prefix (a person
+# by role, any model, any agency); any other key is one exact actor. The rows of the services that write events here:
+#   system:scheduler    the sweep: breaches, escalations, and the bounce of an unanswered referral request
+#   system:watchdog     the watchdog's flags
+#   system:notifier     `message_sent` for a draft a person approved (the outbox)
+#   system:consent      the review flag raised when consent is withdrawn
+#   system:automation   the steps that are not a human decision (A21, ADR-032); every one carries `auto: true`
+#   model:              a drafting model annotates a case with its draft (T-D2)
+#   system:triage, system:agency:   placeholders for branches cut-triage and cut-agency: EMPTY here, so nothing can be
+#                       written under those names until the table is filled in
+# Humans are listed once per role. Nothing but this table decides which actor may emit which event type.
+ACTOR_EVENTS: dict[str, frozenset[str]] = {
+    **{f"{role}:": HUMAN_EVENTS for role in HUMAN_ROLES},
+    SCHEDULER_ACTOR_NAME: frozenset({"mark_overdue", "escalate", "handoff_rejected"}),
+    WATCHDOG_ACTOR: frozenset({"watchdog_flagged"}),
+    NOTIFIER_ACTOR: frozenset({"message_sent"}),
+    CONSENT_ACTOR: frozenset({"review_requested"}),
+    AUTOMATION_ACTOR: frozenset({
+        "acknowledge", "assign_ownership", "complete_confirmatory", "closure_proposed", "handoff_requested",
+        "message_sent", "review_requested",
+    }),
+    MODEL_ACTOR_PREFIX: frozenset({"message_drafted"}),
+    TRIAGE_ACTOR: frozenset(),
+    AGENCY_ACTOR_PREFIX: frozenset(),
+}
+# What the automation may emit, and which of those must say so (payload `auto: true`; nobody else may carry the flag).
+AUTOMATION_ALLOWED_EVENTS = ACTOR_EVENTS[AUTOMATION_ACTOR]
+AUTO_FLAGGED_EVENTS = AUTOMATION_ALLOWED_EVENTS - {"review_requested"}
+# The one actor that may give each review reason (the table says only which actors may emit `review_requested` at all).
+_REVIEW_EMITTER = {"reroute_exhausted": AUTOMATION_ACTOR, "opt_out": TRIAGE_ACTOR, "wrong_number": TRIAGE_ACTOR}
+
+
+def actor_key(actor: str) -> str | None:
+    """The row of `ACTOR_EVENTS` that governs `actor`, or None (an unknown actor: it may emit nothing)."""
+    if actor in ACTOR_EVENTS and not actor.endswith(":"):
+        return actor
+    return next((k for k in ACTOR_EVENTS if k.endswith(":") and actor.startswith(k) and len(actor) > len(k)), None)
+
+
+def allowed_events(actor: str) -> frozenset[str]:
+    """The event types `actor` may emit (empty for an actor with no row)."""
+    key = actor_key(actor)
+    return ACTOR_EVENTS[key] if key is not None else frozenset()
 
 # Actor prefixes that denote automation (scheduler, watchdog, drafting model...).
 AUTOMATED_ACTOR_PREFIXES = ("system:", "scheduler", "watchdog", "model:")
@@ -193,6 +275,12 @@ class CaseModel:
     consent_history: tuple = ()
     review_reason: str | None = None  # human review flag (consent withdrawal), set by review_requested
     review_requested_at: datetime | None = None
+    reroute_exhausted_at: datetime | None = None  # A21: the automation ran out of providers to reroute to
+    closure_proposal: dict | None = None  # A21: {evidence_ref, proposed_at, event_id} until close or reopen
+    auto_message_times: tuple = ()  # A21: `at` of each message_sent by system:automation (the accounting)
+    outbound_message_times: tuple = ()  # `at` of every message_sent, automatic or approved draft (the weekly cap counts all)
+    outreach_holds: tuple = ()  # open holds (`opt_out`, `wrong_number`): the automation sends nothing while any is open
+    contact_confirmed_at: datetime | None = None  # a person confirmed the contact details (`contact_updated`)
     backdated_events: int = 0  # T-F4, ADR-027: accepted events dated before the one just before them
     created_at: datetime | None = None  # the genesis event's `at` (a milestone may start there)
     created_event_id: UUID | None = None  # the genesis event's `event_id` (a milestone started there derives its ids from it)
@@ -233,8 +321,14 @@ class CaseModel:
             "last_handoff": dict(self.last_handoff) if self.last_handoff else None,
             "consent": dict(self.consent),
             "consent_history": [dict(h) for h in self.consent_history],
-            "review_reason": self.review_reason,
-            "review_requested_at": iso(self.review_requested_at),
+            # consent withdrawal takes precedence: it freezes outreach; a reroute flag is shown when there is no other
+            "review_reason": self.review_reason or ("reroute_exhausted" if self.reroute_exhausted_at else None),
+            "review_requested_at": iso(self.review_requested_at) or iso(self.reroute_exhausted_at),
+            "closure_proposal": dict(self.closure_proposal) if self.closure_proposal else None,
+            "auto_messages_sent": len(self.auto_message_times),
+            "outbound_messages_sent": len(self.outbound_message_times),
+            "outreach_holds": list(self.outreach_holds),
+            "contact_confirmed_at": iso(self.contact_confirmed_at),
             "backdated_events": self.backdated_events,
             "milestones": {name: m.to_json() for name, m in self.milestones.items()},
         }
@@ -281,9 +375,13 @@ def replay_model(events, pathway: Pathway) -> CaseModel:
 
 
 def step(model: CaseModel, event: Event, pathway: Pathway) -> CaseModel:
-    """Return the new read model, or raise InvalidTransition. Never mutates anything."""
-    if event.type in pathway.human_only_events and is_automated(event.actor):
-        raise InvalidTransition(f"event {event.type!r} requires a human actor")
+    """Return the new read model, or raise InvalidTransition. Never mutates anything.
+
+    Replay-safe: it reads the event, the model and the pathway and nothing else. No configuration file, no clock, no
+    policy: a log that was accepted once is accepted again whatever has been edited since (the append-time policy gates
+    live in app.outreach_policy and app.policy, as guards of the store transaction)."""
+    if event.type not in allowed_events(event.actor):
+        raise InvalidTransition(f"actor {event.actor!r} may not emit {event.type!r} (it is not in its row of the actor table)")
     if pathway.milestones:
         model = start_genesis_milestones(model, pathway)
     _precheck(model, event, pathway)
@@ -328,6 +426,9 @@ def _transition(model: CaseModel, event: Event, pathway: Pathway, t: Transition)
         if isinstance(value, bool) or not isinstance(value, (int, float)) or value < minimum:
             raise InvalidTransition(f"event {event.type!r} requires {key!r} >= {minimum}")
 
+    # A closure proposal is for the evidence as it stands: closing consumes it, and a reopen (the evidence was
+    # inadequate, or something new was found) withdraws it. The scan may propose again from fresh evidence.
+    clears_proposal = t.to_state == pathway.terminal_state or event.type == "reopen"
     resuming = t.to_state == RESUME_STATE
     if resuming:
         if model.resume_state is None:
@@ -338,6 +439,10 @@ def _transition(model: CaseModel, event: Event, pathway: Pathway, t: Transition)
 
     resumable = pathway.resumable_states
     new = replace(model, state=target, consent_frozen=target == CONSENT_WITHDRAWN)
+    if clears_proposal:
+        new = replace(new, closure_proposal=None)
+    if model.state == "referral_rejected" and target != "referral_rejected" and target not in pathway.resumable_states:
+        new = replace(new, reroute_exhausted_at=None)  # the human re-route the flag asked for has happened
     new = replace(new, resume_state=model.state if target in resumable else None)
     # The SLA clock, overdue flag and ladder position belong to the SLA subject. They
     # carry over an excursion into a resumable side state and back, and restart on any
@@ -630,10 +735,41 @@ def _escalation_accepted(model: CaseModel, event: Event, pathway: Pathway) -> Ca
     return out
 
 
+def _assign_ownership(model: CaseModel, event: Event, pathway: Pathway) -> CaseModel:
+    """A21: the automation names the owner before anyone has accepted (the owner is notified by the ladder if they do
+    nothing). Once, while the case is waiting for an owner: it can never take a case from the person who accepted it.
+    Only the automation may write it: the actor table says so."""
+    if model.owner is not None:
+        raise InvalidTransition(f"assign_ownership: the case already has an owner ({model.owner})")
+    if model.state not in ("result_received", "acknowledged"):
+        raise InvalidTransition(f"assign_ownership: not allowed from state {model.state!r}; ownership is assigned before it is accepted")
+    return model  # the owner and provider are set in _finish with the other ownership events
+
+
+# States in which closure evidence can be proposed: the colonoscopy is completed (by a person, or by the automation in
+# the same scan) and the clinician has not yet closed the case.
+CLOSURE_PROPOSAL_STATES = ("confirmatory_completed", "clinician_reviewed")
+
+
+def _closure_proposed(model: CaseModel, event: Event, pathway: Pathway) -> CaseModel:
+    """A21: record that the evidence scan found closure evidence. Changes no state and closes nothing; it only gives the
+    clinician a one-click sign-off with the evidence prefilled. `close` is unaffected (still evidence and a person).
+    Only the automation may write it: the actor table says so."""
+    if model.state not in CLOSURE_PROPOSAL_STATES:
+        raise InvalidTransition(f"closure_proposed: not allowed from state {model.state!r}")
+    return replace(model, closure_proposal={
+        "evidence_ref": event.payload["evidence_ref"],
+        "proposed_at": _aware(event.at).isoformat(),
+        "event_id": str(event.event_id),
+    })
+
+
 # Annotations without an entry here have no effect on the read model beyond last_event_at
 # (handoff_requested, message_*, callback_requested, watchdog_flagged, consent_updated
 # outside the withdrawn transitions).
 _ANNOTATION_RULES = {
+    "assign_ownership": _assign_ownership,
+    "closure_proposed": _closure_proposed,
     "mark_overdue": _mark_overdue,
     "escalate": _escalate,
     "escalation_accepted": _escalation_accepted,
@@ -684,22 +820,48 @@ def validate_payload(event: Event, pathway: Pathway) -> None:
     elif kind == "review_requested":
         if payload.get("reason") not in REVIEW_REASONS:
             raise PayloadError(f"review_requested reason must be one of {list(REVIEW_REASONS)}")
+    elif kind == "closure_proposed":
+        if not isinstance(payload.get("evidence_ref"), str) or not payload["evidence_ref"]:
+            raise PayloadError("closure_proposed needs the evidence_ref it found")
+    elif kind == "assign_ownership":
+        if not isinstance(payload.get("owner"), str) or not payload["owner"]:
+            raise PayloadError("assign_ownership needs the owner it names")
+    elif kind == "contact_updated":
+        if payload.get("contact_valid") is not True:
+            raise PayloadError("contact_updated says the contact details are valid: contact_valid must be true")
+    # A21: the `auto` flag is the automation's alone, and the automation always sets it (an auto event is never
+    # mistaken for a person's, and a person never passes for the automation).
+    if payload.get("auto") is not None and actor != AUTOMATION_ACTOR:
+        raise PayloadError(f"{kind}: 'auto' may be set only by {AUTOMATION_ACTOR!r}")
+    if actor == AUTOMATION_ACTOR and kind in AUTO_FLAGGED_EVENTS and payload.get("auto") is not True:
+        raise PayloadError(f"{kind} from {AUTOMATION_ACTOR!r} must carry auto: true")
+    if kind == "message_sent":
+        has_template = payload.get("template_id") is not None or payload.get("template_version") is not None
+        if payload.get("auto") is True:
+            if payload.get("template_id") is None or payload.get("template_version") is None:
+                raise PayloadError("an automatic message_sent names its template_id and template_version")
+            if payload.get("draft_id") is not None:
+                raise PayloadError("an automatic message_sent is a template, not a draft: no draft_id")
+            if payload.get("template_id") != f"{payload.get('purpose')}.{payload.get('channel')}":
+                raise PayloadError("an automatic message_sent's template_id is '<purpose>.<channel>'")
+        elif has_template:
+            raise PayloadError("template_id and template_version belong to an automatic message_sent (auto: true)")
 
 
 def _precheck(model: CaseModel, event: Event, pathway: Pathway) -> None:
     kind, actor = event.type, event.actor
-    # Only the consent service may flag a review, and it may flag nothing else.
-    if kind == "review_requested" and actor != CONSENT_ACTOR:
-        raise InvalidTransition(f"review_requested is emitted only by {CONSENT_ACTOR!r}")
-    if actor == CONSENT_ACTOR and kind != "review_requested":
-        raise InvalidTransition(f"{CONSENT_ACTOR!r} may only emit review_requested")
+    # Which actor may emit which event TYPE is the actor table, applied in `step`. What it cannot say is which actor may
+    # give which REASON: a review is flagged by the consent service (consent withdrawn), by the automation (reroute list
+    # exhausted, A21) or by the triage actor (opt-out, wrong number), each only for its own reasons.
+    if kind == "review_requested":
+        reason = event.payload.get("reason")
+        expected = _REVIEW_EMITTER.get(reason, CONSENT_ACTOR) if isinstance(reason, str) else CONSENT_ACTOR
+        if actor != expected:
+            raise InvalidTransition(f"review_requested with reason {event.payload.get('reason')!r} is emitted only by {expected!r}")
     validate_payload(event, pathway)
-    # A drafting model may annotate a case with its draft and do nothing else (T-D2).
-    if actor.startswith(MODEL_ACTOR_PREFIX) and kind not in MODEL_ALLOWED_EVENTS:
-        raise InvalidTransition(f"a model actor may only emit {sorted(MODEL_ALLOWED_EVENTS)}, not {kind!r}")
-    # A message is "sent" only by the notification mock, after the approval gate (T-D1).
-    if kind == "message_sent" and actor != NOTIFIER_ACTOR:
-        raise InvalidTransition(f"message_sent is written only by {NOTIFIER_ACTOR!r}, not {actor!r}")
+    if kind == "review_requested" and event.payload.get("reason") == "reroute_exhausted":
+        if model.state != "referral_rejected" or model.pending_handoff is not None:
+            raise InvalidTransition("reroute_exhausted: only a case in referral_rejected with no pending request")
     # Consent withdrawn freezes outreach, and handing the patient to someone new (T-A23).
     if model.consent_frozen and kind in CONSENT_FROZEN_EVENTS:
         raise InvalidTransition(
@@ -712,7 +874,9 @@ def _precheck(model: CaseModel, event: Event, pathway: Pathway) -> None:
     # notifier cannot send what nobody approved, send it twice, or send it past an opt-out.
     if kind == "message_approved" and event.payload.get("draft_id") in model.approved_unsent:
         raise InvalidTransition(f"message_approved: draft {event.payload.get('draft_id')!r} is already approved")
-    if kind == "message_sent":
+    if kind == "message_sent" and actor == AUTOMATION_ACTOR:
+        _check_automatic_message(model, event)
+    elif kind == "message_sent":  # the notifier, by the table
         draft_id = event.payload.get("draft_id")
         if draft_id is None or draft_id not in model.approved_unsent:
             raise InvalidTransition(
@@ -723,6 +887,10 @@ def _precheck(model: CaseModel, event: Event, pathway: Pathway) -> None:
             raise InvalidTransition(f"message_sent: {why}")
     pending = model.pending_handoff
     if kind == "handoff_requested":
+        if actor == AUTOMATION_ACTOR and model.state != "referral_rejected":
+            raise InvalidTransition(
+                "handoff_requested from the automation is a reroute: only for a case in referral_rejected"
+            )
         if model.owner is None:
             raise InvalidTransition("handoff_requested: the case has no owner to hand over from")
         if pending is not None:
@@ -735,6 +903,25 @@ def _precheck(model: CaseModel, event: Event, pathway: Pathway) -> None:
             raise InvalidTransition(f"{kind}: there is no pending handoff request")
         if kind == "handoff_accepted" and actor in (pending["requested_by"], pending["from_owner"]):
             raise InvalidTransition("a handoff cannot be accepted by the party that requested it")
+
+
+def _check_automatic_message(model: CaseModel, event: Event) -> None:
+    """What the machine itself checks of a message the automation sends without a draft (A21, ADR-032): only what the
+    log decides, so that replaying the log never depends on a file. The patient must consent to the channel NOW, and no
+    outreach hold (an opt-out or a wrong number flagged by triage) may be open. The payload's shape (`auto`, template id
+    and version, no draft) is `validate_payload`'s.
+
+    NOT here: the template allow-list and versions, and the weekly cap. They come from config/outreach_policy.yaml, which
+    can be edited or fail to load after the event was written, so they are checked at APPEND time, inside the store
+    transaction, under the case lock, by `outreach_policy.auto_message_guard`, and never when a log is replayed."""
+    payload = event.payload
+    if model.outreach_holds:
+        raise InvalidTransition(
+            f"message_sent: automatic messages are held for this case ({', '.join(model.outreach_holds)}): "
+            "a person must clear the flag first")
+    consented, why = channel_consent(model, payload.get("channel"))
+    if not consented:
+        raise InvalidTransition(f"message_sent: {why}")
 
 
 def channel_consent(model: CaseModel, channel) -> tuple[bool, str]:
@@ -787,7 +974,11 @@ def _finish(
             out = replace(out, last_human_activity_at=at, last_human_activity_event_id=event.event_id,
                           watchdog_flag=None)
     if kind == "accept_ownership":
-        out = replace(out, owner=event.actor, provider=payload.get("provider"))
+        # the provider the owner acts for: the one they name, else the one the automation assigned them under (A21)
+        kept = (before or model).provider if (before or model).owner == event.actor else None
+        out = replace(out, owner=event.actor, provider=payload.get("provider") or kept)
+    elif kind == "assign_ownership":
+        out = replace(out, owner=payload["owner"], provider=payload.get("provider"))
     elif kind == "reassign":
         out = replace(out, owner=str(payload["owner"]), provider=payload.get("provider"),
                       pending_handoff=None)
@@ -822,9 +1013,29 @@ def _finish(
     elif kind == "message_approved" and isinstance(payload.get("draft_id"), str):
         out = replace(out, approved_unsent=(*out.approved_unsent, payload["draft_id"]))
     elif kind == "message_sent":
-        out = replace(out, approved_unsent=tuple(d for d in out.approved_unsent if d != payload.get("draft_id")))
+        out = replace(out, approved_unsent=tuple(d for d in out.approved_unsent if d != payload.get("draft_id")),
+                      outbound_message_times=(*out.outbound_message_times, at))
+        if payload.get("auto") is True:
+            out = replace(out, auto_message_times=(*out.auto_message_times, at))
     elif kind == "consent_updated":
-        out = _consent_after(out, event, (before or model).consent_frozen)
+        out = _clear_hold(_consent_after(out, event, (before or model).consent_frozen), "opt_out")
+    elif kind == "contact_updated":
+        out = _clear_hold(replace(out, contact_confirmed_at=at), "wrong_number")
+    elif kind == "review_requested" and payload["reason"] == "reroute_exhausted":
+        out = replace(out, reroute_exhausted_at=at)
     elif kind == "review_requested":
         out = replace(out, review_reason=payload["reason"], review_requested_at=at)
+        if payload["reason"] in OUTREACH_HOLD_REASONS and payload["reason"] not in out.outreach_holds:
+            out = replace(out, outreach_holds=(*out.outreach_holds, payload["reason"]))
+    return out
+
+
+def _clear_hold(model: CaseModel, reason: str) -> CaseModel:
+    """A person dealt with the flag: `consent_updated` clears an opt-out hold, `contact_updated` a wrong-number hold. The
+    review flag the hold came with goes too, unless something else has since replaced it."""
+    if reason not in model.outreach_holds:
+        return model
+    out = replace(model, outreach_holds=tuple(h for h in model.outreach_holds if h != reason))
+    if out.review_reason == reason:
+        out = replace(out, review_reason=None, review_requested_at=None)
     return out

@@ -39,6 +39,15 @@
  * with 422, `reason` fields take only the taxonomies, and `note` (at most 200 characters) is the one
  * free-text field. Do not put patient identifiers or clinical detail in a note: the log cannot be erased.
  *
+ * Automation (BACKEND, A21, LIVE): the product principle is that humans act only at final decisions; everything else is
+ * done by the service actor `system:automation`. Every event of `GET /cases/{id}` `events[]` and of a timeline item of
+ * kind `event` carries `actor_kind: ActorKind` ("human" | "automation" | "model" | "service"; the patient's own redacted
+ * view has none). The automation actor writes `acknowledge`, `assign_ownership`, `message_sent` (a pre-approved template),
+ * `handoff_requested` (automatic re-route), `review_requested` (reason `reroute_exhausted`), `complete_confirmatory` and
+ * `closure_proposed`, each with `auto: true` in the payload (see "Written by the backend" below). Closing stays a human
+ * act: `closure_proposed` is only an annotation, the clinician still posts `clinician_review` and `close`. The case page
+ * adds `read_model.closure_proposal` and a top-level `effort`; `GET /metrics/effort` adds the totals (see EffortMetrics).
+ *
  * All timestamps are ISO-8601 strings in SIMULATED time (the programme clock, not the
  * wall clock). The UI never calls `Date.now()` for business logic; it uses `sim_time`
  * from GET /metrics/closure (or `sim_time` echoed by the mock).
@@ -135,9 +144,10 @@ export type TransitionEvent = (typeof TRANSITION_EVENTS)[number];
  *                      GET /cases/{id}/drafts (D4, live). To show a still-pending draft after a reload the
  *                      UI calls that route with the event's `draft_id`; if it is unavailable the UI says
  *                      "draft text unavailable, request a new draft". Text in a payload is ignored.)
- *  review_requested    payload {reason: "consent_withdrawn", source_event_id}
- *                                                                     actor: "system:consent"
- *                      (the API adds it when consent is withdrawn; the case is then on the human-review list)
+ *  review_requested    payload {reason: ReviewReason, source_event_id}
+ *                      actor: "system:consent" for reason "consent_withdrawn" (the API adds it when consent is withdrawn;
+ *                      the case is then on the human-review list); "system:automation" for reason "reroute_exhausted"
+ *                      (A21, LIVE: the automatic re-route list ran out, a human must `reassign`)
  *  message_approved    payload {draft_id}                             actor: the approving human
  *                      (written only by POST /drafts/{id}/approve; the approver is the actor. It cannot
  *                      be posted to POST /cases/{id}/events: 403 for every role)
@@ -156,10 +166,24 @@ export type TransitionEvent = (typeof TRANSITION_EVENTS)[number];
  *                      reason "idle" is written on a case; a dead scheduler is a system alert, GET /alerts)
  *  case_created        payload {patient_ref?}                         actor: "system:intake"
  *
+ * Written by the automation actor (A21, LIVE; actor "system:automation", `actor_kind: "automation"`, payload `auto: true`):
+ *  acknowledge         payload {auto: true}                           appended right after the case is created
+ *  assign_ownership    payload {owner: "<role>:<opaque id>", provider: "<org>", auto: true}
+ *                      annotation: sets the case owner WITHOUT acceptance. The state stays `acknowledged`; the owner still
+ *                      has to post `accept_ownership` and the escalation ladder runs if they do nothing.
+ *  message_sent        payload {notification_id, channel, language, purpose, auto: true, template_id: "<purpose>.<channel>",
+ *                      template_version: number}   a pre-approved template sent with no draft and no approval (no `draft_id`)
+ *  handoff_requested   payload {to_provider, auto: true}              the automatic re-route after a rejected or bounced referral
+ *  complete_confirmatory payload {result_ref: "Procedure/<id>" | "DiagnosticReport/<id>", auto: true}
+ *                      when the evidence scan finds the colonoscopy in the FHIR store
+ *  closure_proposed    payload {evidence_ref: "Procedure/<id>" | "DiagnosticReport/<id>", auto: true}
+ *                      annotation: the case page shows `read_model.closure_proposal` until `close` or `reopen`
+ *
  * Actor strings are `role:name` with a BACKEND role (`coordinator:amal`, `primary_care_owner:dr_ali`,
- * `specialist_owner:dr_s`, `system:scheduler`, `model:template`, `system:notifier`, `system:consent`) or a
- * bare `watchdog`. "Automated" means the role part is one of
- * system | model | watchdog | scheduler (see isAutomatedActor in lib/derive.ts).
+ * `specialist_owner:dr_s`, `system:scheduler`, `model:template`, `system:notifier`, `system:consent`,
+ * `system:automation`) or a bare `watchdog`. "Automated" means the role part is one of
+ * system | model | watchdog | scheduler (see isAutomatedActor in lib/derive.ts). A21: the API also says which kind of
+ * actor wrote an event (`actor_kind`, see ActorKind), so the UI marks `system:automation` with its own chip.
  *
  * Payload conventions on transition events (the UI sends these). BACKEND (A14): the API accepts exactly
  * these keys per event type and nothing else (app/payloads.py is the authority; every human event also
@@ -191,6 +215,7 @@ export type NonTransitionEvent =
   | "escalation_accepted"
   | "callback_requested"
   | "consent_updated"
+  | "contact_updated"
   | "message_drafted"
   | "message_approved"
   | "message_rejected"
@@ -200,7 +225,28 @@ export type NonTransitionEvent =
   | "mark_lost_contact"
   | "reassign"
   | "review_requested"
+  | "assign_ownership"
+  | "closure_proposed"
   | "reopen";
+
+/**
+ * Who wrote an event (A21, LIVE). `system:automation` => "automation"; `model:*` => "model"; `system:scheduler|watchdog|
+ * notifier|consent|intake` and a bare `scheduler` / `watchdog` => "service"; a user role (`lab`, `primary_care_owner`,
+ * `specialist_owner`, `coordinator`, `supervisor`, `patient`) => "human". The web derives the same split from the actor
+ * string when the wire has none (lib/derive.ts `actorKindOf`).
+ */
+export type ActorKind = "human" | "automation" | "model" | "service";
+export const ACTOR_KINDS: readonly ActorKind[] = ["human", "automation", "model", "service"];
+/** The actor of every automatic step (A21). */
+export const AUTOMATION_ACTOR = "system:automation";
+
+/**
+ * `review_requested.reason`: consent withdrawn (system:consent), the automatic re-route list ran out (system:automation,
+ * A21), or, from the triage actor (branch cut-triage), the patient opted out or the number is wrong. The last two hold
+ * the automation's messages until a person clears them (`consent_updated`, `contact_updated {contact_valid: true}`).
+ */
+export const REVIEW_REASONS = ["consent_withdrawn", "reroute_exhausted", "opt_out", "wrong_number"] as const;
+export type ReviewReason = (typeof REVIEW_REASONS)[number];
 
 /** Fixed taxonomy for `handoff_rejected.reason`. */
 export const HANDOFF_REJECT_REASONS = ["capacity", "wrong_service", "missing_info", "patient_declined"] as const;
@@ -253,6 +299,8 @@ export interface CaseEvent {
   type: EventType | string;
   at: string;
   actor: string;
+  /** A21 (LIVE): who wrote the event. Absent in a patient's redacted view and on an older server (use `actorKindOf`). */
+  actor_kind?: ActorKind;
   payload: Record<string, unknown>;
 }
 
@@ -394,11 +442,47 @@ export interface CaseDetail extends Omit<CaseSummary, "pathway" | "created_at" |
   /** A6: current consent (defaults: everything allowed, not withdrawn). */
   consent?: Consent;
   consent_history?: ConsentHistoryEntry[];
-  /** `consent_withdrawn` while the case is on the human-review list, else null. */
-  review_reason?: string | null;
+  /**
+   * Why the case is on the human-review list, else null: `consent_withdrawn` (the patient withdrew consent) or, A21,
+   * `reroute_exhausted` (every provider on the automatic re-route list declined or bounced; a coordinator must `reassign`).
+   */
+  review_reason?: ReviewReason | string | null;
+  /**
+   * A21 (LIVE, `read_model.closure_proposal`): set by `closure_proposed`, cleared by `close` and `reopen`; null otherwise.
+   * It is a proposal only: a clinician still posts `clinician_review` and `close` with this `evidence_ref`.
+   */
+  closure_proposal?: ClosureProposal | null;
+  /** A21 (LIVE, top level): human versus automated effort on this case. Absent for a patient login and on an older server. */
+  effort?: CaseEffort | null;
   /** A18: referral within 15 working days of the result, colonoscopy within 31 working days of referral. */
   milestones?: Partial<Record<MilestoneName, MilestoneClock>>;
   events: CaseEvent[];
+}
+
+/** `read_model.closure_proposal` (A21): the colonoscopy evidence the system found, offered to the clinician for sign-off. */
+export interface ClosureProposal {
+  /** "Procedure/<id>" or "DiagnosticReport/<id>"; becomes `close.evidence_ref`. */
+  evidence_ref: string;
+  proposed_at: string;
+  /** The `closure_proposed` event's id. */
+  event_id: string;
+}
+
+/**
+ * `effort` on `GET /cases/{id}` (A21, LIVE). `human_actions` counts staff events by humans (the patient's own events are
+ * not counted), `automated_actions` the events by `system:automation`. `human_minutes` and `baseline_minutes` use ASSUMED
+ * minutes per action (see EffortMetrics.assumptions); `baseline_minutes` is the human minutes plus the minutes of the
+ * manual actions the automated events replaced. `automation_share` (0..1) and `reduction_pct` are null while there is
+ * nothing to divide.
+ */
+export interface CaseEffort {
+  human_actions: number;
+  automated_actions: number;
+  automation_share: number | null;
+  human_minutes: number;
+  baseline_minutes: number;
+  minutes_saved: number;
+  reduction_pct: number | null;
 }
 
 /** The two clocks that span states (A18, ADR-028); the names are the keys of `milestones` in the pathway YAML. */
@@ -731,6 +815,39 @@ export interface ClosureMetrics {
 }
 
 /**
+ * GET /metrics/effort (coordinator, supervisor; A21, LIVE) -> EffortMetrics. The share of human work the automation took
+ * over, against the programme target of 40%. The minutes behind it are ASSUMED (`assumptions.status === "assumed"`) and
+ * must be sourced before the number is quoted as a result; the UI says so wherever it shows the percentage.
+ * The http adapter answers `null` when the route is missing (404) or the role may not read it (403).
+ */
+export interface EffortTotals extends CaseEffort {
+  /** The programme target, in percent (40). */
+  target_pct: number;
+  meets_target: boolean;
+}
+export interface EffortPerCase {
+  case_id: string;
+  human_actions: number;
+  automated_actions: number;
+  automation_share: number | null;
+  human_minutes: number;
+  baseline_minutes: number;
+}
+export interface EffortMetrics {
+  sim_time: string;
+  cases: number;
+  totals: EffortTotals;
+  per_case: EffortPerCase[];
+  assumptions: {
+    /** "assumed": the minutes are an estimate, not a measurement. */
+    status: "assumed" | string;
+    note: string;
+    /** Minutes per action, keyed by the action's name (for example "acknowledge", "phone_call"). */
+    minutes: Record<string, number>;
+  };
+}
+
+/**
  * GET /alerts -> Alert[] (A11). The watchdog raises `scheduler_down` when the scheduler's heartbeat has been
  * missing for 60 seconds and clears it (`cleared_at`) when heartbeats resume. An alert with
  * `cleared_at: null` is active: the dashboard shows the stale-scheduler banner. `since` and `cleared_at` are
@@ -807,6 +924,8 @@ export interface ConfirmatoryResult {
 export interface ApiClient {
   /** "mock" | "http" - for display only. */
   readonly adapter: "mock" | "http";
+  /** Mock only: whether the mock plays the automation actor (A21). Absent for http, where the backend decides. */
+  readonly automation?: boolean;
   /** GET /health (public): `sim_time` is the simulation clock, readable by every role (`/metrics/closure` is staff-only). */
   health(): Promise<{ status: string; sim_time?: string }>;
   /**
@@ -838,10 +957,14 @@ export interface ApiClient {
   approveDraft(draftId: string): Promise<DraftApproval>;
   rejectDraft(draftId: string, body: DraftRejectBody): Promise<DraftRejection>;
   closureMetrics(): Promise<ClosureMetrics>;
+  /** GET /metrics/effort (A21, coordinator and supervisor): null when the route is missing (404) or the role may not read it (403). */
+  getEffortMetrics(): Promise<EffortMetrics | null>;
   /** GET /alerts: active and cleared platform alerts (scheduler down). */
   listAlerts(): Promise<Alert[]>;
   /** Mock only: restore the seeded fixtures. No-op for http. */
   resetDemo?(): Promise<void>;
+  /** Mock only: file a new positive result (`case_created`); with automation on the mock then acknowledges and assigns it. Returns the case id. */
+  createCase?(): Promise<string>;
   /** Mock only: raise or clear the scheduler-down alert so the dashboard banner can be demonstrated. */
   setSchedulerDown?(down: boolean): Promise<void>;
 }

@@ -8,20 +8,40 @@
  */
 import type {
   Alert, ApiClient, CaseDetail, CaseEvent, CaseListParams, CaseSummary, CaseTimeline, ClosureMetrics, ConfirmatoryResult, Draft, DraftApproval,
-  DraftRecord, DraftRejection, DraftRequestBody, Me, PostEventBody, Role, TimelineItem,
+  DraftRecord, DraftRejection, DraftRequestBody, EffortMetrics, Me, PostEventBody, Role, TimelineItem,
 } from "./contract";
-import { ApiError, BACKEND_ROLE, OWNER_SCOPED_ROLES, REJECT_NOTE_MAX, REJECT_REASONS, ROLES } from "./contract";
-import { FIXTURE_RISK, SEED_ALERTS, SEED_METRICS, SIM_NOW, seedDrafts, seedEvents } from "./fixtures";
+import { ApiError, AUTOMATION_ACTOR, BACKEND_ROLE, OWNER_SCOPED_ROLES, REJECT_NOTE_MAX, REJECT_REASONS, ROLES } from "./contract";
+import { FIXTURE_RISK, SEED_ALERTS, SEED_METRICS, SIM_NOW, caseIdFor, seedDrafts, seedEvents } from "./fixtures";
 import { PROVIDER_CLINICIANS, ROLE_NAMES, ROLE_PROVIDERS, backendActor } from "./identities";
 import { ESCALATION_LADDER } from "../lib/pathway";
 import {
-  actorRole, completeDetail, consentOf, consentHistoryOf, milestonesOf, overdueDays, pendingEscalation, replayHandoffs, replayState, slaClock, summarise,
-  validateAppend,
+  actorKindOf, actorRole, closureProposalOf, completeDetail, consentOf, consentHistoryOf, milestonesOf, overdueDays, pendingEscalation, replayHandoffs,
+  replayState, reviewReasonOf, slaClock, summarise, validateAppend,
 } from "../lib/derive";
+import { effortMetricsOf, effortOf } from "../lib/effort";
 
 export { ROLE_NAMES };
 
-const KEY = "sc.mock.v2";
+/**
+ * Mock options.
+ *  automation  A21: mirror the backend's automation actor (`system:automation`): it acknowledges and assigns a new case,
+ *              sends the pre-approved result template once the owner accepts, re-routes a declined or bounced referral and
+ *              flags the case when the list runs out, and, when the colonoscopy evidence is found, records the result and
+ *              proposes closure. Default OFF, so a test that builds its own adapter keeps the manual flow; the shipped app
+ *              turns it on (see `mockAutomationFromEnv` in index.ts). A human still accepts ownership and signs off.
+ *  decliningProviders  the providers the simulated receiving side declines (reason "capacity"); default Al Noor Endoscopy Centre.
+ */
+export interface MockOptions {
+  automation?: boolean;
+  decliningProviders?: readonly string[];
+}
+
+/** The automatic re-route list (A21): who is asked next, in order, skipping providers already asked on the case. */
+export const REROUTE_LIST: readonly string[] = ["Corniche Gastro Unit", "Al Noor Endoscopy Centre", "Marina Digestive Health"];
+/** The dev seed owner a new case is assigned to, and the organisation they act for (A21). */
+const ASSIGNED_OWNER = { role: "owner", provider: "Riverside Primary Care" } as const;
+
+const KEY_BASE = "sc.mock.v3";
 const ROLE_KEY = "sc.role";
 
 interface MockDb {
@@ -91,7 +111,17 @@ export function patientEvents(events: CaseEvent[]): CaseEvent[] {
   });
 }
 
-export function createMockAdapter(storage: Pick<Storage, "getItem" | "setItem" | "removeItem"> | null = safeStorage()): ApiClient {
+/** Every staff-facing event says who wrote it (A21): the API's `actor_kind`. */
+const withKind = (e: CaseEvent): CaseEvent => ({ ...e, actor_kind: actorKindOf(e.actor) });
+
+export function createMockAdapter(
+  storage: Pick<Storage, "getItem" | "setItem" | "removeItem"> | null = safeStorage(),
+  options: MockOptions = {},
+): ApiClient {
+  const automation = options.automation === true;
+  const declining = new Set(options.decliningProviders ?? ["Al Noor Endoscopy Centre"]);
+  // A demo with automation has its own seed (cases the automation actor already worked on), so it keeps its own copy of the data.
+  const KEY = automation ? `${KEY_BASE}.auto` : KEY_BASE;
   let memory: MockDb | null = null;
 
   const storedRole = (): Role => {
@@ -129,7 +159,7 @@ export function createMockAdapter(storage: Pick<Storage, "getItem" | "setItem" |
     }
   }
   const fresh = (): MockDb => ({
-    events: seedEvents(), drafts: seedDrafts(), alerts: structuredClone(SEED_ALERTS), draftCounter: 0, notificationCounter: 0, tick: 0,
+    events: seedEvents(automation), drafts: seedDrafts(), alerts: structuredClone(SEED_ALERTS), draftCounter: 0, notificationCounter: 0, tick: 0,
   });
 
   function must(db: MockDb, id: string): CaseEvent[] {
@@ -145,9 +175,11 @@ export function createMockAdapter(storage: Pick<Storage, "getItem" | "setItem" |
       ...summary(db, id),
       consent,
       consent_history: consentHistoryOf(evs),
-      review_reason: consent.withdrawn ? "consent_withdrawn" : null,
+      review_reason: reviewReasonOf(evs),
+      closure_proposal: closureProposalOf(evs),
+      effort: effortOf(evs),
       milestones: milestonesOf(evs, SIM_NOW),
-      events: structuredClone(evs),
+      events: structuredClone(evs).map(withKind),
     };
   };
   /**
@@ -211,8 +243,65 @@ export function createMockAdapter(storage: Pick<Storage, "getItem" | "setItem" |
     if (session.role === "patient") throw new ApiError(403, "role 'patient' may not call this route");
   }
 
+  // ---- A21: the automation actor. Every step is `system:automation` with `auto: true`; none of them decides anything. ----
+  let autoCounter = 0;
+  function appendAuto(db: MockDb, id: string, type: string, payload: Record<string, unknown>) {
+    autoCounter += 1;
+    append(db, id, type, AUTOMATION_ACTOR, { ...payload, auto: true }, { internal: true, eventId: `ev-auto-${must(db, id).length + 1}-${autoCounter}` });
+  }
+
+  /** The simulated receiving side of a handoff: it declines the providers in `declining`, the others accept. */
+  function playProvider(db: MockDb, id: string, provider: string, requester: string) {
+    const clinician = PROVIDER_CLINICIANS[provider];
+    const answerer = clinician ? `${clinician.role}:${clinician.name}` : `provider:${provider}`;
+    if (answerer === requester) return;
+    if (declining.has(provider)) append(db, id, "handoff_rejected", answerer, { reason: "capacity" }, { internal: true });
+    else append(db, id, "handoff_accepted", answerer, {}, { internal: true });
+  }
+
+  /** A rejected or bounced referral is re-routed to the next provider on the list; when none is left a human is asked to reassign. */
+  function autoReroute(db: MockDb, id: string) {
+    for (let guard = 0; guard <= REROUTE_LIST.length; guard++) {
+      const evs = must(db, id);
+      if (replayState(evs) !== "referral_rejected" || consentOf(evs).withdrawn) return; // outreach is frozen: a human decides
+      const asked = new Set(evs.filter((e) => e.type === "handoff_requested").map((e) => String(e.payload.to_provider)));
+      const next = REROUTE_LIST.find((p) => !asked.has(p));
+      if (!next) {
+        const last = evs.at(-1)!;
+        appendAuto(db, id, "review_requested", { reason: "reroute_exhausted", source_event_id: last.event_id ?? `seq-${last.seq}` });
+        return;
+      }
+      appendAuto(db, id, "handoff_requested", { to_provider: next });
+      playProvider(db, id, next, AUTOMATION_ACTOR);
+    }
+  }
+
+  /** The pre-approved result template goes out once the owner has accepted, if the patient's consent and contact details allow SMS. */
+  function autoResultMessage(db: MockDb, id: string) {
+    const evs = must(db, id);
+    const consent = consentOf(evs);
+    const genesis = evs[0]?.payload.contact_valid;
+    if (consent.withdrawn || !consent.channel_sms) return;
+    if (genesis === false || (genesis && typeof genesis === "object" && (genesis as Record<string, boolean>).sms === false)) return;
+    db.notificationCounter += 1;
+    appendAuto(db, id, "message_sent", {
+      notification_id: `n-mock-${db.notificationCounter}`, channel: "sms", language: "en", purpose: "result_notification",
+      template_id: "result_notification.sms", template_version: 1,
+    });
+  }
+
+  /** The evidence scan found the colonoscopy: record the result (if booked), then propose closure. A clinician still signs off. */
+  function autoEvidenceFound(db: MockDb, id: string, evidenceRef: string) {
+    if (replayState(must(db, id)) === "confirmatory_booked") appendAuto(db, id, "complete_confirmatory", { result_ref: evidenceRef });
+    const evs = must(db, id);
+    if (replayState(evs) === "confirmatory_completed" && closureProposalOf(evs)?.evidence_ref !== evidenceRef) {
+      appendAuto(db, id, "closure_proposed", { evidence_ref: evidenceRef });
+    }
+  }
+
   return {
     adapter: "mock",
+    automation,
     async health() {
       return { status: "ok", sim_time: SIM_NOW };
     },
@@ -228,8 +317,13 @@ export function createMockAdapter(storage: Pick<Storage, "getItem" | "setItem" |
       if (!OWNER_SCOPED_ROLES.includes(session.role)) throw new ApiError(403, `role '${BACKEND_ROLE[session.role]}' may not call POST /cases/{case_id}/confirmatory-result`);
       const owner = replayHandoffs(evs).owner;
       if (!owner || owner.actor !== actor()) throw new ApiError(403, `${BACKEND_ROLE[session.role]} '${session.name}' may only act on cases they own (this case's owner is ${owner?.name ?? "not yet assigned"})`);
+      const evidenceRef = `Procedure/colonoscopy-${id}`;
+      if (automation) {
+        autoEvidenceFound(db, id, evidenceRef);
+        save(db);
+      }
       return {
-        case_id: id, evidence_ref: `Procedure/colonoscopy-${id}`, procedure_ref: `Procedure/colonoscopy-${id}`,
+        case_id: id, evidence_ref: evidenceRef, procedure_ref: evidenceRef,
         report_ref: `DiagnosticReport/colonoscopy-report-${id}`, recorded_at: SIM_NOW,
       };
     },
@@ -253,7 +347,7 @@ export function createMockAdapter(storage: Pick<Storage, "getItem" | "setItem" |
       const evs = must(db, id);
       // SEC-2: a patient's timeline is the visible events only, nothing derived (no SLA clocks, breaches, rungs, flags).
       if (session.role === "patient") return { case_id: id, sim_time: SIM_NOW, items: patientEvents(evs).map((e) => ({ kind: "event" as const, ...e })) };
-      const items: TimelineItem[] = evs.map((e) => ({ kind: "event" as const, ...e }));
+      const items: TimelineItem[] = evs.map((e) => ({ kind: "event" as const, ...withKind(e) }));
       const state = replayState(evs);
       const clock = slaClock(evs, state, SIM_NOW);
       const lateDays = overdueDays(clock.due_at, SIM_NOW);
@@ -299,19 +393,13 @@ export function createMockAdapter(storage: Pick<Storage, "getItem" | "setItem" |
     async postEvent(id, body: PostEventBody) {
       const db = load();
       const payload = body.payload ?? {};
+      const stateBefore = replayState(must(db, id));
       append(db, id, body.type, body.actor, payload, { eventId: body.event_id });
       // The mock plays the receiving provider of a handoff (only the owner can request one, as in the real API).
-      if (body.type === "handoff_requested") {
-        const provider = String(payload.to_provider ?? "");
-        const clinician = PROVIDER_CLINICIANS[provider];
-        const answerer = clinician ? `${clinician.role}:${clinician.name}` : `provider:${provider}`;
-        if (answerer !== body.actor) {
-          if (provider === "Al Noor Endoscopy Centre") {
-            append(db, id, "handoff_rejected", answerer, { reason: "capacity" }, { internal: true });
-          } else {
-            append(db, id, "handoff_accepted", answerer, {}, { internal: true });
-          }
-        }
+      if (body.type === "handoff_requested") playProvider(db, id, String(payload.to_provider ?? ""), body.actor);
+      if (automation) {
+        if (body.type === "handoff_requested" || body.type === "handoff_rejected") autoReroute(db, id);
+        if (body.type === "accept_ownership" && stateBefore === "acknowledged") autoResultMessage(db, id);
       }
       // Withdrawing consent puts the case on the human-review list (the API emits review_requested as system:consent).
       if (body.type === "consent_updated" && body.payload?.withdrawn === true) {
@@ -439,6 +527,25 @@ export function createMockAdapter(storage: Pick<Storage, "getItem" | "setItem" |
     },
     async closureMetrics(): Promise<ClosureMetrics> {
       return { ...SEED_METRICS, sim_time: SIM_NOW };
+    },
+    async getEffortMetrics(): Promise<EffortMetrics | null> {
+      if (session.role !== "coordinator" && session.role !== "supervisor") return null; // the API answers 403
+      return effortMetricsOf(load().events, SIM_NOW);
+    },
+    async createCase(): Promise<string> {
+      requireStaff();
+      const db = load();
+      let n = Object.keys(db.events).length + 1;
+      while (db.events[caseIdFor(n)]) n += 1;
+      const id = caseIdFor(n);
+      db.events[id] = [{ seq: 1, type: "case_created", at: nextAt(db), actor: "system:intake", payload: { patient_ref: `synthetic-patient-${id.slice(-3)}` } }];
+      if (automation) {
+        const who = ROLE_NAMES[ASSIGNED_OWNER.role];
+        appendAuto(db, id, "acknowledge", {});
+        appendAuto(db, id, "assign_ownership", { owner: backendActor(ASSIGNED_OWNER.role, who), provider: ASSIGNED_OWNER.provider });
+      }
+      save(db);
+      return id;
     },
     async listAlerts(): Promise<Alert[]> {
       return structuredClone(load().alerts);

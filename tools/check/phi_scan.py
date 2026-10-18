@@ -123,6 +123,7 @@ QUERY_REVIEW: dict[tuple[str, str, str], tuple[str, str]] = {
         "the owner's actor (`role:user_id`) or bare user id; a display name never matches (F8-1, fixed in api/app/readmodel.py `matches`)",
     ),
     ("GET", "/alerts", "active"): ("bool", "true or false"),
+    ("GET", "/metrics/effort", "limit"): ("int", "a row cap from 1 to 5000 (A21)"),
 }
 GAP_PARAMS = {key for key, (kind, _) in QUERY_REVIEW.items() if kind == "gap"}
 

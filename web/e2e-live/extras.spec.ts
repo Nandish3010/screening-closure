@@ -25,8 +25,12 @@ test("lost contact, a declined handoff and the coordinator's re-route", async ({
     }
   });
   await page.goto(`/coordinator/${caseId}`);
-  await page.getByTestId("acknowledge").click();
-  await expect(page.getByTestId("flash")).toContainText("acknowledged");
+  // A21: the automation actor has normally acknowledged the new case already; the manual acknowledge stays for the older flow.
+  await page.getByTestId("owner").waitFor();
+  if (await page.getByTestId("acknowledge").count()) {
+    await page.getByTestId("acknowledge").click();
+    await expect(page.getByTestId("flash")).toContainText("acknowledged");
+  }
   await as(page, "owner", "Dr. Layla Haddad");
   await page.getByTestId("accept-ownership").click();
   await expect(page.getByTestId("flash")).toContainText("You now own this case");

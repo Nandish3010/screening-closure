@@ -8,9 +8,14 @@ that the API restricts to `mark_overdue`, `escalate` and `watchdog_flagged`; it 
 close a case. Each loop it also asks the API to drain the send outbox (`POST /scheduler/outbox/drain`,
 ADR-030): approved drafts whose send was interrupted go out exactly once.
 
+Each loop it also asks the API to run the automation scans (A21, ADR-032): `POST /scheduler/automation-scan`
+(acknowledge and assign anything waiting, re-route rejected referrals, send the due pre-approved messages) and
+`POST /scheduler/evidence-scan` (find the colonoscopy in HAPI, propose the closure). Both do the work as the
+API's `system:automation` actor and answer `{"enabled": false}` unless the API runs with AUTOMATION_ENABLED=true.
+
 Heartbeat (not a case event): posted to the API (`POST /scheduler/heartbeat`, stored in the
 `heartbeats` table) at the START of every loop (before the sweep), every few seconds from a thread while
-the sweep runs, and again when it ends, including when the sweep fails, with whether the last sweep worked
+the sweep runs and again while the automation scans run, and when the loop ends, including when the sweep fails, with whether the last sweep worked
 and how many in a row have failed, so a scheduler that is alive but useless is distinguishable from one
 that is dead. A sweep over a large cohort can take longer than the watchdog's 60-second limit; a beat only
 at the end of the loop made a long sweep look like a dead scheduler (`scheduler_down`), which is a false
@@ -74,6 +79,23 @@ def drain_outbox() -> dict | None:
         log.error("outbox drain refused: HTTP %s %s", exc.code, exc.read()[:200])
     except Exception as exc:
         log.warning("outbox drain failed: %s", exc)
+    return None
+
+
+def run_automation(path: str) -> dict | None:
+    """POST /scheduler/<path> (automation-scan or evidence-scan, A21): returns the API's counts, or None on failure. A
+    failure is logged and retried next loop, never fatal and never a reason to skip the sweep."""
+    request = urllib.request.Request(
+        f"{API_URL}/scheduler/{path}", data=b"", method="POST",
+        headers={"Authorization": f"Bearer {SERVICE_TOKEN}"},
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=120) as resp:
+            return json.load(resp)
+    except urllib.error.HTTPError as exc:
+        log.error("%s refused: HTTP %s %s", path, exc.code, exc.read()[:200])
+    except Exception as exc:
+        log.warning("%s failed: %s", path, exc)
     return None
 
 
@@ -154,6 +176,18 @@ def loop_once(state: LoopState) -> dict | None:
     with BeatWhile(state.sweep_ok, state.failures):
         summary = run_sweep()
     state.sweep_ok = summary is not None
+    # The automation scans run after the sweep (a bounce it just wrote can be re-routed in the same loop). They do not
+    # decide whether the loop worked: the heartbeat is about the sweep. They run inside the heartbeat thread as well: a
+    # scan over a large cohort, or a HAPI that answers slowly, can take longer than the watchdog's 60 seconds, and a
+    # loop that is busy must not look like a dead scheduler (`scheduler_down`).
+    with BeatWhile(state.sweep_ok, state.failures):
+        for scan in ("automation-scan", "evidence-scan"):
+            counts = run_automation(scan)
+            if counts and counts.get("enabled"):
+                log.info("%s %s", scan,
+                         {k: v for k, v in counts.items() if k not in ("enabled", "errors")} or "nothing to do")
+                if counts.get("errors"):
+                    log.warning("%s errors=%s", scan, len(counts["errors"]))
     state.failures = 0 if summary is not None else state.failures + 1
     if summary is not None:
         state.last_ok = time.time()  # wall-clock-ok: liveness heartbeat only

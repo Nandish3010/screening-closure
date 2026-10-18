@@ -210,9 +210,9 @@ def test_the_module_imports_nothing_that_can_open_a_connection():
 def test_message_sent_cannot_be_written_by_anyone_else():
     store = InMemoryEventStore()
     cid = make_case(store)
-    for actor in (OWNER, "supervisor:su", "coordinator:co", "system:scheduler", "model:drafter", "watchdog",
-                  "system:consent", "clinician:dr_a"):
-        with pytest.raises(InvalidTransition, match="system:notifier|may only emit"):
+    for actor in (OWNER, "supervisor:su", "coordinator:co", "system:scheduler", "model:drafter", "system:watchdog",
+                  "system:consent", "clinician:dr_a", "system:triage", "system:agency:acme"):
+        with pytest.raises(InvalidTransition, match="actor table"):
             store.append(Event(cid, "message_sent", at(1), actor), PATHWAY)
     assert [e.type for e in store.events_for(cid)].count("message_sent") == 0
 

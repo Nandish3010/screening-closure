@@ -10,9 +10,9 @@ the response says how many do not."""
 
 import logging
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Query
 
-from app import metrics
+from app import effort, metrics
 from app.calendar import default_calendar
 from app.clock import clock
 from app.routers import cases
@@ -46,4 +46,33 @@ def closure() -> dict:
         },
         # AI draft abstentions, from the drafts table when the AI cut's migration is applied.
         "abstention": metrics.abstention(*counts) if counts is not None else None,
+    }
+
+
+@router.get("/effort")
+def effort_metrics(limit: int = Query(default=500, ge=1, le=5000)) -> dict:
+    """Human effort versus automation (A21, ADR-032): per case, the actions people took and the actions the automation
+    took, the automation share, and the minutes (all ASSUMED, see app.effort) a person spent against what the same case
+    would have cost with no automation. `totals.reduction_pct` is compared with the 40% target. `per_case` is capped at
+    `limit` rows (the totals cover every case that replays)."""
+    now = clock.now()
+    everything = cases.store.load_cases(cases.pathway)
+    loaded = [lc for lc in everything if lc.model is not None]
+    failed = len(everything) - len(loaded)
+    if failed:
+        log.error("effort metrics: %d of %d case(s) do not replay and are not measured", failed, len(everything))
+    report = effort.effort_report({str(lc.case_id): lc.events for lc in loaded})
+    per_case = [
+        {"case_id": cid, **{k: row[k] for k in (
+            "human_actions", "automated_actions", "automation_share", "human_minutes", "baseline_minutes")}}
+        for cid, row in list(report["rows"].items())[:limit]
+    ]
+    return {
+        "sim_time": now.isoformat(),
+        "cases": len(loaded),
+        "totals": report["totals"],
+        "per_case": per_case,
+        "per_case_truncated": len(loaded) > limit,
+        "replay_failures": {"count": failed},
+        "assumptions": effort.assumptions(),
     }

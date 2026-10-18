@@ -33,7 +33,7 @@ pytestmark = [
 PATHWAY = load_pathway(app_settings.pathway_path)
 AT = datetime(2026, 1, 5, 8, 0, tzinfo=UTC)
 SIGNED = {"evidence_ref": "DiagnosticReport/1", "signed_by": "Practitioner/9"}
-HUMAN = "clinician:dr_a"
+HUMAN = "primary_care_owner:dr_a"
 
 
 @pytest.fixture(scope="module")
