@@ -8,8 +8,8 @@ that does not exist, or if the worked example in section 9 stops matching the co
 
 > **Capacity caveat: escalations cost nothing in this model.** Cases are independent. There are no shared endoscopy slots, no staff
 > workload and no queueing, and a supervisor or coordinator acts on an escalation with a fixed probability however many others are open.
-> The orchestrated arm raises **about 99 escalations per 100 cases** in the upper-range scenario (see `escalations_per_100_cases`
-> below), roughly one for every case. Every completion and time gain reported is therefore a gain **before capacity constraints**, and
+> The orchestrated arm raises **about 212 escalations per 100 cases** in the upper-range scenario (see `escalations_per_100_cases`
+> below), roughly two for every case. Every completion and time gain reported is therefore a gain **before capacity constraints**, and
 > would shrink if the people who must work those escalations, or the colonoscopy slots they ask for, are not there. A capacity model
 > (staff time per escalation, slot supply, queueing) is future work. Until it exists, use `escalations_per_100_cases` to size a pilot,
 > not the completion gains.
@@ -45,6 +45,24 @@ Kaplan-Meier estimate and no competing-risks treatment.
 | Time to closure | `case_created` | `close` (needs `evidence_ref`, `signed_by`, a human actor) | first (a later re-close does not count) |
 | Open at day D | `case_created` | a `close` at or before D that has not been undone by a `reopened` at or before D | state at D |
 | Escalation acted-on window | an `escalated` event | five working days later | any action in the window |
+
+**Milestones (A18, ADR-028).** Besides its per-step SLAs, the pathway (`milestones` in `config/pathways/colorectal_fit.yaml`) carries two
+clocks that span states and are measured against a national standard. The simulator reads them from the same file as the SLAs.
+
+| Milestone | Clock starts | Met by | Allowance | Source of the figure |
+|---|---|---|---|---|
+| `referral_requested` | `case_created`, taken as the result release | the first `handoff_requested` (a request; acceptance is not required, and a transfer between owners counts) | 15 working days | DoH IFHAS standard V10, July 2025: referral to secondary care within 15 working days of releasing results ([evidence.md](../evidence.md) section 8) |
+| `confirmatory_completed` | the latest `handoff_accepted`; if no referral was accepted, the case entering `confirmatory_booked` | `complete_confirmatory` | 31 working days | UAE National Guideline for Colorectal Cancer Screening and Diagnosis, 3rd ed. 2022, Appendix 2 (colonoscopy within 31 working days of referral). **Not** an IFHAS figure. |
+
+A milestone is breached when its met-by event has not happened by the end of the allowance (the same strict "after" rule as the SLAs, on the
+working-day calendar). The breach is recorded once (the API's `mark_overdue` names the milestone instead of a state; the simulator's
+`overdue` carries `milestone`) and opens the escalation ladder for the case, in parallel with any ladder already running for the current
+step. Meeting the milestone late clears the breach and the ladder; a milestone that is met stays met. The orchestrated arm raises both; the
+baseline has no timers, so it never records a breach. The 31-working-day clock is armed when the case enters the step that awaits the
+colonoscopy, which the simulator reaches at the same instant as the referral acceptance, so its behaviour is the same as the per-step
+colonoscopy SLA it replaced. The two figures are **per-case limits**; the standards are programme-level shares (above 90% acceptable for the
+31 days), and no results metric reports the share of cases within either limit. The pre-referral step SLAs (2, 1, 3 and 5 working days) add
+up to 11, inside the 15.
 
 **Aggregation.** Each metric is computed per replication (one cohort of 2,000 cases per arm per scenario), then summarised over the 20
 replications as `{mean, ci_low, ci_high, n_reps, of_reps}`: the mean of the per-replication values, a percentile bootstrap 95% interval
@@ -156,9 +174,10 @@ and `completion_360d`.
 100 x the number of `escalated` events / `n_cases`. An `escalated` event is emitted when a rung of the pathway's escalation ladder
 whose action is `escalate` (supervisor rung, 3 working days after an SLA breach; coordinator rung, 7 working days) fires for a case that is
 still waiting. The first rung (owner reminder) emits `reminder_sent`, which is **not** counted. One case can breach several times (each
-missed SLA, and each missed colonoscopy appointment, opens a ladder), so more than one escalation per case is possible; the metric is a
+missed SLA, each missed colonoscopy appointment and each missed national timeline, see the milestones in section 1, opens a ladder, and
+the ladders run side by side), so more than one escalation per case is possible; the metric is a
 count of events per 100 cases, not the share of cases escalated. The baseline has no ladder, so 0. **Escalations cost nothing in the
-model, see the capacity caveat at the top: about 99 escalations per 100 cases in the upper-range scenario.**
+model, see the capacity caveat at the top: about 212 escalations per 100 cases in the upper-range scenario.**
 
 ### `escalation_acted_on_rate`
 Escalation acted-on rate (within 5 working days): escalations followed by an action within five working days / all escalations

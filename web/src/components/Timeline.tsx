@@ -1,5 +1,5 @@
 import type { TimelineItem } from "../api/contract";
-import { RUNG_LABEL, handoffReasonLabel } from "../lib/pathway";
+import { MILESTONES, RUNG_LABEL, handoffReasonLabel } from "../lib/pathway";
 import { fmtDateTime, titleCase } from "../lib/format";
 import { actorName, actorRole, isAutomatedActor, itemKey, type DraftView } from "../lib/derive";
 import { WATCHDOG_TEXT, watchdogDetail } from "./WatchdogMarker";
@@ -97,6 +97,24 @@ export function Timeline({ items, drafts = [] }: { items: TimelineItem[]; drafts
             <li key={itemKey(it, i)} className="tl tl-started" data-kind="sla_started">
               <div className="tl-head"><strong>SLA clock started</strong><time>{fmtDateTime(it.at)}</time></div>
               <div className="muted">{titleCase(it.sla)}{it.due_at ? ` is due ${fmtDateTime(it.due_at)}` : ""}.</div>
+            </li>
+          );
+        }
+        if (it.kind === "milestone_started" || it.kind === "milestone_breached" || it.kind === "milestone_met") {
+          const def = MILESTONES.find((m) => m.name === it.milestone);
+          const label = def?.label ?? titleCase(String(it.milestone));
+          return (
+            <li key={itemKey(it, i)} className={`tl ${it.kind === "milestone_breached" ? "tl-breach" : "tl-started"}`} data-kind={it.kind}>
+              <div className="tl-head">
+                <strong>{it.kind === "milestone_started" ? "Milestone clock started" : it.kind === "milestone_breached" ? "Milestone missed" : "Milestone met"}</strong>
+                <time>{fmtDateTime(it.at)}</time>
+              </div>
+              <div className="muted">
+                {label}
+                {it.kind === "milestone_started" && it.due_at ? ` is due ${fmtDateTime(it.due_at)}` : ""}
+                {it.kind === "milestone_breached" ? ` was due ${fmtDateTime(it.due_at ?? it.at)}` : ""}
+                {it.kind === "milestone_met" ? (it.late ? " (met late)" : " (in time)") : ""}.
+              </div>
             </li>
           );
         }

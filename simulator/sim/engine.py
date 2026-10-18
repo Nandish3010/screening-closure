@@ -37,7 +37,7 @@ from app.pathway import Pathway
 from app.state_machine import InvalidTransition, apply
 
 from .behaviour import (
-    A_POOL, H_POOL, HUMAN_KINDS, N_RUNGS, STAFF_STEPS, T_POOL, W_POOL, Behaviour, Latents, draw_latents,
+    A_POOL, H_POOL, HUMAN_KINDS, M_POOL, N_RUNGS, STAFF_STEPS, T_POOL, W_POOL, Behaviour, Latents, draw_latents,
     lognormal,
 )
 from .calendar import WorkingCalendar
@@ -80,7 +80,7 @@ class Case:
         "consent_ok", "withdrawn", "declined_care", "dropped_out", "lapses", "resp_idx", "rec_idx", "h_idx",
         "h_cur", "hstate", "appt_idx", "appt_t", "pending_appt", "reminders", "awaiting_patient", "sub",
         "timer_n", "watch_n", "watch_armed", "last_act", "extra_delay", "abandoned", "reopened", "round",
-        "bchannel", "lost_reasons", "booked_once", "last_flag", "orch",
+        "bchannel", "lost_reasons", "booked_once", "last_flag", "orch", "ms_met", "ms_timer_n",
     )
 
     def __init__(self, p: Patient, lat: Latents, msy: MessyPlan, end: float, initial_state: str, bchannel: str,
@@ -124,6 +124,8 @@ class Case:
         self.lost_reasons: list[str] = []
         self.booked_once = False
         self.last_flag = -1.0
+        self.ms_met: set[str] = set()  # milestones whose until-event has happened (A18)
+        self.ms_timer_n = 0
 
 
 @dataclass
@@ -177,6 +179,26 @@ class Engine:
             raise ParamError(f"engine has no actor model for pathway events {unknown}")
         self.slas = dict(pathway.slas_working_days)
         self.slas.setdefault("close", mp.signoff_sla_working_days)
+        # Milestones (A18, ADR-028) come from the YAML, like the SLAs. The engine models two kinds of start:
+        #  * `case_created`: a timer armed when the case starts, independent of the step the case is in, met by the
+        #    `until_event` (the referral request); its breach raises the ladder for whatever step the case is in.
+        #  * `handoff_accepted`: the engine accepts a referral and books in the same instant, so the timer is armed
+        #    on entering the step that awaits the `until_event`, exactly as the per-state colonoscopy SLA was
+        #    before it became a milestone (ADR-020: the numbers for that clock do not change).
+        self.start_milestones: list = []
+        self.step_milestone: dict[str, str] = {}
+        self.until_milestones: dict[str, list[str]] = {}
+        for m in pathway.milestones.values():
+            if m.from_event == CASE_CREATED:
+                self.start_milestones.append(m)
+                self.until_milestones.setdefault(m.until_event, []).append(m.name)
+            elif m.from_event == "handoff_accepted":
+                self.slas[m.until_event] = m.working_days
+                self.step_milestone[m.until_event] = m.name
+            else:
+                raise ParamError(f"engine cannot model milestone {m.name!r} starting at {m.from_event!r}")
+        if len(self.start_milestones) > M_POOL:
+            raise ParamError(f"engine draws {M_POOL} milestone timers per case, the pathway has {len(self.start_milestones)}")
         self.ladder = pathway.escalation_ladder
         for r in self.ladder:
             for table, name in ((mp.escalation_effect_prob, "orchestration.escalation_effect_prob"),
@@ -191,7 +213,7 @@ class Engine:
         self.n_events = 0
         self.handlers = {
             "start": self.on_start, "act": self.on_act, "p_ack": self.on_p_ack, "self_present": self.on_self_present,
-            "appt": self.on_appt, "appt_reminder": self.on_appt_reminder, "sla_due": self.on_sla_due,
+            "appt": self.on_appt, "appt_reminder": self.on_appt_reminder, "sla_due": self.on_sla_due, "ms_due": self.on_ms_due,
             "rung": self.on_rung, "ladder_end": self.on_ladder_end, "h_resp": self.on_h_resp,
             "h_timeout": self.on_h_timeout, "h_retry": self.on_h_retry, "deliv_fail": self.on_deliv_fail,
             "recover": self.on_recover, "watch": self.on_watch, "force": self.on_force, "dup": self.on_dup,
@@ -254,6 +276,8 @@ class Engine:
     def _log(self, c: Case, ev: Event, t: float) -> None:
         c.log.append(ev)
         self.n_events += 1
+        for name in self.until_milestones.get(ev.type, ()):
+            c.ms_met.add(name)
         self.hash.update(
             f"{c.p.idx}|{ev.seq}|{ev.type}|{t:.6f}|{ev.actor}|{json.dumps(ev.payload, sort_keys=True, separators=(',', ':'))}\n".encode()
         )
@@ -315,6 +339,16 @@ class Engine:
             return
         self.schedule(self.cal.add_working_days_t(t, sla), "sla_due", c, c.token, sla)
 
+    def arm_milestone(self, c: Case, t: float, m) -> None:
+        """A milestone timer (A18): not bound to the case's step token, so it survives state changes until the
+        `until_event` happens. Subject to the same scheduler-misses-a-timer rate as the SLA timers."""
+        k = c.ms_timer_n
+        c.ms_timer_n += 1
+        if c.lat.u_mtimer[k] < self.mp.timer_miss_prob:
+            self.counters["timers_missed"] += 1
+            return
+        self.schedule(self.cal.add_working_days_t(t, m.working_days), "ms_due", c, None, m.name)
+
     def sched_staff(self, c: Case, t: float, step: str) -> None:
         sd = c.lat.staff[c.round][STAFF_INDEX[step]]
         extra, c.extra_delay = c.extra_delay, 0.0
@@ -334,6 +368,9 @@ class Engine:
             self.schedule(t + m.switch_day, "switch", c)
         if c.lat.u_consent < self.mp.consent_withdrawal_prob:
             self.schedule(t + c.lat.u_consent_when * self.mp.consent_withdrawal_window_days, "consent", c, None, "generic")
+        if c.orch:
+            for m in self.start_milestones:
+                self.arm_milestone(c, t, m)
         self.enter_step(c, t)
 
     def on_act(self, c: Case, t: float, token, data) -> None:
@@ -390,7 +427,19 @@ class Engine:
     def on_sla_due(self, c: Case, t: float, token, sla) -> None:
         if token != c.token or c.abandoned:
             return
-        self.emit(c, t, "overdue", "scheduler", {"step": c.step, "sla_working_days": sla})
+        payload = {"step": c.step, "sla_working_days": sla}
+        if c.step in self.step_milestone:
+            payload["milestone"] = self.step_milestone[c.step]  # the colonoscopy clock is a milestone (A18)
+        self.emit(c, t, "overdue", "scheduler", payload)
+        self.start_ladder(c, t)
+
+    def on_ms_due(self, c: Case, t: float, token, name: str) -> None:
+        """A milestone breach (A18): once, if the `until_event` has not happened. The ladder runs for the step the
+        case is in now, like any breach; it is dropped if the case moves on (a new obligation)."""
+        if name in c.ms_met or c.abandoned or c.state == self.terminal or c.step is None:
+            return
+        m = self.pw.milestones[name]
+        self.emit(c, t, "overdue", "scheduler", {"step": c.step, "sla_working_days": m.working_days, "milestone": name})
         self.start_ladder(c, t)
 
     def start_ladder(self, c: Case, t: float) -> None:

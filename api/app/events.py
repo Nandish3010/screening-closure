@@ -23,6 +23,7 @@ from app.state_machine import (  # noqa: F401  (CASE_CREATED and replay_model ar
     genesis,
     is_automated,
     replay_model,
+    start_genesis_milestones,
     step,
 )
 
@@ -252,13 +253,13 @@ class InMemoryEventStore:
     def read_model(self, case_id: UUID, pathway: Pathway) -> CaseModel | None:
         with self._lock:
             case = self._cases.get(case_id)
-            return case.model if case else None
+            return start_genesis_milestones(case.model, pathway) if case else None
 
     def iter_open_case_models(self, pathway: Pathway, only=None):
         only = set(only) if only is not None else None
         with self._lock:
             snapshot = [
-                (cid, c.model) for cid, c in self._cases.items()
+                (cid, start_genesis_milestones(c.model, pathway)) for cid, c in self._cases.items()
                 if c.pathway == pathway.name and c.model.state != pathway.terminal_state
                 and (only is None or cid in only)
             ]
@@ -275,7 +276,7 @@ class InMemoryEventStore:
     def load_cases(self, pathway: Pathway, state: str | None = None) -> list[LoadedCase]:
         with self._lock:
             out = [
-                LoadedCase(cid, c.pathway, c.events[0].at, list(c.events), c.model)
+                LoadedCase(cid, c.pathway, c.events[0].at, list(c.events), start_genesis_milestones(c.model, pathway))
                 for cid, c in self._cases.items()
                 if c.pathway == pathway.name and (state is None or c.model.state == state)
             ]

@@ -121,6 +121,9 @@ def _case_json(case_id: UUID, identity: Identity | None = None) -> dict:
         # state, overdue, escalation_level, owner, consent_frozen, last_event_at, ... derived
         # by replaying the events above (see app.state_machine.CaseModel).
         "read_model": model.to_json(),
+        # A18: {referral_requested: {due_at, met_at, overdue, ...}, confirmatory_completed: {...}}; the clocks that
+        # span states, with their due dates (read_model.milestones holds the raw replayed state, without due dates).
+        "milestones": readmodel.milestones_json(model, pathway, default_calendar()),
         "actors": _actors_json(events, model),
         "events": [_event_json(e) for e in events],
         # D9: {score, top_factors: [{feature, value, contribution}]}; null for a patient or if unscorable.

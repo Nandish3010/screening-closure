@@ -15,7 +15,7 @@ import { FIXTURE_RISK, SEED_ALERTS, SEED_METRICS, SIM_NOW, seedDrafts, seedEvent
 import { PROVIDER_CLINICIANS, ROLE_NAMES, ROLE_PROVIDERS, backendActor } from "./identities";
 import { ESCALATION_LADDER } from "../lib/pathway";
 import {
-  consentHistoryOf, consentOf, overdueDays, pendingEscalation, replayHandoffs, replayState, slaClock, summarise,
+  consentHistoryOf, consentOf, milestonesOf, overdueDays, pendingEscalation, replayHandoffs, replayState, slaClock, summarise,
   validateAppend,
 } from "../lib/derive";
 
@@ -118,6 +118,7 @@ export function createMockAdapter(storage: Pick<Storage, "getItem" | "setItem" |
       consent,
       consent_history: consentHistoryOf(evs),
       review_reason: consent.withdrawn ? "consent_withdrawn" : null,
+      milestones: milestonesOf(evs, SIM_NOW),
       events: structuredClone(evs),
     };
   };
@@ -224,6 +225,11 @@ export function createMockAdapter(storage: Pick<Storage, "getItem" | "setItem" |
             ...(typeof e.payload.idle_days === "number" ? { idle_days: e.payload.idle_days } : {}),
           });
         }
+      }
+      for (const [name, m] of Object.entries(milestonesOf(evs, SIM_NOW))) {
+        if (m.started_at) items.push({ kind: "milestone_started", at: m.started_at, milestone: name, due_at: m.due_at, working_days: m.working_days });
+        if (m.overdue && m.due_at) items.push({ kind: "milestone_breached", at: m.due_at, milestone: name, due_at: m.due_at });
+        if (m.met_at) items.push({ kind: "milestone_met", at: m.met_at, milestone: name, due_at: m.due_at, late: m.met_late === true });
       }
       items.sort((a, b) => a.at.localeCompare(b.at));
       return { case_id: id, sim_time: SIM_NOW, items };

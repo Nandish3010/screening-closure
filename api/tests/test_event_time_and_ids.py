@@ -148,9 +148,11 @@ def test_a_bounce_id_comes_from_the_request_event():
 
 
 def _overdue_id(cid, model, now):
-    planned = [e for e in plan_case(cid, model, PATHWAY, UAE, now) if e.type == "mark_overdue"]
+    # the state's breach only: the referral milestone (A18) breaches too, with its own ids (test_milestones.py)
+    planned = [e for e in plan_case(cid, model, PATHWAY, UAE, now) if e.type == "mark_overdue" and "state" in e.payload]
     assert len(planned) == 1
-    again = [e for e in plan_case(cid, model, PATHWAY, UAE, now + timedelta(hours=1)) if e.type == "mark_overdue"]
+    again = [e for e in plan_case(cid, model, PATHWAY, UAE, now + timedelta(hours=1))
+             if e.type == "mark_overdue" and "state" in e.payload]
     assert again[0].event_id == planned[0].event_id  # stable for one clock, whenever it is planned
     return planned[0].event_id
 
@@ -187,7 +189,7 @@ def test_rungs_take_the_clock_start_too_and_a_consent_excursion_keeps_the_clock(
     cid = uuid4()
     model = drive(*TO_CONTACTED)
     started = model.clock_started_event_id
-    planned = plan_case(cid, model, PATHWAY, UAE, at(400))
+    planned = [e for e in plan_case(cid, model, PATHWAY, UAE, at(400)) if "state" in e.payload]
     assert {e.event_id for e in planned} == {sweep_event_id(cid, started, k) for k in ("mark_overdue", "escalate:reminder", "escalate:supervisor", "escalate:coordinator")}
     # consent withdrawn and restored is an excursion: the same clock, so the same breach and the same ids
     model = step(model, make_event("consent_updated", "patient:p", {"withdrawn": True}, at(5)), PATHWAY)
@@ -195,12 +197,16 @@ def test_rungs_take_the_clock_start_too_and_a_consent_excursion_keeps_the_clock(
     assert model.state == "patient_contacted" and model.clock_started_event_id == started
 
 
-def test_a_referral_acceptance_restarts_the_confirmatory_clock_with_its_own_event():
+def test_a_referral_acceptance_restarts_the_colonoscopy_milestone_with_its_own_event():
+    """A18 moved the colonoscopy clock from the confirmatory_booked SLA to the confirmatory_completed milestone
+    (ADR-028); its ids derive from the handoff_accepted that started it, as the state clock's did (SEC-2)."""
     model = drive(*TO_CONTACTED, ("patient_acknowledge", "patient:p", {}))
-    assert PATHWAY.state_clock_start("confirmatory_booked") == "handoff_accepted"
+    assert PATHWAY.milestones["confirmatory_completed"].from_event == "handoff_accepted"
     model = step(model, make_event("handoff_requested", OWNER, {"to_provider": "endo-1"}, at(10)), PATHWAY)
     accept = make_event("handoff_accepted", "specialist_owner:s", {}, at(11))
     model = step(model, accept, PATHWAY)
-    model = step(model, make_event("book_confirmatory", "specialist_owner:s", {}, at(12)), PATHWAY)
-    assert model.state == "confirmatory_booked" and model.clock_started_event_id == accept.event_id
-    assert model.clock_started_at == accept.at
+    book = make_event("book_confirmatory", "specialist_owner:s", {}, at(12))
+    model = step(model, book, PATHWAY)
+    ms = model.milestones["confirmatory_completed"]
+    assert model.state == "confirmatory_booked" and ms.started_event_id == accept.event_id
+    assert ms.started_at == accept.at and model.clock_started_event_id == book.event_id

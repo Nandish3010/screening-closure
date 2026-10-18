@@ -25,6 +25,7 @@ A_POOL = 4  # appointments
 H_POOL = 5  # referral attempts
 D_POOL = 8  # lapses
 T_POOL = 16  # scheduler timers
+M_POOL = 4  # milestone timers (A18)
 W_POOL = 8  # watchdog flags
 
 REJECTION_REASONS = ("capacity", "wrong_service", "missing_info", "patient_declined")
@@ -44,7 +45,7 @@ class Latents:
         "u_h", "u_reason", "z_h", "u_notice", "z_notice", "u_declined", "z_reroute", "u_drop",
         "u_self", "z_self", "u_consent", "u_consent_when", "u_consent_declines", "z_consent_review",
         "u_reopen", "z_reopen", "u_timer", "u_watch", "z_watch", "u_bchannel",
-        "u_switch_loss", "u_switch_rej", "z_switch", "u_switch_reason", "z_review", "u_refuse", "u_reach",
+        "u_switch_loss", "u_switch_rej", "z_switch", "u_switch_reason", "z_review", "u_refuse", "u_reach", "u_mtimer",
     )
 
 
@@ -83,6 +84,7 @@ def draw_latents(seed: int, key: str) -> Latents:
     L.z_review = g(0, 1)
     L.u_refuse = r()
     L.u_reach = r()  # drawn last so every earlier draw (and every existing result) is unchanged
+    L.u_mtimer = [r() for _ in range(M_POOL)]  # A18: after u_reach for the same reason
     return L
 
 

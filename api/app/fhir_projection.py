@@ -44,7 +44,7 @@ from app.calendar import WorkingCalendar
 from app.events import Event
 from app.pathway import Pathway
 from app.state_machine import CASE_CREATED, CaseModel, actor_role, is_automated, replay_model
-from app.sweep import due_at_for
+from app.readmodel import current_due
 
 log = logging.getLogger("app.fhir_projection")
 
@@ -315,11 +315,11 @@ class Mapper:
             "status": TASK_STATUS.get(model.state, "in-progress"),
             "businessStatus": {"coding": [{"system": SYSTEM_STATE, "code": model.state}]},
             "intent": "order",
-            "priority": "urgent" if model.overdue else "routine",
+            "priority": "urgent" if model.any_overdue else "routine",
             "code": {"text": "Positive FIT result: follow up to documented closure"},
             "authoredOn": _iso(genesis.at), "lastModified": _iso(model.last_event_at),
             "extension": [
-                {"url": EXT + "overdue", "valueBoolean": bool(model.overdue)},
+                {"url": EXT + "overdue", "valueBoolean": bool(model.any_overdue)},
                 {"url": EXT + "escalation-level", "valueInteger": int(model.escalation_level)},
                 {"url": EXT + "consent-frozen", "valueBoolean": bool(model.consent_frozen)},
             ],
@@ -337,7 +337,7 @@ class Mapper:
                 ensure.append(practitioner)
         due = None
         if model.state in self.pathway.open_states:
-            due = (model.breach_due_at if model.overdue and model.breach_due_at else due_at_for(model, self.pathway, self.calendar))
+            due = current_due(model, self.pathway, self.calendar)  # the state SLA or a running milestone, whichever is first
         if due is not None:
             task["restriction"] = {"period": {"end": _iso(due)}}
         return task, ensure

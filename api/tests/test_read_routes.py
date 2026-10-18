@@ -191,10 +191,11 @@ def test_t_a27_the_row_shape_and_the_resolved_owner(backend):
     assert 0.0 <= row["risk_score"] <= 1.0  # D9: the modelled risk of loss to follow-up; ordering only
     d = detail(cid)
     assert row["last_event_at"] == row["updated_at"] == d["events"][-1]["at"] and row["created_at"] == d["events"][0]["at"]
-    # due_at: the current state's SLA (accept_ownership 2 working days -> owner_accepted awaits contact, 5)
+    # due_at: the next deadline, here the current state's SLA (owner_accepted awaits contact_patient, 3 working days),
+    # which falls before the referral milestone (15 working days from the result, A18)
     cal = default_calendar()
     entered = datetime.fromisoformat(d["read_model"]["clock_started_at"])
-    assert row["due_at"] == cal.add_working_days(entered, 5).astimezone(UTC).isoformat()
+    assert row["due_at"] == cal.add_working_days(entered, 3).astimezone(UTC).isoformat()
     # the case page carries the same worklist fields
     assert {k: d[k] for k in KEYS - {"case_id", "state"}} == {k: row[k] for k in KEYS - {"case_id", "state"}}
 
@@ -208,11 +209,14 @@ def test_t_a27_overdue_rows_report_the_breach_due_date_and_escalation(backend):
     assert all(r["overdue"] for r in listing(overdue="true"))
 
 
-def test_t_a27_closed_and_consent_withdrawn_cases_have_no_due_date(backend):
+def test_t_a27_a_consent_withdrawn_case_has_no_state_deadline_only_the_running_milestone(backend):
     cid = new_case("Patient/rr-pat")
     post(cid, "consent_updated", H("patient", "rr pat", "Patient/rr-pat"), {"withdrawn": True})
     row = next(r for r in listing(state="consent_withdrawn") if r["case_id"] == cid)
-    assert row["due_at"] is None and row["consent_frozen"] is True
+    d = detail(cid)
+    # no state SLA applies while consent is withdrawn; the referral milestone (15 working days from the result) runs on
+    assert row["due_at"] == d["milestones"]["referral_requested"]["due_at"] is not None
+    assert row["consent_frozen"] is True
 
 
 def test_t_a27_a_patient_sees_only_their_own_cases(backend):
@@ -360,10 +364,16 @@ def test_t_a28_the_confirmatory_clock_is_shown_starting_at_referral_acceptance(b
                         ("book_confirmatory", spec, {})]:
         assert post(cid, type_, h, p).status_code == 201, type_
     items = timeline(cid)["items"]
-    started = next(i for i in items if i["kind"] == "sla_started" and i["sla"] == "complete_confirmatory")
+    started = next(i for i in items if i["kind"] == "milestone_started" and i["milestone"] == "confirmatory_completed")
     accepted = next(i for i in items if i["kind"] == "event" and i["type"] == "handoff_accepted")
-    assert started["clock_start"] == "handoff_accepted" and started["at"] == accepted["at"]
+    assert started["from_event"] == "handoff_accepted" and started["at"] == accepted["at"]
     assert started["working_days"] == 31
+    # the referral milestone started at the result and was met by the referral request (A18)
+    requested = next(i for i in items if i["kind"] == "event" and i["type"] == "handoff_requested")
+    first = next(i for i in items if i["kind"] == "milestone_started" and i["milestone"] == "referral_requested")
+    met = next(i for i in items if i["kind"] == "milestone_met" and i["milestone"] == "referral_requested")
+    assert first["at"] == items[0]["at"] and met["at"] == requested["at"] and met["late"] is False
+    assert not any(i["kind"] == "sla_started" and i.get("sla") == "complete_confirmatory" for i in items)
 
 
 def test_t_a28_there_is_no_write_route_and_access_follows_the_case(backend):

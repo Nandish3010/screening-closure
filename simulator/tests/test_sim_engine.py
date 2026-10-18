@@ -170,3 +170,55 @@ def test_engine_speed_2000_cases_120_days_under_60s(ctx):
     for arm in ARMS:
         run_arm(ctx, arm, 2000, 120, SEED)
     assert time.perf_counter() - t0 < 60
+
+
+# ---- milestones from the pathway YAML (A18, ADR-028) -------------------------------------------------
+def _milestone_overdue(case, name):
+    return [e for e in case.log if e.type == "overdue" and e.payload.get("milestone") == name]
+
+
+def test_the_orchestrated_arm_raises_the_referral_breach_and_the_baseline_ignores_it(ctx):
+    base, orch = _run(ctx, BASELINE, cases=300, days=200), _run(ctx, ORCHESTRATED, cases=300, days=200)
+    assert not any(_milestone_overdue(c, "referral_requested") for c in base.cases)
+    assert not any(e.type == "overdue" for c in base.cases for e in c.log)  # no timers at all in the baseline
+    breached = [c for c in orch.cases if _milestone_overdue(c, "referral_requested")]
+    assert breached, "300 cases never breached the 15-working-day referral milestone"
+    days = ctx.pathway.milestones["referral_requested"].working_days
+    for c in breached:
+        [ev] = _milestone_overdue(c, "referral_requested")  # once per case
+        assert ev.actor == "scheduler" and ev.payload["sla_working_days"] == days
+        created = next(e for e in c.log if e.type == "case_created").at
+        assert ev.at >= ctx.cal.add_working_days(created, days)  # never before the due date
+        # the breach is only raised for a case that had not requested the referral by then
+        assert not [e for e in c.log if e.type == "handoff_requested" and e.at < ev.at]
+
+
+def test_a_requested_referral_cancels_the_milestone_timer(ctx):
+    orch = _run(ctx, ORCHESTRATED, cases=300, days=200)
+    for c in orch.cases:
+        requested = [e.at for e in c.log if e.type == "handoff_requested"]
+        for ev in _milestone_overdue(c, "referral_requested"):
+            assert not requested or min(requested) >= ev.at
+
+
+def test_the_colonoscopy_breach_is_the_confirmatory_milestone_and_keeps_its_31_working_days(ctx):
+    orch = _run(ctx, ORCHESTRATED, cases=300, days=250)
+    col = [(c, e) for c in orch.cases for e in _milestone_overdue(c, "confirmatory_completed")]
+    assert col
+    for _, e in col:
+        assert e.payload["sla_working_days"] == ctx.pathway.milestones["confirmatory_completed"].working_days == 31
+        assert e.payload["step"] == "complete_confirmatory"
+    assert "complete_confirmatory" not in ctx.pathway.slas_working_days
+
+
+def test_the_engine_refuses_a_milestone_it_cannot_model(ctx):
+    import dataclasses
+
+    from simulator.sim.engine import make_engine
+    from simulator.sim.params import ParamError
+
+    bad = dataclasses.replace(
+        ctx.pathway.milestones["referral_requested"], name="odd", from_event="acknowledge")
+    pw = dataclasses.replace(ctx.pathway, milestones={**ctx.pathway.milestones, "odd": bad})
+    with pytest.raises(ParamError, match="cannot model milestone"):
+        make_engine(ORCHESTRATED, ctx.mp, pw, ctx.cal, 100, SEED)

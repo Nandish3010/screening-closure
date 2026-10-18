@@ -35,6 +35,11 @@ replay of the event log produces:
                          state is a new clock and so a new breach, even at the very same instant
     referral_accepted_at `at` of the latest handoff_accepted (A13), None before any
     breach_due_at        the due date of the open breach (set with overdue)
+    milestones           per milestone of the pathway (A18, ADR-028): {started_at, met_at, overdue,
+                         breach_due_at, escalation_level, escalation_accepted, void}. A milestone is a clock
+                         that spans states (referral within 15 working days of the result, colonoscopy within
+                         31 working days of referral); it has its own overdue flag and ladder position, kept
+                         apart from the state-level ones above. `overdue` above stays the state's
     backdated_events     how many accepted events had an `at` earlier than the previous event's `at`
                          (T-F4, ADR-027): a user token's backdated event is refused at the API (SEC-2); only the
                          service actors that legitimately post late (the sweep, the notifier) can still produce
@@ -116,6 +121,38 @@ def _aware(dt: datetime) -> datetime:
 
 
 @dataclass(frozen=True)
+class MilestoneState:
+    """One milestone's state in the read model (A18). `overdue` is the milestone's own breach flag: the state-level
+    `CaseModel.overdue` is untouched by it. `void` = the case closed before the milestone was met."""
+
+    started_at: datetime | None = None
+    # the `event_id` of the event that started this clock (the `case_created` marker, the `from_event`, or the
+    # event that entered the awaiting state): the sweep derives the milestone's mark_overdue and rung ids from it,
+    # never from a timestamp (SEC-2), so a restarted milestone is a new breach even at the very same instant
+    started_event_id: UUID | None = None
+    met_at: datetime | None = None
+    overdue: bool = False
+    breach_due_at: datetime | None = None
+    escalation_level: int = 0
+    escalation_accepted: bool = False
+    void: bool = False
+
+    def to_json(self) -> dict:
+        def iso(dt):
+            return dt.isoformat() if dt is not None else None
+
+        return {
+            "started_at": iso(self.started_at),
+            "met_at": iso(self.met_at),
+            "overdue": self.overdue,
+            "breach_due_at": iso(self.breach_due_at),
+            "escalation_level": self.escalation_level,
+            "escalation_accepted": self.escalation_accepted,
+            "void": self.void,
+        }
+
+
+@dataclass(frozen=True)
 class CaseModel:
     state: str
     overdue: bool = False
@@ -144,6 +181,19 @@ class CaseModel:
     review_reason: str | None = None  # human review flag (consent withdrawal), set by review_requested
     review_requested_at: datetime | None = None
     backdated_events: int = 0  # T-F4, ADR-027: accepted events dated before the one just before them
+    created_at: datetime | None = None  # the genesis event's `at` (a milestone may start there)
+    created_event_id: UUID | None = None  # the genesis event's `event_id` (a milestone started there derives its ids from it)
+    milestones: dict = field(default_factory=dict)  # name -> MilestoneState (A18); never mutated in place
+
+    @property
+    def milestone_overdue(self) -> bool:
+        """True while any milestone is breached and unmet."""
+        return any(m.overdue for m in self.milestones.values())
+
+    @property
+    def any_overdue(self) -> bool:
+        """The state SLA or any milestone is breached: what the worklist's `overdue` means (A18)."""
+        return self.overdue or self.milestone_overdue
 
     def to_json(self) -> dict:
         def iso(dt):
@@ -173,26 +223,47 @@ class CaseModel:
             "review_reason": self.review_reason,
             "review_requested_at": iso(self.review_requested_at),
             "backdated_events": self.backdated_events,
+            "milestones": {name: m.to_json() for name, m in self.milestones.items()},
         }
 
 
 def initial_model(pathway: Pathway) -> CaseModel:
-    return CaseModel(state=pathway.initial_state)
+    return CaseModel(state=pathway.initial_state, milestones={n: MilestoneState() for n in pathway.milestones})
 
 
-def genesis(model: CaseModel, event: Event) -> CaseModel:
-    """The case_created marker starts the first state's SLA clock; it changes no state."""
+def genesis(model: CaseModel, event: Event, pathway: Pathway | None = None) -> CaseModel:
+    """The case_created marker starts the first state's SLA clock and any milestone that runs from
+    `case_created`; it changes no state. Without a pathway the milestones start at the first `step`
+    instead (`start_genesis_milestones`), which is how a store that holds only the incremental model
+    stays correct."""
     at = _aware(event.at)
-    return replace(model, last_event_at=at, last_activity_at=at, last_human_activity_at=at,
-                   last_human_activity_event_id=event.event_id,
-                   clock_started_at=at, clock_started_event_id=event.event_id)
+    out = replace(model, last_event_at=at, last_activity_at=at, last_human_activity_at=at,
+                  last_human_activity_event_id=event.event_id,
+                  clock_started_at=at, clock_started_event_id=event.event_id,
+                  created_at=at, created_event_id=event.event_id)
+    return start_genesis_milestones(out, pathway) if pathway is not None else out
+
+
+def start_genesis_milestones(model: CaseModel, pathway: Pathway) -> CaseModel:
+    """Idempotent: start every unstarted milestone that runs from `case_created` at the case's creation, and
+    make sure every milestone of the pathway has an entry."""
+    changed: dict[str, MilestoneState] = {}
+    for name, d in pathway.milestones.items():
+        cur = model.milestones.get(name)
+        if cur is None:
+            cur = MilestoneState()
+            changed[name] = cur
+        if (d.from_event == CASE_CREATED and model.created_at is not None and cur.started_at is None
+                and cur.met_at is None and not cur.void):
+            changed[name] = replace(cur, started_at=model.created_at, started_event_id=model.created_event_id)
+    return replace(model, milestones={**model.milestones, **changed}) if changed else model
 
 
 def replay_model(events, pathway: Pathway) -> CaseModel:
     """Deterministically fold events into the read model, from the pathway's initial state."""
     model = initial_model(pathway)
     for ev in events:
-        model = genesis(model, ev) if ev.type == CASE_CREATED else step(model, ev, pathway)
+        model = genesis(model, ev, pathway) if ev.type == CASE_CREATED else step(model, ev, pathway)
     return model
 
 
@@ -200,14 +271,18 @@ def step(model: CaseModel, event: Event, pathway: Pathway) -> CaseModel:
     """Return the new read model, or raise InvalidTransition. Never mutates anything."""
     if event.type in pathway.human_only_events and is_automated(event.actor):
         raise InvalidTransition(f"event {event.type!r} requires a human actor")
+    if pathway.milestones:
+        model = start_genesis_milestones(model, pathway)
     _precheck(model, event, pathway)
 
     candidates = pathway.transitions_for(model.state, event.type)
     chosen = next((t for t in candidates if t.matches(event.payload)), None)
     if chosen is not None:
-        return _finish(_transition(model, event, pathway, chosen), event, model, pathway)
+        done = _finish(_transition(model, event, pathway, chosen), event, model, pathway)
+        return _advance_milestones(done, model, event, pathway)
     if event.type in pathway.annotations and model.state in pathway.open_states:
-        return _finish(_annotate(model, event, pathway), event, model, pathway)
+        done = _finish(_annotate(model, event, pathway), event, model, pathway)
+        return _advance_milestones(done, model, event, pathway)
     if candidates:
         raise InvalidTransition(
             f"event {event.type!r} from state {model.state!r}: payload does not satisfy "
@@ -297,12 +372,69 @@ def _require_current_state(model: CaseModel, event: Event) -> None:
         )
 
 
+# -- milestones (A18, ADR-028) -------------------------------------------------------------
+
+
+def _ms(model: CaseModel, name: str) -> MilestoneState:
+    return model.milestones.get(name) or MilestoneState()
+
+
+def _set_ms(model: CaseModel, name: str, ms: MilestoneState) -> CaseModel:
+    return replace(model, milestones={**model.milestones, name: ms})
+
+
+def _advance_milestones(new: CaseModel, before: CaseModel, event: Event, pathway: Pathway) -> CaseModel:
+    """Fold one accepted event into every milestone: the `until_event` meets it (and clears its breach and ladder),
+    the `from_event` (re)starts an unmet one, entering the state that awaits the `until_event` starts one that never
+    got a `from_event` (a case with no formal referral keeps a colonoscopy clock, ADR-020), and closing the case
+    voids the unmet ones. A met milestone never changes again."""
+    if not pathway.milestones:
+        return new
+    at = _aware(event.at)
+    closing = new.state == pathway.terminal_state and before.state != pathway.terminal_state
+    entered = new.state != before.state and new.state in pathway.open_states
+    awaiting = {m.name for m in pathway.milestone_awaiting(new.state)} if entered else set()
+    out = dict(new.milestones)
+    for name, d in pathway.milestones.items():
+        cur = out.get(name) or MilestoneState()
+        if cur.met_at is None and not cur.void:
+            if event.type == d.until_event:
+                cur = replace(cur, met_at=at, overdue=False, escalation_level=0, escalation_accepted=False)
+            elif event.type == d.from_event:
+                cur = MilestoneState(started_at=at, started_event_id=event.event_id)  # a new obligation: breach and ladder cleared
+            elif cur.started_at is None and name in awaiting:
+                cur = replace(cur, started_at=at, started_event_id=event.event_id)
+            if closing and cur.met_at is None:
+                cur = replace(cur, void=True, overdue=False, escalation_level=0, escalation_accepted=False)
+        out[name] = cur
+    return replace(new, milestones=out)
+
+
+def _milestone_in(model: CaseModel, event: Event, pathway: Pathway) -> tuple[str, MilestoneState]:
+    """The named milestone of a mark_overdue / escalate payload, which must be running and unmet."""
+    name = event.payload.get("milestone")
+    if name not in pathway.milestones:
+        raise InvalidTransition(f"event {event.type!r} names unknown milestone {name!r}")
+    ms = _ms(model, name)
+    if ms.void or ms.met_at is not None:
+        raise InvalidTransition(f"milestone {name!r} is already {'met' if ms.met_at is not None else 'void'}")
+    if ms.started_at is None:
+        raise InvalidTransition(f"milestone {name!r} has not started")
+    return name, ms
+
+
 def _mark_overdue(model: CaseModel, event: Event, pathway: Pathway) -> CaseModel:
-    _require_current_state(model, event)
-    if pathway.sla_for_state(model.state) is None:
-        raise InvalidTransition(f"state {model.state!r} has no SLA to breach")
-    if model.overdue:
-        raise InvalidTransition("case is already overdue for this state")
+    milestone = event.payload.get("milestone")
+    if milestone is None:
+        _require_current_state(model, event)
+        if pathway.sla_for_state(model.state) is None:
+            raise InvalidTransition(f"state {model.state!r} has no SLA to breach")
+        if model.overdue:
+            raise InvalidTransition("case is already overdue for this state")
+    else:
+        name, ms = _milestone_in(model, event, pathway)
+        if ms.overdue:
+            raise InvalidTransition(f"milestone {name!r} is already overdue")
     raw = event.payload.get("due_at")
     try:
         due = _aware(datetime.fromisoformat(str(raw).replace("Z", "+00:00")))
@@ -310,35 +442,62 @@ def _mark_overdue(model: CaseModel, event: Event, pathway: Pathway) -> CaseModel
         raise InvalidTransition(f"mark_overdue needs an ISO due_at, got {raw!r}") from None
     if _aware(event.at) <= due:
         raise InvalidTransition("mark_overdue before the due date")
+    if milestone is not None:
+        return _set_ms(model, name, replace(ms, overdue=True, breach_due_at=due))
     return replace(model, overdue=True, breach_due_at=due)
 
 
 def _escalate(model: CaseModel, event: Event, pathway: Pathway) -> CaseModel:
-    _require_current_state(model, event)
-    if not model.overdue:
-        raise InvalidTransition("cannot escalate a case that is not overdue")
-    if model.escalation_accepted:
+    milestone = event.payload.get("milestone")
+    if milestone is None:
+        _require_current_state(model, event)
+        overdue, accepted, current = model.overdue, model.escalation_accepted, model.escalation_level
+        what = "case"
+    else:
+        name, ms = _milestone_in(model, event, pathway)
+        overdue, accepted, current = ms.overdue, ms.escalation_accepted, ms.escalation_level
+        what = f"milestone {name!r}"
+    if not overdue:
+        raise InvalidTransition(f"cannot escalate a {what} that is not overdue")
+    if accepted:
         raise InvalidTransition("a human accepted the latest rung: no further rungs for this breach")
     rung = pathway.rung(str(event.payload.get("rung")))
     if rung is None:
         raise InvalidTransition(f"unknown escalation rung {event.payload.get('rung')!r}")
     level = pathway.rung_level(rung.rung)
-    if level != model.escalation_level + 1:
+    if level != current + 1:
         raise InvalidTransition(
             f"rung {rung.rung!r} is level {level}; the next rung is level "
-            f"{model.escalation_level + 1} (rungs are never skipped or repeated)"
+            f"{current + 1} (rungs are never skipped or repeated)"
         )
     target = event.payload.get("target")
     if target is not None and target != rung.target:
         raise InvalidTransition(f"rung {rung.rung!r} targets {rung.target!r}, not {target!r}")
+    if milestone is not None:
+        return _set_ms(model, name, replace(ms, escalation_level=level))
     return replace(model, escalation_level=level)
 
 
 def _escalation_accepted(model: CaseModel, event: Event, pathway: Pathway) -> CaseModel:
-    rung = pathway.rung_at(model.escalation_level)
+    """Accepts the latest rung of one ladder. The ladder is the milestone the payload names; without one it is the
+    state's ladder if that has a rung, else the one milestone ladder that has a rung (so a client that does not
+    know about milestones can still accept)."""
+    milestone = event.payload.get("milestone")
+    if milestone is None and model.escalation_level == 0:
+        running = [n for n, m in model.milestones.items() if m.escalation_level > 0]
+        if len(running) == 1:
+            milestone = running[0]
+    if milestone is not None:
+        if milestone not in pathway.milestones:
+            raise InvalidTransition(f"escalation_accepted names unknown milestone {milestone!r}")
+        ms = _ms(model, milestone)
+        level, accepted = ms.escalation_level, ms.escalation_accepted
+    else:
+        level, accepted = model.escalation_level, model.escalation_accepted
+    rung = pathway.rung_at(level)
     if rung is None:
         raise InvalidTransition("no escalation rung to accept")
-    if model.escalation_accepted:
+    if accepted:
         raise InvalidTransition(f"rung {rung.rung!r} is already accepted")
     if actor_role(event.actor) not in rung.accepted_by:
         raise InvalidTransition(
@@ -348,6 +507,8 @@ def _escalation_accepted(model: CaseModel, event: Event, pathway: Pathway) -> Ca
     named = event.payload.get("rung")
     if named is not None and named != rung.rung:
         raise InvalidTransition(f"the latest rung is {rung.rung!r}, not {named!r}")
+    if milestone is not None:
+        return _set_ms(model, milestone, replace(ms, escalation_accepted=True))
     return replace(model, escalation_accepted=True)
 
 

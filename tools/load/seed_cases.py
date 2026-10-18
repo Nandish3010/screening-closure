@@ -183,6 +183,12 @@ def _chain_to(pathway: Pathway, state: str) -> list[tuple[str, str, dict, str]]:
     for t in pathway.main_transitions:
         if t.to_state == pathway.terminal_state:
             break
+        if t.event == "book_confirmatory":
+            # The referral precedes the booking (A18): it meets the 15-working-day referral milestone and starts the
+            # 31-working-day colonoscopy milestone, as in a real case. Without it every old case would breach the
+            # referral milestone.
+            chain.append(("handoff_requested", t.from_state, {"to_provider": "provider-a"}, "primary_care_owner:pco-1"))
+            chain.append(("handoff_accepted", t.from_state, {}, "specialist_owner:so-1"))
         chain.append((t.event, t.from_state, {}, ACTOR_BY_EVENT.get(t.event, "primary_care_owner:pco-1")))
         if t.to_state == state:
             return chain

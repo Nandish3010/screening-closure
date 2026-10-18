@@ -7,14 +7,23 @@ reason `timeout`) events from `system:scheduler`; in particular it can never pro
 (T-A16). `run_sweep` feeds it
 every open case from a store and appends what it plans.
 
+Milestones (A18, ADR-028). Besides the current state's SLA the planner evaluates every milestone of the
+pathway (referral within 15 working days of the result, colonoscopy within 31 working days of referral). A
+milestone breach is `mark_overdue {milestone, due_at}` and the escalation ladder runs for it exactly as for a
+state breach, with its own position (`MilestoneState.escalation_level`).
+
 Idempotency: each planned event has a deterministic id, a uuid5 over (case, the `event_id` of the
 event that started the clock or made the request, kind [, rung]). Never over a timestamp (SEC-2):
 two different clocks that start at the same instant (a state entered, left and entered again; a
 handoff requested, bounced and requested again) are different obligations and must not share an
-id, or the second would be swallowed as a repeat of the first. Running the sweep again, or two
-sweeps at once, still inserts each event once: the store treats a repeated event_id on the same
-case as a no-op. The state machine adds a second line of defence (a case that is already overdue
-refuses another `mark_overdue`).
+id, or the second would be swallowed as a repeat of the first. A milestone's ids derive from the
+event that started the milestone (`MilestoneState.started_event_id`: the `case_created` marker for
+`referral_requested`, the `handoff_accepted` for `confirmatory_completed`, or the event that entered
+the awaiting state when there was no referral) and their kind is prefixed `milestone:<name>:`, so a
+milestone that starts at the same event as a state clock never shares an id with the state's breach.
+Running the sweep again, or two sweeps at once, still inserts each event once: the store treats a
+repeated event_id on the same case as a no-op. The state machine adds a second line of defence (a
+case that is already overdue refuses another `mark_overdue`).
 
 Parallel sweep (A17). `run_sweep_parallel` splits the open cases into `n` disjoint slices swept by `n`
 spawned worker processes, each with its own connection pool; `SweepPool` keeps those processes alive for
@@ -37,7 +46,7 @@ from app import payloads
 from app.calendar import WorkingCalendar
 from app.events import CaseNotFound, Event, EventContentConflict, EventIdConflict, EventStore
 from app.pathway import Pathway
-from app.state_machine import CaseModel, InvalidTransition
+from app.state_machine import CONSENT_WITHDRAWN, CaseModel, InvalidTransition
 
 log = logging.getLogger("app.sweep")
 
@@ -69,6 +78,22 @@ def due_at_for(model: CaseModel, pathway: Pathway, calendar: WorkingCalendar) ->
         return None
     _, days = sla
     return _utc(calendar.add_working_days(model.clock_started_at, days))
+
+
+def milestone_due(started_at: datetime, working_days: int, calendar: WorkingCalendar) -> datetime:
+    """A milestone's due date: `working_days` working days after its start."""
+    return _utc(calendar.add_working_days(started_at, working_days))
+
+
+def milestone_due_at(
+    model: CaseModel, name: str, pathway: Pathway, calendar: WorkingCalendar
+) -> datetime | None:
+    """When the milestone expires, or None if it is not running (not started, met, or void)."""
+    definition = pathway.milestones.get(name)
+    ms = model.milestones.get(name)
+    if definition is None or ms is None or ms.started_at is None or ms.met_at is not None or ms.void:
+        return None
+    return milestone_due(ms.started_at, definition.working_days, calendar)
 
 
 def handoff_due_at(
@@ -127,29 +152,65 @@ def plan_case(
     bounce = plan_bounce(case_id, model, pathway, calendar, now)
     if bounce is not None:
         return [bounce]
+    planned: list[Event] = []
     due = due_at_for(model, pathway, calendar)
-    if due is None or now <= due:
+    if due is not None and now > due:
+        sla_event, sla_days = pathway.sla_for_state(model.state)
+        if not model.overdue:
+            planned.append(
+                Event(
+                    case_id,
+                    "mark_overdue",
+                    now,
+                    SCHEDULER_ACTOR,
+                    {
+                        "state": model.state,
+                        "due_at": due.isoformat(),
+                        "sla_event": sla_event,
+                        "sla_working_days": sla_days,
+                    },
+                    sweep_event_id(case_id, model.clock_started_event_id, "mark_overdue"),
+                )
+            )
+        if not model.escalation_accepted:
+            planned.extend(
+                _plan_rungs(case_id, model, pathway, calendar, now, due, model.escalation_level)
+            )
+    planned.extend(plan_milestones(case_id, model, pathway, calendar, now))
+    return planned
+
+
+def plan_milestones(
+    case_id: UUID, model: CaseModel, pathway: Pathway, calendar: WorkingCalendar, now: datetime
+) -> list[Event]:
+    """The events for breached milestones, in the pathway's order: the breach once, then the due rungs.
+
+    Not evaluated in a closed case or while consent is withdrawn (outreach is frozen and a human must review
+    the case; the clock keeps running and the breach is planned the moment the case resumes).
+    """
+    if model.state not in pathway.open_states or model.state == CONSENT_WITHDRAWN:
         return []
     planned: list[Event] = []
-    sla_event, sla_days = pathway.sla_for_state(model.state)
-    if not model.overdue:
-        planned.append(
-            Event(
-                case_id,
-                "mark_overdue",
-                now,
-                SCHEDULER_ACTOR,
-                {
-                    "state": model.state,
-                    "due_at": due.isoformat(),
-                    "sla_event": sla_event,
-                    "sla_working_days": sla_days,
-                },
-                sweep_event_id(case_id, model.clock_started_event_id, "mark_overdue"),
+    for name, definition in pathway.milestones.items():
+        due = milestone_due_at(model, name, pathway, calendar)
+        if due is None or now <= due:
+            continue
+        ms = model.milestones[name]
+        if not ms.overdue:
+            planned.append(
+                Event(
+                    case_id,
+                    "mark_overdue",
+                    now,
+                    SCHEDULER_ACTOR,
+                    {"milestone": name, "due_at": due.isoformat(), "sla_working_days": definition.working_days},
+                    sweep_event_id(case_id, ms.started_event_id, f"milestone:{name}:mark_overdue"),
+                )
             )
-        )
-    if not model.escalation_accepted:
-        planned.extend(_plan_rungs(case_id, model, pathway, calendar, now, due))
+        if not ms.escalation_accepted:
+            planned.extend(
+                _plan_rungs(case_id, model, pathway, calendar, now, due, ms.escalation_level, milestone=name)
+            )
     return planned
 
 
@@ -160,16 +221,24 @@ def _plan_rungs(
     calendar: WorkingCalendar,
     now: datetime,
     due: datetime,
+    escalation_level: int,
+    milestone: str | None = None,
 ) -> list[Event]:
     """The escalation rungs now due for this breach, in ladder order, none skipped.
 
     A rung is due `after_breach_days` working days after the due date (0 = at the breach).
     Rungs already emitted (`escalation_level`) are not planned again. A human accepting a
     rung (`escalation_accepted`) stops the ladder for this breach; the caller checks that.
+    `milestone` names the ladder of a milestone breach (A18); without it the state's ladder.
     """
+    subject = {"milestone": milestone} if milestone is not None else {"state": model.state}
+    if milestone is not None:
+        started_by, prefix = model.milestones[milestone].started_event_id, f"milestone:{milestone}:"
+    else:
+        started_by, prefix = model.clock_started_event_id, ""
     rungs = []
     for level, rung in enumerate(pathway.escalation_ladder, start=1):
-        if level <= model.escalation_level:
+        if level <= escalation_level:
             continue
         rung_due = _utc(calendar.add_working_days(due, rung.after_breach_days))
         if now < rung_due:
@@ -185,11 +254,11 @@ def _plan_rungs(
                     "level": level,
                     "target": rung.target,
                     "action": rung.action,
-                    "state": model.state,
+                    **subject,
                     "due_at": due.isoformat(),
                     "rung_due_at": rung_due.isoformat(),
                 },
-                sweep_event_id(case_id, model.clock_started_event_id, f"escalate:{rung.rung}"),
+                sweep_event_id(case_id, started_by, f"{prefix}escalate:{rung.rung}"),
             )
         )
     return rungs

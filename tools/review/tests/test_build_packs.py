@@ -153,6 +153,20 @@ def test_clinician_pack_lists_every_state_event_sla_rung_and_reason(pathway, cli
     assert pathway["closure_rule"] in clinician
 
 
+def test_clinician_pack_lists_the_national_timelines_with_their_sources(pathway, clinician):
+    """A18: the milestones are in section 5, each with its allowance and where the figure comes from; the 31 is
+    attributed to the National Guideline Appendix 2, not to the IFHAS standard."""
+    section = clinician.split("### National timelines (milestones)")[1].split("## 6.")[0]
+    assert set(pathway["milestones"]) == {"referral_requested", "confirmatory_completed"}
+    for name, m in pathway["milestones"].items():
+        row = next(line for line in section.splitlines() if line.startswith(f"| `{name}` |"))
+        assert f"| {m['working_days']} |" in row and m["source"] in row, name
+    assert "are **not** from IFHAS" in section and "Appendix 2" in section
+    sla_table = clinician.split("## 5. Time limits (SLAs)")[1].split("### National timelines")[0]
+    assert "| `complete_confirmatory` |" not in sla_table  # the colonoscopy clock is a milestone, not a per-step limit
+    assert "M:referral_requested" in clinician and "M:confirmatory_completed" in clinician
+
+
 def test_pathway_diagram_has_every_transition_and_is_mermaid(pathway, clinician):
     m = re.search(r"```mermaid\n(.*?)```", clinician, re.S)
     assert m, "no mermaid block"
@@ -190,6 +204,17 @@ def test_sla_working_days_stay_in_sync_with_the_web_mirror(pathway):
         if event == "reassign":
             continue  # the UI does not mirror the re-route limit
         assert re.search(rf"{event}:\s*{days}\b", ts), (event, days)
+
+
+def test_milestones_stay_in_sync_with_the_web_mirror(pathway):
+    ts = (ROOT / "web/src/lib/pathway.ts").read_text(encoding="utf-8")
+    for name, m in pathway["milestones"].items():
+        block = re.search(rf'name: "{name}".*?source: "([^"]+)"', ts, re.S)
+        assert block, name
+        assert f'from_event: "{m["from_event"]}"' in block.group(0), name
+        assert f'until_event: "{m["until_event"]}"' in block.group(0), name
+        assert f"working_days: {m['working_days']}" in block.group(0), name
+        assert block.group(1) == m["source"], name
 
 
 # ------------------------------------------------------------------------ the Arabic pack

@@ -447,6 +447,17 @@ def test_read_model_shape_and_values():
         "review_reason": None,
         "review_requested_at": None,
         "backdated_events": 0,
+        # A18: the referral clock runs from the result (case_created); the colonoscopy clock waits for a referral
+        "milestones": {
+            "referral_requested": {
+                "started_at": AT.isoformat(), "met_at": None, "overdue": False, "breach_due_at": None,
+                "escalation_level": 0, "escalation_accepted": False, "void": False,
+            },
+            "confirmatory_completed": {
+                "started_at": None, "met_at": None, "overdue": False, "breach_due_at": None,
+                "escalation_level": 0, "escalation_accepted": False, "void": False,
+            },
+        },
     }
 
 
@@ -882,7 +893,7 @@ def test_real_config_loads_every_documented_event():
         "reopen", "mark_lost_contact", "reassign", "review_requested",
     }
     assert expected <= set(PATHWAY.event_types)
-    assert PATHWAY.sla_for_state("patient_contacted") == ("patient_acknowledge", 7)
-    assert PATHWAY.sla_for_state("lost_contact") == ("contact_patient", 5)
+    assert PATHWAY.sla_for_state("patient_contacted") == ("patient_acknowledge", 5)
+    assert PATHWAY.sla_for_state("lost_contact") == ("contact_patient", 3)
     assert PATHWAY.sla_for_state("closed") is None and PATHWAY.sla_for_state("consent_withdrawn") is None
     assert PATHWAY.sla_for_state("referral_rejected") == ("reassign", 2)  # re-route a bounced referral (A5)

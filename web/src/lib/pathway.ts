@@ -40,24 +40,53 @@ export const HANDOFF_RESPONSE_WORKING_DAYS = 3;
 
 /**
  * Working days allowed to perform the event (slas_working_days in the YAML). Each clock starts when the
- * state is entered, except complete_confirmatory (31), which the API counts from the latest referral
- * acceptance (`sla_clock_start` in the YAML, A13). The UI takes due dates from the API (`due_at`), not
- * from this table, so it is data only.
+ * state is entered. The pre-referral SLAs (acknowledge, accept_ownership, contact_patient, patient_acknowledge)
+ * sum to 11 working days so they fit inside the 15-working-day referral milestone (A18). There is no per-state
+ * SLA for complete_confirmatory: its clock is the `confirmatory_completed` milestone below. The UI takes due
+ * dates from the API (`due_at`, `milestones`), not from this table, so it is data only (the mock adapter uses it).
  */
 export const SLA_WORKING_DAYS: Record<string, number> = {
   acknowledge: 2,
-  accept_ownership: 2,
-  contact_patient: 5,
-  patient_acknowledge: 7,
-  book_confirmatory: 14,
-  complete_confirmatory: 31,
+  accept_ownership: 1,
+  contact_patient: 3,
+  patient_acknowledge: 5,
+  book_confirmatory: 5,
   clinician_review: 5,
   close: 3, // sign-off after review (A13)
   reassign: 2, // re-route of a rejected or bounced referral (A5)
 };
 
-/** SLAs whose clock starts at the latest `handoff_accepted` (when there was one) instead of state entry. */
-export const SLA_CLOCK_FROM_HANDOFF: readonly string[] = ["complete_confirmatory"];
+export type MilestoneName = "referral_requested" | "confirmatory_completed";
+
+export interface MilestoneDef {
+  name: MilestoneName;
+  /** The event that starts the clock (`case_created` = the result release). The latest occurrence counts. */
+  from_event: string;
+  /** The event that meets the milestone. */
+  until_event: string;
+  working_days: number;
+  /** Row label on the case page. */
+  label: string;
+  /** Where the standard comes from (the YAML's `source`). */
+  source: string;
+}
+
+/**
+ * `milestones` in the pathway YAML (A18, ADR-028): clocks that span states, measured against a national standard.
+ * The 31 working days come from the National Guideline's Appendix 2 KPI table, not from the IFHAS standard.
+ */
+export const MILESTONES: readonly MilestoneDef[] = [
+  {
+    name: "referral_requested", from_event: "case_created", until_event: "handoff_requested", working_days: 15,
+    label: "Referral within 15 working days of result",
+    source: "DoH IFHAS standard July 2025 via docs/evidence.md section 8",
+  },
+  {
+    name: "confirmatory_completed", from_event: "handoff_accepted", until_event: "complete_confirmatory", working_days: 31,
+    label: "Colonoscopy within 31 working days of referral",
+    source: "National Guideline Appendix 2 via evidence.md",
+  },
+];
 
 /** escalation_ladder from the pathway YAML, in the event vocabulary (`escalate {rung, target_role}`). */
 export const ESCALATION_LADDER: { after_breach_days: number; rung: EscalationRung; target_role: string }[] = [

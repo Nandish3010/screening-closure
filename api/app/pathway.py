@@ -10,9 +10,12 @@ state, so the rest of the code only ever sees concrete rows:
 * `min: {key: n}`         the payload value must be a number >= n
 * `requires: [key, ...]`  the payload value must be non-empty
 
+Milestones (A18) are clocks that span states, from one event to another, against a national standard.
+
 The loader refuses configs that could weaken the closure guard (see `_validate`).
 """
 
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -25,6 +28,8 @@ RESUME_STATE = "resume_state"
 CLOCK_STATE_ENTRY = "state_entry"
 CLOCK_HANDOFF_ACCEPTED = "handoff_accepted"
 CLOCK_STARTS = (CLOCK_STATE_ENTRY, CLOCK_HANDOFF_ACCEPTED)
+# The genesis event: a milestone may start there (the result release, as far as the case is concerned).
+CASE_CREATED = "case_created"
 
 
 class PathwayError(ValueError):
@@ -58,6 +63,18 @@ class EscalationRung:
 
 
 @dataclass(frozen=True)
+class Milestone:
+    """A clock that spans states and is measured against a national standard (A18, ADR-028): `working_days`
+    from `from_event` to `until_event`. Met by the `until_event`; breached when it has not happened in time."""
+
+    name: str
+    from_event: str
+    until_event: str
+    working_days: int
+    source: str
+
+
+@dataclass(frozen=True)
 class Pathway:
     name: str
     version: str
@@ -73,8 +90,11 @@ class Pathway:
     handoff_response_working_days: int = 3
     handoff_reject_reasons: tuple[str, ...] = ()
     handoff_bounce_reason: str = "timeout"
-    # SLA event -> clock start. Absent means CLOCK_STATE_ENTRY (A13).
+    # SLA event -> clock start. Absent means CLOCK_STATE_ENTRY (A13). Optional: the shipped YAML has none since
+    # the colonoscopy clock became a milestone (A18).
     sla_clock_start: dict[str, str] = field(default_factory=dict)
+    # Milestone name -> definition, in YAML order (A18).
+    milestones: dict[str, Milestone] = field(default_factory=dict)
     raw: dict = field(default_factory=dict, compare=False, repr=False)
 
     @property
@@ -140,6 +160,14 @@ class Pathway:
         """Clock start of the SLA that applies to `state` (`state_entry` if it has none)."""
         sla = self.sla_for_state(state)
         return self.clock_start_for(sla[0]) if sla else CLOCK_STATE_ENTRY
+
+    def milestone(self, name: str) -> Milestone | None:
+        return self.milestones.get(name)
+
+    def milestone_awaiting(self, state: str) -> tuple[Milestone, ...]:
+        """Milestones whose `until_event` leaves `state` (the state that awaits them): the fallback start for a
+        milestone whose `from_event` never happened is entry into one of these."""
+        return tuple(m for m in self.milestones.values() if self.transitions_for(state, m.until_event))
 
     def rung(self, name: str) -> EscalationRung | None:
         return next((r for r in self.escalation_ladder if r.rung == name), None)
@@ -207,12 +235,39 @@ def load_pathway(path: str | Path) -> Pathway:
             handoff_reject_reasons=tuple(raw.get("handoff_reject_reasons", [])),
             handoff_bounce_reason=raw.get("handoff_bounce_reason", "timeout"),
             sla_clock_start=dict(raw.get("sla_clock_start") or {}),
+            milestones=_load_milestones(raw.get("milestones")),
             raw=raw,
         )
     except KeyError as exc:
         raise PathwayError(f"pathway config missing required key: {exc}") from exc
     _validate(pw)
     return pw
+
+
+def _load_milestones(raw: object) -> dict[str, Milestone]:
+    if raw is None:
+        return {}
+    if not isinstance(raw, dict):
+        raise PathwayError("milestones must be a mapping of name to definition")
+    out: dict[str, Milestone] = {}
+    for name, d in raw.items():
+        if not isinstance(name, str) or not re.fullmatch(r"[a-z][a-z0-9_]{0,63}", name):
+            raise PathwayError(f"milestone name {name!r} must be a lower-case code")
+        if not isinstance(d, dict):
+            raise PathwayError(f"milestone {name!r} must be a mapping")
+        unknown = set(d) - {"from_event", "until_event", "working_days", "source"}
+        if unknown:
+            raise PathwayError(f"milestone {name!r} has unknown keys {sorted(unknown)}")
+        missing = {"from_event", "until_event", "working_days", "source"} - set(d)
+        if missing:
+            raise PathwayError(f"milestone {name!r} is missing {sorted(missing)}")
+        days = d["working_days"]
+        if isinstance(days, bool) or not isinstance(days, int) or days < 1:
+            raise PathwayError(f"milestone {name!r}: working_days must be an integer >= 1")
+        if not isinstance(d["source"], str) or not d["source"].strip():
+            raise PathwayError(f"milestone {name!r}: source must say where the standard comes from")
+        out[name] = Milestone(name, str(d["from_event"]), str(d["until_event"]), days, d["source"].strip())
+    return out
 
 
 def _validate(pw: Pathway) -> None:
@@ -241,6 +296,15 @@ def _validate(pw: Pathway) -> None:
             raise PathwayError(f"sla_clock_start references an event with no SLA: {ev!r}")
         if start not in CLOCK_STARTS:
             raise PathwayError(f"sla_clock_start for {ev!r} must be one of {list(CLOCK_STARTS)}, got {start!r}")
+
+    known_events = set(events) | set(pw.annotations)
+    for m in pw.milestones.values():
+        if m.from_event != CASE_CREATED and m.from_event not in known_events:
+            raise PathwayError(f"milestone {m.name!r}: from_event {m.from_event!r} is not {CASE_CREATED!r} or a pathway event")
+        if m.until_event not in known_events:
+            raise PathwayError(f"milestone {m.name!r}: until_event {m.until_event!r} is not a pathway event")
+        if m.until_event == m.from_event:
+            raise PathwayError(f"milestone {m.name!r}: from_event and until_event must differ")
 
     # Closure guard at config level: only the main-path state before the terminal may close,
     # and the row must demand both evidence and a sign-off. No side state reaches `closed`.
