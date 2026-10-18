@@ -48,3 +48,32 @@ def test_over_budget_submission_is_caught(monkeypatch, capsys):
     monkeypatch.setattr(storyboard, "load", lambda *a, **k: sb)
     assert storyboard.main(["--check"]) == 1
     assert "over the 180 s cap" in capsys.readouterr().err
+
+
+def test_missing_ffmpeg_and_say_are_reported_with_the_fix(capsys):
+    sb = storyboard.load()
+    none = lambda name: None  # noqa: E731
+    problems = storyboard.missing_tools(sb, which=none)
+    assert any("ffmpeg not found" in p and "brew install ffmpeg" in p for p in problems)
+    assert any("ffprobe not found" in p for p in problems)
+    assert any("`say` not found" in p and "macOS" in p for p in problems)
+
+
+def test_everything_present_reports_nothing():
+    sb = storyboard.load()
+
+    class Done:
+        stdout = f"{sb['meta']['voice']}   en_US    # Hello\n"
+
+    assert storyboard.missing_tools(sb, which=lambda n: "/usr/bin/" + n, run=lambda *a, **k: Done()) == []
+
+
+def test_an_uninstalled_voice_is_reported():
+    sb = storyboard.load()
+
+    class Done:
+        stdout = "Daniel   en_GB    # Hello\n"
+
+    sb["meta"]["voice"] = "Nobody"
+    problems = storyboard.missing_tools(sb, which=lambda n: "/usr/bin/" + n, run=lambda *a, **k: Done())
+    assert problems and "'Nobody'" in problems[0]

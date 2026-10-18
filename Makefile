@@ -1,4 +1,4 @@
-.PHONY: test-demo test-e2e-live demo-scenario demo-stage demo-snapshot demo-restore demo-reset demo-kill-scheduler check docs-check tracker-lint test-security test-tools test-load load-check up down logs test test-db test-db-create test-db-reset test-chaos synthea demo-seed demo-seed-clean evaluate simulate evaluate-check sensitivity sensitivity-check reset web-install web-dev web-build web-test web-e2e test-e2e review-packs review-packs-check test-review-packs test-phi-logs rbac-matrix test-offline fresh-clone risk-report risk-check video video-check
+.PHONY: test-demo test-e2e-live demo-scenario demo-stage demo-snapshot demo-restore demo-reset demo-kill-scheduler check docs-check tracker-lint test-security test-tools test-load load-check up down logs test test-db test-db-create test-db-reset test-chaos synthea demo-seed demo-seed-clean evaluate simulate evaluate-check sensitivity sensitivity-check reset web-install web-dev web-build web-test web-e2e test-e2e review-packs review-packs-check test-review-packs test-phi-logs rbac-matrix test-offline fresh-clone risk-report risk-check video video-check video-deps
 
 up:
 	docker compose up -d --build
@@ -289,7 +289,7 @@ test-e2e-live:
 	fi
 
 # ---- E16: the 3-minute submission video and the backup demo video, produced without a human recording (tools/video/) -----
-# `make video-check` validates tools/video/storyboard.yaml (every shot has route, actions, caption, narration, duration; the
+# `make video-check` (no stack, no ffmpeg) validates tools/video/storyboard.yaml (every shot has route, actions, caption, narration, duration; the
 # submission targets plus the cards add up to at most 180 s). `make video` does the whole run against the live stack
 # (it runs `make demo-reset` and `make demo-scenario UNTIL=owner_accepted` first, stops and restarts the scheduler for the
 # catch shot, and runs `make demo-reset` again at the end): record (Playwright, needs Node 22.18+), narrate (macOS `say`,
@@ -298,7 +298,11 @@ test-e2e-live:
 video-check:
 	$(PY) tools/video/storyboard.py --check
 
-video: video-check
+# `make video-deps` checks ffmpeg, ffprobe and macOS `say` (and the voice) are installed, with the fix in the message.
+video-deps:
+	$(PY) tools/video/storyboard.py --tools
+
+video: video-check video-deps
 	node tools/video/record.ts
 	$(PY) tools/video/narrate.py
 	tools/video/assemble.sh

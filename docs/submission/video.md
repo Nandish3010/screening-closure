@@ -7,14 +7,21 @@ Both videos are produced by a script from the storyboard of [demo-script.md](dem
 | `submission-3min.mp4` | Title card (3 s), the shots flagged `submission: true` (13 shots, the storyboard of the demo script), end card (4 s). Hard cap 180 s: `assemble.sh` fails above it. | `tools/video/out/` (gitignored) |
 | `backup-demo.mp4` | The same, plus every other shot that could be recorded (the two reveal shots below, when their pages exist). | `tools/video/out/` (gitignored) |
 
-Last run (18 Oct, current stack, `make video` equivalent): 13 shots recorded, 2 skipped (the reveal shots, their pages are not in this build). `submission-3min.mp4` 177.8 s, 11.8 MB, 1280x800, 25 fps, H.264 and AAC; `backup-demo.mp4` the same 177.8 s and 11.8 MB, because the optional shots were skipped. The recording itself takes about 5 minutes (two `make demo-reset` of about a minute each, the 60 to 80 s wait for the watchdog is cut from the video), narration and assembly about 40 s.
+**Status: the final proof run is pending.** The tooling is committed and `make video-check` passes, but the two mp4 files are not part of the repository and have not been produced from the final code: the proof run waits for the M5 final merge (the web app's labels and the demo scenario must be final first). An earlier trial run on 18 Oct, against the stack as it was before that merge, recorded 13 shots and skipped the 2 reveal shots (their pages are not in this build); it is only evidence that the tooling works end to end, and its output is not the deliverable. Nothing in this file about durations is a measurement of the final video until the proof run is done and this paragraph is replaced by its result (shots recorded, length, size).
 
 ## Regenerate
 
+Run the proof run once the stack is up on the final merged code (this is the pending step):
+
 ```
-make video-check     # the storyboard validates, targets add up to 180 s or less (no stack needed)
-make video           # video-check, then record, narrate, assemble (needs the live stack, about 7 minutes)
+make video-check     # the storyboard validates, targets add up to 180 s or less (no stack, no ffmpeg needed)
+make video-deps      # ffmpeg, ffprobe and macOS `say` (and the voice) are installed; says how to fix it if not
+make up              # the stack must be running ...
+make demo-reset      # ... and reset to the demo snapshot: the recording starts from that state
+make video           # video-check, video-deps, then record, narrate, assemble (about 7 to 10 minutes)
 ```
+
+`make video` stops before touching the stack when `ffmpeg`, `ffprobe` or `say` is missing (`brew install ffmpeg`; `say` exists on macOS only). It resets the demo again at the end. Check the result with `ffprobe tools/video/out/submission-3min.mp4` (at most 180 s), watch both files once, then replace the status paragraph above with the measured result.
 
 `make video` is three steps, which can be run separately:
 

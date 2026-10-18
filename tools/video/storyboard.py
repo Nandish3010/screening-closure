@@ -3,6 +3,8 @@
 
     storyboard.py --check        validate and print the budget (this is `make video-check`)
     storyboard.py --json         print the storyboard as JSON (record.ts reads it this way; Node has no YAML parser)
+    storyboard.py --tools        check that ffmpeg, ffprobe and macOS `say` (with the storyboard's voice) are installed
+                                 (this is `make video-deps`; `make video` runs it before it touches the stack)
 
 Validation: every shot has id, route, actions, caption, narration and a positive duration; ids are unique; every
 action is a known verb; and the targets of the shots flagged `submission: true`, plus the title and end cards, add up
@@ -11,6 +13,8 @@ to at most the submission cap (180 s).
 from __future__ import annotations
 
 import json
+import shutil
+import subprocess
 import sys
 from pathlib import Path
 
@@ -83,8 +87,37 @@ def budget(sb: dict) -> dict:
     }
 
 
+def missing_tools(sb: dict, which=shutil.which, run=subprocess.run) -> list[str]:
+    """What is needed to narrate and assemble, and is not there. Empty when ffmpeg, ffprobe and `say` (and its voice) are present."""
+    problems: list[str] = []
+    for tool in ("ffmpeg", "ffprobe"):
+        if not which(tool):
+            problems.append(f"{tool} not found on PATH: install it with `brew install ffmpeg` (narrate.py and assemble.sh need it)")
+    if not which("say"):
+        problems.append("`say` not found: narration uses the macOS text-to-speech command, so `make video` runs on macOS only")
+    else:
+        voice = sb.get("meta", {}).get("voice")
+        try:
+            listing = run(["say", "-v", "?"], capture_output=True, text=True, timeout=30).stdout
+        except (OSError, subprocess.SubprocessError):
+            listing = ""
+        if voice and listing and not any(line.split()[:1] == [voice] for line in listing.splitlines()):
+            problems.append(f"the macOS voice {voice!r} named in storyboard.yaml (meta.voice) is not installed: `say -v '?'` lists "
+                            f"the installed voices (System Settings > Accessibility > Spoken Content > System Voice > Manage Voices)")
+    return problems
+
+
 def main(argv: list[str]) -> int:
     sb = load()
+    if "--tools" in argv:
+        problems = missing_tools(sb)
+        if problems:
+            print("video-deps: FAIL", file=sys.stderr)
+            for p in problems:
+                print(f"  - {p}", file=sys.stderr)
+            return 1
+        print(f"video-deps: PASS: ffmpeg, ffprobe and say (voice {sb['meta'].get('voice')}) are available")
+        return 0
     if "--json" in argv:
         json.dump(sb, sys.stdout)
         return 0
