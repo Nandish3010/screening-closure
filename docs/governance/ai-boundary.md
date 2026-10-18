@@ -11,7 +11,7 @@ Where a language model may be used in this system, where it may not, how its out
 
 A draft is only a proposal. It is shown to the case owner, who approves it or rejects it. Only after approval does the notification mock "send" it. The exact prompt, the draft, the provider and model, the requester, the approver and the timestamps are stored as Provenance (D4, D5): see section 7.
 
-The model sees the minimum it needs: the care owner's name and role, the next step in plain words, an appointment date if there is one, and the pathway name. It is never given the patient's name, contact details, identifiers or clinical history. The only clinical fact a message may state is that the screening test found blood.
+The model sees the minimum it needs: the care owner's name and role, the next step in plain words, an appointment date if there is one, and the pathway name. It is never given the patient's name, contact details, identifiers or clinical history. No message may state or hint at what the screening found (section 4a).
 
 ## 2. What the model may not do
 
@@ -76,7 +76,7 @@ Every model draft is checked by `validate(text, request)` before anyone sees it.
 | `too_long` | At most 320 characters for SMS, 600 for WhatsApp, 1200 for a letter. |
 | `wrong_language` | Arabic: at least 80% of letters in Arabic script. English: at least 90% Latin. Names, the next step and the date supplied in the request are ignored for this check. |
 | `missing_owner_name`, `missing_next_step` | The care owner's name and the next step appear in the text. An appointment confirmation must also contain the appointment date (`missing_appointment_date`). |
-| `forbidden_phrase:<id>` | None of the phrases in `api/app/ai/forbidden_phrases.yaml`: diagnosis statements ("you have", "you are ill"), disease terms (cancer, tumour, malignant, polyp), the word "positive" as a result, false reassurance ("do not worry", "it is probably nothing", "you will be fine"), clinical judgement ("urgent", "serious"), medication and treatment, and advice ("you should", "we recommend", diet, fasting). Both the English and the Arabic list are applied to every draft. Each entry has a rationale and a tested example. |
+| `forbidden_phrase:<id>` | None of the phrases in `api/app/ai/forbidden_phrases.yaml`: diagnosis statements ("you have", "you are ill"), disease terms (cancer, tumour, malignant, polyp), the word "positive" as a result, result-disclosure phrases ("found blood", "blood in your stool", "positive result", "abnormal result", section 4a), false reassurance ("do not worry", "it is probably nothing", "you will be fine"), clinical judgement ("urgent", "serious"), medication and treatment, and advice ("you should", "we recommend", diet, fasting). Both the English and the Arabic list are applied to every draft. Each entry has a rationale and a tested example. |
 | `pii_digits` | No run of 7 or more digits, including phone-style runs with spaces or dashes and Arabic-Indic digits. |
 | `pii_email` | No `@`. |
 | `pii_identifier` | No identifier words (MRN, Emirates ID, passport, file number and Arabic equivalents) and no letter-and-digit codes of 6 or more characters. |
@@ -85,6 +85,16 @@ Every model draft is checked by `validate(text, request)` before anyone sees it.
 The rules are intentionally strict. A false rejection costs one template message. A false accept could put a diagnosis, a reassurance or an identifier in front of a patient. The phrase lists are keyword filters: they reduce risk and are tested, but they do not prove a message is clinically safe. That is why a human approves every draft.
 
 The phrase lists and the Arabic text are pending clinician review (H1) and native-speaker review (H2). Until then the Arabic is labelled an unreviewed draft.
+
+## 4a. Non-disclosure of the screening result (E14)
+
+**The rule.** No outbound patient message (SMS, WhatsApp or letter, any purpose, either language) and no line on the patient page states or hints at what the screening found. Reason, in the validator's own words: IFHAS: abnormal results are communicated with the participant present (IFHAS V10, summarised in `docs/evidence.md` section 8b). A text message is not the participant present, so the result is given in person or by phone by the care team.
+
+**What a message may say.** That the screening result is ready; that the care team needs to talk with the patient about the next step; who the care owner is and that they will call (or that the patient can reply to book a time); and, for an appointment, the appointment itself, named as an appointment and never as a disease or a finding ("an appointment for a camera test"). The first message reads: "Your screening result is ready and your care team needs to talk with you about the next step. {owner_name} will call you, or you can reply to book a time. The next step is {next_step}." Reminders, appointment confirmations and escalation notices follow the same pattern. The patient page adds the line "Your care team will explain your result in person or by phone." (English and Arabic). The colonoscopy may be named as the procedure on the page and in a message's `{next_step}`, because the standard concerns the result, not the procedure; the default next step in a message is "a camera test".
+
+**How it is enforced.** The category `result_disclosure` in `api/app/ai/forbidden_phrases.yaml` (English and Arabic) rejects a model draft containing, for example, "found blood", "blood in your stool", "positive result", "abnormal result", "test was positive", "your result shows", and their Arabic equivalents. The same entries cover the existing "positive" jargon rule. A rejected draft becomes the template, which is tested (every purpose, channel and language) to pass the validator and to contain none of these phrases. The patient page strings are tested for the same words in `web/tests/patient.test.tsx`.
+
+**Clinician question (H1).** Confirm the non-disclosure wording: is the first message acceptable as written, is naming the next step ("a camera test") acceptable, and what should the care team do when a patient replies asking for the result by text? The question is in the clinician pack (`docs/review/clinician-pack.md`, "No result in any text"). The Arabic wording is pending native-speaker review (H2).
 
 ## 5. Fallback behaviour
 

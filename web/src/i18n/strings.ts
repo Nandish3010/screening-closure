@@ -6,6 +6,12 @@
  * patient-facing strings"). Do not ship to patients before that review. Use Modern Standard
  * Arabic that is easy to read; avoid dialect. Check gender-neutral phrasing and medical terms
  * (تنظير القولون = colonoscopy) with the reviewer.
+ *
+ * E14, non-disclosure: no string states or hints at what the screening found, names a disease or
+ * reassures. IFHAS: abnormal results are communicated with the participant present, so the page
+ * says only that the result is ready and the care team will explain it in person or by phone.
+ * The colonoscopy may be named as the next appointment (the standard concerns the result, not the
+ * procedure). Keep it neutral.
  */
 import type { Lang } from "../api/contract";
 
@@ -21,7 +27,7 @@ export interface PatientStrings {
   offline: string;
   resultHeading: string;
   resultBody: string;
-  notDiagnosis: string;
+  explainInPerson: string;
   nextHeading: string;
   nextSteps: string[];
   ownerHeading: string;
@@ -57,22 +63,22 @@ export const STRINGS: Record<Lang, PatientStrings> = {
     loading: "Loading...",
     loadError: "We could not load your information. Please try again.",
     offline: "You are offline. This is the last information we saved.",
-    resultHeading: "What your result means",
+    resultHeading: "Your result is ready",
     resultBody:
-      "Your screening test found blood. This does not mean you have cancer. The next step is a camera test called a colonoscopy.",
-    notDiagnosis: "This page is not a diagnosis. Your doctor will explain your result.",
+      "Your screening result is ready. Your care team needs to talk with you about it and about the next step.",
+    explainInPerson: "Your care team will explain your result in person or by phone.",
     nextHeading: "What happens next",
     nextSteps: [
-      "A care coordinator will call you to book the camera test.",
+      "Your care team will talk with you about your result.",
+      "The next step is an appointment for a camera test called a colonoscopy.",
       "You will get a date and easy steps to get ready.",
-      "A doctor will check the test and tell you what it means.",
     ],
     ownerHeading: "Who is looking after you",
     ownerLine: (name, role) => `${iso(name)} (${role}) is looking after your care. You can ask them any question.`,
     ownerPending: "A care coordinator will be chosen for you soon.",
-    understand: "I understand",
-    understandDone: "Thank you. We saved that you understand.",
-    understandWait: "You can tap this button after your care team has contacted you.",
+    understand: "I understand, please contact me",
+    understandDone: "Thank you. We saved this. Your care team will contact you.",
+    understandWait: "You can tap this button after your care team has sent you a message.",
     dontUnderstand: "I don't understand this",
     callbackDone: "Thank you. A person from your care team will call you.",
     consentHeading: "Your choices",
@@ -98,22 +104,22 @@ export const STRINGS: Record<Lang, PatientStrings> = {
     loading: "جارٍ التحميل...",
     loadError: "لم نتمكن من تحميل معلوماتك. يرجى المحاولة مرة أخرى.",
     offline: "أنت غير متصل بالإنترنت. هذه آخر معلومات حفظناها.",
-    resultHeading: "ماذا تعني نتيجتك",
+    resultHeading: "نتيجتك جاهزة",
     resultBody:
-      "أظهر فحصك وجود دم. هذا لا يعني أنك مصاب بالسرطان. الخطوة التالية هي فحص بالكاميرا اسمه تنظير القولون.",
-    notDiagnosis: "هذه الصفحة ليست تشخيصًا. سيشرح لك طبيبك نتيجتك.",
+      "نتيجة فحصك جاهزة. يحتاج فريق رعايتك إلى التحدث معك عنها وعن الخطوة التالية.",
+    explainInPerson: "سيشرح لك فريق رعايتك نتيجتك وجهًا لوجه أو عبر الهاتف.",
     nextHeading: "ماذا سيحدث بعد ذلك",
     nextSteps: [
-      "سيتصل بك منسق الرعاية لحجز الفحص بالكاميرا.",
+      "سيتحدث معك فريق رعايتك عن نتيجتك.",
+      "الخطوة التالية هي موعد لفحص بالكاميرا اسمه تنظير القولون.",
       "ستحصل على موعد وخطوات سهلة للتحضير.",
-      "سيراجع الطبيب الفحص ويشرح لك معناه.",
     ],
     ownerHeading: "من يتابع حالتك",
     ownerLine: (name, role) => `المسؤول عن متابعة حالتك:\n${iso(name)} (${role}).\nيمكنك طرح أي سؤال.`,
     ownerPending: "سنعيّن لك منسق رعاية قريبًا.",
-    understand: "فهمت",
-    understandDone: "شكرًا لك. سجلنا أنك فهمت.",
-    understandWait: "يمكنك الضغط على هذا الزر بعد أن يتواصل معك فريق الرعاية.",
+    understand: "فهمت، يرجى التواصل معي",
+    understandDone: "شكرًا لك. سجلنا طلبك. سيتواصل معك فريق الرعاية.",
+    understandWait: "يمكنك الضغط على هذا الزر بعد أن يرسل لك فريق الرعاية رسالة.",
     dontUnderstand: "لا أفهم هذا",
     callbackDone: "شكرًا لك. سيتصل بك أحد أفراد فريق الرعاية.",
     consentHeading: "اختياراتك",

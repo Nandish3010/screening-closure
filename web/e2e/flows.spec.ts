@@ -99,14 +99,14 @@ test("reopen: only a clinician can reopen a closed case, with a reason", async (
 test("patient: acknowledge, Arabic RTL, call-back request, consent", async ({ page }) => {
   await page.goto(`/patient/${PATIENT_CASE}`);
   await expect(page.getByTestId("sim-badge")).toBeVisible();
-  await expect(page.getByText("This does not mean you have cancer")).toBeVisible();
+  await expect(page.getByText("Your care team will explain your result in person or by phone.")).toBeVisible();
   await expect(page.getByTestId("patient-owner")).toContainText("Sara Al Mansoori");
 
   // Arabic
   await page.getByRole("button", { name: /العربية/ }).click();
   await expect(page.getByTestId("patient-root")).toHaveAttribute("dir", "rtl");
   await expect(page.locator("html")).toHaveAttribute("dir", "rtl");
-  await expect(page.getByText("هذا لا يعني أنك مصاب بالسرطان")).toBeVisible();
+  await expect(page.getByText("سيشرح لك فريق رعايتك نتيجتك وجهًا لوجه أو عبر الهاتف.")).toBeVisible();
   await page.getByRole("button", { name: /English/ }).click();
   await expect(page.getByTestId("patient-root")).toHaveAttribute("dir", "ltr");
 
@@ -119,7 +119,7 @@ test("patient: acknowledge, Arabic RTL, call-back request, consent", async ({ pa
   await expect(page.getByTestId("callback-done")).toBeVisible();
 
   // Acknowledge
-  await page.getByRole("button", { name: "I understand" }).click();
+  await page.getByRole("button", { name: "I understand, please contact me" }).click();
   await expect(page.getByTestId("ack-done")).toBeVisible();
 
   // The coordinator now sees the call-back and the consent on the case.
@@ -148,15 +148,15 @@ test("pwa: manifest and service worker are served; patient page works offline af
   expect((await manifest.json()).start_url).toBe("/patient");
 
   await page.goto(`/patient/${PATIENT_CASE}`);
-  await expect(page.getByText("This does not mean you have cancer")).toBeVisible();
+  await expect(page.getByText("Your care team will explain your result in person or by phone.")).toBeVisible();
   await page.evaluate(async () => {
     await navigator.serviceWorker.ready;
   });
   // Reload once so the page is controlled by the service worker, then go offline.
   await page.reload();
-  await expect(page.getByText("This does not mean you have cancer")).toBeVisible();
+  await expect(page.getByText("Your care team will explain your result in person or by phone.")).toBeVisible();
   await context.setOffline(true);
   await page.reload();
-  await expect(page.getByText("This does not mean you have cancer")).toBeVisible();
+  await expect(page.getByText("Your care team will explain your result in person or by phone.")).toBeVisible();
   await context.setOffline(false);
 });

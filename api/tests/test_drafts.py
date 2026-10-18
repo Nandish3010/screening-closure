@@ -216,7 +216,7 @@ def test_the_prompt_is_stored_and_the_hash_is_reproducible():
     out = create(cid).json()
     prompt = drafts.store.get_prompt(out["prompt_hash"])
     assert prompt.system_prompt == SYSTEM_PROMPT
-    assert "Dr Sara Khan" in prompt.prompt_text and "a colonoscopy" in prompt.prompt_text
+    assert "Dr Sara Khan" in prompt.prompt_text and "a camera test" in prompt.prompt_text
     digest = hashlib.sha256((prompt.system_prompt + "\n---\n" + prompt.prompt_text).encode()).hexdigest()
     assert digest == out["prompt_hash"]
 
@@ -377,7 +377,7 @@ def use_model(monkeypatch, fake):
 
 def test_a_valid_model_draft_is_used_and_attributed_to_the_model(monkeypatch):
     cid = owned_case("Dr Sara Khan")
-    text = "Your screening test found blood. Dr Sara Khan will arrange a colonoscopy and the care team will contact you."
+    text = "Your screening result is ready. Dr Sara Khan will arrange a camera test and the care team will contact you."
     use_model(monkeypatch, FakeModel(text))
     out = create(cid).json()
     assert out["provider"] == "azure_openai" and out["fallback_used"] is False and out["text"] == text
@@ -390,7 +390,7 @@ def test_a_valid_model_draft_is_used_and_attributed_to_the_model(monkeypatch):
 
 def test_a_diagnosis_falls_back_to_the_template_and_the_abstention_is_stored(monkeypatch):
     cid = owned_case("Dr Sara Khan")
-    use_model(monkeypatch, FakeModel("You have cancer. Dr Sara Khan will arrange a colonoscopy."))
+    use_model(monkeypatch, FakeModel("You have cancer. Dr Sara Khan will arrange a camera test."))
     out = create(cid).json()
     assert out["provider"] == "template" and out["fallback_used"] is True
     assert out["abstention_reason"].startswith("validation_failed:") and "cancer" in out["abstention_reason"]

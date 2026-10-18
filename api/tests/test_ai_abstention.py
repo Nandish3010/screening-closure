@@ -14,8 +14,8 @@ from app.ai.provider import DraftResult, full_prompt, prompt_hash
 from app.routers import drafts
 
 client = make_client()
-GOOD = "Your screening test found blood. Dr Sara Khan will arrange a colonoscopy and the care team will contact you."
-BAD = "You have cancer. Dr Sara Khan will arrange a colonoscopy."
+GOOD = "Your screening result is ready. Dr Sara Khan will arrange a camera test and the care team will contact you."
+BAD = "You have cancer. Dr Sara Khan will arrange a camera test."
 
 
 @pytest.fixture(autouse=True)
@@ -187,7 +187,7 @@ def test_hook_weights_by_the_language_channel_mix(monkeypatch):
 
     req = DraftRequest("result_notification", "sms", "en", SAMPLE_VALUES["en"]["owner_name"],
                        "primary_care_owner", DEFAULT_NEXT_STEP["en"], "colorectal_fit")
-    text = f"Your screening test found blood. {req.owner_name} will arrange {req.next_step} and the care team will contact you."
+    text = f"Your screening result is ready. {req.owner_name} will arrange {req.next_step} and the care team will contact you."
     write_entry(CacheEntry(prompt_hash(req), "azure_openai", "m", "en", text, full_prompt(req)))
     monkeypatch.setenv("LLM_PROVIDER", "azure_openai")
     mix = recs(("en", "sms"), ("other", "sms"), ("en", "phone"), ("ar", "sms"))

@@ -77,8 +77,8 @@ class Scripted:
 
 
 def test_abstentions_are_persisted_and_counted_in_the_metric(client, pool, monkeypatch):
-    good = "Your screening test found blood. Dr Sara Khan will arrange a colonoscopy and the care team will contact you."
-    fake = Scripted([good, "You have cancer. Dr Sara Khan will arrange a colonoscopy.", good])
+    good = "Your screening result is ready. Dr Sara Khan will arrange a camera test and the care team will contact you."
+    fake = Scripted([good, "You have cancer. Dr Sara Khan will arrange a camera test.", good])
     monkeypatch.setitem(prov._REGISTRY, "azure_openai", lambda: fake)
     monkeypatch.setenv("LLM_PROVIDER", "azure_openai")
     cid = owned_case(client)

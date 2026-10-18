@@ -10,12 +10,14 @@
 #   id         stable name, appears in the abstention reason and in the metrics
 #   phrase     literal phrase (whole word, spaces match any whitespace)   -- or --
 #   regex      raw regular expression (English only; used for word stems)
-#   category   diagnosis_statement | disease_term | positive_result_jargon | false_reassurance |
-#              clinical_judgement | medication_or_treatment | advice
+#   category   diagnosis_statement | disease_term | positive_result_jargon | result_disclosure |
+#              false_reassurance | clinical_judgement | medication_or_treatment | advice
 #   rationale  why the model must not say this
 #   example    a short text containing the phrase; the tests check each entry rejects its example
 #
-# TODO native-speaker review (H2) for the whole `ar` list. TODO clinician review (H1) for both.
+# E14: `result_disclosure` entries reject any draft that states or hints at what the screening found.
+# IFHAS: abnormal results are communicated with the participant present, so no outbound text may carry
+# the result. TODO native-speaker review (H2) for the whole `ar` list. TODO clinician review (H1) for both.
 version: 1
 
 en:
@@ -23,8 +25,8 @@ en:
     phrase: "you have"
     category: diagnosis_statement
     rationale: >-
-      "You have ..." is the grammar of a diagnosis. The only statement the message may make about
-      the result is that the screening test found blood.
+      "You have ..." is the grammar of a diagnosis. A message makes no statement about the result;
+      the care team gives it with the participant present.
     example: "You have a problem that we need to look at."
   - id: you_have_got
     regex: "you(?:'|’)?ve got|you have got"
@@ -72,8 +74,7 @@ en:
     regex: "positive for|tested positive|test is positive|positive result"
     category: positive_result_jargon
     rationale: >-
-      "Positive" is read by many patients as "I have the disease". The message says only that the
-      test found blood.
+      "Positive" is read by many patients as "I have the disease". A message states no result.
     example: "A positive result came back."
   - id: do_not_worry
     regex: "(?:do not|don(?:'|’)t) (?:worry|be worried|be alarmed|panic)|no need to (?:worry|panic)|nothing to (?:worry|be worried)"
@@ -116,6 +117,32 @@ en:
       The only instruction allowed is "the next step is ...; your care team will contact you".
       Everything else (preparation, diet, behaviour) is for the care team.
     example: "You should stop eating red meat."
+
+  - id: found_blood
+    regex: "(?:found|finds|detected|detects|showed|shows|revealed|reveals|saw|seen|spotted) (?:\\w+ ){0,3}blood|blood (?:was|has been|is) (?:found|detected|seen)|traces? of blood"
+    category: result_disclosure
+    rationale: "IFHAS: abnormal results are communicated with the participant present"
+    example: "Your screening test found blood."
+  - id: blood_in_stool
+    regex: "blood in (?:your |the |a )?(?:stool|stools|sample|poo|faeces|feces|motion|motions)|(?:stool|faecal|fecal) blood|bloody stools?"
+    category: result_disclosure
+    rationale: "IFHAS: abnormal results are communicated with the participant present"
+    example: "There was blood in your stool."
+  - id: positive_result
+    regex: "positive result|(?:result|test|screening|fit) (?:is|was|came back|has come back) positive|came back positive|positive (?:screening|fit|test)"
+    category: result_disclosure
+    rationale: "IFHAS: abnormal results are communicated with the participant present"
+    example: "Your test was positive."
+  - id: abnormal_result
+    regex: "abnormal\\w*|(?:result|test|screening) (?:is|was) not normal|something wrong"
+    category: result_disclosure
+    rationale: "IFHAS: abnormal results are communicated with the participant present"
+    example: "You have an abnormal result."
+  - id: result_shows
+    regex: "(?:results?|tests?|screening) (?:shows?|showed|indicates?|indicated|suggests?|suggested|revealed|reveals?)"
+    category: result_disclosure
+    rationale: "IFHAS: abnormal results are communicated with the participant present"
+    example: "Your result shows a problem."
 
 ar:
   - id: you_are_affected
@@ -177,7 +204,7 @@ ar:
     phrase: "ايجابي"
     category: positive_result_jargon
     rationale: >-
-      "Positive" is read as "I have the disease". The message says only that the test found blood.
+      "Positive" is read as "I have the disease". A message states no result.
     example: "نتيجتك ايجابية."
   - id: do_not_worry
     phrase: "لا تقلق"
@@ -314,3 +341,74 @@ ar:
     category: advice
     rationale: Preparation instructions belong to the care team.
     example: "يلزم صيام قبل الفحص."
+
+  - id: found_blood
+    phrase: "وجد دم"
+    category: result_disclosure
+    rationale: "IFHAS: abnormal results are communicated with the participant present"
+    example: "وجد دماً في العينة."
+  - id: found_blood_we
+    phrase: "وجدنا دم"
+    category: result_disclosure
+    rationale: "IFHAS: abnormal results are communicated with the participant present"
+    example: "وجدنا دماً في العينة."
+  - id: blood_presence
+    phrase: "وجود دم"
+    category: result_disclosure
+    rationale: "IFHAS: abnormal results are communicated with the participant present"
+    example: "أظهر فحصك وجود دم."
+  - id: blood_in_stool
+    phrase: "دم في البراز"
+    category: result_disclosure
+    rationale: "IFHAS: abnormal results are communicated with the participant present"
+    example: "هناك دم في البراز."
+  - id: occult_blood
+    phrase: "دم خفي"
+    category: result_disclosure
+    rationale: "IFHAS: abnormal results are communicated with the participant present"
+    example: "هناك دم خفي في العينة."
+  - id: occult_blood_def
+    phrase: "الدم الخفي"
+    category: result_disclosure
+    rationale: "IFHAS: abnormal results are communicated with the participant present"
+    example: "فحص الدم الخفي."
+  - id: positive_result
+    phrase: "موجب"
+    category: result_disclosure
+    rationale: "IFHAS: abnormal results are communicated with the participant present"
+    example: "نتيجة الفحص موجبة."
+  - id: abnormal_result
+    phrase: "غير طبيعي"
+    category: result_disclosure
+    rationale: "IFHAS: abnormal results are communicated with the participant present"
+    example: "النتيجة غير طبيعية."
+  - id: abnormal_alt
+    phrase: "شاذ"
+    category: result_disclosure
+    rationale: "IFHAS: abnormal results are communicated with the participant present"
+    example: "النتيجة شاذة."
+  - id: result_shows_test
+    phrase: "اظهر فحص"
+    category: result_disclosure
+    rationale: "IFHAS: abnormal results are communicated with the participant present"
+    example: "أظهر فحصك مشكلة."
+  - id: result_shows_result
+    phrase: "اظهرت نتيجة"
+    category: result_disclosure
+    rationale: "IFHAS: abnormal results are communicated with the participant present"
+    example: "أظهرت نتيجة فحصك مشكلة."
+  - id: result_shows_your
+    phrase: "اظهرت نتيجت"
+    category: result_disclosure
+    rationale: "IFHAS: abnormal results are communicated with the participant present"
+    example: "أظهرت نتيجتك مشكلة."
+  - id: found_by_test
+    phrase: "وجد فحص"
+    category: result_disclosure
+    rationale: "IFHAS: abnormal results are communicated with the participant present"
+    example: "وجد فحصك شيئاً."
+  - id: found_by_test_def
+    phrase: "وجد الفحص"
+    category: result_disclosure
+    rationale: "IFHAS: abnormal results are communicated with the participant present"
+    example: "وجد الفحص شيئاً."

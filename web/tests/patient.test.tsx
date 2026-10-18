@@ -17,10 +17,38 @@ const open = async (api = createMockAdapter(null)) => {
 describe("Patient page", () => {
   it("renders the plain-language result, next steps and owner", async () => {
     await open();
-    expect(screen.getByText(/does not mean you have cancer/i)).toBeInTheDocument();
+    expect(screen.getByText(STRINGS.en.resultBody)).toBeInTheDocument();
+    expect(screen.getByText("Your care team will explain your result in person or by phone.")).toBeInTheDocument();
     expect(screen.getByTestId("patient-owner")).toHaveTextContent("Sara Al Mansoori");
     expect(screen.getByTestId("patient-owner")).toHaveTextContent("Care coordinator");
     expect(screen.getAllByRole("listitem").length).toBeGreaterThan(3);
+  });
+
+  it("E14: the page never states or hints at what the screening found, in either language", async () => {
+    const user = userEvent.setup();
+    await open();
+    const root = screen.getByTestId("patient-root");
+    const banned = [/blood/i, /cancer/i, /positive/i, /abnormal/i, /diagnos/i, /found/i, /worry/i, /\bnormal\b/i,
+      /دم/, /سرطان/, /ايجابي|إيجابي/, /مصاب/, /تشخيص/, /طبيعي/, /تقلق/];
+    for (const lang of ["en", "ar"] as const) {
+      if (lang === "ar") await user.click(screen.getByRole("button", { name: /العربية/ }));
+      const text = root.textContent ?? "";
+      for (const re of banned) expect(text, `${lang}: ${re}`).not.toMatch(re);
+      // The explicit line, the owner, the appointment, the acknowledge and the callback buttons.
+      expect(screen.getByTestId("explain-in-person")).toHaveTextContent(STRINGS[lang].explainInPerson);
+      expect(screen.getByTestId("patient-owner")).toHaveTextContent("Sara Al Mansoori");
+      expect(screen.getByRole("button", { name: STRINGS[lang].understand })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: STRINGS[lang].dontUnderstand })).toBeInTheDocument();
+    }
+  });
+
+  it("E14: the string catalogue itself carries no result-disclosing or reassuring words", () => {
+    const all = (lang: "en" | "ar") => JSON.stringify(Object.values(STRINGS[lang]).map((v) => (typeof v === "function" ? v("X", "Y") : v)));
+    expect(all("en")).not.toMatch(/blood|cancer|positive|abnormal|diagnos|does not mean|worry/i);
+    expect(all("ar")).not.toMatch(/دم|سرطان|ايجابي|إيجابي|مصاب|تشخيص|لا يعني|تقلق/);
+    expect(STRINGS.en.explainInPerson).toBe("Your care team will explain your result in person or by phone.");
+    expect(STRINGS.ar.explainInPerson).toMatch(/[؀-ۿ]/);
+    expect(STRINGS.en.understand).toBe("I understand, please contact me");
   });
 
   it("Arabic toggle sets dir=rtl and lang=ar and swaps strings; toggling back restores ltr", async () => {

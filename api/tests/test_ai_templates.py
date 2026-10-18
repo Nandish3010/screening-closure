@@ -152,3 +152,24 @@ def test_reviewer_pack_covers_every_string():
                 assert line.strip() in md, (e.language, e.purpose, e.key, line)
         assert f"**{e.key}**" in md
     assert md.count("characters with sample values") == len(list(iter_templates()))
+
+
+def test_result_notification_names_no_finding_and_says_who_will_call():
+    """E14: the first message says the result is ready, that the care team needs to talk, and who will call."""
+    sms = render("result_notification", "sms", "en", owner_name="Dr Sara Khan", next_step="a camera test")
+    assert sms.startswith(
+        "Your screening result is ready and your care team needs to talk with you about the next step.")
+    assert "Dr Sara Khan will call you, or you can reply to book a time." in sms
+    assert not re.search(r"blood|positive|abnormal|cancer|found", sms, re.I)
+    for channel in ("whatsapp", "letter"):
+        text = render("result_notification", channel, "en", owner_name="Dr Sara Khan", next_step="a camera test")
+        assert "Your care team will explain your result in person or by phone." in text
+
+
+def test_appointment_confirmations_name_the_appointment_not_a_disease():
+    s = SAMPLE_VALUES["en"]
+    for channel in ("sms", "whatsapp", "letter"):
+        text = render("appointment_confirmation", channel, "en", owner_name=s["owner_name"],
+                      next_step=s["next_step"], appointment_date=s["appointment_date"])
+        assert f"appointment for {s['next_step']}" in text
+        assert not re.search(r"blood|positive|abnormal|cancer|colonoscop", text, re.I)

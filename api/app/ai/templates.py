@@ -23,17 +23,19 @@ PLACEHOLDERS = ("owner_name", "next_step", "appointment_date")
 _PLACEHOLDER_RE = re.compile(r"\{([a-z_]+)\}")
 _WITH_DATE = "_with_date"
 
-DEFAULT_NEXT_STEP = {"en": "a colonoscopy", "ar": "تنظير القولون"}
+# E14: a message names the next step as an appointment, never as a finding. "A camera test" is the friendly
+# term for the colonoscopy; a caller may supply another next step, which is then the caller's responsibility.
+DEFAULT_NEXT_STEP = {"en": "a camera test", "ar": "فحص بالكاميرا"}
 
 SAMPLE_VALUES = {
     "en": {
         "owner_name": "Dr Sara Khan",
-        "next_step": "a colonoscopy",
+        "next_step": "a camera test",
         "appointment_date": "Tuesday 3 November 2026",
     },
     "ar": {
         "owner_name": "الدكتورة سارة خان",
-        "next_step": "تنظير القولون",
+        "next_step": "فحص بالكاميرا",
         "appointment_date": "الثلاثاء 3 نوفمبر 2026",
     },
 }
@@ -187,8 +189,10 @@ def reviewer_pack_markdown() -> str:
         f"Template set version {ts.version}. Generated from `api/app/ai/templates/*.yaml`.",
         "",
         "What to check: plain words at roughly grade-6 reading level; no diagnosis; no advice beyond "
-        '"the next step is ...; your care team will contact you"; the only clinical fact is that the '
-        "screening test found blood; the tone is calm and respectful; Arabic reads naturally.",
+        '"the next step is ...; your care team will contact you"; no message states or hints at what the '
+        "screening found (IFHAS: abnormal results are communicated with the participant present, so a "
+        "message says only that the result is ready and the care team will talk with the patient); the "
+        "tone is calm and respectful; Arabic reads naturally.",
         "",
         "Placeholders: `{owner_name}` is the care owner the patient will hear from (not the patient). "
         "`{next_step}` is the next pathway step in the message language. `{appointment_date}` is a "
