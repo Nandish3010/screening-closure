@@ -15,6 +15,9 @@
 # the Arabic ones await the native-speaker review (H2). `template_set_version` ties this approval to one version of the
 # template files: if a template is edited and its version bumped, the policy fails to load (automatic messaging switches
 # itself off, loudly) until someone re-approves.
+# Note (M5 final merge): the Arabic texts and five English strings were revised by the AI pre-reviews of 2026-10-18
+# (docs/governance/arabic-review.md, docs/governance/clinician-review.md) without a version bump, because the approvals
+# below were never real ones; H1 and H2 sign off on the texts as they now stand, and bump the version if they change them.
 version: 1
 template_set_version: 2
 status: pending_h1_clinical_lead_signoff

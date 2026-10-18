@@ -145,6 +145,10 @@ en:
     example: "Your result shows a problem."
 
 ar:
+  # AI Arabic review 2026-10-18 (AI-assisted, not a native-speaker human review; H2 still pending).
+  # Existing entries kept as they are: none blocks one of our own texts, and the false rejections they
+  # can cause (طبيعي, صيام, حبوب in a plain sense) cost only a template message. Entries added at the end
+  # of their category carry the comment "AI Arabic review 2026-10-18: added". Record: docs/governance/arabic-review.md.
   - id: you_are_affected
     phrase: "انت مصاب"
     category: diagnosis_statement
@@ -200,6 +204,21 @@ ar:
     category: disease_term
     rationale: Clinical terminology for disease.
     example: "كارسينوما محتملة."
+  - id: disease  # AI Arabic review 2026-10-18: added
+    phrase: "مرض"
+    category: disease_term
+    rationale: Names an illness. Also blocks المرضى (patients); a false rejection only costs a template.
+    example: "قد يكون مرضاً."
+  - id: inflammation  # AI Arabic review 2026-10-18: added
+    phrase: "التهاب"
+    category: disease_term
+    rationale: Names a finding the screening test cannot show.
+    example: "قد يكون التهاباً."
+  - id: haemorrhoids  # AI Arabic review 2026-10-18: added
+    phrase: "بواسير"
+    category: disease_term
+    rationale: Names a possible cause; a guess at a diagnosis, often meant to reassure.
+    example: "قد تكون بواسير."
   - id: positive
     phrase: "ايجابي"
     category: positive_result_jargon
@@ -246,6 +265,26 @@ ar:
     category: false_reassurance
     rationale: Predicts an outcome the system cannot know.
     example: "ستكون بخير."
+  - id: it_is_fine  # AI Arabic review 2026-10-18: added
+    phrase: "لا باس"
+    category: false_reassurance
+    rationale: 'Means "it is fine", a reassurance the system cannot give.'
+    example: "لا بأس في ذلك."
+  - id: god_willing_good  # AI Arabic review 2026-10-18: added
+    phrase: "ان شاء الله خير"
+    category: false_reassurance
+    rationale: Natural Gulf phrase that reassures about the outcome.
+    example: "إن شاء الله خير."
+  - id: may_god_heal  # AI Arabic review 2026-10-18: added
+    phrase: "يشفي"
+    category: false_reassurance
+    rationale: 'Means "may God heal you", which implies an illness.'
+    example: "الله يشفيك."
+  - id: healing  # AI Arabic review 2026-10-18: added
+    phrase: "شفاء"
+    category: false_reassurance
+    rationale: Wishing recovery implies an illness.
+    example: "نتمنى لك الشفاء."
   - id: not_dangerous
     phrase: "غير خطير"
     category: false_reassurance
@@ -271,6 +310,11 @@ ar:
     category: clinical_judgement
     rationale: Urgency is set by the pathway and the care team, not by the model.
     example: "هذه حالة طارئة."
+  - id: critical  # AI Arabic review 2026-10-18: added
+    phrase: "حرج"
+    category: clinical_judgement
+    rationale: 'Means "critical", a severity judgement. Also blocks لا حرج (no problem), which reassures.'
+    example: "الحالة حرجة."
   - id: medicine
     phrase: "دواء"
     category: medication_or_treatment
@@ -311,6 +355,11 @@ ar:
     category: medication_or_treatment
     rationale: Implies a treatment decision that has not been made.
     example: "العلاج الكيماوي."
+  - id: chemotherapy_formal  # AI Arabic review 2026-10-18: added
+    phrase: "كيميائي"
+    category: medication_or_treatment
+    rationale: Formal spelling of chemotherapy; implies a treatment decision.
+    example: "العلاج الكيميائي."
   - id: you_must
     phrase: "يجب عليك"
     category: advice
@@ -341,6 +390,21 @@ ar:
     category: advice
     rationale: Preparation instructions belong to the care team.
     example: "يلزم صيام قبل الفحص."
+  - id: must  # AI Arabic review 2026-10-18: added
+    phrase: "يجب"
+    category: advice
+    rationale: 'Means "must" (without عليك). Instructions beyond the next step are for the care team.'
+    example: "يجب أن تحضر مبكراً."
+  - id: must_colloquial  # AI Arabic review 2026-10-18: added
+    phrase: "لازم"
+    category: advice
+    rationale: 'Colloquial "must", common in Gulf speech.'
+    example: "لازم تحضر مبكراً."
+  - id: fasting_alt  # AI Arabic review 2026-10-18: added
+    phrase: "صوم"
+    category: advice
+    rationale: Other word for fasting; preparation instructions belong to the care team.
+    example: "الصوم قبل الفحص."
 
   - id: found_blood
     phrase: "وجد دم"
@@ -412,3 +476,23 @@ ar:
     category: result_disclosure
     rationale: "IFHAS: abnormal results are communicated with the participant present"
     example: "وجد الفحص شيئاً."
+  - id: blood  # AI Arabic review 2026-10-18: added
+    phrase: "دم"
+    category: result_disclosure
+    rationale: "IFHAS: abnormal results are communicated with the participant present"
+    example: "هناك دم في العينة."
+  - id: bleeding  # AI Arabic review 2026-10-18: added
+    phrase: "نزيف"
+    category: result_disclosure
+    rationale: "IFHAS: abnormal results are communicated with the participant present"
+    example: "هناك نزيف بسيط."
+  - id: negative_result  # AI Arabic review 2026-10-18: added
+    phrase: "سلبي"
+    category: result_disclosure
+    rationale: "IFHAS: abnormal results are communicated with the participant present"
+    example: "نتيجتك سلبية."
+  - id: not_sound  # AI Arabic review 2026-10-18: added
+    phrase: "غير سليم"
+    category: result_disclosure
+    rationale: "IFHAS: abnormal results are communicated with the participant present"
+    example: "النتيجة غير سليمة."

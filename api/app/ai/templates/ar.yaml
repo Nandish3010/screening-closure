@@ -9,6 +9,20 @@
 # Placeholders: {owner_name} {next_step} {appointment_date}. `{next_step}` and
 # `{appointment_date}` are supplied in Arabic by the caller. `_with_date` variants are used when
 # an appointment date is supplied. Limits: sms 320, whatsapp 600, letter 1200 characters.
+#
+# AI Arabic review 2026-10-18 (AI-assisted, not a native-speaker human review; H2 still pending).
+# Record: docs/governance/arabic-review.md. Conventions applied to every text below:
+#   - Terms: فحص الكشف المبكر (screening test), فحص بالكاميرا (camera test, via {next_step}),
+#     فريق رعايتك (care team), موعد (appointment), نتيجة (result), الشخص المسؤول عن رعايتك (care owner).
+#   - Gender: no form that changes with the patient's or the owner's gender. "{owner_name} will call
+#     you" is سيصلك اتصال من {owner_name} (the verb agrees with اتصال, not with the owner), and
+#     "your care owner is X" is الشخص المسؤول عن رعايتك: X (no هو/هي before a woman's name).
+#   - Greeting: مرحباً in SMS and WhatsApp, تحية طيبة in letters (neutral for every reader).
+#   - Tanween written ـاً (on the alef); Arabic comma ، ; sentences end with "."; Western digits.
+#   - Direction: no bidi marks (validate.py refuses every Cf character, SEC-1). Instead every line
+#     starts with an Arabic word, and each placeholder is followed by Arabic punctuation or text,
+#     never by another placeholder or a digit.
+#   - Never the substrings دم or تنظير (test_ai_validate.py checks the raw text).
 version: 2
 language: ar
 purposes:
@@ -17,85 +31,105 @@ purposes:
     description: >-
       First message to the patient once the result has an accepted care owner. It states no finding;
       the care team explains the result in person or by phone.
+    # AI Arabic review 2026-10-18: "screening" named; sentence split; gender-neutral call line.
     sms: >-
-      نتيجة فحصك جاهزة، ويحتاج فريق رعايتك إلى التحدث معك عن الخطوة التالية، وهي {next_step}.
-      ستتلقى اتصالاً من {owner_name}، أو يمكنك الرد على هذه الرسالة لحجز موعد.
+      نتيجة فحص الكشف المبكر جاهزة. يحتاج فريق رعايتك إلى التحدث معك عن الخطوة التالية، وهي {next_step}.
+      سيصلك اتصال من {owner_name}، أو يمكنك الرد على هذه الرسالة لحجز موعد.
+    # AI Arabic review 2026-10-18: paragraphs follow the English; same "explain" line as the patient page.
     whatsapp: |-
       مرحباً، هذه رسالة من فريق رعايتك.
 
-      نتيجة فحصك جاهزة، ويحتاج فريق رعايتك إلى التحدث معك عن الخطوة التالية، وهي {next_step}.
+      نتيجة فحص الكشف المبكر جاهزة. يحتاج فريق رعايتك إلى التحدث معك عن الخطوة التالية.
 
-      سيشرح لك فريق رعايتك النتيجة وجهاً لوجه أو عبر الهاتف. ستتلقى اتصالاً من {owner_name}، أو يمكنك الرد على هذه الرسالة لحجز موعد.
+      الخطوة التالية هي {next_step}. سيشرح لك فريق رعايتك نتيجتك وجهاً لوجه أو عبر الهاتف.
+
+      سيصلك اتصال من {owner_name}، أو يمكنك الرد على هذه الرسالة لحجز موعد.
+    # AI Arabic review 2026-10-18: neutral greeting; owner line without هو before a woman's name.
     letter: |-
-      السلام عليكم،
+      تحية طيبة،
 
-      نكتب إليك بخصوص فحص الكشف المبكر الذي أجريته مؤخراً. نتيجة فحصك جاهزة، ويحتاج فريق رعايتك إلى التحدث معك عن الخطوة التالية، وهي {next_step}.
+      نكتب إليك بخصوص فحص الكشف المبكر الذي أجريته مؤخراً.
 
-      سيشرح لك فريق رعايتك النتيجة وجهاً لوجه أو عبر الهاتف. ستتلقى اتصالاً من {owner_name}، أو يمكنك التواصل مع فريق رعايتك لحجز موعد.
+      نتيجة فحصك جاهزة. يحتاج فريق رعايتك إلى التحدث معك عن الخطوة التالية.
 
-      المسؤول عن رعايتك هو {owner_name}، الشخص في فريق رعايتك المسؤول عن خطوتك التالية.
+      الخطوة التالية هي {next_step}. سيشرح لك فريق رعايتك نتيجتك وجهاً لوجه أو عبر الهاتف.
+
+      سيصلك اتصال من {owner_name}، أو يمكنك التواصل مع فريق رعايتك لحجز موعد.
+      الشخص المسؤول عن خطوتك التالية في فريق رعايتك: {owner_name}.
 
       مع تحياتنا،
       فريق رعايتك
   # TODO native-speaker review (H2)
   reminder:
     description: Reminder when the patient has not yet taken the next step. It states no finding.
+    # AI Arabic review 2026-10-18: "screening" named; shorter sentences; gender-neutral call line.
     sms: >-
-      تذكير من فريق رعايتك. نتيجة فحصك جاهزة، ولا يزال فريق رعايتك بحاجة إلى التحدث معك عن الخطوة التالية،
-      وهي {next_step}. ستتلقى اتصالاً من {owner_name}، أو يمكنك الرد على هذه الرسالة لحجز موعد.
+      تذكير من فريق رعايتك. نتيجة فحص الكشف المبكر جاهزة. لا يزال فريق رعايتك بحاجة إلى التحدث معك
+      عن الخطوة التالية، وهي {next_step}. سيصلك اتصال من {owner_name}، أو يمكنك الرد على هذه الرسالة لحجز موعد.
+    # AI Arabic review 2026-10-18: يوم before the date; owner line without هو.
     sms_with_date: >-
-      تذكير من فريق رعايتك. موعدك لإجراء {next_step} في {appointment_date}.
-      المسؤول عن رعايتك هو {owner_name}. يمكنك الرد على هذه الرسالة إذا أردت تغيير الموعد.
+      تذكير من فريق رعايتك. موعدك لإجراء {next_step} يوم {appointment_date}.
+      الشخص المسؤول عن رعايتك: {owner_name}. يمكنك الرد على هذه الرسالة إذا أردت تغيير الموعد.
+    # AI Arabic review 2026-10-18: paragraphs follow the English.
     whatsapp: |-
       مرحباً، هذا تذكير من فريق رعايتك.
 
-      نتيجة فحصك جاهزة، ولا يزال فريق رعايتك بحاجة إلى التحدث معك عن الخطوة التالية، وهي {next_step}.
+      نتيجة فحص الكشف المبكر جاهزة. لا يزال فريق رعايتك بحاجة إلى التحدث معك عن الخطوة التالية.
 
-      ستتلقى اتصالاً من {owner_name}، أو يمكنك الرد على هذه الرسالة لحجز موعد.
+      الخطوة التالية هي {next_step}. سيصلك اتصال من {owner_name}، أو يمكنك الرد على هذه الرسالة لحجز موعد.
+    # AI Arabic review 2026-10-18: يوم before the date; owner line without هو.
     whatsapp_with_date: |-
       مرحباً، هذا تذكير من فريق رعايتك.
 
-      موعدك لإجراء {next_step} في {appointment_date}.
+      موعدك لإجراء {next_step} يوم {appointment_date}.
 
-      المسؤول عن رعايتك هو {owner_name}. يمكنك الرد على هذه الرسالة إذا أردت تغيير الموعد.
+      الشخص المسؤول عن رعايتك: {owner_name}. يمكنك الرد على هذه الرسالة إذا أردت تغيير الموعد.
+    # AI Arabic review 2026-10-18: neutral greeting; paragraphs follow the English.
     letter: |-
-      السلام عليكم،
+      تحية طيبة،
 
-      هذا تذكير من فريق رعايتك. نتيجة فحصك جاهزة، ولا يزال فريق رعايتك بحاجة إلى التحدث معك عن الخطوة التالية، وهي {next_step}.
+      هذا تذكير من فريق رعايتك.
 
-      ستتلقى اتصالاً من {owner_name}، أو يمكنك التواصل مع فريق رعايتك لحجز موعد.
+      نتيجة فحص الكشف المبكر جاهزة. لا يزال فريق رعايتك بحاجة إلى التحدث معك عن الخطوة التالية.
+      الخطوة التالية هي {next_step}.
+
+      سيصلك اتصال من {owner_name}، أو يمكنك التواصل مع فريق رعايتك لحجز موعد.
 
       مع تحياتنا،
       فريق رعايتك
+    # AI Arabic review 2026-10-18: neutral greeting; يوم before the date; owner line without هو.
     letter_with_date: |-
-      السلام عليكم،
+      تحية طيبة،
 
-      هذا تذكير من فريق رعايتك. موعدك لإجراء {next_step} في {appointment_date}.
+      هذا تذكير من فريق رعايتك. موعدك لإجراء {next_step} يوم {appointment_date}.
 
-      المسؤول عن رعايتك هو {owner_name}. يرجى التواصل مع فريق رعايتك إذا أردت تغيير الموعد.
+      الشخص المسؤول عن رعايتك: {owner_name}. يرجى التواصل مع فريق رعايتك إذا أردت تغيير الموعد.
 
       مع تحياتنا،
       فريق رعايتك
   # TODO native-speaker review (H2)
   appointment_confirmation:
     description: Confirms a booked appointment. Requires appointment_date. It names the appointment, never a disease or a finding.
+    # AI Arabic review 2026-10-18: يوم before the date; "with the details" made idiomatic; owner line without هو.
     sms: >-
-      تم تأكيد موعدك لإجراء {next_step} في {appointment_date}.
-      سيتواصل معك فريق رعايتك بالتفاصيل. المسؤول عن رعايتك هو {owner_name}.
+      تم تأكيد موعدك لإجراء {next_step} يوم {appointment_date}.
+      سيتواصل معك فريق رعايتك لإبلاغك بالتفاصيل. الشخص المسؤول عن رعايتك: {owner_name}.
+    # AI Arabic review 2026-10-18: as the SMS.
     whatsapp: |-
       مرحباً، هذه رسالة من فريق رعايتك.
 
-      تم تأكيد موعدك لإجراء {next_step} في {appointment_date}.
+      تم تأكيد موعدك لإجراء {next_step} يوم {appointment_date}.
 
-      سيتواصل معك فريق رعايتك بالتفاصيل. المسؤول عن رعايتك هو {owner_name}.
+      سيتواصل معك فريق رعايتك لإبلاغك بالتفاصيل. الشخص المسؤول عن رعايتك: {owner_name}.
+    # AI Arabic review 2026-10-18: neutral greeting; as the SMS.
     letter: |-
-      السلام عليكم،
+      تحية طيبة،
 
-      نكتب إليك لتأكيد موعدك لإجراء {next_step}. الموعد في {appointment_date}.
+      نكتب إليك لتأكيد موعدك لإجراء {next_step}. الموعد يوم {appointment_date}.
 
-      سيتواصل معك فريق رعايتك بالتفاصيل.
+      سيتواصل معك فريق رعايتك لإبلاغك بالتفاصيل.
 
-      المسؤول عن رعايتك هو {owner_name}.
+      الشخص المسؤول عن رعايتك: {owner_name}.
 
       مع تحياتنا،
       فريق رعايتك
@@ -104,44 +138,50 @@ purposes:
     description: >-
       Tells the patient that a more senior member of the care team now knows, so the next step is not delayed.
       It states no finding.
+    # AI Arabic review 2026-10-18: "screening" named; one idea per sentence; gender-neutral call line.
     sms: >-
-      نتيجة فحصك جاهزة ونريد التأكد من أن خطوتك التالية لن تتأخر. تم إبلاغ أحد كبار أعضاء فريق رعايتك.
-      الخطوة التالية هي {next_step}. ستتلقى اتصالاً من {owner_name}، أو يمكنك الرد على هذه الرسالة لحجز موعد.
+      نتيجة فحص الكشف المبكر جاهزة. نريد التأكد من ألا تتأخر خطوتك التالية. تم إبلاغ أحد كبار أعضاء فريق رعايتك.
+      الخطوة التالية هي {next_step}. سيصلك اتصال من {owner_name}، أو يمكنك الرد على هذه الرسالة لحجز موعد.
+    # AI Arabic review 2026-10-18: as the SMS.
     whatsapp: |-
       مرحباً، هذه رسالة من فريق رعايتك.
 
-      نتيجة فحصك جاهزة ونريد التأكد من أن خطوتك التالية لن تتأخر. تم إبلاغ أحد كبار أعضاء فريق رعايتك.
+      نتيجة فحص الكشف المبكر جاهزة. نريد التأكد من ألا تتأخر خطوتك التالية. تم إبلاغ أحد كبار أعضاء فريق رعايتك.
 
-      الخطوة التالية هي {next_step}. ستتلقى اتصالاً من {owner_name}، أو يمكنك الرد على هذه الرسالة لحجز موعد.
+      الخطوة التالية هي {next_step}. سيصلك اتصال من {owner_name}، أو يمكنك الرد على هذه الرسالة لحجز موعد.
+    # AI Arabic review 2026-10-18: neutral greeting; as the SMS.
     letter: |-
-      السلام عليكم،
+      تحية طيبة،
 
-      نتيجة فحصك جاهزة ونريد التأكد من أن خطوتك التالية لن تتأخر. تم إبلاغ أحد كبار أعضاء فريق رعايتك.
+      نتيجة فحص الكشف المبكر جاهزة. نريد التأكد من ألا تتأخر خطوتك التالية. تم إبلاغ أحد كبار أعضاء فريق رعايتك.
 
-      الخطوة التالية هي {next_step}. ستتلقى اتصالاً من {owner_name}، أو يمكنك التواصل مع فريق رعايتك لحجز موعد.
+      الخطوة التالية هي {next_step}. سيصلك اتصال من {owner_name}، أو يمكنك التواصل مع فريق رعايتك لحجز موعد.
 
       مع تحياتنا،
       فريق رعايتك
   # TODO native-speaker review (H2)
   callback_ack:
     description: Acknowledges that the patient asked for help understanding a message. A human will call.
+    # AI Arabic review 2026-10-18: بحاجة instead of تحتاج (same for men and women); owner line without هو.
     sms: >-
-      شكراً لإخبارنا أنك تحتاج إلى مساعدة لفهم الرسالة. سيتصل بك أحد أفراد فريق رعايتك ليشرح لك.
-      الخطوة التالية هي {next_step}. المسؤول عن رعايتك هو {owner_name}.
+      شكراً لإخبارنا أنك بحاجة إلى مساعدة لفهم الرسالة. سيتصل بك أحد أفراد فريق رعايتك ليشرح لك.
+      الخطوة التالية هي {next_step}. الشخص المسؤول عن رعايتك: {owner_name}.
+    # AI Arabic review 2026-10-18: as the SMS.
     whatsapp: |-
-      مرحباً، شكراً لإخبارنا أنك تحتاج إلى مساعدة لفهم الرسالة.
+      مرحباً، شكراً لإخبارنا أنك بحاجة إلى مساعدة لفهم الرسالة.
 
       سيتصل بك أحد أفراد فريق رعايتك ليشرح لك. الخطوة التالية هي {next_step}.
 
-      المسؤول عن رعايتك هو {owner_name}.
+      الشخص المسؤول عن رعايتك: {owner_name}.
+    # AI Arabic review 2026-10-18: neutral greeting; as the SMS.
     letter: |-
-      السلام عليكم،
+      تحية طيبة،
 
-      شكراً لإخبارنا أنك تحتاج إلى مساعدة لفهم رسالتنا.
+      شكراً لإخبارنا أنك بحاجة إلى مساعدة لفهم رسالتنا.
 
       سيتصل بك أحد أفراد فريق رعايتك ليشرح لك. الخطوة التالية هي {next_step}.
 
-      المسؤول عن رعايتك هو {owner_name}.
+      الشخص المسؤول عن رعايتك: {owner_name}.
 
       مع تحياتنا،
       فريق رعايتك

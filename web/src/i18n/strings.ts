@@ -76,11 +76,13 @@ export const STRINGS: Record<Lang, PatientStrings> = {
     nextSteps: [
       "Your care team will talk with you about your result.",
       "The next step is an appointment for a camera test called a colonoscopy.",
-      "You will get a date and easy steps to get ready.",
+      // AI clinical review 2026-10-18
+      "You will get a date and clear steps to get ready.",
     ],
     ownerHeading: "Who is looking after you",
     ownerLine: (name, role) => `${iso(name)} (${role}) is looking after your care. You can ask them any question.`,
-    ownerPending: "A care coordinator will be chosen for you soon.",
+    // AI clinical review 2026-10-18
+    ownerPending: "A person in your care team will be chosen to look after you soon.",
     ownerByRole: {
       primary_care_owner: "Your primary care doctor is looking after your care. You can ask them any question.",
       specialist_owner: "Your specialist doctor is looking after your care. You can ask them any question.",
@@ -98,8 +100,10 @@ export const STRINGS: Record<Lang, PatientStrings> = {
     channels: { phone: "Phone call", sms: "Text message", whatsapp: "WhatsApp", letter: "Letter" },
     shareLabel: "My care team may share my result with the specialist who will do my test.",
     withdrawButton: "Stop all contact",
-    withdrawHint: "If you stop contact, your care team will not message or call you. A person will check your case.",
-    withdrawnNotice: "You asked us to stop contact. We will not message or call you. A person on your care team will check your case.",
+    // AI clinical review 2026-10-18
+    withdrawHint: "If you stop contact, your care team will not message or call you. A person will check your case. You can still call your care team.",
+    // AI clinical review 2026-10-18
+    withdrawnNotice: "You asked us to stop contact. We will not message or call you. A person on your care team will check your case. You can still call your care team.",
     resumeButton: "You may contact me again",
     saved: "Saved",
     saveFailed: "We could not save this. Please try again.",
@@ -107,55 +111,68 @@ export const STRINGS: Record<Lang, PatientStrings> = {
     progressHeading: "Where you are now",
     progress: ["Result received", "Care team ready", "Camera test", "Doctor review"],
     homeTitle: "Your screening result",
-    homeBody: "Open the link your care team sent you to see your result. You can add this page to your home screen.",
+    // AI clinical review 2026-10-18
+    homeBody: "Open the link your care team sent you to see your next steps. You can add this page to your home screen.",
   },
+  // AI Arabic review 2026-10-18 (AI-assisted, not a native-speaker human review; H2 still pending).
+  // Record: docs/governance/arabic-review.md. Terms: فحص الكشف المبكر (screening test), فحص بالكاميرا
+  // (camera test) with تنظير القولون named once, فريق رعايتك (care team), موعد, نتيجة, الشخص المسؤول عن
+  // رعايتك (care owner). No form that changes with the patient's gender (no افتح / ستحصل / أنت غير متصل), and
+  // حالتك (your condition) replaced by رعايتك or ملفك so no line hints at an illness. Tanween ـاً, Arabic comma.
+  // Never the substring دم anywhere on the page (web/tests/patient.test.tsx).
   ar: {
-    appTitle: "نتيجة فحصك",
+    appTitle: "نتيجة فحص الكشف المبكر", // AI Arabic review 2026-10-18: "screening" named, as in the English
     language: "اللغة",
     switchTo: "English",
     loading: "جارٍ التحميل...",
     loadError: "لم نتمكن من تحميل معلوماتك. يرجى المحاولة مرة أخرى.",
-    offline: "أنت غير متصل بالإنترنت. هذه آخر معلومات حفظناها.",
+    offline: "لا يوجد اتصال بالإنترنت. هذه آخر معلومات حفظناها.", // AI Arabic review 2026-10-18: gender-neutral
     resultHeading: "نتيجتك جاهزة",
     resultBody:
-      "نتيجة فحصك جاهزة. يحتاج فريق رعايتك إلى التحدث معك عنها وعن الخطوة التالية.",
-    explainInPerson: "سيشرح لك فريق رعايتك نتيجتك وجهًا لوجه أو عبر الهاتف.",
+      "نتيجة فحص الكشف المبكر جاهزة. يحتاج فريق رعايتك إلى التحدث معك عنها وعن الخطوة التالية.", // AI Arabic review 2026-10-18
+    explainInPerson: "سيشرح لك فريق رعايتك نتيجتك وجهاً لوجه أو عبر الهاتف.", // AI Arabic review 2026-10-18: tanween ـاً
     nextHeading: "ماذا سيحدث بعد ذلك",
     nextSteps: [
       "سيتحدث معك فريق رعايتك عن نتيجتك.",
       "الخطوة التالية هي موعد لفحص بالكاميرا اسمه تنظير القولون.",
-      "ستحصل على موعد وخطوات سهلة للتحضير.",
+      "سيصلك موعد وخطوات سهلة للتحضير.", // AI Arabic review 2026-10-18: gender-neutral (was ستحصل)
     ],
-    ownerHeading: "من يتابع حالتك",
-    ownerLine: (name, role) => `المسؤول عن متابعة حالتك:\n${iso(name)} (${role}).\nيمكنك طرح أي سؤال.`,
-    ownerPending: "سنعيّن لك منسق رعاية قريبًا.",
+    ownerHeading: "من يتابعك", // AI Arabic review 2026-10-18: matches the English; no حالتك
+    // AI Arabic review 2026-10-18: الشخص المسؤول عن رعايتك (care owner term); the colon avoids هو/هي before the name.
+    ownerLine: (name, role) => `الشخص المسؤول عن رعايتك:\n${iso(name)} (${role}).\nيمكنك طرح أي سؤال.`,
+    ownerPending: "سنعيّن لك منسق رعاية قريباً.",
+    // AI Arabic review 2026-10-18: يتابعك (looks after you) for every role; عليه dropped so it suits a woman owner.
     ownerByRole: {
-      primary_care_owner: "طبيبك في الرعاية الأولية يتابع حالتك. يمكنك أن تطرح عليه أي سؤال.",
-      specialist_owner: "طبيبك الأخصائي يتابع حالتك. يمكنك أن تطرح عليه أي سؤال.",
-      coordinator: "منسق الرعاية الخاص بك يتابع حالتك. يمكنك أن تطرح عليه أي سؤال.",
-      supervisor: "أحد كبار أعضاء فريق رعايتك يتابع حالتك. يمكنك أن تطرح عليه أي سؤال.",
-      other: "فريق رعايتك يتابع حالتك. يمكنك أن تطرح عليه أي سؤال.",
+      primary_care_owner: "يتابعك طبيبك في الرعاية الأولية. يمكنك طرح أي سؤال.",
+      specialist_owner: "يتابعك طبيبك الأخصائي. يمكنك طرح أي سؤال.",
+      coordinator: "يتابعك منسق الرعاية الخاص بك. يمكنك طرح أي سؤال.",
+      supervisor: "يتابعك أحد كبار أعضاء فريق رعايتك. يمكنك طرح أي سؤال.",
+      other: "يتابعك فريق رعايتك. يمكنك طرح أي سؤال.",
     },
     understand: "فهمت، يرجى التواصل معي",
-    understandDone: "شكرًا لك. سجلنا طلبك. سيتواصل معك فريق الرعاية.",
-    understandWait: "يمكنك الضغط على هذا الزر بعد أن يرسل لك فريق الرعاية رسالة.",
+    understandDone: "شكراً لك. سجلنا طلبك. سيتواصل معك فريق رعايتك.", // AI Arabic review 2026-10-18: care-team term
+    understandWait: "يمكنك الضغط على هذا الزر بعد أن يرسل لك فريق رعايتك رسالة.", // AI Arabic review 2026-10-18
     dontUnderstand: "لا أفهم هذا",
-    callbackDone: "شكرًا لك. سيتصل بك أحد أفراد فريق الرعاية.",
+    callbackDone: "شكراً لك. سيتصل بك أحد أفراد فريق رعايتك.", // AI Arabic review 2026-10-18
     consentHeading: "اختياراتك",
     channelLabel: "كيف يمكننا التواصل معك؟",
     channels: { phone: "مكالمة هاتفية", sms: "رسالة نصية", whatsapp: "واتساب", letter: "رسالة مكتوبة" },
-    shareLabel: "أسمح لفريق رعايتي بمشاركة نتيجتي مع الأخصائي الذي سيجري فحصي.",
-    withdrawButton: "أوقفوا كل تواصل",
-    withdrawHint: "إذا أوقفت التواصل، فلن يرسل لك فريق الرعاية رسائل ولن يتصل بك. سيراجع أحد الأشخاص حالتك.",
-    withdrawnNotice: "طلبت إيقاف التواصل. لن نرسل لك رسائل ولن نتصل بك. سيراجع أحد أفراد فريق الرعاية حالتك.",
+    // AI Arabic review 2026-10-18: "my test" is the camera test here, not the screening test.
+    shareLabel: "أسمح لفريق رعايتي بمشاركة نتيجتي مع الطبيب الأخصائي الذي سيجري لي الفحص بالكاميرا.",
+    withdrawButton: "أوقفوا كل تواصل معي", // AI Arabic review 2026-10-18: pairs with resumeButton
+    withdrawHint:
+      "إذا أوقفت التواصل، فلن يرسل لك فريق رعايتك رسائل ولن يتصل بك. سيراجع أحد أفراد فريق رعايتك ملفك.", // AI Arabic review 2026-10-18
+    withdrawnNotice:
+      "طلبت إيقاف التواصل. لن نرسل لك رسائل ولن نتصل بك. سيراجع أحد أفراد فريق رعايتك ملفك.", // AI Arabic review 2026-10-18
     resumeButton: "يمكنكم التواصل معي مرة أخرى",
     saved: "تم الحفظ",
     saveFailed: "لم نتمكن من الحفظ. يرجى المحاولة مرة أخرى.",
-    actionFailed: "لم تنجح العملية. يرجى المحاولة مرة أخرى أو الاتصال بفريق الرعاية.",
-    progressHeading: "أين أنت الآن",
-    progress: ["وصلت النتيجة", "فريق الرعاية جاهز", "الفحص بالكاميرا", "مراجعة الطبيب"],
-    homeTitle: "نتيجة فحصك",
-    homeBody: "افتح الرابط الذي أرسله لك فريق الرعاية لترى نتيجتك. يمكنك إضافة هذه الصفحة إلى الشاشة الرئيسية.",
+    actionFailed: "لم تنجح العملية. يرجى المحاولة مرة أخرى أو الاتصال بفريق رعايتك.", // AI Arabic review 2026-10-18
+    progressHeading: "أين وصلت الآن", // AI Arabic review 2026-10-18: progress, not a place
+    progress: ["وصلت النتيجة", "فريق رعايتك جاهز", "الفحص بالكاميرا", "مراجعة الطبيب"], // AI Arabic review 2026-10-18
+    homeTitle: "نتيجة فحص الكشف المبكر", // AI Arabic review 2026-10-18
+    // AI Arabic review 2026-10-18: يرجى فتح / لرؤية instead of افتح / لترى (same for men and women).
+    homeBody: "يرجى فتح الرابط الذي أرسله لك فريق رعايتك لرؤية نتيجتك. يمكنك إضافة هذه الصفحة إلى الشاشة الرئيسية.",
   },
 };
 
