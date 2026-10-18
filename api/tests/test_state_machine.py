@@ -490,6 +490,8 @@ def test_read_model_shape_and_values():
         "consent_history": [],
         "review_reason": None,
         "review_requested_at": None,
+        "triage_review_reason": None,
+        "triage_review_requested_at": None,
         "closure_proposal": None,  # A21
         "auto_messages_sent": 0,  # A21
         "outbound_messages_sent": 0,

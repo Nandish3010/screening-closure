@@ -1,0 +1,289 @@
+{
+  "accuracy": 0.8983666061705989,
+  "adapter_bytes": 21126646,
+  "auto_precision": 0.9625,
+  "auto_precision_ci": [
+    0.9356063934059289,
+    0.9784207112032381
+  ],
+  "baseline": {
+    "accuracy": 0.8493647912885662,
+    "macro_f1": 0.8415076850590781
+  },
+  "confusion": {
+    "already_done": {
+      "already_done": 61,
+      "cannot_attend": 0,
+      "confirm": 0,
+      "dont_understand": 0,
+      "opt_out": 0,
+      "other": 0,
+      "question": 0,
+      "reschedule": 0,
+      "wrong_number": 0
+    },
+    "cannot_attend": {
+      "already_done": 0,
+      "cannot_attend": 61,
+      "confirm": 0,
+      "dont_understand": 0,
+      "opt_out": 0,
+      "other": 0,
+      "question": 0,
+      "reschedule": 0,
+      "wrong_number": 0
+    },
+    "confirm": {
+      "already_done": 0,
+      "cannot_attend": 3,
+      "confirm": 50,
+      "dont_understand": 0,
+      "opt_out": 0,
+      "other": 1,
+      "question": 0,
+      "reschedule": 8,
+      "wrong_number": 0
+    },
+    "dont_understand": {
+      "already_done": 0,
+      "cannot_attend": 0,
+      "confirm": 9,
+      "dont_understand": 40,
+      "opt_out": 5,
+      "other": 0,
+      "question": 7,
+      "reschedule": 0,
+      "wrong_number": 0
+    },
+    "opt_out": {
+      "already_done": 0,
+      "cannot_attend": 0,
+      "confirm": 0,
+      "dont_understand": 0,
+      "opt_out": 60,
+      "other": 1,
+      "question": 0,
+      "reschedule": 0,
+      "wrong_number": 0
+    },
+    "other": {
+      "already_done": 4,
+      "cannot_attend": 0,
+      "confirm": 4,
+      "dont_understand": 0,
+      "opt_out": 1,
+      "other": 53,
+      "question": 0,
+      "reschedule": 0,
+      "wrong_number": 0
+    },
+    "question": {
+      "already_done": 0,
+      "cannot_attend": 0,
+      "confirm": 0,
+      "dont_understand": 0,
+      "opt_out": 0,
+      "other": 1,
+      "question": 59,
+      "reschedule": 1,
+      "wrong_number": 0
+    },
+    "reschedule": {
+      "already_done": 0,
+      "cannot_attend": 4,
+      "confirm": 0,
+      "dont_understand": 0,
+      "opt_out": 1,
+      "other": 0,
+      "question": 0,
+      "reschedule": 56,
+      "wrong_number": 0
+    },
+    "wrong_number": {
+      "already_done": 0,
+      "cannot_attend": 0,
+      "confirm": 0,
+      "dont_understand": 0,
+      "opt_out": 6,
+      "other": 0,
+      "question": 0,
+      "reschedule": 0,
+      "wrong_number": 55
+    }
+  },
+  "coverage": 0.5807622504537205,
+  "ece_calibrated": 0.052707988608121044,
+  "ece_raw": 0.02894581533811663,
+  "macro_f1": 0.8962439658127024,
+  "n": {
+    "test": 551,
+    "train": 2147,
+    "val": 371
+  },
+  "opt_out_leaked": 0,
+  "opt_out_total": 61,
+  "per_intent": {
+    "already_done": {
+      "f1": 0.9682539682539683,
+      "precision": 0.9384615384615385,
+      "recall": 1.0,
+      "support": 61
+    },
+    "cannot_attend": {
+      "f1": 0.9457364341085273,
+      "precision": 0.8970588235294118,
+      "recall": 1.0,
+      "support": 61
+    },
+    "confirm": {
+      "f1": 0.7999999999999999,
+      "precision": 0.7936507936507936,
+      "recall": 0.8064516129032258,
+      "support": 62
+    },
+    "dont_understand": {
+      "f1": 0.7920792079207921,
+      "precision": 1.0,
+      "recall": 0.6557377049180327,
+      "support": 61
+    },
+    "opt_out": {
+      "f1": 0.8955223880597014,
+      "precision": 0.821917808219178,
+      "recall": 0.9836065573770492,
+      "support": 61
+    },
+    "other": {
+      "f1": 0.8983050847457628,
+      "precision": 0.9464285714285714,
+      "recall": 0.8548387096774194,
+      "support": 62
+    },
+    "question": {
+      "f1": 0.9291338582677166,
+      "precision": 0.8939393939393939,
+      "recall": 0.9672131147540983,
+      "support": 61
+    },
+    "reschedule": {
+      "f1": 0.8888888888888888,
+      "precision": 0.8615384615384616,
+      "recall": 0.9180327868852459,
+      "support": 61
+    },
+    "wrong_number": {
+      "f1": 0.9482758620689655,
+      "precision": 1.0,
+      "recall": 0.9016393442622951,
+      "support": 61
+    }
+  },
+  "per_language": {
+    "ar": {
+      "accuracy": 0.8969072164948454,
+      "auto_n": 109,
+      "auto_precision": 0.963302752293578,
+      "auto_precision_ci": [
+        0.9094214470792258,
+        0.9856385308012722
+      ],
+      "macro_f1": 0.8982465060766511,
+      "n": 194
+    },
+    "arabizi": {
+      "accuracy": 0.6868686868686869,
+      "auto_n": 42,
+      "auto_precision": 0.8095238095238095,
+      "auto_precision_ci": [
+        0.6669893264500356,
+        0.9001811039014357
+      ],
+      "macro_f1": 0.6186444930383657,
+      "n": 99
+    },
+    "en": {
+      "accuracy": 1.0,
+      "auto_n": 123,
+      "auto_precision": 1.0,
+      "auto_precision_ci": [
+        0.9697134063272616,
+        0.9999999999999999
+      ],
+      "macro_f1": 1.0,
+      "n": 180
+    },
+    "mixed": {
+      "accuracy": 0.9358974358974359,
+      "auto_n": 46,
+      "auto_precision": 1.0,
+      "auto_precision_ci": [
+        0.9229238226702192,
+        1.0
+      ],
+      "macro_f1": 0.9318667037965285,
+      "n": 78
+    }
+  },
+  "reliability": [
+    {
+      "accuracy": 0.0,
+      "bin": "0.2-0.3",
+      "mean_confidence": 0.273,
+      "n": 3
+    },
+    {
+      "accuracy": 0.28,
+      "bin": "0.3-0.4",
+      "mean_confidence": 0.35,
+      "n": 25
+    },
+    {
+      "accuracy": 0.375,
+      "bin": "0.4-0.5",
+      "mean_confidence": 0.443,
+      "n": 24
+    },
+    {
+      "accuracy": 0.56,
+      "bin": "0.5-0.6",
+      "mean_confidence": 0.554,
+      "n": 25
+    },
+    {
+      "accuracy": 0.821,
+      "bin": "0.6-0.7",
+      "mean_confidence": 0.655,
+      "n": 28
+    },
+    {
+      "accuracy": 0.95,
+      "bin": "0.7-0.8",
+      "mean_confidence": 0.751,
+      "n": 40
+    },
+    {
+      "accuracy": 0.978,
+      "bin": "0.8-0.9",
+      "mean_confidence": 0.852,
+      "n": 45
+    },
+    {
+      "accuracy": 0.997,
+      "bin": "0.9-1.0",
+      "mean_confidence": 0.979,
+      "n": 361
+    }
+  ],
+  "temperature": 1.7036,
+  "threshold": 0.553,
+  "train": {
+    "base_model": "mlx-community/Qwen2.5-1.5B-Instruct-4bit",
+    "batch_size": 8,
+    "iters": 250,
+    "learning_rate": 5e-05,
+    "num_layers": 16,
+    "seed": 20261018,
+    "train_examples": 2147,
+    "train_seconds": 587.7
+  }
+}

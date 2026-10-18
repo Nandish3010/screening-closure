@@ -30,6 +30,8 @@ Every cell is what the running API did, not what the policy table says: the scri
 | `POST /cases/{case_id}/events` (the event rows below decide) | U | A | A | A | A | A | A | A | A | R |
 | `GET /cases/{case_id}/fhir` | U | R | A/S | A/S | A | R | A | R | R | R |
 | `GET /cases/{case_id}/notifications` | U | R | A/S | A/S | A | R | A | R | R | R |
+| `GET /cases/{case_id}/replies` | U | R | R | R | A | R | A | R | R | R |
+| `POST /cases/{case_id}/replies` | U | R | R | R | A | R | R | R | R | R |
 | `GET /cases/{case_id}/timeline` | U | A | A | A | A | A/S | A | R | R | R |
 | `POST /clock/advance` | U | R | R | R | R | R | A | R | R | R |
 | `POST /clock/reset` | U | R | R | R | R | R | A | R | R | R |
@@ -83,6 +85,8 @@ The route admits every role and both service tokens; the event policy then decid
 | `patient_acknowledge` | U | R | R | R | A | A/S | R | R | R | R |
 | `reassign` | U | R | R | R | A | R | A | R | R | R |
 | `reopen` | U | R | A/S | A/S | R | R | R | R | R | R |
+| `reply_classified` | U | R | R | R | R | R | R | R | R | R |
+| `reply_received` | U | R | R | R | R | R | R | R | R | R |
 | `review_requested` | U | R | R | R | R | R | R | R | R | R |
 | `watchdog_flagged` | U | R | R | R | R | R | R | R | A | R |
 | `not_a_real_event` (no such event: the policy refuses it) | U | R | R | R | R | R | R | R | R | R |
@@ -100,6 +104,8 @@ Routes that name a case or a draft, with the scope rule the matrix enforces (dec
 | `POST /cases/{case_id}/events` | a patient only for their own case; a clinician only for a case they own |
 | `GET /cases/{case_id}/fhir` | a clinician only for a case they own |
 | `GET /cases/{case_id}/notifications` | a clinician only for a case they own |
+| `GET /cases/{case_id}/replies` | none (the role gate is the whole rule) |
+| `POST /cases/{case_id}/replies` | none (the role gate is the whole rule) |
 | `GET /cases/{case_id}/timeline` | a patient only for their own case |
 | `POST /drafts/{draft_id}/approve` | a clinician only for a case they own |
 | `POST /drafts/{draft_id}/reject` | a clinician only for a case they own |
@@ -110,6 +116,6 @@ None.
 
 ## What was checked
 
-- 29 routes in the OpenAPI document, 29 entries in `ROUTE_POLICY`: every route has a decision and no decision is stale.
-- 28 event types in `EVENT_POLICY`, plus one unknown type that must be refused for every role.
-- 684 role, route and scope combinations probed with real requests; 0 differ from the policy tables; 0 are documented gaps (see Findings).
+- 31 routes in the OpenAPI document, 31 entries in `ROUTE_POLICY`: every route has a decision and no decision is stale.
+- 30 event types in `EVENT_POLICY`, plus one unknown type that must be refused for every role.
+- 736 role, route and scope combinations probed with real requests; 0 differ from the policy tables; 0 are documented gaps (see Findings).

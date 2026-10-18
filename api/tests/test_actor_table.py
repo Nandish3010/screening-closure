@@ -27,6 +27,7 @@ from app.state_machine import (
     HUMAN_EVENTS,
     HUMAN_ROLES,
     NOTIFIER_ACTOR,
+    RELAYED_HUMAN_EVENTS,
     SCHEDULER_ACTOR_NAME,
     TRIAGE_ACTOR,
     WATCHDOG_ACTOR,
@@ -67,7 +68,8 @@ def test_the_table_has_exactly_the_documented_rows():
         *(f"{role}:" for role in HUMAN_ROLES), "system:scheduler", "system:watchdog", "system:notifier",
         "system:consent", "system:automation", "model:", "system:triage", "system:agency:",
     }
-    assert ACTOR_EVENTS[TRIAGE_ACTOR] == frozenset() and ACTOR_EVENTS["system:agency:"] == frozenset()  # placeholders
+    assert ACTOR_EVENTS[TRIAGE_ACTOR] == {"reply_received", "reply_classified", "review_requested", "callback_requested"}
+    assert ACTOR_EVENTS["system:agency:"] == frozenset()  # agents are labour, not authority (ADR-033): no event at all
     assert ACTOR_EVENTS[CONSENT_ACTOR] == {"review_requested"}
     assert ACTOR_EVENTS[WATCHDOG_ACTOR] == {"watchdog_flagged"}
     assert ACTOR_EVENTS[NOTIFIER_ACTOR] == {"message_sent"}
@@ -136,7 +138,7 @@ def test_a_person_is_listed_once_per_role_with_the_same_events_and_the_policy_st
 def test_the_events_only_a_service_writes_are_never_a_persons():
     service_only = set(EVENT_TYPES) - HUMAN_EVENTS - {CASE_CREATED, "bogus_event"}
     assert service_only == {"mark_overdue", "assign_ownership", "closure_proposed", "review_requested", "message_sent",
-                            "watchdog_flagged"}
+                            "watchdog_flagged", "reply_received", "reply_classified"}
     for role in HUMAN_ROLES:
         for type_ in service_only:
             assert type_ not in allowed_events(f"{role}:u1")
@@ -147,7 +149,10 @@ def test_no_service_row_holds_a_decision_that_only_a_person_makes():
     assert human_only, "the pathway lists the human decisions"
     for key, events in ACTOR_EVENTS.items():
         if key.rstrip(":") not in HUMAN_ROLES:
-            assert not events & human_only, (key, sorted(events & human_only))
+            relayed = RELAYED_HUMAN_EVENTS.get(key, frozenset())
+            assert not (events & human_only) - relayed, (key, sorted((events & human_only) - relayed))
+    # the one documented relay: triage passes on the patient's own callback request (D13), nothing else
+    assert RELAYED_HUMAN_EVENTS == {TRIAGE_ACTOR: frozenset({"callback_requested"})}
     assert human_only <= HUMAN_EVENTS
 
 
@@ -161,11 +166,11 @@ def test_the_actor_names_in_the_table_are_the_ones_the_services_use():
     assert auth.Identity("user", "coordinator", "Maryam").actor.split(":")[0] in HUMAN_ROLES
 
 
-def test_the_table_is_read_when_an_event_is_applied_so_a_branch_can_fill_its_placeholder(monkeypatch):
-    """What branches cut-triage and cut-agency do: give their placeholder row its events. Until then, nothing."""
+def test_the_table_is_read_when_an_event_is_applied(monkeypatch):
+    """The table is consulted on every step: emptying the triage row refuses a flag it otherwise accepts."""
     model = CaseModel(state="owner_accepted")
     flag = Event(CASE, "review_requested", AT, TRIAGE_ACTOR, {"reason": "opt_out", "source_event_id": str(uuid4())})
+    assert step(model, flag, PATHWAY).outreach_holds == ("opt_out",)
+    monkeypatch.setitem(ACTOR_EVENTS, TRIAGE_ACTOR, frozenset())
     with pytest.raises(InvalidTransition, match="actor table"):
         step(model, flag, PATHWAY)
-    monkeypatch.setitem(ACTOR_EVENTS, TRIAGE_ACTOR, frozenset({"review_requested"}))
-    assert step(model, flag, PATHWAY).outreach_holds == ("opt_out",)

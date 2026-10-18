@@ -30,11 +30,14 @@ NOTE_MAX_LENGTH = 200
 
 # ---- taxonomies: the only values a `reason` field may take ------------------------------------
 REOPEN_REASONS = ("new_finding", "evidence_inadequate", "closed_in_error", "patient_request", "other")
-CALLBACK_REASONS = ("patient_does_not_understand", "wants_to_speak_to_clinician", "cannot_attend", "other")
+CALLBACK_REASONS = ("patient_does_not_understand", "wants_to_speak_to_clinician", "cannot_attend", "reschedule", "other")
 WATCHDOG_REASONS = ("idle", "scheduler_down")
-# consent_withdrawn: system:consent. reroute_exhausted: A21, system:automation. opt_out and wrong_number: the triage actor
-# (branch cut-triage) flags an inbound reply; the automation sends nothing until a person clears the flag.
-REVIEW_REASONS = ("consent_withdrawn", "reroute_exhausted", "opt_out", "wrong_number")
+# review_requested, one emitter per reason (state_machine.REVIEW_EMITTER): consent_withdrawn by system:consent (A6);
+# reroute_exhausted by system:automation (A21); opt_out, wrong_number, triage_uncertain and already_done by system:triage
+# (D13) from a patient's inbound reply. An opt_out or wrong_number holds automatic messages until a person clears it.
+REVIEW_REASONS = ("consent_withdrawn", "reroute_exhausted", "opt_out", "wrong_number", "triage_uncertain", "already_done")
+REPLY_INTENTS = ("confirm", "reschedule", "cannot_attend", "wrong_number", "dont_understand", "opt_out", "question",
+                 "already_done", "other")
 # handoff_rejected: the human taxonomy is in the pathway YAML (handoff_reject_reasons) and is
 # enforced by the state machine; this model only requires a short code, so the YAML stays the
 # single source for it.
@@ -303,8 +306,30 @@ class ContactUpdated(_Human):
 
 
 class ReviewRequested(_Payload):
-    reason: Literal["consent_withdrawn", "reroute_exhausted", "opt_out", "wrong_number"]
+    reason: Literal["consent_withdrawn", "reroute_exhausted", "opt_out", "wrong_number", "triage_uncertain", "already_done"]
+    # the withdrawal (consent), the rejection the reroute ran out after (automation) or the `reply_classified` event
+    # (triage) that caused the flag
     source_event_id: Uuid
+
+
+class ReplyReceived(_Payload):
+    """A patient wrote back (D13). The text is NOT here: it is in the erasable `patient_replies` table, and the log
+    holds only the id that finds it (`text_ref`) and the channel it came in on."""
+
+    channel: Literal["sms", "whatsapp", "phone", "letter"]
+    text_ref: Uuid
+
+
+class ReplyClassified(_Payload):
+    """What the reply triage made of a reply (D13): intent, confidence, which model, and whether a person must look.
+    No text. `text_ref` ties it to the `reply_received` event and the stored reply."""
+
+    intent: Literal["confirm", "reschedule", "cannot_attend", "wrong_number", "dont_understand", "opt_out",
+                    "question", "already_done", "other"]
+    confidence: Annotated[float, Field(ge=0.0, le=1.0)]
+    model_id: Annotated[str, StringConstraints(pattern=r"^[A-Za-z0-9][A-Za-z0-9._:+-]{0,63}$")]
+    needs_human: bool
+    text_ref: Uuid
 
 
 class MessageDrafted(_Payload):
@@ -343,8 +368,9 @@ class MessageSent(_Payload):
 
 
 class CallbackRequested(_Human):
-    reason: Literal["patient_does_not_understand", "wants_to_speak_to_clinician", "cannot_attend", "other"] | None = None
+    reason: Literal["patient_does_not_understand", "wants_to_speak_to_clinician", "cannot_attend", "reschedule", "other"] | None = None
     lang: Literal["en", "ar"] | None = None
+    source_event_id: Uuid | None = None  # D13: the `reply_classified` event a triage-relayed request came from
 
 
 class WatchdogFlagged(_Timed):
@@ -377,6 +403,8 @@ SCHEMAS: dict[str, type[BaseModel]] = {
     "contact_updated": ContactUpdated,
     "mark_lost_contact": MarkLostContact,
     "review_requested": ReviewRequested,
+    "reply_received": ReplyReceived,
+    "reply_classified": ReplyClassified,
     "message_drafted": MessageDrafted,
     "message_approved": MessageApproved,
     "message_rejected": MessageRejected,

@@ -114,17 +114,20 @@ Events are the facts the system records. The "who" column follows the authorisat
 | `escalate` | Send the late case up one rung of the ladder. | Scheduler, coordinator, supervisor | annotation |  |
 | `escalation_accepted` | A person accepts an escalation, which stops further rungs for that delay. | A human in the rung's target role (human only) | annotation | yes |
 | `handoff_requested` | Ask another provider to take over the case (an annotation; ownership has not moved). | Care owner, supervisor; the automation, to the next provider on the list after a refusal or no answer | annotation |  |
-| `review_requested` | Flag the case for human review (consent withdrawn, or every provider on the reroute list has refused). | The system itself; nobody can post it | annotation |  |
+| `contact_updated` | A person confirms the patient's contact details are right (a wrong number was corrected). It lifts the hold on automatic messages that a wrong-number reply put on the case. No number or address is logged. | Care owner, coordinator, supervisor (human only) | annotation | yes |
+| `review_requested` | Flag the case for human review (consent withdrawn, every provider on the reroute list has refused, or a patient's reply needs a person to read it). | The system itself; nobody can post it | annotation |  |
 | `message_drafted` | A message draft is prepared (by a template or a language model) for a person to approve. | Care owner, coordinator, model drafting provider | annotation |  |
 | `message_approved` | A person approves a draft. Nothing is sent without this. | Care owner (human only) | annotation | yes |
 | `message_rejected` | A person rejects a draft, giving a reason from a fixed list. Nothing is sent. | Care owner (human only) | annotation | yes |
 | `message_sent` | The message is sent through the notification mock: an approved draft, or a pre-approved template the automation sends within the weekly limit. | The approval-gated send path, or the automation for a listed template; nobody can post it | annotation |  |
-| `callback_requested` | The patient asks for a person to call because they do not understand. | Patient, coordinator (human only) | annotation | yes |
+| `callback_requested` | The patient asks for a person to call (does not understand, wants another date, cannot attend). | Patient, coordinator; relayed by the reply triage from the patient's own reply (otherwise human only) | annotation | yes |
 | `watchdog_flagged` | The watchdog flags a case that has been idle too long. | Watchdog / scheduler | annotation |  |
 | `assign_ownership` | The automation names the case's owner from the patient's registered provider. The owner still has to accept; nothing waits on the naming. | The automation only | annotation |  |
 | `closure_proposed` | The automation found the colonoscopy report and proposes closing the case. The clinician still reviews and signs; this closes nothing. | The automation only | annotation |  |
+| `reply_received` | The patient wrote back. Only the channel and a reference are logged; the text is kept apart and can be erased. | The reply triage only; nobody can post it | annotation |  |
+| `reply_classified` | The reply triage labels the reply (for example reschedule, wrong number, question) and says whether a person must read it. It changes nothing in the case. | The reply triage only; nobody can post it | annotation |  |
 
-Events listed as human only in the configuration: `escalation_accepted`, `handoff_accepted`, `consent_updated`, `message_approved`, `message_rejected`, `callback_requested`, `reopen`. Also: no automated actor may emit `close` (checked separately by the state machine).
+Events listed as human only in the configuration: `escalation_accepted`, `handoff_accepted`, `consent_updated`, `contact_updated`, `message_approved`, `message_rejected`, `callback_requested`, `reopen`. Also: no automated actor may emit `close` (checked separately by the state machine).
 
 ## 5. Time limits (SLAs)
 

@@ -168,9 +168,9 @@ def test_the_machine_alone_accepts_an_automatic_message_with_the_fields_and_no_p
 
 
 @pytest.fixture
-def triage(monkeypatch):
-    """What branch cut-triage will have: its row of the actor table gives it `review_requested`. Empty on this branch."""
-    monkeypatch.setitem(state_machine.ACTOR_EVENTS, TRIAGE_ACTOR, frozenset({"review_requested"}))
+def triage():
+    """The triage actor's row of the actor table holds `review_requested` (D13, merged at M5 final): nothing to set."""
+    assert "review_requested" in state_machine.ACTOR_EVENTS[TRIAGE_ACTOR]
 
 
 def flag(cid, reason, actor=TRIAGE_ACTOR):
@@ -178,14 +178,16 @@ def flag(cid, reason, actor=TRIAGE_ACTOR):
                              {"reason": reason, "source_event_id": str(uuid4())}), PATHWAY)
 
 
-def test_the_triage_flags_are_defined_but_nobody_can_write_them_on_this_branch(fresh):
+def test_the_triage_flags_are_written_in_process_by_the_triage_actor_and_never_posted(fresh):
+    """Before the merge of cut-triage the triage row was an empty placeholder; now only `system:triage` writes these
+    flags, in process, and nobody can post them through the events route."""
     cid = owner_accepted_case()
     for reason in ("opt_out", "wrong_number"):
-        with pytest.raises(InvalidTransition, match="actor table"):
-            flag(cid, reason)
         post(cid, "review_requested", login_headers(client, "supervisor"),
              {"reason": reason, "source_event_id": str(uuid4())}, expect=403)
     assert model(cid).outreach_holds == ()
+    flag(cid, "opt_out")
+    assert model(cid).outreach_holds == ("opt_out",)
 
 
 def test_each_review_reason_has_one_emitter(fresh, triage, monkeypatch):
@@ -206,7 +208,8 @@ def test_automation_sends_nothing_after_a_flag_until_a_person_clears_it(fresh, t
     flag(cid, reason)
     m = model(cid)
     assert m.outreach_holds == (reason,) and m.to_json()["outreach_holds"] == [reason]
-    assert m.review_reason == reason and m.to_json()["review_reason"] == reason  # the worklist shows the flag
+    # the worklist shows the flag; the model keeps it apart from a consent review (D13)
+    assert m.triage_review_reason == reason and m.to_json()["review_reason"] == reason and m.review_reason is None
     out = scan()
     assert sent(cid) == [] and notify.log.for_case(UUID(cid)) == [] and out["outreach_held"] == 1
     # the machine itself refuses it too, whatever the caller read earlier (a stale scan racing the flag)
@@ -227,7 +230,7 @@ def test_automation_sends_nothing_after_a_flag_until_a_person_clears_it(fresh, t
     payload = {"contact_valid": True} if clearing == "contact_updated" else {"channel_sms": True}
     post(cid, clearing, login_headers(client, "coordinator"), payload)
     m = model(cid)
-    assert m.outreach_holds == () and m.review_reason is None
+    assert m.outreach_holds == () and m.review_reason is None and m.triage_review_reason is None
     out = scan()
     assert out["outreach_sent"] == 1 and len(sent(cid)) == 1
 

@@ -72,9 +72,14 @@ annotations:
   # neither can close a case: `close` still needs a person, evidence and a signature.
   - assign_ownership
   - closure_proposed
+  # D13: an inbound patient reply and what the triage made of it. `reply_received {channel, text_ref}` and
+  # `reply_classified {intent, confidence, model_id, needs_human}`: the text itself is never in the log.
+  - reply_received
+  - reply_classified
 # The decisions only a person makes. This list does not enforce anything: the single actor table
 # (ACTOR_EVENTS in api/app/state_machine.py, default deny) decides who may write what, and
-# tests/test_actor_table.py checks that no service row of it holds any of these events.
+# tests/test_actor_table.py checks that no service row of it holds any of these events, except the one
+# relay the table documents (RELAYED_HUMAN_EVENTS: system:triage passes on the patient's own callback request, D13).
 human_only_events:
   - escalation_accepted
   - handoff_accepted

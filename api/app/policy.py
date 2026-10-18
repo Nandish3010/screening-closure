@@ -74,6 +74,13 @@ ROUTE_POLICY: dict[tuple[str, str], object] = {
     # Liveness for the dashboard (A11): coordinator and supervisor; the watchdog may read it too.
     ("GET", "/heartbeats"): frozenset({COORD, SUPER}) | WATCHDOG,
     ("GET", "/alerts"): frozenset({COORD, SUPER}) | WATCHDOG,
+    # An inbound patient reply (D13): the coordinator who received it records it here; the text is stored, classified and
+    # at most a callback or a human review is requested. A `system:inbound` service token for the message gateway is not
+    # built (docs/governance/reply-triage-card.md). Not the patient, the lab, a clinician or any service.
+    ("POST", "/cases/{case_id}/replies"): frozenset({COORD}),
+    # Reading them (the text is there): whoever has to deal with a flagged reply. Owners are not scoped here; they see
+    # the flag on their case and the coordinator reads the text.
+    ("GET", "/cases/{case_id}/replies"): frozenset({COORD, SUPER}),
 }
 
 # event type -> roles allowed to emit it via POST /cases/{id}/events
@@ -117,8 +124,13 @@ EVENT_POLICY: dict[str, frozenset[str]] = {
     # Only the approval-gated send path (D5) writes message_sent; nobody may post it.
     "message_sent": frozenset(),
     "callback_requested": frozenset({PATIENT, COORD}),
+    # Written only in process by the reply route as `system:triage` (D13); nobody can post them, and the state
+    # machine accepts them from that actor alone (ACTOR_EVENTS).
+    "reply_received": frozenset(),
+    "reply_classified": frozenset(),
     # Emitted in process: by the API itself as `system:consent` when consent is withdrawn (A6), by the automation when the
-    # reroute list is used up (A21) and by the triage actor for an opt-out or wrong number; nobody can post it.
+    # reroute list is used up (A21) and by `system:triage` when a patient's reply needs a person (D13: opt_out,
+    # wrong_number, triage_uncertain, already_done); nobody can post it.
     "review_requested": frozenset(),
     # Only the watchdog service (A11); the scheduler no longer holds it.
     "watchdog_flagged": WATCHDOG,

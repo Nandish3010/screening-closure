@@ -106,16 +106,23 @@ CONSENT_FROZEN_EVENTS = frozenset(
     {"contact_patient", "message_drafted", "message_approved", "message_sent", "handoff_requested"}
 )
 CONSENT_ACTOR = "system:consent"  # emits review_requested (reason consent_withdrawn), and nothing else
-# Why a case is flagged for a person (`review_requested.reason`). The triage reasons (an inbound reply that opts out, or
-# says the number is wrong) are emitted by the triage actor (branch cut-triage); they are defined here so the automation
-# can honour them (an outreach hold) and the vocabulary has one definition.
-REVIEW_REASONS = ("consent_withdrawn", "reroute_exhausted", "opt_out", "wrong_number")
+# Why a case is flagged for a person (`review_requested.reason`), and the ONE actor that may give each reason
+# (`REVIEW_EMITTER`, enforced in `_precheck`): the consent service when consent is withdrawn (A6), the automation when
+# the reroute list is used up (A21), and the reply triage (D13) for what a patient's own reply says.
+REVIEW_REASONS = ("consent_withdrawn", "reroute_exhausted", "opt_out", "wrong_number", "triage_uncertain", "already_done")
 OUTREACH_HOLD_REASONS = ("opt_out", "wrong_number")  # while one is open the automation sends nothing (A5)
+# Reply triage (D13): the API classifies an inbound patient reply as `system:triage`. That actor writes the reply and its
+# classification, may ask for a person to look at the case, and may relay a callback the PATIENT asked for in their own
+# reply (traceably: a reason from TRIAGE_CALLBACK_REASONS and the `source_event_id` of the classification). Its review
+# reasons are kept apart from the consent one in the read model (`triage_review_reason`), so a triage flag can never
+# overwrite or hide a consent flag.
+TRIAGE_REVIEW_REASONS = ("opt_out", "wrong_number", "already_done", "triage_uncertain")
+TRIAGE_CALLBACK_REASONS = ("reschedule", "cannot_attend", "patient_does_not_understand")
 SCHEDULER_ACTOR_NAME = "system:scheduler"
 WATCHDOG_ACTOR = "system:watchdog"  # emits watchdog_flagged, and nothing else
 MODEL_ACTOR_PREFIX = "model:"
 NOTIFIER_ACTOR = "system:notifier"  # the notification mock: writes message_sent for an approved draft
-TRIAGE_ACTOR = "system:triage"  # branch cut-triage: classifies inbound replies. Placeholder here: may emit nothing yet
+TRIAGE_ACTOR = "system:triage"  # D13: classifies inbound patient replies (rows below)
 AGENCY_ACTOR_PREFIX = "system:agency:"  # branch cut-agency: an outside agency's agent. Placeholder here: nothing yet
 # A21, ADR-032: the automation actor. It does the steps that are not a human decision and nothing else. It can never
 # close a case (the closure guard refuses every automated actor) and none of the human-only events.
@@ -144,8 +151,9 @@ HUMAN_EVENTS = frozenset({
 #   system:consent      the review flag raised when consent is withdrawn
 #   system:automation   the steps that are not a human decision (A21, ADR-032); every one carries `auto: true`
 #   model:              a drafting model annotates a case with its draft (T-D2)
-#   system:triage, system:agency:   placeholders for branches cut-triage and cut-agency: EMPTY here, so nothing can be
-#                       written under those names until the table is filled in
+#   system:triage       reply triage (D13): the reply and its classification, a review flag for the triage reasons, and a
+#                       traceable relay of the patient's own callback request (the one human-only event a service row
+#                       holds; `_precheck` limits it to the triage callback reasons with a source_event_id)
 # Humans are listed once per role. Nothing but this table decides which actor may emit which event type.
 ACTOR_EVENTS: dict[str, frozenset[str]] = {
     **{f"{role}:": HUMAN_EVENTS for role in HUMAN_ROLES},
@@ -158,14 +166,22 @@ ACTOR_EVENTS: dict[str, frozenset[str]] = {
         "message_sent", "review_requested",
     }),
     MODEL_ACTOR_PREFIX: frozenset({"message_drafted"}),
-    TRIAGE_ACTOR: frozenset(),
+    TRIAGE_ACTOR: frozenset({"reply_received", "reply_classified", "review_requested", "callback_requested"}),
     AGENCY_ACTOR_PREFIX: frozenset(),
 }
+# Human-only events (pathway `human_only_events`) a service row may hold, and the rule that makes each one traceable to a
+# person: only triage's relay of the patient's own callback request (D13).
+RELAYED_HUMAN_EVENTS: dict[str, frozenset[str]] = {TRIAGE_ACTOR: frozenset({"callback_requested"})}
 # What the automation may emit, and which of those must say so (payload `auto: true`; nobody else may carry the flag).
 AUTOMATION_ALLOWED_EVENTS = ACTOR_EVENTS[AUTOMATION_ACTOR]
 AUTO_FLAGGED_EVENTS = AUTOMATION_ALLOWED_EVENTS - {"review_requested"}
 # The one actor that may give each review reason (the table says only which actors may emit `review_requested` at all).
-_REVIEW_EMITTER = {"reroute_exhausted": AUTOMATION_ACTOR, "opt_out": TRIAGE_ACTOR, "wrong_number": TRIAGE_ACTOR}
+REVIEW_EMITTER: dict[str, str] = {
+    "consent_withdrawn": CONSENT_ACTOR,
+    "reroute_exhausted": AUTOMATION_ACTOR,
+    **{reason: TRIAGE_ACTOR for reason in TRIAGE_REVIEW_REASONS},
+}
+assert set(REVIEW_EMITTER) == set(REVIEW_REASONS)
 
 
 def actor_key(actor: str) -> str | None:
@@ -281,6 +297,10 @@ class CaseModel:
     outbound_message_times: tuple = ()  # `at` of every message_sent, automatic or approved draft (the weekly cap counts all)
     outreach_holds: tuple = ()  # open holds (`opt_out`, `wrong_number`): the automation sends nothing while any is open
     contact_confirmed_at: datetime | None = None  # a person confirmed the contact details (`contact_updated`)
+    # A triage flag (D13): the latest `review_requested` from system:triage. Kept apart from review_reason (consent) so
+    # neither can overwrite or hide the other. Nothing here changes the state; a person sees it on the worklist.
+    triage_review_reason: str | None = None
+    triage_review_requested_at: datetime | None = None
     backdated_events: int = 0  # T-F4, ADR-027: accepted events dated before the one just before them
     created_at: datetime | None = None  # the genesis event's `at` (a milestone may start there)
     created_event_id: UUID | None = None  # the genesis event's `event_id` (a milestone started there derives its ids from it)
@@ -321,9 +341,15 @@ class CaseModel:
             "last_handoff": dict(self.last_handoff) if self.last_handoff else None,
             "consent": dict(self.consent),
             "consent_history": [dict(h) for h in self.consent_history],
-            # consent withdrawal takes precedence: it freezes outreach; a reroute flag is shown when there is no other
-            "review_reason": self.review_reason or ("reroute_exhausted" if self.reroute_exhausted_at else None),
-            "review_requested_at": iso(self.review_requested_at) or iso(self.reroute_exhausted_at),
+            # consent withdrawal takes precedence (it freezes outreach); then a triage flag; a reroute flag is shown when
+            # there is no other. The two flags stay apart in the model (and below), so neither hides the other.
+            "review_reason": (self.review_reason or self.triage_review_reason
+                              or ("reroute_exhausted" if self.reroute_exhausted_at else None)),
+            "review_requested_at": (iso(self.review_requested_at) if self.review_reason else
+                                    iso(self.triage_review_requested_at) if self.triage_review_reason else
+                                    iso(self.reroute_exhausted_at)),
+            "triage_review_reason": self.triage_review_reason,
+            "triage_review_requested_at": iso(self.triage_review_requested_at),
             "closure_proposal": dict(self.closure_proposal) if self.closure_proposal else None,
             "auto_messages_sent": len(self.auto_message_times),
             "outbound_messages_sent": len(self.outbound_message_times),
@@ -851,13 +877,19 @@ def validate_payload(event: Event, pathway: Pathway) -> None:
 def _precheck(model: CaseModel, event: Event, pathway: Pathway) -> None:
     kind, actor = event.type, event.actor
     # Which actor may emit which event TYPE is the actor table, applied in `step`. What it cannot say is which actor may
-    # give which REASON: a review is flagged by the consent service (consent withdrawn), by the automation (reroute list
-    # exhausted, A21) or by the triage actor (opt-out, wrong number), each only for its own reasons.
+    # give which REASON: each review reason has exactly one emitter (REVIEW_EMITTER).
     if kind == "review_requested":
         reason = event.payload.get("reason")
-        expected = _REVIEW_EMITTER.get(reason, CONSENT_ACTOR) if isinstance(reason, str) else CONSENT_ACTOR
-        if actor != expected:
-            raise InvalidTransition(f"review_requested with reason {event.payload.get('reason')!r} is emitted only by {expected!r}")
+        expected = REVIEW_EMITTER.get(reason) if isinstance(reason, str) else None
+        if expected is not None and actor != expected:  # an unknown reason is validate_payload's (PayloadError)
+            raise InvalidTransition(f"review_requested with reason {reason!r} is emitted only by {expected!r}")
+    # The triage row holds one human-only event, `callback_requested`, and only as a relay of the patient's own request
+    # (D13): a reason from the triage list and the classification it came from, so the request traces to the reply.
+    if kind == "callback_requested" and actor == TRIAGE_ACTOR:
+        if event.payload.get("reason") not in TRIAGE_CALLBACK_REASONS or not event.payload.get("source_event_id"):
+            raise InvalidTransition(
+                f"{TRIAGE_ACTOR!r} relays only a callback the patient asked for: reason one of "
+                f"{list(TRIAGE_CALLBACK_REASONS)} and the source_event_id of the classification")
     validate_payload(event, pathway)
     if kind == "review_requested" and event.payload.get("reason") == "reroute_exhausted":
         if model.state != "referral_rejected" or model.pending_handoff is not None:
@@ -1023,19 +1055,22 @@ def _finish(
         out = _clear_hold(replace(out, contact_confirmed_at=at), "wrong_number")
     elif kind == "review_requested" and payload["reason"] == "reroute_exhausted":
         out = replace(out, reroute_exhausted_at=at)
-    elif kind == "review_requested":
-        out = replace(out, review_reason=payload["reason"], review_requested_at=at)
+    elif kind == "review_requested" and event.actor == TRIAGE_ACTOR:
+        out = replace(out, triage_review_reason=payload["reason"], triage_review_requested_at=at)
         if payload["reason"] in OUTREACH_HOLD_REASONS and payload["reason"] not in out.outreach_holds:
             out = replace(out, outreach_holds=(*out.outreach_holds, payload["reason"]))
+    elif kind == "review_requested":  # consent_withdrawn, from system:consent
+        out = replace(out, review_reason=payload["reason"], review_requested_at=at)
     return out
 
 
 def _clear_hold(model: CaseModel, reason: str) -> CaseModel:
     """A person dealt with the flag: `consent_updated` clears an opt-out hold, `contact_updated` a wrong-number hold. The
-    review flag the hold came with goes too, unless something else has since replaced it."""
+    triage flag the hold came with goes too, unless something else has since replaced it, or the person's answer was to
+    withdraw consent: then the case is in consent review and the reviewer keeps the triage reason that led there."""
     if reason not in model.outreach_holds:
         return model
     out = replace(model, outreach_holds=tuple(h for h in model.outreach_holds if h != reason))
-    if out.review_reason == reason:
-        out = replace(out, review_reason=None, review_requested_at=None)
+    if out.triage_review_reason == reason and not out.consent_frozen:
+        out = replace(out, triage_review_reason=None, triage_review_requested_at=None)
     return out
