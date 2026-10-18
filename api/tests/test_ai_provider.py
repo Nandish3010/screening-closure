@@ -115,6 +115,32 @@ def test_prompt_hash_is_deterministic_and_input_sensitive():
 
 def test_prompt_states_the_boundary():
     text = build_prompt(make_req())
-    assert "screening test found blood" in text
+    assert "found blood" not in text
+    assert "Never state, hint at or interpret the screening result" in text
+    assert "screening result is ready" in text
     assert "Do not diagnose" in text
     assert "Dr Sara Khan" in text and "a colonoscopy" in text
+
+
+def _result_disclosure_phrases():
+    from app.ai.validate import load_forbidden_phrases
+
+    found = [fp for fp in load_forbidden_phrases() if fp.language == "en" and fp.category == "result_disclosure"]
+    assert found, "forbidden_phrases.yaml must carry English result_disclosure entries"
+    return found
+
+
+@pytest.mark.parametrize("language", ["en", "ar"])
+@pytest.mark.parametrize("purpose", sorted(prov.PURPOSES))
+def test_prompts_never_instruct_the_model_to_state_the_finding(purpose, language):
+    """E14: neither the system prompt nor a built prompt may contain an English result_disclosure phrase."""
+    req = make_req(
+        purpose=purpose,
+        language=language,
+        appointment_date="Tuesday 3 November 2026" if purpose == "appointment_confirmation" else None,
+    )
+    for name, text in (("SYSTEM_PROMPT", prov.SYSTEM_PROMPT), ("build_prompt", build_prompt(req))):
+        hits = [fp.id for fp in _result_disclosure_phrases() if fp.pattern.search(text)]
+        assert hits == [], f"{name} matches result_disclosure phrases {hits}"
+    for stale in ("found blood", "blood in", "test found"):
+        assert stale not in prov.SYSTEM_PROMPT.lower() and stale not in build_prompt(req).lower()

@@ -24,7 +24,7 @@ describe("C10: requesting a draft", () => {
     await user.click(screen.getByTestId("request-draft"));
     const item = await newDraft();
     expect(item).toHaveTextContent(/Reminder, WhatsApp, English/);
-    expect(within(item).getByText(/reminder to call us/i).closest("p")).toHaveAttribute("dir", "ltr");
+    expect(within(item).getByText(/reminder from your care team/i).closest("p")).toHaveAttribute("dir", "ltr");
     const [rec] = await api.listDrafts(cid(7));
     expect(rec).toMatchObject({ purpose: "reminder", channel: "whatsapp", language: "en" });
     await user.selectOptions(within(form).getByLabelText("Language"), "ar");

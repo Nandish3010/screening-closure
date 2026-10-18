@@ -7,8 +7,8 @@ that resolve to the HTTP adapters in `app.ai.adapters` (D7), wrapped by the outp
 cached output exists or `LLM_NETWORK_ENABLED=true`.
 
 Data minimisation: a `DraftRequest` carries only what a message needs. It never carries
-clinical findings beyond the fixed phrase "screening test found blood", and no patient name,
-contact detail or identifier.
+clinical findings at all (E14: no message states or hints at what the screening found), and no
+patient name, contact detail or identifier.
 """
 
 from __future__ import annotations
@@ -117,7 +117,9 @@ SYSTEM_PROMPT = (
     "You write one short message from a screening programme to a patient. A human care owner "
     "reads and approves it before anything is sent. "
     "Never diagnose, never name or hint at any disease, never give medical advice and never "
-    "reassure. State only that the screening test found blood and what the next step is. "
+    "reassure. Never state, hint at or interpret the screening result or what it found. "
+    "Say only that the screening result is ready, that the care team needs to talk with the "
+    "patient about the next step, who the care owner is and what the next step is. "
     "Use plain language at about a grade-6 reading level. "
     "Write only in the language the user message asks for. "
     "Use exactly the care owner name, next step and appointment date given in the user message, "
@@ -138,8 +140,9 @@ def build_prompt(req: DraftRequest) -> str:
         f"- Channel: {req.channel}. Maximum {CHANNEL_MAX_CHARS[req.channel]} characters.",
         f"- Purpose: {req.purpose}.",
         "- Do not diagnose, name any disease, give medical advice or reassure.",
-        "- The only clinical fact you may state is that the screening test found blood.",
-        "- Say that the next step is the one given below and that the care team will contact the patient.",
+        "- Never state, hint at or interpret the screening result or what it found.",
+        "- Say that the screening result is ready and that the care team needs to talk with the patient about the next step.",
+        "- Name the care owner and the next step exactly as given below, and say that the care team will contact the patient.",
         "- No links, no phone numbers, no email addresses, no identifiers.",
         f"- Care owner name to include: {req.owner_name}",
         f"- Care owner role: {req.owner_role}",

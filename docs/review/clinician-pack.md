@@ -339,18 +339,13 @@ Two draft texts in the demo data of the coordinator app. They stand in for a mod
 
 | ID | English text | Where it appears |
 |---|---|---|
-| D01 | Hello. Your screening test needs a follow-up camera test called a colonoscopy. This is not a diagnosis. Please call us to book a time. | Draft text offered to the coordinator in the demo (mock) app, shown in both languages and stored in the `message_drafted` event. It stands in for a model or template draft. A person approves it before anything is "sent". |
-| D02 | Hello. This is a reminder to call us about your screening follow-up. This is not a diagnosis. We are here to help. | Draft text offered to the coordinator in the demo (mock) app, shown in both languages and stored in the `message_drafted` event. It stands in for a model or template draft. A person approves it before anything is "sent". |
-| D03 | Hello. Your follow-up appointment is booked. Please arrive on time and call us if you cannot come. | Draft text offered to the coordinator in the demo (mock) app, shown in both languages and stored in the `message_drafted` event. It stands in for a model or template draft. A person approves it before anything is "sent". |
+| D01 | Your screening result is ready and your care team needs to talk with you about the next step. Your care team will call you, or you can reply to book a time. The next step is a camera test called a colonoscopy. | Draft text offered to the coordinator in the demo (mock) app, shown in both languages and stored in the `message_drafted` event. It stands in for a model or template draft. A person approves it before anything is "sent". |
+| D02 | Reminder from your care team. Your screening result is ready and your care team still needs to talk with you about the next step. Your care team will call you, or you can reply to book a time. | Draft text offered to the coordinator in the demo (mock) app, shown in both languages and stored in the `message_drafted` event. It stands in for a model or template draft. A person approves it before anything is "sent". |
+| D03 | Your appointment is booked. Your care team will contact you with the details. Please call us if you cannot come. | Draft text offered to the coordinator in the demo (mock) app, shown in both languages and stored in the `message_drafted` event. It stands in for a model or template draft. A person approves it before anything is "sent". |
 
 ### 9.4 A check we ran on our own wording
 
-The forbidden-phrase list in section 10 applies to model drafts. We ran it over every string above as a self-check. These strings would be rejected if a model had written them. The patient page is fixed text, not a model draft, so they are allowed today. Please say whether each is acceptable (question 3).
-
-| ID | English text | Matching list entries |
-|---|---|---|
-| D01 | Hello. Your screening test needs a follow-up camera test called a colonoscopy. This is not a diagnosis. Please call us to book a time. | `diagnos` |
-| D02 | Hello. This is a reminder to call us about your screening follow-up. This is not a diagnosis. We are here to help. | `diagnos` |
+The forbidden-phrase list in section 10 applies to model drafts. We ran it over every string above as a self-check. None matched.
 
 ## 10. Words the system never lets a model write
 

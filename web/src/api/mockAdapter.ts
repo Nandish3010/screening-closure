@@ -50,16 +50,20 @@ function fakePromptHash(input: string): string {
   return out.slice(0, 64);
 }
 
-const DRAFT_TEXT: Record<DraftRequestBody["language"], Record<DraftRequestBody["purpose"], string>> = {
+/**
+ * Demo draft texts. E14: they follow the API templates (api/app/ai/templates): the result is "ready", the care
+ * team needs to talk with the patient about the next step, and nothing states or hints at what the screening found.
+ */
+export const DRAFT_TEXT: Record<DraftRequestBody["language"], Record<DraftRequestBody["purpose"], string>> = {
   en: {
-    result_notification: "Hello. Your screening test needs a follow-up camera test called a colonoscopy. This is not a diagnosis. Please call us to book a time.",
-    reminder: "Hello. This is a reminder to call us about your screening follow-up. This is not a diagnosis. We are here to help.",
-    appointment_confirmation: "Hello. Your follow-up appointment is booked. Please arrive on time and call us if you cannot come.",
+    result_notification: "Your screening result is ready and your care team needs to talk with you about the next step. Your care team will call you, or you can reply to book a time. The next step is a camera test called a colonoscopy.",
+    reminder: "Reminder from your care team. Your screening result is ready and your care team still needs to talk with you about the next step. Your care team will call you, or you can reply to book a time.",
+    appointment_confirmation: "Your appointment is booked. Your care team will contact you with the details. Please call us if you cannot come.",
   },
   ar: {
-    result_notification: "مرحبًا. يحتاج فحصك إلى فحص متابعة بالكاميرا اسمه تنظير القولون. هذا ليس تشخيصًا. يرجى الاتصال بنا لحجز موعد.",
-    reminder: "مرحبًا. هذا تذكير بالاتصال بنا بخصوص متابعة فحصك. هذا ليس تشخيصًا. نحن هنا لمساعدتك.",
-    appointment_confirmation: "مرحبًا. تم حجز موعد المتابعة. يرجى الحضور في الوقت المحدد والاتصال بنا إذا لم تتمكن من الحضور.",
+    result_notification: "نتيجة فحصك جاهزة، ويحتاج فريق رعايتك إلى التحدث معك عن الخطوة التالية، وهي فحص بالكاميرا اسمه تنظير القولون. سيتصل بك فريق رعايتك، أو يمكنك الرد على هذه الرسالة لحجز موعد.",
+    reminder: "تذكير من فريق رعايتك. نتيجة فحصك جاهزة، ولا يزال فريق رعايتك بحاجة إلى التحدث معك عن الخطوة التالية. سيتصل بك فريق رعايتك، أو يمكنك الرد على هذه الرسالة لحجز موعد.",
+    appointment_confirmation: "تم تأكيد موعدك. سيتواصل معك فريق رعايتك بالتفاصيل. يرجى الاتصال بنا إذا لم تتمكن من الحضور.",
   },
 };
 

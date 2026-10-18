@@ -8,7 +8,7 @@ import { BOUNCED_CASE, OVERDUE_CASE, PATIENT_CASE, WATCHDOG_CASE, freshData } fr
 test.beforeEach(({ page }) => freshData(page));
 
 const SAMPLE = {
-  en: { lang: "English", dir: "ltr", draft: /follow-up camera test called a colonoscopy/ },
+  en: { lang: "English", dir: "ltr", draft: /camera test called a colonoscopy/ },
   ar: { lang: "Arabic (العربية)", dir: "rtl", draft: /تنظير القولون/ },
 } as const;
 

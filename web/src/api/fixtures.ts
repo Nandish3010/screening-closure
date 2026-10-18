@@ -210,7 +210,10 @@ export const SEED_METRICS: Omit<ClosureMetrics, "sim_time"> = {
   ],
 };
 
-/** The drafts the seeded cases already have (GET /cases/{id}/drafts). Text lives here, not on the timeline events. */
+/**
+ * The drafts the seeded cases already have (GET /cases/{id}/drafts). Text lives here, not on the timeline events.
+ * E14: the texts follow the API templates and state no finding (a test in web/tests/mockAdapter.test.ts checks this).
+ */
 export function seedDrafts(): Record<string, DraftRecord> {
   const evs = seedEvents();
   const firstDraft = (caseNo: number, draftId: string) =>
@@ -223,16 +226,16 @@ export function seedDrafts(): Record<string, DraftRecord> {
   return {
     "d-seed-1": {
       draft_id: "d-seed-1", case_id: DEMO_OVERDUE_CASE_ID, purpose: "result_notification", channel: "sms", language: "en",
-      text: "Hello. Your screening test needs a follow-up camera test. Please call us to book it.",
-      text_ar: null, text_en: "Hello. Your screening test needs a follow-up camera test. Please call us to book it.",
+      text: "Your screening result is ready and your care team needs to talk with you about the next step. Your care team will call you, or you can reply to book a time. The next step is a camera test.",
+      text_ar: null, text_en: "Your screening result is ready and your care team needs to talk with you about the next step. Your care team will call you, or you can reply to book a time. The next step is a camera test.",
       provider: "template", fallback_used: false, abstention_reason: null, prompt_hash: HASH_1, model_id: null,
       created_by: "coordinator:Maryam Al Suwaidi", created_at: d1.at,
       approved_at: approved.at, approved_by: approved.actor, rejected_at: null, rejected_by: null, rejection_reason: null,
     },
     "d-seed-2": {
       draft_id: "d-seed-2", case_id: "c0000002-0000-4000-8000-000000000002", purpose: "reminder", channel: "sms", language: "en",
-      text: "Hello. This is a reminder to call us about your screening follow-up. This is not a diagnosis.",
-      text_ar: null, text_en: "Hello. This is a reminder to call us about your screening follow-up. This is not a diagnosis.",
+      text: "Reminder from your care team. Your screening result is ready and your care team still needs to talk with you about the next step. Your care team will call you, or you can reply to book a time.",
+      text_ar: null, text_en: "Reminder from your care team. Your screening result is ready and your care team still needs to talk with you about the next step. Your care team will call you, or you can reply to book a time.",
       provider: "template", fallback_used: true, abstention_reason: "provider_unavailable", prompt_hash: HASH_2, model_id: null,
       created_by: "coordinator:Maryam Al Suwaidi", created_at: d2.at,
       approved_at: null, approved_by: null, rejected_at: null, rejected_by: null, rejection_reason: null,

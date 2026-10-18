@@ -1,8 +1,10 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { beforeEach, describe, expect, it } from "vitest";
 import { ApiError, type ApiClient } from "../src/api/contract";
-import { DEMO_OVERDUE_CASE_ID, DEMO_PATIENT_CASE_ID, SIM_NOW } from "../src/api/fixtures";
+import { DEMO_OVERDUE_CASE_ID, DEMO_PATIENT_CASE_ID, SIM_NOW, seedDrafts } from "../src/api/fixtures";
 import { ROLE_PROVIDERS } from "../src/api/identities";
-import { createMockAdapter } from "../src/api/mockAdapter";
+import { DRAFT_TEXT, createMockAdapter } from "../src/api/mockAdapter";
 import { overdueDays } from "../src/lib/derive";
 
 let api: ApiClient;
@@ -387,5 +389,49 @@ describe("mock adapter: worklist filters, alerts, clocks", () => {
     expect(reviewed.overdue).toBe(false);
     expect((await api.getTimeline(cid(10))).items.find((i) => i.kind === "sla_started")).toMatchObject({ sla: "close" });
     expect((await api.getTimeline(cid(15))).items.find((i) => i.kind === "sla_started")).toMatchObject({ sla: "reassign" });
+  });
+});
+
+/** English `result_disclosure` entries of api/app/ai/forbidden_phrases.yaml (E14), compiled as the API does (case-insensitive, whole word). */
+function englishResultDisclosurePatterns(): { id: string; re: RegExp }[] {
+  const yaml = readFileSync(resolve(process.cwd(), "../api/app/ai/forbidden_phrases.yaml"), "utf-8");
+  const en = yaml.slice(yaml.indexOf("\nen:\n"), yaml.indexOf("\nar:\n"));
+  const out: { id: string; re: RegExp }[] = [];
+  for (const block of en.split(/\n {2}- id: /).slice(1)) {
+    if (!/\n {4}category: result_disclosure\b/.test(block)) continue;
+    const id = block.split("\n")[0].trim();
+    const m = /\n {4}(phrase|regex): ("(?:[^"\\]|\\.)*")/.exec(block);
+    if (!m) throw new Error(`cannot read the pattern of ${id}`);
+    const value = JSON.parse(m[2]) as string;
+    const body = m[1] === "phrase" ? value.trim().split(/\s+/).map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("\\s+") : value;
+    out.push({ id, re: new RegExp(`\\b(?:${body})\\b`, "i") });
+  }
+  return out;
+}
+
+describe("E14: demo draft texts never state the finding", () => {
+  it("reads the English result_disclosure entries (guards the parser above)", () => {
+    const ids = englishResultDisclosurePatterns().map((p) => p.id);
+    expect(ids).toEqual(expect.arrayContaining(["found_blood", "blood_in_stool", "positive_result", "abnormal_result", "result_shows"]));
+    const found = englishResultDisclosurePatterns().find((p) => p.id === "found_blood")!;
+    expect(found.re.test("Your screening test found blood.")).toBe(true);
+  });
+
+  it("no seeded fixture draft and no mock-generated draft text (any purpose, either language) matches one", async () => {
+    const patterns = englishResultDisclosurePatterns();
+    const texts: string[] = [];
+    for (const d of Object.values(seedDrafts())) texts.push(d.text, d.text_en ?? "", d.text_ar ?? "");
+    for (const byPurpose of Object.values(DRAFT_TEXT)) texts.push(...Object.values(byPurpose)); // every purpose, both languages
+    await api.login("coordinator", "Maryam Al Suwaidi");
+    for (const language of ["en", "ar"] as const) {
+      const d = await api.requestDraft(DEMO_PATIENT_CASE_ID, { purpose: "result_notification", channel: "sms", language });
+      texts.push(d.text);
+    }
+    expect(texts.filter((t) => t).length).toBeGreaterThanOrEqual(8);
+    for (const text of texts) {
+      const hits = patterns.filter((p) => p.re.test(text)).map((p) => p.id);
+      expect(hits, text).toEqual([]);
+      expect(text).not.toMatch(/diagnos/i);
+    }
   });
 });

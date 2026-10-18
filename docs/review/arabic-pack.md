@@ -46,21 +46,21 @@ Placeholders in braces are filled in by the system: `{owner_name}` (the care own
 
 **Dates and names.** The sample date uses Gregorian month and weekday names in the Gulf style (نوفمبر, الثلاثاء), not the Levantine month names. Titles such as "الدكتورة" are part of the owner's name, supplied by the clinic.
 
-**Orthography we noticed.** The patient page and demo drafts write tanween as ـًا (for example تشخيصًا): 9 cases there against 0 of the other form. The templates write ـاً (for example دماً): 21 cases against 0 of the other form. The Arabic comma ، appears 42 times (letter greetings and closings); sentences end with a Latin full stop. Choose one convention.
+**Orthography we noticed.** The patient page and demo drafts write tanween as ـًا (for example تشخيصًا): 4 cases there against 0 of the other form. The templates write ـاً (for example دماً): 21 cases against 0 of the other form. The Arabic comma ، appears 47 times (letter greetings and closings); sentences end with a Latin full stop. Choose one convention.
 
 **Terminology we use today.** Counts are generated from the texts below. Where one idea has several wordings, please choose one.
 
 | Concept | Arabic wording in use, with the strings that contain it |
 |---|---|
 | colonoscopy | تنظير القولون : 2 strings (W16, D01) |
-| camera test (friendly term) | فحص بالكاميرا : 2 strings (W12, W16)<br>الفحص بالكاميرا : 1 string (W12)<br>فحص متابعة بالكاميرا : 1 string (D01) |
+| camera test (friendly term) | فحص بالكاميرا : 3 strings (W12, W16, D01)<br>الفحص بالكاميرا : 1 string (W12)<br>فحص متابعة بالكاميرا : not used |
 | screening test | فحص الكشف المبكر : 1 string (T03) |
 | test (generic) | فحصك : 14 strings (W01, W04, W07, T01, T02, T03, T04, T06 and 6 more)<br>الفحص : 1 string (W12) |
-| care team | فريق الرعاية : 8 strings (W05, W11, W24, W25, W27, W28, W37, W38)<br>فريق رعايتك : 21 strings (W07, W08, W15, T01, T02, T03, T04, T05 and 13 more)<br>فريق رعايتي : 1 string (W35) |
+| care team | فريق الرعاية : 8 strings (W05, W11, W24, W25, W27, W28, W37, W38)<br>فريق رعايتك : 24 strings (W07, W08, W15, T01, T02, T03, T04, T05 and 16 more)<br>فريق رعايتي : 1 string (W35) |
 | care coordinator | منسق الرعاية : 1 string (W22)<br>منسق رعاية : 1 string (W20) |
 | care owner (the responsible person) | المسؤول عن رعايتك : 10 strings (T03, T05, T07, T09, T10, T11, T12, T16 and 2 more)<br>المسؤول عن متابعة حالتك : 1 string (W19)<br>من يتابع حالتك : 1 string (W18) |
-| result | نتيجة : 13 strings (W01, W04, W07, W10, T01, T02, T03, T04 and 5 more)<br>نتيجتك : 4 strings (W05, W06, W08, W15)<br>نتيجتي : 1 string (W35) |
-| appointment | موعد : 19 strings (W16, W17, T01, T02, T03, T04, T05, T06 and 11 more) |
+| result | نتيجة : 15 strings (W01, W04, W07, W10, T01, T02, T03, T04 and 7 more)<br>نتيجتك : 4 strings (W05, W06, W08, W15)<br>نتيجتي : 1 string (W35) |
+| appointment | موعد : 20 strings (W16, W17, T01, T02, T03, T04, T05, T06 and 12 more) |
 
 ## 4. Patient page strings, by screen section
 
@@ -229,9 +229,9 @@ Draft text offered to the coordinator in the demo (mock) app, shown in both lang
 
 | ID | English | Arabic | Where it appears |
 |---|---|---|---|
-| D01 | Hello. Your screening test needs a follow-up camera test called a colonoscopy. This is not a diagnosis. Please call us to book a time. | مرحبًا. يحتاج فحصك إلى فحص متابعة بالكاميرا اسمه تنظير القولون. هذا ليس تشخيصًا. يرجى الاتصال بنا لحجز موعد. | Draft text offered to the coordinator in the demo (mock) app, shown in both languages and stored in the `message_drafted` event. It stands in for a model or template draft. A person approves it before anything is "sent". |
-| D02 | Hello. This is a reminder to call us about your screening follow-up. This is not a diagnosis. We are here to help. | مرحبًا. هذا تذكير بالاتصال بنا بخصوص متابعة فحصك. هذا ليس تشخيصًا. نحن هنا لمساعدتك. | Draft text offered to the coordinator in the demo (mock) app, shown in both languages and stored in the `message_drafted` event. It stands in for a model or template draft. A person approves it before anything is "sent". |
-| D03 | Hello. Your follow-up appointment is booked. Please arrive on time and call us if you cannot come. | مرحبًا. تم حجز موعد المتابعة. يرجى الحضور في الوقت المحدد والاتصال بنا إذا لم تتمكن من الحضور. | Draft text offered to the coordinator in the demo (mock) app, shown in both languages and stored in the `message_drafted` event. It stands in for a model or template draft. A person approves it before anything is "sent". |
+| D01 | Your screening result is ready and your care team needs to talk with you about the next step. Your care team will call you, or you can reply to book a time. The next step is a camera test called a colonoscopy. | نتيجة فحصك جاهزة، ويحتاج فريق رعايتك إلى التحدث معك عن الخطوة التالية، وهي فحص بالكاميرا اسمه تنظير القولون. سيتصل بك فريق رعايتك، أو يمكنك الرد على هذه الرسالة لحجز موعد. | Draft text offered to the coordinator in the demo (mock) app, shown in both languages and stored in the `message_drafted` event. It stands in for a model or template draft. A person approves it before anything is "sent". |
+| D02 | Reminder from your care team. Your screening result is ready and your care team still needs to talk with you about the next step. Your care team will call you, or you can reply to book a time. | تذكير من فريق رعايتك. نتيجة فحصك جاهزة، ولا يزال فريق رعايتك بحاجة إلى التحدث معك عن الخطوة التالية. سيتصل بك فريق رعايتك، أو يمكنك الرد على هذه الرسالة لحجز موعد. | Draft text offered to the coordinator in the demo (mock) app, shown in both languages and stored in the `message_drafted` event. It stands in for a model or template draft. A person approves it before anything is "sent". |
+| D03 | Your appointment is booked. Your care team will contact you with the details. Please call us if you cannot come. | تم تأكيد موعدك. سيتواصل معك فريق رعايتك بالتفاصيل. يرجى الاتصال بنا إذا لم تتمكن من الحضور. | Draft text offered to the coordinator in the demo (mock) app, shown in both languages and stored in the `message_drafted` event. It stands in for a model or template draft. A person approves it before anything is "sent". |
 
 ## 6. Arabic forbidden phrases
 
@@ -322,12 +322,7 @@ Questions for you: (a) Does any entry block an ordinary, harmless sentence? For 
 
 ### Self-check on our own texts
 
-We ran the list over every Arabic text above. These texts contain a forbidden entry. The patient page and demo drafts are fixed text, not model output, so the rule does not apply to them today, but please say whether the word is acceptable there.
-
-| ID | Arabic | Matching entries |
-|---|---|---|
-| D01 | مرحبًا. يحتاج فحصك إلى فحص متابعة بالكاميرا اسمه تنظير القولون. هذا ليس تشخيصًا. يرجى الاتصال بنا لحجز موعد. | `diagnosis` |
-| D02 | مرحبًا. هذا تذكير بالاتصال بنا بخصوص متابعة فحصك. هذا ليس تشخيصًا. نحن هنا لمساعدتك. | `diagnosis` |
+We ran the list over every Arabic text above. None matched.
 
 ## 7. Checklist
 
