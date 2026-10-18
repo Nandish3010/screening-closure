@@ -182,9 +182,11 @@ describe("mock agency: runs", () => {
     const storage = { getItem: (k: string) => store.get(k) ?? null, setItem: (k: string, v: string) => void store.set(k, v), removeItem: (k: string) => void store.delete(k) };
     const a = createMockAdapter(storage);
     await a.listCases(); // writes the seed
-    const old = JSON.parse(store.get("sc.mock.v2")!);
+    // The storage key carries a version that the automation branch bumped (v2 -> v3); find the database whatever it is called.
+    const dbKey = [...store.keys()].find((k) => k.startsWith("sc.mock.v"))!;
+    const old = JSON.parse(store.get(dbKey)!);
     delete old.agency;
-    store.set("sc.mock.v2", JSON.stringify(old));
+    store.set(dbKey, JSON.stringify(old));
     const b = createMockAdapter(storage);
     expect((await b.agencyRuns()).map((r) => r.run_id)).toEqual(["run-0001"]);
   });

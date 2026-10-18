@@ -24,6 +24,8 @@ const EVENT_LABEL: Record<string, string> = {
   callback_requested: "Patient asked for a call-back",
   consent_updated: "Consent updated",
   contact_updated: STAFF.contactUpdated,
+  reply_received: STAFF.replyReceived,
+  reply_classified: STAFF.replyClassified,
   review_requested: STAFF.reviewReasons.consent_withdrawn,
   assign_ownership: STAFF.assignOwnership,
   closure_proposed: STAFF.closureProposed,
@@ -50,7 +52,7 @@ function eventLabel(ev: Pick<CaseEvent, "type" | "payload">): string {
 }
 
 /** Draft text is never shown from the event payload any more: it is loaded through GET /cases/{id}/drafts. */
-const SKIP_PAYLOAD = new Set(["text_en", "text_ar", "text", "auto"]); // `auto: true` is shown as the Automated chip
+const SKIP_PAYLOAD = new Set(["text_en", "text_ar", "text", "auto", "text_ref"]); // `auto: true` is shown as the Automated chip
 
 const CONSENT_LABEL: Record<string, string> = {
   channel_sms: "text messages", channel_whatsapp: "WhatsApp", channel_phone: "phone calls", channel_letter: "letters",
@@ -62,6 +64,19 @@ function payloadSummary(type: string, p: Record<string, unknown>): string {
     return Object.entries(p)
       .map(([k, v]) => (k === "withdrawn" ? (v ? "consent withdrawn" : "consent restored") : `${CONSENT_LABEL[k] ?? k.replace(/_/g, " ")}: ${v ? "allowed" : "not allowed"}`))
       .join(" · ");
+  }
+  if (type === "reply_received") {
+    // D13: only the channel is shown. The reply text is never in an event (`text_ref` is just the id that finds it elsewhere).
+    return `channel: ${String(p.channel ?? "unknown")} · ${STAFF.replyReceivedNote}`;
+  }
+  if (type === "reply_classified") {
+    const conf = typeof p.confidence === "number" ? `${Math.round(p.confidence * 100)}%` : "unknown";
+    return [
+      `intent: ${String(p.intent ?? "unknown").replace(/_/g, " ")}`,
+      `confidence: ${conf}`,
+      ...(typeof p.model_id === "string" ? [`model: ${p.model_id}`] : []),
+      p.needs_human === true ? STAFF.replyClassifiedNeedsHuman : "no person needed",
+    ].join(" · ");
   }
   return Object.entries(p)
     .filter(([k]) => !SKIP_PAYLOAD.has(k))

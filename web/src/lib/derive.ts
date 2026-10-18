@@ -3,7 +3,7 @@ import type {
   ActorKind, CaseDetail, CaseEvent, ClosureProposal, CaseSummary, Consent, ConsentChanges, ConsentHistoryEntry, DraftRecord, EscalationRung, Lang,
   LastHandoff, MilestoneClock, MilestoneName, PendingHandoff, TimelineItem, WatchdogFlag,
 } from "../api/contract";
-import { ApiError, AUTOMATION_ACTOR, CONSENT_KEYS, HANDOFF_REJECT_REASONS } from "../api/contract";
+import { ApiError, AUTOMATION_ACTOR, CONSENT_KEYS, HANDOFF_REJECT_REASONS, OUTREACH_HOLD_REASONS, REVIEW_REASONS, TRIAGE_REVIEW_REASONS } from "../api/contract";
 import {
   MILESTONES, REFERRAL_STATES, SLA_WORKING_DAYS, addWorkingDays, nextTransition,
   rungLevel, transitionFor, wholeDaysBetween,
@@ -446,15 +446,84 @@ export function closureProposalOf(events: CaseEvent[]): ClosureProposal | null {
   return proposal;
 }
 
+/** The actor of the reply triage (D13): it writes `reply_received`, `reply_classified` and the triage review reasons. */
+export const TRIAGE_ACTOR = "system:triage";
+
+/** Who may give each `review_requested.reason` (the API's REVIEW_EMITTER): exactly one actor per reason. */
+export const REVIEW_EMITTER: Record<string, string> = {
+  consent_withdrawn: "system:consent",
+  reroute_exhausted: AUTOMATION_ACTOR,
+  ...Object.fromEntries(TRIAGE_REVIEW_REASONS.map((r) => [r, TRIAGE_ACTOR])),
+};
+
+export interface TriageReplay {
+  /** Open outreach holds (`opt_out`, `wrong_number`) in the order they were raised. */
+  holds: string[];
+  /** The latest triage flag still open (`triage_review_reason`), with when it was raised. */
+  reason: string | null;
+  at: string | null;
+  /** `at` of the latest `contact_updated`: a person confirmed the contact details. */
+  contactConfirmedAt: string | null;
+}
+
 /**
- * Why the case is on the human-review list (A21), by replay: consent withdrawn while it is, else `reroute_exhausted` while the
- * case still waits in `referral_rejected` after the re-route list ran out. Null when no human review is pending.
+ * Replay of the triage flag and the outreach holds (D13), mirroring the API's read model. A `review_requested` from
+ * `system:triage` sets the triage flag (and opens a hold for `opt_out` / `wrong_number`). A person clears it: a
+ * `consent_updated` clears an `opt_out` hold, a `contact_updated` a `wrong_number` hold. The triage flag goes with its hold,
+ * unless the person's answer was to withdraw consent (then the case is in consent review and keeps the triage reason).
  */
-export function reviewReasonOf(events: CaseEvent[]): string | null {
-  if (consentOf(events).withdrawn) return "consent_withdrawn";
+export function triageReplayOf(events: CaseEvent[]): TriageReplay {
+  let holds: string[] = [];
+  let reason: string | null = null;
+  let at: string | null = null;
+  let contactConfirmedAt: string | null = null;
+  let withdrawn = false;
+  const clear = (hold: string) => {
+    if (!holds.includes(hold)) return;
+    holds = holds.filter((h) => h !== hold);
+    if (reason === hold && !withdrawn) { reason = null; at = null; }
+  };
+  for (const ev of events) {
+    if (ev.type === "consent_updated") {
+      const w = consentChangesOf(ev.payload).withdrawn;
+      if (w !== undefined) withdrawn = w;
+      clear("opt_out");
+    } else if (ev.type === "contact_updated") {
+      contactConfirmedAt = ev.at;
+      clear("wrong_number");
+    } else if (ev.type === "review_requested" && ev.actor === TRIAGE_ACTOR && typeof ev.payload.reason === "string") {
+      reason = ev.payload.reason;
+      at = ev.at;
+      if ((OUTREACH_HOLD_REASONS as readonly string[]).includes(reason) && !holds.includes(reason)) holds = [...holds, reason];
+    }
+  }
+  return { holds, reason, at, contactConfirmedAt };
+}
+
+/** The open outreach holds of a case: while one is open the automation sends no automatic message. */
+export function outreachHoldsOf(events: CaseEvent[]): string[] {
+  return triageReplayOf(events).holds;
+}
+
+/**
+ * Why the case is on the human-review list, and since when, by replay. Precedence as the API: consent withdrawn while it is,
+ * else the open triage reason (D13), else `reroute_exhausted` while the case still waits in `referral_rejected` after the
+ * re-route list ran out (A21). Null when no human review is pending.
+ */
+export function reviewOf(events: CaseEvent[]): { reason: string | null; at: string | null } {
+  if (consentOf(events).withdrawn) {
+    const flag = [...events].reverse().find((e) => e.type === "review_requested" && e.payload.reason === "consent_withdrawn");
+    return { reason: "consent_withdrawn", at: flag?.at ?? consentOf(events).updated_at ?? null };
+  }
+  const triage = triageReplayOf(events);
+  if (triage.reason) return { reason: triage.reason, at: triage.at };
   const state = replayState(events);
   const lastExhausted = events.map((e) => e.type === "review_requested" && e.payload.reason === "reroute_exhausted").lastIndexOf(true);
-  return state === "referral_rejected" && lastExhausted >= 0 ? "reroute_exhausted" : null;
+  return state === "referral_rejected" && lastExhausted >= 0 ? { reason: "reroute_exhausted", at: events[lastExhausted].at } : { reason: null, at: null };
+}
+
+export function reviewReasonOf(events: CaseEvent[]): string | null {
+  return reviewOf(events).reason;
 }
 
 /** Fill read-model fields a backend row lacks (older server, partial rows) so the UI never crashes. */
@@ -493,6 +562,7 @@ export function completeDetail(raw: CaseDetail, simNow: string | null = null): C
   const o = d.owner !== undefined ? normalizeOwner(d.owner) : normalizeOwner(h.owner ? { actor: h.owner.actor, display_name: h.owner.name, role: h.owner.role } : null);
   const consent = (d.consent as Consent | undefined) ? { ...DEFAULT_CONSENT, ...(d.consent as Consent) } : consentOf(events);
   const frozen = d.consent_frozen ?? consent.withdrawn;
+  const triage = triageReplayOf(events);
   return {
     ...d,
     events,
@@ -506,6 +576,10 @@ export function completeDetail(raw: CaseDetail, simNow: string | null = null): C
     consent,
     consent_history: d.consent_history ?? consentHistoryOf(events),
     review_reason: d.review_reason !== undefined ? d.review_reason : frozen ? "consent_withdrawn" : reviewReasonOf(events),
+    review_requested_at: d.review_requested_at !== undefined ? d.review_requested_at : reviewOf(events).at,
+    triage_review_reason: d.triage_review_reason !== undefined ? d.triage_review_reason : triage.reason,
+    triage_review_requested_at: d.triage_review_requested_at !== undefined ? d.triage_review_requested_at : triage.at,
+    outreach_holds: Array.isArray(d.outreach_holds) ? d.outreach_holds : triage.holds,
     closure_proposal: d.closure_proposal !== undefined ? d.closure_proposal : closureProposalOf(events),
     milestones: d.milestones ?? milestonesOf(events, simNow),
     last_event_at: d.last_event_at ?? events.at(-1)?.at ?? d.updated_at ?? "",
@@ -521,9 +595,15 @@ export const ANNOTATION_EVENTS = [
   "handoff_requested", "handoff_accepted", "handoff_rejected", "escalate", "escalation_accepted",
   "callback_requested", "consent_updated", "message_drafted", "message_approved", "message_rejected", "message_sent",
   "mark_overdue", "watchdog_flagged", "mark_lost_contact", "review_requested", "assign_ownership", "closure_proposed",
+  "contact_updated", "reply_received", "reply_classified",
 ];
 /** Events only the automation actor (or another service) writes: nobody may post them through the events route. */
-const SERVICE_ONLY_EVENTS = ["message_approved", "message_rejected", "message_sent", "review_requested", "assign_ownership", "closure_proposed"];
+const SERVICE_ONLY_EVENTS = [
+  "message_approved", "message_rejected", "message_sent", "review_requested", "assign_ownership", "closure_proposed",
+  "reply_received", "reply_classified", // D13: written only by system:triage
+];
+/** Backend roles that may confirm a patient's contact details (`contact_updated`; the API's EVENT_POLICY). `clinician` is the UI's own alias. */
+const CONTACT_UPDATE_ROLES = new Set(["coordinator", "primary_care_owner", "specialist_owner", "supervisor", "clinician"]);
 
 /** Backend roles that are owner-scoped (A5): they act only on cases they own. */
 const OWNER_BACKEND_ROLES = new Set(["primary_care_owner", "specialist_owner"]);
@@ -569,6 +649,26 @@ export function validateAppend(events: CaseEvent[], type: string, actor: string,
   if (state === "closed" && type !== "reopen") throw new ApiError(409, "case is closed");
   if (frozen && FROZEN_EVENTS.includes(type) && !(ctx.internal && type === "message_sent")) {
     throw new ApiError(409, `consent withdrawn: '${type}' is refused while the patient's consent is withdrawn; a human must review the case`);
+  }
+
+  if (type === "reply_received" || type === "reply_classified") {
+    if (actor !== TRIAGE_ACTOR) throw new ApiError(409, `actor '${actor}' may not emit '${type}': only ${TRIAGE_ACTOR} writes it`);
+  } else if (type === "review_requested") {
+    const reason = payload.reason;
+    if (!(REVIEW_REASONS as readonly string[]).includes(String(reason))) {
+      throw new ApiError(422, `review_requested reason must be one of ${JSON.stringify(REVIEW_REASONS)}, got ${JSON.stringify(reason)}`);
+    }
+    if (REVIEW_EMITTER[String(reason)] !== actor) {
+      throw new ApiError(409, `review_requested with reason '${String(reason)}' is emitted only by '${REVIEW_EMITTER[String(reason)]}'`);
+    }
+  } else if (type === "contact_updated") {
+    if (!ctx.internal && !CONTACT_UPDATE_ROLES.has(actorRole(actor))) {
+      throw new ApiError(403, `role '${actorRole(actor)}' may not confirm the patient's contact details`);
+    }
+    if (payload.contact_valid !== true) throw new ApiError(422, "contact_updated says the contact details are valid: contact_valid must be true");
+  } else if (type === "message_sent" && payload.auto === true) {
+    const holds = outreachHoldsOf(events);
+    if (holds.length) throw new ApiError(409, `message_sent: automatic messages are held for this case (${holds.join(", ")}): a person must clear the flag first`);
   }
 
   if (type === "handoff_requested") {

@@ -209,8 +209,20 @@ export const STAFF = {
     reroute_exhausted: "Reroute list exhausted: a coordinator must reassign",
     opt_out: "The patient opted out: automatic messages are held until a person reviews consent",
     wrong_number: "The number is wrong: automatic messages are held until a person confirms the contact details",
+    triage_uncertain: "The reply could not be read with confidence: a person must read it and decide",
+    already_done: "The patient says the colonoscopy is already done: a person must check and confirm",
   },
   contactUpdated: "Contact details confirmed by a person",
+  /** D13: the reply triage (`system:triage`). The events carry no reply text; it is stored outside the log. */
+  replyReceived: "Patient reply received",
+  replyReceivedNote: "The text of the reply is not in the log.",
+  replyClassified: "Reply classified by the triage",
+  replyClassifiedNeedsHuman: "A person must look at this reply",
+  holdsLabel: "Automatic messages held",
+  holds: {
+    opt_out: "opt-out: until a person reviews the patient's consent",
+    wrong_number: "wrong number: until a person confirms the contact details",
+  },
   closureBanner: {
     heading: "Closure proposed",
     found: "The system found the colonoscopy evidence in the record:",
@@ -245,4 +257,17 @@ export const STAFF = {
     caveat: "Assumed minutes, to source: the minutes behind these figures are estimates, not measurements.",
     unavailable: "Effort metrics are not available for this role or this server.",
   },
+} as const;
+
+/**
+ * Arabic labels for every `review_requested.reason`, for any screen that has to show a flag in Arabic. Same keys as
+ * `STAFF.reviewReasons`. TODO: native-speaker review, like every Arabic string in this file.
+ */
+export const REVIEW_REASONS_AR = {
+  consent_withdrawn: "تم تحويل الحالة للمراجعة البشرية (سحب المريض موافقته)",
+  reroute_exhausted: "انتهت قائمة إعادة التوجيه: على المنسق إعادة إسناد الحالة",
+  opt_out: "طلب المريض التوقف عن الرسائل: الرسائل التلقائية موقوفة حتى يراجع شخص الموافقة",
+  wrong_number: "الرقم خاطئ: الرسائل التلقائية موقوفة حتى يؤكد شخص بيانات الاتصال",
+  triage_uncertain: "لم يتمكن النظام من فهم الرد بثقة: على شخص أن يقرأه ويقرر",
+  already_done: "يقول المريض إن تنظير القولون تم بالفعل: على شخص أن يتحقق ويؤكد",
 } as const;

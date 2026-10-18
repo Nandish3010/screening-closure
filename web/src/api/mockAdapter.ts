@@ -19,7 +19,7 @@ import { PROVIDER_CLINICIANS, ROLE_NAMES, ROLE_PROVIDERS, backendActor } from ".
 import { ESCALATION_LADDER } from "../lib/pathway";
 import {
   actorKindOf, actorRole, closureProposalOf, completeDetail, consentOf, consentHistoryOf, milestonesOf, overdueDays, pendingEscalation, replayHandoffs,
-  replayState, reviewReasonOf, slaClock, summarise, validateAppend,
+  replayState, reviewOf, slaClock, summarise, triageReplayOf, validateAppend,
 } from "../lib/derive";
 import { effortMetricsOf, effortOf } from "../lib/effort";
 
@@ -175,11 +175,17 @@ export function createMockAdapter(
   const detail = (db: MockDb, id: string): CaseDetail => {
     const evs = must(db, id);
     const consent = consentOf(evs);
+    const review = reviewOf(evs);
+    const triage = triageReplayOf(evs);
     return {
       ...summary(db, id),
       consent,
       consent_history: consentHistoryOf(evs),
-      review_reason: reviewReasonOf(evs),
+      review_reason: review.reason,
+      review_requested_at: review.at,
+      triage_review_reason: triage.reason,
+      triage_review_requested_at: triage.at,
+      outreach_holds: triage.holds,
       closure_proposal: closureProposalOf(evs),
       effort: effortOf(evs),
       milestones: milestonesOf(evs, SIM_NOW),
@@ -290,7 +296,9 @@ export function createMockAdapter(
     const consent = consentOf(evs);
     const genesis = evs[0]?.payload.contact_valid;
     if (consent.withdrawn || !consent.channel_sms) return;
-    if (genesis === false || (genesis && typeof genesis === "object" && (genesis as Record<string, boolean>).sms === false)) return;
+    const triage = triageReplayOf(evs);
+    if (triage.holds.length) return; // D13: an open opt_out / wrong_number hold: the automation sends nothing until a person clears it
+    if (!triage.contactConfirmedAt && (genesis === false || (genesis && typeof genesis === "object" && (genesis as Record<string, boolean>).sms === false))) return;
     db.notificationCounter += 1;
     appendAuto(db, id, "message_sent", {
       notification_id: `n-mock-${db.notificationCounter}`, channel: "sms", language: "en", purpose: "result_notification",
@@ -499,7 +507,8 @@ export function createMockAdapter(
         save(db);
         return { ...base, sent: false, blocked_reason: "consent", notification_id: notificationId };
       }
-      if (genesis === false || (genesis && typeof genesis === "object" && (genesis as Record<string, boolean>)[d.channel] === false)) {
+      // A person's `contact_updated` (contact details confirmed) overrides `contact_valid: false` on case_created.
+      if (!triageReplayOf(must(db, d.case_id)).contactConfirmedAt && (genesis === false || (genesis && typeof genesis === "object" && (genesis as Record<string, boolean>)[d.channel] === false))) {
         save(db);
         return { ...base, sent: false, blocked_reason: "contact", notification_id: notificationId };
       }

@@ -218,7 +218,7 @@ test("Arabic patient flow on a phone: RTL, no horizontal scroll, acknowledge, wi
   await expect(root).toHaveAttribute("dir", "rtl");
   await expect(root).toHaveAttribute("lang", "ar");
   await expect(page.locator("html")).toHaveAttribute("dir", "rtl");
-  await expect(page.getByText("سيشرح لك فريق رعايتك نتيجتك وجهًا لوجه أو عبر الهاتف.")).toBeVisible();
+  await expect(page.getByText("سيشرح لك فريق رعايتك نتيجتك وجهاً لوجه أو عبر الهاتف.")).toBeVisible();
   const noOverflow = () => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth);
   expect(await noOverflow()).toBe(true);
   // Acknowledge in Arabic.

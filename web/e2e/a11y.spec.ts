@@ -58,6 +58,10 @@ for (const scheme of ["light", "dark"] as const) {
       await page.goto("/coordinator/c0000014-0000-4000-8000-000000000014");
       await page.getByTestId("consent-frozen-banner").waitFor();
       await audit(page, `frozen consent (${scheme})`);
+      // D13: a case flagged by the reply triage (banner, held messages, the reply events on the timeline).
+      await page.goto("/coordinator/c0000021-0000-4000-8000-000000000021");
+      await page.getByTestId("triage-review-banner").waitFor();
+      await audit(page, `triage-flagged case (${scheme})`);
     });
 
     test("patient app, English", async ({ page }) => {
