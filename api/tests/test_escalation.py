@@ -82,11 +82,12 @@ def test_a_long_outage_catches_up_in_order_without_skipping():
     store, cid = new_store_case()
     sweep(store, cid, utc(3, 1))  # the scheduler was down for weeks
     assert rungs(store, cid) == ["reminder", "supervisor", "coordinator"]
-    # the state's breach and three rungs, and the referral milestone's breach and three rungs (A18)
-    assert [e.seq for e in store.events_for(cid)] == list(range(1, 10))
+    # the state's breach and three rungs, and the referral milestone's breach (A18); the milestone's three rungs go
+    # to the same roles in the same sweep, so they ride on the state's escalations (`also_for`, A19)
+    assert [e.seq for e in store.events_for(cid)] == list(range(1, 7))
     for _ in range(3):
         sweep(store, cid, utc(3, 2))
-    assert len(store.events_for(cid)) == 9  # each rung once, whatever the number of sweeps
+    assert len(store.events_for(cid)) == 6  # each rung once, whatever the number of sweeps
 
 
 def test_a_holiday_pushes_the_rung_dates():

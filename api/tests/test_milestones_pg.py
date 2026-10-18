@@ -58,6 +58,18 @@ def milestone_events(store, cid, type_):
     return [e for e in store.events_for(cid) if e.type == type_ and e.payload.get("milestone") == REFERRAL]
 
 
+def milestone_rungs(store, cid):
+    """The referral ladder's rungs in order: its own `escalate` events and, since A19, the entries the state's
+    escalations carry for it in `also_for` (a rung to the same role in the same sweep rides on one)."""
+    out = []
+    for e in store.events_for(cid):
+        if e.type == "escalate":
+            if e.payload.get("milestone") == REFERRAL:
+                out.append(e.payload["rung"])
+            out += [x["rung"] for x in e.payload.get("also_for", ()) if x.get("milestone") == REFERRAL]
+    return out
+
+
 def test_a_referral_on_day_14_is_no_breach_and_on_day_16_is_one_breach_and_one_reminder(store):
     early, late = new_case(store), new_case(store)
     store.append(Event(early, "handoff_requested", wd(14, 2), PCO, {"to_provider": "endo-1"}), PATHWAY)
@@ -69,11 +81,13 @@ def test_a_referral_on_day_14_is_no_breach_and_on_day_16_is_one_breach_and_one_r
     for _ in range(3):
         run_sweep(store, PATHWAY, UAE, wd(16, 1), only=[late])
     [breach] = milestone_events(store, late, "mark_overdue")
-    [reminder] = milestone_events(store, late, "escalate")
     created = store.events_for(late)[0]
     assert breach.event_id == sweep_event_id(late, created.event_id, f"milestone:{REFERRAL}:mark_overdue")
-    assert breach.actor == reminder.actor == SCHEDULER_ACTOR and "state" not in breach.payload
-    assert reminder.payload["rung"] == "reminder"
+    assert breach.actor == SCHEDULER_ACTOR and "state" not in breach.payload
+    # the state's ladder (long breached) reminds the owner in the same sweep, so the referral reminder rides on it (A19)
+    assert milestone_events(store, late, "escalate") == [] and milestone_rungs(store, late) == ["reminder"]
+    [reminder] = [e for e in store.events_for(late) if e.type == "escalate" and e.payload.get("also_for")][:1]
+    assert reminder.actor == SCHEDULER_ACTOR and reminder.payload["rung"] == "reminder"
     store.append(Event(late, "handoff_requested", wd(16, 2), PCO, {"to_provider": "endo-1"}), PATHWAY)
     ms = store.read_model(late, PATHWAY).milestones[REFERRAL]
     assert not ms.overdue and ms.met_at == wd(16, 2) and ms.escalation_level == 0
@@ -105,7 +119,7 @@ def test_concurrent_sweeps_write_each_milestone_event_once(store):
     [t.join() for t in threads]
     assert errors == []
     assert len(milestone_events(store, cid, "mark_overdue")) == 1
-    assert [e.payload["rung"] for e in milestone_events(store, cid, "escalate")] == ["reminder", "supervisor", "coordinator"]
+    assert milestone_rungs(store, cid) == ["reminder", "supervisor", "coordinator"]
     seqs = [e.seq for e in store.events_for(cid)]
     assert seqs == list(range(1, len(seqs) + 1))  # no gaps, no duplicates
 
@@ -134,7 +148,9 @@ def test_the_sharded_sweep_writes_the_same_milestone_log_as_the_single_process_s
             first, second = rows(pool1), rows(pool2)
             assert first == second
             milestone_rows = [r for r in first if r[4].get("milestone")]
-            assert len(milestone_rows) == 40 * 4  # per case: one breach and three rungs
+            assert len(milestone_rows) == 40  # per case: the breach; its three rungs ride on the state's escalations (A19)
+            covered = [x for r in first if r[3] == "escalate" for x in r[4].get("also_for", ())]
+            assert len(covered) == 40 * 3 and {x["milestone"] for x in covered} == {REFERRAL}
             again = run_sweep_parallel(url2, PATHWAY, UAE, wd(40), workers=3)
             assert again.mark_overdue == again.escalate == 0 and rows(pool2) == second
         finally:

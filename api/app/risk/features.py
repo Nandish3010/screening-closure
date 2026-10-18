@@ -150,7 +150,8 @@ def summarise_events(events) -> EventSummary:
     for ev in events:
         t, p = ev.type, ev.payload or {}
         if t in ESCALATION_EVENTS:
-            escalations += 1
+            if not p.get("attached_to"):  # an escalation attached to another ladder's of the day is not a new one (A19)
+                escalations += 1
         elif t == HANDOFF_REJECTED:
             bounces += 1
         elif t == "overdue" and p.get("reason") == BOUNCE_OVERDUE_REASON:

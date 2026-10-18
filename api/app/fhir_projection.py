@@ -9,7 +9,10 @@ same resources and the projection is idempotent by event id):
                    is created on the fly
 * every event      `Task/task-<case_id>`: the case, rebuilt from the current read model: status mirrors the
                    state (`businessStatus` is the exact state), `owner` is the owner's Practitioner,
-                   `focus` the screening DiagnosticReport, `for` the Patient
+                   `focus` the screening DiagnosticReport, `for` the Patient. There is one Task per case, so an
+                   `escalate` that is `attached_to` another ladder's escalation of the day (A19) creates no second
+                   Task for the role; it only moves `escalation-level` (the highest rung on any ladder) and has
+                   its own Provenance like every event
 * handoff_requested  `ServiceRequest/sr-<event_id>` (status `draft` while the receiver has not answered);
   handoff_accepted/rejected  the same ServiceRequest, now `active` (performer = the accepting
                    Practitioner) or `revoked` (the reason is on the note)
@@ -255,6 +258,11 @@ class InMemoryProjectionQueue:
 # ---- mapping: events -> FHIR resources (pure, apart from the existence probe) --------------------------
 
 
+def _escalation_level(model: CaseModel) -> int:
+    """The highest rung reached on any of the case's ladders: what the worklist shows (A18, A19)."""
+    return int(max([model.escalation_level, *(m.escalation_level for m in model.milestones.values())]))
+
+
 def _iso(dt: datetime | None) -> str | None:
     return dt.isoformat() if dt is not None else None
 
@@ -320,7 +328,7 @@ class Mapper:
             "authoredOn": _iso(genesis.at), "lastModified": _iso(model.last_event_at),
             "extension": [
                 {"url": EXT + "overdue", "valueBoolean": bool(model.any_overdue)},
-                {"url": EXT + "escalation-level", "valueInteger": int(model.escalation_level)},
+                {"url": EXT + "escalation-level", "valueInteger": _escalation_level(model)},
                 {"url": EXT + "consent-frozen", "valueBoolean": bool(model.consent_frozen)},
             ],
         }

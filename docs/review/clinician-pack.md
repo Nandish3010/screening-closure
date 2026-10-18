@@ -158,6 +158,8 @@ The same working-day arithmetic applies to the referral response time and the es
 
 When a step or a national timeline passes its due date, the scheduler flags it (`mark_overdue`, once) and then climbs the ladder. A rung is written only after the previous one, never skipped. A person in the rung's accepting role must accept it (`escalation_accepted`); that stops further rungs for that delay. The scheduler can notify but cannot accept, reassign or close. A regulator rung is not built.
 
+A case can have a late step and a late national timeline at once, each with its own ladder. One person is not told twice on the same working day: when two ladders reach the same rung at the same time, the scheduler writes one escalation that names both delays (`also_for`); a rung that falls due later the same working day, for a person already told and not yet answering, is recorded as attached to that escalation (`attached_to`) and tells nobody. One acceptance answers the whole escalation. A rung on another working day is a new escalation.
+
 | Rung | What it does | When | Who is told | Who must accept |
 |---|---|---|---|---|
 | `reminder` | A reminder to the case owner. | 0 working days after the due date | owner | primary care owner, specialist owner |

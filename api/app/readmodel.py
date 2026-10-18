@@ -240,15 +240,25 @@ def timeline(
                 "action": ev.payload.get("action") or (rung.action if rung else None),
                 "rung_due_at": ev.payload.get("rung_due_at"), "accepted": False, "accepted_at": None,
                 "accepted_by": None, "event_id": str(ev.event_id),
+                # A19: other ladders whose rung to this role rode on this escalation (also_for), or the event of the
+                # escalation this rung is attached to: it notified nobody and is not a new escalation (attached_to)
+                "also_for": [dict(x) for x in ev.payload["also_for"]] if ev.payload.get("also_for") else None,
+                "attached_to": ev.payload.get("attached_to"),
             }
             add(ev.at, seq, 1, last_escalation)
             last_rung_by_scope[ev.payload.get("milestone") or "state"] = last_escalation
+            for x in last_escalation["also_for"] or ():
+                last_rung_by_scope[x.get("milestone") or "state"] = last_escalation
         elif ev.type == "escalation_accepted" and last_escalation is not None:
-            # the ladder whose acceptance flag the event set (a milestone's, else the state's)
-            scope = next((n for n, m in model.milestones.items()
-                          if m.escalation_accepted and not before.milestones[n].escalation_accepted), "state")
-            target = last_rung_by_scope.get(scope, last_escalation)
-            target.update(accepted=True, accepted_at=ev.at.isoformat(), accepted_by=ev.actor)
+            # every ladder whose acceptance flag the event set: the one it named (a milestone's, else the state's)
+            # and, since A19, the others whose current rung is the same escalation
+            scopes = [n for n, m in model.milestones.items()
+                      if m.escalation_accepted and not before.milestones[n].escalation_accepted]
+            if model.escalation_accepted and not before.escalation_accepted:
+                scopes.insert(0, "state")
+            for scope in scopes or ["state"]:
+                target = last_rung_by_scope.get(scope, last_escalation)
+                target.update(accepted=True, accepted_at=ev.at.isoformat(), accepted_by=ev.actor)
         elif ev.type == "handoff_rejected" and ev.payload.get("bounced") is True:
             add(ev.at, seq, 1, {
                 "kind": "handoff_bounce", "at": ev.at.isoformat(), "to_provider": ev.payload.get("to_provider"),

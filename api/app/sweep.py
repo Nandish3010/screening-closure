@@ -46,7 +46,7 @@ from app import payloads
 from app.calendar import WorkingCalendar
 from app.events import CaseNotFound, Event, EventContentConflict, EventIdConflict, EventStore
 from app.pathway import Pathway
-from app.state_machine import CONSENT_WITHDRAWN, CaseModel, InvalidTransition
+from app.state_machine import CONSENT_WITHDRAWN, CaseModel, InvalidTransition, MilestoneState, step
 
 log = logging.getLogger("app.sweep")
 
@@ -148,16 +148,22 @@ def plan_case(
 
     A bounce comes alone: it can change the case's state, so the overdue/escalation events are
     planned from the new model (`run_sweep` re-plans straight after a bounce).
+
+    Otherwise: every breach (`mark_overdue`) first, then the escalation rungs, with concurrent ladders coalesced
+    (A19, ADR-031): a rung to a role that an earlier rung of this plan already goes to rides on that escalation
+    (`also_for`), and a rung to a role another ladder of the case escalated earlier on the same working day is
+    recorded `attached_to` that escalation. See `_coalesce`.
     """
     bounce = plan_bounce(case_id, model, pathway, calendar, now)
     if bounce is not None:
         return [bounce]
-    planned: list[Event] = []
+    marks: list[Event] = []
+    rungs: list[tuple[str | None, Event]] = []  # (ladder: None for the state's, else the milestone, event)
     due = due_at_for(model, pathway, calendar)
     if due is not None and now > due:
         sla_event, sla_days = pathway.sla_for_state(model.state)
         if not model.overdue:
-            planned.append(
+            marks.append(
                 Event(
                     case_id,
                     "mark_overdue",
@@ -173,31 +179,44 @@ def plan_case(
                 )
             )
         if not model.escalation_accepted:
-            planned.extend(
-                _plan_rungs(case_id, model, pathway, calendar, now, due, model.escalation_level)
+            rungs.extend(
+                (None, e)
+                for e in _plan_rungs(case_id, model, pathway, calendar, now, due, model.escalation_level)
             )
-    planned.extend(plan_milestones(case_id, model, pathway, calendar, now))
-    return planned
+    ms_marks, ms_rungs = _plan_milestone_parts(case_id, model, pathway, calendar, now)
+    marks.extend(ms_marks)
+    rungs.extend(ms_rungs)
+    return marks + _coalesce(model, pathway, calendar, now, marks, rungs)
 
 
 def plan_milestones(
     case_id: UUID, model: CaseModel, pathway: Pathway, calendar: WorkingCalendar, now: datetime
 ) -> list[Event]:
-    """The events for breached milestones, in the pathway's order: the breach once, then the due rungs.
+    """The events for breached milestones, in the pathway's order: the breach once, then the due rungs (not
+    coalesced with the state's ladder: `plan_case` does that)."""
+    marks, rungs = _plan_milestone_parts(case_id, model, pathway, calendar, now)
+    return [*marks, *(e for _, e in rungs)]
+
+
+def _plan_milestone_parts(
+    case_id: UUID, model: CaseModel, pathway: Pathway, calendar: WorkingCalendar, now: datetime
+) -> tuple[list[Event], list[tuple[str | None, Event]]]:
+    """(breaches, rungs) of the milestones in the pathway's order; each rung is (milestone, event).
 
     Not evaluated in a closed case or while consent is withdrawn (outreach is frozen and a human must review
     the case; the clock keeps running and the breach is planned the moment the case resumes).
     """
     if model.state not in pathway.open_states or model.state == CONSENT_WITHDRAWN:
-        return []
-    planned: list[Event] = []
+        return [], []
+    marks: list[Event] = []
+    rungs: list[tuple[str | None, Event]] = []
     for name, definition in pathway.milestones.items():
         due = milestone_due_at(model, name, pathway, calendar)
         if due is None or now <= due:
             continue
         ms = model.milestones[name]
         if not ms.overdue:
-            planned.append(
+            marks.append(
                 Event(
                     case_id,
                     "mark_overdue",
@@ -208,10 +227,147 @@ def plan_milestones(
                 )
             )
         if not ms.escalation_accepted:
-            planned.extend(
-                _plan_rungs(case_id, model, pathway, calendar, now, due, ms.escalation_level, milestone=name)
+            rungs.extend(
+                (name, e)
+                for e in _plan_rungs(case_id, model, pathway, calendar, now, due, ms.escalation_level, milestone=name)
             )
-    return planned
+    return marks, rungs
+
+
+@dataclass
+class _Planned:
+    """One escalation of the plan: the event, the ladder it belongs to, and the (ladder, level) pairs it covers."""
+
+    scope: str | None
+    event: Event
+    target: str
+    covers: list
+    attached: bool = False
+
+
+def _coalesce(
+    model: CaseModel,
+    pathway: Pathway,
+    calendar: WorkingCalendar,
+    now: datetime,
+    marks: list[Event],
+    candidates: list[tuple[str | None, Event]],
+) -> list[Event]:
+    """Coalesce concurrent ladders (A19, ADR-031): one escalation per role per working day.
+
+    `candidates` are the rungs now due, the state's ladder first, then each milestone's in the pathway's order.
+    Each one, in that order:
+
+    1. goes to the same target as an earlier, non-attached escalation of this plan from another ladder: it is not
+       emitted; its (ladder, rung, level, due_at, rung_due_at) is added to that escalation's `also_for`. The
+       primary keeps its own id (from its own clock), so the id of a ladder's rung never depends on another ladder.
+    2. else another ladder of the case has an unaccepted current rung aimed at the same target, recorded on an
+       escalation of the same working day as `now` (`calendar.local_date`): the rung is emitted with its normal
+       payload and its own deterministic id plus `attached_to` that escalation's event id. It notifies nobody and
+       is not counted as a new escalation.
+    3. else it stands on its own.
+
+    The escalations are then ordered so that a covered ladder's earlier level comes first (each ladder's levels
+    stay increasing), and the whole plan is dry-run through the state machine: if the machine would refuse it,
+    the plain, uncoalesced plan is returned instead (always valid: it is what the sweep did before A19).
+    """
+    plain = [e for _, e in candidates]
+    if len(candidates) < 2 and not any(_holder_candidates(model, sc) for sc in (None, *model.milestones)):
+        return plain  # nothing to coalesce with and nothing to attach to
+    today = calendar.local_date(now)
+    # (level, accepted, escalation event id, escalation_at) per ladder as the plan applies, in order
+    work = {
+        sc: (x.escalation_level, x.escalation_accepted, x.escalation_event_id, x.escalation_at)
+        for sc, x in ((sc, _ladder_of(model, sc)) for sc in (None, *model.milestones))
+    }
+    emitted: list[_Planned] = []
+    changed = False
+    for scope, ev in candidates:
+        target, level = ev.payload["target"], ev.payload["level"]
+        primary = next(
+            (
+                p for p in emitted
+                if not p.attached and p.target == target and scope not in {sc for sc, _ in p.covers}
+            ),
+            None,
+        )
+        if primary is not None:
+            entry = {
+                k: ev.payload[k]
+                for k in ("state", "milestone", "rung", "level", "due_at", "rung_due_at")
+                if k in ev.payload
+            }
+            primary.event.payload.setdefault("also_for", []).append(entry)
+            primary.covers.append((scope, level))
+            work[scope] = (level, False, primary.event.event_id, now)
+            changed = True
+            continue
+        holder = next(
+            (
+                (eid, at)
+                for sc, (lv, acc, eid, at) in work.items()
+                if sc != scope and lv > 0 and not acc and eid is not None and at is not None
+                and (r := pathway.rung_at(lv)) is not None and r.target == target
+                and calendar.local_date(at) == today
+            ),
+            None,
+        )
+        if holder is not None:
+            ev.payload["attached_to"] = str(holder[0])
+            work[scope] = (level, False, holder[0], holder[1])
+            emitted.append(_Planned(scope, ev, target, [(scope, level)], attached=True))
+            changed = True
+            continue
+        work[scope] = (level, False, ev.event_id, now)
+        emitted.append(_Planned(scope, ev, target, [(scope, level)]))
+    if not changed:
+        return plain
+    ordered = _in_ladder_order(model, emitted)
+    if ordered is not None:
+        events = [p.event for p in ordered]
+        try:
+            m = model
+            for e in [*marks, *events]:
+                m = step(m, e, pathway)
+        except InvalidTransition:
+            ordered = None
+    if ordered is None:
+        # the coalescing may have edited payloads in place: rebuild the plain events untouched
+        return [_without_coalescing(e) for e in plain]
+    return events
+
+
+def _ladder_of(model: CaseModel, scope: str | None):
+    """The state's ladder (`scope` None; the model itself) or a milestone's."""
+    return model if scope is None else (model.milestones.get(scope) or MilestoneState())
+
+
+def _holder_candidates(model: CaseModel, scope: str | None) -> bool:
+    """True when the ladder has an escalation recorded that a later rung could attach to."""
+    x = _ladder_of(model, scope)
+    return x.escalation_level > 0 and not x.escalation_accepted and x.escalation_event_id is not None
+
+
+def _without_coalescing(event: Event) -> Event:
+    payload = {k: v for k, v in event.payload.items() if k not in ("also_for", "attached_to")}
+    return Event(event.case_id, event.type, event.at, event.actor, payload, event.event_id)
+
+
+def _in_ladder_order(model: CaseModel, emitted: list[_Planned]) -> list[_Planned] | None:
+    """The escalations in an order in which every covered ladder meets its rungs one level at a time, keeping the
+    given order where it already does; None if no such order exists."""
+    levels = {sc: _ladder_of(model, sc).escalation_level for sc in (None, *model.milestones)}
+    pending, out = list(emitted), []
+    while pending:
+        for i, p in enumerate(pending):
+            if all(levels[sc] == lv - 1 for sc, lv in p.covers):
+                for sc, lv in p.covers:
+                    levels[sc] = lv
+                out.append(pending.pop(i))
+                break
+        else:
+            return None
+    return out
 
 
 def _plan_rungs(

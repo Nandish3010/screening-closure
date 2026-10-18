@@ -80,7 +80,7 @@ class Case:
         "consent_ok", "withdrawn", "declined_care", "dropped_out", "lapses", "resp_idx", "rec_idx", "h_idx",
         "h_cur", "hstate", "appt_idx", "appt_t", "pending_appt", "reminders", "awaiting_patient", "sub",
         "timer_n", "watch_n", "watch_armed", "last_act", "extra_delay", "abandoned", "reopened", "round",
-        "bchannel", "lost_reasons", "booked_once", "last_flag", "orch", "ms_met", "ms_timer_n",
+        "bchannel", "lost_reasons", "booked_once", "last_flag", "orch", "ms_met", "ms_timer_n", "last_rung",
     )
 
     def __init__(self, p: Patient, lat: Latents, msy: MessyPlan, end: float, initial_state: str, bchannel: str,
@@ -126,6 +126,8 @@ class Case:
         self.last_flag = -1.0
         self.ms_met: set[str] = set()  # milestones whose until-event has happened (A18)
         self.ms_timer_n = 0
+        # notify role -> (working day, step token, the rung event, ladder source) of the last rung emitted to it (A19)
+        self.last_rung: dict[str, tuple] = {}
 
 
 @dataclass
@@ -220,7 +222,7 @@ class Engine:
             "switch": self.on_switch, "switch_done": self.on_switch_done, "consent": self.on_consent,
             "consent_review": self.on_consent_review, "reopen": self.on_reopen, "self_rebook": self.on_self_rebook,
         }
-        self.counters = {"blocked_messages": 0, "timers_missed": 0, "watchdog_flags": 0}
+        self.counters = {"blocked_messages": 0, "timers_missed": 0, "watchdog_flags": 0, "escalations_coalesced": 0}
 
     # ------------------------------------------------------------------------------------------
     # run loop
@@ -428,10 +430,11 @@ class Engine:
         if token != c.token or c.abandoned:
             return
         payload = {"step": c.step, "sla_working_days": sla}
+        source = "state"
         if c.step in self.step_milestone:
-            payload["milestone"] = self.step_milestone[c.step]  # the colonoscopy clock is a milestone (A18)
+            source = payload["milestone"] = self.step_milestone[c.step]  # the colonoscopy clock is a milestone (A18)
         self.emit(c, t, "overdue", "scheduler", payload)
-        self.start_ladder(c, t)
+        self.start_ladder(c, t, source)
 
     def on_ms_due(self, c: Case, t: float, token, name: str) -> None:
         """A milestone breach (A18): once, if the `until_event` has not happened. The ladder runs for the step the
@@ -440,23 +443,41 @@ class Engine:
             return
         m = self.pw.milestones[name]
         self.emit(c, t, "overdue", "scheduler", {"step": c.step, "sla_working_days": m.working_days, "milestone": name})
-        self.start_ladder(c, t)
+        self.start_ladder(c, t, name)
 
-    def start_ladder(self, c: Case, t: float) -> None:
+    def start_ladder(self, c: Case, t: float, source: str = "state") -> None:
+        """Arm the rungs of one ladder. `source` is "state" (the step's SLA) or the milestone's name: the rung event
+        carries it so that rungs of concurrent ladders to the same role can be coalesced (A19)."""
         last = t
         for i, rung in enumerate(self.ladder):
             last = self.cal.add_working_days_t(t, rung.after_breach_days)
-            self.schedule(last, "rung", c, c.token, i)
+            self.schedule(last, "rung", c, c.token, (i, source))
         self.schedule(self.cal.add_working_days_t(last, self.mp.ladder_exhausted_wait_working_days), "ladder_end", c, c.token)
 
-    def on_rung(self, c: Case, t: float, token, i: int) -> None:
+    def on_rung(self, c: Case, t: float, token, data) -> None:
         if token != c.token or c.abandoned:
             return
+        i, source = data
         rung = self.ladder[i]
+        # Coalescing (A19, ADR-031): a case can have the step's ladder and a milestone's running at once. A rung to a
+        # role that another ladder already went to on this working day, while the step has not moved (same token),
+        # is not a second message: nothing is emitted and nothing else happens (no outreach, no staff reaction);
+        # the earlier event records the ladder it also stands for.
+        day = math.floor(t)
+        prev = c.last_rung.get(rung.notify)
+        if prev is not None and prev[0] == day and prev[1] == c.token and prev[3] != source:
+            entry = {"step": c.step} if source == "state" else {"milestone": source}
+            prev[2].payload.setdefault("also_for", []).append(entry)
+            self.counters["escalations_coalesced"] += 1
+            self.hash.update(
+                f"{c.p.idx}|{prev[2].seq}|also_for|{t:.6f}|{json.dumps(entry, sort_keys=True, separators=(',', ':'))}\n".encode()
+            )
+            return
         if rung.action == "escalate":
-            self.emit(c, t, "escalated", "scheduler", {"rung": i, "notify": rung.notify, "step": c.step})
+            ev = self.emit(c, t, "escalated", "scheduler", {"rung": i, "notify": rung.notify, "step": c.step})
         else:
-            self.emit(c, t, "reminder_sent", "scheduler", {"rung": i, "notify": rung.notify, "step": c.step})
+            ev = self.emit(c, t, "reminder_sent", "scheduler", {"rung": i, "notify": rung.notify, "step": c.step})
+        c.last_rung[rung.notify] = (day, c.token, ev, source)
         if c.awaiting_patient:
             kind = ROLE_KIND.get(rung.notify, "reminder" if i == 0 else "human_call")
             self.send_outreach(c, t, kind, rung.notify)

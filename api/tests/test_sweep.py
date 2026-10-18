@@ -116,9 +116,17 @@ def test_an_overdue_case_is_not_planned_again():
     later = plan_case(CASE, m2, PATHWAY, UAE, now + timedelta(days=30))
     state_events = [e for e in later if "milestone" not in e.payload]
     assert [e.payload["rung"] for e in state_events] == ["supervisor", "coordinator"]
-    # the referral milestone (15 working days) has been breached by then: one breach and its three rungs (A18)
+    # the referral milestone (15 working days) has been breached by then: one breach and its three rungs (A18). Its
+    # reminder is a day of its own (the state's reminder went out 30 days earlier); its supervisor and coordinator
+    # rungs go to the same roles in the same sweep as the state's, so they ride on those escalations (A19)
     assert [(e.type, e.payload.get("rung")) for e in later if "milestone" in e.payload] == [
-        ("mark_overdue", None), ("escalate", "reminder"), ("escalate", "supervisor"), ("escalate", "coordinator")]
+        ("mark_overdue", None), ("escalate", "reminder")]
+    assert [[x["milestone"] + ":" + x["rung"] for x in e.payload.get("also_for", ())] for e in state_events] == [
+        ["referral_requested:supervisor"], ["referral_requested:coordinator"]]
+    m3 = m2
+    for e in later:  # still accepted, in order, by the state machine
+        m3 = step(m3, e, PATHWAY)
+    assert m3.escalation_level == 3 and m3.milestones["referral_requested"].escalation_level == 3
 
 
 def test_event_ids_are_deterministic_and_distinct_per_clock_start_and_kind():

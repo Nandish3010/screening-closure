@@ -8,6 +8,9 @@ replay of the event log produces:
     overdue              the current state's SLA is breached and not yet resolved
     escalation_level     rungs of the escalation ladder emitted for the current breach
     escalation_accepted  a human accepted the latest rung (no further rungs for this breach)
+    escalation_event_id  the `event_id` of the `escalate` event the ladder's current rung is recorded on, and
+    escalation_at        that event's `at` (A19, ADR-031). Ladders that were coalesced (`also_for`) or attached
+                         (`attached_to`) to one escalation share its id, and one `escalation_accepted` accepts them all
     owner                actor of the latest accept_ownership / handoff_accepted / reassign
     provider             the provider the owner acts for (set by handoff_accepted, or by
                          accept_ownership / reassign when the payload names one)
@@ -120,6 +123,12 @@ def _aware(dt: datetime) -> datetime:
     return dt.replace(tzinfo=UTC) if dt.tzinfo is None else dt
 
 
+# The fields of one ladder (the state's or a milestone's) that a new obligation, a met milestone or a void one clears.
+_NO_LADDER = {
+    "escalation_level": 0, "escalation_accepted": False, "escalation_event_id": None, "escalation_at": None,
+}
+
+
 @dataclass(frozen=True)
 class MilestoneState:
     """One milestone's state in the read model (A18). `overdue` is the milestone's own breach flag: the state-level
@@ -135,6 +144,8 @@ class MilestoneState:
     breach_due_at: datetime | None = None
     escalation_level: int = 0
     escalation_accepted: bool = False
+    escalation_event_id: UUID | None = None  # the escalate event the current rung is recorded on (A19)
+    escalation_at: datetime | None = None  # that event's `at`
     void: bool = False
 
     def to_json(self) -> dict:
@@ -158,6 +169,8 @@ class CaseModel:
     overdue: bool = False
     escalation_level: int = 0
     escalation_accepted: bool = False
+    escalation_event_id: UUID | None = None  # the escalate event the current rung is recorded on (A19)
+    escalation_at: datetime | None = None  # that event's `at`
     owner: str | None = None
     consent_frozen: bool = False
     last_event_at: datetime | None = None
@@ -336,6 +349,8 @@ def _transition(model: CaseModel, event: Event, pathway: Pathway, t: Transition)
             overdue=False,
             escalation_level=0,
             escalation_accepted=False,
+            escalation_event_id=None,
+            escalation_at=None,
             breach_due_at=None,
         )
         started_at, started_by = _sla_clock_start(
@@ -399,28 +414,33 @@ def _advance_milestones(new: CaseModel, before: CaseModel, event: Event, pathway
         cur = out.get(name) or MilestoneState()
         if cur.met_at is None and not cur.void:
             if event.type == d.until_event:
-                cur = replace(cur, met_at=at, overdue=False, escalation_level=0, escalation_accepted=False)
+                cur = replace(cur, met_at=at, overdue=False, **_NO_LADDER)
             elif event.type == d.from_event:
                 cur = MilestoneState(started_at=at, started_event_id=event.event_id)  # a new obligation: breach and ladder cleared
             elif cur.started_at is None and name in awaiting:
                 cur = replace(cur, started_at=at, started_event_id=event.event_id)
             if closing and cur.met_at is None:
-                cur = replace(cur, void=True, overdue=False, escalation_level=0, escalation_accepted=False)
+                cur = replace(cur, void=True, overdue=False, **_NO_LADDER)
         out[name] = cur
     return replace(new, milestones=out)
 
 
-def _milestone_in(model: CaseModel, event: Event, pathway: Pathway) -> tuple[str, MilestoneState]:
-    """The named milestone of a mark_overdue / escalate payload, which must be running and unmet."""
-    name = event.payload.get("milestone")
+def _running_milestone(model: CaseModel, name, pathway: Pathway, what: str) -> MilestoneState:
+    """The named milestone, which must exist, have started and be unmet and not void."""
     if name not in pathway.milestones:
-        raise InvalidTransition(f"event {event.type!r} names unknown milestone {name!r}")
+        raise InvalidTransition(f"{what} names unknown milestone {name!r}")
     ms = _ms(model, name)
     if ms.void or ms.met_at is not None:
         raise InvalidTransition(f"milestone {name!r} is already {'met' if ms.met_at is not None else 'void'}")
     if ms.started_at is None:
         raise InvalidTransition(f"milestone {name!r} has not started")
-    return name, ms
+    return ms
+
+
+def _milestone_in(model: CaseModel, event: Event, pathway: Pathway) -> tuple[str, MilestoneState]:
+    """The named milestone of a mark_overdue / escalate payload, which must be running and unmet."""
+    name = event.payload.get("milestone")
+    return name, _running_milestone(model, name, pathway, f"event {event.type!r}")
 
 
 def _mark_overdue(model: CaseModel, event: Event, pathway: Pathway) -> CaseModel:
@@ -447,16 +467,33 @@ def _mark_overdue(model: CaseModel, event: Event, pathway: Pathway) -> CaseModel
     return replace(model, overdue=True, breach_due_at=due)
 
 
+def _ladder(model: CaseModel, milestone: str | None):
+    """(overdue, accepted, level, escalation_event_id, escalation_at) of the state's ladder (`milestone` None) or of
+    a milestone's."""
+    x = model if milestone is None else _ms(model, milestone)
+    return x.overdue, x.escalation_accepted, x.escalation_level, x.escalation_event_id, x.escalation_at
+
+
+def _set_ladder(model: CaseModel, milestone: str | None, **changes) -> CaseModel:
+    if milestone is None:
+        return replace(model, **changes)
+    return _set_ms(model, milestone, replace(_ms(model, milestone), **changes))
+
+
+def _ladders(model: CaseModel) -> list:
+    """Every ladder of the case: None (the state's) first, then each milestone in the pathway's order."""
+    return [None, *model.milestones]
+
+
 def _escalate(model: CaseModel, event: Event, pathway: Pathway) -> CaseModel:
     milestone = event.payload.get("milestone")
     if milestone is None:
         _require_current_state(model, event)
-        overdue, accepted, current = model.overdue, model.escalation_accepted, model.escalation_level
         what = "case"
     else:
-        name, ms = _milestone_in(model, event, pathway)
-        overdue, accepted, current = ms.overdue, ms.escalation_accepted, ms.escalation_level
+        name, _ = _milestone_in(model, event, pathway)
         what = f"milestone {name!r}"
+    overdue, accepted, current, _, _ = _ladder(model, milestone)
     if not overdue:
         raise InvalidTransition(f"cannot escalate a {what} that is not overdue")
     if accepted:
@@ -473,27 +510,102 @@ def _escalate(model: CaseModel, event: Event, pathway: Pathway) -> CaseModel:
     target = event.payload.get("target")
     if target is not None and target != rung.target:
         raise InvalidTransition(f"rung {rung.rung!r} targets {rung.target!r}, not {target!r}")
-    if milestone is not None:
-        return _set_ms(model, name, replace(ms, escalation_level=level))
-    return replace(model, escalation_level=level)
+    also_for = event.payload.get("also_for")
+    attached_to = event.payload.get("attached_to")
+    if also_for is not None and attached_to is not None:
+        raise InvalidTransition("an escalation cannot both cover other ladders (also_for) and be attached_to another")
+    at = _aware(event.at)
+    if attached_to is not None:
+        holder_at = _attachment_holder(model, milestone, attached_to, rung.target, pathway)
+        return _set_ladder(model, milestone, escalation_level=level, escalation_event_id=UUID(str(attached_to)),
+                           escalation_at=holder_at)
+    out = _set_ladder(model, milestone, escalation_level=level, escalation_event_id=event.event_id, escalation_at=at)
+    if also_for is not None:
+        for scope, entry_level in _also_for_ladders(model, milestone, also_for, rung.target, pathway):
+            out = _set_ladder(out, scope, escalation_level=entry_level, escalation_event_id=event.event_id,
+                              escalation_at=at)
+    return out
+
+
+def _also_for_ladders(model: CaseModel, primary: str | None, also_for, target: str, pathway: Pathway) -> list:
+    """Validate the `also_for` entries of an escalation to `target` and return [(ladder, new level)]: each named
+    ladder must be another one of this case, overdue, unaccepted, with its next rung (the entry's `level`) aimed at
+    the same target (A19)."""
+    if not isinstance(also_for, list) or not also_for:
+        raise InvalidTransition("also_for must be a non-empty list")
+    seen = {primary}
+    out = []
+    for entry in also_for:
+        if not isinstance(entry, dict):
+            raise InvalidTransition("also_for entries must be objects")
+        has_state, has_ms = entry.get("state") is not None, entry.get("milestone") is not None
+        if has_state == has_ms:
+            raise InvalidTransition("an also_for entry names exactly one of 'state' and 'milestone'")
+        if has_state:
+            if entry["state"] != model.state:
+                raise InvalidTransition(
+                    f"also_for names state {entry['state']!r} but the case is in {model.state!r}")
+            scope = None
+        else:
+            scope = entry["milestone"]
+            _running_milestone(model, scope, pathway, "also_for")
+        if scope in seen:
+            raise InvalidTransition("also_for names a ladder twice, or the escalation's own ladder")
+        seen.add(scope)
+        label = "the state" if scope is None else f"milestone {scope!r}"
+        overdue, accepted, current, _, _ = _ladder(model, scope)
+        if not overdue:
+            raise InvalidTransition(f"also_for: {label} is not overdue")
+        if accepted:
+            raise InvalidTransition(f"also_for: a human accepted the latest rung of {label}")
+        rung = pathway.rung(str(entry.get("rung")))
+        if rung is None:
+            raise InvalidTransition(f"also_for: unknown escalation rung {entry.get('rung')!r}")
+        level = pathway.rung_level(rung.rung)
+        if level != current + 1 or entry.get("level") not in (None, level):
+            raise InvalidTransition(
+                f"also_for: rung {rung.rung!r} is not the next rung of {label} (level {current + 1})")
+        if rung.target != target:
+            raise InvalidTransition(
+                f"also_for: rung {rung.rung!r} targets {rung.target!r}, not the escalation's {target!r}")
+        out.append((scope, level))
+    return out
+
+
+def _attachment_holder(model: CaseModel, own: str | None, attached_to, target: str, pathway: Pathway):
+    """The `escalation_at` of the escalation `attached_to` names: it must be the current, unaccepted escalation of
+    another ladder of this case whose rung is aimed at `target` (A19). The same-working-day rule needs a calendar,
+    so the sweep applies it when it plans the event; the machine checks everything it can see."""
+    try:
+        wanted = UUID(str(attached_to))
+    except ValueError:
+        raise InvalidTransition(f"attached_to {attached_to!r} is not an event id") from None
+    for scope in _ladders(model):
+        if scope == own:
+            continue
+        _, accepted, level, ev_id, ev_at = _ladder(model, scope)
+        rung = pathway.rung_at(level)
+        if ev_id == wanted and level > 0 and not accepted and rung is not None and rung.target == target:
+            return ev_at
+    raise InvalidTransition(
+        f"attached_to {attached_to}: no other ladder of this case has that as its current unaccepted "
+        f"escalation to {target!r}"
+    )
 
 
 def _escalation_accepted(model: CaseModel, event: Event, pathway: Pathway) -> CaseModel:
     """Accepts the latest rung of one ladder. The ladder is the milestone the payload names; without one it is the
     state's ladder if that has a rung, else the one milestone ladder that has a rung (so a client that does not
-    know about milestones can still accept)."""
+    know about milestones can still accept). One acceptance covers the whole coalesced escalation: every other
+    ladder whose current rung is recorded on the same escalation event is accepted with it (A19)."""
     milestone = event.payload.get("milestone")
     if milestone is None and model.escalation_level == 0:
         running = [n for n, m in model.milestones.items() if m.escalation_level > 0]
-        if len(running) == 1:
+        if len({_ms(model, n).escalation_event_id or n for n in running}) == 1:
             milestone = running[0]
-    if milestone is not None:
-        if milestone not in pathway.milestones:
-            raise InvalidTransition(f"escalation_accepted names unknown milestone {milestone!r}")
-        ms = _ms(model, milestone)
-        level, accepted = ms.escalation_level, ms.escalation_accepted
-    else:
-        level, accepted = model.escalation_level, model.escalation_accepted
+    if milestone is not None and milestone not in pathway.milestones:
+        raise InvalidTransition(f"escalation_accepted names unknown milestone {milestone!r}")
+    _, accepted, level, ev_id, _ = _ladder(model, milestone)
     rung = pathway.rung_at(level)
     if rung is None:
         raise InvalidTransition("no escalation rung to accept")
@@ -507,9 +619,15 @@ def _escalation_accepted(model: CaseModel, event: Event, pathway: Pathway) -> Ca
     named = event.payload.get("rung")
     if named is not None and named != rung.rung:
         raise InvalidTransition(f"the latest rung is {rung.rung!r}, not {named!r}")
-    if milestone is not None:
-        return _set_ms(model, milestone, replace(ms, escalation_accepted=True))
-    return replace(model, escalation_accepted=True)
+    out = _set_ladder(model, milestone, escalation_accepted=True)
+    if ev_id is not None:
+        for scope in _ladders(out):
+            if scope == milestone:
+                continue
+            _, other_accepted, other_level, other_id, _ = _ladder(out, scope)
+            if other_id == ev_id and other_level > 0 and not other_accepted:
+                out = _set_ladder(out, scope, escalation_accepted=True)
+    return out
 
 
 # Annotations without an entry here have no effect on the read model beyond last_event_at
@@ -693,7 +811,7 @@ def _finish(
             # A referral accepted while the state's SLA runs from acceptance restarts that
             # clock: a new obligation, like a state change (A13, ADR-020).
             out = replace(out, clock_started_at=at, clock_started_event_id=event.event_id, overdue=False,
-                          escalation_level=0, escalation_accepted=False, breach_due_at=None)
+                          breach_due_at=None, **_NO_LADDER)
     elif kind == "handoff_rejected":
         pending = (before or model).pending_handoff
         out = replace(out, pending_handoff=None, last_handoff={

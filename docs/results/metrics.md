@@ -8,7 +8,7 @@ that does not exist, or if the worked example in section 9 stops matching the co
 
 > **Capacity caveat: escalations cost nothing in this model.** Cases are independent. There are no shared endoscopy slots, no staff
 > workload and no queueing, and a supervisor or coordinator acts on an escalation with a fixed probability however many others are open.
-> The orchestrated arm raises **about 212 escalations per 100 cases** in the upper-range scenario (see `escalations_per_100_cases`
+> The orchestrated arm raises **about 205 escalations per 100 cases** in the upper-range scenario (see `escalations_per_100_cases`
 > below), roughly two for every case. Every completion and time gain reported is therefore a gain **before capacity constraints**, and
 > would shrink if the people who must work those escalations, or the colonoscopy slots they ask for, are not there. A capacity model
 > (staff time per escalation, slot supply, queueing) is future work. Until it exists, use `escalations_per_100_cases` to size a pilot,
@@ -176,8 +176,13 @@ whose action is `escalate` (supervisor rung, 3 working days after an SLA breach;
 still waiting. The first rung (owner reminder) emits `reminder_sent`, which is **not** counted. One case can breach several times (each
 missed SLA, each missed colonoscopy appointment and each missed national timeline, see the milestones in section 1, opens a ladder, and
 the ladders run side by side), so more than one escalation per case is possible; the metric is a
-count of events per 100 cases, not the share of cases escalated. The baseline has no ladder, so 0. **Escalations cost nothing in the
-model, see the capacity caveat at the top: about 212 escalations per 100 cases in the upper-range scenario.**
+count of events per 100 cases, not the share of cases escalated. **Concurrent ladders coalesce (A19, ADR-031):** when a rung of one ladder
+fires for a role (`notify`) that another ladder of the same case already went to on the same working day, while the case is still in the
+same step, the simulator emits no second event and takes no second action (no outreach, no staff reaction). The earlier event records the
+other ladder in its payload (`also_for`), and the run counter `escalations_coalesced` counts these, so a role is never counted twice for one case on one day. The rule applies to every
+rung, so it also removes second `reminder_sent` events (which are not counted here anyway). In the API the same rule is a single `escalate`
+with `also_for`, or a later `escalate` with `attached_to`, which tells nobody and is not counted as an escalation. The baseline has no ladder, so 0. **Escalations cost nothing in the
+model, see the capacity caveat at the top: about 205 escalations per 100 cases in the upper-range scenario.**
 
 ### `escalation_acted_on_rate`
 Escalation acted-on rate (within 5 working days): escalations followed by an action within five working days / all escalations
@@ -225,7 +230,7 @@ reach if its fixed random draw for `orchestration.programme_reach` is below that
 scored on the same patients: "the cases the programme would have reached"). In the orchestrated arm these cases get the orchestrated process, so
 every lost or unreachable one is flagged to a human and this rate is 0% by construction (a non-zero value would be a defect). The
 programme-level `silent_loss_rate` counts all cases, including those outside the reach, which follow today's process; it is above zero in the
-orchestrated arm **only because of the `programme_reach` assumption** (0.5 in the literature-anchored scenario, 1.0 in the upper-range one) and
+orchestrated arm **only because of the `programme_reach` assumption** (0.55 in the literature-anchored scenario, 1.0 in the upper-range one) and
 should not be read as a measured property of the orchestration. `null` if no case is in reach.
 
 ### `consent_breach_rate`
@@ -242,7 +247,7 @@ rate follows from the `programme_reach` assumption.
 
 ### `in_reach_share`
 Cases within the programme's reach / all cases: the denominator of the two in-reach rates, about `orchestration.programme_reach` up to sampling
-noise (0.5 in the literature-anchored scenario, 1.0 in the upper-range one). Identical in both arms. It is the one baseline-arm quantity that differs between the two scenarios: the baseline process and its event logs are identical, but the in-reach rates score it on the subset of the same patients that the scenario's `programme_reach` would reach.
+noise (0.55 in the literature-anchored scenario, 1.0 in the upper-range one). Identical in both arms. It is the one baseline-arm quantity that differs between the two scenarios: the baseline process and its event logs are identical, but the in-reach rates score it on the subset of the same patients that the scenario's `programme_reach` would reach.
 
 ## 7. Fairness
 

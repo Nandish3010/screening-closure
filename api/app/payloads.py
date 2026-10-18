@@ -190,6 +190,20 @@ class MarkOverdue(_Timed):
     _one_subject = model_validator(mode="after")(_state_xor_milestone)
 
 
+class AlsoFor(_Timed):
+    """A ladder whose rung an `escalate` covers as well (A19, ADR-031): the escalation is one message to one role for
+    several breaches. The ladder is named like the escalation names its own (`state` or `milestone`, exactly one)."""
+
+    state: Code | None = None
+    milestone: Code | None = None
+    rung: Code
+    level: int = Field(ge=1, le=20)
+    due_at: IsoTime
+    rung_due_at: IsoTime
+
+    _one_subject = model_validator(mode="after")(_state_xor_milestone)
+
+
 class Escalate(_Timed):
     rung: Code
     state: Code | None = None
@@ -200,8 +214,19 @@ class Escalate(_Timed):
     due_at: IsoTime | None = None
     rung_due_at: IsoTime | None = None
     note: Note | None = None  # a coordinator or supervisor escalating by hand may add one
+    # A19: ladders whose same-target rung falls in the same sweep ride on this one escalation, one entry each ...
+    also_for: Annotated[list[AlsoFor], Field(min_length=1, max_length=10)] | None = None
+    # ... and a rung to a role that another ladder of the case already escalated on the same working day is
+    # recorded as attached to that escalation's event: it notifies nobody and is not counted as a new escalation
+    attached_to: Uuid | None = None
 
     _one_subject = model_validator(mode="after")(_state_xor_milestone)
+
+    @model_validator(mode="after")
+    def _not_both(self):
+        if self.also_for is not None and self.attached_to is not None:
+            raise ValueError("'also_for' and 'attached_to' cannot be combined")
+        return self
 
 
 class EscalationAccepted(_Human):

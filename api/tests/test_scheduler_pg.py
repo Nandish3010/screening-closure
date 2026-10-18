@@ -237,8 +237,9 @@ def test_concurrent_sweeps_after_a_long_outage_emit_each_rung_once(store):
     assert errors == []
     assert rungs(store, case_id) == ["reminder", "supervisor", "coordinator"]
     assert len(events_of(store, case_id, "mark_overdue")) == 1
-    # the state's breach and three rungs, and the referral milestone's breach and three rungs (A18)
-    assert [e.seq for e in store.events_for(case_id)] == list(range(1, 10))
+    # the state's breach and three rungs, and the referral milestone's breach (A18); the milestone's three rungs go
+    # to the same roles in the same sweep, so they ride on the state's escalations (`also_for`, A19)
+    assert [e.seq for e in store.events_for(case_id)] == list(range(1, 7))
 
 
 def test_a_human_in_the_target_role_stops_the_ladder_and_nothing_else_can(store, pool):

@@ -89,7 +89,8 @@ def build_record(
             continue
         before = model.state
         model = step(model, ev, pathway)
-        if ev.type in surfacing_events:
+        if ev.type in surfacing_events and not (ev.payload or {}).get("attached_to"):
+            # an `escalate` attached to another ladder's escalation of the same day is no new escalation (A19)
             surfaced = True
         if ev.type == lost_contact_event:
             lost_flag = True

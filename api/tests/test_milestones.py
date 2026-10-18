@@ -76,6 +76,19 @@ def of(store, cid, type_, milestone=REFERRAL):
     return [e for e in store.events_for(cid) if e.type == type_ and e.payload.get("milestone") == milestone]
 
 
+def ms_rungs(store, cid, milestone=REFERRAL):
+    """The rungs of a milestone's ladder in the log, in order: its own `escalate` events and, since A19, the entries
+    other ladders' escalations carry for it in `also_for` (a rung to the same role in the same sweep rides on one)."""
+    out = []
+    for e in store.events_for(cid):
+        if e.type != "escalate":
+            continue
+        if e.payload.get("milestone") == milestone:
+            out.append(e.payload["rung"])
+        out += [x["rung"] for x in e.payload.get("also_for", ()) if x.get("milestone") == milestone]
+    return out
+
+
 def model(store, cid):
     return store.read_model(cid, PATHWAY)
 
@@ -218,7 +231,7 @@ def test_a_human_accepting_a_milestone_rung_stops_that_ladder_only():
     assert m.milestones[REFERRAL].escalation_accepted and m.milestones[REFERRAL].escalation_level == 2
     assert not m.escalation_accepted
     sweep(store, cid, wd(80))
-    assert [e.payload["rung"] for e in of(store, cid, "escalate")] == ["reminder", "supervisor"]  # no coordinator rung
+    assert ms_rungs(store, cid) == ["reminder", "supervisor"]  # no coordinator rung
     with pytest.raises(InvalidTransition):
         post(store, cid, "escalation_accepted", "supervisor:sam2", wd(80), {"milestone": REFERRAL})  # not twice
 
@@ -293,12 +306,15 @@ def test_two_sweeps_planning_the_same_breach_insert_it_once():
     stale = model(store, cid)
     plan_a = plan_case(cid, stale, PATHWAY, UAE, wd(16, 1))
     plan_b = plan_case(cid, stale, PATHWAY, UAE, wd(16, 2))
+    # the milestone's breach is its own event; its reminder rides on the state's reminder (A19, also_for)
     ms_a = [e for e in plan_a if e.payload.get("milestone")]
     ms_b = [e for e in plan_b if e.payload.get("milestone")]
-    assert [e.event_id for e in ms_a] == [e.event_id for e in ms_b] and len(ms_a) == 2
+    assert [e.event_id for e in ms_a] == [e.event_id for e in ms_b] and len(ms_a) == 1
+    assert [e.event_id for e in plan_a] == [e.event_id for e in plan_b] and len(plan_a) == 5  # two breaches, the state's three rungs (the milestone's reminder rides on the first)
     for e in (*plan_a, *plan_b):
         store.append(e, PATHWAY)  # the second copy of each id is a no-op, not an error
-    assert len(of(store, cid, "mark_overdue")) == 1 and len(of(store, cid, "escalate")) == 1
+    assert len(of(store, cid, "mark_overdue")) == 1 and ms_rungs(store, cid) == ["reminder"]
+    assert len([e for e in store.events_for(cid) if e.type == "escalate"]) == 3
 
 
 # ---- the colonoscopy milestone ----------------------------------------------------------------------
@@ -567,8 +583,11 @@ def test_a_referral_breach_over_http_shows_on_the_worklist_the_case_page_and_the
     breach_item = next(i for i in items if i["kind"] == "milestone_breached")
     assert breach_item["milestone"] == REFERRAL and breach_item["at"] == "2026-01-26T08:00:00+00:00"
     assert breach_item["detected_at"] > breach_item["at"]
-    esc = [i for i in items if i["kind"] == "escalation" and i.get("milestone") == REFERRAL]
+    # the referral ladder's reminder went to the owner in the same sweep as the state's, so it rides on that
+    # escalation (A19): the timeline item for it names the milestone in `also_for`
+    esc = [i for i in items if i["kind"] == "escalation"]
     assert esc and esc[0]["rung"] == "reminder"
+    assert [x["milestone"] for x in esc[0]["also_for"]] == [REFERRAL]
     # the worklist row: overdue, and the next deadline is the oldest breach
     [row] = [r for r in client.get("/cases", headers=COORD).json() if r["case_id"] == cid]
     assert row["overdue"] is True
