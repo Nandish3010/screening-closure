@@ -105,3 +105,21 @@ describe("dashboard headline numbers and subtitle", () => {
     expect(sub).not.toHaveTextContent(/fixed seed/i);
   });
 });
+
+describe("the Human effort card asks after the login of the chosen role", () => {
+  it("reads /metrics/effort only after api.login for the role, so a role switch on the page does not get a 403", async () => {
+    const calls: string[] = [];
+    const base = createMockAdapter(null, { automation: true });
+    const api = {
+      ...base,
+      login: async (role: string, name: string, provider?: string) => { calls.push(`login:${role}`); return base.login(role as never, name, provider); },
+      getEffortMetrics: async () => { calls.push("effort"); return base.getEffortMetrics!(); },
+      closureMetrics: async () => { calls.push("closure"); return base.closureMetrics(); },
+    } as typeof base;
+    renderWithApp(<DashboardPage />, { api, role: "supervisor" });
+    await waitFor(() => expect(calls).toEqual(expect.arrayContaining(["effort", "closure"])));
+    expect(calls.indexOf("login:supervisor")).toBeGreaterThanOrEqual(0);
+    expect(calls.indexOf("effort")).toBeGreaterThan(calls.indexOf("login:supervisor"));
+    expect(calls.indexOf("closure")).toBeGreaterThan(calls.indexOf("login:supervisor"));
+  });
+});

@@ -151,7 +151,7 @@ Eligibility of 40 to 75 with an annual FIT is sourced from the UAE National Guid
 
 ## Backup video storyboard (3 minutes)
 
-For the submission video (H4): the same two beats compressed. Each shot maps to the live steps above (T-E15); shots may be sped up, and the video is edited, not live. Screen recording at 1080p, captions burned in, voice-over recorded separately. The SIMULATED TIME badge must be legible in every app shot, and a "Synthetic data" strip stays on every shot. 13 shots, 158 s, plus a 3 s title card and a 4 s end card: 165 s of the 180 s cap. `tools/video/storyboard.yaml` is the machine-readable twin of this table (`tests/test_demo_docs.py` keeps them in step).
+For the submission video (H4): the same two beats compressed. Each shot maps to the live steps above (T-E15); shots may be sped up, and the video is edited, not live. Screen recording at 1080p, captions burned in, voice-over recorded separately. The SIMULATED TIME badge must be legible in every app shot, and a "Synthetic data" strip stays on every shot. 14 shots, 158 s, plus a 3 s title card and a 4 s end card: 165 s of the 180 s cap (the measured length of the recorded video is in [video.md](video.md)). `tools/video/storyboard.yaml` is the machine-readable twin of this table (`tests/test_demo_docs.py` keeps them in step).
 
 | # | Shot | Live step | On-screen caption |
 |---|---|---|---|
@@ -166,10 +166,11 @@ For the submission video (H4): the same two beats compressed. Each shot maps to 
 | 9 | Signed and closed | R3 | "The real Procedure and the clinician's own signature: closed. A record that says the colonoscopy was incomplete is refused." |
 | 10 | Human effort | R4 | "Human actions against automated actions, minutes against baseline. The minutes are assumed, not measured." |
 | 11 | Triage cameo | R5 | "A reply in Gulf Arabic. The offline model is not loaded here, so the system flags it for a person: it can flag, never close, send or change consent." |
-| 12 | Numbers | Numbers | "Simulation on synthetic data, literature-anchored scenario, before capacity limits. Closed with evidence and a signature 52% to 66%; lost without anyone told 46% at baseline, 0% where the programme reaches, 21% programme-level. Labour: 33% fewer minutes per handled case, 18% programme-level: the 40% target is not met. Rerun: make evaluate" |
-| 13 | The ask | Ask | "Pilot ask: one programme, two providers, 90 days, shadow mode first. Cases closed without evidence: must stay zero." |
+| 12 | Numbers | Numbers | "Simulation on synthetic data, literature-anchored scenario, before capacity limits. Closed with evidence and a signature 52% to 66%; lost without anyone told 46% at baseline, 0% where the programme reaches, 21% programme-level. Rerun: make evaluate" |
+| 13 | Labour | Numbers | "Labour: 33% fewer staff minutes per case the system handles, 18% across the programme. The 40% target is not met." |
+| 14 | The ask | Ask | "Pilot ask: one programme, two providers, 90 days, shadow mode first. Cases closed without evidence: must stay zero." |
 
-A fourteenth shot, the effort counter on a case page, is in the backup video only. Governance has no shot of its own: captions 3, 5, 9 and 11 carry it, and the technical documentation covers it in full.
+A fifteenth shot, the effort counter on a case page, is in the backup video only. Governance has no shot of its own: captions 3, 5, 9 and 11 carry it, and the technical documentation covers it in full.
 
 ## If something fails on stage
 

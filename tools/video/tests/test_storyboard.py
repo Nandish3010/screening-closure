@@ -21,7 +21,7 @@ def test_committed_storyboard_is_valid_and_within_the_cap():
 
 def test_every_demo_script_storyboard_row_has_a_shot():
     ids = [s["id"] for s in storyboard.load()["shots"]]
-    assert ids[:13] == list(range(1, 14))  # the 13 shots of docs/submission/demo-script.md, same order
+    assert ids[:14] == list(range(1, 15))  # the 14 submission shots of docs/submission/demo-script.md, same order
 
 
 def test_missing_fields_and_unknown_verbs_are_reported():

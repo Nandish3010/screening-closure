@@ -99,12 +99,24 @@ function show(v: unknown): string {
   return String(v);
 }
 
+/** A nested object (a closure pack, a history) is prepared material, not a headline: it stays folded until someone opens it. */
+const isNested = (v: unknown) => v !== null && typeof v === "object" && !Array.isArray(v) && Object.keys(v as object).length > 3;
+
 export function Material({ data }: { data: Record<string, unknown> }) {
   const entries = Object.entries(data);
   if (entries.length === 0) return null;
   return (
     <dl className="agency-material">
-      {entries.map(([k, v]) => <div key={k}><dt>{titleCase(k)}</dt><dd>{show(v)}</dd></div>)}
+      {entries.map(([k, v]) => (
+        <div key={k}>
+          <dt>{titleCase(k)}</dt>
+          <dd>
+            {isNested(v)
+              ? <details><summary>{Object.keys(v as object).length} fields (open to read)</summary><pre className="mono">{show(v)}</pre></details>
+              : show(v)}
+          </dd>
+        </div>
+      ))}
     </dl>
   );
 }

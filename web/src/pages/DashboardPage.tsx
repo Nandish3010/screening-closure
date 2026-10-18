@@ -31,18 +31,23 @@ export function DashboardPage() {
 
   useEffect(() => {
     let live = true;
-    api.closureMetrics().then((x) => live && setM(x)).catch((e) => live && setError(String(e.message ?? e)));
+    setM(null);
+    setError(null); // a 403 for the previous role must not outlive a role switch
+    // One tick first (see the effort effect below): the provider logs in as the chosen role after this effect in the same commit.
+    Promise.resolve().then(() => api.closureMetrics()).then((x) => live && setM(x)).catch((e) => live && setError(String(e.message ?? e)));
     return () => {
       live = false;
     };
-  }, [api]);
+  }, [api, role]);
 
   // A21: the human-effort card is for the coordinator and the supervisor (the API refuses the other roles).
   const seesEffort = role === "coordinator" || role === "supervisor";
   useEffect(() => {
     let live = true;
     setEffort(null);
-    if (seesEffort) api.getEffortMetrics().then((x) => live && setEffort(x)).catch(() => live && setEffort(null));
+    // One tick first: this effect runs before the provider's login effect in the same commit (children first), so a role switch on
+    // this page would otherwise ask with the previous role's token and get a 403, which the card shows as "No effort data yet".
+    if (seesEffort) Promise.resolve().then(() => api.getEffortMetrics()).then((x) => live && setEffort(x)).catch(() => live && setEffort(null));
     return () => {
       live = false;
     };

@@ -1,7 +1,7 @@
 # E16: the shot list for the 3-minute submission video and the backup demo video.
 #
 # Derived from the "Backup video storyboard (3 minutes)" table in docs/submission/demo-script.md (shots 1 to 13, same
-# two beats, same captions: the catch (shots 3 to 6), then the reveal (shots 7 to 11), then the numbers and the ask) and
+# two beats, same captions: the catch (shots 3 to 6), then the reveal (shots 7 to 11), then the numbers (12, 13) and the ask (14)) and
 # driven against the LIVE stack (http adapter) after `make demo-reset` and `make demo-scenario UNTIL=owner_accepted`.
 # Read by tools/video/storyboard.py (validation, `make video-check`), tools/video/record.ts (Playwright) and
 # tools/video/narrate.py (text to speech). tests/test_demo_docs.py keeps this file and the demo script in step.
@@ -10,7 +10,7 @@
 # target in seconds), and optionally submission: true (in the 3-minute video; every shot is in the backup video) and
 # optional: true (skipped, not failed, when its route is absent or its guard element never shows up).
 #
-# Targets: the 13 shots add up to 158 s, which with the 3 s title card and the 4 s end card is 165 s, inside the 180 s
+# Targets: the 14 shots add up to 158 s, which with the 3 s title card and the 4 s end card is 165 s, inside the 180 s
 # cap. The final length of a shot is max(narration length, target); `make video-check` checks the targets, `assemble.sh`
 # checks the real lengths.
 #
@@ -202,7 +202,7 @@ shots:
       - hold: 3
       - role: specialist
       - wait_for: {testid: inbox-item, timeout: 30000}
-      - scroll: {testid: agency-inbox}
+      - scroll: {heading: "Sign the closure"}
       - hold: 3
 
   - id: 9
@@ -214,6 +214,10 @@ shots:
     caption: "The real Procedure and the clinician's own signature: closed. A record that says the colonoscopy was incomplete is refused."
     narration: "The clinician opens it from the inbox, records the real procedure, signs as themselves, and the case closes. A record that says the colonoscopy was incomplete would be refused."
     actions:
+      # Each shot is its own browser context: open the agency page again (the role, specialist, is kept from shot 8)
+      - goto: /agency
+      - role: specialist
+      - wait_for: {testid: inbox-item, timeout: 30000}
       - click: {link: "Open case"}
       - wait_for: {heading: "Clinician reviewed", timeout: 20000}
       - scroll: {text: "Clinician sign-off and closure"}
@@ -221,9 +225,11 @@ shots:
       - hold: 2
       - click: {testid: signoff}
       - wait_for: {heading: "Closed", timeout: 30000}
-      - scroll: {testid: timeline}
-      - wait_for: {text: "Case closed", timeout: 10000}
-      - hold: 3
+      - wait_for: {text: "Case closed (signed)", timeout: 10000}
+      - scroll: {text: "Case closed (signed)"}
+      - hold: 2
+      - scroll: {testid: reopen-panel}
+      - hold: 2
 
   - id: 10
     title: Human effort
@@ -267,9 +273,9 @@ shots:
     beat: Numbers
     submission: true
     route: "card:results"
-    duration: 26
-    caption: "Simulation on synthetic data, literature-anchored scenario, before capacity limits. Closed with evidence and a signature 52% to 66%; lost without anyone told 46% at baseline, 0% where the programme reaches, 21% programme-level. Labour: 33% fewer minutes per handled case, 18% programme-level: the 40% target is not met. Rerun: make evaluate"
-    narration: "Simulation on synthetic data, literature-anchored, before capacity limits. Cases closed with evidence and a signature rise from fifty-two to sixty-six percent. Cases lost without anyone told: forty-six percent today, zero where the programme reaches, twenty-one percent programme-wide. Labour falls thirty-three percent per handled case, eighteen percent programme-wide: below our forty percent target."
+    duration: 16
+    caption: "Simulation on synthetic data, literature-anchored scenario, before capacity limits. Closed with evidence and a signature 52% to 66%; lost without anyone told 46% at baseline, 0% where the programme reaches, 21% programme-level. Rerun: make evaluate"
+    narration: "Simulation on synthetic data, literature-anchored, before capacity limits. Cases closed with evidence and a signature rise from fifty-two to sixty-six percent. Cases lost without anyone told: forty-six percent today, zero where the programme reaches, twenty-one percent programme-wide."
     actions:
       - card:
           kind: results
@@ -280,7 +286,17 @@ shots:
             - "Cases closed (evidence and human sign-off)"
             - "Lost AND never surfaced to a human: programme level"
             - "Lost AND never surfaced to a human: in reach"
-      - hold: 15
+      - hold: 14
+
+  - id: 13
+    title: Labour
+    beat: Numbers
+    submission: true
+    route: "card:slide"
+    duration: 10
+    caption: "Labour: 33% fewer staff minutes per case the system handles, 18% across the programme. The 40% target is not met."
+    narration: "Labour falls thirty-three percent per handled case and eighteen percent programme-wide. Our target was forty. It is not met, and we say so."
+    actions:
       - card:
           kind: slide
           heading: "Labour, in the same simulation"
@@ -291,7 +307,7 @@ shots:
             - "Minutes are published or assumed; synthetic"
       - hold: 8
 
-  - id: 13
+  - id: 14
     title: The ask
     beat: Ask
     submission: true
@@ -311,7 +327,7 @@ shots:
       - hold: 7
 
   # ---- Backup-only extra: not in the 3-minute cut. Skipped, not failed, if the element is absent. ------------------------
-  - id: 14
+  - id: 15
     title: The effort counter on a case
     beat: Effort counter (A21)
     optional: true

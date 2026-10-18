@@ -7,21 +7,30 @@ Both videos are produced by a script from the storyboard of [demo-script.md](dem
 | `submission-3min.mp4` | Title card (3 s), the shots flagged `submission: true` (13 shots, the storyboard of the demo script), end card (4 s). Hard cap 180 s: `assemble.sh` fails above it. | `tools/video/out/` (gitignored) |
 | `backup-demo.mp4` | The same, plus every other shot that could be recorded (the two reveal shots below, when their pages exist). | `tools/video/out/` (gitignored) |
 
-**Status: the final proof run is pending.** The tooling is committed and `make video-check` passes, but the two mp4 files are not part of the repository and have not been produced from the final code: the proof run waits for the M5 final merge (the web app's labels and the demo scenario must be final first). An earlier trial run on 18 Oct, against the stack as it was before that merge, recorded 13 shots and skipped the 2 reveal shots (their pages are not in this build); it is only evidence that the tooling works end to end, and its output is not the deliverable. Nothing in this file about durations is a measurement of the final video until the proof run is done and this paragraph is replaced by its result (shots recorded, length, size).
+**Status: the proof run is done (18 Oct 2026, on the merged code with A24, A25 and A26 and the final demo script).** `make demo-reset`, `make video-deps`, `make video` ran against the real stack and recorded **15 of 15 shots, none skipped**, then narrated and assembled both files; the recorder left the scheduler running and the demo reset (state hash `a0a07a71...` equal to the snapshot's). Measured:
+
+| File | Duration | Size | Format |
+|---|---|---|---|
+| `tools/video/out/submission-3min.mp4` | 169.95 s (2:49.95; cap 180 s) | 13,009,985 bytes (12.4 MiB) | H.264, 1280x800, 25 fps, AAC |
+| `tools/video/out/backup-demo.mp4` | 179.95 s (2:59.95) | 13,325,911 bytes (12.7 MiB) | the same |
+
+The 14 submission shots add up to 162.9 s of narrated video plus the 3 s title card and the 4 s end card; the backup adds shot 15 (10 s). The whole `make video` (record, narrate, assemble) took 4 min 31 s on a development MacBook, and the real watchdog wait (57.5 s of raw video in shot 5) is cut to 16.6 s. Per shot (target, narration, final): shot 1 8 s, 6.4 s, 8.0 s; shot 2 7, 8.6, 9.4; shot 3 12, 11.5, 12.3; shot 4 12, 7.6, 12.0; shot 5 15, 14.0, 15.0 (sped up 1.11x); shot 6 5, 2.3, 5.0; shot 7 12, 8.5, 12.0; shot 8 15, 13.3, 15.0; shot 9 13, 10.2, 13.0; shot 10 10, 9.3, 10.1; shot 11 14, 10.5, 14.0; shot 12 16, 17.2, 18.0; shot 13 10, 7.9, 10.0; shot 14 9, 8.3, 9.1; shot 15 10, 6.8, 10.0. Five shots run longer than their target because their narration does (2, 3, 10, 12, 14); none needed more than a 1.22x speed-up. Frames of the final file were checked at the key moments (the amber "DEMO PLACEHOLDER" banner on the case page and the dashboard, the agency run and its one-item inbox, "Case closed (signed)" and the Reopen panel, the Human effort card, the results table and the labour slide). The two mp4 files are **not** in the repository (gitignored); ticket H4 (a person records the final videos) stays open, and the narration is the macOS `say` voice, not a person.
+
+What the first runs found, all fixed before this one: each shot is its own browser context, so a shot that clicks a link must open the page that holds it first (shot 9); a role switch on the dashboard asked for its metrics with the previous role's token and showed a 403 and "No effort data yet" (the web now waits for the login first, with a test); the agency inbox showed a closure pack as a wall of JSON (now folded); a still card held for 15 seconds is almost invisible in a Playwright recording, so the numbers card and the labour slide are two shots, not one.
 
 ## Regenerate
 
-Run the proof run once the stack is up on the final merged code (this is the pending step):
+Run it again after any change to the web app, the demo script or the snapshot, with the stack up on the merged code:
 
 ```
 make video-check     # the storyboard validates, targets add up to 180 s or less (no stack, no ffmpeg needed)
 make video-deps      # ffmpeg, ffprobe and macOS `say` (and the voice) are installed; says how to fix it if not
 make up              # the stack must be running ...
 make demo-reset      # ... and reset to the demo snapshot: the recording starts from that state
-make video           # video-check, video-deps, then record, narrate, assemble (about 7 to 10 minutes)
+make video           # video-check, video-deps, then record, narrate, assemble (about 5 minutes)
 ```
 
-`make video` stops before touching the stack when `ffmpeg`, `ffprobe` or `say` is missing (`brew install ffmpeg`; `say` exists on macOS only). It resets the demo again at the end. Check the result with `ffprobe tools/video/out/submission-3min.mp4` (at most 180 s), watch both files once, then replace the status paragraph above with the measured result.
+`make video` stops before touching the stack when `ffmpeg`, `ffprobe` or `say` is missing (`brew install ffmpeg`; `say` exists on macOS only). It resets the demo again at the end. Check the result with `ffprobe tools/video/out/submission-3min.mp4` (at most 180 s), watch both files once, then replace the measured-result paragraph above with the new numbers.
 
 `make video` is three steps, which can be run separately:
 
@@ -49,29 +58,25 @@ Requirements: `ffmpeg` and `ffprobe` (`brew install ffmpeg`), macOS `say` with t
 
 ## Shots, and what to re-record after merges
 
-Shots 1 to 13 are the 13 rows of the storyboard in the demo script, same order and captions. Their targets are trimmed by 11 s in total so the two cards fit inside 180 s (see the comment at the top of the YAML). Waiting is cut from the video (the watchdog wait in shot 5, the bounce wait in shot 8, the scheduler stop and the property test run), so the viewer sees the banner appear and clear without a minute of nothing.
+Shots 1 to 14 are the 14 rows of the storyboard in the demo script, same order, titles and captions (`tests/test_demo_docs.py` checks it): the problem, what this is, **the catch** (shots 3 to 6: an owned case with the amber demo-approval banner and the scheduler stopped, the patient contacted and the clock jump, the watchdog and the restart, the escalation accepted), **the reveal** (shots 7 to 11: a bad reference refused on the prepared second case, the agency run and its one-item inbox, signed and closed, the Human effort card, the Gulf-Arabic reply cameo), the numbers (12, 13) and the ask (14). Their targets add up to 158 s so the two cards fit inside 180 s (see the comment at the top of the YAML). Waiting is cut from the video (the watchdog wait in shot 5, the scheduler stop and the property test run), so the viewer sees the banner appear and clear without a minute of nothing.
 
-Two reveal shots are `optional: true` and `submission: false`, so they appear in the backup video only. The recorder opens their route first and skips the shot, with the reason in `shots.json`, when the route redirects to the home page (the app sends unknown routes there) or answers 404, when the guard element never shows up, or when a step fails:
-
-| Shot | Needs | Guard | Present in this build |
-|---|---|---|---|
-| 14 `/agency` page (A22) | the `cut-agency` branch, web and API | `agency-org` | no, skipped: the route redirects to `/` |
-| 15 effort counter on a case page (A21) | the `cut-auto` branch | `effort-counter` | no, skipped: the case page has no counter |
-
-After the branches merge, run `make video` again: the reveal shots then record, and the backup video grows by about 20 s. Whether either belongs in the 3-minute video is an editing decision: set `submission: true` on it in the YAML, and shorten another shot, because `make video-check` and `assemble.sh` hold the total to 180 s.
+Shot 15, the effort counter on a case page, is `optional: true` and `submission: false`, so it is in the backup video only. The recorder opens its route first and skips an optional shot, with the reason in `shots.json`, when the route redirects to the home page (the app sends unknown routes there) or answers 404, when the guard element never shows up, or when a step fails. It recorded in the proof run (15 of 15, none skipped). Whether it belongs in the 3-minute video is an editing decision: set `submission: true` on it in the YAML and shorten another shot, because `make video-check` and `assemble.sh` hold the total to 180 s.
 
 Re-record (run `make video`) after any of these changes:
 
 - **The web app's text or layout** changes a label the storyboard clicks or waits for (the YAML names buttons by their text, for example "Approve draft", "Request hand-off", and panels by test id). A failed required shot stops the run and leaves a screenshot, `out/raw/shot-N-failure.png`.
-- **The numbers**: shot 12 is rendered from the headline table of `docs/results/results.md` by row name, so a regenerated table flows in by itself, but the caption and the narration of shot 12 (and the 30.5% of shot 1, the 2,000 sequences of shots 5 and 11) are written in the YAML and must be changed by hand to match, with the same sources as in the demo script. Check them against `results.md` after every `make evaluate`.
-- **The demo scenario or the snapshot** (a different named patient, or a second case in another state): the recorder finds the two cases by their state (`owner_accepted`, `confirmatory_completed`).
+- **The numbers**: shot 12 is rendered from the headline table of `docs/results/results.md` by row name, so a regenerated table flows in by itself, but the captions and the narration of shots 12 and 13 (the labour slide: 33% in reach, 18% programme-level, target not met), and the 30.5% of shot 1 and the 2,000 sequences of shot 5, are written in the YAML and must be changed by hand to match, with the same sources as in the demo script. `tests/test_demo_docs.py` fails if the spoken figures no longer match `docs/results/results.json`; check the rest against `results.md` after every `make evaluate`.
+- **The demo scenario or the snapshot** (a different named patient, or a second case in another state): the recorder finds the two cases by their state (`owner_accepted`, `confirmatory_completed`). The named patient's owner is Dr. Huda Rahman (the web's **clinician** role), not Dr. Layla Haddad; the second case's evidence must be complete (A24), which the snapshot taken after A24 holds.
 - **The demo script's storyboard**: keep the YAML in step with it (T-E15).
 
 ## Known quirks of the live recording
 
-- **The closure shot reloads the page after the refused close.** The first sign-off with a reference that does not exist is refused with 422, but only after the engine has recorded the clinician review; the page does not refresh after a refusal, so a second click would post the review again and be refused ("clinician_review not allowed from clinician_reviewed"). Shot 10 therefore opens the case again before the real sign-off. The demo script's live beat 13 ("click Record colonoscopy result, then Sign off and close case") hits the same thing: reload the case page in between.
-- **The second case shows red banners** ("Nobody is looking at this", an SLA breach) in shots 10 and 11, because the simulation clock was moved by 20 days earlier in the story and the scheduler ran on the second case too. That is what a live demo shows as well.
-- **Static pages are short in the raw video.** Playwright writes a frame only when the screen changes, so the end of a shot that stays still is missing from the raw webm; `narrate.py` repeats the last frame to fill the shot.
+- **The closure is split over two shots, with a reload between.** Shot 7 types a reference that does not exist: the engine records the clinician review and then refuses the close (422), and the page does not refresh after a refusal. Shot 9 therefore opens the agency page again and follows the inbox's "Open case" link, which loads the case fresh (at "Clinician reviewed"), so the real sign-off posts only the close. In the live demo, reload the case page between the refusal and the real sign-off, or open it from the inbox as shot 9 does.
+- **Every shot is its own browser context.** The role (a localStorage value) is carried from one shot to the next, but the page is not: a shot that clicks something must first open the page that holds it.
+- **The second case shows red banners** ("Nobody is looking at this", an SLA breach) from shot 7 on, because the simulation clock was moved by 15 days earlier in the story and the scheduler ran on the second case too. That is what a live demo shows as well.
+- **The Human effort card says "Target met"** (about 70 to 76%) on the demo's 22 cases. The minutes are assumed and the sample is a handful of seeded cases; the narration says so, and the labour slide that follows gives the simulation's figure, which is below the 40% target.
+- **The triage cameo shows the fail-safe.** The compose API has no model, so the reply is read as "other" with 0% confidence and goes to a person (the narration says so).
+- **Static pages are short in the raw video.** Playwright writes a frame only when the screen changes, so the end of a shot that stays still is missing from the raw webm and a still card held for a long time is almost invisible in it; `narrate.py` repeats the last frame to fill the shot. That is why each card is its own shot.
 - **Timings** in the dashboard banner (for example "has not reported since ...") are wall-clock times of the recording, not simulated time.
 
 ## Honesty
