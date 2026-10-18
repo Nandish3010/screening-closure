@@ -6,21 +6,21 @@ Timing rule: the script is written for 7:00 and must be rehearsed to 6:30 or les
 
 ## Status of what this script depends on
 
-| Dependency | Ticket | State on this branch | Fallback if not ready |
+| Dependency | Ticket | State | Fallback if not ready |
 |---|---|---|---|
-| Seeded scenario with one named synthetic patient, `tools/demo/scenario.py`, and `make demo-reset` | E8 | Being written on main; not on this branch | Walk a seeded case by hand through the UI; the mock adapter's **Reset demo** button restores its 16 fixture cases |
-| `make demo-kill-scheduler` (stop, alarm, restart, verify nothing lost) | F11 | Planned | `docker compose stop scheduler`, then `docker compose start scheduler`; `make test-chaos` is the automated version (T-A32) |
-| Offline run with outbound network blocked | F10 | Planned | Default config already makes no outbound calls: template drafting, model network off, bundled fonts |
+| Seeded scenario with one named synthetic patient, `tools/demo/scenario.py`, and `make demo-reset` | E8 | Built. `make demo-reset` restores the saved snapshot and the clock to the scenario start in about 25 s; `make demo-scenario [UNTIL=<step>]` runs the 20-step story through the API; `make test-demo` checks both (T-E9, T-E10); commands in `tools/demo/README.md` | If there is no snapshot, `make reset && make demo-seed && make demo-snapshot`. If the stack will not come up, walk a seeded case by hand through the UI; the mock adapter's **Reset demo** button restores its 16 fixture cases |
+| `make demo-kill-scheduler` (stop, alarm, restart, verify nothing lost) | F11 | Built. `make demo-kill-scheduler RUNS=3` stopped the scheduler, saw the alert after 58, 69 and 69 s (limit 90 s), restarted it and found the event log unchanged three times in a row (T-F15). It restarts the scheduler itself, so it is the rehearsal; on stage use the two docker commands | On stage: `docker compose stop scheduler`, then `docker compose start scheduler`; `make test-chaos` is the automated version (T-A32, T-F5) |
+| Offline run with outbound network blocked | F10 | Built. `make test-offline` runs the demo scenario with api, HAPI and Postgres on a Docker network with no route out, then shows the model-provider fallback with no network: 17 of 17 steps in 72 s (T-F14) | Default config already makes no outbound calls: template drafting, model network off, bundled fonts |
 | Recorded model outputs for the Arabic draft | D6 | Cache committed empty | The template draft is shown and labelled as the template (fallback badge) |
-| Web app against the real API | C1 to C11 | Built; e2e suite runs on the mock adapter | `make web-dev` with the mock adapter (default) |
+| Web app against the real API | C1 to C11 | Built; `make web-e2e` runs on the mock adapter, `make test-e2e-live` drives the real stack (the full flow and T-C16) | `make web-dev` with the mock adapter (default) |
 
-The scenario steps below are the plan's steps (`fhdic-challenge05-plan.md`, demo script), mapped to the screens and buttons that exist in `web/` today. When `tools/demo/scenario.py` lands, check each step's name against it and update this table and the step list in the same commit.
+The scenario steps below are the plan's steps (`fhdic-challenge05-plan.md`, demo script), mapped to the screens and buttons that exist in `web/` today. `tools/demo/scenario.py` has landed (E8): `python3 tools/demo/scenario.py --list` prints its steps, and each step below should be checked against that list when rehearsing (T-E11). Two things differ from the plan's one-line story because the engine says so (ADR-014): an accepted rung stops the ladder, so the scripted run has the coordinator accept rung 3 rather than the supervisor, and a re-routed referral goes back to `owner_accepted`, so contact and acknowledgement repeat before the booking. To rehearse the live part, stop the script where the live part begins: `make demo-reset && make demo-scenario UNTIL=patient_acknowledged`, then carry on in the browser.
 
 ## Before going on stage (T-minus 15 minutes)
 
 1. Laptop on mains power, notifications off, Wi-Fi off (the demo needs no network).
-2. `make up`, then `make demo-reset` (E8): database and simulation clock back to the scenario start. Without E8: `make reset && make demo-seed`.
-3. The scenario needs a `DiagnosticReport` or `Procedure` for the colonoscopy that exists in HAPI, because compose sets `FHIR_VERIFY_EVIDENCE=true` and `close` is refused with 422 otherwise (A15). The scenario script creates it; check `GET /cases/{id}/fhir` lists it.
+2. `make up`, then `make demo-reset` (E8): database, FHIR store and simulation clock back to the snapshot, and a state fingerprint checked against it. The API answers after about 13 s; HAPI, a JVM, needs up to about 40 s, so wait for the command to return. With no snapshot yet (`tools/demo/snapshot.sh status`): `make reset && make demo-seed && make demo-snapshot`.
+3. The scenario needs a `DiagnosticReport` or `Procedure` for the colonoscopy that exists in HAPI, because compose sets `FHIR_VERIFY_EVIDENCE=true` and `close` is refused with 422 otherwise (A15). The scenario script creates it (by hand, the case page has **Record colonoscopy result**); check `GET /cases/{id}/fhir` lists it.
 4. Start the web app against the API: `cd web && VITE_API_ADAPTER=http VITE_API_URL=http://localhost:8000 npm run dev`.
 5. Open four browser tabs: `/coordinator` (worklist), the scenario case at `/coordinator/<caseId>`, `/patient/<caseId>`, `/dashboard`. Open one terminal tab with the repo root, large font.
 6. Check: the **SIMULATED TIME** badge shows the scenario start; `curl -s localhost:8000/alerts` (as coordinator) shows no open alert; `docker compose ps` shows the scheduler and watchdog up.
@@ -46,14 +46,14 @@ On screen: a title slide with one number.
 
 ### 1:00 to 4:30 Live: catch and close
 
-Each step names the screen, the action and the line to say. Clock jumps are scenario-script steps (`POST /clock/advance` as supervisor); there is no clock button in the UI.
+Each step names the screen, the action and the line to say. Clock jumps are `POST /clock/advance` as supervisor, either from scenario-script steps or from the **Advance clock (days)** control in the supervisor's header. `make demo-scenario` calls the scheduler sweep itself after each clock move, so use it outside the stopped-scheduler segment (steps 5 to 9) and use the header control inside it.
 
 | Time | Step | Screen and action | Say |
 |---|---|---|---|
 | 1:00 | 1. Result arrives | Worklist `/coordinator`: the scenario patient's new case at the top, state "result received", SIMULATED TIME badge visible | "A positive FIT for our synthetic patient has just arrived from the lab." |
 | 1:10 | 2. Lab acknowledges | Case page, role **lab** or coordinator (header **Switch role**): **Acknowledge result** | "The lab acknowledges. The clock for ownership starts." |
 | 1:20 | 3. Primary care accepts | **Switch role** to owner: **Accept ownership** | "Dr Haddad now owns this case. Her name is on it, and the timeline says so." |
-| 1:30 | 4. Kill the scheduler | Terminal: `make demo-kill-scheduler` (F11), or `docker compose stop scheduler` | "Now the thing that runs every clock. I am killing it, on stage. Watch the dashboard later." Leave it stopped. |
+| 1:30 | 4. Kill the scheduler | Terminal: `docker compose stop scheduler` (rehearse the same moment beforehand with `make demo-kill-scheduler`, F11, which restarts the scheduler by itself) | "Now the thing that runs every clock. I am killing it, on stage. Watch the dashboard later." Leave it stopped. |
 | 1:40 | 5. Patient unreachable | **Record patient contacted**, then a scenario step advances the clock past the 7 working-day acknowledgement limit and far enough for the supervisor rung (3 working days after the due date). The scheduler is stopped, so no overdue flag appears yet: that is the point of step 9. | "Two weeks pass. The patient does not answer, and with the scheduler dead nothing would tell anyone." |
 | 2:00 | 6. Arabic draft, owner approves | Case page, **Patient message drafts** panel: Language Arabic, Channel SMS, **Request draft message**. Point at the provider, the template-fallback badge if shown, and the prompt hash. **Approve draft**: "Sent". | "The model drafts, in Arabic, and is never shown the patient's name or number. It cannot send. Only the owner can approve, and the approval and the send are in the audit trail." |
 | 2:30 | 7. Patient acknowledges on the PWA | Tab `/patient/<caseId>`: Arabic, right to left. Point at "I don't understand this". Tap **I understand** | "The patient sees plain language at about grade 6, who owns her case, and a button that gets a human to call her." |

@@ -78,25 +78,31 @@ project/     plan, tracker, decisions, log, test cases
 | Run | `synthea`, `demo-seed`, `demo-seed-clean` | Generate the cohort in a container; load it and create cases; delete generated files |
 | Test | `test` | Unit and property tests, no database |
 | Test | `test-db` (`test-db-create`, `test-db-reset`) | Integration tests against `closure_test`; create or recreate that database |
-| Test | `test-chaos` | Chaos-marked tests: stop and start the scheduler, watch the watchdog alert |
+| Test | `test-chaos` | Chaos-marked tests: duplicate delivery, clock skew and store failures through the fault harness (F3), a sweep killed part-way (F4), bad model output and consent withdrawn mid-send (F5), and the scheduler container stopped and restarted with the watchdog alert |
 | Test | `test-tools` | Cross-cutting tests in `tests/` |
-| Test | `test-security` | Secrets and repo hygiene scan |
+| Test | `test-security` | Secrets and repo hygiene scan; RBAC matrix (F7); no PHI in route parameters or in the logs of an in-process demo walk (F8) |
+| Test | `rbac-matrix` | Rewrite `docs/governance/rbac-matrix.md` from the app; `test-security` fails if the file differs |
+| Test | `test-phi-logs` | The F8 log scan against the running stack's service logs; writes a few synthetic marker cases, run it on a throwaway stack |
+| Test | `test-demo` | T-E9 and T-E10 against the running stack: the scenario repeats identically after a reset, and the reset restores the snapshot's state (about 4 minutes) |
+| Test | `test-e2e-live` | Playwright against the running stack: the full flow, the declined-handoff re-route and T-C16 (stops the scheduler container); skips if the API is down |
 | Test | `test-load`, `load-check` | Sweep timing at 1k, 10k, 100k cases and rewrite `docs/results/load.md`; the 1k size only |
 | Evaluation | `evaluate`, `simulate`, `evaluate-check` | Regenerate `docs/results`; one arm, one run; prove reproducibility |
 | Docs and checks | `check` | Run every stage below in order |
 | Docs and checks | `docs-check`, `tracker-lint` | Links, tables and markers in docs; tracker and test-case consistency |
 | Web | `web-install`, `web-dev`, `web-build`, `web-test`, `web-e2e` (`test-e2e`) | Install, dev server, build, unit tests, Playwright |
 | Review packs | `review-packs`, `review-packs-check`, `test-review-packs` | Build the clinician and Arabic packs; fail on drift; test them |
-| Planned (not on this branch yet) | `demo-reset`, `demo-scenario` | One-click reset and demo scenario (ticket E8) |
-| Planned (not on this branch yet) | `demo-kill-scheduler` | Kill-the-scheduler rehearsal (F11) |
-| Planned (not on this branch yet) | `test-offline` | Demo with outbound network blocked (F10) |
-| Planned (not on this branch yet) | `risk-report` | Risk score calibration report (D10) |
+| Demo | `demo-scenario` (`UNTIL=<step>`) | Run the scripted story for the named synthetic patient through the API, optionally up to one step (E8, `tools/demo/README.md`) |
+| Demo | `demo-snapshot`, `demo-restore`, `demo-reset` | Save the demo state; restore it; one-click reset (restore, reset the clock, check the state fingerprint) |
+| Demo | `demo-kill-scheduler` (`RUNS=3`) | Kill-the-scheduler rehearsal: stop the scheduler, wait for the alert, restart, check no event was lost (F11) |
+| Risk score | `risk-report`, `risk-check` | Retrain the loss-to-follow-up risk score and rewrite its report and score card (D10); fail if the committed files differ from a fresh run |
+| Reproducibility | `fresh-clone` | Clone the repository into a temporary directory and run the fresh-clone steps there, with the checklist for the second machine (F12) |
+| Test | `test-offline` | The demo scenario with api, HAPI and Postgres on a network with no route out, in its own project (Docker only; a few minutes) |
 
 ## Tests and checks
 
-`make check` runs 13 stages in this order: test, test-db, web-test, web-build, evaluate-check, docs-check, tracker-lint, test-security, test-tools, load-check, review-packs-check, test-review-packs, web-e2e. It stops at the first failure; `CHECK_KEEP_GOING=1` runs all of them.
+`make check` runs 14 stages in this order: test, test-db, web-test, web-build, evaluate-check, docs-check, tracker-lint, test-security, test-tools, load-check, risk-check, review-packs-check, test-review-packs, web-e2e. It stops at the first failure; `CHECK_KEEP_GOING=1` runs all of them.
 
-At the M2/M3 integration, project/LOG.md records: "make check: green, 13 stages (1133 api and simulator tests, 94 integration, 147 web unit, 33 e2e, 52 tool tests, 17 pack tests)".
+At the M4/M5 integration, project/LOG.md records: "make check: green, 14 stages (1263 api and simulator tests, 103 integration, 164 web unit, 33 e2e, 106 tool tests, 47 security-gate tests, 17 pack tests)".
 
 The closure rule has its own property test: `api/tests/test_state_machine.py::test_never_closed_without_evidence_and_human_signoff`.
 
@@ -111,14 +117,13 @@ The closure rule has its own property test: `api/tests/test_state_machine.py::te
 
 ## Status
 
-As of the M2/M3 integration on 18 Oct 2026, built: the core loop, the simulator and evaluation, the interfaces (on the mock adapter), the AI drafting edge, the reviewer packs and the governance documents.
+As of the M4/M5 integration on 18 Oct 2026, built: the core loop, the simulator and evaluation, the interfaces (on the mock adapter and against the real stack), the AI drafting edge, the risk score, the reviewer packs, the governance documents, the chaos, RBAC, PHI and offline checks, and the demo scenario with its one-click reset.
 
 Open (project/TRACKER.md):
 
-- Demo scenario and one-click reset (E8), chaos suite (F3, F4), offline run (F10), kill-the-scheduler rehearsal script (F11) and fresh-clone script (F12) are not started.
-- The loss-to-follow-up risk score (D8 to D10) is not started; the worklist falls back to SLA ordering.
-- The 100,000-case sweep meets its 5 s target only when sharded on a quiet machine. The committed run in docs/results/load.md shows 18.80 s single process and 5.99 s with 10 workers, and the scheduler route still uses the single-process sweep (F6, in review).
-- In review, not done: the "cases nobody is looking at" panel needs a test against the real stack with the scheduler stopped (C9); the messy-case scenarios have no dedicated test (B5); the parameter-override metadata test and the docs-numbers checker are missing (B10).
+- The fresh-clone script is built (F12, `make fresh-clone`); its run on a second machine is still a human task (H5).
+- The 100,000-case sweep misses its 5 s target. The committed run in docs/results/load.md shows 20.38 s single process, 6.76 s through `POST /scheduler/sweep` with 4 workers (the default, A17) and 5.21 s with 10 workers.
+- In review, not done: the messy-case scenarios have no dedicated test (B5); the parameter-override metadata test and the docs-numbers checker are missing (B10).
 - Clinician review (H1) and native Arabic review (H2) are pending. The Arabic text is an unreviewed draft.
 
 ## Licence
