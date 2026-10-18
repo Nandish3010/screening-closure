@@ -19,3 +19,6 @@ dist-live/
 
 # Generated data (Synthea jar + output, simulator manifests)
 data/
+
+# E16 video outputs (recordings, audio, the web build, the two mp4s)
+tools/video/out/
