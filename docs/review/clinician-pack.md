@@ -194,7 +194,7 @@ A case is handed to another provider with `handoff_requested`. Ownership moves o
 
 ## 9. What the patient reads (English)
 
-65 English strings in three places. The reading-level target is grade 6. Arabic versions are reviewed separately (H2); the IDs below match the Arabic pack. Placeholders in braces are filled in: {owner_name} (the care owner), {next_step} (default "a camera test"), {appointment_date} (for example "Tuesday 3 November 2026"), {name} and {role} on the patient page.
+70 English strings in three places. The reading-level target is grade 6. Arabic versions are reviewed separately (H2); the IDs below match the Arabic pack. Placeholders in braces are filled in: {owner_name} (the care owner), {next_step} (default "a camera test"), {appointment_date} (for example "Tuesday 3 November 2026"), {name} and {role} on the patient page.
 
 ### 9.1 The patient page (web)
 
@@ -244,45 +244,50 @@ Shown in the installed app or browser at `/patient`. Source: `web/src/i18n/strin
 | W18 | Who is looking after you | Heading of the care-owner section. |
 | W19 | {name} ({role}) is looking after your care. You can ask them any question. | Large text under that heading. {name} is the owner's name (Latin or Arabic script), {role} the role from the role labels below. In Arabic the sentence is split over three lines so a Latin name does not scramble the line. |
 | W20 | A care coordinator will be chosen for you soon. | Shown instead of the line above while nobody has accepted the case. |
-| W21 | Primary care physician | Role shown in brackets after the owner's name in the line "Who is looking after you". The English role is the value stored in the case; unknown roles are shown as stored. |
-| W22 | Care coordinator | Role shown in brackets after the owner's name in the line "Who is looking after you". The English role is the value stored in the case; unknown roles are shown as stored. |
+| W21 | Your primary care doctor is looking after your care. You can ask them any question. | Shown instead of the owner line when the owner is the patient's primary care physician. The server shows a patient the owner by role only (SEC-2), so no name is available. |
+| W22 | Your specialist doctor is looking after your care. You can ask them any question. | Same, when the owner is the specialist who will do the test. |
+| W23 | Your care coordinator is looking after your care. You can ask them any question. | Same, when the owner is a care coordinator. |
+| W24 | A senior member of your care team is looking after your care. You can ask them any question. | Same, when the case is with a senior member of the care team. |
+| W25 | Your care team is looking after your care. You can ask them any question. | Same, for any role not listed above. |
+| W26 | Primary care physician | Role shown in brackets after the owner's name in the line "Who is looking after you". The English role is the value stored in the case; unknown roles are shown as stored. |
+| W27 | Care coordinator | Role shown in brackets after the owner's name in the line "Who is looking after you". The English role is the value stored in the case; unknown roles are shown as stored. |
 
 **I understand / I don't understand.** The two buttons and their confirmations.
 
 | ID | English text | Where it appears |
 |---|---|---|
-| W23 | I understand, please contact me | Primary button (one tap: the patient has read the message and asks the care team to contact them). Disabled until the patient has been contacted. |
-| W24 | Thank you. We saved this. Your care team will contact you. | Green confirmation that replaces the button once the patient has acknowledged. |
-| W25 | You can tap this button after your care team has sent you a message. | Hint under the disabled button. |
-| W26 | I don't understand this | Second button. Asks a person from the care team to call. |
-| W27 | Thank you. A person from your care team will call you. | Green confirmation after that button is pressed, or while a callback is pending. |
-| W28 | That did not work. Please try again or call your care team. | Red banner if either button fails. |
+| W28 | I understand, please contact me | Primary button (one tap: the patient has read the message and asks the care team to contact them). Disabled until the patient has been contacted. |
+| W29 | Thank you. We saved this. Your care team will contact you. | Green confirmation that replaces the button once the patient has acknowledged. |
+| W30 | You can tap this button after your care team has sent you a message. | Hint under the disabled button. |
+| W31 | I don't understand this | Second button. Asks a person from the care team to call. |
+| W32 | Thank you. A person from your care team will call you. | Green confirmation after that button is pressed, or while a callback is pending. |
+| W33 | That did not work. Please try again or call your care team. | Red banner if either button fails. |
 
 **Your choices (contact and sharing).** Channel, sharing and their save status.
 
 | ID | English text | Where it appears |
 |---|---|---|
-| W29 | Your choices | Heading of the choices section. |
-| W30 | How may we contact you? | Legend of the group of contact-channel check boxes. Each box is on unless the patient turned it off (an opt-out default); changing one saves at once. |
-| W31 | Phone call | Label of the check box for phone calls. |
-| W32 | Text message | Label of the check box for text messages. |
-| W33 | WhatsApp | Label of the check box for WhatsApp messages. |
-| W34 | Letter | Label of the check box for letters. |
-| W35 | My care team may share my result with the specialist who will do my test. | Label of the check box that lets the care team share the result with the specialist. |
-| W36 | Stop all contact | Button under the choices. Withdraws all consent to contact at once: the case is frozen for outreach and a person is asked to review it. Hidden after withdrawal. |
-| W37 | If you stop contact, your care team will not message or call you. A person will check your case. | Small grey text above that button. It says what stopping contact means and that a person will check the case. |
-| W38 | You asked us to stop contact. We will not message or call you. A person on your care team will check your case. | Yellow banner at the top of the choices section after the patient has stopped all contact. |
-| W39 | You may contact me again | Replaces the stop button after withdrawal. Pressing it records that the patient may be contacted again. |
-| W40 | Saved | Status line under the choices after a successful save. |
-| W41 | We could not save this. Please try again. | Status line if saving the choices fails. |
+| W34 | Your choices | Heading of the choices section. |
+| W35 | How may we contact you? | Legend of the group of contact-channel check boxes. Each box is on unless the patient turned it off (an opt-out default); changing one saves at once. |
+| W36 | Phone call | Label of the check box for phone calls. |
+| W37 | Text message | Label of the check box for text messages. |
+| W38 | WhatsApp | Label of the check box for WhatsApp messages. |
+| W39 | Letter | Label of the check box for letters. |
+| W40 | My care team may share my result with the specialist who will do my test. | Label of the check box that lets the care team share the result with the specialist. |
+| W41 | Stop all contact | Button under the choices. Withdraws all consent to contact at once: the case is frozen for outreach and a person is asked to review it. Hidden after withdrawal. |
+| W42 | If you stop contact, your care team will not message or call you. A person will check your case. | Small grey text above that button. It says what stopping contact means and that a person will check the case. |
+| W43 | You asked us to stop contact. We will not message or call you. A person on your care team will check your case. | Yellow banner at the top of the choices section after the patient has stopped all contact. |
+| W44 | You may contact me again | Replaces the stop button after withdrawal. Pressing it records that the patient may be contacted again. |
+| W45 | Saved | Status line under the choices after a successful save. |
+| W46 | We could not save this. Please try again. | Status line if saving the choices fails. |
 
 **Loading, offline and errors.** System messages.
 
 | ID | English text | Where it appears |
 |---|---|---|
-| W42 | Loading... | Shown instead of the page while the case loads. |
-| W43 | We could not load your information. Please try again. | Shown if the case cannot be loaded and nothing is saved on the device. |
-| W44 | You are offline. This is the last information we saved. | Banner above the result when the device is offline. The last saved information is shown. |
+| W47 | Loading... | Shown instead of the page while the case loads. |
+| W48 | We could not load your information. Please try again. | Shown if the case cannot be loaded and nothing is saved on the device. |
+| W49 | You are offline. This is the last information we saved. | Banner above the result when the device is offline. The last saved information is shown. |
 
 Not in the catalogue (hard-coded in `web/src/pages/PatientPage.tsx`): a "Demo case" link on the start page and the accessible label "Actions". They are demo scaffolding and not part of this review.
 
@@ -456,10 +461,10 @@ For each row write keep or change and, if you change it, say what you would do. 
 | W:result | Patient page: What the result means (W06 to W08) |  |  |
 | W:progress | Patient page: Where you are now (W09 to W13) |  |  |
 | W:next | Patient page: What happens next (W14 to W17) |  |  |
-| W:owner | Patient page: Who is looking after you (W18 to W22) |  |  |
-| W:actions | Patient page: I understand / I don't understand (W23 to W28) |  |  |
-| W:consent | Patient page: Your choices (contact and sharing) (W29 to W41) |  |  |
-| W:status | Patient page: Loading, offline and errors (W42 to W44) |  |  |
+| W:owner | Patient page: Who is looking after you (W18 to W27) |  |  |
+| W:actions | Patient page: I understand / I don't understand (W28 to W33) |  |  |
+| W:consent | Patient page: Your choices (contact and sharing) (W34 to W46) |  |  |
+| W:status | Patient page: Loading, offline and errors (W47 to W49) |  |  |
 | M:result_notification | Message `result_notification` (T01 to T03) |  |  |
 | M:reminder | Message `reminder` (T04 to T09) |  |  |
 | M:appointment_confirmation | Message `appointment_confirmation` (T10 to T12) |  |  |

@@ -74,6 +74,22 @@ describe("http adapter", () => {
     const [row] = await createHttpAdapter("http://api.test", fn).listCases();
     expect(row).toMatchObject({ owner: null, due_at: null, overdue: false, escalation_level: 0, consent_frozen: false, last_event_at: "b" });
   });
+  it("carries every blocked_reason the approve route can answer, 'pending' and 'case_state' included (ADR-030)", async () => {
+    const answer = (blocked_reason: string | null, sent: boolean) =>
+      ({ body: { draft_id: "d1", approved_by: "primary_care_owner:m", approved_at: "t", sent, blocked_reason, notification_id: null } });
+    for (const reason of ["consent", "contact", "case_state", "pending", "brand_new_reason"]) {
+      const { fn } = fakeFetch({ "POST /drafts/d1/approve": answer(reason, false) });
+      expect(await createHttpAdapter("http://api.test", fn).approveDraft("d1")).toMatchObject({ sent: false, blocked_reason: reason });
+    }
+    const { fn } = fakeFetch({ "POST /drafts/d1/approve": answer(null, true) });
+    expect(await createHttpAdapter("http://api.test", fn).approveDraft("d1")).toMatchObject({ sent: true, blocked_reason: null });
+  });
+  it("GET /cases/{id}/drafts is owner-scoped: a 403 reaches the caller as ApiError(403) with the API's reason (SEC-2)", async () => {
+    const { fn } = fakeFetch({ "GET /cases/c1/drafts": { status: 403, body: { detail: "primary_care_owner 'Huda' may only act on cases they own (this case's owner is primary_care_owner:x)" } } });
+    const err = await createHttpAdapter("http://api.test", fn).listDrafts("c1").catch((e) => e);
+    expect(err).toBeInstanceOf(ApiError);
+    expect(err.status).toBe(403);
+  });
   it("uses the draft, approval and metrics endpoints exactly as the contract says (D4, D5)", async () => {
     const draft = { draft_id: "d1", text: "e", text_ar: null, text_en: "e", language: "en", provider: "template", fallback_used: false, abstention_reason: null, prompt_hash: "h" };
     const { fn, calls } = fakeFetch({

@@ -4,10 +4,10 @@ import { can, isOwnerScoped, useApp } from "../app/AppContext";
 import type {
   CaseDetail, CaseTimeline, ConsentChanges, ContactChannel, DraftApproval, DraftRecord, EscalationRung, MilestoneClock, TimelineItem,
 } from "../api/contract";
-import { ApiError, HANDOFF_REJECT_REASONS, PROVIDERS, REOPEN_REASONS, type ReopenReason } from "../api/contract";
+import { ApiError, DRAFTS_OWNER_ONLY, HANDOFF_REJECT_REASONS, PROVIDERS, REOPEN_REASONS, type ReopenReason } from "../api/contract";
 import { REASSIGN_TARGETS, ROLE_NAMES, ROLE_PROVIDERS } from "../api/identities";
 import { ActionButton } from "../components/ActionButton";
-import { DraftsPanel } from "../components/DraftsPanel";
+import { DraftsPanel, approvalMessage } from "../components/DraftsPanel";
 import { SignOffPanel } from "../components/SignOffPanel";
 import { Timeline } from "../components/Timeline";
 import {
@@ -56,6 +56,8 @@ export function CaseDetailPage() {
   const [detail, setDetail] = useState<CaseDetail | null>(null);
   const [timeline, setTimeline] = useState<CaseTimeline | null>(null);
   const [draftRecords, setDraftRecords] = useState<DraftRecord[]>([]);
+  /** The API answered 403 to the drafts list: a clinician who does not own the case (SEC-2). Explained, not an error. */
+  const [draftsDenied, setDraftsDenied] = useState(false);
   const [outcomes, setOutcomes] = useState<Record<string, DraftApproval>>({});
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -74,19 +76,34 @@ export function CaseDetailPage() {
   const [reassignTo, setReassignTo] = useState<(typeof REASSIGN_TARGETS)[number]>(REASSIGN_TARGETS[0]);
 
   const reload = useCallback(async () => {
+    let denied = false;
     const [d, t, recs] = await Promise.all([
       api.getCase(caseId),
       api.getTimeline(caseId),
-      // The draft texts live here, not on the timeline events. A role that may not list drafts sees the events only.
-      api.listDrafts(caseId).catch(() => [] as DraftRecord[]),
+      // The draft texts live here, not on the timeline events. The list is owner-scoped (SEC-2): a clinician who does not
+      // own the case gets 403, which the panel explains (no error banner). Any other failure leaves the panel empty.
+      api.listDrafts(caseId).catch((e) => {
+        denied = e instanceof ApiError && e.status === 403;
+        return [] as DraftRecord[];
+      }),
     ]);
     setDetail(d);
     setTimeline(t);
     setDraftRecords(recs);
-  }, [api, caseId]);
+    setDraftsDenied(denied);
+    // `role` is a dependency on purpose: a different login sees a different case (the drafts list is owner-scoped, SEC-2).
+  }, [api, caseId, role]);
 
   useEffect(() => {
-    reload().catch((e) => setError(e instanceof ApiError && e.status === 404 ? "Case not found." : String(e.message ?? e)));
+    let live = true;
+    // One tick first: the provider's effect that logs in as the chosen role runs after this one in the same commit, and the
+    // first request must carry the new login, not the previous one.
+    void Promise.resolve()
+      .then(() => (live ? reload() : undefined))
+      .catch((e) => live && setError(e instanceof ApiError && e.status === 404 ? "Case not found." : String(e.message ?? e)));
+    return () => {
+      live = false;
+    };
   }, [reload]);
 
   /** Every action goes through the client, then refreshes. Engine refusals are shown verbatim. */
@@ -437,10 +454,11 @@ export function CaseDetailPage() {
             drafts={draftList}
             outcomes={outcomes}
             busy={busy}
-            canRequest={!closed && !frozen && can(role, "draft")}
+            canRequest={!closed && !frozen && can(role, "draft") && !draftsDenied && !scopeWhy}
+            listWhy={draftsDenied ? DRAFTS_OWNER_ONLY : null}
             defaultLanguage={patientLang(events) ?? "en"}
             canDecide={can(role, "decideDraft") && !scopeWhy}
-            requestWhy={closedWhy ?? frozenWhy ?? why("draft", "coordinator or owner")}
+            requestWhy={closedWhy ?? frozenWhy ?? why("draft", "coordinator or owner", true)}
             decideWhy={why("decideDraft", "owner, specialist or clinician (the case owner)", true)}
             approveWhy={frozenWhy ?? closedWhy}
             onRequest={(body) => act(
@@ -453,7 +471,7 @@ export function CaseDetailPage() {
                 setOutcomes((o) => ({ ...o, [id]: r }));
                 return r;
               },
-              (r) => (r.sent === false ? `Draft approved but blocked: ${r.blocked_reason ?? "not sent"}. Nothing was sent.` : "Draft approved and sent."),
+              approvalMessage,
             )}
             onReject={(id, body) => act(() => api.rejectDraft(id, body), "Draft rejected. Nothing was sent.")}
           />

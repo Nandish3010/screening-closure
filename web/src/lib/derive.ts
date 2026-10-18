@@ -150,6 +150,21 @@ export const pendingHandoffOf = (events: CaseEvent[]): PendingHandoff | null => 
 export const lastHandoffOf = (events: CaseEvent[]): LastHandoff | null => replayHandoffs(events).last;
 export const providerOf = (events: CaseEvent[]): string | null => replayHandoffs(events).provider;
 
+/**
+ * The owner as a patient's page needs it (SEC-2). A staff-shaped answer names a person (`owner_actor` is `role:id`); the
+ * redacted answer a patient gets carries the role only (`owner_actor` is the bare role, no name, no id). Returns null when
+ * nobody owns the case. `roleKey` is the backend role (`primary_care_owner`...) when it is known.
+ */
+export function patientOwnerOf(d: { owner?: string | null; owner_actor?: string | null; owner_role?: string | null; events: CaseEvent[] }):
+  { kind: "role"; roleKey: string } | { kind: "person"; name: string; role?: string } | null {
+  const actor = d.owner_actor ?? null;
+  if (actor !== null && !actor.includes(":")) return { kind: "role", roleKey: actor.trim() }; // redacted: the actor is the role
+  const person = currentOwner(d.events);
+  const name = person?.name ?? d.owner ?? null;
+  if (!name) return null;
+  return { kind: "person", name, role: person?.role ?? d.owner_role ?? undefined };
+}
+
 /** Back-compat for the patient page: the owner's display name and role. */
 export function currentOwner(events: CaseEvent[]): { name: string; role?: string; actor?: string } | null {
   const o = ownerOf(events);

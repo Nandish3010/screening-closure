@@ -33,6 +33,11 @@ export interface PatientStrings {
   ownerHeading: string;
   ownerLine: (name: string, role: string) => string;
   ownerPending: string;
+  /**
+   * SEC-2: the API shows a patient the owner by role only, no name. One full sentence per backend role
+   * (`primary_care_owner`, `specialist_owner`, `coordinator`, `supervisor`), and `other` for any role not listed.
+   */
+  ownerByRole: { primary_care_owner: string; specialist_owner: string; coordinator: string; supervisor: string; other: string };
   understand: string;
   understandDone: string;
   understandWait: string;
@@ -76,6 +81,13 @@ export const STRINGS: Record<Lang, PatientStrings> = {
     ownerHeading: "Who is looking after you",
     ownerLine: (name, role) => `${iso(name)} (${role}) is looking after your care. You can ask them any question.`,
     ownerPending: "A care coordinator will be chosen for you soon.",
+    ownerByRole: {
+      primary_care_owner: "Your primary care doctor is looking after your care. You can ask them any question.",
+      specialist_owner: "Your specialist doctor is looking after your care. You can ask them any question.",
+      coordinator: "Your care coordinator is looking after your care. You can ask them any question.",
+      supervisor: "A senior member of your care team is looking after your care. You can ask them any question.",
+      other: "Your care team is looking after your care. You can ask them any question.",
+    },
     understand: "I understand, please contact me",
     understandDone: "Thank you. We saved this. Your care team will contact you.",
     understandWait: "You can tap this button after your care team has sent you a message.",
@@ -117,6 +129,13 @@ export const STRINGS: Record<Lang, PatientStrings> = {
     ownerHeading: "من يتابع حالتك",
     ownerLine: (name, role) => `المسؤول عن متابعة حالتك:\n${iso(name)} (${role}).\nيمكنك طرح أي سؤال.`,
     ownerPending: "سنعيّن لك منسق رعاية قريبًا.",
+    ownerByRole: {
+      primary_care_owner: "طبيبك في الرعاية الأولية يتابع حالتك. يمكنك أن تطرح عليه أي سؤال.",
+      specialist_owner: "طبيبك الأخصائي يتابع حالتك. يمكنك أن تطرح عليه أي سؤال.",
+      coordinator: "منسق الرعاية الخاص بك يتابع حالتك. يمكنك أن تطرح عليه أي سؤال.",
+      supervisor: "أحد كبار أعضاء فريق رعايتك يتابع حالتك. يمكنك أن تطرح عليه أي سؤال.",
+      other: "فريق رعايتك يتابع حالتك. يمكنك أن تطرح عليه أي سؤال.",
+    },
     understand: "فهمت، يرجى التواصل معي",
     understandDone: "شكرًا لك. سجلنا طلبك. سيتواصل معك فريق الرعاية.",
     understandWait: "يمكنك الضغط على هذا الزر بعد أن يرسل لك فريق الرعاية رسالة.",

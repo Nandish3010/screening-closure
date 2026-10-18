@@ -4,7 +4,7 @@ import { useApp } from "../app/AppContext";
 import type { CaseDetail, ConsentChanges, Lang } from "../api/contract";
 import { DEMO_PATIENT_CASE_ID } from "../api/fixtures";
 import { DIR, STRINGS, roleLabel } from "../i18n/strings";
-import { consentOf, currentOwner, hasCallbackPending, patientLang } from "../lib/derive";
+import { consentOf, hasCallbackPending, patientLang, patientOwnerOf } from "../lib/derive";
 import { stateIndex } from "../lib/pathway";
 
 const LAST_KEY = "sc.patient.last";
@@ -166,8 +166,12 @@ export function PatientView({ caseId }: { caseId: string }) {
     );
   }
 
-  const owner = currentOwner(detail.events);
-  const ownerName = owner?.name ?? detail.owner ?? null;
+  const owner = patientOwnerOf(detail);
+  const ownerLine = !owner
+    ? t.ownerPending
+    : owner.kind === "role"
+      ? (Object.hasOwn(t.ownerByRole, owner.roleKey) ? (t.ownerByRole as Record<string, string>)[owner.roleKey] : t.ownerByRole.other)
+      : t.ownerLine(owner.name, roleLabel(owner.role ?? "Care coordinator", lang));
   const step = progressStep(detail.state);
   const idx = stateIndex(detail.state);
   const acknowledged = idx >= stateIndex("patient_acknowledged");
@@ -210,7 +214,7 @@ export function PatientView({ caseId }: { caseId: string }) {
       <section aria-labelledby="p-owner">
         <h2 id="p-owner">{t.ownerHeading}</h2>
         <p className="big" data-testid="patient-owner">
-          {ownerName ? t.ownerLine(ownerName, roleLabel(owner?.role ?? "Care coordinator", lang)) : t.ownerPending}
+          {ownerLine}
         </p>
       </section>
 

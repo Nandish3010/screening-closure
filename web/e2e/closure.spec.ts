@@ -184,6 +184,32 @@ test("a clinician who does not own the case is told to ask the owner to hand it 
   await expect(page.getByTestId("owner")).toContainText("Dr. Karim Nasser");
 });
 
+test("SEC-2: a clinician who does not own the case sees why the drafts are hidden, not an error", async ({ page }) => {
+  await page.goto(`/coordinator/${OVERDUE_CASE}`);
+  await expect(page.getByTestId("draft-d-seed-1")).toBeVisible(); // the coordinator reads any case's drafts
+  await page.getByLabel("Switch role").selectOption("clinician");
+  await expect(page.getByTestId("drafts-hidden-why")).toContainText("Only the case owner can see drafts for this case.");
+  await expect(page.getByTestId("request-draft")).toBeDisabled();
+  await expect(page.getByTestId("request-draft-why")).toContainText("Only the case owner can see drafts for this case.");
+  await expect(page.getByTestId("draft-d-seed-1")).toHaveCount(0);
+  await expect(page.getByRole("alert")).toHaveCount(0);
+  // The owner sees them again.
+  await page.getByLabel("Switch role").selectOption("owner");
+  await expect(page.getByTestId("draft-d-seed-1")).toBeVisible();
+  await expect(page.getByTestId("drafts-hidden-why")).toHaveCount(0);
+});
+
+test("SEC-2: the patient is shown the owner by role only, in both languages", async ({ page }) => {
+  await page.goto(`/patient/${PATIENT_CASE}`);
+  await expect(page.getByTestId("patient-owner")).toContainText("Sara Al Mansoori"); // a staff login previewing the page
+  await page.getByLabel("Switch role").selectOption("patient");
+  await expect(page.getByTestId("patient-owner")).toContainText("Your primary care doctor is looking after your care");
+  await expect(page.getByTestId("patient-owner")).not.toContainText("Sara");
+  await page.getByRole("button", { name: /العربية/ }).click();
+  await expect(page.getByTestId("patient-owner")).toContainText("طبيبك في الرعاية الأولية");
+  await expect(page.getByTestId("patient-root")).not.toContainText("primary_care_owner");
+});
+
 test("Arabic patient flow on a phone: RTL, no horizontal scroll, acknowledge, withdraw and resume consent", async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 812 });
   await page.goto(`/patient/${PATIENT_CASE}`);

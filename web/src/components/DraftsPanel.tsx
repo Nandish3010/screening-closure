@@ -1,5 +1,5 @@
 import { useId, useState } from "react";
-import type { BlockedReason, DraftApproval, DraftChannel, DraftPurpose, DraftRejectBody, DraftRequestBody, Lang, RejectReason } from "../api/contract";
+import type { DraftApproval, DraftChannel, DraftPurpose, DraftRejectBody, DraftRequestBody, Lang, RejectReason } from "../api/contract";
 import { DRAFT_CHANNELS, DRAFT_PURPOSES, REJECT_NOTE_MAX, REJECT_REASONS } from "../api/contract";
 import type { DraftView } from "../lib/derive";
 import { actorName } from "../lib/derive";
@@ -33,12 +33,32 @@ export function rejectionText(stored: string | null): string {
   return rest.length ? `${code === "other_with_note" ? "Other" : label}: ${rest.join(": ")}` : label;
 }
 
-/** Why a draft is not sent after approval (the approve answer's `blocked_reason`). */
-export const BLOCKED_TEXT: Record<BlockedReason, string> = {
+/**
+ * Why a draft was not sent right after approval (the approve answer's `blocked_reason`), in plain words.
+ * `pending` is not a block: the approval stands and the scheduler's next outbox drain sends the message once.
+ */
+export const BLOCKED_TEXT: Record<string, string> = {
   consent: "the patient has switched that channel off",
   contact: "the contact details on file are flagged invalid",
   case_state: "the case changed before the send (closed, or consent withdrawn)",
+  pending: "the send has not finished yet",
 };
+
+/** A `blocked_reason` as words. A value this UI has not met is shown readably, never as a crash or a blank. */
+export function blockedText(reason: string): string {
+  return BLOCKED_TEXT[reason] ?? `the system reported "${reason.replace(/_/g, " ").trim() || "unknown"}"`;
+}
+
+/** `pending`: approved and queued, to be sent automatically. Every other reason is a block: nothing will be sent. */
+export const isQueued = (reason: string | null | undefined): boolean => reason === "pending";
+
+/** The banner after an approval (the page shows it as a status line). */
+export function approvalMessage(r: Pick<DraftApproval, "sent" | "blocked_reason">): string {
+  if (r.sent !== false) return "Draft approved and sent.";
+  const reason = typeof r.blocked_reason === "string" ? r.blocked_reason : "";
+  if (isQueued(reason)) return "Draft approved. Sending is queued and will happen automatically; you do not need to approve it again.";
+  return `Draft approved but blocked: ${reason || "not sent"}. Nothing was sent.`;
+}
 
 /** `abstention_reason` is a code, optionally with detail after a colon (`validation_failed:forbidden_phrase:cancer`). */
 export function abstentionText(reason: string): string {
@@ -59,7 +79,7 @@ export function abstentionText(reason: string): string {
  * approval. A coordinator can request a draft but not decide on it, and the panel says why.
  */
 export function DraftsPanel({
-  drafts, outcomes = {}, defaultLanguage = "en", canRequest, canDecide, busy, onRequest, onApprove, onReject, requestWhy, decideWhy, approveWhy,
+  drafts, outcomes = {}, defaultLanguage = "en", canRequest, canDecide, busy, onRequest, onApprove, onReject, requestWhy, decideWhy, approveWhy, listWhy,
 }: {
   drafts: DraftView[];
   /** What the approve call answered this session (sent or blocked and why): the draft list alone cannot say. */
@@ -76,6 +96,11 @@ export function DraftsPanel({
   decideWhy?: string | null;
   /** Extra reason approving (not rejecting) is blocked, e.g. outreach is frozen. */
   approveWhy?: string | null;
+  /**
+   * Set when the API refused to list the drafts (403: the caller is a clinician who does not own the case). The
+   * panel then explains it, with the request button disabled for the same reason, instead of showing an error.
+   */
+  listWhy?: string | null;
 }) {
   const noteId = useId();
   const [purpose, setPurpose] = useState<DraftPurpose>("result_notification");
@@ -110,28 +135,32 @@ export function DraftsPanel({
           </label>
         </div>
         {purpose === "appointment_confirmation" && <p className="muted">Needs a booked appointment with a date.</p>}
-        <ActionButton testId="request-draft" busy={busy} disabledReason={canRequest ? null : requestWhy ?? "Not allowed."} onClick={() => onRequest({ purpose, channel, language: lang })}>
+        <ActionButton testId="request-draft" busy={busy} disabledReason={listWhy ? listWhy : canRequest ? null : requestWhy ?? "Not allowed."} onClick={() => onRequest({ purpose, channel, language: lang })}>
           Request draft message
         </ActionButton>
       </fieldset>
 
-      {!canDecide && (
+      {listWhy && <p className="banner banner-warn" role="note" data-testid="drafts-hidden-why">{listWhy}</p>}
+      {!listWhy && !canDecide && (
         <p id={noteId} className="banner banner-warn" role="note" data-testid="decide-why">
           You can request drafts, but only the case owner can approve or reject them. {decideWhy}
         </p>
       )}
-      {drafts.length === 0 && <p className="muted">No drafts yet.</p>}
+      {!listWhy && drafts.length === 0 && <p className="muted">No drafts yet.</p>}
       {canDecide && pendingCount > 0 && approveWhy && <p className="muted" data-testid="approve-why">{approveWhy} You can still reject a draft.</p>}
 
       <ul className="drafts">
-        {drafts.map((d) => {
+        {(listWhy ? [] : drafts).map((d) => {
           const pick = rejects[d.draft_id] ?? { reason: "", note: "" };
           const needsNote = pick.reason === "other_with_note";
           const rejectReady = pick.reason !== "" && (!needsNote || pick.note.trim() !== "");
           const setPick = (next: Partial<{ reason: RejectReason | ""; note: string }>) =>
             setRejects((r) => ({ ...r, [d.draft_id]: { ...pick, ...next } }));
           const outcome = outcomes[d.draft_id];
-          const blocked = outcome?.blocked_reason ?? null;
+          const reason = typeof outcome?.blocked_reason === "string" && outcome.blocked_reason ? outcome.blocked_reason : null;
+          const notSent = !!outcome && outcome.sent !== true && (outcome.sent === false || reason !== null);
+          const queued = notSent && isQueued(reason);
+          const blocked = notSent && !queued ? reason ?? "not sent" : null;
           const dir = d.language === "ar" ? "rtl" : "ltr";
           return (
             <li key={d.draft_id} data-testid={`draft-${d.draft_id}`}>
@@ -166,12 +195,15 @@ export function DraftsPanel({
                   <span className="chip chip-ok" data-testid={`approved-${d.draft_id}`}>Approved by {actorName(d.approved_by ?? "") || d.approved_by} · {fmtDateTime(d.approved_at)}</span>{" "}
                   {d.sent_at || outcome?.sent === true ? (
                     <span className="chip chip-ok" data-testid={`sent-${d.draft_id}`}>Sent{d.sent_at ? ` ${fmtDateTime(d.sent_at)}` : ""}</span>
+                  ) : queued ? (
+                    <span className="chip" data-testid={`queued-${d.draft_id}`}>Approved, sending is queued</span>
                   ) : blocked ? (
                     <span className="chip chip-warn" data-testid={`blocked-${d.draft_id}`}>Approved but blocked: {blocked}</span>
                   ) : (
                     <span className="chip" data-testid={`unsent-${d.draft_id}`}>Approved, no message sent yet</span>
                   )}
-                  {blocked && <span className="muted"> Nothing was sent: {BLOCKED_TEXT[blocked] ?? blocked}.</span>}
+                  {queued && <span className="muted" data-testid={`queued-why-${d.draft_id}`}> Your approval is saved. The message has not gone out yet; it will be sent automatically and you do not need to approve it again.</span>}
+                  {blocked && <span className="muted"> Nothing was sent: {blockedText(blocked)}.</span>}
                 </p>
               )}
               {d.status === "rejected" && (

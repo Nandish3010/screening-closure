@@ -377,7 +377,16 @@ export interface CaseListParams {
   flagged?: boolean;
 }
 
-/** GET /cases/{id}: the summary fields plus consent, review state and the full event log. */
+/**
+ * GET /cases/{id}: the summary fields plus consent, review state and the full event log.
+ *
+ * For a PATIENT login the API answers a redacted case (SEC-2, `readmodel.patient_case_json`): `owner` is
+ * `{actor: <role>, display_name: <role>, role: <role>}` (the role only: `primary_care_owner`, `specialist_owner`,
+ * `coordinator`...), every event `actor` is a bare role (no id, no name), only the allow-listed event types and payload
+ * keys are present, and there are no SLA, escalation, risk, milestone or watchdog fields. After normalisation that is
+ * `owner === owner_actor === owner_role === <role>`; a staff-shaped owner has `owner_actor` of the form `role:id`.
+ * `patientOwnerOf` (lib/derive.ts) tells the two apart and the patient page says "your primary care doctor".
+ */
 export interface CaseDetail extends Omit<CaseSummary, "pathway" | "created_at" | "updated_at"> {
   pathway?: string;
   created_at?: string;
@@ -566,7 +575,10 @@ export interface DraftRequestBody {
 }
 
 /**
- * GET /cases/{id}/drafts -> DraftRecord[] (oldest first). Same roles as POST /cases/{id}/drafts.
+ * GET /cases/{id}/drafts -> DraftRecord[] (oldest first). Owner-scoped like every other owner action (SEC-2):
+ * a coordinator or supervisor reads any case's drafts; a clinician (`primary_care_owner` / `specialist_owner`)
+ * only those of a case they own and gets 403 otherwise (also when the case has no owner yet). The 403 is an
+ * expected answer, not a failure: the UI explains it (`DRAFTS_OWNER_ONLY`) instead of showing an error.
  * The only place the draft text lives after the request: the timeline and the drafts panel load it here.
  * `approved_*` / `rejected_*` are null until a decision. Whether an approved draft was actually sent is NOT
  * here: `message_sent {draft_id}` on the timeline says so, and the approve response says why not.
@@ -596,11 +608,17 @@ export interface DraftRecord extends Draft {
  * lab or patient (403). Errors: 404 unknown draft; 409 already approved or rejected, case closed,
  * or outreach frozen by a consent withdrawal (nothing is written in any 409 case).
  *
- * `sent: false` is still a 200: the approval stands but the mock did not send because the
- * patient's consent for that channel is off (`blocked_reason: "consent"`) or the contact details
- * are flagged invalid (`"contact"`), or the case changed before the send (`"case_state"`). No
- * `message_sent` exists then; `notification_id` points at the logged, blocked row
- * (GET /cases/{id}/notifications has the detail). When `sent` is true, `blocked_reason` is null.
+ * `sent: false` is still a 200: the approval stands (it is recorded with the outbox row in one transaction,
+ * ADR-030) but the notification mock did not send. `blocked_reason` says why:
+ *   "consent"    the patient's consent for that channel is off
+ *   "contact"    the contact details are flagged invalid
+ *   "case_state" the case changed before the send (closed, consent withdrawn); also a draft whose text is gone
+ *   "pending"    the send could not finish yet (a transient failure): nothing is lost, the scheduler's next
+ *                outbox drain sends it once. `notification_id` is null. This is not a block.
+ * `message_sent` does not exist yet in any of these cases; for the blocked ones `notification_id` points at the
+ * logged, blocked row (GET /cases/{id}/notifications has the detail). When `sent` is true, `blocked_reason` is null.
+ * Any other string is possible in principle (the API passes an unknown outbox reason through): the UI shows it
+ * as plain words and never crashes on it.
  * `approved_by` is the actor string, e.g. "primary_care_owner:Dr Sara Khan"; `approved_at` is
  * simulation time. `sent`, `blocked_reason` and `notification_id` are always present from the
  * backend (optional here only so older fixtures keep compiling; the UI treats a missing `sent` as true).
@@ -613,7 +631,11 @@ export interface DraftApproval {
   blocked_reason?: BlockedReason | null;
   notification_id?: string | null;
 }
-export type BlockedReason = "consent" | "contact" | "case_state";
+/** The values the approve answer carries today. `string & {}` keeps the door open for a value this UI has not met. */
+export type BlockedReason = "consent" | "contact" | "case_state" | "pending" | (string & {});
+export const KNOWN_BLOCKED_REASONS = ["consent", "contact", "case_state", "pending"] as const;
+/** What the UI says when `GET /cases/{id}/drafts` answers 403 (the caller is a clinician who does not own the case). */
+export const DRAFTS_OWNER_ONLY = "Only the case owner can see drafts for this case.";
 
 /** Fixed taxonomy for `POST /drafts/{id}/reject` and `message_rejected.reason` (A16). */
 export const REJECT_REASONS = ["inaccurate", "tone", "wrong_language", "not_needed", "other_with_note"] as const;

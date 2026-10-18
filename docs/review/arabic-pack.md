@@ -15,7 +15,7 @@
 | 5 | 6 Forbidden phrases | Is the Arabic list right and complete? |
 | 5 | 7 and 8 Checklist, feedback table | Tick the checklist and fill the feedback table. |
 
-There are 65 Arabic texts (every one is also in English, with the same ID) and 53 Arabic forbidden-phrase entries. Every Arabic text in the prototype's sources is in this pack. All of it was written by the engineering team and has not been reviewed by a native speaker. Please correct freely; suggest better wording in the feedback table.
+There are 70 Arabic texts (every one is also in English, with the same ID) and 53 Arabic forbidden-phrase entries. Every Arabic text in the prototype's sources is in this pack. All of it was written by the engineering team and has not been reviewed by a native speaker. Please correct freely; suggest better wording in the feedback table.
 
 ## 1. What these texts are for
 
@@ -32,7 +32,7 @@ Hard rules the Arabic must keep:
 
 | Source | Where | Reading level | Length limit |
 |---|---|---|---|
-| Patient page (IDs W01 to W44) | Web app at `/patient`, Arabic with right-to-left layout | About grade 6: short sentences, everyday words. | None on the page; short lines for a phone screen |
+| Patient page (IDs W01 to W49) | Web app at `/patient`, Arabic with right-to-left layout | About grade 6: short sentences, everyday words. | None on the page; short lines for a phone screen |
 | Messages (IDs T01 to T18) | SMS, WhatsApp or letter, chosen from the patient's preferred channel | About grade 6: short sentences, everyday words. | SMS 320, WhatsApp 600, letter 1200 characters |
 | Demo drafts (IDs D01 to D03) | Coordinator app, demo data only | About grade 6: short sentences, everyday words. | None |
 
@@ -56,10 +56,10 @@ Placeholders in braces are filled in by the system: `{owner_name}` (the care own
 | camera test (friendly term) | فحص بالكاميرا : 3 strings (W12, W16, D01)<br>الفحص بالكاميرا : 1 string (W12)<br>فحص متابعة بالكاميرا : not used |
 | screening test | فحص الكشف المبكر : 1 string (T03) |
 | test (generic) | فحصك : 14 strings (W01, W04, W07, T01, T02, T03, T04, T06 and 6 more)<br>الفحص : 1 string (W12) |
-| care team | فريق الرعاية : 8 strings (W05, W11, W24, W25, W27, W28, W37, W38)<br>فريق رعايتك : 24 strings (W07, W08, W15, T01, T02, T03, T04, T05 and 16 more)<br>فريق رعايتي : 1 string (W35) |
-| care coordinator | منسق الرعاية : 1 string (W22)<br>منسق رعاية : 1 string (W20) |
+| care team | فريق الرعاية : 8 strings (W05, W11, W29, W30, W32, W33, W42, W43)<br>فريق رعايتك : 26 strings (W07, W08, W15, W24, W25, T01, T02, T03 and 18 more)<br>فريق رعايتي : 1 string (W40) |
+| care coordinator | منسق الرعاية : 2 strings (W23, W27)<br>منسق رعاية : 1 string (W20) |
 | care owner (the responsible person) | المسؤول عن رعايتك : 10 strings (T03, T05, T07, T09, T10, T11, T12, T16 and 2 more)<br>المسؤول عن متابعة حالتك : 1 string (W19)<br>من يتابع حالتك : 1 string (W18) |
-| result | نتيجة : 15 strings (W01, W04, W07, W10, T01, T02, T03, T04 and 7 more)<br>نتيجتك : 4 strings (W05, W06, W08, W15)<br>نتيجتي : 1 string (W35) |
+| result | نتيجة : 15 strings (W01, W04, W07, W10, T01, T02, T03, T04 and 7 more)<br>نتيجتك : 4 strings (W05, W06, W08, W15)<br>نتيجتي : 1 string (W40) |
 | appointment | موعد : 20 strings (W16, W17, T01, T02, T03, T04, T05, T06 and 12 more) |
 
 ## 4. Patient page strings, by screen section
@@ -120,8 +120,13 @@ The named care owner.
 | W18 | Who is looking after you | من يتابع حالتك | Heading of the care-owner section. |
 | W19 | {name} ({role}) is looking after your care. You can ask them any question. | المسؤول عن متابعة حالتك:<br>{name} ({role}).<br>يمكنك طرح أي سؤال. | Large text under that heading. {name} is the owner's name (Latin or Arabic script), {role} the role from the role labels below. In Arabic the sentence is split over three lines so a Latin name does not scramble the line. |
 | W20 | A care coordinator will be chosen for you soon. | سنعيّن لك منسق رعاية قريبًا. | Shown instead of the line above while nobody has accepted the case. |
-| W21 | Primary care physician | طبيب الرعاية الأولية | Role shown in brackets after the owner's name in the line "Who is looking after you". The English role is the value stored in the case; unknown roles are shown as stored. |
-| W22 | Care coordinator | منسق الرعاية | Role shown in brackets after the owner's name in the line "Who is looking after you". The English role is the value stored in the case; unknown roles are shown as stored. |
+| W21 | Your primary care doctor is looking after your care. You can ask them any question. | طبيبك في الرعاية الأولية يتابع حالتك. يمكنك أن تطرح عليه أي سؤال. | Shown instead of the owner line when the owner is the patient's primary care physician. The server shows a patient the owner by role only (SEC-2), so no name is available. |
+| W22 | Your specialist doctor is looking after your care. You can ask them any question. | طبيبك الأخصائي يتابع حالتك. يمكنك أن تطرح عليه أي سؤال. | Same, when the owner is the specialist who will do the test. |
+| W23 | Your care coordinator is looking after your care. You can ask them any question. | منسق الرعاية الخاص بك يتابع حالتك. يمكنك أن تطرح عليه أي سؤال. | Same, when the owner is a care coordinator. |
+| W24 | A senior member of your care team is looking after your care. You can ask them any question. | أحد كبار أعضاء فريق رعايتك يتابع حالتك. يمكنك أن تطرح عليه أي سؤال. | Same, when the case is with a senior member of the care team. |
+| W25 | Your care team is looking after your care. You can ask them any question. | فريق رعايتك يتابع حالتك. يمكنك أن تطرح عليه أي سؤال. | Same, for any role not listed above. |
+| W26 | Primary care physician | طبيب الرعاية الأولية | Role shown in brackets after the owner's name in the line "Who is looking after you". The English role is the value stored in the case; unknown roles are shown as stored. |
+| W27 | Care coordinator | منسق الرعاية | Role shown in brackets after the owner's name in the line "Who is looking after you". The English role is the value stored in the case; unknown roles are shown as stored. |
 
 ### 4.6 I understand / I don't understand
 
@@ -129,12 +134,12 @@ The two buttons and their confirmations.
 
 | ID | English | Arabic | Where it appears |
 |---|---|---|---|
-| W23 | I understand, please contact me | فهمت، يرجى التواصل معي | Primary button (one tap: the patient has read the message and asks the care team to contact them). Disabled until the patient has been contacted. |
-| W24 | Thank you. We saved this. Your care team will contact you. | شكرًا لك. سجلنا طلبك. سيتواصل معك فريق الرعاية. | Green confirmation that replaces the button once the patient has acknowledged. |
-| W25 | You can tap this button after your care team has sent you a message. | يمكنك الضغط على هذا الزر بعد أن يرسل لك فريق الرعاية رسالة. | Hint under the disabled button. |
-| W26 | I don't understand this | لا أفهم هذا | Second button. Asks a person from the care team to call. |
-| W27 | Thank you. A person from your care team will call you. | شكرًا لك. سيتصل بك أحد أفراد فريق الرعاية. | Green confirmation after that button is pressed, or while a callback is pending. |
-| W28 | That did not work. Please try again or call your care team. | لم تنجح العملية. يرجى المحاولة مرة أخرى أو الاتصال بفريق الرعاية. | Red banner if either button fails. |
+| W28 | I understand, please contact me | فهمت، يرجى التواصل معي | Primary button (one tap: the patient has read the message and asks the care team to contact them). Disabled until the patient has been contacted. |
+| W29 | Thank you. We saved this. Your care team will contact you. | شكرًا لك. سجلنا طلبك. سيتواصل معك فريق الرعاية. | Green confirmation that replaces the button once the patient has acknowledged. |
+| W30 | You can tap this button after your care team has sent you a message. | يمكنك الضغط على هذا الزر بعد أن يرسل لك فريق الرعاية رسالة. | Hint under the disabled button. |
+| W31 | I don't understand this | لا أفهم هذا | Second button. Asks a person from the care team to call. |
+| W32 | Thank you. A person from your care team will call you. | شكرًا لك. سيتصل بك أحد أفراد فريق الرعاية. | Green confirmation after that button is pressed, or while a callback is pending. |
+| W33 | That did not work. Please try again or call your care team. | لم تنجح العملية. يرجى المحاولة مرة أخرى أو الاتصال بفريق الرعاية. | Red banner if either button fails. |
 
 ### 4.7 Your choices (contact and sharing)
 
@@ -142,19 +147,19 @@ Channel, sharing and their save status.
 
 | ID | English | Arabic | Where it appears |
 |---|---|---|---|
-| W29 | Your choices | اختياراتك | Heading of the choices section. |
-| W30 | How may we contact you? | كيف يمكننا التواصل معك؟ | Legend of the group of contact-channel check boxes. Each box is on unless the patient turned it off (an opt-out default); changing one saves at once. |
-| W31 | Phone call | مكالمة هاتفية | Label of the check box for phone calls. |
-| W32 | Text message | رسالة نصية | Label of the check box for text messages. |
-| W33 | WhatsApp | واتساب | Label of the check box for WhatsApp messages. |
-| W34 | Letter | رسالة مكتوبة | Label of the check box for letters. |
-| W35 | My care team may share my result with the specialist who will do my test. | أسمح لفريق رعايتي بمشاركة نتيجتي مع الأخصائي الذي سيجري فحصي. | Label of the check box that lets the care team share the result with the specialist. |
-| W36 | Stop all contact | أوقفوا كل تواصل | Button under the choices. Withdraws all consent to contact at once: the case is frozen for outreach and a person is asked to review it. Hidden after withdrawal. |
-| W37 | If you stop contact, your care team will not message or call you. A person will check your case. | إذا أوقفت التواصل، فلن يرسل لك فريق الرعاية رسائل ولن يتصل بك. سيراجع أحد الأشخاص حالتك. | Small grey text above that button. It says what stopping contact means and that a person will check the case. |
-| W38 | You asked us to stop contact. We will not message or call you. A person on your care team will check your case. | طلبت إيقاف التواصل. لن نرسل لك رسائل ولن نتصل بك. سيراجع أحد أفراد فريق الرعاية حالتك. | Yellow banner at the top of the choices section after the patient has stopped all contact. |
-| W39 | You may contact me again | يمكنكم التواصل معي مرة أخرى | Replaces the stop button after withdrawal. Pressing it records that the patient may be contacted again. |
-| W40 | Saved | تم الحفظ | Status line under the choices after a successful save. |
-| W41 | We could not save this. Please try again. | لم نتمكن من الحفظ. يرجى المحاولة مرة أخرى. | Status line if saving the choices fails. |
+| W34 | Your choices | اختياراتك | Heading of the choices section. |
+| W35 | How may we contact you? | كيف يمكننا التواصل معك؟ | Legend of the group of contact-channel check boxes. Each box is on unless the patient turned it off (an opt-out default); changing one saves at once. |
+| W36 | Phone call | مكالمة هاتفية | Label of the check box for phone calls. |
+| W37 | Text message | رسالة نصية | Label of the check box for text messages. |
+| W38 | WhatsApp | واتساب | Label of the check box for WhatsApp messages. |
+| W39 | Letter | رسالة مكتوبة | Label of the check box for letters. |
+| W40 | My care team may share my result with the specialist who will do my test. | أسمح لفريق رعايتي بمشاركة نتيجتي مع الأخصائي الذي سيجري فحصي. | Label of the check box that lets the care team share the result with the specialist. |
+| W41 | Stop all contact | أوقفوا كل تواصل | Button under the choices. Withdraws all consent to contact at once: the case is frozen for outreach and a person is asked to review it. Hidden after withdrawal. |
+| W42 | If you stop contact, your care team will not message or call you. A person will check your case. | إذا أوقفت التواصل، فلن يرسل لك فريق الرعاية رسائل ولن يتصل بك. سيراجع أحد الأشخاص حالتك. | Small grey text above that button. It says what stopping contact means and that a person will check the case. |
+| W43 | You asked us to stop contact. We will not message or call you. A person on your care team will check your case. | طلبت إيقاف التواصل. لن نرسل لك رسائل ولن نتصل بك. سيراجع أحد أفراد فريق الرعاية حالتك. | Yellow banner at the top of the choices section after the patient has stopped all contact. |
+| W44 | You may contact me again | يمكنكم التواصل معي مرة أخرى | Replaces the stop button after withdrawal. Pressing it records that the patient may be contacted again. |
+| W45 | Saved | تم الحفظ | Status line under the choices after a successful save. |
+| W46 | We could not save this. Please try again. | لم نتمكن من الحفظ. يرجى المحاولة مرة أخرى. | Status line if saving the choices fails. |
 
 ### 4.8 Loading, offline and errors
 
@@ -162,9 +167,9 @@ System messages.
 
 | ID | English | Arabic | Where it appears |
 |---|---|---|---|
-| W42 | Loading... | جارٍ التحميل... | Shown instead of the page while the case loads. |
-| W43 | We could not load your information. Please try again. | لم نتمكن من تحميل معلوماتك. يرجى المحاولة مرة أخرى. | Shown if the case cannot be loaded and nothing is saved on the device. |
-| W44 | You are offline. This is the last information we saved. | أنت غير متصل بالإنترنت. هذه آخر معلومات حفظناها. | Banner above the result when the device is offline. The last saved information is shown. |
+| W47 | Loading... | جارٍ التحميل... | Shown instead of the page while the case loads. |
+| W48 | We could not load your information. Please try again. | لم نتمكن من تحميل معلوماتك. يرجى المحاولة مرة أخرى. | Shown if the case cannot be loaded and nothing is saved on the device. |
+| W49 | You are offline. This is the last information we saved. | أنت غير متصل بالإنترنت. هذه آخر معلومات حفظناها. | Banner above the result when the device is offline. The last saved information is shown. |
 
 ## 5. Messages, by purpose
 
@@ -366,30 +371,35 @@ One row per text. Write keep or change; if change, write your Arabic wording and
 | W18 | web: ownerHeading |  |  |  |
 | W19 | web: ownerLine |  |  |  |
 | W20 | web: ownerPending |  |  |  |
-| W21 | web: role:Primary care physician |  |  |  |
-| W22 | web: role:Care coordinator |  |  |  |
-| W23 | web: understand |  |  |  |
-| W24 | web: understandDone |  |  |  |
-| W25 | web: understandWait |  |  |  |
-| W26 | web: dontUnderstand |  |  |  |
-| W27 | web: callbackDone |  |  |  |
-| W28 | web: actionFailed |  |  |  |
-| W29 | web: consentHeading |  |  |  |
-| W30 | web: channelLabel |  |  |  |
-| W31 | web: channels.phone |  |  |  |
-| W32 | web: channels.sms |  |  |  |
-| W33 | web: channels.whatsapp |  |  |  |
-| W34 | web: channels.letter |  |  |  |
-| W35 | web: shareLabel |  |  |  |
-| W36 | web: withdrawButton |  |  |  |
-| W37 | web: withdrawHint |  |  |  |
-| W38 | web: withdrawnNotice |  |  |  |
-| W39 | web: resumeButton |  |  |  |
-| W40 | web: saved |  |  |  |
-| W41 | web: saveFailed |  |  |  |
-| W42 | web: loading |  |  |  |
-| W43 | web: loadError |  |  |  |
-| W44 | web: offline |  |  |  |
+| W21 | web: ownerByRole.primary_care_owner |  |  |  |
+| W22 | web: ownerByRole.specialist_owner |  |  |  |
+| W23 | web: ownerByRole.coordinator |  |  |  |
+| W24 | web: ownerByRole.supervisor |  |  |  |
+| W25 | web: ownerByRole.other |  |  |  |
+| W26 | web: role:Primary care physician |  |  |  |
+| W27 | web: role:Care coordinator |  |  |  |
+| W28 | web: understand |  |  |  |
+| W29 | web: understandDone |  |  |  |
+| W30 | web: understandWait |  |  |  |
+| W31 | web: dontUnderstand |  |  |  |
+| W32 | web: callbackDone |  |  |  |
+| W33 | web: actionFailed |  |  |  |
+| W34 | web: consentHeading |  |  |  |
+| W35 | web: channelLabel |  |  |  |
+| W36 | web: channels.phone |  |  |  |
+| W37 | web: channels.sms |  |  |  |
+| W38 | web: channels.whatsapp |  |  |  |
+| W39 | web: channels.letter |  |  |  |
+| W40 | web: shareLabel |  |  |  |
+| W41 | web: withdrawButton |  |  |  |
+| W42 | web: withdrawHint |  |  |  |
+| W43 | web: withdrawnNotice |  |  |  |
+| W44 | web: resumeButton |  |  |  |
+| W45 | web: saved |  |  |  |
+| W46 | web: saveFailed |  |  |  |
+| W47 | web: loading |  |  |  |
+| W48 | web: loadError |  |  |  |
+| W49 | web: offline |  |  |  |
 | T01 | template: result_notification/sms |  |  |  |
 | T02 | template: result_notification/whatsapp |  |  |  |
 | T03 | template: result_notification/letter |  |  |  |

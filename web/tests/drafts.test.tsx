@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import { DEMO_OVERDUE_CASE_ID } from "../src/api/fixtures";
 import { createMockAdapter } from "../src/api/mockAdapter";
-import { abstentionText } from "../src/components/DraftsPanel";
+import { abstentionText, approvalMessage, blockedText } from "../src/components/DraftsPanel";
 import { CaseDetailPage } from "../src/pages/CaseDetailPage";
 import type { Role } from "../src/api/contract";
 import { renderWithApp } from "./helpers";
@@ -187,10 +187,19 @@ describe("C10: approving and rejecting", () => {
     expect(screen.getByTestId("request-draft")).toBeEnabled();
   });
 
-  it("a clinician who does not own the case is told who does", async () => {
-    openCase(cid(2), "clinician");
+  it("a clinician who does not own the case cannot read its drafts (owner-scoped list, SEC-2): the panel explains it", async () => {
+    const api = createMockAdapter(null);
+    await api.login("clinician", "Dr. Huda Rahman");
+    openCase(cid(2), "clinician", api);
+    expect(await screen.findByTestId("drafts-hidden-why")).toHaveTextContent("Only the case owner can see drafts for this case.");
+    expect(screen.queryByTestId("draft-d-seed-2")).toBeNull();
+  });
+
+  it("a coordinator reads the drafts but is told that only the case owner approves or rejects them", async () => {
+    openCase(cid(2), "coordinator");
     await screen.findByTestId("draft-d-seed-2");
-    expect(screen.getByTestId("decide-why")).toHaveTextContent(/do not own this case.*Sara Al Mansoori/i);
+    expect(screen.getByTestId("decide-why")).toHaveTextContent(/only the case owner can approve or reject/i);
+    expect(screen.queryByTestId("drafts-hidden-why")).toBeNull();
   });
 
   it("the owner of a case whose consent was withdrawn can reject but not approve a pending draft", async () => {
@@ -205,5 +214,118 @@ describe("C10: approving and rejecting", () => {
     expect(within(item).getByTestId(`approve-${d.draft_id}-why`)).toHaveTextContent(/consent is frozen/i);
     await user.selectOptions(within(item).getByLabelText("Reason for rejecting"), "not_needed");
     expect(within(item).getByRole("button", { name: /reject draft/i })).toBeEnabled();
+  });
+});
+
+describe("SEC-2: blocked reasons from the approve answer", () => {
+  /** A real mock approval (consent for sms is off, so the mock sends nothing) whose answer carries `reason`. */
+  const withReason = async (reason: string | null | undefined) => {
+    const base = createMockAdapter(null);
+    await base.postEvent(DEMO_OVERDUE_CASE_ID, { type: "consent_updated", actor: "patient:x", payload: { channel_sms: false } });
+    return {
+      ...base,
+      approveDraft: async (id: string) => {
+        const r = await base.approveDraft(id);
+        return { ...r, blocked_reason: reason as string, notification_id: reason === "pending" ? null : r.notification_id };
+      },
+    };
+  };
+  const approveOne = async (api: Awaited<ReturnType<typeof withReason>>) => {
+    const user = userEvent.setup();
+    openCase(DEMO_OVERDUE_CASE_ID, "owner", api);
+    await user.click(await screen.findByTestId("request-draft"));
+    const item = await newDraft();
+    await user.click(within(item).getByRole("button", { name: /approve draft/i }));
+    return item;
+  };
+
+  it("pending: the approval stands and the message is queued, not blocked, with no 'nothing was sent' alarm", async () => {
+    const item = await approveOne(await withReason("pending"));
+    expect(await within(item).findByTestId(/^queued-d-mock/)).toHaveTextContent("Approved, sending is queued");
+    expect(within(item).getByTestId(/^queued-why-d-mock/)).toHaveTextContent(/saved.*sent automatically.*do not need to approve it again/i);
+    expect(within(item).queryByTestId(/^blocked-d-mock/)).toBeNull();
+    expect(within(item).queryByTestId(/^sent-d-mock/)).toBeNull();
+    expect(item).not.toHaveTextContent(/Nothing was sent/);
+    expect(screen.getByTestId("flash")).toHaveTextContent(/queued.*automatically/i);
+    expect(screen.getByTestId("flash")).not.toHaveTextContent(/blocked/i);
+  });
+
+  it("case_state: blocked, with the plain-words reason", async () => {
+    const item = await approveOne(await withReason("case_state"));
+    expect(await within(item).findByTestId(/^blocked-d-mock/)).toHaveTextContent("Approved but blocked: case_state");
+    expect(item).toHaveTextContent(/Nothing was sent: the case changed before the send \(closed, or consent withdrawn\)/);
+    expect(screen.getByTestId("flash")).toHaveTextContent(/approved but blocked: case_state/i);
+  });
+
+  it("a reason the UI has not met is shown readably and nothing crashes", async () => {
+    const item = await approveOne(await withReason("some_new_reason"));
+    expect(await within(item).findByTestId(/^blocked-d-mock/)).toHaveTextContent("Approved but blocked: some_new_reason");
+    expect(item).toHaveTextContent(/Nothing was sent: the system reported "some new reason"/);
+  });
+
+  it("an empty or missing reason with sent=false is still a block, never blank", async () => {
+    for (const reason of ["", null, undefined]) {
+      const item = await approveOne(await withReason(reason));
+      expect(await within(item).findByTestId(/^blocked-d-mock/)).toHaveTextContent("Approved but blocked: not sent");
+      document.body.innerHTML = "";
+    }
+  });
+
+  it("the plain-words helpers cover every value the API can return", () => {
+    for (const r of ["consent", "contact", "case_state", "pending"]) expect(blockedText(r)).not.toMatch(/system reported/);
+    expect(blockedText("odd_value")).toBe('the system reported "odd value"');
+    expect(blockedText("")).toBe('the system reported "unknown"');
+    expect(approvalMessage({ sent: true, blocked_reason: null })).toBe("Draft approved and sent.");
+    expect(approvalMessage({ sent: undefined, blocked_reason: null })).toBe("Draft approved and sent.");
+    expect(approvalMessage({ sent: false, blocked_reason: "pending" })).toMatch(/queued/);
+    expect(approvalMessage({ sent: false, blocked_reason: "contact" })).toBe("Draft approved but blocked: contact. Nothing was sent.");
+    expect(approvalMessage({ sent: false, blocked_reason: null })).toBe("Draft approved but blocked: not sent. Nothing was sent.");
+  });
+});
+
+describe("SEC-2: the owner-scoped drafts list", () => {
+  it("the mock mirrors the API: a clinician who does not own the case gets 403 on the list and on requesting; the owner and staff do not", async () => {
+    const api = createMockAdapter(null);
+    await api.login("clinician", "Dr. Huda Rahman");
+    await expect(api.listDrafts(DEMO_OVERDUE_CASE_ID)).rejects.toMatchObject({ status: 403, message: expect.stringContaining("Dr. Layla Haddad") });
+    await expect(api.requestDraft(DEMO_OVERDUE_CASE_ID, { purpose: "reminder", channel: "sms", language: "en" })).rejects.toMatchObject({ status: 403 });
+    // a case nobody owns yet is refused to a clinician too
+    const unowned = (await api.listCases({})).find((c) => !c.owner)!;
+    expect(unowned).toBeTruthy();
+    await expect(api.listDrafts(unowned.case_id)).rejects.toMatchObject({ status: 403, message: expect.stringContaining("not yet assigned") });
+    await api.login("owner", "Dr. Layla Haddad");
+    expect((await api.listDrafts(DEMO_OVERDUE_CASE_ID)).map((d) => d.draft_id)).toEqual(["d-seed-1"]);
+    for (const role of ["coordinator", "supervisor"] as const) {
+      await api.login(role, "Staff");
+      expect(await api.listDrafts(DEMO_OVERDUE_CASE_ID)).toHaveLength(1);
+    }
+    await api.login("patient", "Patient");
+    await expect(api.listDrafts(DEMO_OVERDUE_CASE_ID)).rejects.toMatchObject({ status: 403 });
+  });
+
+  it("a non-owner clinician sees the explanation and a disabled request button, not an error", async () => {
+    const api = createMockAdapter(null);
+    await api.login("clinician", "Dr. Huda Rahman"); // the page's first read happens before the provider's own login effect
+    openCase(DEMO_OVERDUE_CASE_ID, "clinician", api);
+    expect(await screen.findByTestId("drafts-hidden-why")).toHaveTextContent("Only the case owner can see drafts for this case.");
+    const request = screen.getByTestId("request-draft");
+    expect(request).toBeDisabled();
+    expect(request).toHaveAccessibleDescription("Only the case owner can see drafts for this case.");
+    expect(screen.getByTestId("request-draft-why")).toHaveTextContent("Only the case owner can see drafts for this case.");
+    expect(screen.queryByRole("alert")).toBeNull(); // no error banner
+    expect(screen.queryByTestId(/^draft-d-/)).toBeNull(); // not even a text-less shell of a draft
+    expect(screen.queryByText("No drafts yet.")).toBeNull();
+    expect(screen.queryByTestId("decide-why")).toBeNull();
+  });
+
+  it("the owner and the coordinator still see the drafts and no explanation", async () => {
+    for (const role of ["owner", "coordinator"] as const) {
+      const api = createMockAdapter(null);
+      await api.login(role, role === "owner" ? "Dr. Layla Haddad" : "Maryam Al Suwaidi");
+      const view = openCase(DEMO_OVERDUE_CASE_ID, role, api);
+      expect(await screen.findByTestId("draft-d-seed-1")).toBeInTheDocument();
+      expect(screen.queryByTestId("drafts-hidden-why")).toBeNull();
+      view.unmount();
+    }
   });
 });

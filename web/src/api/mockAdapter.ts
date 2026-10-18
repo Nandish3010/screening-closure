@@ -15,7 +15,7 @@ import { FIXTURE_RISK, SEED_ALERTS, SEED_METRICS, SIM_NOW, seedDrafts, seedEvent
 import { PROVIDER_CLINICIANS, ROLE_NAMES, ROLE_PROVIDERS, backendActor } from "./identities";
 import { ESCALATION_LADDER } from "../lib/pathway";
 import {
-  consentHistoryOf, consentOf, milestonesOf, overdueDays, pendingEscalation, replayHandoffs, replayState, slaClock, summarise,
+  actorRole, completeDetail, consentOf, consentHistoryOf, milestonesOf, overdueDays, pendingEscalation, replayHandoffs, replayState, slaClock, summarise,
   validateAppend,
 } from "../lib/derive";
 
@@ -66,6 +66,30 @@ export const DRAFT_TEXT: Record<DraftRequestBody["language"], Record<DraftReques
     appointment_confirmation: "تم تأكيد موعدك. سيتواصل معك فريق رعايتك بالتفاصيل. يرجى الاتصال بنا إذا لم تتمكن من الحضور.",
   },
 };
+
+/**
+ * What a patient may see of an event (SEC-2): the allow-list of `readmodel.PATIENT_EVENT_FIELDS` in the API. An event type that
+ * is not listed is hidden; for a listed one only these payload keys are kept, and the actor is reduced to its role.
+ */
+export const PATIENT_EVENT_FIELDS: Record<string, readonly string[]> = {
+  case_created: [], acknowledge: [], accept_ownership: [], contact_patient: ["channel"], patient_acknowledge: ["lang"],
+  book_confirmatory: ["appointment_date", "appointment_at"], complete_confirmatory: [], clinician_review: [], close: [], reopen: [],
+  consent_updated: ["channel_sms", "channel_whatsapp", "channel_phone", "channel_letter", "share_with_specialist", "withdrawn"],
+  callback_requested: ["lang"], message_sent: ["channel", "language", "purpose"],
+};
+export const PATIENT_CONSENT_KEYS = ["channel_sms", "channel_whatsapp", "channel_phone", "channel_letter", "share_with_specialist", "withdrawn"] as const;
+
+/** The events a patient may see, redacted. */
+export function patientEvents(events: CaseEvent[]): CaseEvent[] {
+  return events.flatMap((e) => {
+    const allowed = PATIENT_EVENT_FIELDS[e.type];
+    if (!allowed) return [];
+    return [{
+      seq: e.seq, event_id: e.event_id, type: e.type, at: e.at, actor: actorRole(e.actor),
+      payload: Object.fromEntries(Object.entries(e.payload).filter(([k]) => allowed.includes(k))),
+    }];
+  });
+}
 
 export function createMockAdapter(storage: Pick<Storage, "getItem" | "setItem" | "removeItem"> | null = safeStorage()): ApiClient {
   let memory: MockDb | null = null;
@@ -126,6 +150,32 @@ export function createMockAdapter(storage: Pick<Storage, "getItem" | "setItem" |
       events: structuredClone(evs),
     };
   };
+  /**
+   * `GET /cases/{id}` for a patient login (SEC-2), mirroring `readmodel.patient_case_json`: the owner by role only, no staff
+   * names or ids, no SLA, escalation, risk or milestone fields, and only the allow-listed events and payload keys with the
+   * actor reduced to its role. It goes through `completeDetail` like the http adapter's answer does.
+   */
+  const patientDetail = (db: MockDb, id: string): CaseDetail => {
+    const evs = must(db, id);
+    const row = summary(db, id);
+    const consent = consentOf(evs) as unknown as Record<string, unknown>;
+    const events = patientEvents(evs);
+    const ownerRole = row.owner_actor ? actorRole(row.owner_actor) : null;
+    const roleOnly = (role: string) => ({ actor: role, display_name: role, role });
+    const wire = {
+      case_id: id, pathway: row.pathway, state: row.state, created_at: row.created_at, updated_at: row.updated_at,
+      owner: ownerRole ? roleOnly(ownerRole) : null,
+      consent_frozen: row.consent_frozen, last_event_at: row.last_event_at, risk_score: null,
+      read_model: {
+        state: row.state, consent_frozen: row.consent_frozen, last_event_at: row.last_event_at,
+        consent: Object.fromEntries(PATIENT_CONSENT_KEYS.map((k) => [k, consent[k]])),
+      },
+      actors: Object.fromEntries([...new Set(events.map((e) => e.actor))].map((r) => [r, roleOnly(r)])),
+      events, risk: null,
+    };
+    return completeDetail(wire as unknown as CaseDetail, SIM_NOW);
+  };
+  const caseFor = (db: MockDb, id: string): CaseDetail => (session.role === "patient" ? patientDetail(db, id) : detail(db, id));
   function nextAt(db: MockDb): string {
     db.tick += 1;
     return new Date(new Date(SIM_NOW).getTime() + db.tick * 60_000).toISOString();
@@ -140,15 +190,21 @@ export function createMockAdapter(storage: Pick<Storage, "getItem" | "setItem" |
     evs.push({ seq: evs.length + 1, event_id: opts.eventId, type, at: nextAt(db), actor: who, payload });
   }
 
+  /** Owner scoping (A5, SEC-2): a clinician login acts, and reads drafts, only on a case it owns. Other roles pass. */
+  function requireOwnerScope(db: MockDb, id: string) {
+    if (!OWNER_SCOPED_ROLES.includes(session.role)) return;
+    const owner = replayHandoffs(must(db, id)).owner;
+    if (!owner || owner.actor !== actor()) {
+      throw new ApiError(403, `${BACKEND_ROLE[session.role]} '${session.name}' may only act on cases they own (this case's owner is ${owner?.name ?? "not yet assigned"})`);
+    }
+  }
+
   /** Who may approve or reject a draft on `id`: the case's owner (a clinician login), never the coordinator or the patient. */
   function authorizeDecision(db: MockDb, id: string, verb: "approve" | "reject") {
     if (!OWNER_SCOPED_ROLES.includes(session.role)) {
       throw new ApiError(403, `role '${BACKEND_ROLE[session.role]}' may not call POST /drafts/{draft_id}/${verb}`);
     }
-    const owner = replayHandoffs(must(db, id)).owner;
-    if (!owner || owner.actor !== actor()) {
-      throw new ApiError(403, `${BACKEND_ROLE[session.role]} '${session.name}' may only act on cases they own (this case's owner is ${owner?.name ?? "not yet assigned"})`);
-    }
+    requireOwnerScope(db, id);
   }
 
   function requireStaff() {
@@ -190,11 +246,13 @@ export function createMockAdapter(storage: Pick<Storage, "getItem" | "setItem" |
         .filter((c) => !params.flagged || !!c.watchdog_flagged);
     },
     async getCase(id) {
-      return detail(load(), id);
+      return caseFor(load(), id);
     },
     async getTimeline(id): Promise<CaseTimeline> {
       const db = load();
       const evs = must(db, id);
+      // SEC-2: a patient's timeline is the visible events only, nothing derived (no SLA clocks, breaches, rungs, flags).
+      if (session.role === "patient") return { case_id: id, sim_time: SIM_NOW, items: patientEvents(evs).map((e) => ({ kind: "event" as const, ...e })) };
       const items: TimelineItem[] = evs.map((e) => ({ kind: "event" as const, ...e }));
       const state = replayState(evs);
       const clock = slaClock(evs, state, SIM_NOW);
@@ -261,12 +319,13 @@ export function createMockAdapter(storage: Pick<Storage, "getItem" | "setItem" |
         append(db, id, "review_requested", "system:consent", { reason: "consent_withdrawn", source_event_id: evs.at(-1)?.event_id ?? `seq-${evs.length}` }, { internal: true });
       }
       save(db);
-      return detail(db, id);
+      return caseFor(db, id);
     },
     async requestDraft(id, body: DraftRequestBody): Promise<Draft> {
       requireStaff();
       const db = load();
       const evs = must(db, id);
+      requireOwnerScope(db, id); // G-1: a clinician drafts only on a case they own, checked before the 409 states
       const model = summary(db, id);
       if (model.consent_frozen) throw new ApiError(409, "outreach is frozen: the patient has withdrawn consent");
       if (model.state === "closed") throw new ApiError(409, "the case is closed: no new drafts");
@@ -312,6 +371,7 @@ export function createMockAdapter(storage: Pick<Storage, "getItem" | "setItem" |
       requireStaff();
       const db = load();
       must(db, id);
+      requireOwnerScope(db, id); // SEC-2: GET /cases/{id}/drafts is owner-scoped; a non-owner clinician gets 403
       return Object.values(db.drafts)
         .filter((d) => d.case_id === id)
         .sort((a, b) => a.created_at.localeCompare(b.created_at))
