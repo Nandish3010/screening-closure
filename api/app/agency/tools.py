@@ -1,7 +1,8 @@
 """The agency's tools: thin wrappers over the functions the API routes call (A22, ADR-033).
 
-Every tool is either a read (it returns ids, refs, labels and counts from the same functions the read routes
-use) or a request through another actor's own path, named by the event that path writes (`causes`). A tool that
+The agency is preparation only. Every tool is a read (ids, refs, labels and counts from the same functions the read
+routes use), except one: `create_draft`, a request through the drafting route's own code, named by the event that
+path writes (`causes`: `message_drafted`, actor `model:<provider>`), whose draft waits for a person's approval. A tool that
 causes something is checked against `app.policy.authorize_agency` for the calling agent every time it is called,
 so an agent's allow-list here and its policy entry there must both admit it. There is no tool that writes a case
 event as the agency, and none that closes, reviews, approves, accepts, reassigns or signs: the state machine would
@@ -23,7 +24,6 @@ from uuid import UUID
 from fastapi import HTTPException
 
 from app import policy
-from app.agency import compat
 from app.agency.facts import CaseFacts, case_facts, facts_for
 from app.auth import Identity
 
@@ -70,6 +70,28 @@ def read_worklist(ctx) -> list[CaseFacts]:
         if f is not None:
             out.append(f)
     return out
+
+
+def read_active_cases(ctx, since: datetime | None) -> list[CaseFacts]:
+    """The supervisor's bounded read: facts only for cases changed at or after `since` (the previous run's sim time)
+    plus every open case that is overdue or watchdog-flagged; every case when there was no previous run. Which cases
+    those are is decided from the store's summaries and the sweep's own open-case models, so the full fact-building
+    (each case's log) is done only for that subset, in worklist order."""
+    c = _cases()
+    if since is None:
+        return read_worklist(ctx)
+    wanted = {s.case_id for s in c.store.list_cases() if _aware(s.updated_at) >= _aware(since)}
+    for case_id, model, _ in c.store.iter_open_case_models(c.pathway):
+        if model is not None and (model.any_overdue or model.watchdog_flag is not None):
+            wanted.add(case_id)
+    out = [f for case_id in wanted if (f := facts_for(case_id, c.store, c.pathway)) is not None]
+    return sorted(out, key=lambda f: (f.history[0].at if f.history else "", f.case_id))
+
+
+def _aware(dt: datetime) -> datetime:
+    from datetime import UTC
+
+    return dt if dt.tzinfo else dt.replace(tzinfo=UTC)
 
 
 def read_case(ctx, case_id: UUID) -> CaseFacts:
@@ -186,38 +208,10 @@ def create_draft(ctx, case_id: UUID, purpose: str, channel: str, language: str) 
                                    "language")}, "model_id": record.model_id if record else out["provider"]}
 
 
-def request_handoff(ctx, case_id: UUID, to_provider: str) -> dict:
-    """Ask the automation service (A21) to request the referral as itself. Without it: `ToolFailed`."""
-    hook = compat.automation_handoff()
-    if hook is None:
-        raise ToolFailed("no automation path for handoff_requested in this build")
-    try:
-        result = hook(case_id, to_provider, ctx.now)
-    except Exception as exc:  # noqa: BLE001 - another service's refusal is data for a person, not a crash
-        raise ToolFailed(f"automation refused the handoff: {type(exc).__name__}") from None
-    return {"requested": True, "to_provider": to_provider, "result": result if isinstance(result, dict) else None}
-
-
-def classify_reply(ctx, case_id: UUID, reply_event_id: str) -> dict:
-    """Ask the reply classifier (D13) for labels on one reply, by its event id. The agency never sees the text."""
-    hook = compat.reply_classifier()
-    if hook is None:
-        raise ToolFailed("no reply classifier in this build")
-    try:
-        result = hook(case_id, reply_event_id, ctx.now)
-    except Exception as exc:  # noqa: BLE001
-        raise ToolFailed(f"classifier refused: {type(exc).__name__}") from None
-    if not isinstance(result, dict):
-        raise ToolFailed("classifier returned no labels")
-    return {"intent": str(result.get("intent"))[:40] if result.get("intent") else None,
-            "confidence": float(result["confidence"]) if isinstance(result.get("confidence"), (int, float)) else None,
-            "model_id": str(result.get("model_id"))[:64] if result.get("model_id") else None,
-            "needs_human": bool(result.get("needs_human", True))}
-
-
 TOOLS: dict[str, Tool] = {t.name: t for t in (
     Tool("read_worklist", None, read_worklist, "every case's facts (ids, states, clocks, counts)"),
     Tool("read_case", None, read_case, "one case's facts"),
+    Tool("read_active_cases", None, read_active_cases, "facts of the cases changed since a time, plus overdue and flagged"),
     Tool("read_drafts", None, read_drafts, "a case's drafts and their decisions, without text"),
     Tool("read_notifications", None, read_notifications, "a case's notification log, without bodies"),
     Tool("read_metrics", None, read_metrics, "closure metrics (counts)"),
@@ -228,8 +222,6 @@ TOOLS: dict[str, Tool] = {t.name: t for t in (
     Tool("find_evidence", None, find_evidence, "which closure-evidence references resolve (read only)"),
     Tool("explain_factors", None, explain_factors, "the worklist ordering aid's top factors (for a sentence)"),
     Tool("create_draft", "message_drafted", create_draft, "a model draft through the drafting route, for approval"),
-    Tool("request_handoff", "handoff_requested", request_handoff, "a referral through the automation service"),
-    Tool("classify_reply", "reply_classified", classify_reply, "labels for a reply through the classifier"),
 )}
 
 

@@ -43,7 +43,7 @@ describe("A22: agency page", () => {
     const sla = within(quality).getByTestId("agent-sla_risk_explainer");
     expect(within(sla).getByTestId("count-done")).toHaveTextContent(new RegExp(`done\\s*${overdueOpen}`)); // one per overdue open case
     expect(within(sla).getByTestId("count-needs_human")).toHaveTextContent(/needs human\s*0/);
-    expect(within(sla).getByText("read_timeline")).toBeInTheDocument();
+    expect(within(sla).getByText("explain_factors")).toBeInTheDocument();
     expect(sla).toHaveTextContent(/Replaces:/);
 
     const closure = within(screen.getByTestId("dept-evidence_closure")).getByTestId("agent-prepare_closure_pack");

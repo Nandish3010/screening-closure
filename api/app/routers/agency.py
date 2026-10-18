@@ -20,7 +20,6 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app import policy
-from app.agency import compat
 from app.agency import runner
 from app.agency.agents import EXECUTIONERS, HEADS, SUPERVISOR_TOOLS
 from app.agency.ledger import DEPARTMENTS, NEEDS_HUMAN, STATUSES, Task
@@ -86,8 +85,6 @@ def org() -> dict:
             "department": dept, "label": head.spec.label, "actor": actor, "head_tools": list(head.spec.head_tools),
             "capabilities": sorted(policy.AGENCY_CAUSES.get(actor, ())), "executioners": execs,
             "counts": _counts([t for t in everything if t.department == dept and t.agent_type != "department_head"]),
-            "paths_present": {"automation_handoff": compat.automation_handoff() is not None,
-                              "reply_classifier": compat.reply_classifier() is not None},
         })
     latest = L.runs(1)
     return {"principle": PRINCIPLE,

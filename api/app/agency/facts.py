@@ -39,6 +39,14 @@ class MilestoneFact(BaseModel):
     overdue: bool
 
 
+class AutoMessage(BaseModel):
+    """An automatic template send (A21 `message_sent {auto: true}`): its purpose and time, never its text."""
+
+    model_config = ConfigDict(extra="forbid")
+    purpose: str = Field(max_length=40)
+    at: Iso
+
+
 class HistoryItem(BaseModel):
     model_config = ConfigDict(extra="forbid")
     type: str = Field(max_length=40)
@@ -71,6 +79,7 @@ class CaseFacts(BaseModel):
     contact_attempts: int
     messages_sent: int
     last_message_sent_at: Iso | None
+    auto_messages: list[AutoMessage]
     language: Literal["en", "ar"] | None
     appointment_at: Iso | None
     result_ref: str | None
@@ -103,6 +112,7 @@ def case_facts(lc: LoadedCase, pathway: Pathway) -> CaseFacts | None:
     labels: list[dict] = []
     closure_proposed = False
     escalations = 0
+    autos: list[AutoMessage] = []
     history: list[HistoryItem] = []
     steps = {t.event for t in pathway.transitions} if hasattr(pathway, "transitions") else set()
     for e in lc.events:
@@ -124,6 +134,8 @@ def case_facts(lc: LoadedCase, pathway: Pathway) -> CaseFacts | None:
         elif e.type == "message_sent":
             messages_sent += 1
             last_sent = e.at
+            if p.get("auto") is True:
+                autos.append(AutoMessage(purpose=str(p.get("purpose") or "")[:40], at=e.at.isoformat()))
         elif e.type in ("patient_acknowledge", "callback_requested") and p.get("lang") in ("en", "ar"):
             language = p["lang"]
         if e.type == "book_confirmatory":
@@ -171,6 +183,7 @@ def case_facts(lc: LoadedCase, pathway: Pathway) -> CaseFacts | None:
         contact_attempts=contact_attempts,
         messages_sent=messages_sent,
         last_message_sent_at=_iso(last_sent),
+        auto_messages=autos[-20:],
         language=language,
         appointment_at=appointment if isinstance(appointment, str) else None,
         result_ref=result_ref,

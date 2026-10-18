@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import json
 import random
+from datetime import timedelta
 from uuid import UUID, uuid4
 
 import pytest
@@ -54,9 +55,6 @@ def cohort(monkeypatch):
     ids = world.build_cohort()
     yield ids
     clock.reset()
-    compat.register_automation_handoff(None)
-    compat.register_reply_classifier(None)
-    compat.set_automation_templates(None)
 
 
 class Recorder:
@@ -106,11 +104,16 @@ def test_t_a60_the_entries_are_exactly_the_events_each_department_needs():
     assert policy.AGENCY_CAUSES == {
         "system:agency:supervisor": frozenset(),
         "system:agency:outreach": frozenset({"message_drafted"}),
-        "system:agency:referral_scheduling": frozenset({"handoff_requested"}),
+        "system:agency:referral_scheduling": frozenset(),
         "system:agency:evidence_closure": frozenset(),
-        "system:agency:patient_support": frozenset({"reply_classified"}),
+        "system:agency:patient_support": frozenset(),
         "system:agency:quality_ops": frozenset(),
     }
+    # preparation only: the one tool that causes anything is the drafting route's, for Outreach alone
+    assert {(t.name, t.causes) for t in TOOLS.values() if t.causes} == {("create_draft", "message_drafted")}
+    for gone in ("request_handoff", "classify_reply"):
+        assert gone not in TOOLS
+    assert not hasattr(compat, "automation_handoff") and not hasattr(compat, "reply_classifier")
     assert set(NEVER) <= policy.AGENCY_NEVER
 
 
@@ -165,13 +168,11 @@ def _args_for(tool: str, case_id: UUID, rnd: random.Random) -> dict:
     return {
         "read_worklist": {}, "read_metrics": {}, "read_alerts": {}, "read_abstention": {}, "read_providers": {},
         "read_ledger": {"status": rnd.choice([None, NEEDS_HUMAN])},
-        "read_case": {"case_id": case_id}, "read_drafts": {"case_id": case_id},
+        "read_case": {"case_id": case_id}, "read_active_cases": {"since": rnd.choice([None, clock.now()])}, "read_drafts": {"case_id": case_id},
         "read_notifications": {"case_id": case_id}, "explain_factors": {"case_id": case_id},
         "find_evidence": {"case_id": case_id, "refs": [f"Procedure/colonoscopy-{case_id}"]},
         "create_draft": {"case_id": case_id, "purpose": rnd.choice(["reminder", "result_notification"]),
                          "channel": rnd.choice(["sms", "whatsapp", "letter"]), "language": rnd.choice(["en", "ar"])},
-        "request_handoff": {"case_id": case_id, "to_provider": "Corniche Gastro Unit"},
-        "classify_reply": {"case_id": case_id, "reply_event_id": str(uuid4())},
     }[tool]
 
 
@@ -185,10 +186,6 @@ def test_t_a61_no_tool_call_by_any_agent_writes_a_decision_or_an_agency_event(co
     `close`, `clinician_review`, `message_approved` or `escalation_accepted`, and never has an agency actor."""
     rec = Recorder(cases.store)
     cases.store = rec
-    hooks = []
-    compat.register_automation_handoff(lambda c, to, now: hooks.append(("handoff", str(c), to)) or {"ok": True})
-    compat.register_reply_classifier(lambda c, ref, now: {"intent": "wants_call", "confidence": 0.9,
-                                                          "model_id": "fake", "needs_human": True})
     try:
         for actor, tool, idx, everything, seed in calls:
             identity = Identity("service", AGENCY_ROLE, actor.removeprefix("system:"))
@@ -208,8 +205,7 @@ def test_t_a61_no_tool_call_by_any_agent_writes_a_decision_or_an_agency_event(co
     for e in rec.appended:
         assert e.type not in NEVER, e
         assert not e.actor.startswith("system:agency:"), e
-        assert e.type == "message_drafted" and e.actor.startswith("model:"), e  # the only thing a tool can cause here
-    assert all(h[0] == "handoff" for h in hooks)
+        assert e.type == "message_drafted" and e.actor.startswith("model:"), e  # the only thing a tool can cause
 
 
 def test_t_a61_no_agent_holds_a_tool_that_decides_and_every_tool_on_a_list_exists():
@@ -279,7 +275,7 @@ def test_t_a62_the_task_cap_stops_planning_and_says_so(cohort):
 
 def test_t_a62_the_time_budget_fails_the_rest_unstarted_and_the_next_run_plans_them_afresh(cohort):
     ticks = iter(range(10_000))
-    s = runner.run_agency(trigger="manual", budget_seconds=2.5, monotonic=lambda: next(ticks))
+    s = runner.run_agency(trigger="manual", budget_seconds=12.5, monotonic=lambda: next(ticks))  # 8 ticks of reading and planning, then 4 tasks
     assert s["status"] == "budget_exhausted"
     unstarted = [t for t in executioner_tasks() if (t.output or {}).get("error") == "budget_exhausted"]
     assert unstarted and all(t.status == FAILED and t.started_at is None for t in unstarted)
@@ -496,14 +492,14 @@ def test_t_a65_a_persons_decision_resolves_the_waiting_task_and_names_them(cohor
     assert after.resolved_by == world.PCO
 
 
-def test_t_a65_reroute_goes_through_automation_when_present_and_to_a_person_when_exhausted(cohort):
-    asked = []
-    compat.register_automation_handoff(lambda c, to, now: asked.append((c, to)) or {"queued": True})
+def test_t_a65_a_reroute_is_a_recommendation_for_a_person_and_exhaustion_says_so(cohort):
     runner.run_agency(trigger="manual")
     rr = next(t for t in executioner_tasks() if t.agent_type == "reroute_referral")
-    assert rr.status == "done" and rr.output["requested_via"] == "automation"
-    assert asked == [(cohort[16], "Corniche Gastro Unit")]
-    # every provider tried: exhausted -> a person, never automation
+    assert rr.status == NEEDS_HUMAN and rr.output["recommended_provider"] == "Corniche Gastro Unit"
+    assert rr.output["tried"] == ["Al Noor Endoscopy Centre"]
+    assert rr.output["recommended_action"] == "reassign_or_request_handoff"
+    assert {c["tool"] for c in rr.output["tool_calls"]} == {"read_case", "read_providers"}
+    # every provider tried: exhausted, still a person's
     case_id = cohort[16]
     for to in ("Corniche Gastro Unit", "Marina Digestive Health"):
         for kind, actor, payload in (("reassign", world.COORD, {"owner": world.PCO}),
@@ -511,41 +507,74 @@ def test_t_a65_reroute_goes_through_automation_when_present_and_to_a_person_when
                                      ("patient_acknowledge", world.PATIENT, {}),
                                      ("handoff_requested", world.PCO, {"to_provider": to})):
             cases.store.append(Event(case_id, kind, clock.now(), actor, payload), cases.pathway)
+            if kind == "reassign":  # the coordinator acted on the recommendation: the waiting item resolves
+                runner.reconcile(runner.ledger(), clock.now(), uuid4())
         cases.store.append(Event(case_id, "handoff_rejected", clock.now(), world.SPEC, {"reason": "capacity"}),
                            cases.pathway)
+    assert runner.ledger().get(rr.id).resolution["reason"] == "case_moved_on"
     clock.advance(hours=1)
-    asked.clear()
     runner.run_agency(trigger="manual")
     last = [t for t in executioner_tasks() if t.agent_type == "reroute_referral"][-1]
+    assert last.id != rr.id
     assert last.status == NEEDS_HUMAN and last.output["exhausted"] is True
-    assert last.output["recommended_action"] == "handle_exhausted_reroute" and asked == []
+    assert last.output["recommended_action"] == "handle_exhausted_reroute"
 
 
-def test_t_a65_without_automation_a_reroute_is_a_recommendation_for_a_person(cohort):
-    runner.run_agency(trigger="manual")
-    rr = next(t for t in executioner_tasks() if t.agent_type == "reroute_referral")
-    assert rr.status == NEEDS_HUMAN and rr.output["recommended_provider"] == "Corniche Gastro Unit"
-    assert rr.output["tried"] == ["Al Noor Endoscopy Centre"]
-
-
-def test_t_a65_triage_uses_the_classifier_when_present_else_a_person(cohort):
+def test_t_a65_a_reply_is_queued_for_a_person_with_labels_but_never_its_text(cohort):
     ex = agents.EXECUTIONERS["triage_reply"]
+    assert ex.spec.tools == ("read_case",)
     order = planner.TaskOrder(agent_type="triage_reply", case_id=str(cohort[9]), reason="pending_reply",
                               inputs={"reply_event_id": str(uuid4())})
     box = ToolBox(runner.identity_for("patient_support"), ex.spec.tools, clock.now(), runner.ledger())
-    assert ex.run(box, order, clock.now()).status == NEEDS_HUMAN
-    compat.register_reply_classifier(lambda c, ref, now: {"intent": "booking", "confidence": 0.97,
-                                                          "model_id": "clf-1", "needs_human": False})
     out = ex.run(box, order, clock.now())
-    assert out.status == "done" and out.output.intent == "booking" and out.output.classified
+    assert out.status == NEEDS_HUMAN and out.output.recommended_action == "read_reply"
 
 
-def test_t_a65_with_automation_templates_outreach_defers_the_plain_cases(cohort):
-    compat.set_automation_templates(True)
-    runner.run_agency(trigger="manual")
-    head = next(t for t in runner.ledger().query(agent_type="department_head") if t.department == "outreach")
-    assert {d["reason"] for d in head.output["deferred"]} == {"automation_template"}
-    assert len(head.output["deferred"]) >= 3
+def _with_auto_send(f, purpose: str, at):
+    from app.agency.facts import AutoMessage
+
+    return f.model_copy(update={"auto_messages": [AutoMessage(purpose=purpose, at=at.isoformat())]})
+
+
+def test_t_a65_outreach_does_not_draft_what_an_automatic_template_already_sent(cohort):
+    head = agents.HEADS["outreach"]
+    now = clock.now()
+    facts = {c: agents_facts(c) for c in cohort}
+    work = [agents.WorkItem(str(c), "awaiting_contact", f) for c, f in facts.items() if f.state == "owner_accepted"]
+    assert work
+    plain = head.candidates(work, now)
+    assert {o.inputs["purpose"] for o in plain.orders} == {"result_notification"} and not plain.deferred
+    # an automatic result notification in the last 7 days: no draft; a reminder sent, or one 8 days ago: draft
+    sent = [agents.WorkItem(w.case_id, w.reason, _with_auto_send(w.facts, "result_notification", now - timedelta(days=6)))
+            for w in work]
+    deferred = head.candidates(sent, now)
+    assert deferred.orders == [] and {d.reason for d in deferred.deferred} == {"automation_template_sent"}
+    other = [agents.WorkItem(w.case_id, w.reason, _with_auto_send(w.facts, "reminder", now)) for w in work]
+    assert len(head.candidates(other, now).orders) == len(work)
+    old = [agents.WorkItem(w.case_id, w.reason, _with_auto_send(w.facts, "result_notification", now - timedelta(days=8)))
+           for w in work]
+    assert len(head.candidates(old, now).orders) == len(work)
+
+
+def test_t_a65_case_facts_read_automatic_sends_by_event_name(cohort):
+    from app.agency.facts import case_facts
+    from app.events import LoadedCase
+
+    case_id = cohort[7]
+    events = cases.store.events_for(case_id)
+    auto = Event(case_id, "message_sent", clock.now(), "system:automation",
+                 {"auto": True, "template_id": "t1", "purpose": "result_notification", "channel": "sms",
+                  "language": "en", "notification_id": str(uuid4())}, seq=len(events) + 1)
+    lc = LoadedCase(case_id, cases.pathway.name, events[0].at, [*events, auto],
+                    cases.store.read_model(case_id, cases.pathway))
+    f = case_facts(lc, cases.pathway)
+    assert [(m.purpose, m.at) for m in f.auto_messages] == [("result_notification", clock.now().isoformat())]
+
+
+def agents_facts(case_id):
+    from app.agency.facts import facts_for
+
+    return facts_for(case_id, cases.store, cases.pathway)
 
 
 def test_t_a65_the_call_script_discloses_no_result():
@@ -675,7 +704,7 @@ def test_supervisor_and_dispatch_rows_never_carry_case_events(cohort):
     cases.store = rec
     try:
         ToolBox(runner.identity_for("supervisor"), agents.SUPERVISOR_TOOLS, clock.now(), runner.ledger()).call(
-            "read_worklist")
+            "read_active_cases", since=None)
     finally:
         cases.store = rec.inner
     assert rec.appended == []
@@ -703,3 +732,68 @@ def test_follow_ups_run_in_their_own_department(cohort):
     assert all(t.status == NEEDS_HUMAN for t in flag)
     booked = cohort[17]
     assert any(t.case_id == booked and t.agent_type == "retrieve_evidence" for t in executioner_tasks())
+
+
+# ---------------------------------------------------------------- scope review: preparation only
+
+
+def _log_bytes(case_id) -> list[bytes]:
+    return [json.dumps({"seq": e.seq, "event_id": str(e.event_id), "type": e.type, "at": e.at.isoformat(),
+                        "actor": e.actor, "payload": e.payload}, sort_keys=True, separators=(",", ":")).encode()
+            for e in cases.store.events_for(case_id)]
+
+
+def test_t_a61_a_run_leaves_every_case_log_byte_for_byte_identical_except_drafts_from_the_drafts_route(cohort):
+    before = {c: _log_bytes(c) for c in cohort}
+    clock.advance(hours=1)
+    runner.run_agency(trigger="manual")
+    agency_drafts = {str(d.draft_id) for c in cohort for d in drafts.draft_store().list_for_case(c)
+                     if d.created_by == "system:agency:outreach"}
+    assert agency_drafts
+    added = 0
+    for c in cohort:
+        after = _log_bytes(c)
+        assert after[: len(before[c])] == before[c], c  # nothing earlier changed, byte for byte
+        for raw in after[len(before[c]):]:
+            e = json.loads(raw)
+            assert e["type"] == "message_drafted" and e["actor"] == "model:template", e
+            assert e["payload"]["draft_id"] in agency_drafts, e  # written by the drafts route for an agency request
+            added += 1
+    assert added == len(agency_drafts)
+
+
+def test_t_a62_the_budget_covers_the_supervisors_reading_and_the_heads_planning(cohort):
+    ticks = iter([0.0] + [10.0] * 10_000)  # the budget is gone before the supervisor reads anything
+    s = runner.run_agency(trigger="manual", budget_seconds=1.0, monotonic=lambda: next(ticks))
+    assert s["status"] == "budget_exhausted" and s["counts"]["total"] == 0
+    heads = runner.ledger().query(agent_type="department_head")
+    assert len(heads) == 5 and all(t.status == FAILED and t.output["error"] == "budget_exhausted" for t in heads)
+    root = runner.ledger().get(UUID(s["run_id"]))
+    assert root.output["cases_read"] == 0
+    # gone after the supervisor read but before the heads planned: the reading happened, no head planned
+    clock.advance(hours=1)
+    ticks2 = iter([0.0, 0.0] + [10.0] * 10_000)
+    s2 = runner.run_agency(trigger="manual", budget_seconds=1.0, monotonic=lambda: next(ticks2))
+    assert s2["status"] == "budget_exhausted" and s2["counts"]["total"] == 0
+
+
+def test_t_a62_the_supervisor_reads_only_changed_overdue_and_flagged_cases_after_a_first_run(cohort, monkeypatch):
+    clock.advance(hours=1)  # the cohort was built before the first run
+    first = runner.run_agency(trigger="manual")
+    assert runner.ledger().get(UUID(first["run_id"])).output["cases_read"] == 22
+    read = []
+    from app.agency import facts as facts_mod
+    from app.agency import tools as tools_mod
+
+    real = facts_mod.facts_for
+    monkeypatch.setattr(tools_mod, "facts_for", lambda cid, store, pathway: read.append(cid) or real(cid, store, pathway))
+    clock.advance(hours=2)
+    changed = cohort[5]  # someone acts on one case between runs
+    cases.store.append(Event(changed, "accept_ownership", clock.now(), world.PCO), cases.pathway)
+    second = runner.run_agency(trigger="manual")
+    root = runner.ledger().get(UUID(second["run_id"]))
+    expected = {s.case_id for s in cases.store.list_cases() if s.updated_at >= runner._previous_run_at(
+        runner.ledger(), UUID(second["run_id"]))} | {
+        cid for cid, m, _ in cases.store.iter_open_case_models(cases.pathway) if m and (m.any_overdue or m.watchdog_flag)}
+    assert changed in expected and root.output["cases_read"] == len(expected) < 22
+    assert set(read) >= expected

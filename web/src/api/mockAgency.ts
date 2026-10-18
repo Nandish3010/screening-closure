@@ -43,48 +43,50 @@ interface DepartmentSpec {
 }
 
 const SPEC: Record<AgencyDepartment, DepartmentSpec> = {
+  // Mirrors the backend's allow-lists exactly (GET /agency/org; api/app/agency/agents.py). `capabilities` are the
+  // events a department may cause through another actor's path: only Outreach, a draft through the drafts route.
   outreach: {
-    head_tools: ["read_worklist", "read_case"],
-    capabilities: ["Prepare patient messages for approval", "Prepare phone call briefs"],
+    head_tools: ["read_ledger"],
+    capabilities: ["message_drafted"],
     executioners: [
-      { agent_type: "draft_message", label: "Message drafter", tools: ["read_case", "request_draft"], output_schema: "DraftTaskOutput {draft_id, purpose, channel, language}", replaces: ["Writing the first draft of a patient message (a person still approves it)"] },
-      { agent_type: "followup_call_prep", label: "Call preparer", tools: ["read_case", "read_timeline"], output_schema: "CallBrief {talking_points[], channel, last_contact_at}", replaces: ["Reading the timeline before ringing a patient"] },
+      { agent_type: "draft_message", label: "Draft a patient message for approval", tools: ["read_case", "read_drafts", "create_draft"], output_schema: "DraftMessageOut", replaces: ["write a reminder or first message from scratch", "pick the channel and language the patient can receive"] },
+      { agent_type: "followup_call_prep", label: "Prepare a follow-up call", tools: ["read_case", "read_notifications"], output_schema: "CallPrepOut", replaces: ["look up the contact history before calling", "write a call script that discloses no result"] },
     ],
   },
   referral_scheduling: {
-    head_tools: ["read_worklist", "read_case"],
-    capabilities: ["Prepare re-routes for bounced referrals", "Assemble hand-off packs", "Chase booking"],
+    head_tools: ["read_ledger"],
+    capabilities: [],
     executioners: [
-      { agent_type: "reroute_referral", label: "Referral re-router", tools: ["read_case", "read_timeline", "read_providers"], output_schema: "RerouteProposal {rejected_by, candidates[], reason}", replaces: ["Choosing a new provider for a bounced referral"] },
-      { agent_type: "prepare_handoff_pack", label: "Hand-off pack builder", tools: ["read_case", "read_timeline"], output_schema: "HandoffPack {items[], missing[]}", replaces: ["Collecting what the receiving provider needs"] },
-      { agent_type: "booking_followup", label: "Booking follow-up", tools: ["read_case", "read_timeline"], output_schema: "BookingNote {appointment_date, reminder_due_on}", replaces: ["Checking that a booked appointment is still on"] },
+      { agent_type: "reroute_referral", label: "Recommend where to re-route a rejected referral", tools: ["read_case", "read_providers"], output_schema: "RerouteOut", replaces: ["work out which provider has not yet been asked", "prepare the re-route for the coordinator"] },
+      { agent_type: "prepare_handoff_pack", label: "Prepare the referral pack", tools: ["read_case", "read_providers"], output_schema: "HandoffPackOut", replaces: ["assemble the referral details and deadline", "check consent to share before referring"] },
+      { agent_type: "booking_followup", label: "Follow up a booked colonoscopy", tools: ["read_case"], output_schema: "BookingOut", replaces: ["check whether a booked appointment has passed without a result"] },
     ],
   },
   evidence_closure: {
-    head_tools: ["read_worklist", "read_case"],
-    capabilities: ["Retrieve closure evidence", "Prepare closure packs for sign-off", "Flag missing evidence"],
+    head_tools: ["read_ledger"],
+    capabilities: [],
     executioners: [
-      { agent_type: "retrieve_evidence", label: "Evidence retriever", tools: ["read_case", "read_timeline"], output_schema: "EvidenceRef {evidence_ref, source}", replaces: ["Looking up the confirmatory result reference"] },
-      { agent_type: "prepare_closure_pack", label: "Closure pack preparer", tools: ["read_case", "read_timeline"], output_schema: "ClosurePack {evidence_ref, signed_by, checklist[]}", replaces: ["Gathering the evidence and checklist before a sign-off (a person signs)"] },
-      { agent_type: "flag_missing_evidence", label: "Missing-evidence flagger", tools: ["read_case", "read_timeline"], output_schema: "MissingEvidence {missing[]}", replaces: ["Noticing that a completed confirmatory test has no result on file"] },
+      { agent_type: "retrieve_evidence", label: "Look up the colonoscopy evidence in FHIR", tools: ["read_case", "find_evidence"], output_schema: "EvidenceOut", replaces: ["search FHIR for the colonoscopy report before closure"] },
+      { agent_type: "prepare_closure_pack", label: "Prepare the closure pack for the signing clinician", tools: ["read_case", "find_evidence"], output_schema: "ClosurePackOut", replaces: ["assemble the case history, milestones and evidence before signing"] },
+      { agent_type: "flag_missing_evidence", label: "Flag missing closure evidence", tools: ["read_case", "find_evidence"], output_schema: "EvidenceOut", replaces: ["notice that a closure has no resolving evidence"] },
     ],
   },
   patient_support: {
-    head_tools: ["read_worklist", "read_case"],
-    capabilities: ["Triage patient replies", "Prepare call-back briefs"],
+    head_tools: ["read_ledger"],
+    capabilities: [],
     executioners: [
-      { agent_type: "triage_reply", label: "Reply triager", tools: ["read_case", "read_timeline"], output_schema: "Triage {category, reply_needed}", replaces: ["Reading a patient reply to decide who must answer it"] },
-      { agent_type: "callback_brief", label: "Call-back briefer", tools: ["read_case", "read_timeline"], output_schema: "CallbackBrief {reason, do_not[], context[]}", replaces: ["Preparing the person who calls a patient back"] },
+      { agent_type: "triage_reply", label: "Put a patient reply in front of a person", tools: ["read_case"], output_schema: "TriageOut", replaces: ["notice every incoming reply and queue it for a person, with the classifier's labels when it has them"] },
+      { agent_type: "callback_brief", label: "Brief a call-back", tools: ["read_case", "read_notifications"], output_schema: "CallbackOut", replaces: ["gather the contact history before calling a patient back"] },
     ],
   },
   quality_ops: {
-    head_tools: ["read_worklist", "read_metrics", "read_alerts"],
-    capabilities: ["Summarise the day", "Look for anomalies and unfairness", "Explain SLA risk in one sentence"],
+    head_tools: ["read_ledger"],
+    capabilities: [],
     executioners: [
-      { agent_type: "daily_summary", label: "Daily summariser", tools: ["read_worklist", "read_metrics"], output_schema: "DailySummary {summary, open, overdue}", replaces: ["Writing the morning briefing"] },
-      { agent_type: "anomaly_check", label: "Anomaly checker", tools: ["read_worklist", "read_alerts"], output_schema: "Anomalies {items[]}", replaces: ["Scanning for stuck or odd cases"] },
-      { agent_type: "fairness_watch", label: "Fairness watch", tools: ["read_metrics"], output_schema: "FairnessFinding {finding}", replaces: ["Checking closure times across languages and providers"] },
-      { agent_type: "sla_risk_explainer", label: "SLA risk explainer", tools: ["read_case", "read_timeline"], output_schema: "SlaExplanation {sentence}", replaces: ["Explaining why a case is late"] },
+      { agent_type: "daily_summary", label: "Daily operations summary", tools: ["read_worklist", "read_metrics", "read_alerts", "read_ledger"], output_schema: "DailySummaryOut", replaces: ["compile the daily status report"] },
+      { agent_type: "anomaly_check", label: "Operations anomaly check", tools: ["read_metrics", "read_alerts", "read_ledger"], output_schema: "FlagsOut", replaces: ["scan alerts, replay failures and unsafe closures each morning"] },
+      { agent_type: "fairness_watch", label: "Fairness watch by language and channel", tools: ["read_abstention", "read_worklist"], output_schema: "FlagsOut", replaces: ["check that no language or channel group is served worse"] },
+      { agent_type: "sla_risk_explainer", label: "Explain an SLA breach in one sentence", tools: ["read_case", "explain_factors"], output_schema: "ExplainOut", replaces: ["explain to a colleague why a case is at the top of the worklist"] },
     ],
   },
 };
@@ -451,7 +453,7 @@ export function orgOf(ledger: AgencyLedger): AgencyOrg {
     };
   });
   return {
-    supervisor: { actor: actorOf("supervisor"), agent_type: "supervisor", tools: ["read_worklist", "read_metrics", "dispatch_department"] },
+    supervisor: { actor: actorOf("supervisor"), agent_type: "supervisor", tools: ["read_active_cases", "read_metrics", "read_alerts", "read_ledger"] },
     departments,
     last_run: ledger.runs[0] ? withCounts(ledger.runs[0], ledger) : null,
     principle: AGENCY_PRINCIPLE,

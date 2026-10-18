@@ -63,7 +63,7 @@ The script refuses to run unless the clock is at its start and the case is at `r
 
 ## The agency (A22)
 
-The agency is the layer of agents that prepares work for people (one supervisor, five department heads, fourteen executioners; [docs/governance/agency.md](../../docs/governance/agency.md)). Agents are labour, not authority: they write no case event, they draft messages only through the drafting route (the owner still approves), and the demo story above is unchanged by them.
+The agency is the layer of agents that prepares work for people (one supervisor, five department heads, fourteen executioners; [docs/governance/agency.md](../../docs/governance/agency.md)). Agents are labour, not authority: the agency is preparation only. They write no case event, they draft messages only through the drafting route (the owner still approves), and the demo story above is unchanged by them.
 
 - **Run it.** Log in as the supervisor and call `POST /agency/run` (or use the agency service token, `AGENCY_SERVICE_TOKEN`), then open the `/agency` page in the web app: the org chart, the last run and the inbox of work that needs a person. A second call at the same simulated time returns the same run.
 - **Between sweeps.** The scheduler also starts a run on every `AGENCY_EVERY_SWEEPS`-th sweep (default 6).

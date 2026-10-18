@@ -78,7 +78,6 @@ class RerouteOut(_HumanOut):
     tried: list[str]
     recommended_provider: str | None = None
     exhausted: bool = False
-    requested_via: Literal["automation"] | None = None
 
 
 class HandoffPackOut(_HumanOut):
@@ -104,8 +103,6 @@ class ClosurePackOut(_HumanOut):
 class TriageOut(_HumanOut):
     reply_event_id: str
     intent: str | None = None
-    confidence: float | None = None
-    classifier_model_id: str | None = None
     classified: bool = False
 
 
@@ -256,8 +253,8 @@ class FollowupCallPrep(Executioner):
 class RerouteReferral(Executioner):
     spec = ExecutionerSpec(
         "referral_scheduling", "reroute_referral", "Recommend where to re-route a rejected referral",
-        ("read_case", "read_providers", "request_handoff"), RerouteOut,
-        ("work out which provider has not yet been asked", "re-request a referral after a rejection or bounce"),
+        ("read_case", "read_providers"), RerouteOut,
+        ("work out which provider has not yet been asked", "prepare the re-route for the coordinator"),
     )
 
     def run(self, box, order, now):
@@ -277,16 +274,10 @@ class RerouteReferral(Executioner):
                 title="Re-route exhausted", assignee_role="coordinator",
                 recommended_action="handle_exhausted_reroute", tried=tried, exhausted=True))
         to = candidates[0]
-        try:
-            box.call("request_handoff", case_id=order.case_id, to_provider=to)
-        except ToolFailed:
-            return Outcome("needs_human", RerouteOut(
-                summary=f"Recommend referring to {to} (not yet asked; tried: {', '.join(tried) or 'none'}).",
-                title="Re-route the referral", assignee_role="coordinator",
-                recommended_action="reassign_or_request_handoff", tried=tried, recommended_provider=to))
-        return Outcome("done", RerouteOut(
-            summary=f"The automation service requested the referral to {to}; its acceptance is a person's.",
-            tried=tried, recommended_provider=to, requested_via="automation"))
+        return Outcome("needs_human", RerouteOut(
+            summary=f"Recommend referring to {to} (not yet asked; tried: {', '.join(tried) or 'none'}).",
+            title="Re-route the referral", assignee_role="coordinator",
+            recommended_action="reassign_or_request_handoff", tried=tried, recommended_provider=to))
 
 
 class PrepareHandoffPack(Executioner):
@@ -442,27 +433,21 @@ class FlagMissingEvidence(Executioner):
 
 class TriageReply(Executioner):
     spec = ExecutionerSpec(
-        "patient_support", "triage_reply", "Route a patient reply",
-        ("read_case", "classify_reply"), TriageOut,
-        ("read and route every incoming reply",),
+        "patient_support", "triage_reply", "Put a patient reply in front of a person",
+        ("read_case",), TriageOut,
+        ("notice every incoming reply and queue it for a person, with the classifier's labels when it has them",),
     )
 
     def run(self, box, order, now):
         ref = order.inputs["reply_event_id"]
-        box.call("read_case", case_id=order.case_id)
-        try:
-            labels = box.call("classify_reply", case_id=order.case_id, reply_event_id=ref)
-        except ToolFailed:
-            return Outcome("needs_human", TriageOut(
-                summary="No reply classifier in this build: a person reads the reply.", title="Read a patient reply",
-                assignee_role="coordinator", recommended_action="read_reply", reply_event_id=ref))
-        out = TriageOut(summary=f"Classified as {labels['intent'] or 'unknown'}.", reply_event_id=ref,
-                        intent=labels["intent"], confidence=labels["confidence"],
-                        classifier_model_id=labels["model_id"], classified=True)
-        if labels["needs_human"]:
-            return Outcome("needs_human", out.model_copy(update={
-                "title": "Read a patient reply", "assignee_role": "coordinator", "recommended_action": "read_reply"}))
-        return Outcome("done", out)
+        f = box.call("read_case", case_id=order.case_id)
+        label = next((x for x in f.reply_labels if x.get("event_id") == ref), None)
+        intent = label.get("intent") if label else None
+        return Outcome("needs_human", TriageOut(
+            summary=("A patient reply is waiting" + (f" (classified {intent})" if intent else "") +
+                     ": a person reads it. The agency never sees its text."),
+            title="Read a patient reply", assignee_role="coordinator", recommended_action="read_reply",
+            reply_event_id=ref, intent=intent, classified=label is not None))
 
 
 class CallbackBrief(Executioner):
@@ -644,26 +629,39 @@ class OutreachHead(DepartmentHead):
     spec = HeadSpec("outreach", "Outreach", ("draft_message", "followup_call_prep"))
 
     def candidates(self, work, now):
-        from app.agency import compat
-
-        templates = compat.automation_templates_available()
         orders, deferred = [], []
         for w in work:
             f = w.facts
             lang = f.language or "en"
-            hard = f.messages_sent >= 2 or f.escalation_level >= 1 or f.contact_attempts >= 2
             if f.state == "lost_contact" or (f.state == "patient_contacted" and f.contact_attempts >= 2):
                 orders.append(TaskOrder(agent_type="followup_call_prep", case_id=f.case_id, reason=w.reason,
                                         inputs=_labels(f)))
                 continue
             purpose = "result_notification" if f.state == "owner_accepted" and f.messages_sent == 0 else "reminder"
-            if templates and not hard:
-                deferred.append({"case_id": f.case_id, "reason": "automation_template"})
+            if _auto_sent_recently(f, purpose, now):
+                deferred.append({"case_id": f.case_id, "reason": "automation_template_sent"})
                 continue
             orders.append(TaskOrder(agent_type="draft_message", case_id=f.case_id, reason=w.reason,
                                     inputs={**_labels(f), "purpose": purpose, "channel": _first_channel(f),
                                             "language": lang}))
         return DepartmentPlan(orders=orders, deferred=deferred)
+
+
+def _auto_sent_recently(f: CaseFacts, purpose: str, now: datetime) -> bool:
+    """An automatic template (A21: `message_sent {auto: true}`) for this purpose went to this patient in the last
+    7 days: a model draft would only repeat it, so Outreach does not draft."""
+    from datetime import timedelta
+
+    from app.agency.compat import AUTO_TEMPLATE_WINDOW_DAYS
+
+    for m in f.auto_messages:
+        try:
+            at = datetime.fromisoformat(m.at)
+        except ValueError:
+            continue
+        if m.purpose == purpose and now - at <= timedelta(days=AUTO_TEMPLATE_WINDOW_DAYS):
+            return True
+    return False
 
 
 class ReferralHead(DepartmentHead):
@@ -727,7 +725,7 @@ HEADS: dict[str, DepartmentHead] = {h.spec.department: h for h in (
 
 # ---------------------------------------------------------------- the supervisor
 
-SUPERVISOR_TOOLS = ("read_worklist", "read_metrics", "read_alerts", "read_ledger")
+SUPERVISOR_TOOLS = ("read_active_cases", "read_metrics", "read_alerts", "read_ledger")
 
 
 def route_case(f: CaseFacts, now: datetime) -> list[tuple[str, str]]:

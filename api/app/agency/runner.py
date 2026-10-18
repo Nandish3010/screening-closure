@@ -4,11 +4,13 @@
       1. the run's root task (id = uuid5 of trigger and sim time: the same run twice inserts nothing)
       2. reconcile: tasks left running by a run that died are failed; `needs_human` tasks whose case has moved on
          (or whose draft a person decided) are resolved, naming who resolved them
-      3. the supervisor reads the worklist, metrics, alerts and the ledger and writes one dispatch per department
-         with its work items (case ids and reason codes) and a rationale
+      3. the supervisor reads the cases changed since the previous run plus the overdue and flagged ones (all cases on
+         a first run), metrics, alerts and the ledger, and writes one dispatch per department with its work items
+         (case ids and reason codes) and a rationale
       4. each head turns its dispatch into executioner tasks (rules, then the planner's priority order), skipping a
          case that already has an open task of that type, or one made since the case last changed
-      5. the executioners run in order until the time budget or the task cap is reached; the rest are failed with
+      5. the executioners run in order until the time budget (which also covers steps 3 and 4) or the task cap is
+         reached; the rest are failed with
          `budget_exhausted` (not carried over: the next run plans afresh). A follow-up an executioner asks for (one
          level, same case, the same department's agent types only) joins the queue
       6. case-less items superseded by this run's are resolved; the root records the outcome
@@ -263,12 +265,19 @@ def _run(L, run_id, now, trigger, created_by, budget_seconds, max_tasks, planner
     L.start(run_id, now)
     housekeeping = reconcile(L, now, run_id)
 
-    # -- the supervisor: reads, routes, dispatches. It has read tools only.
+    def over() -> bool:  # the budget covers the supervisor's reading and every head's planning, not only executioners
+        return monotonic() - t0 > budget
+
+    # -- the supervisor: reads, routes, dispatches. It has read tools only. Its fact-building is bounded: the cases
+    #    changed since the previous run, plus every open case that is overdue or flagged (all cases on a first run).
+    since = _previous_run_at(L, run_id)
     sup = ToolBox(identity_for(SUPERVISOR), SUPERVISOR_TOOLS, now, L)
-    worklist = sup.call("read_worklist")
-    metrics = sup.call("read_metrics")
-    alerts = sup.call("read_alerts")
-    waiting = sup.call("read_ledger", status=NEEDS_HUMAN)
+    exhausted = over()
+    worklist = [] if exhausted else sup.call("read_active_cases", since=since)
+    metrics = {} if exhausted else sup.call("read_metrics")
+    alerts = [] if exhausted else sup.call("read_alerts")
+    waiting = [] if exhausted else sup.call("read_ledger", status=NEEDS_HUMAN)
+    exhausted = exhausted or over()
     work: dict[str, list[WorkItem]] = {d: [] for d in DEPARTMENTS}
     for f in worklist:
         for dept, reason in route_case(f, now):
@@ -287,6 +296,13 @@ def _run(L, run_id, now, trigger, created_by, budget_seconds, max_tasks, planner
                         now, SUPERVISOR_ACTOR)
         L.add(dispatch)
         L.start(dispatch.id, now)
+        if exhausted or over():
+            exhausted = True
+            rationale[dept] = dispatch.input["rationale"]
+            _finish(L, dispatch, FAILED, now, {"summary": "Not planned: the run's time budget was used up.",
+                                               "error": "budget_exhausted", "rationale": rationale[dept]},
+                    _rules_provenance("department_head", dispatch.input))
+            continue
         head = HEADS[dept]
         candidates = head.candidates([w for w in items if w.case_id is not None], now)
         kept, skipped = [], []
@@ -319,13 +335,12 @@ def _run(L, run_id, now, trigger, created_by, budget_seconds, max_tasks, planner
                 {"prompt_hash": prov.prompt_hash, "provider": prov.provider, "model_id": prov.model_id,
                  "fallback_used": prov.fallback_used})
 
-    # -- the executioners, in plan order, inside the budget
-    exhausted = False
+    # -- the executioners, in plan order, inside the same budget
     i = 0
     while i < len(queue):
         task, order, dept = queue[i]
         i += 1
-        if monotonic() - t0 > budget:
+        if over():
             exhausted = True
             _finish(L, task, FAILED, now, {"summary": "Not started: the run's time budget was used up.",
                                            "error": "budget_exhausted"}, _rules_provenance(task.agent_type, order.inputs))
@@ -350,12 +365,23 @@ def _run(L, run_id, now, trigger, created_by, budget_seconds, max_tasks, planner
     superseded = _supersede_caseless(L, run_id, now)
     status = "budget_exhausted" if exhausted or _skipped_for_budget(L, run_id) else "done"
     summary = {"status": status, "housekeeping": {**housekeeping, "superseded": superseded},
-               "rationale": rationale, "tasks_created": created, "worklist_cases": len(worklist),
+               "rationale": rationale, "tasks_created": created, "cases_read": len(worklist),
+               "read_since": since.isoformat() if since else None,
                "metrics": {k: metrics.get(k) for k in ("cases_open", "cases_closed")}}
     _finish(L, L.get(run_id), DONE, now, summary,
             {**_rules_provenance(SUPERVISOR, {d: [w.reason for w in work[d]] for d in DEPARTMENTS}),
              "model_id": "agency-supervisor-rules-v1"})
     return run_summary(L.get(run_id), L)
+
+
+def _previous_run_at(L: TaskLedger, run_id: UUID) -> datetime | None:
+    """The sim time of the latest earlier run that completed (not cut short by its budget), or None: then every case
+    is read. A run that ran out of budget does not count, so the cases it never reached are read again."""
+    for root in L.runs(50):
+        if (root.run_id != run_id and root.status == DONE and root.input.get("sim_at")
+                and (root.output or {}).get("status") == "done"):
+            return datetime.fromisoformat(root.input["sim_at"])
+    return None
 
 
 def _skipped_for_budget(L: TaskLedger, run_id: UUID) -> bool:

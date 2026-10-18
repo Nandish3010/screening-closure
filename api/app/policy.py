@@ -119,29 +119,26 @@ EVENT_POLICY: dict[str, frozenset[str]] = {
 
 # ---- the agency (A22, ADR-033): agents are labour, not authority ----------------------------------------------
 # No agency identity is in EVENT_POLICY: the events route refuses `agency` for every event type, and the state machine
-# refuses any event whose actor is `system:agency:*`. What an agent may CAUSE is listed here, per agent, by the event
-# that the path it uses writes under that path's own actor and rules:
+# refuses any event whose actor is `system:agency:*`. The agency is preparation only. The one thing an agent may
+# CAUSE is listed here, by the event that the path it uses writes under that path's own actor and rules:
 #   message_drafted    the drafting path of `POST /cases/{id}/drafts` (actor `model:<provider>`); the draft is validated,
 #                      stored as Provenance and waits for a human to approve it (the approval gate is unchanged)
-#   handoff_requested  only through the automation service's path (A21, actor `system:automation`), when it is present;
-#                      without it the recommendation is a task for a person
-#   reply_classified   only through the reply classifier's path (D13), when it is present; without it, a person reads
-#                      the reply
+# Every other agent causes nothing: it reads, and writes only its own ledger rows (a recommendation for a person).
 # An agent not listed, or a cause not in its set, is refused (fail closed): `authorize_agency`.
 AGENCY_ACTOR_PREFIX = "system:agency:"
 AGENCY_CAUSES: dict[str, frozenset[str]] = {
     "system:agency:supervisor": frozenset(),
     "system:agency:outreach": frozenset({"message_drafted"}),
-    "system:agency:referral_scheduling": frozenset({"handoff_requested"}),
+    "system:agency:referral_scheduling": frozenset(),
     "system:agency:evidence_closure": frozenset(),
-    "system:agency:patient_support": frozenset({"reply_classified"}),
+    "system:agency:patient_support": frozenset(),
     "system:agency:quality_ops": frozenset(),
 }
 # Decisions that stay with people whatever an agent's allow-list says (checked again by `authorize_agency`).
 AGENCY_NEVER = frozenset({
     "close", "clinician_review", "reopen", "message_approved", "message_rejected", "message_sent",
     "escalation_accepted", "handoff_accepted", "handoff_rejected", "reassign", "consent_updated",
-    "accept_ownership", "callback_requested",
+    "accept_ownership", "callback_requested", "handoff_requested", "complete_confirmatory", "reply_classified",
 })
 
 
