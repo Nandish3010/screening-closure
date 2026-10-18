@@ -228,6 +228,15 @@ export function CaseDetailPage() {
           <strong>{STAFF.reviewReasons.reroute_exhausted}.</strong> Every provider on the automatic re-route list declined or did not answer.
         </p>
       )}
+      {detail.triage_review_reason && !closed && (
+        <p className="banner banner-warn" role="status" data-testid="triage-review-banner" data-reason={detail.triage_review_reason}>
+          <strong>{(STAFF.reviewReasons as Record<string, string>)[detail.triage_review_reason] ?? `Flagged for human review (${titleCase(detail.triage_review_reason)})`}.</strong>
+          {detail.triage_review_requested_at ? <> Raised {fmtDateTime(detail.triage_review_requested_at)} from the patient's reply.</> : null}
+          {(detail.outreach_holds ?? []).length > 0 && (
+            <> {STAFF.holdsLabel}: {(detail.outreach_holds ?? []).map((h) => (STAFF.holds as Record<string, string>)[h] ?? h).join("; ")}.</>
+          )}
+        </p>
+      )}
       {watchdog && !closed && (
         <p className="banner banner-watchdog" role="alert" data-testid="watchdog-banner">
           <WatchdogMarker flag={watchdog} /> {watchdogDetail(watchdog)} Someone needs to take it.

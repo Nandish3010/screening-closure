@@ -220,6 +220,32 @@ add(19, 0.38, 1, [
   ["assign_ownership", 0.9, AUTO, { owner: LAYLA_ACTOR, provider: "Riverside Primary Care", auto: true }],
 ], autoDefs);
 
+/** The reply triage (D13): it reads a patient's reply and writes only `reply_received`, `reply_classified` and a review flag. */
+const TRIAGE = "system:triage";
+/** Case 20 (automation demo): the patient replied "stop" by SMS; the triage flagged an opt-out and the automation sends nothing more. */
+export const DEMO_OPT_OUT_CASE_ID = caseIdFor(20);
+/** Case 21 (automation demo): the patient replied that this is not their number; the triage flagged a wrong number (an outreach hold). */
+export const DEMO_WRONG_NUMBER_CASE_ID = caseIdFor(21);
+
+add(20, 0.41, 6, [
+  ["acknowledge", 5.9, AUTO, { auto: true }],
+  ["assign_ownership", 5.9, AUTO, { owner: LAYLA_ACTOR, provider: "Riverside Primary Care", auto: true }],
+  ["accept_ownership", 5, LAYLA_ACTOR, LAYLA],
+  ["message_sent", 5, AUTO, { ...TEMPLATE_SMS, notification_id: "n-auto-20-1" }],
+  ["reply_received", 2, TRIAGE, { channel: "sms", text_ref: "7d1b2f0e-5c4a-4e8b-9a3d-0f6e1c2b3a41" }],
+  ["reply_classified", 2, TRIAGE, { intent: "opt_out", confidence: 0.97, model_id: "triage-rules-1", needs_human: true, text_ref: "7d1b2f0e-5c4a-4e8b-9a3d-0f6e1c2b3a41" }],
+  ["review_requested", 2, TRIAGE, { reason: "opt_out", source_event_id: "seed-reply-20" }],
+], autoDefs);
+add(21, 0.36, 5, [
+  ["acknowledge", 4.9, AUTO, { auto: true }],
+  ["assign_ownership", 4.9, AUTO, { owner: HUDA_ACTOR, provider: "Riverside Primary Care", auto: true }],
+  ["accept_ownership", 4, HUDA_ACTOR, HUDA],
+  ["message_sent", 4, AUTO, { ...TEMPLATE_SMS, notification_id: "n-auto-21-1" }],
+  ["reply_received", 1, TRIAGE, { channel: "sms", text_ref: "3a9c8e51-26d7-4b0f-8c14-9e2d7a5f6b10" }],
+  ["reply_classified", 1, TRIAGE, { intent: "wrong_number", confidence: 0.91, model_id: "triage-rules-1", needs_human: true, text_ref: "3a9c8e51-26d7-4b0f-8c14-9e2d7a5f6b10" }],
+  ["review_requested", 1, TRIAGE, { reason: "wrong_number", source_event_id: "seed-reply-21" }],
+], autoDefs);
+
 /** The scheduler's `mark_overdue` for every seeded case whose SLA clock has already passed. */
 function withOverdueMarkers(events: CaseEvent[]): CaseEvent[] {
   const clock = slaClock(events, replayState(events), SIM_NOW);

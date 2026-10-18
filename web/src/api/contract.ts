@@ -147,7 +147,18 @@ export type TransitionEvent = (typeof TRANSITION_EVENTS)[number];
  *  review_requested    payload {reason: ReviewReason, source_event_id}
  *                      actor: "system:consent" for reason "consent_withdrawn" (the API adds it when consent is withdrawn;
  *                      the case is then on the human-review list); "system:automation" for reason "reroute_exhausted"
- *                      (A21, LIVE: the automatic re-route list ran out, a human must `reassign`)
+ *                      (A21, LIVE: the automatic re-route list ran out, a human must `reassign`); "system:triage" for
+ *                      "opt_out", "wrong_number", "triage_uncertain" and "already_done" (D13, LIVE: what the patient's own
+ *                      reply says). Exactly one actor may give each reason.
+ *  reply_received      payload {channel: ContactChannel | "letter", text_ref}      actor: "system:triage" only (D13, LIVE)
+ *                      a patient wrote back. NO reply text is ever in an event: `text_ref` is only the id that finds the
+ *                      reply in the erasable `patient_replies` table. The UI shows the channel and nothing else.
+ *  reply_classified    payload {intent: ReplyIntent, confidence: 0..1, model_id, needs_human: boolean, text_ref}
+ *                      actor: "system:triage" only (D13, LIVE): what the reply triage made of the reply. No text.
+ *  contact_updated     payload {contact_valid: true}   actor: a person (coordinator, primary_care_owner, specialist_owner,
+ *                      supervisor; D13, LIVE): the patient's contact details were checked or corrected. It clears a
+ *                      `wrong_number` hold (and the triage flag that came with it) and lifts `contact_valid: false` on
+ *                      `case_created`. It carries no number and no address.
  *  message_approved    payload {draft_id}                             actor: the approving human
  *                      (written only by POST /drafts/{id}/approve; the approver is the actor. It cannot
  *                      be posted to POST /cases/{id}/events: 403 for every role)
@@ -216,6 +227,8 @@ export type NonTransitionEvent =
   | "callback_requested"
   | "consent_updated"
   | "contact_updated"
+  | "reply_received"
+  | "reply_classified"
   | "message_drafted"
   | "message_approved"
   | "message_rejected"
@@ -241,12 +254,24 @@ export const ACTOR_KINDS: readonly ActorKind[] = ["human", "automation", "model"
 export const AUTOMATION_ACTOR = "system:automation";
 
 /**
- * `review_requested.reason`: consent withdrawn (system:consent), the automatic re-route list ran out (system:automation,
- * A21), or, from the triage actor (branch cut-triage), the patient opted out or the number is wrong. The last two hold
- * the automation's messages until a person clears them (`consent_updated`, `contact_updated {contact_valid: true}`).
+ * `review_requested.reason`, exactly these six. Who gives each: consent withdrawn (`system:consent`), the automatic re-route
+ * list ran out (`reroute_exhausted`, `system:automation`, A21), and four from the reply triage (`system:triage`, D13):
+ * `opt_out`, `wrong_number`, `triage_uncertain` (the model was not sure, a person must read the reply) and `already_done`
+ * (the patient says the colonoscopy is already done). `opt_out` and `wrong_number` are also outreach HOLDS: while one is open
+ * the automation sends no automatic message. A person clears `opt_out` with a `consent_updated` and `wrong_number` with a
+ * `contact_updated {contact_valid: true}`; each also clears the triage flag it came with (unless consent is withdrawn).
  */
-export const REVIEW_REASONS = ["consent_withdrawn", "reroute_exhausted", "opt_out", "wrong_number"] as const;
+export const REVIEW_REASONS = ["consent_withdrawn", "reroute_exhausted", "opt_out", "wrong_number", "triage_uncertain", "already_done"] as const;
 export type ReviewReason = (typeof REVIEW_REASONS)[number];
+/** The reasons only the triage actor gives (`triage_review_reason`). */
+export const TRIAGE_REVIEW_REASONS = ["opt_out", "wrong_number", "triage_uncertain", "already_done"] as const;
+export type TriageReviewReason = (typeof TRIAGE_REVIEW_REASONS)[number];
+/** The two review reasons that hold the automation's messages while open (`outreach_holds`). */
+export const OUTREACH_HOLD_REASONS = ["opt_out", "wrong_number"] as const;
+export type OutreachHold = (typeof OUTREACH_HOLD_REASONS)[number];
+/** `reply_classified.intent` (D13). */
+export const REPLY_INTENTS = ["confirm", "reschedule", "cannot_attend", "wrong_number", "dont_understand", "opt_out", "question", "already_done", "other"] as const;
+export type ReplyIntent = (typeof REPLY_INTENTS)[number];
 
 /** Fixed taxonomy for `handoff_rejected.reason`. */
 export const HANDOFF_REJECT_REASONS = ["capacity", "wrong_service", "missing_info", "patient_declined"] as const;
@@ -443,10 +468,18 @@ export interface CaseDetail extends Omit<CaseSummary, "pathway" | "created_at" |
   consent?: Consent;
   consent_history?: ConsentHistoryEntry[];
   /**
-   * Why the case is on the human-review list, else null: `consent_withdrawn` (the patient withdrew consent) or, A21,
-   * `reroute_exhausted` (every provider on the automatic re-route list declined or bounced; a coordinator must `reassign`).
+   * Why the case is on the human-review list, else null. Precedence (as the API): `consent_withdrawn` first, then the triage
+   * reason (`triage_review_reason`, D13), then A21 `reroute_exhausted` (every provider on the re-route list declined or
+   * bounced; a coordinator must `reassign`).
    */
   review_reason?: ReviewReason | string | null;
+  /** When `review_reason` was raised (the API's `review_requested_at`); null / absent when no review is pending. */
+  review_requested_at?: string | null;
+  /** D13: the open flag from `system:triage`, kept apart from the consent one so neither hides the other. */
+  triage_review_reason?: TriageReviewReason | string | null;
+  triage_review_requested_at?: string | null;
+  /** D13: open outreach holds (`opt_out`, `wrong_number`). While any is open the automation sends no automatic message. */
+  outreach_holds?: (OutreachHold | string)[];
   /**
    * A21 (LIVE, `read_model.closure_proposal`): set by `closure_proposed`, cleared by `close` and `reopen`; null otherwise.
    * It is a proposal only: a clinician still posts `clinician_review` and `close` with this `evidence_ref`.
