@@ -106,7 +106,7 @@ test("patient: acknowledge, Arabic RTL, call-back request, consent", async ({ pa
   await page.getByRole("button", { name: /العربية/ }).click();
   await expect(page.getByTestId("patient-root")).toHaveAttribute("dir", "rtl");
   await expect(page.locator("html")).toHaveAttribute("dir", "rtl");
-  await expect(page.getByText("سيشرح لك فريق رعايتك نتيجتك وجهًا لوجه أو عبر الهاتف.")).toBeVisible();
+  await expect(page.getByText("سيشرح لك فريق رعايتك نتيجتك وجهاً لوجه أو عبر الهاتف.")).toBeVisible();
   await page.getByRole("button", { name: /English/ }).click();
   await expect(page.getByTestId("patient-root")).toHaveAttribute("dir", "ltr");
 
