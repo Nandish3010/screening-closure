@@ -208,7 +208,7 @@ Shown in the installed app or browser at `/patient`. Source: `web/src/i18n/strin
 | W02 | Language | Not shown. Used in the accessible label of the language button, as "Language: <other language>". |
 | W03 | العربية | Language button, top of the page. It names the other language in that language: the English column is the button on the English page, the Arabic column the button on the Arabic page. |
 | W04 | Your screening result | Heading of the app start page (/patient) when no case has been opened on this device. |
-| W05 | Open the link your care team sent you to see your result. You can add this page to your home screen. | Text under that heading: how to open the result and add the page to the home screen. |
+| W05 | Open the link your care team sent you to see your next steps. You can add this page to your home screen. | Text under that heading: how to open the result and add the page to the home screen. |
 
 **What the result means.** The first thing the patient reads.
 
@@ -235,7 +235,7 @@ Shown in the installed app or browser at `/patient`. Source: `web/src/i18n/strin
 | W14 | What happens next | Heading of the next-steps section. |
 | W15 | Your care team will talk with you about your result. | Numbered step 1. |
 | W16 | The next step is an appointment for a camera test called a colonoscopy. | Numbered step 2. |
-| W17 | You will get a date and easy steps to get ready. | Numbered step 3. |
+| W17 | You will get a date and clear steps to get ready. | Numbered step 3. |
 
 **Who is looking after you.** The named care owner.
 
@@ -243,7 +243,7 @@ Shown in the installed app or browser at `/patient`. Source: `web/src/i18n/strin
 |---|---|---|
 | W18 | Who is looking after you | Heading of the care-owner section. |
 | W19 | {name} ({role}) is looking after your care. You can ask them any question. | Large text under that heading. {name} is the owner's name (Latin or Arabic script), {role} the role from the role labels below. In Arabic the sentence is split over three lines so a Latin name does not scramble the line. |
-| W20 | A care coordinator will be chosen for you soon. | Shown instead of the line above while nobody has accepted the case. |
+| W20 | A person in your care team will be chosen to look after you soon. | Shown instead of the line above while nobody has accepted the case. |
 | W21 | Your primary care doctor is looking after your care. You can ask them any question. | Shown instead of the owner line when the owner is the patient's primary care physician. The server shows a patient the owner by role only (SEC-2), so no name is available. |
 | W22 | Your specialist doctor is looking after your care. You can ask them any question. | Same, when the owner is the specialist who will do the test. |
 | W23 | Your care coordinator is looking after your care. You can ask them any question. | Same, when the owner is a care coordinator. |
@@ -275,8 +275,8 @@ Shown in the installed app or browser at `/patient`. Source: `web/src/i18n/strin
 | W39 | Letter | Label of the check box for letters. |
 | W40 | My care team may share my result with the specialist who will do my test. | Label of the check box that lets the care team share the result with the specialist. |
 | W41 | Stop all contact | Button under the choices. Withdraws all consent to contact at once: the case is frozen for outreach and a person is asked to review it. Hidden after withdrawal. |
-| W42 | If you stop contact, your care team will not message or call you. A person will check your case. | Small grey text above that button. It says what stopping contact means and that a person will check the case. |
-| W43 | You asked us to stop contact. We will not message or call you. A person on your care team will check your case. | Yellow banner at the top of the choices section after the patient has stopped all contact. |
+| W42 | If you stop contact, your care team will not message or call you. A person will check your case. You can still call your care team. | Small grey text above that button. It says what stopping contact means and that a person will check the case. |
+| W43 | You asked us to stop contact. We will not message or call you. A person on your care team will check your case. You can still call your care team. | Yellow banner at the top of the choices section after the patient has stopped all contact. |
 | W44 | You may contact me again | Replaces the stop button after withdrawal. Pressing it records that the patient may be contacted again. |
 | W45 | Saved | Status line under the choices after a successful save. |
 | W46 | We could not save this. Please try again. | Status line if saving the choices fails. |
@@ -392,7 +392,7 @@ A model draft containing any of these is rejected and replaced by the template (
 | `abnormal_result` | result_disclosure | `abnormal\w*\|(?:result\|test\|screening) (?:is\|was) not normal\|something wrong` | IFHAS: abnormal results are communicated with the participant present | You have an abnormal result. |
 | `result_shows` | result_disclosure | `(?:results?\|tests?\|screening) (?:shows?\|showed\|indicates?\|indicated\|suggests?\|suggested\|revealed\|reveals?)` | IFHAS: abnormal results are communicated with the participant present | Your result shows a problem. |
 
-The Arabic list has 53 entries (see `arabic-pack.md`). The validator also rejects: empty text, text over the channel limit, text in the wrong language, a missing owner name or next step, leftover placeholders, runs of 7 or more digits, email addresses, links, and identifier words (Emirates ID, passport, file number).
+The Arabic list has 69 entries (see `arabic-pack.md`). The validator also rejects: empty text, text over the channel limit, text in the wrong language, a missing owner name or next step, leftover placeholders, runs of 7 or more digits, email addresses, links, and identifier words (Emirates ID, passport, file number).
 
 ## 11. Ten questions we need answered
 

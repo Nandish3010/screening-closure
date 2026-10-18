@@ -124,7 +124,7 @@ These need a person. They start after the autonomous phase and carry their own d
 | ID | Task | Depends on | Status | Test cases | When |
 |---|---|---|---|---|---|
 | H1 | Clinician review (30 minutes): pathway, states, SLAs, patient wording | E10 | todo | T-E13 | Book in week of 25 Oct; hold by 7 Nov |
-| H2 | Native Arabic speaker review of all patient-facing strings | E10, C7 | todo | T-E14 | Book in week of 25 Oct; hold by 7 Nov |
+| H2 | Native Arabic speaker review of all patient-facing strings. AI-assisted pre-review 2026-10-18 on branch cut-reviews (not a native-speaker review; this task stays todo): terminology, gender-neutral forms, tanween, greetings, digits and bidi conventions applied to 25 page strings and all 18 templates, 16 Arabic forbidden phrases added, 15 questions left for the reviewer in docs/governance/arabic-review.md | E10, C7 | todo | T-E14 | Book in week of 25 Oct; hold by 7 Nov |
 | H3 | Rehearse the 7-minute demo ten times and log timings | E9 | todo | T-E11 | Before 14 Nov |
 | H4 | Record the backup demo video and the 3-minute submission video | E9 | todo | T-E15 | Before 14 Nov |
 | H5 | Fresh-clone run on a second machine | F12 | todo | T-F13 | Before 14 Nov |
