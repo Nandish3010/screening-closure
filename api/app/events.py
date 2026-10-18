@@ -109,6 +109,11 @@ class EventStore(Protocol):
 
     def list_cases(self, state: str | None = None) -> list[CaseSummary]: ...
 
+    def has_events_after(self, at: datetime) -> bool:
+        """True if any event of any case is dated strictly after `at` (SEC-1: the sim clock may only be
+        reset while nothing has happened after its start)."""
+        ...
+
     def abstention_counts(self) -> tuple[int, int] | None:
         """(draft attempts, abstentions) from the `drafts` table, or None where it does not
         exist (the AI cut's migration may not be applied)."""
@@ -212,6 +217,10 @@ class InMemoryEventStore:
             ]
         for cid, model in snapshot:
             yield cid, model, None
+
+    def has_events_after(self, at: datetime) -> bool:
+        with self._lock:
+            return any(e.at > at for c in self._cases.values() for e in c.events)
 
     def abstention_counts(self) -> tuple[int, int] | None:
         return None  # no drafts table in memory

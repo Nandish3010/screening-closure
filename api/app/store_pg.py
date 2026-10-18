@@ -204,6 +204,11 @@ class PostgresEventStore:
                 except InvalidTransition as exc:
                     yield case_id, None, str(exc)
 
+    def has_events_after(self, at) -> bool:
+        with self._pool.connection() as conn:
+            row = conn.execute("SELECT EXISTS (SELECT 1 FROM events WHERE at > %s)", (at,)).fetchone()
+        return bool(row[0])
+
     def abstention_counts(self) -> tuple[int, int] | None:
         """(draft attempts, abstentions) if the AI cut's `drafts` table exists, else None.
 
