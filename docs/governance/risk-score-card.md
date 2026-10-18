@@ -25,6 +25,8 @@ The score is read by staff roles only. A patient's worklist rows and case page c
 
 The score is computed in one place and read nowhere. `app.risk` is imported only by `api/app/routers/cases.py`, and the name `risk_score` appears nowhere else in `api/app` as a read (an AST scan fails the build otherwise, `api/tests/test_risk_boundary.py`). Inside the router it is only assigned to the response. Dynamic proof: the same seeded world is run with the real score, with the model switched off, with a constant score and with a random score, and every case log, every read model and the order of the worklist come out identical (a hypothesis property test). A model that cannot be loaded leaves `risk_score` null and does not break the worklist. The API never sorts by the score: sort order is the web's concern.
 
+**The agency (A22).** One agent of the agency, `sla_risk_explainer`, turns the top factors of the case page's explanation into a single sentence for staff (why a case is where it is on the worklist). It receives them through `factors_for_agency` in `api/app/routers/cases.py`, so the import rule above is unchanged, and the sentence is shown to a person and is not used by anything else. No agency plan, dispatch, task order or routing rule reads the score or the factors: a test replaces the function with random values and the plans and dispatches come out identical (T-A66, `test_t_a66_plans_and_dispatches_are_the_same_whatever_the_ordering_aid_says`). See [the agency](agency.md).
+
 ## 3. Training data
 
 Everything is synthetic, from the behaviour simulator (`simulator/sim/`, [README](../../simulator/README.md)).
