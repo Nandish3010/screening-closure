@@ -647,6 +647,8 @@ class ProjectingStore:
         projector.store = inner
         if hasattr(inner, "append_many"):  # the sweep probes for it with hasattr
             self.append_many = self._append_many
+        if hasattr(inner, "append_batches"):
+            self.append_batches = self._append_batches
 
     def create_case(self, case_id, pathway_name, genesis_event, initial_state):
         try:
@@ -677,6 +679,22 @@ class ProjectingStore:
         for event in events:
             self.projector.project(event.case_id, event)
         return state
+
+    def _append_batches(self, batches, pathway):
+        """The sweep's append of many cases in one transaction (A20). Projects the events of every case that was
+        written, after the commit; a refused case wrote nothing and projects nothing. If the whole batch raised,
+        each case's events are checked and queued like a failed single append."""
+        try:
+            outcomes = self._inner.append_batches(batches, pathway)
+        except BaseException:
+            for events in batches:
+                self._queue_if_committed(events[0].case_id, list(events))
+            raise
+        for events, outcome in zip(batches, outcomes):
+            if isinstance(outcome, str):
+                for event in events:
+                    self.projector.project(event.case_id, event)
+        return outcomes
 
     def _queue_if_committed(self, case_id, events) -> None:
         """F3-1: the inner store raised. If the event nevertheless committed (the store failed after the

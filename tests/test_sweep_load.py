@@ -120,3 +120,22 @@ def test_parallel_sweep_equals_single_process_sweep(loaded):
     assert len(snapshot()) == len(rows)
     ids = [r[0] for r in rows]
     assert len(ids) == len(set(ids))
+
+
+def test_seeded_due_times_are_what_the_store_would_have_written(loaded):
+    """A20: the seed writes `cases.next_due_at` like the store does after the last append (derived from the log),
+    so the timed sweep starts from a warm index, and an indexed sweep and a full scan read the same cases' work."""
+    _, pool = loaded
+    pathway, calendar = sc.load_engine()
+    from app.store_pg import PostgresEventStore
+    from app.sweep import NEVER, next_due_at, timing_fingerprint
+
+    basis = timing_fingerprint(pathway, calendar)
+    with pool.connection() as conn:
+        stored = {r[0]: (r[1], r[2]) for r in conn.execute("SELECT id, next_due_at, next_due_basis FROM cases").fetchall()}
+    seen = 0
+    for case_id, model, _ in PostgresEventStore(pool).iter_open_case_models(pathway):
+        want = next_due_at(model, pathway, calendar)
+        assert stored[case_id] == (NEVER if want is None else want, basis)
+        seen += 1
+    assert seen == 400
