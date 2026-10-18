@@ -9,7 +9,8 @@ _DEFAULT_CALENDAR = _REPO_ROOT / "config" / "calendar.yaml"
 
 
 # Development-only defaults. Shipping these values anywhere but a laptop is a bug, which is
-# why app.auth.assert_secure_config refuses them when APP_ENV is not "dev".
+# why app.auth.assert_secure_config refuses them when APP_ENV is not "dev" (SEC-1, ADR-029), and
+# app.auth.verify_token never accepts a token signed with DEV_AUTH_SECRET_DEFAULT outside dev.
 DEV_AUTH_SECRET_DEFAULT = "dev-only-insecure-secret-change-me"
 SCHEDULER_TOKEN_DEFAULT = "dev-only-scheduler-service-token"
 WATCHDOG_TOKEN_DEFAULT = "dev-only-watchdog-service-token"
@@ -24,8 +25,9 @@ class Settings(BaseSettings):
     watchdog_idle_days: int = 7
     llm_provider: str = "template"
     # --- identity (ADR-012) ------------------------------------------------------------
-    # "dev" allows the built-in defaults below. Any other value refuses to start with a
-    # default secret (app.auth.assert_secure_config).
+    # "dev" allows the built-in defaults below. Any other value (compared exactly: "Dev" is not dev)
+    # refuses to start unless DEV_LOGIN_ENABLED=false, DEV_AUTH_SECRET and both service tokens are
+    # non-default, at least 32 bytes, and the two service tokens differ (app.auth.assert_secure_config).
     app_env: str = "dev"
     dev_login_enabled: bool = True
     dev_auth_secret: str = DEV_AUTH_SECRET_DEFAULT

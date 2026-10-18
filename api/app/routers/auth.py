@@ -19,7 +19,8 @@ class DevLogin(BaseModel):
 @router.post("/auth/dev-login")
 def dev_login(body: DevLogin) -> dict:
     """Development login: no password. Returns a signed bearer token for `role:name`."""
-    if not settings.dev_login_enabled:
+    # Fail closed (SEC-1): the passwordless login exists only in APP_ENV=dev, whatever the flag says.
+    if settings.app_env != "dev" or not settings.dev_login_enabled:
         raise HTTPException(404, "dev login is disabled")
     try:
         token = auth.issue_token(body.role, body.name, body.patient_ref, provider=body.provider)
