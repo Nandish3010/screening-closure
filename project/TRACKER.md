@@ -11,10 +11,10 @@ One row per ticket. Tickets come from this file and nowhere else. Plan: [PLAN.md
 | M2 | Simulator and `make evaluate` | 18 Oct 10:00 | 20 | 15 | doing |
 | M3 | Interfaces | 18 Oct 16:00 | 15 | 11 | doing |
 | M4 | AI edge and governance | 18 Oct 18:00 | 11 | 11 | done |
-| M5 | Hardening, docs, demo | 18 Oct 22:30 | 17 | 10 | doing |
-| Total | | | 82 | 66 | |
+| M5 | Hardening, docs, demo | 18 Oct 22:30 | 20 | 14 | doing |
+| Total | | | 85 | 70 | |
 
-Tickets per cut: A 17, B 16, C 11, D 11, E 12, F 12 (79, including A13 to A17 and B12 to B16 added after the first plan, plus the 3 done M0 tickets). Human-owner tasks are listed separately at the bottom.
+Tickets per cut: A 19, B 16, C 11, D 11, E 13, F 12 (82, including A13 to A19, B12 to B16 and E14 added after the first plan, plus the 3 done M0 tickets). Human-owner tasks are listed separately at the bottom.
 
 ## How to update
 
