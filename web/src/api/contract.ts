@@ -494,9 +494,50 @@ export interface TimelineSlaBreached {
   breach_days?: number;
 }
 
+/**
+ * One other ladder that an escalation also covers (A19, ADR-031): an entry of `escalate.also_for` and of the same field on
+ * the timeline `escalation` item. The ladder is named like the escalation names its own, exactly one of `state` (the
+ * state's SLA ladder) or `milestone` (a milestone's ladder, A18). `rung` and `level` are that ladder's rung that rode on
+ * the escalation; `due_at` is that ladder's breach date and `rung_due_at` the date the rung fell due.
+ */
+export interface TimelineAlsoFor {
+  state?: string;
+  milestone?: MilestoneName | string;
+  rung: EscalationRung | string;
+  level: number;
+  due_at: string;
+  rung_due_at: string;
+}
+
+/**
+ * An escalation rung, derived from an `escalate` event. The live API emits every field below; the mock's older shape has
+ * only `kind`, `at` and `rung`, so everything else is optional.
+ *
+ * A19 (ADR-031): when two ladders of one case (the state's and a milestone's, or two milestones) need the same role on
+ * the same working day, the role is told once. Two optional payload fields carry that; the API emits both keys, null
+ * when absent, and they are never both set:
+ *  - `also_for`: this one escalation also stands for the listed other ladders, whose rung to the same target rode on it.
+ *    Those rungs have no `escalate` event of their own; the ladders share this event's id, and one
+ *    `escalation_accepted` accepts them all.
+ *  - `attached_to`: the event id (`event_id`) of the escalation of the same working day that this rung was attached to.
+ *    This rung notifies nobody and is not a new escalation, so the UI must not alert, count or send for it again;
+ *    show it as riding on the earlier escalation.
+ */
 export interface TimelineEscalation {
   kind: "escalation";
   at: string;
+  /** The `escalate` event's id: the value that rungs attached to this escalation carry in `attached_to`. */
+  event_id?: string;
+  /** A18: the milestone whose ladder this rung is on; absent or null on the state's SLA ladder. */
+  milestone?: MilestoneName | string | null;
+  /** 1..3, the ladder level of this rung (see `ESCALATION_RUNGS`). */
+  level?: number;
+  /** When this rung fell due. */
+  rung_due_at?: string | null;
+  /** A19: the other ladders this one escalation also covers (entries below); null or absent when it covers only its own. */
+  also_for?: TimelineAlsoFor[] | null;
+  /** A19: event id of the same-working-day escalation this rung was attached to; it notifies nobody. Null or absent otherwise. */
+  attached_to?: string | null;
   /** The ladder rung, same vocabulary as the `escalate` event. */
   rung: EscalationRung;
   /** Who is addressed, e.g. "owner", "supervisor", "coordinator". */

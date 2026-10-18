@@ -78,11 +78,11 @@ On screen: `/dashboard` for the live case, then the headline table in [results.m
 
 > "These numbers come from a simulator on synthetic data, with every parameter sourced or labelled assumed. We quote the conservative scenario."
 >
-> "Within 180 days, 66% of patients reach a colonoscopy, against 52% under today's process." (results.md headline, `scenarios.literature_anchored.arms.*.completion_180d`: 66.2% and 52.1%)
+> "Within 180 days, 66% of patients reach a colonoscopy, against 52% under today's process." (results.md headline, `scenarios.literature_anchored.arms.*.completion_180d`: 66.3% and 52.1%)
 >
-> "Cases lost without anyone being told fall from 44.5% to 22.5%." (`silent_loss_rate`) "At 90 days, 47% are still open instead of 62%." (`open_90d`: 47.2% and 62.4%)
+> "Cases lost without anyone being told fall from 44.5% to 20.2%." (`silent_loss_rate`, programme level) "At 90 days, 46% are still open instead of 62%." (`open_90d`: 46.0% and 62.4%)
 >
-> "This is before capacity: escalations cost nothing in the model, so we would size a pilot by the 53 escalations per 100 cases, not by the completion gain." (`escalations_per_100_cases`: 52.78)
+> "This is before capacity: escalations cost nothing in the model, so we would size a pilot by the 119 escalations per 100 cases, not by the completion gain." (`escalations_per_100_cases`: 119.42)
 >
 > "Do not trust me: run `make evaluate`, change any parameter, and every number regenerates in about ten seconds."
 
@@ -93,7 +93,7 @@ On screen: `/dashboard` for the live case, then the headline table in [results.m
 ## Q&A preparation
 
 **"Is this just a ticket tracker?"**
-A ticket tracker records what people type. Here the rules are enforced by the engine: a case cannot close without evidence that resolves in the FHIR store and the closer's own signature, and a property test checks that over thousands of random event sequences (T-A1). Clocks run on a working-day calendar and escalate in order to named people who must accept. Silence is detected: idle cases are flagged and a stopped scheduler raises an alert (T-A30, T-A31). Consent is an append-only ledger that freezes outreach in the engine. Every event is projected to FHIR R4 with Provenance. And the evaluation reports escalation precision, 43.3% in the conservative scenario, so we can see whether escalations are acted on rather than assume it (results.md, `escalation_precision`).
+A ticket tracker records what people type. Here the rules are enforced by the engine: a case cannot close without evidence that resolves in the FHIR store and the closer's own signature, and a property test checks that over thousands of random event sequences (T-A1). Clocks run on a working-day calendar and escalate in order to named people who must accept. Silence is detected: idle cases are flagged and a stopped scheduler raises an alert (T-A30, T-A31). Consent is an append-only ledger that freezes outreach in the engine. Every event is projected to FHIR R4 with Provenance. And the evaluation reports the escalation acted-on rate, 43.5% in the conservative scenario, so we can see whether escalations are acted on rather than assume it (results.md, `escalation_acted_on_rate`).
 
 **"What's real?"**
 The engine, the tests, the FHIR projection and the evaluation code are real and run on this laptop. The data is synthetic: a Synthea cohort and a seeded simulator. Of 132 simulator parameters, 88 are assumed, 16 calibrated, 13 sourced and 15 sourced-adjacent (`meta.parameter_status_counts`), and the assumptions table lists 37 limitations ([assumptions-limitations.md](../assumptions-limitations.md)). Put the table on screen, then: "run `make evaluate` yourself, and change any parameter you doubt." Nothing is integrated with Malaffi or a provider today, and no message is really sent.
@@ -102,7 +102,7 @@ The engine, the tests, the FHIR projection and the evaluation code are real and 
 Because the transitions that matter are safety-critical: is this case overdue, who is told next, may it close. They must give the same answer every time, be replayable from the log and be explainable to a regulator line by line. A model can draft a message well, and we use it there, behind a human approval. A model that decides a closure can be wrong in a way that looks right, and the case then leaves every worklist and every timer. Here that is impossible by construction: an automated actor cannot emit `close`, and a model actor can emit only `message_drafted` (T-D2). If the model is down, nothing changes except that the draft comes from a template ([design-choices.md](../design-choices.md)).
 
 **"What about capacity?"**
-The model has none, and we say so in the results: escalations cost nothing, and the orchestrated arm raises about 53 per 100 cases in the conservative scenario (99 in the upper range). The completion gains would shrink without the people and colonoscopy slots to act on them. That is why the pilot starts in shadow mode, measures coordinator minutes per case and escalation precision on a sample, and why we size it by the escalation count. A capacity model is future work (L08).
+The model has none, and we say so in the results: escalations cost nothing, and the orchestrated arm raises about 119 per 100 cases in the conservative scenario (205 in the upper range). The completion gains would shrink without the people and colonoscopy slots to act on them. That is why the pilot starts in shadow mode, measures coordinator minutes per case and escalation precision on a sample, and why we size it by the escalation count. A capacity model is future work (L08).
 
 **"Malaffi is HL7 v2, not FHIR."**
 Agreed, and our plan assumes it. The official sources we read list Malaffi's minimum dataset as HL7 v2 message types, and no official document confirms a FHIR interface (evidence.md section 8c). FHIR is our internal model. The adapter plan puts an HL7 v2 adapter at the boundary: ORU for results, ADT for demographics, SIU for appointments, the message control id as the idempotency key, and an automated actor that can never close a case. It is a target, not a claim, and the pilot does not depend on it ([malaffi-adapter-plan.md](../governance/malaffi-adapter-plan.md)).
@@ -131,7 +131,7 @@ For the submission video (H4): 20 s problem, 2 min the catch-and-close scenario,
 | 9 | 1:35 | 0:10 | 13. A prepared second case | Worklist, open the case at "Confirmatory completed" | "Colonoscopy done and recorded as a FHIR Procedure and DiagnosticReport" |
 | 10 | 1:45 | 0:20 | 13. Bad reference refused, then closed | Wrong reference, 422 banner; Record colonoscopy result; Sign off and close case; timeline "Case closed (signed)" | "A reference that does not exist is refused. With the real Procedure and the clinician's own signature: closed." |
 | 11 | 2:05 | 0:15 | 13. Proof | Timeline, then the property test passing, then the Reopen panel with its reasons | "No closure without evidence and a clinician's signature: tested on 2,000 random sequences every run. Reopening needs a reason." |
-| 12 | 2:20 | 0:30 | Numbers | Headline table from results.md, three rows highlighted | "Simulation on synthetic data, conservative scenario: colonoscopy within 180 days 52% to 66%; lost without anyone told 44.5% to 22.5%; open at 90 days 62% to 47%. Before capacity limits. Rerun: make evaluate" |
+| 12 | 2:20 | 0:30 | Numbers | Headline table from results.md, three rows highlighted | "Simulation on synthetic data, conservative scenario: colonoscopy within 180 days 52% to 66%; lost without anyone told 44.5% to 20.2%; open at 90 days 62% to 46%. Before capacity limits. Rerun: make evaluate" |
 | 13 | 2:50 | 0:10 | Ask | Pilot slide | "Pilot ask: one programme, two providers, 90 days, shadow mode first. Cases closed without evidence: must stay zero." |
 
 Governance has no shot of its own in the 3-minute video; captions 5, 6, 7 and 11 carry it, and the technical documentation covers it in full.

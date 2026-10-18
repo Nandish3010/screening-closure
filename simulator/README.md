@@ -109,7 +109,7 @@ claims, scheduler timer faults and the watchdog backstop, reopening after closur
 
 Not modelled (deliberately, or not yet):
 - Shared capacity: endoscopy slots, staff workload and queueing. Cases are independent, so the orchestrated arm's extra
-  escalations cost nothing here: about 99 escalations per 100 cases in the upper-range scenario, so every gain reported is before capacity
+  escalations cost nothing here: about 205 escalations per 100 cases in the upper-range scenario, so every gain reported is before capacity
   constraints. The volume is reported (`escalations_per_100_cases`) so the pilot can size it; a capacity model is future work.
 - Clinical content: findings, pathology, bowel-prep failure, surveillance. Closure means "documented outcome with evidence and a human sign-off".
 - Informed refusal as a closure outcome: the pathway YAML has no such exit, so refusers stay open and are flagged `lost_contact`.
@@ -144,7 +144,7 @@ parameters only (marked `calibrated`): outreach response rates, staff delays and
 of patients who eventually act unprompted, and the baseline's rejection-noticing and self-rebooking rates. `results.md` states how
 close the baseline gets. The upper-range orchestrated arm was not tuned; it lands near the actively managed Kaiser reference (Corley 2017)
 because the same placeholders leave few patients unreachable once a human chases them. Its size relative to the baseline
-(about 1.6x at 180 days) is larger than the 1.27 risk ratio for patient navigation, so it is the mechanism ceiling, not an expected
+(about 1.5x at 180 days) is larger than the 1.27 risk ratio for patient navigation, so it is the mechanism ceiling, not an expected
 effect: quote the literature-anchored scenario below.
 
 ### Scenarios: upper range and literature anchored
@@ -155,7 +155,7 @@ effect: quote the literature-anchored scenario below.
 |---|---|---|
 | Parameters | `params.yaml` (plus any `PARAMS` layers) | the same stack with [`params.conservative.yaml`](params.conservative.yaml) layered on top |
 | Question it answers | what the orchestration mechanisms can do if every case gets them and every escalation works as assumed | what the orchestrated arm achieves if its behavioural effects are held to published levels |
-| Orchestrated / baseline completion at 180 days | about 1.6 | 1.27 (the pooled navigation risk ratio), by calibration |
+| Orchestrated / baseline completion at 180 days | about 1.5 | 1.27 (the pooled navigation risk ratio), by calibration |
 | Use | mechanism ceiling and sensitivity | **the scenario to quote** |
 
 The overlay caps three things, each documented with its source and its upper-range value in the file: the SMS reminder effect at the
