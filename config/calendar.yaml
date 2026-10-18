@@ -1,7 +1,9 @@
 # Working-day calendar used by every SLA (api/app/calendar.py). See ADR-009.
 #
 # UAE default: Monday to Friday are working days, Saturday and Sunday are the weekend.
-# Verify the convention against an official source before citing it (ADR-009).
+# Source: docs/evidence.md section 8d (u.ae public-sector working hours, Monday to Friday, Saturday and Sunday
+# weekend since 1 January 2022). Friday is a government half day that this calendar does not shorten: a Friday
+# counts as a full working day (ADR-009).
 timezone: Asia/Dubai        # the calendar day is the local day in this zone
 weekend: [saturday, sunday] # any subset of weekday names, at least one day must stay working
 # Optional public holidays, ISO dates (or {date: 2026-12-02, name: ...}). Empty on purpose:

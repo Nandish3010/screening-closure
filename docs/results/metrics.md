@@ -23,8 +23,8 @@ scenarios see the same patients.
 (`records` store "relative days").
 
 **Calendar days versus working days.** All *reported* durations (time to ownership, contact, colonoscopy, closure, and the 30/60/90 and
-90/180/360 day horizons) are **calendar days**. Working days (Monday to Friday, no holidays configured, Friday not shortened; the
-`working_week` and `calendar.holidays` parameters) enter in three places only, all inside the model rather than in the reported numbers:
+90/180/360 day horizons) are **calendar days**. Working days (Monday to Friday, no holidays configured; the
+`working_week` and `calendar.holidays` parameters; a Friday counts as a full working day. Friday is a half day in government, which `params.yaml` records as `working_week.friday_half_day: true`, but neither the simulator's nor the API's calendar reads it, so the calendars do not shorten Friday: see [evidence.md](../evidence.md) section 8d) enter in three places only, all inside the model rather than in the reported numbers:
 (a) the orchestrated arm's SLA timers and escalation ladder are armed in working days, (b) staff actions land on working days, (c) the
 escalation acted-on window is five **working** days (`metrics.escalation_precision_window_working_days`, a parameter key that keeps its original name, see section 10).
 
@@ -51,8 +51,10 @@ clocks that span states and are measured against a national standard. The simula
 
 | Milestone | Clock starts | Met by | Allowance | Source of the figure |
 |---|---|---|---|---|
-| `referral_requested` | `case_created`, taken as the result release | the first `handoff_requested` (a request; acceptance is not required, and a transfer between owners counts) | 15 working days | DoH IFHAS standard V10, July 2025: referral to secondary care within 15 working days of releasing results ([evidence.md](../evidence.md) section 8) |
-| `confirmatory_completed` | the latest `handoff_accepted`; if no referral was accepted, the case entering `confirmatory_booked` | `complete_confirmatory` | 31 working days | UAE National Guideline for Colorectal Cancer Screening and Diagnosis, 3rd ed. 2022, Appendix 2 (colonoscopy within 31 working days of referral). **Not** an IFHAS figure. |
+| `referral_requested` | `case_created`, taken as the result release | the first `handoff_requested` (a request, not an acceptance; any handoff counts, including a transfer between primary care owners) | 15 working days | DoH IFHAS standard V10, July 2025: referral to secondary care within 15 working days of releasing results ([evidence.md](../evidence.md) section 8, read first-hand) |
+| `confirmatory_completed` | the latest referral acceptance by the receiving provider (`handoff_accepted`; it restarts on each later acceptance); if no referral was accepted, the case entering `confirmatory_booked` (ADR-020) | `complete_confirmatory` | 31 working days from referral | UAE National Guideline for Colorectal Cancer Screening and Diagnosis, 3rd ed. 2022, Appendix 2 (colonoscopy within 31 working days of referral; [evidence.md](../evidence.md) section 8b). **Not** an IFHAS figure. The guideline is internally inconsistent (15 working days in clause 12.5.2, 31 in Appendix 2, 31 days in Appendix 3). |
+
+Starting the colonoscopy clock at the acceptance is a stated, slightly lenient reading of "from referral": the days between the referral request and its acceptance are not counted against the 31. They are bounded instead by the 3-working-day handoff response timer (`handoff_response_working_days: 3`), after which an unanswered referral bounces back to the referrer. The clinician review (H1) is asked to confirm or change this reading.
 
 A milestone is breached when its met-by event has not happened by the end of the allowance (the same strict "after" rule as the SLAs, on the
 working-day calendar). The breach is recorded once (the API's `mark_overdue` names the milestone instead of a state; the simulator's

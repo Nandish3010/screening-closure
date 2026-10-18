@@ -4,13 +4,13 @@
 
 ## Position
 
-Our engine is FHIR R4 inside (ADR-008). Malaffi's public materials point to **HL7 v2 messages** at its boundary: its resources page lists HL7 message specifications available on request, and its onboarding page requires an HL7-capable EMR without mentioning FHIR. The project coordinator also reports that a DoH circular (2026/10) lists the Malaffi minimum dataset as HL7 v2 message types (ADT, ORU, SIU and others); that circular was not read by the author and is to verify. So the plan is: **HL7 v2 at the Malaffi boundary through an adapter; FHIR toward Malaffi only if the operator confirms it.** FHIR support is **to confirm with the HIE operator (hie@doh.gov.ae, as supplied by the coordinator; to verify)**.
+Our engine is FHIR R4 inside (ADR-008). Malaffi's public materials point to **HL7 v2 messages** at its boundary: its resources page lists HL7 message specifications available on request, and its onboarding page requires an HL7-capable EMR without mentioning FHIR. DoH Circular 2026/10 (19 January 2026), read first-hand in the official PDF (check P, [evidence.md](../evidence.md) section 8c), expresses the Malaffi minimum dataset as HL7 message types (ADT, PPR, ORU, OMP, RDS, RAS, VXU, SIU). So the plan is: **HL7 v2 at the Malaffi boundary through an adapter; FHIR toward Malaffi only if the operator confirms it.** FHIR support is **to confirm with the HIE operator (hie@doh.gov.ae, a contact printed on the DoH pages, see evidence.md Gaps item 4); the interface specification itself and any FHIR availability are to verify**.
 
 ## What would be exchanged
 
 | Our FHIR R4 resource (internal) | Direction | HL7 v2 message at the boundary (assumed) | Purpose | Confidence |
 |---|---|---|---|---|
-| `DiagnosticReport` + `Observation` (FIT result, LOINC 29771-3) | In | ORU (observation result) | Starts a case; or supplies colonoscopy results as closure evidence | Type named by coordinator; segment-level mapping to verify against the operator's specification |
+| `DiagnosticReport` + `Observation` (FIT result, LOINC 29771-3) | In | ORU (observation result) | Starts a case; or supplies colonoscopy results as closure evidence | Type named in Circular 2026/10; segment-level mapping to verify against the operator's specification |
 | `Patient` (demographics) | In | ADT | Identity and contact details for matching | As above |
 | `Appointment` (booked, attended, missed) | In | SIU (scheduling information) | Moves a case to confirmatory booked; detects a no-show | As above |
 | `ServiceRequest` / `Task` (referral and ownership status) | Out, if the operator permits | Not a native HL7 v2 event; candidate is the provider's EMR referral order, or no exchange at all | Tell the receiving provider who owns the case and what is due | To confirm. It is not known that Malaffi accepts workflow status from a non-provider system. |

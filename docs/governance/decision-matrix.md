@@ -2,7 +2,7 @@
 
 Who, or what, may take each action in the system, what evidence it needs, what it changes, and which test shows the restriction holds. One row per event type in the final vocabulary ([PLAN.md](../../project/PLAN.md) section 6), plus the routes that matter for control. This is a design record for reviewers and regulators, not a compliance claim.
 
-Authority is the code: `api/app/policy.py` (who may try), `api/app/state_machine.py` and `config/pathways/colorectal_fit.yaml` (whether the event is valid). The state machine decides whether an event is valid; the policy table decides who is allowed to try. Checked against pathway v0.2 and `policy.py` after the M2/M3 integration merge.
+Authority is the code: `api/app/policy.py` (who may try), `api/app/state_machine.py` and `config/pathways/colorectal_fit.yaml` (whether the event is valid). The state machine decides whether an event is valid; the policy table decides who is allowed to try. Pathway v0.2; every event type in `policy.py` has a row, which `tools/check/docs_check.py` (T-E6) checks.
 
 ## How to read it
 

@@ -41,13 +41,13 @@ All URLs in this document were accessed on **2026-10-18** unless a different dat
 
 | Obligation | Design response | State today |
 |---|---|---|
-| Lawful basis and consent | A consent ledger records consent per contact channel and for data sharing as an append-only history; withdrawal freezes outreach and flags the case for a human (ticket A6, T-A23, T-A24). For a deployment the lawful basis for the screening programme itself is a provider decision (to verify), and our service would act as processor for the provider. | Planned |
-| Data minimisation | Case records carry identifiers, result reference, state and timestamps; they do not copy the clinical record. Only the fields needed to write a message are used in drafting. Negatives are not stored by the simulator. | Partly by design today (event model), rest planned |
+| Lawful basis and consent | A consent ledger records consent per contact channel and for data sharing as an append-only history; withdrawal freezes outreach and flags the case for a human, and the send-time check sits in the notification mock (A6, A7, ADR-017, ADR-018, T-A23, T-A24, T-A25, T-F7). For a deployment the lawful basis for the screening programme itself is a provider decision (to verify), and our service would act as processor for the provider. | Built for the ledger, see A6, ADR-017, T-A23, T-A24; the lawful basis is future (to verify) |
+| Data minimisation | Case records carry identifiers, result reference, state and timestamps; they do not copy the clinical record. Only the fields needed to write a message are used in drafting. Negatives are not stored by the simulator. The event log holds opaque ids and strict per-event payload schemas that reject unlisted keys and free text (A14). | Built, see A14, ADR-019, T-A36 (stored events), T-F10 and T-F11 (logs, URLs) |
 | Purpose limitation | The only purpose is tracking and closing the follow-up of an abnormal screening result. The risk score is used only to order the worklist. | By design, stated in ADR-007 |
-| Data subject rights: access | A per-case timeline from the event log gives an export of everything held about a case. | Planned (audit view) |
+| Data subject rights: access | A per-case timeline from the event log lists everything the log holds about a case (`GET /cases/{id}/timeline`, A9, T-A28). It does not cover the HAPI resources or the notification and draft texts, so a complete subject-access export is not built. | Built in part, see A9, T-A28; the complete export is future |
 | Data subject rights: rectification | Corrections are new events that supersede earlier ones; the original stays in the log. | By design |
-| Data subject rights: erasure | Tension: the event log is append-only by design (ADR-004), so deletion is not possible in place. Option for a deployment: keep direct identifiers in a separate, erasable identity store and put only a pseudonymous key in events, so erasure removes the link and leaves a non-identifying audit trail. Not implemented and not yet decided; the interaction with mandatory health record retention (item 2) must be settled first. | Open design decision |
-| Security | Role-based access (A8, F7), no patient data in URLs or logs, secrets out of the repo (security pass), append-only log with database triggers. | Partly planned |
+| Data subject rights: erasure | Tension: the event log is append-only by design (ADR-004), so deletion is not possible in place. Option for a deployment: keep direct identifiers in a separate, erasable identity store and put only a pseudonymous key in events, so erasure removes the link and leaves a non-identifying audit trail. Design accepted (ADR-025). Built: opaque `role:user_id` actors, strict payload schemas and an erasable `users` table for display names (A14, ADR-019). Not built: the contact table, the erasure procedure and register, the HAPI expunge and backup handling. The interaction with mandatory health record retention (item 2) must be settled first. | Partly built, see ADR-025, A14; the rest is open |
+| Security | Role-based access with default-deny policy tables (A8, A14, F7, [rbac-matrix.md](rbac-matrix.md), ADR-012, ADR-019); no patient data in URLs or logs (F8, T-F10, T-F11); secrets scan and compose lint in `make test-security`; append-only log with database triggers (ADR-004); a least-privilege database role and a production fail-closed start (SEC-1, ADR-029, migration 009_app_role.sql); every published port bound to 127.0.0.1. OIDC login and token expiry are not built (L19). | Built, see A8, A14, F7, ADR-012, ADR-029; OIDC login and token expiry are future |
 | Cross-border transfer | The deployment target is in-country hosting (item 6). No component sends data outside the UAE; the model provider for drafting would have to be in-country too, or the template fallback is used. | Deployment requirement |
 | Prototype data | Synthetic data only. No real patient data enters the repository, tests or the demo. | Done |
 
@@ -99,12 +99,12 @@ Control areas in v0.9 that matter to us (all from the table of contents and text
 
 | Control area | Design response | State today |
 |---|---|---|
-| Access control | Roles (lab, primary care owner, specialist owner, coordinator, supervisor, patient); event actor derived from identity; per-route policy tested for every role (A8, F7). Periodic access review is an operating procedure for the provider and the operator; not built. | Planned |
-| Monitoring and logging | Append-only event log of every state change with actor and time; a watchdog flags idle cases and a stopped scheduler (A11). Centralised security logging for infrastructure is a deployment item. | Partly planned |
-| Information exchange | One outbound path for messages (notification mock in the prototype); an adapter boundary for exchange with Malaffi (see the adapter plan). | Planned |
-| Health information protection | Minimisation, consent ledger, no patient data in URLs or logs. | Planned |
+| Access control | Roles (lab, primary care owner, specialist owner, coordinator, supervisor, patient); event actor derived from identity; per-route policy tested for every role (A8, F7). Periodic access review is an operating procedure for the provider and the operator; not built. | Built, see A8, A14, F7, [rbac-matrix.md](rbac-matrix.md), ADR-012, ADR-019; access review is a deployment procedure |
+| Monitoring and logging | Append-only event log of every state change with actor and time; a watchdog flags idle cases and a stopped scheduler (A11). Centralised security logging for infrastructure is a deployment item. | Built, see A11, ADR-023; centralised logging is a deployment item |
+| Information exchange | One outbound path for messages (notification mock in the prototype); an adapter boundary for exchange with Malaffi (see the adapter plan). | Outbound path built, see A7, ADR-018 (a mock that writes to a log); the Malaffi adapter is future |
+| Health information protection | Minimisation by strict payload schemas (A14, ADR-019), consent ledger (A6, ADR-017), no patient data in URLs or logs (T-F10, T-F11). Erasure is partly built (item 1). | Built, see A6, A14, ADR-017, ADR-019, T-F10, T-F11 |
 | Third-party security | The model provider is optional and off by default; any provider would need to be in-country and inside the provider's third-party assessment. | By design |
-| Secure development | Tests, pinned dependencies and images (F12), no secrets in the repository. | Partly planned |
+| Secure development | Tests, the HAPI image pinned to a version tag (F12, ADR-006), a secrets scan and a compose lint in `make test-security`, a script-checked fresh clone (F12). Full dependency pinning and a software-composition scan are not built. | Built, see F12, ADR-006, `make test-security`; dependency scanning is future |
 | Incident management and continuity | Not designed for production in the prototype. Chaos tests cover scheduler loss and duplicate events (F3, F4). The incident process is a deployment item for the operator. | Deployment item |
 
 ### To verify
@@ -128,7 +128,7 @@ No source read states that the 2018 policy was repealed. A 2025 standard that re
 
 2018 policy: AI treated as supportive technology, with a human making and being responsible for final decisions; principles of transparency (verifiable and explainable), user assistance, safety and security, privacy, ethics and accountability; minimum requirements for AI tools including recognised certification, auditable validation statements, graceful degradation, audits and continuous feedback; end-users must have clear governance, state the point of entry of AI and the boundary between AI and the practitioner, and report incidents to DoH.
 
-2025 standard: human-in-the-loop or human-on-the-loop oversight with escalation protocols (3.1.1.2); clinicians retain final decision-making authority, with override and audit trails (3.1.7.2); designated owners and logging of all decisions and changes traceable to a responsible party (3.1.7.1); transparency and end-to-end traceability logs of inputs, outputs and version history (3.1.6); privacy by design with minimum necessary data and encryption, and production data not used to train models (3.1.4.4); compute and storage, including disaster recovery sites, within the UAE and remote access for development and support exclusively from within the UAE (3.1.4.5.1); risk assessment and a risk register, with high-risk systems requiring conformity assessment in coordination with the DoH Data and Digital Governance Office (3.3.1); AI literacy and training (section 3.4). Section numbers are from the document read.
+2025 standard: human-in-the-loop or human-on-the-loop oversight with escalation protocols (3.1.1.2); clinicians retain final decision-making authority, with override and audit trails (3.1.7.2); designated owners and logging of all decisions and changes traceable to a responsible party (3.1.7.1); transparency and end-to-end traceability logs of inputs, outputs and version history (3.1.6); privacy by design with minimum necessary data and encryption, and production data not used to train models (3.1.4.4.2); compute and storage, including disaster recovery sites, within the UAE and remote access for development and support exclusively from within the UAE (3.1.4.5.1); risk assessment and a risk register, with high-risk systems requiring conformity assessment in coordination with the DoH Data and Digital Governance Office (3.3.1.2.2.2); AI literacy and training (section 3.4). Section numbers are from the document read. This is a paraphrase, not a quotation. The clauses above were re-checked against the official PDF on 2026-10-18 (3.1.1.2, 3.1.4.4.2, 3.1.4.5.1, 3.1.6.2.3, 3.1.7.1, 3.1.7.2, 3.3.1); 3.1.4.4.2 states that production data shall not be used to train the model.
 
 ### How our design meets it
 
@@ -147,7 +147,7 @@ No source read states that the 2018 policy was repealed. A 2025 standard that re
 
 1. Whether our two AI uses (drafting; worklist ordering) fall in the Low, Medium or High category under the DoH risk protocol referred to by the standard (the protocol was not read), and so whether conformity assessment is needed.
 2. Whether "certification of the AI software from recognised international agencies" (2018 policy 7.1.2.1.1) applies to a drafting tool, and what DoH accepts.
-3. Whether any newer DoH AI policy text exists. A DoH circular and a screening standard were reported to us by the project coordinator for the pilot plan; they are cited there with their provenance and were not read by the author of this document.
+3. Whether any newer DoH AI policy text exists. (The DoH circular 2026/10 and the IFHAS standard V10 cited elsewhere in the project were read first-hand in the official PDFs; see [evidence.md](../evidence.md) section 8.)
 
 ## 5. Malaffi, the Abu Dhabi health information exchange
 
@@ -160,7 +160,7 @@ No source read states that the 2018 policy was repealed. A 2025 standard that re
 
 ### Interfaces: are FHIR interfaces publicly documented?
 
-On the public pages read, no. The resources page lists, on request only, "Malaffi Real-Time HL7 Message Specifications" (general, pharmacy and reference laboratory), a participant agreement and participation criteria. The onboarding page requires an HL7-capable EMR and does not mention FHIR. The project coordinator reports that a DoH circular (2026/10) lists the Malaffi minimum dataset as HL7 v2 message types (ADT, ORU, SIU and others) and that no official document names FHIR; that circular was not read by the author of this document and is to verify. The working assumption in this project is therefore **HL7 v2 at the Malaffi boundary, FHIR inside our engine, and FHIR toward Malaffi only if the operator confirms it**, to be confirmed with the HIE operator (hie@doh.gov.ae, as supplied by the coordinator; to verify against the operator's own contact page). Vendor pages that claim FHIR support for Malaffi integration were seen and are not treated as evidence.
+On the public pages read, no. The resources page lists, on request only, "Malaffi Real-Time HL7 Message Specifications" (general, pharmacy and reference laboratory), a participant agreement and participation criteria. The onboarding page requires an HL7-capable EMR and does not mention FHIR. DoH Circular 2026/10 (19 January 2026) was read first-hand in the official PDF (check P, [evidence.md](../evidence.md) section 8c): its attached minimum dataset is expressed as HL7 message types (ADT, PPR, ORU, OMP, RDS, RAS, VXU, SIU), and no official document read names FHIR. The working assumption in this project is therefore **HL7 v2 at the Malaffi boundary, FHIR inside our engine, and FHIR toward Malaffi only if the operator confirms it**, to be confirmed with the HIE operator (hie@doh.gov.ae, a contact printed on the DoH pages, see evidence.md Gaps item 4). Vendor pages that claim FHIR support for Malaffi integration were seen and are not treated as evidence.
 
 ### How our design meets or uses it
 
@@ -196,13 +196,13 @@ Malaffi is a stated target, not an integration; nothing in the prototype connect
 
 | Control | Where it appears | State |
 |---|---|---|
-| Data minimisation | Event model carries references, not the clinical record; prompts carry only message fields | By design; checks planned |
-| Consent ledger | Append-only consent history per channel and for data sharing; withdrawal freezes outreach (A6) | Planned |
-| Append-only audit | Events table with triggers (ADR-004); Provenance for model outputs (D4) | Events done (M0-2); Provenance planned |
-| Role-based access | Roles and per-route policy, matrix test (A8, F7) | Planned |
+| Data minimisation | Event model carries references, not the clinical record; prompts carry only message fields | Built, see A14, ADR-019, T-A36, T-F10, T-F11 |
+| Consent ledger | Append-only consent history per channel and for data sharing; withdrawal freezes outreach (A6) | Built, see A6, A7, ADR-017, T-A23, T-A24 |
+| Append-only audit | Events table with triggers (ADR-004); FHIR Provenance per event (A12, ADR-024, T-A33) | Built, see M0-2, ADR-004, A12, ADR-024, T-A33 |
+| Role-based access | Roles and per-route policy, matrix test (A8, A14, F7, [rbac-matrix.md](rbac-matrix.md)) | Built, see A8, A14, F7, ADR-012, ADR-019; OIDC login is future |
 | Synthetic data only in the prototype | Synthea cohort and seeded simulator; declared in data-provenance | Done |
 | In-country hosting as the deployment target | Section 6 | Target, not done |
-| Human gates | Closure invariant (T-A1); message approval (T-D1) | Closure guard done in the scaffold; approval gate planned |
+| Human gates | Closure invariant (T-A1); message approval (T-D1) | Closure guard done in the scaffold; approval gate built (D5, ADR-030, outbox migration 011_outbox.sql, T-D1) |
 
 Retention and deletion policy is not yet set; it depends on the health record retention period and on the erasure design in item 1, both to verify.
 
@@ -215,6 +215,8 @@ Primary (regulator or operator):
 - DoH Abu Dhabi, Policy on Use of AI in the Healthcare Sector (Policy/AI/0.9, 30 April 2018): https://www.doh.gov.ae/-/media/E9C1470A575146B18015DEBE57E47F8D.ashx
 - DoH Abu Dhabi, Responsible AI Standard V1 (October 2025): https://www.doh.gov.ae/-/media/Feature/Resources/Standards/2025/Responsible-AI-Standard-V1.ashx
 - DoH Abu Dhabi, ADHICS v0.9 (3 February 2019): https://www.doh.gov.ae/-/media/032019_ADHICS.ashx
+- DoH Abu Dhabi, Circular 2026/10 (19 January 2026), read first-hand for evidence.md section 8c: https://www.doh.gov.ae/-/media/84A213F71AA545D69E01A23A0A99C598.ashx
+- DoH Abu Dhabi, IFHAS standard V10 (July 2025), read first-hand for evidence.md section 8: https://www.doh.gov.ae/-/media/EE758C3B77314BC394F2479AEF803AA2.ashx
 - DoH Abu Dhabi, news item on the launch of ADHICS (2 March 2019): https://doh.gov.ae/en/news/department-of-health-launches-abu-dhabi-healthcare-information-and-cyber-security
 - DoH Abu Dhabi, ADHICS FAQ (seen in search results only, not read in full): https://www.doh.gov.ae/-/media/Feature/Aamen/ADHICS-FAQ.ashx
 - UAE Government portal, data protection laws: https://u.ae/en/about-the-uae/digital-uae/data/data-protection-laws
@@ -236,4 +238,4 @@ Secondary (law firms, trade body, press):
 - Baker McKenzie, Health Data Law, permitted transfers (seen in search results only): https://insightplus.bakermckenzie.com/bm/data-technology/united-arab-emirates-health-data-law-permitted-transfers-of-health-data
 - Healthcare IT News, Abu Dhabi Health Data Services and Orion Health (launch coverage; seen in search results only): https://www.healthcareitnews.com/news/asia/abu-dhabi-health-data-services-and-orion-health-partner-deliver-first-hie-middle-east
 
-Not retrieved, needed for verification: the PDPL and Federal Law No. 2 of 2019 texts and Ministerial Decision 51 of 2021 on the UAE legislation portal; ADHICS V2 (2024) and the DoH Standard on Patient Healthcare Data Privacy; the DoH Policy on the Abu Dhabi Health Information Exchange; the DoH circular 2026/10 referred to by the coordinator.
+Not retrieved, needed for verification: the PDPL and Federal Law No. 2 of 2019 texts and Ministerial Decision 51 of 2021 on the UAE legislation portal; ADHICS V2 (2024) and the DoH Standard on Patient Healthcare Data Privacy; the DoH Policy on the Abu Dhabi Health Information Exchange; the Responsible AI Standard V1 and DoH Circular 2026/10 are not in this list: both were read first-hand (Circular 2026/10 for [evidence.md](../evidence.md) section 8c).
