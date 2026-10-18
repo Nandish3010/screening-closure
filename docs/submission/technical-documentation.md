@@ -352,7 +352,7 @@ All load numbers come from [load.md](../results/load.md): one scheduler sweep ov
 
 **Idempotent events.** `event_id` is an idempotency key (T-A6); case ids derive from the report id; a second sweep emits nothing (asserted by the load test at every size); watchdog flags and FHIR ids are deterministic.
 
-**Migration runner.** Schema changes are numbered SQL files (`api/migrations/001_events.sql` to `008_draft_decisions.sql`) applied at API startup and recorded in `schema_migrations`. Integration tests run against a separate `closure_test` database, and the test session refuses any database whose name does not end in `_test` (T-F2, ADR-015).
+**Migration runner.** Schema changes are numbered SQL files (`api/migrations/001_events.sql` to `010_fhir_queue_backoff.sql`) applied by the one-shot `migrate` service (the API repeats the check at start-up) and recorded in `schema_migrations` with a sha256 each; an edited, already-applied migration stops the run (SEC-1). The API connects as the unprivileged role `closure_app` (`009_app_role.sql`, ADR-029). Integration tests run against a separate `closure_test` database, and the test session refuses any database whose name does not end in `_test` (T-F2, ADR-015).
 
 **Chaos results.** `make test-chaos` stops the scheduler container of the running stack and watches the watchdog. Measured: the `scheduler_down` alert appeared 68 s after the container stopped (the 60 s limit plus up to one 10 s watchdog interval) and cleared about 10 s after the restart, against a 90 s budget (ADR-023). The wider chaos suite is built and also runs under `make test-chaos`. A fault-injection harness that is active only when `APP_ENV=test` (`api/tests/faults.py`, `api/tests/test_chaos_faults.py`) shows that an event delivered many times, including by concurrent clients, has the effect of one (T-F3), that an event dated after the simulation clock is refused with 422 while a backdated one is accepted and flagged (ADR-027, T-F4), and that an event which commits and then fails before its FHIR projection is queued for retry; `api/tests/test_chaos_kill_sweep.py` kills the sweep with SIGKILL part-way through 5,000 open cases, single-process and sharded, and the rerun leaves exactly the planned events, each once, with no case closed (T-F5). `api/tests/test_chaos_ai_consent.py` feeds 18 kinds of bad model output and arbitrary text and requires the template, a counted abstention and no state change (T-F6), and withdraws consent at each point of the approve-and-send path and in 60 races on Postgres with no message sent after the withdrawal (T-F7).
 
@@ -398,7 +398,7 @@ The full table, with where each item bites, its source, its impact if wrong, how
 | L17 | Arabic text unreviewed (H2) | open |
 | L18 | English wording, states and SLAs unreviewed by a clinician (H1) | open |
 | L19 | Development tokens never expire; open dev login | open |
-| L20 | HAPI image pinned to `hapiproject/hapi:v8.12.0-2` (F12); shares Postgres with the case store | open |
+| L20 | HAPI image pinned to `hapiproject/hapi:v8.12.0-2` (F12); own database on the same Postgres server as the case store (SEC-1) | open |
 | L21 | Malaffi not integrated; HL7 v2 boundary assumed | open |
 | L22 | ADHICS CM 4.2 cloud rule; DoH acceptance of any cloud not established | open |
 | L23 | Erasure procedure and contact table not built | open |

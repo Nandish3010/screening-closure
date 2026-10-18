@@ -215,7 +215,9 @@ def run(keep: bool, build: bool) -> int:
         step("the scheduler is sweeping", bool(beat) and beat["sweep_ok"] is True and beat["age_seconds"] < 30, str(beat and beat["age_seconds"]))
 
         # 3. a model provider, no network
-        compose("up", "-d", "api", env_extra={"OFFLINE_LLM_PROVIDER": "azure_openai"})
+        # --no-deps: only the api is recreated. Without it compose runs the one-shot `migrate` again first (SEC-1), which
+        # lengthens the window in which the api is down enough for a scheduler sweep to fail inside it.
+        compose("up", "-d", "--no-deps", "api", env_extra={"OFFLINE_LLM_PROVIDER": "azure_openai"})
         step("api restarted with LLM_PROVIDER=azure_openai", wait_healthy(120))
         api = Api()
         for key, role, name in (("coord", "coordinator", "Offline Coord"), ("pco", "primary_care_owner", "Dr Offline Referrer"), ("lab", "lab", "Offline Lab")):

@@ -17,7 +17,7 @@ curl localhost:8000/health
 make test
 ```
 
-The stack runs offline once the images are pulled. Postgres is on host port 5433, HAPI FHIR on 8080, the API on 8000.
+The stack runs offline once the images are pulled. Postgres is on host port 5433, HAPI FHIR on 8080, the API on 8000, each bound to 127.0.0.1 only. `make up` first runs two one-shot containers (`db-init`, `migrate`) that create the databases and apply the schema as the database owner; the API then runs as the unprivileged role `closure_app` (ADR-029).
 
 The web app is not a compose service. Run `make web-install` once, then `make web-dev` and open http://localhost:5173. It uses the mock adapter by default. For the real API: `cd web && VITE_API_ADAPTER=http VITE_API_URL=http://localhost:8000 npm run dev`.
 
@@ -49,9 +49,10 @@ Detail: [docs/submission/technical-documentation.md](docs/submission/technical-d
 
 | Service | What it does | Port |
 |---|---|---|
-| `postgres` | Events, read model, notifications, drafts, heartbeats, alerts; also HAPI's tables | 5433 (host) |
-| `fhir` | HAPI FHIR R4 server, receives the projection | 8080 |
-| `api` | FastAPI engine | 8000 |
+| `postgres` | Events, read model, notifications, drafts, heartbeats, alerts (database `closure`); HAPI's tables (database `hapi`) | 5433 (host, 127.0.0.1) |
+| `db-init`, `migrate` | One-shot: create the extra databases; apply the schema and set the API role's password | none |
+| `fhir` | HAPI FHIR R4 server, receives the projection | 8080 (127.0.0.1) |
+| `api` | FastAPI engine (non-root, unprivileged database role) | 8000 (127.0.0.1) |
 | `scheduler` | Periodic SLA sweep, writes a heartbeat | none |
 | `watchdog` | Idle-case scan, alerts on a stale heartbeat | none |
 | `web` | Vite and React app, started with `make web-dev` | 5173 |
