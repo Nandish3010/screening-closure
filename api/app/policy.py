@@ -16,7 +16,7 @@ from __future__ import annotations
 
 from fastapi import Depends, HTTPException, Request
 
-from app.auth import SCHEDULER_ROLE, USER_ROLES, WATCHDOG_ROLE, Identity, optional_identity
+from app.auth import AGENCY_ROLE, SCHEDULER_ROLE, USER_ROLES, WATCHDOG_ROLE, Identity, optional_identity
 
 PUBLIC = "public"
 ANY_IDENTITY = "any_identity"  # any valid user or service token
@@ -27,6 +27,7 @@ STAFF = frozenset(USER_ROLES) - {PATIENT}
 ALL_USERS = frozenset(USER_ROLES)
 SCHEDULER = frozenset({SCHEDULER_ROLE})
 WATCHDOG = frozenset({WATCHDOG_ROLE})
+AGENCY = frozenset({AGENCY_ROLE})
 
 # (method, path template) -> PUBLIC | ANY_IDENTITY | frozenset of roles
 ROUTE_POLICY: dict[tuple[str, str], object] = {
@@ -65,6 +66,16 @@ ROUTE_POLICY: dict[tuple[str, str], object] = {
     # Liveness for the dashboard (A11): coordinator and supervisor; the watchdog may read it too.
     ("GET", "/heartbeats"): frozenset({COORD, SUPER}) | WATCHDOG,
     ("GET", "/alerts"): frozenset({COORD, SUPER}) | WATCHDOG,
+    # The agency (A22, ADR-033). Starting a run: a supervisor, or the agency supervisor's own service token (the
+    # token reaches this route and nothing else). Reading the ledger and the org chart: coordinator and supervisor.
+    # The inbox of tasks that need a person: owners (items on cases they own, filtered in the handler), coordinator
+    # and supervisor. A case's agency summary: owners on their own case, coordinator, supervisor.
+    ("POST", "/agency/run"): frozenset({SUPER}) | AGENCY,
+    ("GET", "/agency/org"): frozenset({COORD, SUPER}),
+    ("GET", "/agency/runs"): frozenset({COORD, SUPER}),
+    ("GET", "/agency/tasks"): frozenset({COORD, SUPER}),
+    ("GET", "/agency/inbox"): frozenset({PCO, SPEC, COORD, SUPER}),
+    ("GET", "/cases/{case_id}/agency"): frozenset({PCO, SPEC, COORD, SUPER}),
 }
 
 # event type -> roles allowed to emit it via POST /cases/{id}/events
@@ -105,6 +116,43 @@ EVENT_POLICY: dict[str, frozenset[str]] = {
     # Only the watchdog service (A11); the scheduler no longer holds it.
     "watchdog_flagged": WATCHDOG,
 }
+
+# ---- the agency (A22, ADR-033): agents are labour, not authority ----------------------------------------------
+# No agency identity is in EVENT_POLICY: the events route refuses `agency` for every event type, and the state machine
+# refuses any event whose actor is `system:agency:*`. What an agent may CAUSE is listed here, per agent, by the event
+# that the path it uses writes under that path's own actor and rules:
+#   message_drafted    the drafting path of `POST /cases/{id}/drafts` (actor `model:<provider>`); the draft is validated,
+#                      stored as Provenance and waits for a human to approve it (the approval gate is unchanged)
+#   handoff_requested  only through the automation service's path (A21, actor `system:automation`), when it is present;
+#                      without it the recommendation is a task for a person
+#   reply_classified   only through the reply classifier's path (D13), when it is present; without it, a person reads
+#                      the reply
+# An agent not listed, or a cause not in its set, is refused (fail closed): `authorize_agency`.
+AGENCY_ACTOR_PREFIX = "system:agency:"
+AGENCY_CAUSES: dict[str, frozenset[str]] = {
+    "system:agency:supervisor": frozenset(),
+    "system:agency:outreach": frozenset({"message_drafted"}),
+    "system:agency:referral_scheduling": frozenset({"handoff_requested"}),
+    "system:agency:evidence_closure": frozenset(),
+    "system:agency:patient_support": frozenset({"reply_classified"}),
+    "system:agency:quality_ops": frozenset(),
+}
+# Decisions that stay with people whatever an agent's allow-list says (checked again by `authorize_agency`).
+AGENCY_NEVER = frozenset({
+    "close", "clinician_review", "reopen", "message_approved", "message_rejected", "message_sent",
+    "escalation_accepted", "handoff_accepted", "handoff_rejected", "reassign", "consent_updated",
+    "accept_ownership", "callback_requested",
+})
+
+
+def authorize_agency(identity: Identity, causes: str) -> None:
+    """May this agency identity cause `causes` (an event type written by another actor's path)? Raises 403."""
+    allowed = AGENCY_CAUSES.get(identity.actor) if identity.role == AGENCY_ROLE else None
+    if allowed is None:
+        raise HTTPException(403, f"{identity.actor!r} is not an agency agent: denied")
+    if causes in AGENCY_NEVER or causes not in allowed:
+        raise HTTPException(403, f"{identity.actor!r} may not cause {causes!r}")
+
 
 # Roles that act only on their own case.
 OWN_CASE_ONLY = frozenset({PATIENT})

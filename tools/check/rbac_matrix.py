@@ -59,9 +59,10 @@ logging.getLogger("httpx").setLevel(logging.WARNING)
 PATIENT = policy.PATIENT
 OWNER_ROLES = sorted(policy.OWNER_SCOPED)
 USER_ROLES = list(auth.USER_ROLES)
-COLUMNS = ["anonymous", *USER_ROLES, auth.SCHEDULER_ROLE, auth.WATCHDOG_ROLE]
+COLUMNS = ["anonymous", *USER_ROLES, auth.SCHEDULER_ROLE, auth.WATCHDOG_ROLE, auth.AGENCY_ROLE]
 SHORT = {"anonymous": "anon", "lab": "lab", "primary_care_owner": "pco", "specialist_owner": "spec",
-         "coordinator": "coord", "patient": "patient", "supervisor": "super", "scheduler": "sched", "watchdog": "wdog"}
+         "coordinator": "coord", "patient": "patient", "supervisor": "super", "scheduler": "sched", "watchdog": "wdog",
+         "agency": "agency"}
 
 EVENTS_ROUTE = ("POST", "/cases/{case_id}/events")
 UNKNOWN_EVENT = "not_a_real_event"
@@ -87,6 +88,8 @@ SCOPE_RULES: dict[tuple[str, str], frozenset[str]] = {
     ("POST", "/cases/{case_id}/confirmatory-result"): frozenset({"owner"}),
     ("POST", "/drafts/{draft_id}/approve"): frozenset({"owner"}),
     ("POST", "/drafts/{draft_id}/reject"): frozenset({"owner"}),
+    # A22: a case's agency summary, like its notifications: a clinician only on a case they own.
+    ("GET", "/cases/{case_id}/agency"): frozenset({"owner"}),
 }
 
 # Observed behaviour that differs from SCOPE_RULES, with the finding that explains it. The run fails if a
@@ -116,9 +119,16 @@ def world():
     drafts.store = InMemoryDraftStore()
     users.directory = users.InMemoryUserDirectory()
     clock.reset()
+    from app.agency import runner as agency_runner
+
+    agency_runner.reset_memory_ledger()
+    saved_every = settings.agency_every_sweeps
+    settings.agency_every_sweeps = 0  # the scheduler hook (A22) must not start runs while the matrix probes
     try:
         yield TestClient(app)
     finally:
+        settings.agency_every_sweeps = saved_every
+        agency_runner.reset_memory_ledger()
         for module, attr, value in saved:
             setattr(module, attr, value)
         clock.reset()
@@ -137,6 +147,8 @@ class Probe:
             return {"Authorization": f"Bearer {settings.scheduler_service_token}"}
         if role == auth.WATCHDOG_ROLE:
             return {"Authorization": f"Bearer {settings.watchdog_service_token}"}
+        if role == auth.AGENCY_ROLE:
+            return {"Authorization": f"Bearer {settings.agency_service_token}"}
         key = (role, patient_ref)
         if key not in self._headers:
             body = {"role": role, "name": f"rbac {role}"}
@@ -404,7 +416,8 @@ def render(result: Result) -> str:
         "(the role has no case scope, or the route does not name a case).",
         "- `*` after a letter: the cell is a documented gap, observed behaviour that differs from the intended rule (see Findings).",
         "- Columns: `anon` no token; the six user roles (`pco` = `primary_care_owner`, `spec` = `specialist_owner`, "
-        "`coord` = `coordinator`, `super` = `supervisor`); `sched` the scheduler service token; `wdog` the watchdog service token.",
+        "`coord` = `coordinator`, `super` = `supervisor`); `sched` the scheduler service token; `wdog` the watchdog service token; `agency` the agency supervisor's service "
+        "token (A22, ADR-033: it may start an agency run and nothing else; the departments have no token).",
         "- \"Own case\": for a clinician, a case they own; for a patient, the case with their `patient_ref`. "
         "\"Other\": a case owned by another clinician, or another patient's.",
         "",

@@ -97,6 +97,10 @@ SCHEDULER_ACTOR_NAME = "system:scheduler"
 MODEL_ACTOR_PREFIX = "model:"
 MODEL_ALLOWED_EVENTS = frozenset({"message_drafted"})  # the only thing a drafting model may emit (T-D2)
 NOTIFIER_ACTOR = "system:notifier"  # the notification mock: the only actor that writes message_sent
+# The agency (A22, ADR-033): agents are labour, not authority. An agency actor may emit NO event: whatever an agent
+# causes on a case is written by the actor that owns that path (the drafting model's `message_drafted`, the
+# automation service's events), under that actor's own rules. This prefix is refused before anything else is checked.
+AGENCY_ACTOR_PREFIX = "system:agency:"
 
 # Actor prefixes that denote automation (scheduler, watchdog, drafting model...).
 AUTOMATED_ACTOR_PREFIXES = ("system:", "scheduler", "watchdog", "model:")
@@ -282,6 +286,8 @@ def replay_model(events, pathway: Pathway) -> CaseModel:
 
 def step(model: CaseModel, event: Event, pathway: Pathway) -> CaseModel:
     """Return the new read model, or raise InvalidTransition. Never mutates anything."""
+    if event.actor.startswith(AGENCY_ACTOR_PREFIX):
+        raise InvalidTransition(f"an agency actor may emit no event ({event.type!r} refused): agents are labour, not authority")
     if event.type in pathway.human_only_events and is_automated(event.actor):
         raise InvalidTransition(f"event {event.type!r} requires a human actor")
     if pathway.milestones:

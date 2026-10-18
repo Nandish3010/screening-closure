@@ -24,6 +24,7 @@ from fastapi import APIRouter
 from pydantic import BaseModel, ConfigDict, Field
 
 from app import ops
+from app.agency import runner as agency_runner
 from app.calendar import default_calendar
 from app.clock import clock
 from app.routers import cases, drafts
@@ -93,7 +94,16 @@ class Heartbeat(BaseModel):
 
 @router.post("/sweep")
 def sweep() -> dict:
-    now, calendar = clock.now(), default_calendar()
+    now = clock.now()
+    out = _sweep(now)
+    # A22: every AGENCY_EVERY_SWEEPS-th sweep starts an agency run in the background (labour, not authority: it
+    # writes no case event as the agency). Counted after the sweep, so a sweep is never delayed or failed by it.
+    out["agency"] = agency_runner.after_sweep(now)
+    return out
+
+
+def _sweep(now) -> dict:
+    calendar = default_calendar()
     pool = get_pool()
     url = _postgres_url(cases.store) if pool.workers > 1 else None
     if url is None:

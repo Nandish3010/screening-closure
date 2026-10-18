@@ -9,13 +9,20 @@ import pytest
 from api_helpers import make_client
 
 from app import auth
-from app.config import DEV_AUTH_SECRET_DEFAULT, SCHEDULER_TOKEN_DEFAULT, WATCHDOG_TOKEN_DEFAULT, settings
+from app.config import (
+    AGENCY_TOKEN_DEFAULT,
+    DEV_AUTH_SECRET_DEFAULT,
+    SCHEDULER_TOKEN_DEFAULT,
+    WATCHDOG_TOKEN_DEFAULT,
+    settings,
+)
 
 GOOD = {"x": "a" * 32, "y": "b" * 32, "z": "c" * 32}
 
 
-def configure(monkeypatch, *, env, login, secret, sched=GOOD["y"], dog=GOOD["z"]):
+def configure(monkeypatch, *, env, login, secret, sched=GOOD["y"], dog=GOOD["z"], agency="d" * 32):
     monkeypatch.setattr(settings, "app_env", env)
+    monkeypatch.setattr(settings, "agency_service_token", agency)
     monkeypatch.setattr(settings, "dev_login_enabled", login)
     monkeypatch.setattr(settings, "dev_auth_secret", secret)
     monkeypatch.setattr(settings, "scheduler_service_token", sched)
@@ -147,3 +154,21 @@ def test_the_default_service_tokens_still_work_in_dev(monkeypatch):
     assert auth.service_identity(SCHEDULER_TOKEN_DEFAULT).role == "scheduler"
     assert auth.service_identity(WATCHDOG_TOKEN_DEFAULT).role == "watchdog"
 
+
+
+@pytest.mark.parametrize(
+    ("agency", "needle"),
+    [
+        (AGENCY_TOKEN_DEFAULT, "AGENCY_SERVICE_TOKEN is the built-in"),
+        ("s" * 31, "AGENCY_SERVICE_TOKEN is shorter than 32"),
+        (GOOD["y"], "AGENCY_SERVICE_TOKEN is the same value as another service token"),
+    ],
+)
+def test_the_agency_token_is_checked_like_the_others(monkeypatch, agency, needle):
+    """A22: the agency supervisor's token, when set, follows the same rules; empty switches it off."""
+    configure(monkeypatch, env="prod", login=False, secret=GOOD["x"], agency=agency)
+    with pytest.raises(RuntimeError, match=needle):
+        auth.assert_secure_config()
+    configure(monkeypatch, env="prod", login=False, secret=GOOD["x"], agency="")
+    auth.assert_secure_config()
+    assert auth.service_identity("") is None
