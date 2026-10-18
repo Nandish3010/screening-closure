@@ -127,5 +127,6 @@ def test_the_rendered_config_has_the_hardening():
     assert svc["fhir"]["environment"]["SPRING_DATASOURCE_URL"].endswith("/hapi")
     assert svc["api"]["build"]["target"] == "runtime" and svc["api-test"]["build"]["target"] == "test"
     assert svc["api"]["depends_on"]["migrate"]["condition"] == "service_completed_successfully"
-    for name in ("scheduler", "watchdog"):  # they speak HTTP to the API and never see a database URL
-        assert "DATABASE_URL" not in svc[name].get("environment", {})
+    for name in ("scheduler", "watchdog"):  # they speak HTTP to the API and never see a database URL or password,
+        env = svc[name].get("environment", {})  # not even when .env (copied from .env.example) carries them
+        assert not env.get("DATABASE_URL") and not env.get("POSTGRES_PASSWORD"), (name, sorted(env))

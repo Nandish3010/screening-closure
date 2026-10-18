@@ -137,6 +137,10 @@ services:
     environment:
       API_URL: http://api:8000
       HEARTBEAT_PATH: /heartbeat/scheduler.json
+      # It speaks HTTP to the API and has no database connection (SEC-1). Blank what a `.env` copied from
+      # .env.example would hand it through env_file: the owner's database URL and password.
+      DATABASE_URL: ""
+      POSTGRES_PASSWORD: ""
     volumes:
       - heartbeat:/heartbeat
     depends_on:
@@ -152,6 +156,9 @@ services:
     environment:
       API_URL: http://api:8000
       WATCHDOG_INTERVAL_SECONDS: ${WATCHDOG_INTERVAL_SECONDS:-10}
+      # As the scheduler: HTTP only, no database credentials even when .env carries them.
+      DATABASE_URL: ""
+      POSTGRES_PASSWORD: ""
     depends_on:
       api:
         condition: service_healthy
