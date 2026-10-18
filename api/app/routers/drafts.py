@@ -283,7 +283,9 @@ def create_draft(
     try:
         # The strict A14 schema and docs/governance/ai-boundary.md: the log holds ids and hashes, never the text.
         payloads.validate(event.type, event.payload)
-        cases.store.append(event, cases.pathway)
+        # SEC-2: owner scope is re-checked under the case lock, on the replayed model (build_request's
+        # check was made on an earlier read; the case may have changed hands since).
+        cases.store.append(event, cases.pathway, guard=policy.owner_guard(identity, "create_draft"))
     except payloads.PayloadSchemaError as exc:  # a provider name outside the allowed shape; never a 500
         log.error("message_drafted payload refused: %s", exc)
         raise HTTPException(503, "drafting provider is misconfigured") from None
@@ -389,6 +391,7 @@ def approve_draft(draft_id: UUID, identity: Identity = Depends(require_identity)
         cases.store.append(
             event, cases.pathway,
             within=lambda cur: drafts_db.approve(draft_id, identity.actor, now, cur=cur),
+            guard=policy.owner_guard(identity, "decide_draft"),
         )
     except CaseNotFound:
         raise HTTPException(404, "case not found") from None
@@ -442,6 +445,7 @@ def reject_draft(
         cases.store.append(
             event, cases.pathway,
             within=lambda cur: drafts_db.reject(draft_id, identity.actor, now, stored_reason, cur=cur),
+            guard=policy.owner_guard(identity, "decide_draft"),
         )
     except payloads.PayloadSchemaError as exc:  # cannot happen with a validated body; never a 500
         raise HTTPException(422, str(exc)) from None

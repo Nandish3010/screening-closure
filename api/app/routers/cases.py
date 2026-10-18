@@ -214,9 +214,14 @@ def _refuse_backdated(model, at: datetime) -> None:
 
 
 def _event_guard(identity: Identity, event_type: str, at: datetime):
-    """What the store re-checks under the case lock, before the state machine sees the event: for a
-    user token, that the event is not backdated. Raises HTTPException."""
+    """What the store re-checks under the case lock, before the state machine sees the event, on the
+    model replayed from the log as it now stands: the caller's owner scope (SEC-2: a reassignment or a
+    handoff accepted between our read and our write is seen, 403 and no row), and, for a user token,
+    that the event is not backdated. Raises HTTPException."""
+    owner = policy.owner_guard(identity, event_type)
+
     def guard(model) -> None:
+        owner(model)  # a no-op for roles that are not owner-scoped
         if identity.role in policy.ALL_USERS:
             _refuse_backdated(model, at)
 
@@ -232,6 +237,7 @@ def post_event(
         raise HTTPException(404, "case not found")
     policy.authorize_case_access(identity, _patient_ref(case_id))
     if identity.role in policy.OWNER_SCOPED:
+        # An early answer without the lock; the authoritative check is the guard handed to the store.
         model = store.read_model(case_id, pathway)
         if model is None:
             raise HTTPException(404, "case not found")

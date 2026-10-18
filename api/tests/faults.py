@@ -144,3 +144,58 @@ def wrap_store(store, environ: Mapping[str, str] | None = None):
     """`store` itself unless a store fault is active (and APP_ENV=test)."""
     faults = {k: v for k, v in active(environ).items() if k in {"duplicate_delivery", "fail_after_insert", "fail_before_insert"}}
     return FaultyStore(store, faults) if faults else store
+
+
+class AppendGate:
+    """A thread barrier between a route's pre-check and its append (SEC-2 TOCTOU tests).
+
+    Wraps a store. The first `append` / `append_many` that `matches(events)` ARRIVES (sets `arrived`) and
+    then waits, with the request thread parked, until the test calls `release()`. While it waits the test
+    changes the case through the INNER store (a reassignment, a handoff accepted...), then releases; the
+    parked request goes on to take the case lock and re-evaluate its guard on the log as it now is.
+    Test-only like the rest of this module: nothing in `app` imports it.
+    """
+
+    def __init__(self, inner, matches=lambda events: True, timeout: float = 15.0) -> None:
+        self._inner = inner
+        self.inner = inner
+        self._matches = matches
+        self._timeout = timeout
+        self.arrived = threading.Event()
+        self._release = threading.Event()
+        self._used = False
+        self._lock = threading.Lock()
+        if hasattr(inner, "append_many"):
+            self.append_many = self._append_many
+
+    def release(self) -> None:
+        self._release.set()
+
+    def _gate(self, events) -> None:
+        with self._lock:
+            first = not self._used and self._matches(events)
+            if first:
+                self._used = True
+        if first:
+            self.arrived.set()
+            if not self._release.wait(self._timeout):
+                raise TimeoutError("AppendGate was never released")
+
+    def append(self, event, pathway, *, within=None, guard=None):
+        self._gate([event])
+        return self._inner.append(event, pathway, within=within, guard=guard)
+
+    def _append_many(self, events, pathway, *, within=None, guard=None):
+        self._gate(list(events))
+        return self._inner.append_many(events, pathway, within=within, guard=guard)
+
+    def __getattr__(self, name):
+        return getattr(self._inner, name)
+
+
+def run_parked(call):
+    """Run `call()` (a request) in a thread; returns (thread, results list). `results[0]` is its return value."""
+    results: list = []
+    thread = threading.Thread(target=lambda: results.append(call()), daemon=True)
+    thread.start()
+    return thread, results

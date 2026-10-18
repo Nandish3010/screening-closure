@@ -150,6 +150,18 @@ def authorize_case_access(identity: Identity, patient_ref: str | None) -> None:
         raise HTTPException(404, "case not found")
 
 
+def owner_guard(identity: Identity, event_type: str):
+    """An `append` guard (SEC-2): re-evaluates owner scope on the replayed model INSIDE the store's
+    transaction, under the case's row lock, before the state machine sees the event. A check made on
+    an earlier read can be stale by the time the write happens (the case may have been handed to
+    someone else in between); this one cannot. Raises the same 403 as `authorize_owner_scope`, and
+    the store then writes nothing."""
+    def guard(model) -> None:
+        authorize_owner_scope(identity, event_type, model)
+
+    return guard
+
+
 def authorize_owner_scope(identity: Identity, event_type: str, model) -> None:
     """Per-owner scoping for clinicians. `model` is the case's read model (replayed)."""
     if identity.role not in OWNER_SCOPED:
