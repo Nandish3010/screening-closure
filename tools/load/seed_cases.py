@@ -14,10 +14,11 @@ referral_rejected and lost_contact side states). Where a case sits relative to i
 from a fixed mixture, and in the default `daily` scenario the previous sweep (one working day
 before `SWEEP_NOW`) has already run, so only breaches and rungs that became due since then are
 left for the timed sweep. The `backlog` scenario skips that earlier sweep: every breach and rung
-is still pending (a cold start after an outage). The expected event count the timed sweep must
+is still pending (a cold start after an outage). The `unindexed` scenario is `daily` with `cases.next_due_at` left NULL, as on
+a database that has just been migrated to 012 and not yet swept: the first sweep has to read every case once. The expected event count the timed sweep must
 emit is computed here with the pure planner and stored in the returned stats.
 
-    python tools/load/seed_cases.py --size 10000 [--scenario daily|backlog] [--seed 20261017]
+    python tools/load/seed_cases.py --size 10000 [--scenario daily|backlog|unindexed] [--seed 20261017]
 
 The script never drops the database it fills; tools/load/time_sweep.py owns the lifecycle
 (drop at the end unless KEEP_LOAD_DB=1).
@@ -51,7 +52,7 @@ from app.db import create_pool, run_migrations  # noqa: E402
 from app.events import CASE_CREATED, Event  # noqa: E402
 from app.pathway import Pathway, load_pathway  # noqa: E402
 from app.state_machine import replay_model  # noqa: E402
-from app.sweep import plan_case  # noqa: E402
+from app.sweep import NEVER, next_due_at, plan_case, timing_fingerprint  # noqa: E402
 
 LOAD_DB = "closure_load"
 DEFAULT_ADMIN_URL = "postgresql://closure:closure_dev_password@localhost:5433/postgres"
@@ -244,8 +245,8 @@ def seed(
     log=print,
 ) -> SeedStats:
     """Create `closure_load`, migrate it and insert `size` open cases. Returns the stats."""
-    if scenario not in {"daily", "backlog"}:
-        raise ValueError("scenario must be 'daily' or 'backlog'")
+    if scenario not in {"daily", "backlog", "unindexed"}:
+        raise ValueError("scenario must be 'daily', 'backlog' or 'unindexed'")
     pathway, calendar = load_engine()
     t0 = time.perf_counter()
     if recreate:
@@ -256,6 +257,7 @@ def seed(
     finally:
         pool.close()
 
+    basis = timing_fingerprint(pathway, calendar)
     rng = random.Random(seed_value)
     stats = SeedStats(size=size, scenario=scenario, seed=seed_value)
     case_rows: list[tuple] = []
@@ -266,7 +268,7 @@ def seed(
             if not case_rows:
                 return
             with conn.cursor() as cur:
-                with cur.copy("COPY cases (id, pathway, current_state, created_at, updated_at) FROM STDIN") as cp:
+                with cur.copy("COPY cases (id, pathway, current_state, created_at, updated_at, next_due_at, next_due_basis) FROM STDIN") as cp:
                     for row in case_rows:
                         cp.write_row(row)
                 with cur.copy("COPY events (event_id, case_id, seq, type, at, actor, payload) FROM STDIN") as cp:
@@ -279,7 +281,7 @@ def seed(
         for i in range(size):
             case_id, events = build_case_events(rng, pathway, calendar)
             model = replay_model(events, pathway)
-            if scenario == "daily":
+            if scenario in {"daily", "unindexed"}:
                 for ev in plan_case(case_id, model, pathway, calendar, PREV_SWEEP):
                     # What the previous sweep would have appended (same ids, same order).
                     ev = Event(case_id, ev.type, PREV_SWEEP, ev.actor, ev.payload, ev.event_id)
@@ -291,7 +293,11 @@ def seed(
                     stats.expected_mark_overdue += 1
                 else:
                     stats.expected_escalate += 1
-            case_rows.append((case_id, pathway.name, model.state, events[0].at, events[-1].at))
+            # The sweep index (A20, migration 012) as the store would have left it after the last append.
+            # The `unindexed` scenario is `daily` on a database migrated to 012 but never swept since: the column is NULL.
+            due = next_due_at(model, pathway, calendar)
+            indexed = (NEVER if due is None else due, basis) if scenario != "unindexed" else (None, None)
+            case_rows.append((case_id, pathway.name, model.state, events[0].at, events[-1].at, *indexed))
             for seq, ev in enumerate(events, start=1):
                 event_rows.append((ev.event_id, case_id, seq, ev.type, ev.at, ev.actor, Jsonb(ev.payload)))
             stats.by_state[model.state] += 1
@@ -313,7 +319,7 @@ def seed(
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--size", type=int, required=True, help="number of open cases (1000, 10000, 100000)")
-    ap.add_argument("--scenario", choices=["daily", "backlog"], default="daily")
+    ap.add_argument("--scenario", choices=["daily", "backlog", "unindexed"], default="daily")
     ap.add_argument("--seed", type=int, default=DEFAULT_SEED)
     args = ap.parse_args(argv)
     if not pg_reachable():

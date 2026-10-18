@@ -67,7 +67,12 @@ class TimedStore:
         self.rows_read = 0
 
     def iter_open_case_models(self, pathway, only=None, **kw):
-        it = self._store.iter_open_case_models(pathway, only=only, **kw)
+        return self._timed(self._store.iter_open_case_models(pathway, only=only, **kw))
+
+    def iter_due_case_models(self, pathway, calendar, now, **kw):
+        return self._timed(self._store.iter_due_case_models(pathway, calendar, now, **kw))
+
+    def _timed(self, it):
         while True:
             t = time.perf_counter()
             try:
@@ -85,6 +90,14 @@ class TimedStore:
         finally:
             self.append_seconds += time.perf_counter() - t
             self.appends += 1
+
+    def append_batches(self, batches, pathway):
+        t = time.perf_counter()
+        try:
+            return self._store.append_batches(batches, pathway)
+        finally:
+            self.append_seconds += time.perf_counter() - t
+            self.appends += len(batches)
 
     def append_many(self, events, pathway):
         t = time.perf_counter()
@@ -104,6 +117,7 @@ class SizeResult:
     scenario: str
     workers: int
     cases_evaluated: int
+    cases_skipped: int
     events_before: int
     event_rows_read: int
     emitted: int
@@ -116,6 +130,7 @@ class SizeResult:
     plan_seconds: float
     resweep_seconds: float
     resweep_emitted: int
+    resweep_evaluated: int
     seed_seconds: float
     problems: list[str] = field(default_factory=list)
 
@@ -156,7 +171,7 @@ class RouteSweep:
         body = resp.json()
         assert body["workers"] > 1, "the route did not use the sharded sweep"
         out = SweepResult(sim_time=body["sim_time"])
-        for key in ("cases_evaluated", "mark_overdue", "escalate", "handoff_bounced", "rejected"):
+        for key in ("cases_evaluated", "cases_skipped", "mark_overdue", "escalate", "handoff_bounced", "rejected"):
             setattr(out, key, body[key])
         out.errors = body["errors"]
         return out
@@ -177,6 +192,7 @@ def scalar(url: str, query: str):
 def run_size(size: int, scenario: str, profile: bool = False, workers: int = 1, log=print) -> SizeResult:
     pathway, calendar = sc.load_engine()
     stats = sc.seed(size, scenario=scenario, log=log)
+    _SEEDED_OID[0] = _load_db_oid()
     url = sc.load_url()
     pool = create_pool(url, max_size=4)
     problems: list[str] = []
@@ -205,11 +221,19 @@ def run_size(size: int, scenario: str, profile: bool = False, workers: int = 1, 
         else:
             again = run_sweep(PostgresEventStore(pool), pathway, calendar, sc.SWEEP_NOW)
         resweep = time.perf_counter() - t1
+        # Untimed cross-check of the due-time index (A20): a sweep that reads and replays EVERY open case must find
+        # nothing left to do, i.e. the indexed sweep missed no case.
+        full = run_sweep(PostgresEventStore(pool), pathway, calendar, sc.SWEEP_NOW, full_scan=True)
 
         emitted = result.mark_overdue + result.escalate + result.handoff_bounced
         events_after = scalar(url, "SELECT count(*) FROM events")
-        if result.cases_evaluated != stats.cases:
-            problems.append(f"evaluated {result.cases_evaluated} cases, seeded {stats.cases}")
+        if result.cases_evaluated + result.cases_skipped != stats.cases:
+            problems.append(f"evaluated {result.cases_evaluated} + skipped {result.cases_skipped} cases, seeded {stats.cases}")
+        if full.cases_evaluated != stats.cases:
+            problems.append(f"the full-scan check read {full.cases_evaluated} cases, seeded {stats.cases}")
+        if full.mark_overdue + full.escalate + full.handoff_bounced or full.errors or full.rejected:
+            problems.append(f"a full scan after the indexed sweep still found work: {full.mark_overdue + full.escalate + full.handoff_bounced} "
+                            f"events, {len(full.errors)} errors, {full.rejected} rejected (the due-time index missed a case)")
         if emitted != stats.expected_emitted:
             problems.append(f"emitted {emitted} events, planner expected {stats.expected_emitted}")
         if result.errors or result.rejected:
@@ -227,13 +251,13 @@ def run_size(size: int, scenario: str, profile: bool = False, workers: int = 1, 
         if route:
             route.close()
         return SizeResult(
-            size=size, scenario=scenario, workers=workers, cases_evaluated=result.cases_evaluated, events_before=events_before,
+            size=size, scenario=scenario, workers=workers, cases_evaluated=result.cases_evaluated, cases_skipped=result.cases_skipped, events_before=events_before,
             event_rows_read=events_before, emitted=emitted, expected_emitted=stats.expected_emitted,
             mark_overdue=result.mark_overdue, escalate=result.escalate, wall_seconds=wall,
             read_replay_seconds=store.read_seconds, append_seconds=store.append_seconds,
             plan_seconds=max(wall - store.read_seconds - store.append_seconds, 0.0),
             resweep_seconds=resweep, resweep_emitted=again.mark_overdue + again.escalate + again.handoff_bounced,
-            seed_seconds=stats.seconds, problems=problems,
+            resweep_evaluated=again.cases_evaluated, seed_seconds=stats.seconds, problems=problems,
         )
     finally:
         pool.close()
@@ -298,7 +322,8 @@ def fmt(x: float, places: int = 2) -> str:
     return f"{x:,.{places}f}"
 
 
-def render_markdown(results: list[SizeResult], spec: dict[str, str], extra: list[SizeResult], commit: str | None = None) -> str:
+def render_markdown(results: list[SizeResult], spec: dict[str, str], extra: list[SizeResult], commit: str | None = None,
+                    first: list[SizeResult] | None = None) -> str:
     daily = [r for r in results if r.scenario == "daily"]
     single = [r for r in daily if r.workers == 1]
     big1 = next((r for r in daily if r.size == 100_000 and r.workers == 1), None)
@@ -321,29 +346,36 @@ def render_markdown(results: list[SizeResult], spec: dict[str, str], extra: list
         "",
         "## Results",
         "",
-        "One sweep (`api.app.sweep.run_sweep`: read and replay every open case, plan, append the scheduler's events) over a "
-        "freshly seeded `closure_load` database, against the real Postgres store. Scenario `daily`: the previous sweep ran one "
-        "working day earlier, so the timed sweep emits only the breaches and escalation rungs that became due since then. "
-        "Cases are spread over the eleven open states (main chain plus consent withdrawn, referral rejected and lost contact); "
-        "about 40% are already overdue. Workers 1 is `run_sweep` in one process (`SWEEP_WORKERS=1`); workers N is "
-        "`POST /scheduler/sweep` on the FastAPI app (A17) with `SWEEP_WORKERS=N`: the route's warm long-lived pool of N processes, "
-        "each sweeping a disjoint slice of the cases. The route's default is min(4, cpus). Route timings include the "
-        "service-token check and the JSON response, in process (no socket).",
+        "One sweep (`app.sweep.run_sweep`: select the open cases that can be due, read and replay them, plan, append the "
+        "scheduler's events) over a freshly seeded `closure_load` database, against the real Postgres store. Scenario `daily`: the "
+        "previous sweep ran one working day earlier, so the timed sweep emits only the breaches and escalation rungs that became "
+        "due since then, and `cases.next_due_at` (migration 012, A20) is as the last append left it. Cases are spread over the "
+        "eleven open states (main chain plus consent withdrawn, referral rejected and lost contact); about 40% are already "
+        "overdue. Workers 1 is `run_sweep` in one process (`SWEEP_WORKERS=1`); workers N is `POST /scheduler/sweep` on the FastAPI "
+        "app (A17) with `SWEEP_WORKERS=N`: the route's warm long-lived pool of N processes, each sweeping a disjoint slice of the "
+        "cases. The route's default is min(4, cpus). Route timings include the service-token check and the JSON response, in "
+        "process (no socket). \"Read\" is the number of cases the sweep selected, read and replayed; the rest were skipped "
+        "because their stored due time is still in the future.",
         "",
-        "| Open cases | Workers | Sweep wall time (s) | Events emitted | Rows/sec (cases evaluated) | Event rows read | Re-sweep wall time (s) |",
-        "|---|---|---|---|---|---|---|",
+        "| Open cases | Workers | Sweep wall time (s) | Events emitted | Cases read | Cases skipped | Event rows in the database | Re-sweep wall time (s) | Re-sweep: cases read |",
+        "|---|---|---|---|---|---|---|---|---|",
     ]
     for r in daily:
-        lines.append(f"| {r.size:,} | {r.workers} | {fmt(r.wall_seconds)} | {r.emitted:,} | {r.rows_per_second:,.0f} | "
-                     f"{r.event_rows_read:,} | {fmt(r.resweep_seconds)} |")
+        lines.append(f"| {r.size:,} | {r.workers} | {fmt(r.wall_seconds)} | {r.emitted:,} | {r.cases_evaluated:,} | {r.cases_skipped:,} | "
+                     f"{r.event_rows_read:,} | {fmt(r.resweep_seconds)} | {r.resweep_evaluated:,} |")
     lines += [
         "",
-        "Re-sweep: the same sweep run again straight afterwards. It emits nothing (idempotency is asserted) so it is the pure "
-        "read, replay and plan cost.",
+        "Re-sweep: the same sweep run again straight afterwards. It emits nothing (idempotency is asserted) so it is the cost of "
+        "a sweep with nothing to do, which is what the 10-second loop mostly runs. After every sweep, untimed, a full scan "
+        "(`full_scan=True`: read and replay every case) must also find nothing to do; that is the check that the due-time "
+        "index skipped no case.",
         "",
         "## Where the time goes (single process)",
         "",
-        "| Open cases | Read and replay (s) | Planning (s) | Emission, appends (s) | Appends |",
+        "Appends is the number of events emitted; with batched writes (A20) many cases share one append call, so the time is "
+        "per sweep, not per event.",
+        "",
+        "| Open cases | Read and replay (s) | Planning (s) | Emission, appends (s) | Events |",
         "|---|---|---|---|---|",
     ]
     for r in single:
@@ -354,26 +386,44 @@ def render_markdown(results: list[SizeResult], spec: dict[str, str], extra: list
             "## Cold start (scenario `backlog`)",
             "",
             "No sweep has run since the cases were created, for example after a long scheduler outage, so every breach and every "
-            "rung is pending and the sweep must append all of them. Each append is its own transaction that locks the case, "
-            "re-reads its log and re-verifies the replay (the engine's safety property), so this case is bound by the "
-            "appends, not by reading.",
+            "rung is pending and the sweep must append all of them, so far more cases are due than in the daily scenario "
+            "and the index skips only those with nothing due. Each case's append still locks the case, re-reads its log and re-verifies the replay (the engine's "
+            "safety property); the sweep shares the transaction between up to 100 cases (A20).",
             "",
-            "| Open cases | Workers | Sweep wall time (s) | Events emitted | Rows/sec (cases evaluated) |",
-            "|---|---|---|---|---|",
+            "| Open cases | Workers | Sweep wall time (s) | Events emitted | Cases read | Cases skipped |",
+            "|---|---|---|---|---|---|",
         ]
         for r in extra:
-            lines.append(f"| {r.size:,} | {r.workers} | {fmt(r.wall_seconds)} | {r.emitted:,} | {r.rows_per_second:,.0f} |")
+            lines.append(f"| {r.size:,} | {r.workers} | {fmt(r.wall_seconds)} | {r.emitted:,} | {r.cases_evaluated:,} | {r.cases_skipped:,} |")
+    if first:
+        lines += [
+            "",
+            "## First sweep after migration 012 (scenario `unindexed`)",
+            "",
+            "Migration 012 adds `cases.next_due_at`, NULL for every case that exists when it runs. NULL means \"not computed\", so the "
+            "first sweep reads and replays every case once (as a sweep did before A20), writes each case's due time back, and the "
+            "sweeps after it skip as in the first table. This is the one-off cost of switching the index on; it is paid once per "
+            "database and again only if the calendar or the pathway's timings change (the stored fingerprint then differs).",
+            "",
+            "| Open cases | Workers | Sweep wall time (s) | Events emitted | Cases read | Re-sweep wall time (s) | Re-sweep: cases read |",
+            "|---|---|---|---|---|---|---|",
+        ]
+        for r in first:
+            lines.append(f"| {r.size:,} | {r.workers} | {fmt(r.wall_seconds)} | {r.emitted:,} | {r.cases_evaluated:,} | "
+                         f"{fmt(r.resweep_seconds)} | {r.resweep_evaluated:,} |")
     baseline = load_baseline()
+    if baseline and baseline.get("a20"):
+        a20 = baseline["a20"]
+        lines += ["", "## What changed (A20)", "", a20["description"], "",
+                  "| Configuration | " + " | ".join(f"{w} worker{'s' if w != 1 else ''}: sweep (s) / re-sweep (s)" for w in a20["workers"]) + " | Cases read, 100,000 |",
+                  "|---|" + "---|" * (len(a20["workers"]) + 1)]
+        for row in a20["rows"]:
+            cells = [f"{fmt(row['sweep'][str(w)])} / {fmt(row['resweep'][str(w)])}" if str(w) in row["sweep"] else "n/a" for w in a20["workers"]]
+            lines.append(f"| {row['label']} | " + " | ".join(cells) + f" | {row['read']:,} |")
+        for note in a20.get("notes", []):
+            lines += ["", note]
     if baseline:
-        lines += ["", "## Optimisation history", "", baseline["description"], "",
-                  "| Open cases | Before: sweep (s) | After: sweep (s) | Before: re-sweep (s) | After: re-sweep (s) |",
-                  "|---|---|---|---|---|"]
-        for r in single:
-            before = baseline["results"].get(str(r.size))
-            if before:
-                lines.append(f"| {r.size:,} | {fmt(before['wall_seconds'])} | {fmt(r.wall_seconds)} | "
-                             f"{fmt(before['resweep_seconds'])} | {fmt(r.resweep_seconds)} |")
-        lines += ["", "Rows are single process. The sharded rows in the first table are the second optimisation."]
+        lines += ["", "## Optimisation history before A20", "", baseline["description"]]
         for note in baseline.get("notes", []):
             lines += ["", note]
     lines += [
@@ -413,6 +463,36 @@ def load_baseline() -> dict | None:
         return None
 
 
+_SEEDED_OID: list[int | None] = [None]  # pg_database.oid of closure_load as run_size seeded it
+
+
+def _load_db_oid() -> int | None:
+    try:
+        return scalar(sc.admin_url(), f"SELECT oid::int FROM pg_database WHERE datname = '{sc.LOAD_DB}'")
+    except Exception:  # noqa: BLE001 - the database is gone, or Postgres is
+        return None
+
+
+def run_cell(size: int, scenario: str, profile: bool = False, workers: int = 1, attempts: int = 6) -> SizeResult:
+    """`run_size`, rerun from the seed if `closure_load` was dropped (and perhaps recreated) under it. The database has one
+    fixed name, so a second run on the same Postgres (another checkout's `make test-tools`, a second `make test-load`)
+    drops it with DROP DATABASE ... WITH (FORCE) and the sweep sees "terminating connection due to administrator command".
+    That is the harness's neighbour, not a result: the cell is measured again on a fresh seed. Any other failure, or a
+    database that is still the one that was seeded, is raised."""
+    for attempt in range(1, attempts + 1):
+        _SEEDED_OID[0] = None
+        try:
+            return run_size(size, scenario, profile=profile, workers=workers)
+        except Exception as exc:  # noqa: BLE001
+            seeded = _SEEDED_OID[0]
+            if seeded is not None and _load_db_oid() == seeded:
+                raise  # same database as seeded: a real failure
+            print(f"   {sc.LOAD_DB} was dropped under the run ({type(exc).__name__}); another process uses it. "
+                  f"Seeding again (attempt {attempt} of {attempts}).", flush=True)
+            time.sleep(5)
+    raise SystemExit(f"{sc.LOAD_DB} kept being dropped by another process; run again when it is quiet")
+
+
 def report(r: SizeResult) -> None:
     print(f"   workers={r.workers}: sweep {fmt(r.wall_seconds)} s, emitted {r.emitted:,}, {r.rows_per_second:,.0f} cases/s"
           + (f" (read+replay {fmt(r.read_replay_seconds)}, plan {fmt(r.plan_seconds)}, append {fmt(r.append_seconds)})"
@@ -429,8 +509,12 @@ def main(argv: list[str] | None = None) -> int:
                     help="also run the sharded sweep through POST /scheduler/sweep with each of these SWEEP_WORKERS "
                          "values (comma-separated; 0 or 1: single process only)")
     ap.add_argument("--backlog-sizes", default="1000,10000", help="sizes also run in the cold-start scenario (full runs only)")
+    ap.add_argument("--unindexed-sizes", default="10000,100000",
+                    help="sizes also run as the first sweep after migration 012, `cases.next_due_at` still NULL (full runs only; "
+                         "the sharded route only)")
     ap.add_argument("--check", action="store_true", help=f"reduced run for `make check`: {CHECK_SIZE} cases, no files written")
     ap.add_argument("--budget", type=float, default=None, help="--check: fail if the sweep takes longer than this many seconds")
+    ap.add_argument("--skip-single", action="store_true", help="do not run the single-process mode (an ablation run: SWEEP_FULL_SCAN=1 / SWEEP_BATCH_CASES=1)")
     ap.add_argument("--profile", action="store_true", help="print a cProfile of each single-process sweep")
     ap.add_argument("--out", default=str(REPO_ROOT / "docs/results/load.md"))
     ap.add_argument("--json-out", default=None, help="default: next to --out as load.json")
@@ -445,7 +529,8 @@ def main(argv: list[str] | None = None) -> int:
         data = json.loads(Path(args.render_json).read_text())
         mk = lambda rows: [SizeResult(**{k: v for k, v in r.items()}) for r in rows]  # noqa: E731
         out = Path(args.out)
-        out.write_text(render_markdown(mk(data["results"]), data["machine"], mk(data["cold_start"]), data.get("commit")), encoding="utf-8")
+        out.write_text(render_markdown(mk(data["results"]), data["machine"], mk(data["cold_start"]), data.get("commit"),
+                                       mk(data.get("first_sweep", []))), encoding="utf-8")
         print(f"rendered {out} from {args.render_json} (measured at commit {data.get('commit')})")
         return 0
 
@@ -459,15 +544,17 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
     sizes = [CHECK_SIZE] if args.check else [int(s) for s in args.sizes.split(",") if s]
-    worker_modes = [1] + ([2] if args.check else [w for w in (int(x) for x in args.workers.split(",") if x) if w > 1])
+    worker_modes = ([] if args.skip_single and not args.check else [1]) + (
+        [2] if args.check else [w for w in (int(x) for x in args.workers.split(",") if x) if w > 1])
     results: list[SizeResult] = []
     extra: list[SizeResult] = []
+    first: list[SizeResult] = []
     rc = 0
     try:
         for size in sizes:
             for w in worker_modes:
                 print(f"== {size:,} open cases (daily) ==", flush=True)
-                r = run_size(size, "daily", profile=args.profile and w == 1, workers=w)
+                r = run_cell(size, "daily", profile=args.profile and w == 1, workers=w)
                 results.append(r)
                 report(r)
                 rc |= 1 if r.problems else 0
@@ -475,8 +562,15 @@ def main(argv: list[str] | None = None) -> int:
             for size in [int(s) for s in args.backlog_sizes.split(",") if s]:
                 for w in worker_modes:
                     print(f"== {size:,} open cases (backlog) ==", flush=True)
-                    r = run_size(size, "backlog", workers=w)
+                    r = run_cell(size, "backlog", workers=w)
                     extra.append(r)
+                    report(r)
+                    rc |= 1 if r.problems else 0
+            for size in [int(s) for s in args.unindexed_sizes.split(",") if s]:
+                for w in (w for w in worker_modes if w > 1):
+                    print(f"== {size:,} open cases (first sweep after migration 012) ==", flush=True)
+                    r = run_cell(size, "unindexed", workers=w)
+                    first.append(r)
                     report(r)
                     rc |= 1 if r.problems else 0
     finally:
@@ -496,20 +590,26 @@ def main(argv: list[str] | None = None) -> int:
         return rc
 
     spec = machine_spec()
+    # The results are written whenever the correctness assertions held, whether or not the 5 s target was met: the file
+    # must report a miss as honestly as a hit. The exit code still fails on a miss (below).
     if not args.no_write and rc == 0:
         out = Path(args.out)
         out.parent.mkdir(parents=True, exist_ok=True)
-        out.write_text(render_markdown(results, spec, extra), encoding="utf-8")
+        out.write_text(render_markdown(results, spec, extra, None, first), encoding="utf-8")
         json_out = Path(args.json_out) if args.json_out else out.with_suffix(".json")
         json_out.write_text(json.dumps({"machine": spec, "commit": git_commit(),
                                         "results": [asdict(r) for r in results],
-                                        "cold_start": [asdict(r) for r in extra]}, indent=2, sort_keys=True) + "\n")
+                                        "cold_start": [asdict(r) for r in extra],
+                                        "first_sweep": [asdict(r) for r in first]}, indent=2, sort_keys=True) + "\n")
         print(f"wrote {out} and {json_out}")
     big = [r for r in results if r.size == 100_000]
     for r in big:
         ok = r.wall_seconds <= TARGET_100K_SECONDS
-        print(f"target: 100k sweep under {TARGET_100K_SECONDS:g} s, workers={r.workers}: {fmt(r.wall_seconds)} s: {'MET' if ok else 'NOT MET'}")
-    if big and not any(r.wall_seconds <= TARGET_100K_SECONDS for r in big):
+        default = " (the route's default)" if r.workers == ROUTE_DEFAULT_WORKERS else ""
+        print(f"target: 100k sweep under {TARGET_100K_SECONDS:g} s, workers={r.workers}{default}: {fmt(r.wall_seconds)} s: {'MET' if ok else 'NOT MET'}")
+    # The target is for the real route with its default worker count (A20); the other rows are information.
+    gated = [r for r in big if r.workers == ROUTE_DEFAULT_WORKERS] or big
+    if gated and not all(r.wall_seconds <= TARGET_100K_SECONDS for r in gated):
         rc = 1
     print(f"test-load: {'FAIL' if rc else 'PASS'}")
     return rc
