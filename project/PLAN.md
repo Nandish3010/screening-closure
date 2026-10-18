@@ -23,6 +23,16 @@ The six official criteria, as published on the event page. The right-hand column
 | 5 | Scalability and deployment readiness | The measured scheduler sweep over 100,000 open cases, the FHIR R4 projection and the Malaffi adapter plan (stated as a target), and a stack that comes up on a fresh clone with one command. |
 | 6 | Commercial viability and path to pilot | The 90-day pilot plan (one programme, two or three providers, shadow mode first) with cost per case from a script with a visible inputs file, and `make evaluate` regenerating the baseline-versus-orchestrated table with one parameter changed. |
 
+### Product principles (2026-10-18)
+
+The framing rule: **a council decides; our agency prepares.** People decide and people hold the conversations; automation and the agency do the preparation around both.
+
+1. **People act on decisions and conversations; the system does the rest.** Routine steps (acknowledge, assign, template outreach, reminders, evidence detection, closure proposal, rerouting) are done by the system. A person accepts, approves, signs, and talks to the patient. The phone call after an escalation is the evidence-based intervention, not waste; automation prepares it, a person makes it.
+2. **No model and no agent holds authority over a case.** Models are used in four places, drafting patient messages for human approval, ordering the worklist by a calibrated risk score, planning the agency's work queue, and classifying inbound patient replies, plus automatic sending of clinician-pre-approved deterministic templates; no model and no agent can move a case between states, approve a message, change consent or close a case. Models are labour, not authority.
+3. **Grow screening without growing coordinators, and measure it honestly.** The commercial claim is capacity plus outcomes. Labour is reported by role, not as one blended number: coordinator time falls, specialist time rises with the outcome, owner-clinician time must not rise unnoticed. The time-and-motion study (pilot KPI K9) replaces assumed minutes with measured ones.
+
+Tickets behind these principles, on their own branches with merge due the evening of 2026-10-18: A21 (automation: every step that is not a human decision), A22 (agency: agents as labour, not authority), B17 (effort: human minutes per case in both arms), D13 (reply triage). Future ticket, not started: **A23**, route decisions to the cheapest competent role; escalation batching; agency call briefs credited. A23 is blocked on H1 (clinician review), because routing a decision away from the owner clinician is a clinical-governance choice.
+
 ## 2. Six moats
 
 Each is something that is hard to copy in a week and visible in the demo.

@@ -63,6 +63,10 @@ Headline table, copied from [results.md](../results/results.md) "Headline: basel
 
 Two cautions: every gain is before capacity constraints, because escalations cost nothing in the model (section 9); and the literature-anchored scenario reaches its average effect by letting the process reach only a little over half the cases (`orchestration.programme_reach` 0.55, calibrated), a calibration device rather than a prediction.
 
+**Labour.** 37.5% fewer staff minutes per case the system handles (literature-anchored, in reach, 95% CI 36.5 to 38.5), 20.5% programme-level under the 0.55 reach assumption, 41.1% in the upper range; synthetic; minutes from published time studies and assumptions.\* The 40% target is not met in the anchored scenario (only the upper range, which is not a forecast, reaches it). Coordinator time falls 37 to 71 percent; specialist time rises because more patients reach colonoscopy, which is the outcome; owner-clinician time doubles in the current routing and the planned fix is routing escalations to nurse navigators after the clinician review. At assumed wage ratios (a clinician 3 times and a specialist 4 times a coordinator; the ratios are assumed, not sourced), weighted staff time per case is flat today: 84.6 coordinator-equivalent minutes at baseline against 85.0 under the literature-anchored scenario at programme level (84.7 and 85.5 in reach).
+
+\* Current estimate from the effort model; regenerated at integration.
+
 ## 2. The problem and who loses today
 
 A positive FIT is a result that needs an action: a colonoscopy. Between the laboratory, the requesting clinician, the endoscopy service and the patient, nobody is clearly responsible for making sure it happens, and nothing raises a flag when it does not. The published numbers show how often follow-up is lost (all from [evidence.md](../evidence.md)):
@@ -243,6 +247,10 @@ The full role-by-event table is in [the decision matrix](../governance/decision-
 Four properties hold in structure rather than by procedure: no closure without evidence and a human clinician; automated actors cannot log in as users; `message_approved` and `message_sent` have no poster through the events route; human-only events are refused for any automated actor by the state machine (decision-matrix.md, "What holds in structure").
 
 ## 6. Responsible AI
+
+Models are used in four places, drafting patient messages for human approval, ordering the worklist by a calibrated risk score, planning the agency's work queue, and classifying inbound patient replies, plus automatic sending of clinician-pre-approved deterministic templates; no model and no agent can move a case between states, approve a message, change consent or close a case.
+
+People act on decisions and conversations; the system does the rest. The phone call after an escalation is the evidence-based intervention, not waste; automation prepares it, a person makes it.
 
 ### 6.1 The drafting boundary
 

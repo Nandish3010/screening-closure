@@ -75,22 +75,22 @@ inputs:
     basis: Period over which the one-off integration cost is spread.
 
   coordinator_minutes_per_case_manual:
-    value: 90
-    unit: minutes of coordinator time per actionable case without the engine
+    value: 57.3
+    unit: staff minutes (all roles) per actionable case without the engine
     status: assumed
-    basis: Chasing, calling, re-booking and recording across the pathway. To be measured in the pilot shadow period.
+    basis: "Source: docs/results/results.json effort (cut-effort), baseline arm, human minutes per case; minutes come from published time studies and assumptions, synthetic. Status assumed-until-regenerated (the script accepts only assumed or sourced). All roles are valued at the coordinator rate below, which understates clinician and specialist time. To be measured in the pilot shadow period (K9)."
 
   coordinator_minutes_per_case_with_engine:
-    value: 35
-    unit: minutes of coordinator time per actionable case with the engine
+    value: 45.5
+    unit: staff minutes (all roles) per actionable case with the engine
     status: assumed
-    basis: Remaining human work: owner decisions, approvals, calls the engine cannot do. To be measured in the pilot.
+    basis: "Source: docs/results/results.json effort (cut-effort), literature-anchored orchestrated arm at programme level (20.5 percent fewer minutes, 0.55 reach); 35.8 in reach. Status assumed-until-regenerated. Coordinator minutes fall but owner-clinician and specialist minutes rise, so valuing all roles at the coordinator rate overstates the saving: at assumed wage ratios (clinician 3x, specialist 4x a coordinator, assumed) weighted time per case is flat. To be measured in the pilot (K9)."
 
   coordinator_cost_aed_per_hour:
     value: 120
     unit: AED per hour
     status: assumed
-    basis: Loaded cost of a screening or referral coordinator.
+    basis: Loaded cost of a screening or referral coordinator. Wage ratios used in the docs, clinician 3x and specialist 4x a coordinator, are assumed and not read by the script.
 
   price_per_screened_member_per_year_aed:
     value: 6.0

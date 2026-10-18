@@ -9,7 +9,7 @@ Written 18 Oct 2026. The build is done; what remains needs a person. Items 1 to 
 | 1 | 20 Oct (hard 10 Nov; form open by 7 Nov) | Confirm registration, download the requirements, diff against the bundle | Registration is required to be judged; a missed requirement can disqualify | 1 h | [ ] |
 | 2 | Send 25 Oct; review held by 7 Nov | Clinician reviewer (H1) | Clinical credibility, responsible AI, the "reviewed by" section of the documentation | 30 min call, 1 h to apply | [ ] |
 | 3 | Send 25 Oct; review held by 7 Nov | Arabic reviewer (H2) | Arabic-first patient experience, one of the six moats | 30 min, 1 h to apply | [ ] |
-| 4 | Ask by 1 Nov; letter by 13 Nov | Letter of intent for a shadow-mode pilot | Commercial viability and pilot readiness, our weakest criterion (judge review scored it 5/10) | 20 min to ask | [ ] |
+| 4 | Ask by 1 Nov; letter by 13 Nov | Letter of intent for a shadow-mode pilot that will measure staff minutes by role | Commercial viability and pilot readiness, our weakest criterion (judge review scored it 5/10); the capacity story needs a provider who will measure it | 20 min to ask | [ ] |
 | 7 | 11 Nov (day after freeze) | Second-machine fresh-clone run (H5) | The plan promises one-command reproducibility; this proves it off your machine | 1 to 2 h | [ ] |
 | 5 | 13 Nov | Ten timed rehearsals (H3) | The live catch is the demo's whole value | 10 x 8 min plus setup | [ ] |
 | 6 | 14 Nov | Submission video and backup video (H4) | Judges may watch the video before reading anything | 3 to 4 h | [ ] |
@@ -76,9 +76,9 @@ Record in `docs/governance/arabic-review.md` (every string approved or changed; 
 
 Ask one provider or programme contact (primary-care or endoscopy lead, or screening programme manager) to sign this on letterhead:
 
-> [Organisation] has read the description of Screening Closure, a prototype using synthetic data that gives each positive FIT result a named owner, time limits, escalation and clinician-signed closure. We are interested in discussing a 90-day pilot in shadow mode, where the system observes our results feed and flags overdue cases without sending messages or assigning work. This letter expresses interest only. It creates no obligation. Data terms would follow, and any pilot depends on our governance, data-sharing and regulatory approvals.
+> [Organisation] has read the description of Screening Closure, a prototype using synthetic data that aims to let a screening programme follow up more positive FIT results without growing its coordinator team: each result gets a named owner, time limits, escalation and clinician-signed closure, the system does the routine steps, and our staff keep the decisions and the conversations with patients. We are interested in discussing a 90-day pilot in shadow mode, where the system observes our results feed and flags overdue cases without sending messages or assigning work, and in which a time-and-motion study measures staff minutes per case by role (coordinator, owner clinician, specialist) so that the capacity claim is measured and not assumed. This letter expresses interest only. It creates no obligation. Data terms would follow, and any pilot depends on our governance, data-sharing and regulatory approvals.
 
-Get permission to publish the organisation's name. Save the PDF as `docs/submission/letter-of-intent.pdf`. Update `docs/pilot-plan.md` (the status paragraph says nothing was discussed with a provider; also section 10), technical documentation section 11, and `docs/submission/README.md`.
+Say why the study matters: the simulation (synthetic) expects coordinator time per case to fall and owner-clinician time to rise under the current routing, and only a measurement in a real programme can confirm either (pilot plan KPI K9, with a stop rule on owner-clinician minutes). Get permission to publish the organisation's name. Save the PDF as `docs/submission/letter-of-intent.pdf`. Update `docs/pilot-plan.md` (the status paragraph says nothing was discussed with a provider; also section 10), technical documentation section 11, and `docs/submission/README.md`.
 
 ## 5. Rehearsals
 
