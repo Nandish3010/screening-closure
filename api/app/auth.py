@@ -44,7 +44,7 @@ WATCHDOG_ROLE = "watchdog"  # service role; may emit watchdog_flagged and nothin
 AUTOMATED_ROLE_NAMES = ("system", "scheduler", "watchdog", "model")
 
 NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9 ._@-]{0,63}$")  # no ":" so role:name parses
-PATIENT_REF_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9/._-]{0,99}$")
+PATIENT_REF_RE = re.compile(r"^Patient/[A-Za-z0-9-]{1,64}$")  # the same shape a case's patient_ref must have (SEC-1)
 PROVIDER_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9 ._@/-]{0,99}$")
 PROVIDER_ROLES = ("primary_care_owner", "specialist_owner")  # roles that act for a provider
 
@@ -135,13 +135,20 @@ def issue_token(
     provider: str | None = None,
 ) -> str:
     validate_user(role, name, patient_ref, provider)
+    key = secret or settings.dev_auth_secret
+    if not _is_dev() and key == DEV_AUTH_SECRET_DEFAULT:
+        raise AuthError("the development secret is not usable outside APP_ENV=dev")
     claims: dict = {"v": 1, "role": role, "name": name}
     if patient_ref is not None:
         claims["patient_ref"] = patient_ref
     if provider is not None:
         claims["provider"] = provider
     body = _b64(json.dumps(claims, sort_keys=True, separators=(",", ":")).encode())
-    return f"{body}.{_sign(body, secret or settings.dev_auth_secret)}"
+    return f"{body}.{_sign(body, key)}"
+
+
+def _is_dev() -> bool:
+    return settings.app_env == "dev"
 
 
 def verify_token(token: str, secret: str | None = None) -> Identity:
@@ -149,7 +156,16 @@ def verify_token(token: str, secret: str | None = None) -> Identity:
         body, signature = token.split(".")
     except ValueError:
         raise AuthError("malformed token") from None
-    if not hmac.compare_digest(signature, _sign(body, secret or settings.dev_auth_secret)):
+    key = secret or settings.dev_auth_secret
+    if not _is_dev():
+        # Outside dev the published development secret never authenticates anyone: neither when it
+        # is (mis)configured as the secret, nor when a token was simply signed with it (SEC-1).
+        # Checked before the real comparison and in constant time.
+        if key == DEV_AUTH_SECRET_DEFAULT:
+            raise AuthError("the development secret is not accepted outside APP_ENV=dev")
+        if hmac.compare_digest(signature, _sign(body, DEV_AUTH_SECRET_DEFAULT)):
+            raise AuthError("token signed with the development secret")
+    if not hmac.compare_digest(signature, _sign(body, key)):
         raise AuthError("bad signature")
     try:
         claims = json.loads(_unb64(body))
@@ -163,9 +179,14 @@ def verify_token(token: str, secret: str | None = None) -> Identity:
 
 def service_identity(token: str) -> Identity | None:
     """The identity for a configured service token, else None. Constant-time comparison."""
-    if hmac.compare_digest(token.encode(), settings.scheduler_service_token.encode()):
+    # An empty configured token never matches (outside dev the start-up check refuses it anyway).
+    if settings.scheduler_service_token and hmac.compare_digest(
+        token.encode(), settings.scheduler_service_token.encode()
+    ):
         return Identity("service", SCHEDULER_ROLE, "scheduler")
-    if hmac.compare_digest(token.encode(), settings.watchdog_service_token.encode()):
+    if settings.watchdog_service_token and hmac.compare_digest(
+        token.encode(), settings.watchdog_service_token.encode()
+    ):
         return Identity("service", WATCHDOG_ROLE, "watchdog")
     return None
 
@@ -174,17 +195,36 @@ def authenticate(token: str) -> Identity:
     return service_identity(token) or verify_token(token)
 
 
+MIN_SECRET_BYTES = 32  # DEV_AUTH_SECRET and every service token, outside dev
+
+
+def secure_config_problems() -> list[str]:
+    """What is wrong with the identity configuration for a non-dev environment (empty = fine)."""
+    problems: list[str] = []
+    if settings.dev_login_enabled:
+        problems.append("DEV_LOGIN_ENABLED is true (the passwordless login must be off)")
+    secrets = (
+        ("DEV_AUTH_SECRET", settings.dev_auth_secret, DEV_AUTH_SECRET_DEFAULT),
+        ("SCHEDULER_SERVICE_TOKEN", settings.scheduler_service_token, SCHEDULER_TOKEN_DEFAULT),
+        ("WATCHDOG_SERVICE_TOKEN", settings.watchdog_service_token, WATCHDOG_TOKEN_DEFAULT),
+    )
+    for name, value, default in secrets:
+        if value == default:
+            problems.append(f"{name} is the built-in development default")
+        elif not value:
+            problems.append(f"{name} is empty")
+        elif len(value.encode()) < MIN_SECRET_BYTES:
+            problems.append(f"{name} is shorter than {MIN_SECRET_BYTES} bytes")
+    if settings.scheduler_service_token == settings.watchdog_service_token:
+        problems.append("SCHEDULER_SERVICE_TOKEN and WATCHDOG_SERVICE_TOKEN are the same value")
+    return problems
+
+
 def assert_secure_config() -> None:
-    """Refuse to start outside dev with the built-in development secrets."""
-    if settings.app_env == "dev":
+    """Fail closed: refuse to start outside APP_ENV=dev with development settings (SEC-1, ADR-029)."""
+    if _is_dev():
         return
-    problems = []
-    if settings.dev_auth_secret == DEV_AUTH_SECRET_DEFAULT and settings.dev_login_enabled:
-        problems.append("DEV_AUTH_SECRET is the built-in development default")
-    if settings.scheduler_service_token == SCHEDULER_TOKEN_DEFAULT:
-        problems.append("SCHEDULER_SERVICE_TOKEN is the built-in development default")
-    if settings.watchdog_service_token == WATCHDOG_TOKEN_DEFAULT:
-        problems.append("WATCHDOG_SERVICE_TOKEN is the built-in development default")
+    problems = secure_config_problems()
     if problems:
         raise RuntimeError(f"APP_ENV={settings.app_env!r}: " + "; ".join(problems))
 

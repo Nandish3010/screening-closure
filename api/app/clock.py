@@ -46,6 +46,10 @@ class SimClock:
                 self._now = saved
             return self._now
 
+    @property
+    def start(self) -> datetime:
+        return self._start
+
     def now(self) -> datetime:
         return self._now
 

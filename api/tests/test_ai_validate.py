@@ -69,6 +69,7 @@ RULE_FIXTURES = {
     v.PII_EMAIL: (dict(), GOOD["en"] + " Write to clinic@example.org", GOOD["en"]),
     v.PII_IDENTIFIER: (dict(), GOOD["en"] + " Your MRN is AB123456.", GOOD["en"]),
     v.URL: (dict(), GOOD["en"] + " See https://example.org/info", GOOD["en"]),
+    v.INVISIBLE_CHARACTER: (dict(), GOOD["en"] + "\u200b", GOOD["en"] + "\nThank you."),
 }
 
 

@@ -62,7 +62,7 @@ The script refuses to run unless the clock is at its start and the case is at `r
 
 ## Snapshot and reset (T-E10)
 
-HAPI stores its data in the same Postgres database as the cases, so one copy of that database is the whole demo state: cases, events, drafts, notifications, the simulation clock and the FHIR resources. `snapshot.sh` makes the copy as a Postgres template copy (`CREATE DATABASE closure_snapshot TEMPLATE closure STRATEGY FILE_COPY`), a file-level copy inside the server: a 3 GB database in 4 to 8 seconds, where `pg_dump` and `pg_restore` take many minutes. The event log is append-only (triggers forbid UPDATE and DELETE), so "undo the demo" can only mean replacing the database.
+HAPI stores its data in its own database (`hapi`) next to the application's (`closure`) on the same Postgres server, and `snapshot.sh` copies both together, so the pair of copies is the whole demo state: cases, events, drafts, notifications, the simulation clock and the FHIR resources. `snapshot.sh` makes the copy as a Postgres template copy (`CREATE DATABASE closure_snapshot TEMPLATE closure STRATEGY FILE_COPY`, and the same for `hapi_snapshot`), a file-level copy inside the server: a 3 GB database in 4 to 8 seconds, where `pg_dump` and `pg_restore` take many minutes. The event log is append-only (triggers forbid UPDATE and DELETE), so "undo the demo" can only mean replacing the database.
 
 The API, scheduler, watchdog and HAPI are stopped around the copy (Postgres will not copy a database someone is connected to, the API keeps the clock in memory and rereads it when it starts, and HAPI must not keep caches or preallocated resource ids from before the restore; it is killed rather than stopped since its database is about to be replaced).
 

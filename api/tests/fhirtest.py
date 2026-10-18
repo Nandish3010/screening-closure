@@ -97,6 +97,21 @@ class FakeFhirClient:
         return [r for r in self.resources.values() if r["resourceType"] == resource_type]
 
 
+class PoisonFake(FakeFhirClient):
+    """Refuses any transaction that writes the Task of a poisoned case, whatever else is in it."""
+
+    def __init__(self, *a, **k):
+        super().__init__(*a, **k)
+        self.poison: set[str] = set()
+
+    def transaction(self, bundle):
+        ids = {e["resource"]["id"] for e in bundle["entry"]}
+        if any(f"task-{c}" in ids for c in self.poison):
+            self.transactions += 1
+            raise self._error("HAPI answered HTTP 422: HAPI-0000 this resource is refused for good")
+        super().transaction(bundle)
+
+
 def _references(node):
     if isinstance(node, dict):
         ref = node.get("reference")

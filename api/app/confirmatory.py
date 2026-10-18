@@ -23,7 +23,7 @@ from datetime import datetime
 from typing import Protocol
 from uuid import UUID
 
-from app.fhir_projection import DEFAULT_TAG, FhirClient, FhirError, HttpFhirClient
+from app.fhir_projection import DEFAULT_TAG, FhirClient, FhirError, HttpFhirClient, is_safe_ref
 
 SYSTEM_PATIENT_REF = "urn:screening-closure:patient-ref"
 COLONOSCOPY_SNOMED = {"system": "http://snomed.info/sct", "code": "73761001", "display": "Colonoscopy"}
@@ -110,7 +110,8 @@ class FhirRecorder:
         if not patient_ref:
             return None
         try:
-            if self.client.exists(patient_ref):
+            # A reference that is not a clean `Patient/<id>` is never looked up (SEC-1): it would be put in a URL.
+            if is_safe_ref(patient_ref) and patient_ref.startswith("Patient/") and self.client.exists(patient_ref):
                 return {"reference": patient_ref}
         except FhirError:
             pass

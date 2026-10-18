@@ -1,18 +1,27 @@
 # Runs fully offline on a laptop. No external network calls at demo time.
 name: screening-closure
 
+# Hardening (SEC-1, ADR-029): every published port is bound to the loopback interface (127.0.0.1), so nothing here is
+# reachable from the network the laptop is on; tools/check/compose_lint.py fails the build on a port without it. The API
+# connects to Postgres as the unprivileged role `closure_app` (api/migrations/009_app_role.sql), not as the superuser; the
+# schema is changed by the one-shot `migrate` service, which is the only application container holding the owner's
+# credentials. HAPI keeps the superuser but has its own database, `hapi`.
+x-api-build: &api-build
+  context: ./api
+  target: runtime
+
 services:
   postgres:
     image: postgres:16
     ports:
-      - "${POSTGRES_PORT:-5433}:5432"  # host access for `make test-db` (5432 is often taken locally)
+      - "127.0.0.1:${POSTGRES_PORT:-5433}:5432"  # host access for `make test-db` (5432 is often taken locally)
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-closure}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-closure_dev_password}
       POSTGRES_DB: ${POSTGRES_DB:-closure}
     volumes:
       - pgdata:/var/lib/postgresql/data
-      # Creates the separate `closure_test` database on a fresh volume (ADR-015).
+      # Creates the separate `closure_test` and `hapi` databases on a fresh volume (ADR-015, SEC-1).
       - ./docker/postgres-init:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
@@ -21,20 +30,56 @@ services:
       retries: 10
     networks: [closure]
 
-  # HAPI FHIR R4, stored in the shared postgres (database ${POSTGRES_DB}; HAPI's tables are hfj_*/trm_*/
-  # etc. and do not collide with cases/events). It used to run on HAPI's default in-memory H2, but the
-  # synthetic cohort (~1 GB of FHIR JSON for 300 patients) exhausts the JVM heap ("Out of memory" in H2).
-  # Consequence: `make reset` (down -v) now wipes FHIR data together with the cases, keeping them consistent.
+  # Creates the databases `closure_test` and `hapi` if the volume predates them (a fresh volume gets them from
+  # docker/postgres-init). One-shot; the superuser, because creating a database needs it.
+  db-init:
+    image: postgres:16
+    restart: "no"
+    entrypoint: ["/bin/sh", "/init/10-create-databases.sh"]
+    environment:
+      PGHOST: postgres
+      PGPASSWORD: ${POSTGRES_PASSWORD:-closure_dev_password}
+      POSTGRES_USER: ${POSTGRES_USER:-closure}
+    volumes:
+      - ./docker/postgres-init:/init:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks: [closure]
+
+  # Applies api/migrations as the database owner and sets the password of `closure_app` from APP_DB_PASSWORD, then exits.
+  # The API starts only after it succeeded. The one application container with the owner's credentials.
+  migrate:
+    build: *api-build
+    restart: "no"
+    command: ["python", "-m", "app.migrate"]
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-closure}:${POSTGRES_PASSWORD:-closure_dev_password}@postgres:5432/${POSTGRES_DB:-closure}
+      APP_DB_PASSWORD: ${APP_DB_PASSWORD:-closure_app_dev_password}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      db-init:
+        condition: service_completed_successfully
+    networks: [closure]
+
+  # HAPI FHIR R4, stored in the shared postgres server in its OWN database, `hapi` (HAPI's tables are hfj_*/trm_*/
+  # etc.). It used to run on HAPI's default in-memory H2, but the synthetic cohort (~1 GB of FHIR JSON for 300
+  # patients) exhausts the JVM heap ("Out of memory" in H2). It no longer shares `${POSTGRES_DB}` with the application
+  # (SEC-1): the application's role cannot read FHIR data, and HAPI's superuser connection does not sit in the
+  # application's database. A volume made before this change keeps its old hfj_* tables in `${POSTGRES_DB}`, unused:
+  # the FHIR store starts empty, `make demo-seed` fills it again.
+  # Consequence: `make reset` (down -v) wipes FHIR data together with the cases, keeping them consistent.
   fhir:
     # Pinned (F12, ADR-006): the image this project was built and tested on, HAPI FHIR 8.12.0 (docker.io digest
     # sha256:0ff86aac4c7bd13a1ee226444a70263bb46ed1c28ef543c30a44f865b80ca04e, the same image `latest` pointed to on 2026-10-18).
     # The bare `v8.12.0` tag does not exist: HAPI starter tags carry a build suffix.
     image: hapiproject/hapi:v8.12.0-2
     ports:
-      - "${FHIR_PORT:-8080}:8080"
+      - "127.0.0.1:${FHIR_PORT:-8080}:8080"
     environment:
       hapi.fhir.fhir_version: R4
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-closure}
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/hapi
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-closure}
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-closure_dev_password}
       SPRING_DATASOURCE_DRIVERCLASSNAME: org.postgresql.Driver
@@ -46,20 +91,23 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      db-init:
+        condition: service_completed_successfully
     networks: [closure]
 
   api:
-    build: ./api
+    build: *api-build
     ports:
-      - "${API_PORT:-8000}:8000"
+      - "127.0.0.1:${API_PORT:-8000}:8000"
     env_file:
       - path: .env
         required: false
     environment:
       PATHWAY_PATH: /config/pathways/colorectal_fit.yaml
       CALENDAR_PATH: /config/calendar.yaml
-      # Set explicitly so a missing .env cannot silently fall back to the in-memory store.
-      DATABASE_URL: postgresql://${POSTGRES_USER:-closure}:${POSTGRES_PASSWORD:-closure_dev_password}@postgres:5432/${POSTGRES_DB:-closure}
+      # Set explicitly so a missing .env cannot silently fall back to the in-memory store. The unprivileged role, not the
+      # owner (SEC-1): it can add events, not alter or delete them, and cannot change the schema.
+      DATABASE_URL: postgresql://closure_app:${APP_DB_PASSWORD:-closure_app_dev_password}@postgres:5432/${POSTGRES_DB:-closure}
       # `close` needs an evidence_ref (DiagnosticReport/<id> or Procedure/<id>) that exists in HAPI (A15, ADR-021).
       FHIR_BASE_URL: http://fhir:8080/fhir
       FHIR_VERIFY_EVIDENCE: "true"
@@ -72,6 +120,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=2)"]
       interval: 5s
@@ -105,6 +155,18 @@ services:
     depends_on:
       api:
         condition: service_healthy
+    networks: [closure]
+
+  # The api's unit tests, in the image's `test` stage (pytest and the dev extras are NOT in the api image above). The
+  # fallback of `make test` when there is no local .venv:  docker compose --profile tests run --rm --no-deps api-test
+  api-test:
+    build:
+      context: ./api
+      target: test
+    profiles: [tests]
+    environment:
+      DATABASE_URL: ""
+    command: ["pytest", "tests", "-q", "-m", "not integration and not chaos"]
     networks: [closure]
 
   # Synthetic cohort generator. Not started by `make up` (profile "tools"); run with `make synthea`.

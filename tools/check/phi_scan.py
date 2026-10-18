@@ -257,7 +257,9 @@ class Walk:
         self.wait()
         self.call("GET", f"/cases/{case_id}/timeline", "coord", expect=200)
         if self.advance_days:
-            self.call("POST", "/clock/reset", "sup", expect=200)
+            # 409 once events are dated after the clock's start (SEC-1): the sweep above wrote some, and the
+            # API refuses to rewind past them. The scan does not need the reset, only tried to be tidy.
+            self.call("POST", "/clock/reset", "sup", expect=(200, 409))
         return {"case_id": case_id, "draft_id": draft["draft_id"]}
 
     def positive_control(self) -> list[str]:

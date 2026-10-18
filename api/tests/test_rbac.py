@@ -135,6 +135,7 @@ def test_dev_login_can_be_disabled(monkeypatch):
 
 
 def test_insecure_defaults_refuse_to_start_outside_dev(monkeypatch):
+    """The short version; the full matrix is api/tests/test_prod_config.py (SEC-1)."""
     auth.assert_secure_config()  # dev: fine
     monkeypatch.setattr(settings, "app_env", "prod")
     with pytest.raises(RuntimeError, match="DEV_AUTH_SECRET"):
@@ -146,6 +147,9 @@ def test_insecure_defaults_refuse_to_start_outside_dev(monkeypatch):
     with pytest.raises(RuntimeError, match="WATCHDOG_SERVICE_TOKEN"):
         auth.assert_secure_config()
     monkeypatch.setattr(settings, "watchdog_service_token", "z" * 40)
+    with pytest.raises(RuntimeError, match="DEV_LOGIN_ENABLED"):
+        auth.assert_secure_config()
+    monkeypatch.setattr(settings, "dev_login_enabled", False)
     auth.assert_secure_config()
 
 

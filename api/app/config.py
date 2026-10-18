@@ -9,7 +9,8 @@ _DEFAULT_CALENDAR = _REPO_ROOT / "config" / "calendar.yaml"
 
 
 # Development-only defaults. Shipping these values anywhere but a laptop is a bug, which is
-# why app.auth.assert_secure_config refuses them when APP_ENV is not "dev".
+# why app.auth.assert_secure_config refuses them when APP_ENV is not "dev" (SEC-1, ADR-029), and
+# app.auth.verify_token never accepts a token signed with DEV_AUTH_SECRET_DEFAULT outside dev.
 DEV_AUTH_SECRET_DEFAULT = "dev-only-insecure-secret-change-me"
 SCHEDULER_TOKEN_DEFAULT = "dev-only-scheduler-service-token"
 WATCHDOG_TOKEN_DEFAULT = "dev-only-watchdog-service-token"
@@ -24,8 +25,9 @@ class Settings(BaseSettings):
     watchdog_idle_days: int = 7
     llm_provider: str = "template"
     # --- identity (ADR-012) ------------------------------------------------------------
-    # "dev" allows the built-in defaults below. Any other value refuses to start with a
-    # default secret (app.auth.assert_secure_config).
+    # "dev" allows the built-in defaults below. Any other value (compared exactly: "Dev" is not dev)
+    # refuses to start unless DEV_LOGIN_ENABLED=false, DEV_AUTH_SECRET and both service tokens are
+    # non-default, at least 32 bytes, and the two service tokens differ (app.auth.assert_secure_config).
     app_env: str = "dev"
     dev_login_enabled: bool = True
     dev_auth_secret: str = DEV_AUTH_SECRET_DEFAULT
@@ -44,6 +46,11 @@ class Settings(BaseSettings):
     # no-docker runs leave it off.
     fhir_projection: bool = False
     fhir_projection_drain_seconds: float = 20.0
+    # Retry of a failed projection (SEC-1): the first retry is at the next drain pass, then the wait doubles from
+    # the base up to the cap; after max_attempts the event is dead-lettered and GET /alerts reports it.
+    fhir_retry_base_seconds: float = 30.0
+    fhir_retry_cap_seconds: float = 3600.0
+    fhir_retry_max_attempts: int = 12
     # Browser origins allowed to call the API (comma separated). The web app runs on its own port
     # (vite dev 5173, vite preview 4173/4175), so the browser needs CORS including the Authorization
     # header. Local development origins only by default; never a wildcard.
