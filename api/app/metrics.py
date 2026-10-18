@@ -84,7 +84,7 @@ def build_record(
     for ev in events:
         at = _utc(ev.at)
         if ev.type == CASE_CREATED:
-            model = genesis(model, ev)
+            model = genesis(model, ev, pathway)
             t0 = entered_at = at
             continue
         before = model.state

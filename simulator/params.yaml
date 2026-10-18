@@ -155,7 +155,7 @@ followup_target_working_days:
   value: 31
   source: "UAE National Guideline for Colorectal Cancer Screening and Diagnosis, 3rd ed. 2022, Appendix 2: colonoscopy within 31 working days of referral after positive FIT (>90% acceptable, >95% desirable). https://www.isahd.ae/content/docs/Colorectal%20guideline%20Screening%20and%20Diagnosis_UAE%20National%20Guidelines.pdf"
   status: sourced
-  notes: "The same guideline's clause 12.5.2 says 15 working days; Appendix 3 says 31 days. DoH IFHAS V10 Appendix 9: referral within 15 working days of releasing results. The pathway YAML slas_working_days.complete_confirmatory is 31 to match (reconciled at M1; the YAML is the single source and a test keeps the two equal)."
+  notes: "The same guideline's clause 12.5.2 says 15 working days; Appendix 3 says 31 days. DoH IFHAS V10 Appendix 9: referral within 15 working days of releasing results. The pathway YAML milestones.confirmatory_completed.working_days is 31 to match (the YAML is the single source and a test keeps the two equal). The 31 is the guideline's Appendix 2 KPI, not an IFHAS figure; IFHAS's own timeline is the 15-working-day referral milestone (milestones.referral_requested)."
 
 eligible_age_min:
   value: 40

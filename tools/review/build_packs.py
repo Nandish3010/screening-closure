@@ -397,10 +397,21 @@ SLA_STEP_GLOSS = {
     "contact_patient": "The patient is contacted with the result.",
     "patient_acknowledge": "The patient confirms they understood.",
     "book_confirmatory": "The colonoscopy is booked.",
-    "complete_confirmatory": "The colonoscopy is done.",
     "clinician_review": "A clinician reviews the outcome.",
     "close": "A clinician signs off the closure with evidence (a report or procedure on file).",
     "reassign": "A rejected or bounced referral is given a new owner.",
+}
+
+# The national timelines (A18): `milestones` in the pathway YAML. Clocks that span states, from one event to another.
+MILESTONE_GLOSS = {
+    "referral_requested": "The referral for the colonoscopy is requested.",
+    "confirmatory_completed": "The colonoscopy is done.",
+}
+# How a milestone's start event reads in plain words.
+MILESTONE_START = {
+    "case_created": "the case is created, which is when the positive result is logged (taken as the result release)",
+    "handoff_accepted": ("the latest referral acceptance (`handoff_accepted`) on the case, or, if no referral was "
+                         "accepted, when the case enters `confirmatory_booked`"),
 }
 
 REASON_GLOSS = {
@@ -604,13 +615,28 @@ def main_chain(pw: dict) -> list[dict]:
             and pw["states"].index(t["to"]) == pw["states"].index(t["from"]) + 1]
 
 
+def milestone_rows(pw: dict) -> list[dict]:
+    """One row per milestone (A18): what must happen, what starts and meets the clock, the allowance, the source."""
+    rows = []
+    for name, m in (pw.get("milestones") or {}).items():
+        need(MILESTONE_GLOSS, name, "milestone")
+        need(MILESTONE_START, m["from_event"], "milestone start")
+        rows.append({"name": name, "gloss": MILESTONE_GLOSS[name], "starts": MILESTONE_START[m["from_event"]],
+                     "until": m["until_event"], "days": m["working_days"], "source": m["source"]})
+    return rows
+
+
 def sla_rows(pw: dict) -> list[dict]:
-    """One row per SLA step: the state the clock runs in, what starts it, the allowance."""
+    """One row per SLA step: the state the clock runs in, what starts it, the allowance. `cumulative` adds the
+    allowances of the steps on the main path up to the colonoscopy, whose own clock is a milestone."""
     trans = expand_transitions(pw)
     first = pw["states"][0]
     rows = []
     cumulative = 0
-    chain = {t["event"] for t in main_chain(pw)}
+    chain_events = [t["event"] for t in main_chain(pw)]
+    # steps after the event that ends a colonoscopy milestone are counted from the colonoscopy, not from the result
+    after = {e for m in (pw.get("milestones") or {}).values() if m["from_event"] != "case_created"
+             for e in chain_events[chain_events.index(m["until_event"]) + 1:]} if chain_events else set()
     for event, days in pw["slas_working_days"].items():
         need(SLA_STEP_GLOSS, event, "SLA step")
         states = sorted({t["from"] for t in trans if t["event"] == event}, key=lambda s: (pw["states"] + pw["side_states"]).index(s))
@@ -625,10 +651,12 @@ def sla_rows(pw: dict) -> list[dict]:
         if pw.get("sla_clock_start", {}).get(event) == "handoff_accepted":
             starts = ("the latest referral acceptance (`handoff_accepted`) on the case, or, if no referral was "
                       f"accepted, when the case enters `{state}`")
-        if event in chain:
+        on_path = event in chain_events and event not in after
+        if on_path:
             cumulative += days
         rows.append({"event": event, "state": state, "days": days, "starts": starts,
-                     "cumulative": cumulative if event in chain else None, "gloss": SLA_STEP_GLOSS[event]})
+                     "cumulative": cumulative if on_path else None,
+                     "after_colonoscopy": event in after, "gloss": SLA_STEP_GLOSS[event]})
     return rows
 
 
@@ -722,23 +750,26 @@ def questions(pw: dict) -> list[tuple[str, str, str, str]]:
     """(key, title, context, question) for the ten questions; numbers come from the pathway."""
     sla = pw["slas_working_days"]
     lad = pw["escalation_ladder"]
-    chain = [r for r in sla_rows(pw) if r["cumulative"] is not None]
-    to_colonoscopy = next(r["cumulative"] for r in chain if r["event"] == "complete_confirmatory")
+    ms = pw["milestones"]
+    ref, col = ms["referral_requested"], ms["confirmatory_completed"]
+    pre_referral = sum(sla[e] for e in ("acknowledge", "accept_ownership", "contact_patient", "patient_acknowledge"))
+    # every allowance used to the full: referral requested on the last day, answered on the last day, then the colonoscopy
+    to_colonoscopy = ref["working_days"] + pw["handoff_response_working_days"] + col["working_days"]
     n_fail = next(t for t in expand_transitions(pw) if t["event"] == "mark_lost_contact")["min"]["failed_attempts"]
     reasons = ", ".join(r.replace("_", " ") for r in pw["handoff_reject_reasons"])
     return [
-        ("ack", f"Acknowledge and accept in {sla['acknowledge']} working days",
-         f"The pathway gives the laboratory or coordinator {sla['acknowledge']} working days to acknowledge a positive result, and a clinician {sla['accept_ownership']} more to accept ownership.",
-         f"Is {sla['acknowledge']} working days realistic for each of these two steps in your setting? If not, what would you set, and who in practice does each step?"),
+        ("ack", f"Acknowledge in {sla['acknowledge']} working days, accept in {sla['accept_ownership']}",
+         f"The pathway gives the laboratory or coordinator {sla['acknowledge']} working days to acknowledge a positive result, and a clinician {sla['accept_ownership']} more working day to accept ownership.",
+         f"Are {sla['acknowledge']} and {sla['accept_ownership']} working days realistic for these two steps in your setting? If not, what would you set, and who in practice does each step?"),
         ("limits", "The other time limits",
-         f"Contact the patient in {sla['contact_patient']} working days, patient confirms in {sla['patient_acknowledge']}, book the colonoscopy in {sla['book_confirmatory']}, clinician review in {sla['clinician_review']} after the colonoscopy.",
+         f"Contact the patient in {sla['contact_patient']} working days, patient confirms in {sla['patient_acknowledge']}, book the colonoscopy in {sla['book_confirmatory']}, clinician review in {sla['clinician_review']} after the colonoscopy. The four steps before the referral (acknowledge, accept, contact, patient confirms) add up to {pre_referral} working days, so that a case which meets each of them still has time to request the referral inside the {ref['working_days']}-working-day referral timeline.",
          "Which of these are too tight or too loose? The patient-confirms limit runs against the team although the patient controls it: should that clock exist, and who should be chased when it passes?"),
         ("blood", "The first message and the word \"blood\"",
          "The only clinical fact any message states is \"Your screening test found blood. The next step is a colonoscopy.\" The patient page adds \"This does not mean you have cancer\" (W07), although messages never name cancer, and says \"This page is not a diagnosis\" (W08).",
          "Is \"found blood\" the right first sentence, or would you say \"needs a follow-up test\"? Should the page name cancer at all, even to say the result is not a diagnosis? Is anything in section 9 alarming, wrong, or missing?"),
-        ("kpi", f"What the {sla['complete_confirmatory']} working days are measured from",
-         f"The national KPI is a colonoscopy within 31 working days of referral. Our clock starts when the booking is recorded (`confirmatory_booked`), not at the result, not at the care owner's acceptance, and not at the referral. Adding up every step's full allowance, a colonoscopy could happen up to {to_colonoscopy} working days after the result and still meet every one of our limits.",
-         f"From which event should the {sla['complete_confirmatory']} working days be counted: result received, ownership accepted, referral, or booking? Should we also report the programme-level share (the KPI is a percentage, above 90%), not only a per-case limit?"),
+        ("kpi", f"What the {ref['working_days']} and {col['working_days']} working days are measured from",
+         f"The pathway has two national timelines. The IFHAS standard (DoH, V10, July 2025) has referral to secondary care within {ref['working_days']} working days of releasing the result; our clock starts when the case is created (the positive result is logged) and stops when a referral is requested (`handoff_requested`). The UAE National Guideline (Appendix 2, not the IFHAS standard) has the colonoscopy within {col['working_days']} working days of referral; our clock starts at the latest referral acceptance (`handoff_accepted`), or at the booking if no referral was accepted, and stops when the colonoscopy is recorded (`complete_confirmatory`). Using every allowance to the full (request on the last day, a {pw['handoff_response_working_days']}-working-day wait for acceptance, then {col['working_days']} working days), a colonoscopy could happen {to_colonoscopy} working days after the result and still meet both timelines.",
+         f"Should the {ref['working_days']} working days stop at the referral request or at its acceptance, and does the clock start at the result release or at the laboratory report date? Should the {col['working_days']} working days count from the request or from the acceptance? Any referral, including a transfer between primary care owners, counts today: should it? Should we also report the programme-level share (the guideline's measure is a percentage, above 90%), not only a limit on each case?"),
         ("evidence", "What counts as evidence to close a case",
          "A case can close only with an evidence reference and a named clinician's signature after clinician review. What the evidence reference may point to is not restricted today.",
          "What is acceptable: the colonoscopy report alone, report plus histology, a documented refusal, a letter to the GP? What must be in the sign-off? Who may sign, and is clinician review by itself ever enough?"),
@@ -856,29 +887,32 @@ def clinician_pack() -> str:
 
     # ---- 5
     out += ["## 5. Time limits (SLAs)", "",
-            "Each step has a limit in working days. The clock starts when the case enters the state (one step starts at referral acceptance, see the table), and a case is late when time is strictly after the due date. Counting uses the working week above. Time limits are design choices unless stated: only the 31 working days for the colonoscopy has a public anchor.", ""]
+            "Each step has a limit in working days. The clock starts when the case enters the state, and a case is late when time is strictly after the due date. Counting uses the working week above. These per-step limits are design choices with no public anchor. The two national timelines are separate clocks that span states (the milestones below): they are the only limits with a public anchor.", ""]
     rows = []
     for r in slas:
         rows.append([f"`{r['event']}`", r["gloss"], f"`{r['state']}`", r["starts"], r["days"],
-                     r["cumulative"] if r["cumulative"] is not None else "not on the main path"])
+                     r["cumulative"] if r["cumulative"] is not None
+                     else ("counted from the colonoscopy" if r["after_colonoscopy"] else "not on the main path")])
     out += [table(["Step (event)", "What must happen", "State where the clock runs", "Clock starts when", "Working days allowed", "Latest, counted from the result if every step uses its full allowance"], rows), ""]
-    total = next(r["cumulative"] for r in slas if r["event"] == "complete_confirmatory")
-    k = pw["slas_working_days"]["complete_confirmatory"]
+    mrows = milestone_rows(pw)
+    out += ["### National timelines (milestones)", "",
+            "A milestone is a clock from one event to another, measured against a national standard. If the ending event has not happened when the allowance runs out, the scheduler flags it once (`mark_overdue` naming the milestone, not a state) and climbs the escalation ladder below, exactly as for a late step. Doing the thing later clears the flag; the log keeps both events.", "",
+            table(["Milestone", "What must happen", "Clock starts when", "Met when", "Working days allowed", "Source"],
+                  [[f"`{m['name']}`", m["gloss"], m["starts"], f"`{m['until']}` is recorded", m["days"], m["source"]] for m in mrows]), ""]
+    ref_m = pw["milestones"]["referral_requested"]
+    col_m = pw["milestones"]["confirmatory_completed"]
+    pre = sum(pw["slas_working_days"][e] for e in ("acknowledge", "accept_ownership", "contact_patient", "patient_acknowledge"))
     out += [
-        "**DoH 31-working-day KPI.** The UAE National Guideline for Colorectal Cancer Screening and Diagnosis (3rd edition, 2022, prepared by a task force that included DoH Abu Dhabi; Appendix 2) sets, for follow-up colonoscopy after a positive FIT, a target of **within 31 working days of referral**, in more than 90% of cases (acceptable) and more than 95% (desirable). The same guideline is inconsistent: clause 12.5.2 says 15 working days, Appendix 3 says 31 days. The IFHAS standard (DoH, V10, July 2025) requires referral to secondary care within 15 working days of releasing results. Sources are listed in `docs/evidence.md` section 8; the register marks them as read from the primary source (check marker P).", "",
-        f"Our `complete_confirmatory` limit is **{k} working days**" + (", the same figure as the KPI." if k == 31 else ", which differs from the 31-working-day KPI.")
-        + f" Three differences matter (question {qn(qs, 'kpi')}): (1) the KPI is a share of cases, ours is a limit on each case; (2) "
-        + ("our clock starts at the latest referral acceptance, the closest event we record to the KPI's referral date, and falls back to state entry when no referral was accepted;"
-           if pw.get("sla_clock_start", {}).get("complete_confirmatory") == "handoff_accepted"
-           else "our clock starts when the booking is recorded, the KPI counts from referral;")
-        + f" (3) adding every full allowance, the colonoscopy can be as late as {total} working days after the result and still meet every one of our limits. " + (f"`close` has its own limit of {pw['slas_working_days']['close']} working days after clinician review, so a reviewed case can go overdue."
-              if "close" in pw["slas_working_days"] else "There is no limit on `close`, so a case can sit at `clinician_reviewed` without breaching."), "",
+        f"**Where the figures come from.** The {ref_m['working_days']} working days to request a referral are the DoH IFHAS standard (V10, July 2025): referral to secondary care within {ref_m['working_days']} working days of releasing results. The {col_m['working_days']} working days for the colonoscopy are **not** from IFHAS: they are the UAE National Guideline for Colorectal Cancer Screening and Diagnosis (3rd edition, 2022, prepared by a task force that included DoH Abu Dhabi; Appendix 2), which sets follow-up colonoscopy **within {col_m['working_days']} working days of referral** in more than 90% of cases (acceptable) and more than 95% (desirable). The same guideline is inconsistent: clause 12.5.2 says 15 working days for the urgent referral, Appendix 3 says 31 days. Sources are listed in `docs/evidence.md` section 8; the register marks them as read from the primary source (check marker P).", "",
+        f"Three differences from the standards matter (question {qn(qs, 'kpi')}): (1) the standards are shares of cases, ours is a limit on each case; (2) the referral clock stops at the referral request, not at its acceptance, and any handoff counts as a referral; (3) the colonoscopy clock starts at the latest referral acceptance, the closest event we record to the guideline's referral date. The four steps before the referral allow {pre} working days in total, which fits inside the {ref_m['working_days']}. "
+        + (f"`close` has its own limit of {pw['slas_working_days']['close']} working days after clinician review, so a reviewed case can go overdue."
+           if "close" in pw["slas_working_days"] else "There is no limit on `close`, so a case can sit at `clinician_reviewed` without breaching."), "",
         "The same working-day arithmetic applies to the referral response time and the escalation offsets below.", "",
     ]
 
     # ---- 6
     out += ["## 6. Escalation ladder", "",
-            "When a step passes its due date, the scheduler flags it (`mark_overdue`, once) and then climbs the ladder. A rung is written only after the previous one, never skipped. A person in the rung's accepting role must accept it (`escalation_accepted`); that stops further rungs for that delay. The scheduler can notify but cannot accept, reassign or close. A regulator rung is not built.", ""]
+            "When a step or a national timeline passes its due date, the scheduler flags it (`mark_overdue`, once) and then climbs the ladder. A rung is written only after the previous one, never skipped. A person in the rung's accepting role must accept it (`escalation_accepted`); that stops further rungs for that delay. The scheduler can notify but cannot accept, reassign or close. A regulator rung is not built.", ""]
     rows = []
     for r in pw["escalation_ladder"]:
         rows.append([f"`{r['rung']}`", need(RUNG_GLOSS, r["rung"], "rung"),
@@ -965,6 +999,8 @@ def clinician_pack() -> str:
         fb.append([f"S:{s}", f"State `{s}`: {need(STATE_GLOSS, s, 'state').split('. ')[0].rstrip('.')}", "", ""])
     for r in slas:
         fb.append([f"SLA:{r['event']}", f"Time limit `{r['event']}`: {r['days']} working days, clock starts when {r['starts'].split(' (')[0].replace('the case enters', 'the case enters')}", "", ""])
+    for m in milestone_rows(pw):
+        fb.append([f"M:{m['name']}", f"National timeline `{m['name']}`: {m['days']} working days, clock starts when {m['starts'].split(' (')[0].split(',')[0]}", "", ""])
     for r in pw["escalation_ladder"]:
         fb.append([f"L:{r['rung']}", f"Rung `{r['rung']}` at {r['after_breach_days']} working days after the due date", "", ""])
     for r in pw["handoff_reject_reasons"] + [pw["handoff_bounce_reason"]]:

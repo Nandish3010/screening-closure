@@ -14,7 +14,7 @@ from app.events import Event, LoadedCase
 from app.pathway import Pathway
 from app.state_machine import CASE_CREATED, CaseModel, genesis, initial_model, step
 from app.state_machine import _aware as _utc
-from app.sweep import due_at_for
+from app.sweep import due_at_for, milestone_due
 
 
 def iso(dt: datetime | None) -> str | None:
@@ -32,12 +32,60 @@ def event_json(e: Event) -> dict:
     }
 
 
+def milestone_due_dates(model: CaseModel, pathway: Pathway, calendar: WorkingCalendar) -> dict[str, datetime | None]:
+    """Each milestone's due date: the breach's own once overdue, else computed from its start. None where the
+    milestone has not started or the case closed without meeting it (void). A met milestone keeps its due date."""
+    out: dict[str, datetime | None] = {}
+    for name, d in pathway.milestones.items():
+        ms = model.milestones.get(name)
+        if ms is None or ms.started_at is None or ms.void:
+            out[name] = None
+        elif ms.overdue and ms.breach_due_at is not None:
+            out[name] = ms.breach_due_at
+        else:
+            out[name] = milestone_due(ms.started_at, d.working_days, calendar)
+    return out
+
+
+def milestones_json(model: CaseModel, pathway: Pathway, calendar: WorkingCalendar) -> dict:
+    """The case page's `milestones` (A18): {name: {due_at, met_at, overdue, ...}} for every milestone of the pathway.
+    `overdue` is the milestone's own breach flag (true from the sweep's `mark_overdue` until the milestone is met);
+    `met_late` says a met milestone was met after its due date."""
+    dues = milestone_due_dates(model, pathway, calendar)
+    out = {}
+    for name, d in pathway.milestones.items():
+        ms = model.milestones.get(name)
+        due = dues[name]
+        met_late = None
+        if ms is not None and ms.met_at is not None and due is not None:
+            met_late = _utc(ms.met_at) > _utc(due)
+        out[name] = {
+            "due_at": iso(due),
+            "met_at": iso(ms.met_at) if ms else None,
+            "overdue": bool(ms and ms.overdue),
+            "started_at": iso(ms.started_at) if ms else None,
+            "working_days": d.working_days,
+            "met_late": met_late,
+            "void": bool(ms and ms.void),
+            "escalation_level": ms.escalation_level if ms else 0,
+        }
+    return out
+
+
 def current_due(model: CaseModel, pathway: Pathway, calendar: WorkingCalendar) -> datetime | None:
-    """When the current state's SLA expires: the breach's due date once overdue, else the
-    computed one; None where no SLA applies (closed, consent withdrawn)."""
+    """The next deadline on the case: the earliest of the current state's SLA expiry (the breach's due date once
+    overdue) and every running milestone's due date (A18); None where nothing applies (closed, consent withdrawn
+    with no running milestone)."""
     if model.overdue and model.breach_due_at is not None:
-        return model.breach_due_at
-    return due_at_for(model, pathway, calendar)
+        state_due = model.breach_due_at
+    else:
+        state_due = due_at_for(model, pathway, calendar)
+    running = [
+        due for name, due in milestone_due_dates(model, pathway, calendar).items()
+        if due is not None and (ms := model.milestones.get(name)) is not None and ms.met_at is None
+    ]
+    candidates = [d for d in (state_due, *running) if d is not None]
+    return min(candidates, key=_utc) if candidates else None
 
 
 def watchdog_flag_json(model: CaseModel) -> dict | None:
@@ -65,8 +113,8 @@ def case_row(lc: LoadedCase, pathway: Pathway, calendar: WorkingCalendar) -> dic
         "owner": users.resolve_actor(m.owner),
         "provider": m.provider,
         "due_at": iso(current_due(m, pathway, calendar)),
-        "overdue": m.overdue,
-        "escalation_level": m.escalation_level,
+        "overdue": m.any_overdue,  # the state SLA or any milestone (A18)
+        "escalation_level": max([m.escalation_level, *(x.escalation_level for x in m.milestones.values())]),
         "consent_frozen": m.consent_frozen,
         "last_event_at": iso(m.last_event_at),
         "watchdog_flagged": watchdog_flag_json(m),
@@ -107,7 +155,9 @@ def timeline(
     the clock start, which is the referral acceptance for the confirmatory SLA), `sla_breached`
     (`at` is the due date, `detected_at` when the sweep recorded it), `escalation` (a ladder rung),
     `handoff_bounce` (the scheduler returned an unanswered referral), `watchdog_flag` (idle
-    case; `cleared_at` once anything else happened) and `backdated` (T-F4, ADR-027: an event accepted
+    case; `cleared_at` once anything else happened), `milestone_started` / `milestone_breached` / `milestone_met`
+    (A18: a milestone clock began, was breached at its due date, or was met; `late` on the last says it was met
+    after the due date) and `backdated` (T-F4, ADR-027: an event accepted
     with an `at` earlier than the previous event's; `behind_seconds` says by how much). Derived items are computed from the log, not
     stored. Ties are broken by the source event's position, the event first.
     """
@@ -118,13 +168,34 @@ def timeline(
 
     model = initial_model(pathway)
     last_sla: tuple | None = None
+    seen_ms: dict[str, tuple] = {}  # milestone -> (started_at, met_at) already turned into items
     open_flag: dict | None = None
     last_escalation: dict | None = None
+    last_rung_by_scope: dict[str, dict] = {}  # "state" or a milestone name -> its latest escalation item
     previous: Event | None = None
     for ev in events:
         seq = ev.seq or 0
-        model = genesis(model, ev) if ev.type == CASE_CREATED else step(model, ev, pathway)
+        before = model
+        model = genesis(model, ev, pathway) if ev.type == CASE_CREATED else step(model, ev, pathway)
         add(ev.at, seq, 0, {"kind": "event", **event_json(ev)})
+        for name, d in pathway.milestones.items():
+            ms = model.milestones.get(name)
+            if ms is None:
+                continue
+            if ms.started_at is not None and seen_ms.get(name, (None, None))[0] != ms.started_at:
+                add(ms.started_at, seq, 1, {
+                    "kind": "milestone_started", "at": ms.started_at.isoformat(), "milestone": name,
+                    "working_days": d.working_days, "from_event": d.from_event, "until_event": d.until_event,
+                    "due_at": iso(milestone_due(ms.started_at, d.working_days, calendar)),
+                })
+            if ms.met_at is not None and seen_ms.get(name, (None, None))[1] is None:
+                due_met = milestone_due(ms.started_at, d.working_days, calendar) if ms.started_at else None
+                add(ms.met_at, seq, 1, {
+                    "kind": "milestone_met", "at": ms.met_at.isoformat(), "milestone": name,
+                    "due_at": iso(due_met), "event_id": str(ev.event_id),
+                    "late": bool(due_met is not None and _utc(ms.met_at) > _utc(due_met)),
+                })
+            seen_ms[name] = (ms.started_at, ms.met_at)
         if previous is not None and _utc(ev.at) < _utc(previous.at):
             # T-F4 / ADR-027: accepted out of time order, ordered by seq in the log, flagged here.
             add(ev.at, seq, 1, {
@@ -143,6 +214,12 @@ def timeline(
                 "idle_days": ev.payload.get("idle_days"), "cleared_at": None, "event_id": str(ev.event_id),
             }
             add(ev.at, seq, 1, open_flag)
+        elif ev.type == "mark_overdue" and ev.payload.get("milestone"):
+            due = ev.payload["due_at"]
+            add(datetime.fromisoformat(due.replace("Z", "+00:00")), seq, 1, {
+                "kind": "milestone_breached", "at": due, "detected_at": ev.at.isoformat(),
+                "milestone": ev.payload["milestone"], "due_at": due, "event_id": str(ev.event_id),
+            })
         elif ev.type == "mark_overdue":
             due = ev.payload["due_at"]
             sla = ev.payload.get("sla_event") or (pathway.sla_for_state(model.state) or (None,))[0]
@@ -154,6 +231,7 @@ def timeline(
             rung = pathway.rung(str(ev.payload.get("rung")))
             last_escalation = {
                 "kind": "escalation", "at": ev.at.isoformat(), "rung": ev.payload.get("rung"),
+                "milestone": ev.payload.get("milestone"),
                 "level": ev.payload.get("level") or pathway.rung_level(str(ev.payload.get("rung"))),
                 "target_role": ev.payload.get("target") or (rung.target if rung else None),
                 "after_breach_days": rung.after_breach_days if rung else None,
@@ -162,8 +240,13 @@ def timeline(
                 "accepted_by": None, "event_id": str(ev.event_id),
             }
             add(ev.at, seq, 1, last_escalation)
+            last_rung_by_scope[ev.payload.get("milestone") or "state"] = last_escalation
         elif ev.type == "escalation_accepted" and last_escalation is not None:
-            last_escalation.update(accepted=True, accepted_at=ev.at.isoformat(), accepted_by=ev.actor)
+            # the ladder whose acceptance flag the event set (a milestone's, else the state's)
+            scope = next((n for n, m in model.milestones.items()
+                          if m.escalation_accepted and not before.milestones[n].escalation_accepted), "state")
+            target = last_rung_by_scope.get(scope, last_escalation)
+            target.update(accepted=True, accepted_at=ev.at.isoformat(), accepted_by=ev.actor)
         elif ev.type == "handoff_rejected" and ev.payload.get("bounced") is True:
             add(ev.at, seq, 1, {
                 "kind": "handoff_bounce", "at": ev.at.isoformat(), "to_provider": ev.payload.get("to_provider"),

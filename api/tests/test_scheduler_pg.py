@@ -57,7 +57,8 @@ def new_case(store, created=AT):
 
 
 def events_of(store, case_id, type_):
-    return [e for e in store.events_for(case_id) if e.type == type_]
+    """Events of a type on the state's SLA and ladder; milestone events (A18) are in test_milestones_pg.py."""
+    return [e for e in store.events_for(case_id) if e.type == type_ and "milestone" not in e.payload]
 
 
 def test_overdue_is_emitted_exactly_once_per_breach_even_when_swept_concurrently(store):
@@ -102,15 +103,15 @@ def test_a_second_breach_on_a_later_transition_produces_a_new_event(store):
     assert len(first) == 1
     store.append(Event(case_id, "acknowledge", at(3), "lab:l"), PATHWAY)  # Thursday 8th
     assert not store.read_model(case_id, PATHWAY).overdue
-    run_sweep(store, PATHWAY, UAE, at(6), only=[case_id])  # Sunday: not due until Monday 12th
+    run_sweep(store, PATHWAY, UAE, at(4), only=[case_id])  # accept_ownership (1 working day): due Fri 9th 08:00Z, not late
     assert len(events_of(store, case_id, "mark_overdue")) == 1
-    run_sweep(store, PATHWAY, UAE, at(8), only=[case_id])  # Tuesday 13th
+    run_sweep(store, PATHWAY, UAE, at(5), only=[case_id])  # Saturday: late
     run_sweep(store, PATHWAY, UAE, at(9), only=[case_id])
     overdue = events_of(store, case_id, "mark_overdue")
     assert len(overdue) == 2
     assert overdue[0].event_id != overdue[1].event_id
     assert [e.payload["state"] for e in overdue] == ["result_received", "acknowledged"]
-    assert overdue[1].payload["due_at"] == at(7).isoformat()
+    assert overdue[1].payload["due_at"] == at(4).isoformat()
     model = store.read_model(case_id, PATHWAY)
     assert model.state == "acknowledged" and model.overdue
 
@@ -236,15 +237,16 @@ def test_concurrent_sweeps_after_a_long_outage_emit_each_rung_once(store):
     assert errors == []
     assert rungs(store, case_id) == ["reminder", "supervisor", "coordinator"]
     assert len(events_of(store, case_id, "mark_overdue")) == 1
-    assert [e.seq for e in store.events_for(case_id)] == [1, 2, 3, 4, 5]
+    # the state's breach and three rungs, and the referral milestone's breach and three rungs (A18)
+    assert [e.seq for e in store.events_for(case_id)] == list(range(1, 10))
 
 
 def test_a_human_in_the_target_role_stops_the_ladder_and_nothing_else_can(store, pool):
     case_id = new_case(store)
     store.append(Event(case_id, "acknowledge", utc(1, 5, 9), "lab:l"), PATHWAY)
     store.append(Event(case_id, "accept_ownership", utc(1, 5, 10), "primary_care_owner:k"), PATHWAY)
-    # owner_accepted awaits contact_patient: 5 working days from Mon 5th 10:00Z = Mon 12th 10:00Z
-    run_sweep(store, PATHWAY, UAE, utc(1, 15, 11), only=[case_id])  # +3 working days after the breach
+    # owner_accepted awaits contact_patient: 3 working days from Mon 5th 10:00Z = Thu 8th 10:00Z
+    run_sweep(store, PATHWAY, UAE, utc(1, 15, 11), only=[case_id])  # +3 working days after the breach (Tue 13th)
     assert rungs(store, case_id) == ["reminder", "supervisor"]
     model = store.read_model(case_id, PATHWAY)
     assert model.owner == "primary_care_owner:k"

@@ -74,22 +74,45 @@ human_only_events:
   - message_rejected
   - callback_requested
   - reopen
+# Per-state SLAs: working days allowed to perform the event that leaves the state. Each clock starts when the
+# state is entered. These are our own design values (assumed, not sourced); the national standards are the two
+# `milestones` below. The pre-referral SLAs (acknowledge, accept_ownership, contact_patient, patient_acknowledge)
+# sum to 11 working days, so a case that meets every one of them still has 4 working days left to request the
+# referral inside the 15-working-day referral milestone (the book_confirmatory SLA of 5 covers the request, the
+# receiving provider's acceptance and the booking, so the request itself comes early in it).
+# `complete_confirmatory` has no per-state SLA: its clock is the `confirmatory_completed` milestone.
 slas_working_days:
   acknowledge: 2
-  accept_ownership: 2
-  contact_patient: 5
-  patient_acknowledge: 7
-  book_confirmatory: 14
-  complete_confirmatory: 31   # DoH IFHAS KPI: colonoscopy within 31 working days of referral (docs/evidence.md section 8)
+  accept_ownership: 1
+  contact_patient: 3
+  patient_acknowledge: 5
+  book_confirmatory: 5
   clinician_review: 5
   close: 3            # sign-off after clinician review (A13): without it a reviewed case could never go overdue (L12)
   reassign: 2         # a rejected or bounced referral (referral_rejected) must be re-routed within 2 working days (A5)
-# Where each SLA clock starts (A13, ADR-020). Default `state_entry`: the event that entered the state.
-# `handoff_accepted`: the latest referral acceptance on the case, falling back to state entry when
-# no handoff was ever accepted. complete_confirmatory is measured from referral acceptance, as the
-# DoH standard measures it (colonoscopy within 31 working days of referral), not from booking.
-sla_clock_start:
-  complete_confirmatory: handoff_accepted
+# Milestones (A18, ADR-028): clocks that span states and are measured against a national standard, from one event to
+# another. A milestone is met by its `until_event`; if the `until_event` has not happened `working_days` after the
+# `from_event`, the sweep emits one `mark_overdue {milestone, due_at}` and walks the escalation ladder for it, like a
+# state breach. `from_event` is `case_created` (the result release, as far as the case is concerned) or an event type;
+# for an event type the clock restarts on every later occurrence until the milestone is met (the latest referral
+# acceptance, A13). A milestone whose `from_event` never happens starts when the case enters the state that awaits
+# its `until_event` (a case with no formal referral keeps a colonoscopy clock, ADR-020).
+#   * referral_requested: DoH IFHAS standard V10 (July 2025): referral to secondary care within 15 working days of
+#     releasing the result. The National Guideline's own clause 12.5.2 also says 15 working days for urgent referral.
+#   * confirmatory_completed: colonoscopy within 31 working days of referral. The source of the 31 is the National
+#     Guideline Appendix 2 (KPI table), NOT the IFHAS standard; the guideline is internally inconsistent
+#     (clause 12.5.2: 15 working days; Appendix 3: 31 days). docs/evidence.md section 8b.
+milestones:
+  referral_requested:
+    from_event: case_created
+    until_event: handoff_requested
+    working_days: 15
+    source: "DoH IFHAS standard July 2025 via docs/evidence.md section 8"
+  confirmatory_completed:
+    from_event: handoff_accepted
+    until_event: complete_confirmatory
+    working_days: 31
+    source: "National Guideline Appendix 2 via evidence.md"
 # A rung is emitted `after_breach_days` working days after the due date; the next rung is
 # only valid after the previous one (no skipping). A human in `accepted_by` accepts a rung
 # with `escalation_accepted`, which stops further rungs for that breach (ADR-014).

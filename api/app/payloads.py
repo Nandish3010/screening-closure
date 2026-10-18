@@ -24,7 +24,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, StringConstraints, ValidationError, field_validator
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints, ValidationError, field_validator, model_validator
 
 NOTE_MAX_LENGTH = 200
 
@@ -143,16 +143,28 @@ class Reopen(_Human):
     reason: Literal["new_finding", "evidence_inadequate", "closed_in_error", "patient_request", "other"]
 
 
+def _state_xor_milestone(model: "_Payload") -> "_Payload":
+    """A18: a breach is of the current state's SLA (`state`) or of a milestone (`milestone`), never both and never
+    neither. A milestone spans states, so a milestone breach does not name one."""
+    if (model.state is None) == (model.milestone is None):  # type: ignore[attr-defined]
+        raise ValueError("exactly one of 'state' and 'milestone' is required")
+    return model
+
+
 class MarkOverdue(_Timed):
-    state: Code
+    state: Code | None = None
+    milestone: Code | None = None  # A18: a milestone breach (referral_requested, confirmatory_completed)
     due_at: IsoTime
     sla_event: Code | None = None
     sla_working_days: int | None = Field(default=None, ge=0, le=3650)
 
+    _one_subject = model_validator(mode="after")(_state_xor_milestone)
+
 
 class Escalate(_Timed):
     rung: Code
-    state: Code
+    state: Code | None = None
+    milestone: Code | None = None  # A18: the rung is on a milestone's ladder
     level: int | None = Field(default=None, ge=0, le=20)
     target: Code | None = None
     action: Code | None = None
@@ -160,9 +172,12 @@ class Escalate(_Timed):
     rung_due_at: IsoTime | None = None
     note: Note | None = None  # a coordinator or supervisor escalating by hand may add one
 
+    _one_subject = model_validator(mode="after")(_state_xor_milestone)
+
 
 class EscalationAccepted(_Human):
     rung: Code | None = None
+    milestone: Code | None = None  # A18: which ladder, when more than one has a rung
 
 
 class HandoffRequested(_Human):

@@ -150,6 +150,7 @@ export type TransitionEvent = (typeof TRANSITION_EVENTS)[number];
  *                      without a preceding approval; the UI shows "approved, not sent yet" until it appears.
  *                      Absent after an approval whose channel was blocked: see DraftApproval.sent)
  *  mark_overdue        payload {state: string, due_at: string}        actor: "system:scheduler"
+ *                      or, for a milestone breach (A18), {milestone: string, due_at: string} with no `state`
  *  watchdog_flagged    payload {reason: "idle"|"scheduler_down", idle_days?: number, last_activity_at?: string}
  *                                                                     actor: "system:watchdog" (BACKEND, A11: only
  *                      reason "idle" is written on a case; a dead scheduler is a system alert, GET /alerts)
@@ -386,7 +387,30 @@ export interface CaseDetail extends Omit<CaseSummary, "pathway" | "created_at" |
   consent_history?: ConsentHistoryEntry[];
   /** `consent_withdrawn` while the case is on the human-review list, else null. */
   review_reason?: string | null;
+  /** A18: referral within 15 working days of the result, colonoscopy within 31 working days of referral. */
+  milestones?: Partial<Record<MilestoneName, MilestoneClock>>;
   events: CaseEvent[];
+}
+
+/** The two clocks that span states (A18, ADR-028); the names are the keys of `milestones` in the pathway YAML. */
+export type MilestoneName = "referral_requested" | "confirmatory_completed";
+
+/**
+ * One milestone on `GET /cases/{id}` (`milestones` at the top level of the response). `due_at` is null while the
+ * clock has not started (the colonoscopy clock starts at the referral acceptance). `overdue` is the milestone's own
+ * breach flag: true from the scheduler's `mark_overdue {milestone}` until the milestone is met.
+ */
+export interface MilestoneClock {
+  due_at: string | null;
+  met_at: string | null;
+  overdue: boolean;
+  working_days?: number;
+  started_at?: string | null;
+  /** A met milestone was met after its due date. */
+  met_late?: boolean | null;
+  /** The case closed before the milestone was met. */
+  void?: boolean;
+  escalation_level?: number;
 }
 
 /** Body of POST /cases/{id}/events (LIVE). Returns the updated CaseDetail (201). */
@@ -423,7 +447,23 @@ export interface PostEventBody {
  * the UI shows the derived item once.
  */
 export type TimelineItem =
-  | TimelineEvent | TimelineSlaStarted | TimelineSlaBreached | TimelineEscalation | TimelineBounce | TimelineWatchdog | TimelineBackdated;
+  | TimelineEvent | TimelineSlaStarted | TimelineSlaBreached | TimelineEscalation | TimelineBounce | TimelineWatchdog | TimelineBackdated
+  | TimelineMilestone;
+
+/**
+ * A18: a milestone clock began (`milestone_started`, `at` = the start, with `working_days`, `due_at`), was breached
+ * (`milestone_breached`, `at` = the due date, `detected_at` = when the sweep wrote it) or was met (`milestone_met`,
+ * `late` says after the due date). Derived by the API, never stored.
+ */
+export interface TimelineMilestone {
+  kind: "milestone_started" | "milestone_breached" | "milestone_met";
+  at: string;
+  milestone: MilestoneName | string;
+  due_at?: string | null;
+  working_days?: number;
+  detected_at?: string;
+  late?: boolean;
+}
 
 export interface TimelineEvent extends CaseEvent {
   kind: "event";

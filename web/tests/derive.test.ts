@@ -3,7 +3,7 @@ import type { CaseEvent, DraftRecord } from "../src/api/contract";
 import {
   actorName, actorRole, completeDetail, completeSummary, consentFrozen, consentOf, draftViews, escalationLevel, handoffs,
   isAutomatedActor, lostContact, normalizeOwner, overdueDays, overdueMarker, ownerOf, pendingEscalation, replayHandoffs,
-  replayState, slaClock, watchdogFlag,
+  milestonesOf, replayState, slaClock, watchdogFlag,
 } from "../src/lib/derive";
 
 let n = 0;
@@ -180,7 +180,7 @@ describe("owner, handoffs and states (A5)", () => {
     expect(replayState([...upTo(5), reject])).toBe("referral_rejected");
     expect(replayState([...upTo(5), reject, ev("reassign", "coordinator:m", { owner: "x" })])).toBe("owner_accepted");
   });
-  it("the confirmatory SLA clock starts at the latest handoff_accepted, state entry otherwise (A13)", () => {
+  it("the colonoscopy milestone starts at the latest handoff_accepted, state entry otherwise; confirmatory_booked has no state SLA (A13, A18)", () => {
     const evs = [
       ev("case_created", "system:intake", {}, "2026-10-01T09:00:00Z"), ev("acknowledge", "lab:x", {}, "2026-10-01T10:00:00Z"),
       ev("accept_ownership", "primary_care_owner:A", {}, "2026-10-01T11:00:00Z"), ev("contact_patient", "coordinator:m", {}, "2026-10-01T12:00:00Z"),
@@ -188,8 +188,11 @@ describe("owner, handoffs and states (A5)", () => {
       ev("handoff_accepted", "specialist_owner:S", {}, "2026-10-05T09:00:00Z"), ev("book_confirmatory", "specialist_owner:S", {}, "2026-10-12T09:00:00Z"),
     ];
     const now = "2027-01-01T00:00:00Z";
-    expect(slaClock(evs, "confirmatory_booked", now)).toMatchObject({ sla_event: "complete_confirmatory", started_at: "2026-10-05T09:00:00Z" });
-    expect(slaClock(evs.slice(0, 5).concat(evs[7]), "confirmatory_booked", now).started_at).toBe("2026-10-12T09:00:00Z");
+    expect(slaClock(evs, "confirmatory_booked", now).due_at).toBeNull();
+    expect(milestonesOf(evs, now).confirmatory_completed).toMatchObject({ started_at: "2026-10-05T09:00:00Z", due_at: "2026-11-17T09:00:00.000Z", overdue: true });
+    expect(milestonesOf(evs.slice(0, 5).concat(evs[7]), now).confirmatory_completed.started_at).toBe("2026-10-12T09:00:00Z");
+    // the referral milestone runs from the result and is met by the request, in time
+    expect(milestonesOf(evs, now).referral_requested).toMatchObject({ started_at: "2026-10-01T09:00:00Z", met_at: "2026-10-02T09:00:00Z", met_late: false, overdue: false });
     expect(slaClock(evs, "clinician_reviewed", now)).toMatchObject({ sla_event: "close" });
     expect(slaClock(evs, "referral_rejected", now)).toMatchObject({ sla_event: "reassign" });
     expect(slaClock(evs, "closed", now).due_at).toBeNull();

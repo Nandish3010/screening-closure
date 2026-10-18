@@ -23,6 +23,7 @@ from app.sweep import (
     SCHEDULER_ACTOR,
     SCHEDULER_EVENT_TYPES,
     due_at_for,
+    milestone_due_at,
     plan_case,
     run_sweep,
     sweep_event_id,
@@ -48,15 +49,16 @@ def test_initial_state_is_due_from_case_creation():
 
 
 def test_due_at_uses_the_entering_event_time_and_the_state_sla():
-    # acknowledge on day 3 (Thursday 8th): accept_ownership is due 2 working days later
+    # acknowledge on day 3 (Thursday 8th): accept_ownership is due 1 working day later
     m = drive(("acknowledge", "lab:l", {}), model=start_model(), start_day=2)
     assert m.state == "acknowledged" and m.clock_started_at == at(3)
-    assert due_at_for(m, PATHWAY, UAE) == at(7)  # Monday 12th, same time of day
-    # the 31 working day complete_confirmatory SLA (DoH KPI): six weeks and one working day after a Monday booking
+    assert due_at_for(m, PATHWAY, UAE) == at(4)  # Friday 9th, same time of day
+    # confirmatory_booked has no per-state SLA: its clock is the 31 working day colonoscopy milestone (A18)
     m = drive(*TO_CONTACTED, ("patient_acknowledge", "patient:p", {}), ("book_confirmatory", "primary_care_owner:k", {}))
-    assert m.state == "confirmatory_booked"
-    m = dataclasses.replace(m, clock_started_at=at(0))
-    assert due_at_for(m, PATHWAY, UAE) == at(0) + timedelta(weeks=6, days=1)
+    assert m.state == "confirmatory_booked" and due_at_for(m, PATHWAY, UAE) is None
+    ms = dataclasses.replace(m.milestones["confirmatory_completed"], started_at=at(0))
+    m = dataclasses.replace(m, milestones={**m.milestones, "confirmatory_completed": ms})
+    assert milestone_due_at(m, "confirmatory_completed", PATHWAY, UAE) == at(0) + timedelta(weeks=6, days=1)
 
 
 def test_a_friday_start_skips_the_weekend():
@@ -76,7 +78,7 @@ def test_states_without_an_sla_have_no_due_date(state):
 def test_side_states_inherit_the_sla_of_the_event_that_leaves_them(state):
     model = dataclasses.replace(start_model(), state=state, clock_started_at=AT)
     assert due_at_for(model, PATHWAY, UAE) == (
-        UAE.add_working_days(AT, 5)  # contact_patient / clinician_review are both 5
+        UAE.add_working_days(AT, 3 if state == "lost_contact" else 5)  # contact_patient 3 / clinician_review 5
     )
 
 
@@ -112,7 +114,11 @@ def test_an_overdue_case_is_not_planned_again():
     assert plan_case(CASE, m2, PATHWAY, UAE, now) == []
     # much later only the remaining rungs are planned; never another mark_overdue
     later = plan_case(CASE, m2, PATHWAY, UAE, now + timedelta(days=30))
-    assert [e.payload["rung"] for e in later] == ["supervisor", "coordinator"]
+    state_events = [e for e in later if "milestone" not in e.payload]
+    assert [e.payload["rung"] for e in state_events] == ["supervisor", "coordinator"]
+    # the referral milestone (15 working days) has been breached by then: one breach and its three rungs (A18)
+    assert [(e.type, e.payload.get("rung")) for e in later if "milestone" in e.payload] == [
+        ("mark_overdue", None), ("escalate", "reminder"), ("escalate", "supervisor"), ("escalate", "coordinator")]
 
 
 def test_event_ids_are_deterministic_and_distinct_per_breach():
@@ -152,7 +158,12 @@ def make_store(*cases_spec):
 
 
 def count(store, cid, type_):
-    return sum(1 for e in store.events_for(cid) if e.type == type_)
+    """Events of a type on the state's SLA (milestone events, A18, are counted by `count_ms`)."""
+    return sum(1 for e in store.events_for(cid) if e.type == type_ and "milestone" not in e.payload)
+
+
+def count_ms(store, cid, type_):
+    return sum(1 for e in store.events_for(cid) if e.type == type_ and "milestone" in e.payload)
 
 
 def test_sweep_marks_a_breach_once_however_often_it_runs():
@@ -171,7 +182,7 @@ def test_a_later_transition_gets_its_own_breach():
     run_sweep(store, PATHWAY, UAE, at(3))
     store.append(Event(cid, "acknowledge", at(3), "lab:l"), PATHWAY)
     assert not store.read_model(cid, PATHWAY).overdue  # progress resolved the first breach
-    run_sweep(store, PATHWAY, UAE, at(4))  # not yet due: accept_ownership due Mon 12th (day 7)
+    run_sweep(store, PATHWAY, UAE, at(4))  # not yet due: accept_ownership due Fri 9th 08:00Z (day 4)
     assert count(store, cid, "mark_overdue") == 1
     run_sweep(store, PATHWAY, UAE, at(8))
     run_sweep(store, PATHWAY, UAE, at(9))

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { can, isOwnerScoped, useApp } from "../app/AppContext";
 import type {
-  CaseDetail, CaseTimeline, ConsentChanges, ContactChannel, DraftApproval, DraftRecord, EscalationRung, TimelineItem,
+  CaseDetail, CaseTimeline, ConsentChanges, ContactChannel, DraftApproval, DraftRecord, EscalationRung, MilestoneClock, TimelineItem,
 } from "../api/contract";
 import { ApiError, HANDOFF_REJECT_REASONS, PROVIDERS, REOPEN_REASONS, type ReopenReason } from "../api/contract";
 import { REASSIGN_TARGETS, ROLE_NAMES, ROLE_PROVIDERS } from "../api/identities";
@@ -11,11 +11,12 @@ import { DraftsPanel } from "../components/DraftsPanel";
 import { SignOffPanel } from "../components/SignOffPanel";
 import { Timeline } from "../components/Timeline";
 import {
-  actorName as actorNameOf, allowedChannels, consentOf, draftViews, handoffs, hasCallbackPending, lostContact, overdueInfo,
+  actorName as actorNameOf, allowedChannels, consentOf, draftViews, handoffs, hasCallbackPending, lostContact, overdueDays, overdueInfo,
   patientLang, pendingEscalation, rejectionReasons,
 } from "../lib/derive";
-import { fmtDateTime, titleCase } from "../lib/format";
-import { ESCALATION_LADDER, HANDOFF_RESPONSE_WORKING_DAYS, RUNG_LABEL, handoffReasonLabel } from "../lib/pathway";
+import { fmtDate, fmtDateTime, titleCase } from "../lib/format";
+import { ESCALATION_LADDER, HANDOFF_RESPONSE_WORKING_DAYS, MILESTONES, RUNG_LABEL, handoffReasonLabel } from "../lib/pathway";
+import type { MilestoneDef } from "../lib/pathway";
 import { WatchdogMarker, watchdogDetail } from "../components/WatchdogMarker";
 import { RiskBar, StatePill } from "./CoordinatorPage";
 
@@ -27,6 +28,27 @@ const REOPEN_LABEL: Record<ReopenReason, string> = {
   patient_request: "The patient asked for a review",
   other: "Other",
 };
+
+/**
+ * One milestone clock (A18): the standard it is measured against, when it is due, and whether it was met or is
+ * overdue. The colonoscopy clock has no date until a referral is accepted.
+ */
+function MilestoneRow({ def, clock, now, closed }: { def: MilestoneDef; clock: MilestoneClock | undefined; now: string | null; closed: boolean }) {
+  let body: React.ReactNode;
+  if (!clock) {
+    body = "No clock";
+  } else if (clock.met_at) {
+    body = <>due {fmtDate(clock.due_at)} · <span className={`chip ${clock.met_late ? "chip-warn" : "chip-ok"}`}>met {fmtDate(clock.met_at)}{clock.met_late ? ", late" : ""}</span></>;
+  } else if (clock.void || (closed && !clock.due_at)) {
+    body = "Closed before it was met";
+  } else if (!clock.due_at) {
+    body = "starts when the referral is accepted";
+  } else {
+    const days = overdueDays(clock.due_at, now);
+    body = <>due {fmtDate(clock.due_at)}{clock.overdue ? <> · <span className="chip chip-bad">{days > 0 ? `${days} day${days === 1 ? "" : "s"} overdue` : "overdue"}</span></> : " · on track"}</>;
+  }
+  return <div><dt>{def.label}</dt><dd data-testid={`milestone-${def.name}`} title={def.source}>{body}</dd></div>;
+}
 
 export function CaseDetailPage() {
   const { caseId = "" } = useParams();
@@ -145,6 +167,9 @@ export function CaseDetailPage() {
       <dl className="facts">
         <div><dt>Owner</dt><dd data-testid="owner">{detail.owner ?? "Unowned"}{detail.provider ? <span className="muted"> · {detail.provider}</span> : null}</dd></div>
         <div><dt>SLA clock</dt><dd data-testid="sla-clock">{closed ? "Closed" : detail.due_at ? <>Due {fmtDateTime(detail.due_at)}{od.overdue ? <> · <span className="chip chip-bad">{od.days > 0 ? `${od.days} day${od.days === 1 ? "" : "s"} overdue` : "overdue"}</span></> : " · on track"}</> : "No SLA for this step"}</dd></div>
+        {MILESTONES.map((def) => (
+          <MilestoneRow key={def.name} def={def} clock={detail.milestones?.[def.name]} now={timeline?.sim_time ?? simTime} closed={closed} />
+        ))}
         <div><dt>Escalation</dt><dd data-testid="escalation-level">{detail.escalation_level > 0 ? <>Level {detail.escalation_level} of 3{pendingEsc ? " · waiting for a human to accept" : ""}</> : "None"}</dd></div>
         <div><dt>Risk (orders list only)</dt><dd><RiskBar value={detail.risk_score} /></dd></div>
         <div>

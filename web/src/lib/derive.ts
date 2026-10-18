@@ -1,11 +1,11 @@
 /** Derivations shared by the mock adapter and the UI (state, owner, SLA clock, handoffs, consent, drafts). */
 import type {
   CaseDetail, CaseEvent, CaseSummary, Consent, ConsentChanges, ConsentHistoryEntry, DraftRecord, EscalationRung, Lang,
-  LastHandoff, PendingHandoff, TimelineItem, WatchdogFlag,
+  LastHandoff, MilestoneClock, MilestoneName, PendingHandoff, TimelineItem, WatchdogFlag,
 } from "../api/contract";
 import { ApiError, CONSENT_KEYS, HANDOFF_REJECT_REASONS } from "../api/contract";
 import {
-  REFERRAL_STATES, SLA_CLOCK_FROM_HANDOFF, SLA_WORKING_DAYS, addWorkingDays, nextTransition,
+  MILESTONES, REFERRAL_STATES, SLA_WORKING_DAYS, addWorkingDays, nextTransition,
   rungLevel, transitionFor, wholeDaysBetween,
 } from "./pathway";
 
@@ -156,19 +156,54 @@ export function currentOwner(events: CaseEvent[]): { name: string; role?: string
   return o ? { name: o.name, role: o.role, actor: o.actor } : null;
 }
 
-/** Latest `handoff_accepted` (referral acceptance), the start of the confirmatory SLA clock (A13). */
-function latestReferralAcceptance(events: CaseEvent[]): string | null {
-  for (let i = events.length - 1; i >= 0; i--) if (events[i].type === "handoff_accepted") return events[i].at;
-  return null;
-}
-
 export function slaClock(events: CaseEvent[], state: string, simNow: string) {
   const next = nextTransition(state);
   const days = next ? SLA_WORKING_DAYS[next.event] : undefined;
   if (!next || days === undefined) return { due_at: null as string | null, started_at: null as string | null, days_overdue: 0, sla_event: next?.event ?? null };
-  const started = (SLA_CLOCK_FROM_HANDOFF.includes(next.event) ? latestReferralAcceptance(events) : null) ?? stateEnteredAt(events);
+  const started = stateEnteredAt(events);
   const due = addWorkingDays(started, days);
   return { due_at: due, started_at: started, days_overdue: Math.max(0, wholeDaysBetween(due, simNow)), sla_event: next.event };
+}
+
+/**
+ * Milestone clocks by replay (A18, ADR-028), the mock's and the UI's fallback for a server that sends no
+ * `milestones`. A milestone starts at its `from_event` (the latest occurrence until it is met; `case_created` =
+ * the first event), or, if that never happened, when the case enters the state that awaits its `until_event`; it is
+ * met by the `until_event` and void if the case closes first. `overdue` here is "past due at `simNow`", where the
+ * real read model has the scheduler's flag.
+ */
+export function milestonesOf(events: CaseEvent[], simNow: string | null = null): Record<MilestoneName, MilestoneClock> {
+  const out = {} as Record<MilestoneName, MilestoneClock>;
+  for (const def of MILESTONES) {
+    let started: string | null = def.from_event === "case_created" ? events[0]?.at ?? null : null;
+    let met: string | null = null;
+    let isVoid = false;
+    let state = INITIAL_STATE;
+    for (const ev of events) {
+      const to = nextState(state, ev);
+      if (met === null && !isVoid) {
+        if (ev.type === def.until_event) met = ev.at;
+        else if (ev.type === def.from_event && def.from_event !== "case_created") started = ev.at;
+        else if (started === null && to && nextTransition(to)?.event === def.until_event) started = ev.at;
+        if (to === "closed" && met === null) isVoid = true;
+      }
+      if (to) state = to;
+    }
+    const due = started && !isVoid ? addWorkingDays(started, def.working_days) : null;
+    out[def.name] = {
+      due_at: due, met_at: met, started_at: started, working_days: def.working_days, void: isVoid,
+      overdue: met === null && !isVoid && due !== null && simNow !== null && new Date(simNow).getTime() > new Date(due).getTime(),
+      met_late: met !== null && due !== null ? new Date(met).getTime() > new Date(due).getTime() : null,
+    };
+  }
+  return out;
+}
+
+/** The next deadline on a case: the earlier of the state's SLA expiry and every running milestone's due date. */
+export function nextDeadline(stateDue: string | null, milestones: Partial<Record<MilestoneName, MilestoneClock>>): string | null {
+  const dues = [stateDue, ...Object.values(milestones).filter((m) => m && m.met_at === null && !m.void).map((m) => m!.due_at)]
+    .filter((d): d is string => !!d);
+  return dues.length ? dues.reduce((a, b) => (new Date(a).getTime() <= new Date(b).getTime() ? a : b)) : null;
 }
 
 /** Whole days past `due_at` as of `simNow`; 0 when not due yet or when there is no clock. */
@@ -313,6 +348,7 @@ export function summarise(
 ): CaseSummary {
   const state = replayState(events);
   const clock = slaClock(events, state, simNow);
+  const due = nextDeadline(clock.due_at, milestonesOf(events, simNow));
   const watchdog = watchdogFlag(events);
   const h = replayHandoffs(events);
   return {
@@ -327,8 +363,8 @@ export function summarise(
     provider: h.provider,
     pending_handoff: h.pending,
     last_handoff: h.last,
-    due_at: clock.due_at,
-    overdue: clock.due_at !== null && new Date(simNow).getTime() > new Date(clock.due_at).getTime(),
+    due_at: due,
+    overdue: due !== null && new Date(simNow).getTime() > new Date(due).getTime(),
     escalation_level: escalationLevel(events),
     consent_frozen: consentFrozen(events),
     last_event_at: events[events.length - 1]?.at ?? simNow,
@@ -384,7 +420,7 @@ export function completeSummary(row: Partial<CaseSummary> & Pick<CaseSummary, "c
  * Same for GET /cases/{id}. The real response nests the read model under `read_model` (and `GET /cases`
  * flattens it in A9); both are accepted. Missing fields are derived from the event log.
  */
-export function completeDetail(raw: CaseDetail): CaseDetail {
+export function completeDetail(raw: CaseDetail, simNow: string | null = null): CaseDetail {
   const rm = (raw as { read_model?: Record<string, unknown> }).read_model ?? {};
   const d = { ...rm, ...raw } as CaseDetail & Record<string, unknown>;
   const events = d.events ?? [];
@@ -405,6 +441,7 @@ export function completeDetail(raw: CaseDetail): CaseDetail {
     consent,
     consent_history: d.consent_history ?? consentHistoryOf(events),
     review_reason: d.review_reason !== undefined ? d.review_reason : frozen ? "consent_withdrawn" : null,
+    milestones: d.milestones ?? milestonesOf(events, simNow),
     last_event_at: d.last_event_at ?? events.at(-1)?.at ?? d.updated_at ?? "",
     watchdog_flagged: d.watchdog_flagged !== undefined ? d.watchdog_flagged : watchdogFlag(events),
     provider: d.provider !== undefined ? d.provider : h.provider,

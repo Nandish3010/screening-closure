@@ -44,11 +44,11 @@ stateDiagram-v2
     state "Any open state" as any_open
     [*] --> result_received : positive FIT result arrives
     result_received --> acknowledged : acknowledge, 2 wd
-    acknowledged --> owner_accepted : accept_ownership, 2 wd
-    owner_accepted --> patient_contacted : contact_patient, 5 wd
-    patient_contacted --> patient_acknowledged : patient_acknowledge, 7 wd
-    patient_acknowledged --> confirmatory_booked : book_confirmatory, 14 wd
-    confirmatory_booked --> confirmatory_completed : complete_confirmatory, 31 wd
+    acknowledged --> owner_accepted : accept_ownership, 1 wd
+    owner_accepted --> patient_contacted : contact_patient, 3 wd
+    patient_contacted --> patient_acknowledged : patient_acknowledge, 5 wd
+    patient_acknowledged --> confirmatory_booked : book_confirmatory, 5 wd
+    confirmatory_booked --> confirmatory_completed : complete_confirmatory
     confirmatory_completed --> clinician_reviewed : clinician_review, 5 wd
     clinician_reviewed --> closed : close, 3 wd, needs evidence_ref and signed_by
     patient_acknowledged --> referral_rejected : handoff_rejected, needs reason
@@ -58,7 +58,7 @@ stateDiagram-v2
     any_open --> consent_withdrawn : consent_updated, when withdrawn is true
     consent_withdrawn --> any_open : consent_updated, when withdrawn is false, returns to the earlier state
     patient_contacted --> lost_contact : mark_lost_contact, at least 3 failed attempts
-    lost_contact --> patient_contacted : contact_patient, 5 wd
+    lost_contact --> patient_contacted : contact_patient, 3 wd
     closed --> reopened : reopen, needs reason
     reopened --> clinician_reviewed : clinician_review, 5 wd
     closed --> [*] : loop closed
@@ -77,11 +77,11 @@ Overdue and escalated are not states. A case can be overdue and in any state, so
 | State | Type | Meaning | How the case leaves it, and who may do that | Time limit in this state |
 |---|---|---|---|---|
 | `result_received` | main path | A positive FIT (stool blood test) result has arrived from the laboratory. Nobody has taken responsibility yet. | `acknowledge` (Laboratory, coordinator, supervisor)<br>`consent_updated` with withdrawal (patient or coordinator) moves the case to `consent_withdrawn` | 2 working days to `acknowledge` |
-| `acknowledged` | main path | The laboratory, coordinator or supervisor has confirmed the result is logged and is being routed. Still no named owner. | `accept_ownership` (Primary care owner, specialist owner, supervisor)<br>`consent_updated` with withdrawal (patient or coordinator) moves the case to `consent_withdrawn` | 2 working days to `accept_ownership` |
-| `owner_accepted` | main path | A named clinician or service has accepted responsibility (the care owner). From here one named person owns the next step. | `contact_patient` (Care owner, coordinator, supervisor)<br>`consent_updated` with withdrawal (patient or coordinator) moves the case to `consent_withdrawn` | 5 working days to `contact_patient` |
-| `patient_contacted` | main path | The care owner or coordinator has contacted the patient (call, message or letter) with the result and the next step. | `patient_acknowledge` (Patient, coordinator)<br>`mark_lost_contact` (Care owner, coordinator, supervisor)<br>`consent_updated` with withdrawal (patient or coordinator) moves the case to `consent_withdrawn` | 7 working days to `patient_acknowledge` |
-| `patient_acknowledged` | main path | The patient has confirmed they understood (tapped "I understand" or told the coordinator). The colonoscopy can now be booked. | `book_confirmatory` (Care owner, coordinator)<br>`handoff_rejected` (Receiving clinician; scheduler (timeout only))<br>`consent_updated` with withdrawal (patient or coordinator) moves the case to `consent_withdrawn` | 14 working days to `book_confirmatory` |
-| `confirmatory_booked` | main path | A confirmatory colonoscopy appointment is booked. If the booking went through a referral to another provider, that provider has accepted it. | `complete_confirmatory` (Specialist owner)<br>`handoff_rejected` (Receiving clinician; scheduler (timeout only))<br>`consent_updated` with withdrawal (patient or coordinator) moves the case to `consent_withdrawn` | 31 working days to `complete_confirmatory` |
+| `acknowledged` | main path | The laboratory, coordinator or supervisor has confirmed the result is logged and is being routed. Still no named owner. | `accept_ownership` (Primary care owner, specialist owner, supervisor)<br>`consent_updated` with withdrawal (patient or coordinator) moves the case to `consent_withdrawn` | 1 working days to `accept_ownership` |
+| `owner_accepted` | main path | A named clinician or service has accepted responsibility (the care owner). From here one named person owns the next step. | `contact_patient` (Care owner, coordinator, supervisor)<br>`consent_updated` with withdrawal (patient or coordinator) moves the case to `consent_withdrawn` | 3 working days to `contact_patient` |
+| `patient_contacted` | main path | The care owner or coordinator has contacted the patient (call, message or letter) with the result and the next step. | `patient_acknowledge` (Patient, coordinator)<br>`mark_lost_contact` (Care owner, coordinator, supervisor)<br>`consent_updated` with withdrawal (patient or coordinator) moves the case to `consent_withdrawn` | 5 working days to `patient_acknowledge` |
+| `patient_acknowledged` | main path | The patient has confirmed they understood (tapped "I understand" or told the coordinator). The colonoscopy can now be booked. | `book_confirmatory` (Care owner, coordinator)<br>`handoff_rejected` (Receiving clinician; scheduler (timeout only))<br>`consent_updated` with withdrawal (patient or coordinator) moves the case to `consent_withdrawn` | 5 working days to `book_confirmatory` |
+| `confirmatory_booked` | main path | A confirmatory colonoscopy appointment is booked. If the booking went through a referral to another provider, that provider has accepted it. | `complete_confirmatory` (Specialist owner)<br>`handoff_rejected` (Receiving clinician; scheduler (timeout only))<br>`consent_updated` with withdrawal (patient or coordinator) moves the case to `consent_withdrawn` | no time limit |
 | `confirmatory_completed` | main path | The specialist has recorded that the colonoscopy was done. Findings are not yet reviewed. | `clinician_review` (Primary care owner, specialist owner)<br>`consent_updated` with withdrawal (patient or coordinator) moves the case to `consent_withdrawn` | 5 working days to `clinician_review` |
 | `clinician_reviewed` | main path | A clinician has reviewed the colonoscopy outcome. The case can now be closed, but only with evidence and a signature. | `close` (Primary care owner, specialist owner (never automated))<br>`consent_updated` with withdrawal (patient or coordinator) moves the case to `consent_withdrawn` | 3 working days to `close` |
 | `closed` | main path | The loop is closed. Only possible with an evidence reference and a named clinician's sign-off. No automated actor can do this. | `reopen` (Primary care owner, specialist owner (human only)) | no time limit |
@@ -126,29 +126,37 @@ Events listed as human only in the configuration: `escalation_accepted`, `handof
 
 ## 5. Time limits (SLAs)
 
-Each step has a limit in working days. The clock starts when the case enters the state (one step starts at referral acceptance, see the table), and a case is late when time is strictly after the due date. Counting uses the working week above. Time limits are design choices unless stated: only the 31 working days for the colonoscopy has a public anchor.
+Each step has a limit in working days. The clock starts when the case enters the state, and a case is late when time is strictly after the due date. Counting uses the working week above. These per-step limits are design choices with no public anchor. The two national timelines are separate clocks that span states (the milestones below): they are the only limits with a public anchor.
 
 | Step (event) | What must happen | State where the clock runs | Clock starts when | Working days allowed | Latest, counted from the result if every step uses its full allowance |
 |---|---|---|---|---|---|
 | `acknowledge` | Lab or coordinator confirms the result is received and logged. | `result_received` | the case enters `result_received` (result received from the laboratory) | 2 | 2 |
-| `accept_ownership` | A clinician or service accepts the case. | `acknowledged` | the case enters `acknowledged` (after `acknowledge`) | 2 | 4 |
-| `contact_patient` | The patient is contacted with the result. | `owner_accepted` | the case enters `owner_accepted` (after `accept_ownership`, `handoff_accepted`, `reassign`) | 5 | 9 |
-| `patient_acknowledge` | The patient confirms they understood. | `patient_contacted` | the case enters `patient_contacted` (after `contact_patient`) | 7 | 16 |
-| `book_confirmatory` | The colonoscopy is booked. | `patient_acknowledged` | the case enters `patient_acknowledged` (after `patient_acknowledge`) | 14 | 30 |
-| `complete_confirmatory` | The colonoscopy is done. | `confirmatory_booked` | the latest referral acceptance (`handoff_accepted`) on the case, or, if no referral was accepted, when the case enters `confirmatory_booked` | 31 | 61 |
-| `clinician_review` | A clinician reviews the outcome. | `confirmatory_completed` | the case enters `confirmatory_completed` (after `complete_confirmatory`) | 5 | 66 |
-| `close` | A clinician signs off the closure with evidence (a report or procedure on file). | `clinician_reviewed` | the case enters `clinician_reviewed` (after `clinician_review`) | 3 | 69 |
+| `accept_ownership` | A clinician or service accepts the case. | `acknowledged` | the case enters `acknowledged` (after `acknowledge`) | 1 | 3 |
+| `contact_patient` | The patient is contacted with the result. | `owner_accepted` | the case enters `owner_accepted` (after `accept_ownership`, `handoff_accepted`, `reassign`) | 3 | 6 |
+| `patient_acknowledge` | The patient confirms they understood. | `patient_contacted` | the case enters `patient_contacted` (after `contact_patient`) | 5 | 11 |
+| `book_confirmatory` | The colonoscopy is booked. | `patient_acknowledged` | the case enters `patient_acknowledged` (after `patient_acknowledge`) | 5 | 16 |
+| `clinician_review` | A clinician reviews the outcome. | `confirmatory_completed` | the case enters `confirmatory_completed` (after `complete_confirmatory`) | 5 | counted from the colonoscopy |
+| `close` | A clinician signs off the closure with evidence (a report or procedure on file). | `clinician_reviewed` | the case enters `clinician_reviewed` (after `clinician_review`) | 3 | counted from the colonoscopy |
 | `reassign` | A rejected or bounced referral is given a new owner. | `referral_rejected` | the case enters `referral_rejected` (after `handoff_rejected`) | 2 | not on the main path |
 
-**DoH 31-working-day KPI.** The UAE National Guideline for Colorectal Cancer Screening and Diagnosis (3rd edition, 2022, prepared by a task force that included DoH Abu Dhabi; Appendix 2) sets, for follow-up colonoscopy after a positive FIT, a target of **within 31 working days of referral**, in more than 90% of cases (acceptable) and more than 95% (desirable). The same guideline is inconsistent: clause 12.5.2 says 15 working days, Appendix 3 says 31 days. The IFHAS standard (DoH, V10, July 2025) requires referral to secondary care within 15 working days of releasing results. Sources are listed in `docs/evidence.md` section 8; the register marks them as read from the primary source (check marker P).
+### National timelines (milestones)
 
-Our `complete_confirmatory` limit is **31 working days**, the same figure as the KPI. Three differences matter (question 4): (1) the KPI is a share of cases, ours is a limit on each case; (2) our clock starts at the latest referral acceptance, the closest event we record to the KPI's referral date, and falls back to state entry when no referral was accepted; (3) adding every full allowance, the colonoscopy can be as late as 61 working days after the result and still meet every one of our limits. `close` has its own limit of 3 working days after clinician review, so a reviewed case can go overdue.
+A milestone is a clock from one event to another, measured against a national standard. If the ending event has not happened when the allowance runs out, the scheduler flags it once (`mark_overdue` naming the milestone, not a state) and climbs the escalation ladder below, exactly as for a late step. Doing the thing later clears the flag; the log keeps both events.
+
+| Milestone | What must happen | Clock starts when | Met when | Working days allowed | Source |
+|---|---|---|---|---|---|
+| `referral_requested` | The referral for the colonoscopy is requested. | the case is created, which is when the positive result is logged (taken as the result release) | `handoff_requested` is recorded | 15 | DoH IFHAS standard July 2025 via docs/evidence.md section 8 |
+| `confirmatory_completed` | The colonoscopy is done. | the latest referral acceptance (`handoff_accepted`) on the case, or, if no referral was accepted, when the case enters `confirmatory_booked` | `complete_confirmatory` is recorded | 31 | National Guideline Appendix 2 via evidence.md |
+
+**Where the figures come from.** The 15 working days to request a referral are the DoH IFHAS standard (V10, July 2025): referral to secondary care within 15 working days of releasing results. The 31 working days for the colonoscopy are **not** from IFHAS: they are the UAE National Guideline for Colorectal Cancer Screening and Diagnosis (3rd edition, 2022, prepared by a task force that included DoH Abu Dhabi; Appendix 2), which sets follow-up colonoscopy **within 31 working days of referral** in more than 90% of cases (acceptable) and more than 95% (desirable). The same guideline is inconsistent: clause 12.5.2 says 15 working days for the urgent referral, Appendix 3 says 31 days. Sources are listed in `docs/evidence.md` section 8; the register marks them as read from the primary source (check marker P).
+
+Three differences from the standards matter (question 4): (1) the standards are shares of cases, ours is a limit on each case; (2) the referral clock stops at the referral request, not at its acceptance, and any handoff counts as a referral; (3) the colonoscopy clock starts at the latest referral acceptance, the closest event we record to the guideline's referral date. The four steps before the referral allow 11 working days in total, which fits inside the 15. `close` has its own limit of 3 working days after clinician review, so a reviewed case can go overdue.
 
 The same working-day arithmetic applies to the referral response time and the escalation offsets below.
 
 ## 6. Escalation ladder
 
-When a step passes its due date, the scheduler flags it (`mark_overdue`, once) and then climbs the ladder. A rung is written only after the previous one, never skipped. A person in the rung's accepting role must accept it (`escalation_accepted`); that stops further rungs for that delay. The scheduler can notify but cannot accept, reassign or close. A regulator rung is not built.
+When a step or a national timeline passes its due date, the scheduler flags it (`mark_overdue`, once) and then climbs the ladder. A rung is written only after the previous one, never skipped. A person in the rung's accepting role must accept it (`escalation_accepted`); that stops further rungs for that delay. The scheduler can notify but cannot accept, reassign or close. A regulator rung is not built.
 
 | Rung | What it does | When | Who is told | Who must accept |
 |---|---|---|---|---|
@@ -382,13 +390,13 @@ The Arabic list has 39 entries (see `arabic-pack.md`). The validator also reject
 
 ## 11. Ten questions we need answered
 
-1. **Acknowledge and accept in 2 working days.** The pathway gives the laboratory or coordinator 2 working days to acknowledge a positive result, and a clinician 2 more to accept ownership. *Question:* Is 2 working days realistic for each of these two steps in your setting? If not, what would you set, and who in practice does each step?
+1. **Acknowledge in 2 working days, accept in 1.** The pathway gives the laboratory or coordinator 2 working days to acknowledge a positive result, and a clinician 1 more working day to accept ownership. *Question:* Are 2 and 1 working days realistic for these two steps in your setting? If not, what would you set, and who in practice does each step?
 
-2. **The other time limits.** Contact the patient in 5 working days, patient confirms in 7, book the colonoscopy in 14, clinician review in 5 after the colonoscopy. *Question:* Which of these are too tight or too loose? The patient-confirms limit runs against the team although the patient controls it: should that clock exist, and who should be chased when it passes?
+2. **The other time limits.** Contact the patient in 3 working days, patient confirms in 5, book the colonoscopy in 5, clinician review in 5 after the colonoscopy. The four steps before the referral (acknowledge, accept, contact, patient confirms) add up to 11 working days, so that a case which meets each of them still has time to request the referral inside the 15-working-day referral timeline. *Question:* Which of these are too tight or too loose? The patient-confirms limit runs against the team although the patient controls it: should that clock exist, and who should be chased when it passes?
 
 3. **The first message and the word "blood".** The only clinical fact any message states is "Your screening test found blood. The next step is a colonoscopy." The patient page adds "This does not mean you have cancer" (W07), although messages never name cancer, and says "This page is not a diagnosis" (W08). *Question:* Is "found blood" the right first sentence, or would you say "needs a follow-up test"? Should the page name cancer at all, even to say the result is not a diagnosis? Is anything in section 9 alarming, wrong, or missing?
 
-4. **What the 31 working days are measured from.** The national KPI is a colonoscopy within 31 working days of referral. Our clock starts when the booking is recorded (`confirmatory_booked`), not at the result, not at the care owner's acceptance, and not at the referral. Adding up every step's full allowance, a colonoscopy could happen up to 61 working days after the result and still meet every one of our limits. *Question:* From which event should the 31 working days be counted: result received, ownership accepted, referral, or booking? Should we also report the programme-level share (the KPI is a percentage, above 90%), not only a per-case limit?
+4. **What the 15 and 31 working days are measured from.** The pathway has two national timelines. The IFHAS standard (DoH, V10, July 2025) has referral to secondary care within 15 working days of releasing the result; our clock starts when the case is created (the positive result is logged) and stops when a referral is requested (`handoff_requested`). The UAE National Guideline (Appendix 2, not the IFHAS standard) has the colonoscopy within 31 working days of referral; our clock starts at the latest referral acceptance (`handoff_accepted`), or at the booking if no referral was accepted, and stops when the colonoscopy is recorded (`complete_confirmatory`). Using every allowance to the full (request on the last day, a 3-working-day wait for acceptance, then 31 working days), a colonoscopy could happen 49 working days after the result and still meet both timelines. *Question:* Should the 15 working days stop at the referral request or at its acceptance, and does the clock start at the result release or at the laboratory report date? Should the 31 working days count from the request or from the acceptance? Any referral, including a transfer between primary care owners, counts today: should it? Should we also report the programme-level share (the guideline's measure is a percentage, above 90%), not only a limit on each case?
 
 5. **What counts as evidence to close a case.** A case can close only with an evidence reference and a named clinician's signature after clinician review. What the evidence reference may point to is not restricted today. *Question:* What is acceptable: the colonoscopy report alone, report plus histology, a documented refusal, a letter to the GP? What must be in the sign-off? Who may sign, and is clinician review by itself ever enough?
 
@@ -424,14 +432,15 @@ For each row write keep or change and, if you change it, say what you would do. 
 | S:lost_contact | State `lost_contact`: After repeated failed attempts the patient could not be reached |  |  |
 | S:reopened | State `reopened`: A clinician reopened a closed case, giving a reason |  |  |
 | SLA:acknowledge | Time limit `acknowledge`: 2 working days, clock starts when the case enters `result_received` |  |  |
-| SLA:accept_ownership | Time limit `accept_ownership`: 2 working days, clock starts when the case enters `acknowledged` |  |  |
-| SLA:contact_patient | Time limit `contact_patient`: 5 working days, clock starts when the case enters `owner_accepted` |  |  |
-| SLA:patient_acknowledge | Time limit `patient_acknowledge`: 7 working days, clock starts when the case enters `patient_contacted` |  |  |
-| SLA:book_confirmatory | Time limit `book_confirmatory`: 14 working days, clock starts when the case enters `patient_acknowledged` |  |  |
-| SLA:complete_confirmatory | Time limit `complete_confirmatory`: 31 working days, clock starts when the latest referral acceptance |  |  |
+| SLA:accept_ownership | Time limit `accept_ownership`: 1 working days, clock starts when the case enters `acknowledged` |  |  |
+| SLA:contact_patient | Time limit `contact_patient`: 3 working days, clock starts when the case enters `owner_accepted` |  |  |
+| SLA:patient_acknowledge | Time limit `patient_acknowledge`: 5 working days, clock starts when the case enters `patient_contacted` |  |  |
+| SLA:book_confirmatory | Time limit `book_confirmatory`: 5 working days, clock starts when the case enters `patient_acknowledged` |  |  |
 | SLA:clinician_review | Time limit `clinician_review`: 5 working days, clock starts when the case enters `confirmatory_completed` |  |  |
 | SLA:close | Time limit `close`: 3 working days, clock starts when the case enters `clinician_reviewed` |  |  |
 | SLA:reassign | Time limit `reassign`: 2 working days, clock starts when the case enters `referral_rejected` |  |  |
+| M:referral_requested | National timeline `referral_requested`: 15 working days, clock starts when the case is created |  |  |
+| M:confirmatory_completed | National timeline `confirmatory_completed`: 31 working days, clock starts when the latest referral acceptance |  |  |
 | L:reminder | Rung `reminder` at 0 working days after the due date |  |  |
 | L:supervisor | Rung `supervisor` at 3 working days after the due date |  |  |
 | L:coordinator | Rung `coordinator` at 7 working days after the due date |  |  |
@@ -463,10 +472,10 @@ For each row write keep or change and, if you change it, say what you would do. 
 | F:clinical_judgement | Forbidden-phrase category `clinical_judgement` |  |  |
 | F:medication_or_treatment | Forbidden-phrase category `medication_or_treatment` |  |  |
 | F:advice | Forbidden-phrase category `advice` |  |  |
-| Q1 | Question 1: Acknowledge and accept in 2 working days |  |  |
+| Q1 | Question 1: Acknowledge in 2 working days, accept in 1 |  |  |
 | Q2 | Question 2: The other time limits |  |  |
 | Q3 | Question 3: The first message and the word "blood" |  |  |
-| Q4 | Question 4: What the 31 working days are measured from |  |  |
+| Q4 | Question 4: What the 15 and 31 working days are measured from |  |  |
 | Q5 | Question 5: What counts as evidence to close a case |  |  |
 | Q6 | Question 6: Informed refusal |  |  |
 | Q7 | Question 7: Lost contact after 3 failed attempts |  |  |

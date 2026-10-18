@@ -26,6 +26,23 @@ describe("Coordinator worklist", () => {
   });
 });
 
+describe("Milestone clocks on the case page (A18)", () => {
+  it("shows the referral and colonoscopy clocks: met and on track, or overdue", async () => {
+    openCase(9); // referred in time; the colonoscopy clock runs from the referral acceptance
+    const ref = await screen.findByTestId("milestone-referral_requested");
+    expect(screen.getByText("Referral within 15 working days of result")).toBeInTheDocument();
+    expect(screen.getByText("Colonoscopy within 31 working days of referral")).toBeInTheDocument();
+    expect(ref).toHaveTextContent(/due .*met /);
+    expect(screen.getByTestId("milestone-confirmatory_completed")).toHaveTextContent(/due .*on track/);
+  });
+  it("marks a referral that was never requested as overdue, and the colonoscopy clock as not started", async () => {
+    openCase(3);
+    const ref = await screen.findByTestId("milestone-referral_requested");
+    expect(ref).toHaveTextContent(/overdue/);
+    expect(screen.getByTestId("milestone-confirmatory_completed")).toHaveTextContent("starts when the referral is accepted");
+  });
+});
+
 describe("Case detail actions", () => {
   it("a coordinator escalates and requests a draft, sees its provenance and text, but cannot approve it", async () => {
     const user = userEvent.setup();

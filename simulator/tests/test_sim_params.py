@@ -66,6 +66,8 @@ def test_every_default_leaf_has_provenance():
         assert row.source and row.status
 
 
-def test_pathway_yaml_is_the_single_source_for_the_confirmatory_sla(ctx):
-    """The DoH 31-working-day KPI lives in the pathway YAML; the sourced parameter must agree with it."""
-    assert ctx.pathway.slas_working_days["complete_confirmatory"] == ctx.mp.followup_target_working_days
+def test_pathway_yaml_is_the_single_source_for_the_confirmatory_milestone(ctx):
+    """The 31-working-day colonoscopy target (National Guideline Appendix 2) lives in the pathway YAML as the
+    `confirmatory_completed` milestone (A18); the sourced parameter must agree with it."""
+    assert ctx.pathway.milestones["confirmatory_completed"].working_days == ctx.mp.followup_target_working_days
+    assert "complete_confirmatory" not in ctx.pathway.slas_working_days

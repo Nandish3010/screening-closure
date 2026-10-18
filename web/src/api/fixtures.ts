@@ -118,6 +118,10 @@ add(10, 0.12, 60, [
   ["accept_ownership", 58, HUDA_ACTOR, HUDA],
   ["contact_patient", 55, COORD, { channel: "phone" }],
   ["patient_acknowledge", 52, "patient:c0000010", { lang: "en" }],
+  // The referral milestone (A18) is met by the request. Dr. Huda's own unit accepts, so she still owns the case and the
+  // clinician login can sign it off (a seeded shortcut: the mock only validates events posted after the seed).
+  ["handoff_requested", 48, HUDA_ACTOR, { to_provider: "Corniche Gastro Unit" }],
+  ["handoff_accepted", 47, HUDA_ACTOR, {}],
   ["book_confirmatory", 45, COORD, { appointment_ref: "APPT-2026-0310" }],
   ["complete_confirmatory", 8, KARIM_ACTOR, { result_ref: "DiagnosticReport/colonoscopy-0010" }],
   ["clinician_review", 1, HUDA_ACTOR, { signed_by: "Dr. Huda Rahman" }],
@@ -128,6 +132,8 @@ add(11, 0.05, 80, [
   ["accept_ownership", 78, HUDA_ACTOR, HUDA],
   ["contact_patient", 75, COORD, { channel: "sms" }],
   ["patient_acknowledge", 72, "patient:c0000011", { lang: "en" }],
+  ["handoff_requested", 69, HUDA_ACTOR, { to_provider: "Corniche Gastro Unit" }],
+  ["handoff_accepted", 68, HUDA_ACTOR, {}],
   ["book_confirmatory", 65, COORD, { appointment_ref: "APPT-2026-0201" }],
   ["complete_confirmatory", 40, KARIM_ACTOR, { result_ref: "DiagnosticReport/colonoscopy-0011" }],
   ["clinician_review", 36, HUDA_ACTOR, { signed_by: "Dr. Huda Rahman" }],
