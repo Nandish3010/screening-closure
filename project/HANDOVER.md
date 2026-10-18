@@ -120,7 +120,7 @@ Use the 13-shot storyboard in demo-script.md: 1080p, burned-in captions, SIMULAT
 Push first: the script tests committed state only. On the second machine (Docker, git, Python 3, GitHub access while the repo is private):
 
 ```
-git clone https://github.com/nandish-30/screening-closure.git && cd screening-closure
+git clone https://github.com/Nandish3010/screening-closure.git && cd screening-closure
 sh tools/check/fresh_clone.sh
 ```
 
@@ -139,7 +139,7 @@ It prints a timed report and the H5 checklist. The first seed takes about 12 min
 1. Keep `project/` (it shows process); skim it once.
 2. `make test-security` has no competitor check. The two names are in `/Users/NS/gitex/fhdic-challenge05-plan.md`, deliberately not written here. Run `git grep -n -i -E 'NAME1|NAME2'` and `git log --all -i -E --grep='NAME1|NAME2'`; both must be empty.
 3. Run `make test-security`; skim `git log -p` for keys.
-4. On 17 Nov: `gh repo edit nandish-30/screening-closure --visibility public --accept-visibility-change-consequences`; open the URL in a private window.
+4. On 17 Nov: `gh repo edit Nandish3010/screening-closure --visibility public --accept-visibility-change-consequences`; open the URL in a private window.
 
 ## 9. Final submission
 
