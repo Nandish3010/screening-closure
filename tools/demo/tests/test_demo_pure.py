@@ -31,6 +31,9 @@ def test_event_log_hash_ignores_random_ids_but_nothing_else():
         return [
             {"type": "message_approved", "at": "2026-01-20T08:00:00+00:00", "actor": "primary_care_owner:abc", "payload": {"draft_id": draft_id, "note": note}},
             {"type": "message_sent", "at": "2026-01-20T08:00:00+00:00", "actor": "system:notifier", "payload": {"notification_id": str(uuid.uuid4())}},
+            # SEC-2: the outbox derives the notification id from the random draft id (a uuid5, still random per run)
+            {"type": "message_sent", "at": "2026-01-20T08:00:00+00:00", "actor": "system:notifier",
+             "payload": {"draft_id": draft_id, "notification_id": str(uuid.uuid5(uuid.NAMESPACE_URL, draft_id))}},
         ]
 
     a = scenario.event_log_hash(log(str(uuid.uuid4())))

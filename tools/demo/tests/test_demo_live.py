@@ -32,8 +32,10 @@ def _stack_problem() -> str | None:
         return f"the API at {API} is not reachable (make up)"
     if not FINGERPRINT.exists():
         return "no demo snapshot (make demo-snapshot on a clean seeded stack)"
-    status = subprocess.run([str(SNAPSHOT), "status"], cwd=ROOT, capture_output=True, text=True).stdout
-    return None if "exists" in status else "no demo snapshot database (make demo-snapshot)"
+    status = subprocess.run([str(SNAPSHOT), "status"], cwd=ROOT, capture_output=True, text=True)
+    # `status` prints "snapshot: none" without one; with one (SEC-1: two databases) "... and hapi_snapshot exist"
+    ok = status.returncode == 0 and status.stdout.startswith("snapshot: ") and "snapshot: none" not in status.stdout
+    return None if ok else "no demo snapshot database (make demo-snapshot)"
 
 
 pytestmark = [pytest.mark.live, pytest.mark.skipif(_stack_problem() is not None, reason=str(_stack_problem()))]

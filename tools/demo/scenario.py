@@ -338,10 +338,17 @@ def synthea_name(http: httpx.Client, patient_ref: str) -> str:
 _UUID = re.compile(r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
 
 
+# Ids derived from a random one: since SEC-2 the notification id is a uuid5 derived from the (random, uuid4) draft id
+# through its outbox row, so it changes from run to run although it is not a uuid4 itself.
+_RANDOM_DERIVED_KEYS = frozenset({"notification_id"})
+
+
 def _normal(value):
-    """Random ids (draft and notification ids, uuid4) become a placeholder; everything else is kept as is."""
+    """Random ids (uuid4: draft ids) and the notification ids derived from them become a placeholder; everything else
+    is kept as is."""
     if isinstance(value, dict):
-        return {k: _normal(v) for k, v in sorted(value.items())}
+        return {k: "<uuid4>" if k in _RANDOM_DERIVED_KEYS and isinstance(v, str) and _UUID.match(v) else _normal(v)
+                for k, v in sorted(value.items())}
     if isinstance(value, list):
         return [_normal(v) for v in value]
     if isinstance(value, str) and _UUID.match(value) and uuid.UUID(value).version == 4:
