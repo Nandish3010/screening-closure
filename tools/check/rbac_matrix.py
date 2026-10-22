@@ -61,10 +61,10 @@ logging.getLogger("httpx").setLevel(logging.WARNING)
 PATIENT = policy.PATIENT
 OWNER_ROLES = sorted(policy.OWNER_SCOPED)
 USER_ROLES = list(auth.USER_ROLES)
-COLUMNS = ["anonymous", *USER_ROLES, auth.SCHEDULER_ROLE, auth.WATCHDOG_ROLE, auth.AUTOMATION_ROLE, auth.AGENCY_ROLE]
+COLUMNS = ["anonymous", *USER_ROLES, auth.SCHEDULER_ROLE, auth.WATCHDOG_ROLE, auth.AUTOMATION_ROLE, auth.AGENCY_ROLE, auth.HL7_ROLE]
 SHORT = {"anonymous": "anon", "lab": "lab", "primary_care_owner": "pco", "specialist_owner": "spec",
          "coordinator": "coord", "patient": "patient", "supervisor": "super", "scheduler": "sched", "watchdog": "wdog",
-         "automation": "auto", "agency": "agency"}
+         "automation": "auto", "agency": "agency", "hl7": "hl7"}
 
 EVENTS_ROUTE = ("POST", "/cases/{case_id}/events")
 UNKNOWN_EVENT = "not_a_real_event"
@@ -161,6 +161,8 @@ class Probe:
             return {"Authorization": f"Bearer {settings.automation_service_token}"}
         if role == auth.AGENCY_ROLE:
             return {"Authorization": f"Bearer {settings.agency_service_token}"}
+        if role == auth.HL7_ROLE:
+            return {"Authorization": f"Bearer {settings.hl7_service_token}"}
         key = (role, patient_ref)
         if key not in self._headers:
             body = {"role": role, "name": f"rbac {role}"}
@@ -431,7 +433,9 @@ def render(result: Result) -> str:
         "- Columns: `anon` no token; the six user roles (`pco` = `primary_care_owner`, `spec` = `specialist_owner`, "
         "`coord` = `coordinator`, `super` = `supervisor`); `sched` the scheduler service token; `wdog` the watchdog service token; "
         "`auto` the automation service token (`system:automation`, A21): it reaches the two scan routes and no event type, because the automation writes its events in process; "
-        "`agency` the agency supervisor's service token (A22, ADR-033: it may start an agency run and nothing else; the departments have no token).",
+        "`agency` the agency supervisor's service token (A22, ADR-033: it may start an agency run and nothing else; the departments have no token); "
+        "`hl7` the HL7 v2 adapter's service token (`system:hl7`, A28, ADR-039): it reaches `POST /hl7` and no other route and no event type here, "
+        "because the adapter writes its one event (`book_confirmatory`) in process, under its row of the actor table.",
         "- \"Own case\": for a clinician, a case they own; for a patient, the case with their `patient_ref`. "
         "\"Other\": a case owned by another clinician, or another patient's.",
         "",

@@ -1,4 +1,4 @@
-.PHONY: agency-run test-demo test-e2e-live demo-scenario demo-stage demo-snapshot demo-restore demo-reset demo-kill-scheduler check docs-check tracker-lint test-security test-tools test-load load-check up down logs test test-db test-db-create test-db-reset test-chaos synthea demo-seed demo-seed-clean evaluate evaluate-capacity evaluate-capacity-check simulate evaluate-check sensitivity sensitivity-check reset web-install web-dev web-build web-test web-e2e test-e2e review-packs review-packs-check test-review-packs test-phi-logs rbac-matrix test-offline fresh-clone risk-report risk-check calibrate-fetch calibrate-fit calibrate-check effort effort-check video video-check video-deps verify
+.PHONY: agency-run test-demo test-e2e-live demo-scenario demo-stage demo-snapshot demo-restore demo-reset demo-kill-scheduler check docs-check tracker-lint test-security test-tools test-load load-check up down logs test test-db test-db-create test-db-reset test-chaos synthea demo-seed demo-seed-clean evaluate evaluate-capacity evaluate-capacity-check simulate evaluate-check sensitivity sensitivity-check reset web-install web-dev web-build web-test web-e2e test-e2e review-packs review-packs-check test-review-packs test-phi-logs rbac-matrix test-offline fresh-clone risk-report risk-check calibrate-fetch calibrate-fit calibrate-check effort effort-check video video-check video-deps verify hl7-demo hl7-samples
 
 up:
 	docker compose up -d --build
@@ -217,6 +217,18 @@ test-demo:
 # F11 rehearsal: stop the scheduler, wait for the dashboard alert, restart it, check no event was lost.
 demo-kill-scheduler:
 	$(PY) tools/demo/kill_scheduler.py
+
+# A28 (ADR-039): send a positive FIT result as an HL7 v2 ORU^R01 to POST /hl7 (tools/hl7/samples/oru_fit_positive.hl7, a patient
+# of the seeded cohort) and show the case appear. Needs the stack up and seeded. Run twice: the second ACK says "duplicate" and no
+# second case appears (idempotent on MSH-10). `make hl7-demo FRESH=1` gives the message a new MSH-10, which creates a new case
+# for the same patient: `make demo-reset` afterwards on the demo snapshot. The optional MLLP listener: `docker compose --profile
+# hl7 up -d hl7-listener`, then `python3 tools/hl7/send.py --mllp localhost:2575 tools/hl7/samples/*.hl7`.
+hl7-demo:
+	PYTHONPATH=api $(PY) tools/hl7/demo.py $(if $(FRESH),--fresh)
+
+# Rewrite tools/hl7/samples/ from the seeded cohort (synthetic messages, one per supported type).
+hl7-samples:
+	$(PY) tools/hl7/make_samples.py
 
 # A22: one agency run on demand against the running stack (POST /agency/run as the supervisor, or with AGENCY_SERVICE_TOKEN
 # set), printing the run summary. Compose sets AGENCY_EVERY_SWEEPS=0 so the scheduler never starts one by itself and the
