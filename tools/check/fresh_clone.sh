@@ -86,7 +86,8 @@ run_step() { # name, directory, command...
 cleanup() {
   if [ "$KEEP" -eq 0 ]; then
     [ -d "$CLONE" ] && (cd "$CLONE" && docker compose down -v --remove-orphans >/dev/null 2>&1)
-    rm -rf "$WORK"
+    # On Linux the synthea container writes data/ as root: fall back to sudo (CI runners have it) for those files.
+    rm -rf "$WORK" 2>/dev/null || sudo -n rm -rf "$WORK" 2>/dev/null || true
   else
     echo "[fresh-clone] kept: $CLONE (compose project $COMPOSE_PROJECT_NAME; remove with: cd $CLONE && docker compose down -v)"
   fi

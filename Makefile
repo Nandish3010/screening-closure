@@ -135,6 +135,7 @@ reset:
 
 # Generates the synthetic cohort inside a container (never on the host). Output: data/synthea/out/fhir/
 synthea:
+	@mkdir -p data  # created here, not by docker's bind mount: on Linux docker would make ./data root-owned and the host scripts could not write data/results
 	docker compose --profile tools run --rm synthea
 
 # Web app (Vite + React + TS, web/). Adapter: VITE_API_ADAPTER=mock (default) or http (VITE_API_URL).
