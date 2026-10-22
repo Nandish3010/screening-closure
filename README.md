@@ -123,6 +123,7 @@ project/     plan, tracker, decisions, log, test cases
 | Run | `reset` | Wipe volumes (cases and FHIR data) and rebuild |
 | Run | `synthea`, `demo-seed`, `demo-seed-clean` | Generate the cohort in a container; load it and create cases; delete generated files |
 | Test | `test` | Unit and property tests, no database |
+| Test | `verify` | Exhaustive model check of the state machine (`tools/verify/`, ADR-038): 9,057 abstract states, 7 invariants, about a minute, no database |
 | Test | `test-db` (`test-db-create`, `test-db-reset`) | Integration tests against `closure_test`; create or recreate that database |
 | Test | `test-chaos` | Chaos-marked tests: duplicate delivery, clock skew and store failures through the fault harness (F3), a sweep killed part-way (F4), bad model output and consent withdrawn mid-send (F5), and the scheduler container stopped and restarted with the watchdog alert |
 | Test | `test-tools` | Cross-cutting tests in `tests/` |
@@ -149,9 +150,11 @@ project/     plan, tracker, decisions, log, test cases
 
 ## Tests and checks
 
-`make check` runs 17 stages in this order: test, test-db, web-test, web-build, evaluate-check, docs-check, tracker-lint, test-security, test-tools, load-check, risk-check, review-packs-check, test-review-packs, effort-check, web-e2e, sensitivity-check, calibrate-check. It stops at the first failure; `CHECK_KEEP_GOING=1` runs all of them. The whole run took 13.5 minutes at the M5 final merge, inside the 25-minute budget, so the slow regeneration checks (sensitivity-check about 5.5 minutes, calibrate-check, risk-check) stay in `make check` rather than in a separate target. test-db and load-check are SKIPPED loudly (not passed) when Postgres on :5433 is down, and calibrate-check when the gitignored downloads are absent (`make calibrate-fetch` once). Set `E2E_PORT` if port 4173 is taken by another preview.
+`make check` runs 18 stages in this order: test, verify, test-db, web-test, web-build, evaluate-check, docs-check, tracker-lint, test-security, test-tools, load-check, risk-check, review-packs-check, test-review-packs, effort-check, web-e2e, sensitivity-check, calibrate-check. It stops at the first failure; `CHECK_KEEP_GOING=1` runs all of them. The whole run took 13.5 minutes at the M5 final merge, inside the 25-minute budget, so the slow regeneration checks (sensitivity-check about 5.5 minutes, calibrate-check, risk-check) stay in `make check` rather than in a separate target. test-db and load-check are SKIPPED loudly (not passed) when Postgres on :5433 is down, and calibrate-check when the gitignored downloads are absent (`make calibrate-fetch` once). Set `E2E_PORT` if port 4173 is taken by another preview.
 
 At the M5 final merge (project/LOG.md, line "M5-final", 2026-10-18), `make check` was green over 17 of 17 stages: 2154 api and simulator tests, 230 integration, 287 web unit, 51 e2e, 188 tool tests, 72 security-gate tests, 19 pack tests, 20 effort tests, 21 calibration tests. Outside it: `make test-chaos` 45 passed, `make test-demo` 2 passed, `make test-e2e-live` 3 passed, `make test-offline` 17 of 17.
+
+The state machine is also model-checked exhaustively by `make verify` (`tools/verify/model_check.py`, [docs/governance/verification.md](docs/governance/verification.md)): 9,057 abstract states, 7 invariants, and 5 seeded mutations, all caught. It found one real bug, now fixed: an approved draft could be sent while an opt-out or wrong-number hold was open (ADR-038).
 
 The closure rule has its own property test: `api/tests/test_state_machine.py::test_never_closed_without_evidence_and_human_signoff`.
 
