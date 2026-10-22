@@ -4,6 +4,7 @@
 Stages (each is a make target, so each can be run on its own):
 
     test          api unit + property + simulator tests (no database)
+    verify        exhaustive model check of the state machine, invariants I1-I7 (A27, ADR-038; under a minute)
     test-db       Postgres integration tests; SKIPPED loudly if Postgres on :5433 is unreachable
     web-test      frontend unit tests (runs `make web-install` first if web/node_modules is missing)
     web-build     TypeScript check and production build
@@ -72,6 +73,7 @@ class Stage:
 
 STAGES = [
     Stage("test"),
+    Stage("verify"),
     Stage("test-db", needs_pg=True),
     Stage("web-test", web=True),
     Stage("web-build"),
