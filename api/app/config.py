@@ -19,6 +19,7 @@ SCHEDULER_TOKEN_DEFAULT = "dev-only-scheduler-service-token"
 WATCHDOG_TOKEN_DEFAULT = "dev-only-watchdog-service-token"
 AUTOMATION_TOKEN_DEFAULT = "dev-only-automation-service-token"
 AGENCY_TOKEN_DEFAULT = "dev-only-agency-service-token"
+HL7_TOKEN_DEFAULT = "dev-only-hl7-service-token"
 
 
 class Settings(BaseSettings):
@@ -62,6 +63,10 @@ class Settings(BaseSettings):
     # The agency's supervisor agent (A22, ADR-033) may start an agency run (`POST /agency/run`) and nothing else.
     # Empty disables the token (a supervisor can still start a run; the scheduler hook runs in process).
     agency_service_token: str = AGENCY_TOKEN_DEFAULT
+    # The HL7 v2 adapter (A28, ADR-039): `system:hl7` may POST /hl7 and nothing else; in process it may create a case through
+    # the POST /cases path, book the confirmatory appointment and record confirmatory evidence (app.policy.HL7_ACTIONS).
+    # Empty switches the token off (always safe); set outside dev it is checked like the other tokens.
+    hl7_service_token: str = HL7_TOKEN_DEFAULT
     # --- the agency (A22, ADR-033): agents are labour, not authority -----------------------------
     # The scheduler hook runs supervisor -> department heads -> executioners after every N-th sweep (0 = never).
     agency_every_sweeps: int = 6

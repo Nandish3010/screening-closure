@@ -182,6 +182,31 @@ services:
         condition: service_healthy
     networks: [closure]
 
+  # The HL7 v2 MLLP listener (A28, ADR-039): OFF by default (profile "hl7"; start it with `docker compose --profile hl7 up -d
+  # hl7-listener`). It frames MLLP on port 2575 and posts each message to the API's POST /hl7 with the system:hl7 service
+  # token, so it shares the handler with the HTTP transport and holds no database credentials. Clear text, loopback only:
+  # a real link needs a VPN or TLS tunnel agreed with the exchange operator (docs/governance/hl7-adapter.md).
+  hl7-listener:
+    build: *api-build
+    profiles: [hl7]
+    command: ["python", "-m", "app.hl7.mllp"]
+    ports:
+      - "127.0.0.1:${HL7_MLLP_PORT:-2575}:2575"
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      API_URL: http://api:8000
+      HL7_MLLP_PORT: "2575"
+      HL7_SERVICE_TOKEN: ${HL7_SERVICE_TOKEN:-dev-only-hl7-service-token}  # the development default works only while APP_ENV=dev
+      # Blank what a `.env` copied from .env.example would hand it: it speaks HTTP to the API and needs no database.
+      DATABASE_URL: ""
+      POSTGRES_PASSWORD: ""
+    depends_on:
+      api:
+        condition: service_healthy
+    networks: [closure]
+
   # The api's unit tests, in the image's `test` stage (pytest and the dev extras are NOT in the api image above). The
   # fallback of `make test` when there is no local .venv:  docker compose --profile tests run --rm --no-deps api-test
   api-test:

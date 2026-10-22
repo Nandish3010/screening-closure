@@ -88,6 +88,27 @@ def _cmd_sensitivity(args) -> int:
     return 0
 
 
+def _cmd_evaluate_capacity(args) -> int:
+    """Finite-capacity evaluation -> capacity.json, and the "Under finite capacity" section of results.md (spliced in place)."""
+    from .capacity_eval import evaluate_capacity, write_capacity
+    from .capacity_report import splice_into_results
+
+    t0 = time.perf_counter()
+    if args.render_only:  # rewrite the results.md section from the committed capacity.json (no simulation)
+        spliced = splice_into_results(Path(args.out_dir))
+        print("re-rendered the capacity section of results.md from capacity.json" if spliced else "no results.md to update")
+        return 0
+    conservative = [] if args.no_conservative else (args.conservative_params or [DEFAULT_CONSERVATIVE])
+    result = evaluate_capacity(args.reps, args.cases, args.days, args.seed, args.params, conservative, args.capacity_params,
+                               args.pathway, args.bootstrap, args.jobs)
+    out_dir = Path(args.out_dir)
+    jpath = write_capacity(result, out_dir)
+    spliced = splice_into_results(out_dir)
+    print(f"wrote {jpath}" + (" and the capacity section of results.md" if spliced else " (no results.md to update)")
+          + f" in {time.perf_counter() - t0:.1f}s")
+    return 0
+
+
 def _cmd_effort(args) -> int:
     """Print the Human effort section from results.json, or with --check verify it is current (no simulation)."""
     from .effort import SOURCES, effort_hash
@@ -144,6 +165,17 @@ def main(argv: list[str] | None = None) -> int:
     e.add_argument("--jobs", type=int, default=min(8, os.cpu_count() or 1), help="worker processes (never changes results)")
     e.add_argument("--out-dir", default=str(REPO_ROOT / "docs" / "results"))
     e.set_defaults(fn=_cmd_evaluate)
+    ec = sub.add_parser("evaluate-capacity", parents=[common], help="finite-capacity evaluation -> capacity.json + results.md section")
+    ec.add_argument("--reps", type=int, default=20)
+    ec.add_argument("--days", type=int, default=360)
+    ec.add_argument("--capacity-params", default=str(REPO_ROOT / "simulator" / "params.capacity.yaml"))
+    ec.add_argument("--conservative-params", action="append", default=None)
+    ec.add_argument("--no-conservative", action="store_true")
+    ec.add_argument("--render-only", action="store_true", help="only re-render the results.md section from capacity.json (no simulation)")
+    ec.add_argument("--bootstrap", type=int, default=1000)
+    ec.add_argument("--jobs", type=int, default=min(8, os.cpu_count() or 1), help="worker processes (never changes results)")
+    ec.add_argument("--out-dir", default=str(REPO_ROOT / "docs" / "results"))
+    ec.set_defaults(fn=_cmd_evaluate_capacity)
     ef = sub.add_parser("effort", help="print the Human effort section of results.json, or --check that it is current")
     ef.add_argument("--results", default=str(REPO_ROOT / "docs" / "results" / "results.json"))
     ef.add_argument("--check", action="store_true", help="fail if results.json predates the effort model or evidence.md lacks a source")

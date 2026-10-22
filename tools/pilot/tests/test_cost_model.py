@@ -89,3 +89,106 @@ def test_output_has_wage_weighted_section_and_is_deterministic(capsys):
     for name in cm.WAGE_RATIO_INPUTS:
         assert name in first  # listed in the INPUTS table with its status
     assert "sourced-adjacent" in first
+
+
+# --- commercial extension (E17) ------------------------------------------------------------------------------
+
+def test_default_output_has_no_commercial_sections(capsys):
+    assert cm.main([]) == 0
+    out = capsys.readouterr().out
+    assert "COMMERCIAL CASE EXTENSION" not in out
+    assert "advanced_stage_risk_on_time_derived" not in out  # the INPUTS table lists the legacy sections only
+
+
+def test_commercial_inputs_are_graded_and_in_known_sections():
+    _, spec_ = cm.load_inputs(INPUTS)
+    for name, s in spec_.items():
+        if s["section"] in cm.COMMERCIAL_SECTIONS:
+            assert s["status"] in cm.ALLOWED_STATUS
+            assert s["basis"]
+    # nothing in the extension may be graded sourced except the fixed peg
+    sourced = [n for n, s in spec_.items() if s["section"] in cm.COMMERCIAL_SECTIONS and s["status"] == "sourced"]
+    assert sourced == ["usd_aed_peg"]
+
+
+def test_market_positives_arithmetic():
+    assert cm.market_positives(1_000_000, 0.2, 0.07) == pytest.approx(14_000)
+    _, spec_ = cm.load_inputs(INPUTS)
+    rows = {r["case"]: r for r in cm.market_table(spec_)}
+    assert rows["central"]["ad_fits"] == pytest.approx(1_264_000 * 0.20)
+    assert rows["central"]["ad_positives"] == pytest.approx(1_264_000 * 0.20 * 0.07)
+    assert rows["low"]["ad_positives"] < rows["central"]["ad_positives"] < rows["high"]["ad_positives"]
+    assert rows["central"]["uae_positives"] > rows["central"]["ad_positives"]
+
+
+def test_stage_cost_gap_uses_the_peg_and_each_papers_rate():
+    _, spec_ = cm.load_inputs(INPUTS)
+    assert cm.stage_cost_gap_aed(spec_, "saudi") == pytest.approx((71374 - 45317) * 3.6725)
+    assert cm.stage_cost_gap_aed(spec_, "malaysia") == pytest.approx((27972 - 13485.9) / 3.10 * 3.6725)
+    with pytest.raises(ValueError):
+        cm.stage_cost_gap_aed(spec_, "elsewhere")
+
+
+def test_outcome_value_matches_hand_calculation():
+    _, spec_ = cm.load_inputs(INPUTS)
+    shares = cm.load_delay_shares(RESULTS)
+    got = cm.outcome_value(1000, shares, "literature_anchored", spec_, "10-12 month ORs", "saudi")
+    moved = (shares["baseline"] - shares["literature_anchored"]) * 1000
+    p0 = 0.0098
+    odds = p0 / (1 - p0) * 1.97
+    excess = odds / (1 + odds) - p0
+    assert got["moved"] == pytest.approx(moved)
+    assert got["late_stage_avoided"] == pytest.approx(moved * excess)
+    assert got["cost_avoided"] == pytest.approx(moved * excess * (71374 - 45317) * 3.6725 * 0.6)
+    assert got["cost_per_case"] == pytest.approx(got["cost_avoided"] / 1000)
+
+
+def test_outcome_value_orders_scenarios_and_inputs():
+    _, spec_ = cm.load_inputs(INPUTS)
+    shares = cm.load_delay_shares(RESULTS)
+    lit = cm.outcome_value(1000, shares, "literature_anchored", spec_, "10-12 month ORs", "saudi")
+    upper = cm.outcome_value(1000, shares, "upper_range", spec_, "10-12 month ORs", "saudi")
+    late = cm.outcome_value(1000, shares, "literature_anchored", spec_, ">12 month ORs", "saudi")
+    low_gap = cm.outcome_value(1000, shares, "literature_anchored", spec_, "10-12 month ORs", "malaysia")
+    assert upper["cost_avoided"] > lit["cost_avoided"]
+    assert late["cost_avoided"] > lit["cost_avoided"]
+    assert low_gap["cost_avoided"] < lit["cost_avoided"]
+    zero = cm.outcome_value(1000, shares, "literature_anchored", spec_, "10-12 month ORs", "saudi", pair_factor=0.0)
+    assert zero["cost_avoided"] == 0.0
+
+
+def test_capacity_fte_hand_calculation_and_signs():
+    _, spec_ = cm.load_inputs(INPUTS)
+    rows = cm.load_effort_minutes(RESULTS)
+    fte = cm.capacity_fte(10000, rows, spec_)
+    by_label = {label: m for label, m, _ in rows}
+    base, lit = by_label["baseline, all cases"], by_label["literature anchored, programme level"]
+    got = fte["literature anchored, programme level"]
+    assert got["coordinator"] == pytest.approx(10000 * (base["coordinator"] - lit["coordinator"]) / 60 / 1700)
+    assert got["coordinator"] > 0           # coordinator time is freed
+    assert got["owner_clinician"] < 0       # owner-clinician time rises
+    assert got["specialist"] < 0            # specialist time rises
+    assert got["all_roles"] == pytest.approx(got["coordinator"] + got["owner_clinician"] + got["specialist"])
+    assert got["all_roles"] < got["coordinator"]
+    assert "baseline, all cases" not in fte
+
+
+def test_commercial_output_is_deterministic_and_complete(capsys):
+    assert cm.main(["--commercial"]) == 0
+    first = capsys.readouterr().out
+    assert cm.main(["--commercial"]) == 0
+    assert first == capsys.readouterr().out
+    for heading in ("COMMERCIAL INPUTS", "MARKET:", "OUTCOME VALUE:", "CAPACITY VALUE:", "PRICE BENCHMARKS"):
+        assert heading in first
+    assert "capacity, not cash" in first
+
+
+def test_commercial_input_without_status_is_refused(tmp_path):
+    text = INPUTS.read_text(encoding="utf-8")
+    bad_text = text.replace("  usd_aed_peg:\n    value: 3.6725\n    unit: AED per USD\n    status: sourced\n",
+                            "  usd_aed_peg:\n    value: 3.6725\n    unit: AED per USD\n", 1)
+    assert bad_text != text
+    bad = tmp_path / "inputs.yaml"
+    bad.write_text(bad_text, encoding="utf-8")
+    with pytest.raises(ValueError, match="usd_aed_peg"):
+        cm.load_inputs(bad)

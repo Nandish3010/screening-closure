@@ -1,4 +1,4 @@
-.PHONY: agency-run test-demo test-e2e-live demo-scenario demo-stage demo-snapshot demo-restore demo-reset demo-kill-scheduler check docs-check tracker-lint test-security test-tools test-load load-check up down logs test test-db test-db-create test-db-reset test-chaos synthea demo-seed demo-seed-clean evaluate simulate evaluate-check sensitivity sensitivity-check reset web-install web-dev web-build web-test web-e2e test-e2e review-packs review-packs-check test-review-packs test-phi-logs rbac-matrix test-offline fresh-clone risk-report risk-check calibrate-fetch calibrate-fit calibrate-check effort effort-check video video-check video-deps
+.PHONY: agency-run test-demo test-e2e-live demo-scenario demo-stage demo-snapshot demo-restore demo-reset demo-kill-scheduler check docs-check tracker-lint test-security test-tools test-load load-check up down logs test test-db test-db-create test-db-reset test-chaos synthea demo-seed demo-seed-clean evaluate evaluate-capacity evaluate-capacity-check simulate evaluate-check sensitivity sensitivity-check reset web-install web-dev web-build web-test web-e2e test-e2e review-packs review-packs-check test-review-packs test-phi-logs rbac-matrix test-offline fresh-clone risk-report risk-check calibrate-fetch calibrate-fit calibrate-check effort effort-check video video-check video-deps verify hl7-demo hl7-samples
 
 up:
 	docker compose up -d --build
@@ -18,6 +18,13 @@ test:
 	else \
 		docker compose --profile tests run --rm --no-deps api-test pytest tests -q -m "not integration and not chaos"; \
 	fi
+
+# A27 (ADR-038): exhaustive model checking of the closure engine's state machine. Drives the real `step()` breadth-first
+# over a finite abstraction (event types x actors x representative payloads) until the abstract state space saturates, in
+# three feature slices, and checks I1-I7 on every reachable state and transition; prints a shortest counterexample and
+# exits non-zero on a violation. Pure Python, no database, under a minute. docs/governance/verification.md.
+verify:
+	PYTHONPATH=$(CURDIR)/api $(PY) tools/verify/model_check.py
 
 # Integration tests run against their own database, `closure_test`, in the same compose postgres
 # (published on host port 5433). The dev database `closure` is never used: the test session
@@ -92,6 +99,30 @@ PARAM_FLAGS := $(foreach f,$(PARAMS),--params $(f))
 # Change a parameter in simulator/params.yaml (or layer a file: make evaluate PARAMS="simulator/params.yaml my.yaml").
 evaluate:
 	$(SIMENV) $(PY) -m simulator.sim.cli evaluate --reps $(REPS) --cases $(CASES) --days $(EVAL_DAYS) --seed $(SEED) $(PARAM_FLAGS) --out-dir docs/results
+
+# Finite capacity (ticket B19, milestone M6): the same replications and both scenarios, with a shared colonoscopy booking calendar and a daily
+# staff-minutes budget for escalations (simulator/params.capacity.yaml layered on the scenario stacks); a base-capacity headline, a capacity
+# sensitivity (70/85/100/115% of the slots), a staffing sensitivity (50 to 300%) and a slots-only / staff-only decomposition. Writes
+# docs/results/capacity.json and splices the "Under finite capacity" section into docs/results/results.md in place.
+# It is a SEPARATE target because it is about 30 simulations per replication: about 3 minutes with 8 workers (REPS=20), against about
+# 10 seconds for `make evaluate`, which would be pushed past a minute, and past 10 minutes for `evaluate-check`, which reruns single-process.
+# `make evaluate` copies the section from the committed capacity.json, so results.md is complete after either target. Run
+# `make evaluate-capacity` after any change to the engine, the parameters or the seed, then `make evaluate` (or just keep results.md as
+# `make evaluate-capacity` leaves it).
+CAP_PARAMS ?= simulator/params.capacity.yaml
+CAP_JOBS ?= 8
+evaluate-capacity:
+	$(SIMENV) $(PY) -m simulator.sim.cli evaluate-capacity --reps $(REPS) --cases $(CASES) --days $(EVAL_DAYS) --seed $(SEED) $(PARAM_FLAGS) --capacity-params $(CAP_PARAMS) --jobs $(CAP_JOBS) --out-dir docs/results
+
+# Runs evaluate-capacity twice into temp dirs on a reduced size (CAP_CHECK_REPS replications, the second time single-process) and requires identical capacity.json.
+CAP_CHECK_REPS ?= 2
+evaluate-capacity-check:
+	@set -e; a=$$(mktemp -d); b=$$(mktemp -d); \
+	$(SIMENV) $(PY) -m simulator.sim.cli evaluate-capacity --reps $(CAP_CHECK_REPS) --cases $(CASES) --days $(EVAL_DAYS) --seed $(SEED) $(PARAM_FLAGS) --capacity-params $(CAP_PARAMS) --jobs $(CAP_JOBS) --out-dir $$a >/dev/null; \
+	$(SIMENV) $(PY) -m simulator.sim.cli evaluate-capacity --reps $(CAP_CHECK_REPS) --cases $(CASES) --days $(EVAL_DAYS) --seed $(SEED) $(PARAM_FLAGS) --capacity-params $(CAP_PARAMS) --jobs 1 --out-dir $$b >/dev/null; \
+	if diff -q $$a/capacity.json $$b/capacity.json >/dev/null; then \
+		echo "evaluate-capacity-check: PASS, capacity.json identical across runs and process counts (sha256 $$(shasum -a 256 $$a/capacity.json | cut -c1-16))"; rm -rf $$a $$b; \
+	else echo "evaluate-capacity-check: FAIL, capacity.json differs ($$a vs $$b)"; diff $$a/capacity.json $$b/capacity.json | head -20; exit 1; fi
 
 # One arm, one run, with the closure-rule and consent invariants checked on every case log.
 simulate:
@@ -189,6 +220,18 @@ test-demo:
 demo-kill-scheduler:
 	$(PY) tools/demo/kill_scheduler.py
 
+# A28 (ADR-039): send a positive FIT result as an HL7 v2 ORU^R01 to POST /hl7 (tools/hl7/samples/oru_fit_positive.hl7, a patient
+# of the seeded cohort) and show the case appear. Needs the stack up and seeded. Run twice: the second ACK says "duplicate" and no
+# second case appears (idempotent on MSH-10). `make hl7-demo FRESH=1` gives the message a new MSH-10, which creates a new case
+# for the same patient: `make demo-reset` afterwards on the demo snapshot. The optional MLLP listener: `docker compose --profile
+# hl7 up -d hl7-listener`, then `python3 tools/hl7/send.py --mllp localhost:2575 tools/hl7/samples/*.hl7`.
+hl7-demo:
+	PYTHONPATH=api $(PY) tools/hl7/demo.py $(if $(FRESH),--fresh)
+
+# Rewrite tools/hl7/samples/ from the seeded cohort (synthetic messages, one per supported type).
+hl7-samples:
+	$(PY) tools/hl7/make_samples.py
+
 # A22: one agency run on demand against the running stack (POST /agency/run as the supervisor, or with AGENCY_SERVICE_TOKEN
 # set), printing the run summary. Compose sets AGENCY_EVERY_SWEEPS=0 so the scheduler never starts one by itself and the
 # demo snapshot stays deterministic; this is how the agency is shown. Then open /agency in the web app.
@@ -196,7 +239,7 @@ agency-run:
 	$(PY) tools/demo/agency_run.py
 
 # ---- Cut F: hardening, reproducibility, `make check` (F1, F6, F9) ----------------------------------
-# `make check` runs, in order and stopping at the first failure: test, test-db (skipped loudly if
+# `make check` runs, in order and stopping at the first failure: test, verify, test-db (skipped loudly if
 # Postgres on :5433 is down), web-test, web-build, evaluate-check, docs-check, tracker-lint,
 # test-security, test-tools, a reduced load check, risk-check, review-packs-check, test-review-packs and web-e2e. Each stage is its own target. Run every stage
 # even after a failure (for reporting): `make check CHECK_KEEP_GOING=1`.

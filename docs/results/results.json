@@ -4533,7 +4533,7 @@
     "cases_per_replication": 2000,
     "ci_method": "percentile bootstrap over replications; differences are paired by replication (common random numbers)",
     "follow_up_days": 360,
-    "git_commit": "aa409ce6b30d16860cdb6fc054ba235fa57f3cec",
+    "git_commit": "626c62db5955b719e1364297127fe7a27567996d",
     "parameter_status_counts": {
       "assumed": 87,
       "calibrated": 16,

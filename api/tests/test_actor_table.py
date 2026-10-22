@@ -24,6 +24,7 @@ from app.state_machine import (
     AUTOMATION_ACTOR,
     CASE_CREATED,
     CONSENT_ACTOR,
+    HL7_ACTOR,
     HUMAN_EVENTS,
     HUMAN_ROLES,
     NOTIFIER_ACTOR,
@@ -66,8 +67,10 @@ def refused_by_the_table(model: CaseModel, type_: str, actor: str) -> bool:
 def test_the_table_has_exactly_the_documented_rows():
     assert set(ACTOR_EVENTS) == {
         *(f"{role}:" for role in HUMAN_ROLES), "system:scheduler", "system:watchdog", "system:notifier",
-        "system:consent", "system:automation", "model:", "system:triage", "system:agency:",
+        "system:consent", "system:automation", "model:", "system:triage", "system:agency:", "system:hl7",
     }
+    assert ACTOR_EVENTS[HL7_ACTOR] == {"book_confirmatory"}  # A28, ADR-039: the HL7 adapter books the appointment, nothing else
+    assert ACTOR_EVENTS[HL7_ACTOR] == policy.HL7_EVENTS
     assert ACTOR_EVENTS[TRIAGE_ACTOR] == {"reply_received", "reply_classified", "review_requested", "callback_requested"}
     assert ACTOR_EVENTS["system:agency:"] == frozenset()  # agents are labour, not authority (ADR-033): no event at all
     assert ACTOR_EVENTS[CONSENT_ACTOR] == {"review_requested"}
@@ -163,6 +166,7 @@ def test_the_actor_names_in_the_table_are_the_ones_the_services_use():
     assert auth.Identity("service", "scheduler", "scheduler").actor == SCHEDULER_ACTOR_NAME
     assert auth.Identity("service", "watchdog", "watchdog").actor == WATCHDOG_ACTOR
     assert auth.Identity("service", "automation", "automation").actor == AUTOMATION_ACTOR
+    assert auth.Identity("service", "hl7", "hl7").actor == HL7_ACTOR
     assert auth.Identity("user", "coordinator", "Maryam").actor.split(":")[0] in HUMAN_ROLES
 
 
@@ -197,6 +201,8 @@ ROW_PROBES = {
     "system:automation": ("acknowledge", {"auto": True}, CaseModel(state="result_received")),
     "model:": ("message_drafted", {}, CaseModel(state="owner_accepted")),
     "system:triage": ("reply_received", {"channel": "sms", "text_ref": _SRC}, CaseModel(state="owner_accepted")),
+    "system:hl7": ("book_confirmatory", {"appointment_date": "2026-01-12", "appointment_at": "2026-01-12T05:30:00Z"},
+                   CaseModel(state="patient_acknowledged")),
 }
 
 
