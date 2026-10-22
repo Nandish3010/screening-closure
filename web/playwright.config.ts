@@ -22,7 +22,8 @@ export default defineConfig({
   webServer: {
     command: `VITE_API_ADAPTER=mock npm run build && npx vite preview --port ${PORT} --strictPort`,
     url: `http://localhost:${PORT}`,
-    reuseExistingServer: true,
+    // Locally a preview already on the port is reused; in CI (CI is set) a stale server is an error, never reused.
+    reuseExistingServer: !process.env.CI,
     timeout: 120_000,
   },
 });

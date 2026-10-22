@@ -1,5 +1,7 @@
 # Screening Closure
 
+[![check](https://github.com/Nandish3010/screening-closure/actions/workflows/check.yml/badge.svg)](https://github.com/Nandish3010/screening-closure/actions/workflows/check.yml)
+
 Every actionable screening result has a named owner, a clock, an audit trail, and a clinician-signed closure. Nothing is diagnosed.
 
 **Outcome, in a simulation on synthetic data (literature-anchored scenario):** colonoscopy within 180 days rises from 51% to 65%; cases lost without anyone told fall from 45.7% to 0% for cases the programme reaches, and to 20.8% programme-level under a 0.55 reach assumption. Details and intervals: [docs/results/results.md](docs/results/results.md).
@@ -150,13 +152,19 @@ project/     plan, tracker, decisions, log, test cases
 
 ## Tests and checks
 
-`make check` runs 18 stages in this order: test, verify, test-db, web-test, web-build, evaluate-check, docs-check, tracker-lint, test-security, test-tools, load-check, risk-check, review-packs-check, test-review-packs, effort-check, web-e2e, sensitivity-check, calibrate-check. It stops at the first failure; `CHECK_KEEP_GOING=1` runs all of them. The whole run took 13.5 minutes at the M5 final merge and 17.8 minutes (1,069 s, all 18 stages passing, none skipped) at the M6 week 1 merge, both inside the 25-minute budget, so the slow regeneration checks (sensitivity-check about 5.5 minutes, calibrate-check, risk-check) stay in `make check` rather than in a separate target. test-db and load-check are SKIPPED loudly (not passed) when Postgres on :5433 is down, and calibrate-check when the gitignored downloads are absent (`make calibrate-fetch` once). Set `E2E_PORT` if port 4173 is taken by another preview.
+`make check` runs 18 stages in this order: test, verify, test-db, web-test, web-build, evaluate-check, docs-check, tracker-lint, test-security, test-tools, load-check, risk-check, review-packs-check, test-review-packs, effort-check, web-e2e, sensitivity-check, calibrate-check. It stops at the first failure; `CHECK_KEEP_GOING=1` runs all of them. The whole run took 13.5 minutes at the M5 final merge and 17.8 minutes (1,069 s, all 18 stages passing, none skipped) at the M6 week 1 merge, both inside the 25-minute budget, so the slow regeneration checks (sensitivity-check about 6 to 7 minutes, calibrate-check, risk-check) stay in `make check` rather than in a separate target. test-db and load-check are SKIPPED loudly (not passed) when Postgres on :5433 is down, and calibrate-check when the gitignored downloads are absent (`make calibrate-fetch` once). Set `E2E_PORT` if port 4173 is taken by another preview.
 
 At the M5 final merge (project/LOG.md, line "M5-final", 2026-10-18), `make check` was green over 17 of 17 stages: 2154 api and simulator tests, 230 integration, 287 web unit, 51 e2e, 188 tool tests, 72 security-gate tests, 19 pack tests, 20 effort tests, 21 calibration tests. Outside it: `make test-chaos` 45 passed, `make test-demo` 2 passed, `make test-e2e-live` 3 passed, `make test-offline` 17 of 17.
 
 The state machine is also model-checked exhaustively by `make verify` (`tools/verify/model_check.py`, [docs/governance/verification.md](docs/governance/verification.md)): 9,057 abstract states, 7 invariants, and 5 seeded mutations, all caught. It found one real bug, now fixed: an approved draft could be sent while an opt-out or wrong-number hold was open (ADR-038).
 
 The closure rule has its own property test: `api/tests/test_state_machine.py::test_never_closed_without_evidence_and_human_signoff`.
+
+## Continuous integration
+
+GitHub Actions runs `.github/workflows/check.yml` on every push and pull request to `main`: `unit` (Python 3.12: `make test`, `evaluate-check`, `docs-check`, `tracker-lint`, `test-security`, `test-tools`, `review-packs-check`, `effort-check`), `db` (Postgres 16 and HAPI FHIR as service containers: `make test-db`; the HAPI tests skip if HAPI does not start) and `web` (Node 22: unit tests, build, Playwright e2e on the mock adapter). `heavy` (`sensitivity-check`, `risk-check`) runs nightly and on demand. Stages that need the whole compose stack (`load-check`, `test-offline`, `test-demo`, the live e2e) are not in `check.yml`.
+
+`.github/workflows/fresh-clone.yml` (manual and weekly) runs `tools/check/fresh_clone.sh` on a clean runner with a reduced Synthea population (60) and uploads the timing report as an artifact. It is the automated stand-in for the second-machine check; a run on a real second machine (H5) is still a human task.
 
 ## Submission documents
 
