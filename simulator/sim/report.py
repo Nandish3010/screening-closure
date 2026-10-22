@@ -469,7 +469,7 @@ def reach_paragraph(res: dict) -> str:
     return first + second
 
 
-def render_markdown(res: dict) -> str:
+def render_markdown(res: dict, capacity_block: str | None = None) -> str:
     meta = res["meta"]
     lit = _has(res, LITERATURE)
     gen = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
@@ -516,6 +516,8 @@ def render_markdown(res: dict) -> str:
     cap = capacity_caveat(res)
     if cap:
         parts += [cap, ""]
+    if capacity_block is not None:
+        parts += [capacity_block, ""]
     parts += ["## Summary", ""]
     for scen in scen_order:
         parts += [f"**{SCENARIO_TITLE[scen].capitalize()}.** " + summary_paragraph(res, scen, caveat=scen == scen_order[-1]), ""]
@@ -545,7 +547,7 @@ def render_markdown(res: dict) -> str:
 
 
 def capacity_caveat(res: dict) -> str:
-    """Prominent caveat: the model charges nothing for escalations (ticket B13)."""
+    """Prominent caveat: the headline model charges nothing for escalations (ticket B13); ticket B19 adds the finite-capacity section."""
     up = _m(res, ORCHESTRATED, "escalations_per_100_cases", UPPER)
     if not up:
         return ""
@@ -557,13 +559,13 @@ def capacity_caveat(res: dict) -> str:
     return "\n".join([
         "## Capacity caveat: escalations cost nothing in this model",
         "",
-        f"**Every gain above is a gain before capacity constraints.** Cases are independent in the simulator: there are no shared endoscopy "
+        f"**Every gain in the headline and the comparison tables is a gain before capacity constraints.** In that model cases are independent: there are no shared endoscopy "
         f"slots, no staff workload and no queueing, and a supervisor or coordinator acts on an escalation with a fixed probability however "
-        f"many others are open. The orchestrated arm raises {txt}, roughly one for every case. A real programme needs people and "
-        f"colonoscopy slots to work them, and the completion and time gains would shrink if they are not there. A capacity model (staff "
-        f"time per escalation, slot supply, queueing) is future work; until it exists, use `escalations_per_100_cases` to size a pilot "
-        f"rather than the completion gains. The staff minutes an escalation takes are counted in the Human effort section, but still without any queue or "
-        f"shared capacity. Definitions: [`metrics.md`](metrics.md).",
+        f"many others are open. The orchestrated arm raises {txt}, roughly one for every case. A real programme needs people "
+        f"and colonoscopy slots to work them. The section **Under finite capacity** below (ticket B19) charges for both: a shared booking calendar and a daily staff-minutes budget, "
+        f"with a capacity and a staffing sensitivity; it shows how much of the gain survives. Quote that section when the question is what a unit with finite slots and staff would see. "
+        f"What remains future work: per-endoscopist rosters, priority classes (urgent and symptomatic patients), overbooking, and a measured rather than assumed supply of slots and staff. "
+        f"The staff minutes an escalation takes are counted in the Human effort section. Definitions: [`metrics.md`](metrics.md).",
     ])
 
 

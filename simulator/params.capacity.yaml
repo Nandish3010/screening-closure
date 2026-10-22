@@ -1,0 +1,77 @@
+# Finite-capacity overlay (ticket B19, milestone M6). Layer it over simulator/params.yaml (and, for the literature-anchored
+# scenario, over params.conservative.yaml too). It only ADDS keys under `capacity.`; with it absent the simulator is the
+# unconstrained model every earlier result used, bit for bit (params.yaml is untouched, so the parameter hash, the
+# sensitivity sweep and the risk-score training are unchanged).
+#
+# Two finite resources, both shared by every case of a run (`make evaluate-capacity`, docs/results/capacity.json):
+#   * colonoscopy slots: a booking calendar per endoscopy provider, `slots` per working day; a booking takes the earliest free
+#     slot on or after the lead-time date; a no-show frees its slot with probability `dna_backfill_prob`; a cancellation (a
+#     patient who withdraws consent and declines care before the day) frees it for the next booking.
+#   * escalation handling: a daily minutes budget for the supervisor and for the programme coordinator; an escalation (and a
+#     watchdog flag, to the coordinator) is a job of `accept_minutes` plus, when it asks a patient to act, `contact_minutes`;
+#     jobs are served first come first served and a job that does not fit in the day's budget waits for the next working day.
+# Supply is scaled to the cohort: per 1,000 cases, so a 2,000-case run has twice the supply of a 1,000-case run.
+# Sources and grades: docs/evidence.md section 12. Ranges are for a future sweep; the capacity and staffing sensitivities of
+# results.md ("Under finite capacity") move `capacity.scale` and `capacity.staff.scale`.
+capacity:
+  enabled:
+    value: true
+    source: "Switch: the layer is on when this file is loaded."
+    status: assumed
+  providers:
+    value: 3
+    source: "assumed, no public source. Three endoscopy providers share the cohort; the pathway's referral attempts go to providers endoscopy-0, endoscopy-1, ..., and a case's first referral goes to provider (case index mod 3)."
+    status: assumed
+    range: [2, 6]
+    range_basis: "default rule: count, value x0.5 and x2, rounded half up, at least 1"
+  slots_per_session:
+    value: 6
+    source: "NHS Improving Quality, The Productive Endoscopy Unit - Scheduling (v1), docs/evidence.md section 12 (E12-1): a four-hour session is 12 points at 1 point = 15 minutes of session time, and a colonoscopy is 2 points (E12-2, JAG points guidance), so a fully trained endoscopist does 6 colonoscopies per session. Training lists (8 points) give 4."
+    status: sourced-adjacent
+    range: [4, 6]
+    range_basis: "stated range: 4 (a trainee's 8-point list) to 6 (a trained endoscopist's 12-point list), E12-1"
+  sessions_per_week_per_1000_cases:
+    value: 6.0
+    source: "Calibrated so that the BASELINE arm fills about 87% of the offered slots over the utilisation window (the 80-90% the ticket asks for; the unit-level utilisation target the NHS programme quotes is 90-95%, E12-1). One session is 6 colonoscopies. No public figure gives the sessions a catchment of positive-FIT patients needs; this is a scale device, stated, not a measurement."
+    status: calibrated
+    range: [4.2, 7.8]
+    range_basis: "stated range: the scale used by the capacity sensitivity of results.md (70% to 130% of this value)"
+  scale:
+    value: 1.0
+    source: "Multiplier on the slot supply, 1.0 = base capacity. The capacity sensitivity of results.md sets it to 0.70, 0.85, 1.00 and 1.15."
+    status: assumed
+  dna_backfill_prob:
+    value: 0.30
+    source: "assumed, no public source for a same-day backfill probability of a screening colonoscopy no-show. Anchors: E12-1 lists a unit that reached a 98% replacement rate for cancellations with a formal 'fill every slot' agreement (cancellations with notice, not same-day no-shows), and a survey that found services 'striving' to backfill; no-shows are found out too late to refill most of the time, so a low value is used."
+    status: assumed
+    range: [0.0, 0.9]
+    range_basis: "stated range: 0 (never refilled) to 0.9 (near the 98% replacement a unit reported for cancellations, E12-1)"
+  utilisation_window_start_day:
+    value: 30
+    source: "Definition, not evidence: utilisation is measured from day 30 of the run. Results arrive over the first 30 days and the median booking lead is 24 days, so before day 30 hardly anyone can hold a booking and counting those empty slots would only understate utilisation (day 34 is the 10th percentile of appointment day in the unconstrained baseline arm at base parameters)."
+    status: assumed
+  utilisation_window_end_day:
+    value: 150
+    source: "Definition, not evidence: utilisation is measured up to day 150, the period in which about 90% of the baseline arm's appointments fall in the unconstrained model (the 90th percentile of appointment day is day 147 at base parameters). The same window measures the staff budgets' utilisation."
+    status: assumed
+  staff:
+    supervisor_minutes_per_day_per_1000_cases:
+      value: 45.0
+      source: "Calibrated: the supervisor's daily minutes budget per 1,000 cases, set so that the unconstrained demand on the supervisor in the literature-anchored scenario (the scenario to quote) is about 85% of the budget over the utilisation window (demand 45 minutes per day per 1,000 cases at 85%). 45 minutes per day per 1,000 cases is 0.125 of a full-time person at 6 productive hours a day. No public staffing ratio exists for a result-tracking programme (docs/evidence.md section 11.3)."
+      status: calibrated
+    coordinator_minutes_per_day_per_1000_cases:
+      value: 90.0
+      source: "Calibrated like the supervisor's budget, for the programme coordinator (second rung of the escalation ladder and watchdog flags): unconstrained demand 90 minutes per day per 1,000 cases at 85%, which is 0.25 of a full-time person at 6 productive hours a day."
+      status: calibrated
+    scale:
+      value: 1.0
+      source: "Multiplier on both staff budgets, 1.0 = base staffing. The staffing sensitivity of results.md sets it to 0.50, 0.75, 1.00 and 1.50."
+      status: assumed
+    accept_minutes:
+      value: 2.0
+      source: "Same figure as O_ACCEPT_ESC_SUPERVISOR and O_ACCEPT_ESC_COORDINATOR in simulator/sim/effort.py (assumed: 2 minutes to open the case, read the context and accept); a test keeps the two equal."
+      status: assumed
+    contact_minutes:
+      value: 8.7
+      source: "7.2 minutes for the phone call (sourced-adjacent: Heslop 2014 follow-up call, O'Leary 2023 call logs, docs/evidence.md E11-1 and E11-2) plus 1.5 minutes to approve the drafted message (assumed): O_SUPERVISOR_CALL/O_COORDINATOR_CALL plus O_APPROVE_DRAFT in simulator/sim/effort.py; a test keeps them equal. Charged when the escalation is one that asks the patient to act."
+      status: sourced-adjacent

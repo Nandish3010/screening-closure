@@ -42,6 +42,7 @@ from .behaviour import (
     lognormal,
 )
 from .calendar import WorkingCalendar
+from .capacity import COORDINATOR, CapacityRun, SlotBook, StaffQueue
 from .messy import MessyPlan, draw_messy
 from .metrics import CaseRecord, build_record
 from .params import ModelParams, ParamError
@@ -82,6 +83,7 @@ class Case:
         "h_cur", "hstate", "appt_idx", "appt_t", "pending_appt", "reminders", "awaiting_patient", "sub",
         "timer_n", "watch_n", "watch_armed", "last_act", "extra_delay", "abandoned", "reopened", "round",
         "bchannel", "lost_reasons", "booked_once", "last_flag", "orch", "ms_met", "ms_timer_n", "ms_requested", "last_rung",
+        "slot_prov",
     )
 
     def __init__(self, p: Patient, lat: Latents, msy: MessyPlan, end: float, initial_state: str, bchannel: str,
@@ -130,6 +132,7 @@ class Case:
         self.ms_requested = False  # the first handoff_requested armed the request-started milestones (A25)
         # notify role -> (working day, step token, the rung event, ladder source) of the last rung emitted to it (A19)
         self.last_rung: dict[str, tuple] = {}
+        self.slot_prov: int | None = None  # the colonoscopy provider this case is booked with (capacity model only)
 
 
 @dataclass
@@ -142,6 +145,17 @@ class RunResult:
     n_events: int
     end_day: float
     counters: dict = field(default_factory=dict)
+    capacity: CapacityRun | None = None  # set only when the parameters define `capacity` (B19)
+
+
+class _Pending:
+    """Stands in for the `escalated` event of a rung that is waiting for a person, so a later rung of another ladder to the
+    same role on the same day can still coalesce into it (A19)."""
+    __slots__ = ("payload", "seq")
+
+    def __init__(self):
+        self.payload: dict = {}
+        self.seq = 0
 
 
 def _mask() -> int:
@@ -225,7 +239,10 @@ class Engine:
             "recover": self.on_recover, "watch": self.on_watch, "force": self.on_force, "dup": self.on_dup,
             "switch": self.on_switch, "switch_done": self.on_switch_done, "consent": self.on_consent,
             "consent_review": self.on_consent_review, "reopen": self.on_reopen, "self_rebook": self.on_self_rebook,
+            "rung_q": self.on_rung_q, "force_q": self.on_force_q,
         }
+        self.cap: SlotBook | None = None  # finite capacity (B19); built in run() once the cohort size is known
+        self.staff: StaffQueue | None = None
         self.counters = {"blocked_messages": 0, "timers_missed": 0, "watchdog_flags": 0, "escalations_coalesced": 0}
 
     # ------------------------------------------------------------------------------------------
@@ -243,6 +260,10 @@ class Engine:
                      lat.u_refuse < self.mp.refusal_prob, reached)
             cases.append(c)
             self.schedule(c.t0, "start", c)
+        if self.mp.capacity is not None:
+            wpw = 7 - len(self.mp.weekend_weekdays)
+            self.cap = SlotBook(self.mp.capacity, self.cal, len(patients), wpw)
+            self.staff = StaffQueue(self.mp.capacity, self.cal, len(patients))
         heap = self.heap
         handlers = self.handlers
         while heap:
@@ -258,6 +279,7 @@ class Engine:
         return RunResult(
             self.arm, self.seed, cases, records, self.hash.hexdigest(), self.n_events,
             max((c.end for c in cases), default=0.0), dict(self.counters),
+            CapacityRun(self.cap, self.staff, len(patients)) if self.cap is not None else None,
         )
 
     def schedule(self, t: float, kind: str, c: Case, token: int | None = None, data=None) -> None:
@@ -478,10 +500,36 @@ class Engine:
                 f"{c.p.idx}|{prev[2].seq}|also_for|{t:.6f}|{json.dumps(entry, sort_keys=True, separators=(',', ':'))}\n".encode()
             )
             return
+        if self.staff is not None and c.orch and rung.action == "escalate":
+            job = self.staff.request(rung.notify, t, self.staff.job_minutes(c.awaiting_patient))
+            if job.start_t > t + 1e-9:  # finite capacity: the person who must work it is busy; it waits for them
+                pend = _Pending()
+                c.last_rung[rung.notify] = (day, c.token, pend, source)
+                self.schedule(job.start_t, "rung_q", c, c.token, (i, source, pend, job))
+                return
+            job.state = "acted"
+        self._rung_effects(c, t, i, source, day, None, 0.0)
+
+    def on_rung_q(self, c: Case, t: float, token, data) -> None:
+        """A rung that waited for a person is served."""
+        i, source, pend, job = data
+        if token != c.token or c.abandoned:
+            job.state = "stale"  # the case moved on while it waited; the person still spent the minutes
+            return
+        job.state = "acted"
+        self._rung_effects(c, t, i, source, math.floor(t), pend, t - job.request_t)
+
+    def _rung_effects(self, c: Case, t: float, i: int, source: str, day: int, pend, waited: float) -> None:
+        rung = self.ladder[i]
+        payload = {"rung": i, "notify": rung.notify, "step": c.step}
+        if pend is not None:
+            payload["waited_days"] = round(waited, 4)
+            if "also_for" in pend.payload:
+                payload["also_for"] = pend.payload["also_for"]
         if rung.action == "escalate":
-            ev = self.emit(c, t, "escalated", "scheduler", {"rung": i, "notify": rung.notify, "step": c.step})
+            ev = self.emit(c, t, "escalated", "scheduler", payload)
         else:
-            ev = self.emit(c, t, "reminder_sent", "scheduler", {"rung": i, "notify": rung.notify, "step": c.step})
+            ev = self.emit(c, t, "reminder_sent", "scheduler", payload)
         c.last_rung[rung.notify] = (day, c.token, ev, source)
         if c.awaiting_patient:
             kind = ROLE_KIND.get(rung.notify, "reminder" if i == 0 else "human_call")
@@ -535,6 +583,22 @@ class Engine:
         """The programme coordinator acts on a watchdog flag."""
         if token != c.token or c.abandoned or c.step is None:
             return
+        if self.staff is not None:
+            job = self.staff.request(COORDINATOR, t, self.staff.job_minutes(c.awaiting_patient), "force")
+            if job.start_t > t + 1e-9:
+                self.schedule(job.start_t, "force_q", c, c.token, job)
+                return
+            job.state = "acted"
+        self._force_effects(c, t)
+
+    def on_force_q(self, c: Case, t: float, token, job) -> None:
+        if token != c.token or c.abandoned or c.step is None:
+            job.state = "stale"
+            return
+        job.state = "acted"
+        self._force_effects(c, t)
+
+    def _force_effects(self, c: Case, t: float) -> None:
         if c.awaiting_patient:
             self.send_outreach(c, t, "coordinator_route", "programme_coordinator")
         elif c.step == "book_confirmatory" and c.hstate != "staff":
@@ -647,7 +711,7 @@ class Engine:
         if outcome == "accept":
             self.emit(c, t, "handoff_accepted", f"endoscopy:unit-{h}", {"attempt": h})
             lead = self.beh.lead_days(c.lat, c.appt_idx, False)
-            c.pending_appt = self.cal.next_working_t(t + lead)
+            c.pending_appt = self._reserve(c, t, self.cal.next_working_t(t + lead), h)
             who = f"owner:pcp-{c.p.idx % 7}" if c.orch else f"staff:referrals-{c.p.idx % 3}"
             self.advance(c, t, "book_confirmatory", who, {"appointment_on": self.cal.date_of(c.pending_appt).isoformat()})
             if c.msy.consent_after_booking_lag is not None and not c.booked_once:
@@ -693,7 +757,7 @@ class Engine:
         a = c.appt_idx
         appt_t = c.pending_appt
         if appt_t is None:
-            appt_t = self.cal.next_working_t(t + self.beh.lead_days(c.lat, a, False))
+            appt_t = self._reserve(c, t, self.cal.next_working_t(t + self.beh.lead_days(c.lat, a, False)))
         c.pending_appt = None
         c.appt_t = appt_t
         c.reminders = 0
@@ -703,6 +767,18 @@ class Engine:
                 tr = appt_t - d
                 if tr > t:
                     self.schedule(tr, "appt_reminder", c, c.token)
+
+    def _reserve(self, c: Case, t: float, earliest: float, attempt: int | None = None) -> float:
+        """The appointment time: `earliest` (the lead-time date) in the unconstrained model; with finite capacity the earliest
+        free slot at the case's provider on or after it (B19)."""
+        if self.cap is None:
+            return earliest
+        n = self.mp.capacity.providers
+        if attempt is not None:
+            c.slot_prov = (c.p.idx + attempt) % n
+        elif c.slot_prov is None:
+            c.slot_prov = c.p.idx % n
+        return self.cap.book(c.p.idx, c.slot_prov, earliest, t)
 
     def on_appt_reminder(self, c: Case, t: float, token, data) -> None:
         if token != c.token or c.abandoned:
@@ -723,6 +799,12 @@ class Engine:
         c.appt_t = None
         channel = c.p.channel if c.orch else c.bchannel
         attends = not c.declined_care and not self.beh.no_show(c.p, c.lat, a, channel, c.reminders, c.orch)
+        if self.cap is not None:
+            if attends:
+                self.cap.resolve(c.p.idx, "attended")
+            else:  # the unit refills a no-show's slot from outside the cohort with probability dna_backfill_prob
+                filled = c.lat.u_backfill[a] < self.mp.capacity.dna_backfill_prob
+                self.cap.resolve(c.p.idx, "dna_backfilled" if filled else "dna_empty")
         if attends:
             self.advance(c, t, "complete_confirmatory", "endoscopy:unit",
                          {"appointment": a, "evidence_ref": f"procedure-{c.p.key}-{a}"})
@@ -757,7 +839,7 @@ class Engine:
         c.token += 1
         c.awaiting_patient = False
         c.sub = None
-        c.pending_appt = self.cal.next_working_t(t + self.beh.lead_days(c.lat, a, True))
+        c.pending_appt = self._reserve(c, t, self.cal.next_working_t(t + self.beh.lead_days(c.lat, a, True)))
         self.book_appointment(c, t)
 
     # ------------------------------------------------------------------------------------------
@@ -824,6 +906,10 @@ class Engine:
             return
         c.withdrawn = True
         c.declined_care = c.declined_care or c.lat.u_consent_declines < self.mp.consent_withdrawal_declines_care_prob
+        if self.cap is not None and c.declined_care:
+            held = self.cap.held_day(c.p.idx)
+            if held is not None and held > math.floor(t):  # a patient who declines care cancels before the day: the slot is free again
+                self.cap.cancel(c.p.idx)
         if c.orch:
             c.consent_ok = False
             self.emit(c, t, "consent_updated", f"patient:{c.p.key}",

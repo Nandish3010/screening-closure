@@ -45,7 +45,7 @@ class Latents:
         "u_h", "u_reason", "z_h", "u_notice", "z_notice", "u_declined", "z_reroute", "u_drop",
         "u_self", "z_self", "u_consent", "u_consent_when", "u_consent_declines", "z_consent_review",
         "u_reopen", "z_reopen", "u_timer", "u_watch", "z_watch", "u_bchannel",
-        "u_switch_loss", "u_switch_rej", "z_switch", "u_switch_reason", "z_review", "u_refuse", "u_reach", "u_mtimer",
+        "u_switch_loss", "u_switch_rej", "z_switch", "u_switch_reason", "z_review", "u_refuse", "u_reach", "u_mtimer", "u_backfill",
     )
 
 
@@ -85,6 +85,7 @@ def draw_latents(seed: int, key: str) -> Latents:
     L.u_refuse = r()
     L.u_reach = r()  # drawn last so every earlier draw (and every existing result) is unchanged
     L.u_mtimer = [r() for _ in range(M_POOL)]  # A18: after u_reach for the same reason
+    L.u_backfill = [r() for _ in range(A_POOL)]  # B19: is the slot of a no-show refilled? Last, so every earlier draw is unchanged
     return L
 
 

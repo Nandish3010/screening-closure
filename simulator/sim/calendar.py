@@ -79,6 +79,15 @@ class WorkingCalendar:
         k = bisect_right(self._wd, i)
         return k > 0 and self._wd[k - 1] == i
 
+    def working_ordinal(self, i: int) -> int:
+        """Number of working days with index below `i` (so the first working day has ordinal 0)."""
+        self._extend(i)
+        return bisect_right(self._wd, i - 1)
+
+    def working_index_after(self, i: int) -> int:
+        """Index of the first working day strictly after day index `i`."""
+        return math.floor(self.add_working_days_t(float(i), 1))
+
     def date_of(self, t: float) -> date:
         return self.start + timedelta(days=math.floor(t))
 
