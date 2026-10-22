@@ -33,7 +33,7 @@ Then:
 1. `make up` starts the stack.
 2. `make demo-reset` brings the database, the FHIR store and the simulation clock back to the snapshot (about 25 s).
 3. Start the web app against the real API, not the in-browser mock that `make web-dev` serves by default: `cd web && VITE_API_ADAPTER=http VITE_API_URL=http://localhost:8000 npm run dev`. Open the three surfaces at http://localhost:5173: the coordinator app at `/coordinator`, the closure dashboard at `/dashboard`, and the patient PWA (switch the role to Patient from a case page, or open `/patient/<caseId>`).
-4. `make evaluate` regenerates every evaluation number in `docs/results` (about 10 s on 10 cores, simulator/README.md).
+4. `make evaluate` regenerates every evaluation number in `docs/results` (about 25 to 30 s on 10 cores, measured 22 October 2026, now including the capacity layer; simulator/README.md).
 5. `make check` runs all 17 gates (stages listed under Tests and checks; about 14 minutes).
 
 The scripted walkthrough is [docs/submission/demo-script.md](docs/submission/demo-script.md).

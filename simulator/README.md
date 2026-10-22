@@ -206,8 +206,8 @@ pathway YAML, the git commit and the per-replication event-log hashes. Its top-l
 `parameters` describe the upper-range scenario (unchanged from before the second scenario existed); `scenarios.upper_range` and
 `scenarios.literature_anchored` hold both side by side (each with `arms`, `difference`, `per_replication`, its parameter hash and,
 for the literature-anchored one, the list of `overrides`). `make evaluate-check` proves the same inputs give the same bytes
-(including across process counts). `results.md` additionally carries a `generated_at` line. Wall time: about 10 s on 10 cores (two
-scenarios, 20 replications); `evaluate-check` runs the second pass single-process, about a minute.
+(including across process counts). `results.md` additionally carries a `generated_at` line. Wall time: about 25 to 30 s on 10 cores, measured 22 October 2026, now including the capacity layer (two
+scenarios, 20 replications); `evaluate-check` runs the second pass single-process, about two minutes (130 s measured).
 
 ## Sensitivity sweep (`make sensitivity`, ticket B14)
 
@@ -246,7 +246,7 @@ With it layered on (`--params simulator/params.yaml --params simulator/params.ca
 `make evaluate-capacity` runs the same replications and both scenarios unconstrained, at base capacity, with the slot supply at 70/85/100/115% of base, with the escalation budgets at
 50 to 300% of base, and with only one of the two limits binding; it writes `docs/results/capacity.json` (sorted keys, no timestamps, identical across process counts) and splices the
 "Under finite capacity" section into `docs/results/results.md` in place. `make evaluate` copies that section from the committed `capacity.json`; it does not rerun it
-(about 30 simulations per replication, about 3 minutes, against 10 seconds). Metric definitions: `docs/results/metrics.md` section 12; sources: `docs/evidence.md` section 12.
+(about 30 simulations per replication, about 3 minutes, against about 30 seconds). Metric definitions: `docs/results/metrics.md` section 12; sources: `docs/evidence.md` section 12.
 The base supply is a **calibrated scale device**, not a measurement: slots are sized so that the baseline arm fills about 85% of them between day 30 and day 150, staff so that the
 literature-anchored workload is about 85% of the budget over the same days.
 

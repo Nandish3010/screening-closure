@@ -360,7 +360,7 @@ The median time to a named owner in the orchestrated arm is 5.0 days (`time_to_o
 **How a judge reruns it.**
 
 ```
-make evaluate          # both scenarios; rewrites docs/results/results.json and results.md (about 10 s with 8 to 10 workers)
+make evaluate          # both scenarios; rewrites docs/results/results.json and results.md (about 25 to 30 s on 10 cores, measured 22 October 2026, now including the capacity layer)
 make evaluate-check    # runs evaluate twice (the second single-process) and requires identical results.json
 make evaluate PARAMS="simulator/params.yaml my_overrides.yaml"   # layer your own parameter file and rerun
 ```
