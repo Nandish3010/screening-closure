@@ -7,7 +7,7 @@ name: fresh-clone
 on:
   push:
     branches: [m6-ci] # TEMPORARY: workflow_dispatch needs the file on main; removed again after the first run
-    paths: [.github/workflows/fresh-clone.yml]
+    paths: [.github/workflows/fresh-clone.yml, tools/check/fresh_clone.sh, Makefile]
   workflow_dispatch:
     inputs:
       population:
