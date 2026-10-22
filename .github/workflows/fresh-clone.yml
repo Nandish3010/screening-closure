@@ -1,0 +1,61 @@
+# Fresh-clone verification in CI (F12, T-F13): the automated stand-in for the second-machine check (H5).
+# Runs tools/check/fresh_clone.sh: clone the repository at this commit, venv, `cp .env.example .env`, `make up`,
+# `make demo-seed` (reduced Synthea population), `make evaluate`, `make check`, each step timed. The timing report is
+# uploaded as an artifact and shown in the job summary. A human on a real second machine is still H5.
+name: fresh-clone
+
+on:
+  workflow_dispatch:
+    inputs:
+      population:
+        description: Synthea population for the demo seed (the shipped default is 300)
+        default: "60"
+      skip_check:
+        description: Skip the final `make check` (1 = skip)
+        default: "0"
+  schedule:
+    - cron: "43 3 * * 0" # weekly, Sunday
+
+permissions:
+  contents: read
+
+jobs:
+  fresh-clone:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      SYNTHEA_POPULATION: ${{ inputs.population || '60' }}
+      PIP_DISABLE_PIP_VERSION_CHECK: "1"
+      TRIAGE_ENABLED: "0"
+      CI: "true"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Playwright chromium (for the web-e2e stage of make check; same lockfile as the clone)
+        working-directory: web
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+      - name: tools/check/fresh_clone.sh
+        run: |
+          args=(--report "$RUNNER_TEMP/fresh-clone-report.md")
+          [ "${{ inputs.skip_check }}" = "1" ] && args+=(--skip-check)
+          bash tools/check/fresh_clone.sh "${args[@]}"
+      - name: Job summary
+        if: always()
+        run: |
+          [ -f "$RUNNER_TEMP/fresh-clone-report.md" ] && cat "$RUNNER_TEMP/fresh-clone-report.md" >> "$GITHUB_STEP_SUMMARY" || echo "no report was written" >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload the timing report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fresh-clone-report
+          path: ${{ runner.temp }}/fresh-clone-report.md
+          if-no-files-found: warn

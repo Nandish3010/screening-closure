@@ -37,8 +37,9 @@ test-db-reset:
 	$(PSQL_ADMIN) -c "DROP DATABASE IF EXISTS closure_test WITH (FORCE)"
 	$(PSQL_ADMIN) -c "CREATE DATABASE closure_test OWNER closure"
 
-test-db: test-db-create
-	DATABASE_URL=$(TEST_DATABASE_URL) .venv/bin/pytest api/tests -q -m "integration and not chaos"
+# CI (SKIP_DB_CREATE=1) creates closure_test itself, against a Postgres service container with no compose stack.
+test-db: $(if $(SKIP_DB_CREATE),,test-db-create)
+	DATABASE_URL=$(TEST_DATABASE_URL) $(if $(wildcard .venv/bin/pytest),.venv/bin/pytest,python3 -m pytest) api/tests -q -m "integration and not chaos"
 
 # Chaos tests (F3, F4, F5; T-A32, T-F3 to T-F7), all marked `chaos`:
 #   * fault injection (api/tests/faults.py, honoured only when APP_ENV=test): duplicate delivery, clock skew,
