@@ -1,4 +1,4 @@
-.PHONY: agency-run test-demo test-e2e-live demo-scenario demo-stage demo-snapshot demo-restore demo-reset demo-kill-scheduler check docs-check tracker-lint test-security test-tools test-load load-check up down logs test test-db test-db-create test-db-reset test-chaos synthea demo-seed demo-seed-clean evaluate simulate evaluate-check sensitivity sensitivity-check reset web-install web-dev web-build web-test web-e2e test-e2e review-packs review-packs-check test-review-packs test-phi-logs rbac-matrix test-offline fresh-clone risk-report risk-check calibrate-fetch calibrate-fit calibrate-check effort effort-check video video-check video-deps
+.PHONY: verify agency-run test-demo test-e2e-live demo-scenario demo-stage demo-snapshot demo-restore demo-reset demo-kill-scheduler check docs-check tracker-lint test-security test-tools test-load load-check up down logs test test-db test-db-create test-db-reset test-chaos synthea demo-seed demo-seed-clean evaluate simulate evaluate-check sensitivity sensitivity-check reset web-install web-dev web-build web-test web-e2e test-e2e review-packs review-packs-check test-review-packs test-phi-logs rbac-matrix test-offline fresh-clone risk-report risk-check calibrate-fetch calibrate-fit calibrate-check effort effort-check video video-check video-deps
 
 up:
 	docker compose up -d --build
@@ -18,6 +18,13 @@ test:
 	else \
 		docker compose --profile tests run --rm --no-deps api-test pytest tests -q -m "not integration and not chaos"; \
 	fi
+
+# A27 (ADR-038): exhaustive model checking of the closure engine's state machine. Drives the real `step()` breadth-first
+# over a finite abstraction (event types x actors x representative payloads) until the abstract state space saturates, in
+# three feature slices, and checks I1-I7 on every reachable state and transition; prints a shortest counterexample and
+# exits non-zero on a violation. Pure Python, no database, under a minute. docs/governance/verification.md.
+verify:
+	PYTHONPATH=$(CURDIR)/api $(PY) tools/verify/model_check.py
 
 # Integration tests run against their own database, `closure_test`, in the same compose postgres
 # (published on host port 5433). The dev database `closure` is never used: the test session
@@ -194,7 +201,7 @@ agency-run:
 	$(PY) tools/demo/agency_run.py
 
 # ---- Cut F: hardening, reproducibility, `make check` (F1, F6, F9) ----------------------------------
-# `make check` runs, in order and stopping at the first failure: test, test-db (skipped loudly if
+# `make check` runs, in order and stopping at the first failure: test, verify, test-db (skipped loudly if
 # Postgres on :5433 is down), web-test, web-build, evaluate-check, docs-check, tracker-lint,
 # test-security, test-tools, a reduced load check, risk-check, review-packs-check, test-review-packs and web-e2e. Each stage is its own target. Run every stage
 # even after a failure (for reporting): `make check CHECK_KEEP_GOING=1`.

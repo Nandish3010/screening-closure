@@ -52,8 +52,9 @@ replay of the event log produces:
                          messages counts all outbound messages (A5 of the engineering review), checked at append time
                          against the policy's limit (`outreach_policy.auto_message_guard`), never during replay
     outreach_holds       the open outreach holds, `opt_out` and/or `wrong_number` (`review_requested` from the triage
-                         actor): while any is open the automation sends nothing. `opt_out` is cleared by a human
-                         `consent_updated`, `wrong_number` by a human `contact_updated {contact_valid: true}`
+                         actor): while any is open nothing is sent, automatic or an approved draft (ADR-038).
+                         `opt_out` is cleared by a human `consent_updated`, `wrong_number` by a human
+                         `contact_updated {contact_valid: true}`
     contact_confirmed_at `at` of the latest `contact_updated`: a person confirmed the contact details, which overrides a
                          `contact_valid: false` on the case_created payload
     incomplete_procedure {evidence_ref, flagged_at} from a `review_requested` with reason `incomplete_procedure` (A24,
@@ -310,7 +311,7 @@ class CaseModel:
     closure_proposal: dict | None = None  # A21: {evidence_ref, proposed_at, event_id} until close or reopen
     auto_message_times: tuple = ()  # A21: `at` of each message_sent by system:automation (the accounting)
     outbound_message_times: tuple = ()  # `at` of every message_sent, automatic or approved draft (the weekly cap counts all)
-    outreach_holds: tuple = ()  # open holds (`opt_out`, `wrong_number`): the automation sends nothing while any is open
+    outreach_holds: tuple = ()  # open holds (`opt_out`, `wrong_number`): nothing is sent while any is open (ADR-038)
     contact_confirmed_at: datetime | None = None  # a person confirmed the contact details (`contact_updated`)
     # A triage flag (D13): the latest `review_requested` from system:triage. Kept apart from review_reason (consent) so
     # neither can overwrite or hide the other. Nothing here changes the state; a person sees it on the worklist.
@@ -943,6 +944,13 @@ def _precheck(model: CaseModel, event: Event, pathway: Pathway) -> None:
             raise InvalidTransition(
                 f"message_sent: draft {draft_id!r} is not an approved, unsent draft of this case"
             )
+        # An open opt-out or wrong-number hold stops an approved draft too (A27, ADR-038): the approval may predate the
+        # patient's "stop" or the wrong-number reply, and the outbox may send it later (a retry, the next drain). A
+        # person clears the hold first (`consent_updated` / `contact_updated`), as for an automatic message.
+        if model.outreach_holds:
+            raise InvalidTransition(
+                f"message_sent: outreach is held for this case ({', '.join(model.outreach_holds)}): "
+                "a person must clear the flag before an approved draft goes out")
         consented, why = channel_consent(model, event.payload.get("channel"))
         if not consented:
             raise InvalidTransition(f"message_sent: {why}")
