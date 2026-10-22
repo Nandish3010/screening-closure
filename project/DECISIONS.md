@@ -683,3 +683,21 @@ The ledger is the agency's memory (`api/app/agency/ledger.py`, migration `014_ag
 - A case's genesis does not record that it came from HL7; the derived case id, the ACK and the log kind are the traces. An origin field would need a payload-schema change.
 - Contact verdicts are lost on a restart and do not reach existing cases. Finding a patient's case reads the open cases of the relevant states, per message.
 - Nothing here is certified, connected or tested with Malaffi; outbound messages, certificates, VPN and the interface watchdog are not built (docs/governance/hl7-adapter.md lists what Malaffi must confirm and what is not built).
+
+## Open questions for the owner (M6 week 1)
+
+These are not decisions. Each is a question the M6 work surfaced that needs an owner's answer before anyone changes code. Nothing here has been changed. When one is answered, record the answer as a new ADR that names this entry.
+
+**(a) Should the signer = actor check move from the route into the closure guard?** It partly reverses ADR-021. That ADR put the check in the API on purpose (third decision bullet: "the check lives in the API, not in the pure state machine"), because the simulator's synthetic closes carry readable ids. The model checker (ADR-038, docs/governance/verification.md) showed the cost: the machine accepts a close signed by someone else, and only the route refuses it, so an in-process caller that skips the route is not stopped. Only the signer rule would move; resolving the evidence reference against HAPI would stay in the API, as ADR-021 and ADR-036 have it.
+- Option 1: move the signer check into the closure guard, accept `Practitioner/<user_id>` as well as the actor string, and give the simulator's closes a matching signer. This supersedes the signer part of ADR-021 and makes the invariant hold for every caller.
+- Option 2: leave it in the route and record in the hazard log that the guarantee holds only for callers that go through the route.
+
+**(b) A referral requested before a consent withdrawal can still be accepted after it.** The consent freeze stops outreach, drafting and contact (ADR-038, invariant I4), but accepting an already requested referral is a provider's act and the freeze does not list it. Whether a withdrawal should stop it is a clinical and consent question, not a technical one, and the model checker only reports the behaviour. For the clinical lead.
+- Option 1: leave it. The acceptance contacts no one, and the patient's withdrawal is about contact.
+- Option 2: refuse `handoff_accepted` while consent is withdrawn, so the referral waits for a person to review the case.
+- Option 3: allow it and raise `review_requested` so a person sees the case.
+
+**(c) The pathway has no cancel or rebook appointment event, so an HL7 SIU S15 (cancel) is ACKed AE.** The adapter's row may hold only `book_confirmatory` (ADR-039), so a cancellation, and a new time for an already booked case, come back to the sender as an error with a fixed reason. A real exchange can send both, and the sender will see AE for a normal event. Adding an event changes the state machine, which belongs to its owners.
+- Option 1: add `cancel_confirmatory` and `rebook_confirmatory` events (and a state or flag for "booking cancelled"), then add them to the `system:hl7` row.
+- Option 2: keep AE and rely on a person who reads the sender's log to correct the case.
+- Option 3: map S15 to `review_requested` so a person is told, without a new pathway event.
