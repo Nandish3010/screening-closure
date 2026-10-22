@@ -258,3 +258,166 @@ value:
     unit: odds ratio, advanced stage, over 12 months vs 8-30 days
     status: assumed
     basis: Corley 2017 (docs/evidence.md section 9); the higher illustrative case.
+
+# ---------------------------------------------------------------------------------------------------------
+# Commercial-case extension (ticket E17, docs/commercial/business-case.md). These sections are read only when
+# the script runs with --commercial; the default output is unchanged. Statuses are graded honestly: a figure
+# read from a published page for a different setting or year is "sourced-adjacent"; a derived or chosen figure is
+# "assumed". Currency conversions: the dirham peg is a fixed public rate; other conversions use the paper's own rate.
+# ---------------------------------------------------------------------------------------------------------
+
+# Market sizing (docs/commercial/business-case.md section 1).
+market:
+  abu_dhabi_population_40_to_75:
+    value: 1264000
+    unit: residents aged 40 to 75, Abu Dhabi emirate, 2024
+    status: sourced-adjacent
+    basis: "Statistics Centre Abu Dhabi 2024 estimate as reproduced by citypopulation.de (https://www.citypopulation.de/en/uae/abudhabi/admin/): 40-49 811,235; 50-59 333,260; 60-69 101,990; 70-79 29,995. Ages 70 to 74 taken as 60 percent of the 70-79 band (about 18,000; the split is assumed). Sum 1,264,485. Third-party reproduction of the SCAD table; the SCAD portal itself could not be read. To verify at census.scad.gov.ae."
+
+  uae_population_40_to_75:
+    value: 3200000
+    unit: residents aged 40 to 75, UAE, about 2024
+    status: assumed
+    basis: "No UAE age table could be read (the FCSC open-data table returned HTTP 403). Scaled from the Abu Dhabi share of 30.6 percent of residents aged 40 to 75 applied to the 2024 UAE total of about 11.03 million (UN World Population Prospects 2024 via populationpyramid.net), then rounded down because Abu Dhabi skews older than Dubai (Dubai 35 to 59 is 37.1 percent, DHA yearbook 2024). To verify against the FCSC table UAE population estimates by gender, age group and year."
+
+  fit_participation_annual:
+    value: 0.20
+    low: 0.10
+    high: 0.35
+    unit: share of the eligible population with a FIT result in a year
+    status: assumed
+    basis: "Evidence for the level: 23.5 percent of 45,147 eligible Emirati nationals screened by FIT or gFOBT in 2015-2016 (BMC Cancer 2021, PMC8343888); regular screening below 20 percent in the general population (The National, 15 December 2024); 88 percent of over-40s in a UAE survey never screened (Khaleej Times, 9 March 2022, sponsor Sheikh Shakhbout Medical City). The high end is a programme target, not an observation. FIT is only one of three tests offered, so the FIT share is lower than overall screening."
+
+  fit_positivity_market:
+    value: 0.07
+    low: 0.065
+    high: 0.135
+    unit: share of FIT results that are positive
+    status: sourced-adjacent
+    basis: "Gulf programmes: Qatar 6.8 percent (758 of 11,130, PMC9822526); Saudi Ministry of Health pilot 6.6 percent and Al-Kharj 6.3 percent (PMC11161890); Bahrain 716 of 11,000, 6.5 percent (MDPI Gastrointestinal Disorders 2024). Abu Dhabi ambulatory clinics 2015-2016 reported 13.5 percent among screened Emirati nationals (PMC8343888), used as the high end. Central 0.07 matches positivity_rate above."
+
+  saudi_population_45_to_75:
+    value: 5500000
+    unit: residents aged 45 to 75, Saudi Arabia, 2022
+    status: sourced-adjacent
+    basis: "GASTAT census 2022 as reproduced by the Gulf Labour Markets and Migration programme (gulfmigration.grc.net, series total population by age group adjusted by census 2022): 45-64 4,856,423 and 65 and over 861,849. Ages 65 to 75 taken as 80 percent of the 65-plus band (assumed). Sum 5,545,902, rounded."
+
+  qatar_population_total:
+    value: 3143491
+    unit: residents, Qatar, 2024
+    status: sourced-adjacent
+    basis: "Gulf Labour Markets and Migration programme series, from the Planning and Statistics Authority (gulfmigration.grc.net, Qatar estimates of total population 1986-2024). No age table was read."
+
+  kuwait_population_total:
+    value: 4987826
+    unit: residents, Kuwait, December 2024
+    status: sourced-adjacent
+    basis: "PACI figure as reported by Gulf News (4,987,826; 1,567,983 Kuwaiti). The Gulf Labour Markets series gives 4,881,254; the gap is unexplained. No age table was read."
+
+  oman_population_total:
+    value: 5268072
+    unit: residents, Oman, December 2024
+    status: sourced-adjacent
+    basis: "NCSI year-end 2024 figure as reported by Muscat Daily (5,268,072; Omani 56.68 percent). No age table was read."
+
+  bahrain_population_total:
+    value: 1594654
+    unit: residents, Bahrain, December 2024
+    status: sourced-adjacent
+    basis: "Information and eGovernment Authority series via gulfmigration.grc.net (1,594,654; 742,234 Bahraini). No age table was read."
+
+  gcc_eligible_share_of_population:
+    value: 0.15
+    low: 0.12
+    high: 0.18
+    unit: share of total residents in the screening age range, four smaller GCC states
+    status: assumed
+    basis: "Saudi Arabia implies 17 percent (5.5 million of 32.2 million, census 2022). Applied to Qatar, Kuwait, Oman and Bahrain without an age table; Gulf expatriate-heavy populations are younger, so 15 percent is chosen. To verify against each statistics office."
+
+  gcc_fit_participation_annual:
+    value: 0.10
+    low: 0.05
+    high: 0.20
+    unit: share of the eligible population with a FIT result in a year, GCC outside Abu Dhabi
+    status: assumed
+    basis: "Qatar interim programme: 11,130 of about 32,500 invited returned a FIT (34 percent of those invited, PMC9822526); Saudi Qassim study: annual adherence 43.1 percent among those who accepted (PMC12868166); Kuwait practice below 30 percent (PMC11175023). Whole-population annual participation is chosen well below these invited-group figures."
+
+# Outcome value (section 4): treatment cost avoided when a positive FIT reaches colonoscopy before harm accrues.
+outcome:
+  advanced_stage_risk_on_time_derived:
+    value: 0.0098
+    unit: risk, advanced stage, colonoscopy at 8-30 days
+    status: sourced-adjacent
+    basis: "Derived, not read from the paper: a JAMA commentary on Corley 2017 reports 19 advanced-stage cases per 1,000 at 10 months (OR 1.97) and 31 per 1,000 beyond 12 months (OR 3.22); inverting each odds ratio gives a reference risk of 0.0097 and 0.0098. Replaces the 0.008 placeholder for this section only. To verify against Corley 2017 table 3."
+
+  usd_aed_peg:
+    value: 3.6725
+    unit: AED per USD
+    status: sourced
+    basis: "Fixed dirham peg of 3.6725 per US dollar. Central Bank of the UAE publication URL to verify."
+
+  crc_cost_stage1_usd_saudi:
+    value: 45317
+    unit: USD per patient, first year after diagnosis, stage I, 2020 prices
+    status: sourced-adjacent
+    basis: "Saudi single-centre study, 326 patients, Riyadh, payer view, direct medical costs, enrolled 2017-2020 (PMC10630777, 2023). Stage I mean USD 45,317. Stage II and III values are only in a figure. One hospital, one country, first year only."
+
+  crc_cost_stage4_usd_saudi:
+    value: 71374
+    unit: USD per patient, first year after diagnosis, stage IV, 2020 prices
+    status: sourced-adjacent
+    basis: "Same study (PMC10630777): the text says stage IV 'exceeded' USD 71,374, so this is a lower bound."
+
+  crc_cost_stage1_myr_malaysia:
+    value: 13485.9
+    unit: MYR per patient, first year, stage I, 2012 prices
+    status: sourced-adjacent
+    basis: "Azzani et al., Malays J Med Sci 2019;26(1):73-86 (PMC6419868), table 10, provider cost at one tertiary hospital. The abstract says 13,672; table 10 says 13,485.9."
+
+  crc_cost_stage4_myr_malaysia:
+    value: 27972
+    unit: MYR per patient, first year, stage IV, 2012 prices
+    status: sourced-adjacent
+    basis: "Same study (PMC6419868), table 10."
+
+  myr_per_usd_malaysia:
+    value: 3.10
+    unit: MYR per USD
+    status: sourced-adjacent
+    basis: "Rate used by the Malaysian paper (2012). No inflation adjustment is applied to the Malaysian figures, which understates them in current prices."
+
+  stage_pair_factor:
+    value: 0.6
+    low: 0.4
+    high: 1.0
+    unit: share of the stage I to stage IV cost gap that applies to one case moved from advanced stage (III or IV) to early stage (I or II)
+    status: assumed
+    basis: "Corley's advanced stage is III and IV; the cost studies give I and IV. A shift from the advanced group to the early group is smaller than a shift from IV to I. Chosen at 0.6 with 0.4 to 1.0 as the sensitivity. Not sourced."
+
+# Capacity value (section 5).
+capacity:
+  productive_hours_per_fte_year:
+    value: 1700
+    low: 1500
+    high: 1900
+    unit: productive hours per full-time coordinator per year
+    status: assumed
+    basis: "About 220 working days of 8 hours less meetings, training and leave. Employer-specific; to verify with the provider's HR."
+
+# Price benchmarks (section 3).
+benchmark:
+  navigation_cost_per_person_navigated_usd:
+    value: 150
+    low: 66
+    high: 338
+    unit: USD per person navigated (median and interquartile range), 2022 prices
+    status: sourced-adjacent
+    basis: "Community Guide systematic economic review of patient navigation for colorectal cancer screening: median intervention cost per person USD 150 (interquartile 66 to 338), 16 studies, 2022 dollars (https://thecommunityguide.org/findings/cancer-screening-patient-navigation-services-to-increase-colorectal-cancer-screening.html). Mostly US human-navigator programmes for screening, not positive-FIT follow-up."
+
+  navigation_cost_per_additional_person_usd:
+    value: 663
+    low: 202
+    high: 1711
+    unit: USD per additional person screened (median and interquartile range), 2022 prices
+    status: sourced-adjacent
+    basis: "Same review: median USD 663 per additional person screened (interquartile 202 to 1,711), 17 studies, 2022 dollars."
