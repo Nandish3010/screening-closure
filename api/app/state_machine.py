@@ -133,6 +133,9 @@ TRIAGE_ACTOR = "system:triage"  # D13: classifies inbound patient replies (rows 
 # causes on a case is written by the actor that owns that path (the drafting model's `message_drafted` through the
 # drafts route), under that actor's own rules. Its row below is empty, and `step` refuses the prefix by name first.
 AGENCY_ACTOR_PREFIX = "system:agency:"
+# A28, ADR-039: the HL7 v2 adapter. It books the confirmatory appointment from an SIU message and nothing else as an event
+# (a case is created by the intake path, colonoscopy evidence is recorded in HAPI and appends no event).
+HL7_ACTOR = "system:hl7"
 # A21, ADR-032: the automation actor. It does the steps that are not a human decision and nothing else. It can never
 # close a case (the closure guard refuses every automated actor) and none of the human-only events.
 AUTOMATION_ACTOR = "system:automation"
@@ -163,6 +166,8 @@ HUMAN_EVENTS = frozenset({
 #   system:triage       reply triage (D13): the reply and its classification, a review flag for the triage reasons, and a
 #                       traceable relay of the patient's own callback request (the one human-only event a service row
 #                       holds; `_precheck` limits it to the triage callback reasons with a source_event_id)
+#   system:hl7          the HL7 v2 adapter (A28, ADR-039): `book_confirmatory` with the appointment fields from an SIU
+#                       message, and nothing else; no human-only event, no closure, no state change but the booking
 #   system:agency:      the agency's agents (A22, ADR-033): EMPTY, and it stays empty. Drafting goes through the drafts
 #                       route as `model:<provider>`; every other agent only writes its own ledger rows
 # Humans are listed once per role. Nothing but this table decides which actor may emit which event type.
@@ -179,6 +184,7 @@ ACTOR_EVENTS: dict[str, frozenset[str]] = {
     MODEL_ACTOR_PREFIX: frozenset({"message_drafted"}),
     TRIAGE_ACTOR: frozenset({"reply_received", "reply_classified", "review_requested", "callback_requested"}),
     AGENCY_ACTOR_PREFIX: frozenset(),
+    HL7_ACTOR: frozenset({"book_confirmatory"}),
 }
 # Human-only events (pathway `human_only_events`) a service row may hold, and the rule that makes each one traceable to a
 # person: only triage's relay of the patient's own callback request (D13).

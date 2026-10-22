@@ -16,7 +16,7 @@ from __future__ import annotations
 
 from fastapi import Depends, HTTPException, Request
 
-from app.auth import AGENCY_ROLE, AUTOMATION_ROLE, SCHEDULER_ROLE, USER_ROLES, WATCHDOG_ROLE, Identity, optional_identity
+from app.auth import AGENCY_ROLE, AUTOMATION_ROLE, HL7_ROLE, SCHEDULER_ROLE, USER_ROLES, WATCHDOG_ROLE, Identity, optional_identity
 
 PUBLIC = "public"
 ANY_IDENTITY = "any_identity"  # any valid user or service token
@@ -29,6 +29,7 @@ SCHEDULER = frozenset({SCHEDULER_ROLE})
 WATCHDOG = frozenset({WATCHDOG_ROLE})
 AUTOMATION = frozenset({AUTOMATION_ROLE})  # A21, ADR-032: system:automation
 AGENCY = frozenset({AGENCY_ROLE})
+HL7 = frozenset({HL7_ROLE})  # A28, ADR-039: system:hl7
 
 # (method, path template) -> PUBLIC | ANY_IDENTITY | frozenset of roles
 ROUTE_POLICY: dict[tuple[str, str], object] = {
@@ -37,6 +38,10 @@ ROUTE_POLICY: dict[tuple[str, str], object] = {
     ("GET", "/me"): ANY_IDENTITY,
     ("GET", "/pathways"): ANY_IDENTITY,
     ("POST", "/cases"): frozenset({LAB, COORD, SUPER}),
+    # The HL7 v2 adapter's transport (A28, ADR-039): the message in the body, the ACK in the answer. The `system:hl7` service
+    # token reaches this route and nothing else: it is not in any other row of this table or of EVENT_POLICY. What the
+    # handler may then DO is HL7_ACTIONS below (and, for the one event it writes, its row of the state machine's actor table).
+    ("POST", "/hl7"): HL7,
     # Staff see every case; a patient sees only their own (filtered in the handler, A9).
     ("GET", "/cases"): ALL_USERS,
     # The audit view of a case: same access as the case itself (patients: their own only).
@@ -179,6 +184,24 @@ def authorize_agency(identity: Identity, causes: str) -> None:
         raise HTTPException(403, f"{identity.actor!r} is not an agency agent: denied")
     if causes in AGENCY_NEVER or causes not in allowed:
         raise HTTPException(403, f"{identity.actor!r} may not cause {causes!r}")
+
+
+# ---- the HL7 v2 adapter (A28, ADR-039): what `system:hl7` may cause, default deny ---------------------------------------
+# The adapter acts in process, through paths that already exist, never through POST /cases/{id}/events (it has no entry
+# there). Three actions, and a message type that would need a fourth is refused (ACK AE):
+#   create_case                 a positive FIT result creates a case by the POST /cases path (genesis by `system:intake`)
+#   book_confirmatory           the confirmatory appointment of a case, as the event `book_confirmatory` by `system:hl7`
+#   record_confirmatory_result  the colonoscopy report is recorded as FHIR evidence by the POST /cases/{id}/confirmatory-result
+#                               path (appends no event; closing still needs a clinician, a signature and complete evidence)
+# It can never close, sign, reassign, accept ownership, change consent or confirm contact details.
+HL7_ACTIONS = frozenset({"create_case", "book_confirmatory", "record_confirmatory_result"})
+HL7_EVENTS = frozenset({"book_confirmatory"})  # equals ACTOR_EVENTS["system:hl7"] (tests/test_actor_table.py)
+
+
+def authorize_hl7(action: str) -> None:
+    """May the HL7 adapter do `action`? Raises 403 for anything not in HL7_ACTIONS."""
+    if action not in HL7_ACTIONS:
+        raise HTTPException(403, f"{HL7_ROLE!r} may not {action!r}: denied")
 
 
 # Roles that act only on their own case.
