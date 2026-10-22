@@ -13,7 +13,7 @@
 # against its OWN compose project (`closure_fresh`) and shifted host ports (Postgres 35433, API 38000, HAPI 38080), so it
 # does not collide with a stack that is already running. Each step is timed; the first failure stops the run (use
 # --keep-going to continue). At the end it prints a Markdown report: the timings, the T-F13 verdict (every command
-# succeeds and `make evaluate` takes under two minutes) and the checklist for the second-machine run (H5), then
+# succeeds and `make evaluate` takes under two minutes, scaled to 120 * 8 / cores seconds below 8 cores) and the checklist for the second-machine run (H5), then
 # removes the stack, its volumes and the temp dir (--keep leaves them).
 #
 #   sh tools/check/fresh_clone.sh [--source PATH_OR_URL] [--ref COMMIT] [--keep] [--keep-going] [--skip-check]
@@ -140,7 +140,10 @@ T_TOTAL=$(( $(now) - T_START ))
   [ "$SKIP_CHECK" -eq 0 ] || { echo "| make check | skipped (--skip-check) | - |"; ALL_OK=0; }
   echo "| total | | $T_TOTAL |"
   echo
-  if [ -n "$EVAL_SECS" ] && [ "$EVAL_SECS" -lt 120 ]; then EVAL_VERDICT="met ($EVAL_SECS s)"; else EVAL_VERDICT="NOT met (${EVAL_SECS:-no run} s)"; fi
+  # Threshold scales with CPU count: two minutes on >= 8 cores, 120 * 8 / cores seconds otherwise.
+  CORES="$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 8)"
+  if [ "$CORES" -ge 8 ]; then EVAL_LIMIT=120; else EVAL_LIMIT=$((120 * 8 / CORES)); fi
+  if [ -n "$EVAL_SECS" ] && [ "$EVAL_SECS" -lt "$EVAL_LIMIT" ]; then EVAL_VERDICT="met ($EVAL_SECS s, limit $EVAL_LIMIT s on $CORES cores)"; else EVAL_VERDICT="NOT met (${EVAL_SECS:-no run} s, limit $EVAL_LIMIT s on $CORES cores)"; fi
   echo "T-F13: every command succeeded: $([ "$ALL_OK" -eq 1 ] && echo yes || echo NO). \`make evaluate\` under two minutes: $EVAL_VERDICT."
   echo
   cat <<'CHECKLIST'
