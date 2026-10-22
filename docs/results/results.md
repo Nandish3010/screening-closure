@@ -1,11 +1,11 @@
 # Evaluation results: baseline vs orchestrated
 
-generated_at: 2026-10-22 17:32:36 UTC (this line is the only non-deterministic content; `results.json` is byte-for-byte reproducible)
+generated_at: 2026-10-22 18:14:10 UTC (this line is the only non-deterministic content; `results.json` is byte-for-byte reproducible)
 
 All data are synthetic. Reproduce every number here with `make evaluate`; verify reproducibility with `make evaluate-check`.
 
 - Seed 20261017, 20 replications x 2,000 cases x 360 days of follow-up, 1000 bootstrap resamples
-- Parameters hash `b90c557e531268dc` (upper range), `d48f20dc2668a41f` (literature anchored), pathway `colorectal_fit` v0.2 hash `234c780c96de6fb1`, git commit `1f0b7ceff748`
+- Parameters hash `b90c557e531268dc` (upper range), `d48f20dc2668a41f` (literature anchored), pathway `colorectal_fit` v0.2 hash `234c780c96de6fb1`, git commit `626c62db5955`
 - Intervals are percentile bootstrap 95% CIs over replications; differences are orchestrated minus baseline, paired by replication (same patients and random numbers in both arms).
 
 ## Headline: baseline vs the two orchestrated scenarios
