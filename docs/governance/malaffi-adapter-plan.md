@@ -28,7 +28,7 @@ Malaffi / provider EMR  --HL7 v2-->  [hie adapter]  --FHIR R4 + events-->  API  
                                             +------ outbox (status out) -------+
 ```
 
-- **Placement.** A separate service outside the engine core. The engine and state machine know nothing about HL7. The adapter only calls the same API routes any client uses, under an automated actor (`system:hie-adapter`), which by the existing rule cannot emit `close` or sign anything.
+- **Placement.** A separate service outside the engine core. The engine and state machine know nothing about HL7. The adapter only calls the same API routes any client uses, under an automated actor (planned as `system:hie-adapter`; the built actor is `system:hl7`, ADR-039), which by the existing rule cannot emit `close` or sign anything.
 - **Inbound.** Parse the message, validate against the operator's specification, map to an internal FHIR resource, then call the API to create a case or attach evidence. The message control id is the idempotency key (`event_id`), so redelivery changes nothing.
 - **Outbound.** Read the event stream through an outbox; a delivery failure is retried and then dead-lettered and shown to a person. Nothing is dropped silently.
 - **Failure visibility.** The watchdog treats the interface like the scheduler: if no message has arrived for a configured period, or the dead-letter queue is non-empty, it raises a flag. Silence on the interface is the dangerous failure.
