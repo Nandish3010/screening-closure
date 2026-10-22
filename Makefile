@@ -1,4 +1,4 @@
-.PHONY: verify agency-run test-demo test-e2e-live demo-scenario demo-stage demo-snapshot demo-restore demo-reset demo-kill-scheduler check docs-check tracker-lint test-security test-tools test-load load-check up down logs test test-db test-db-create test-db-reset test-chaos synthea demo-seed demo-seed-clean evaluate simulate evaluate-check sensitivity sensitivity-check reset web-install web-dev web-build web-test web-e2e test-e2e review-packs review-packs-check test-review-packs test-phi-logs rbac-matrix test-offline fresh-clone risk-report risk-check calibrate-fetch calibrate-fit calibrate-check effort effort-check video video-check video-deps
+.PHONY: agency-run test-demo test-e2e-live demo-scenario demo-stage demo-snapshot demo-restore demo-reset demo-kill-scheduler check docs-check tracker-lint test-security test-tools test-load load-check up down logs test test-db test-db-create test-db-reset test-chaos synthea demo-seed demo-seed-clean evaluate evaluate-capacity evaluate-capacity-check simulate evaluate-check sensitivity sensitivity-check reset web-install web-dev web-build web-test web-e2e test-e2e review-packs review-packs-check test-review-packs test-phi-logs rbac-matrix test-offline fresh-clone risk-report risk-check calibrate-fetch calibrate-fit calibrate-check effort effort-check video video-check video-deps verify
 
 up:
 	docker compose up -d --build
@@ -98,6 +98,30 @@ PARAM_FLAGS := $(foreach f,$(PARAMS),--params $(f))
 # Change a parameter in simulator/params.yaml (or layer a file: make evaluate PARAMS="simulator/params.yaml my.yaml").
 evaluate:
 	$(SIMENV) $(PY) -m simulator.sim.cli evaluate --reps $(REPS) --cases $(CASES) --days $(EVAL_DAYS) --seed $(SEED) $(PARAM_FLAGS) --out-dir docs/results
+
+# Finite capacity (ticket B19, milestone M6): the same replications and both scenarios, with a shared colonoscopy booking calendar and a daily
+# staff-minutes budget for escalations (simulator/params.capacity.yaml layered on the scenario stacks); a base-capacity headline, a capacity
+# sensitivity (70/85/100/115% of the slots), a staffing sensitivity (50 to 300%) and a slots-only / staff-only decomposition. Writes
+# docs/results/capacity.json and splices the "Under finite capacity" section into docs/results/results.md in place.
+# It is a SEPARATE target because it is about 30 simulations per replication: about 3 minutes with 8 workers (REPS=20), against about
+# 10 seconds for `make evaluate`, which would be pushed past a minute, and past 10 minutes for `evaluate-check`, which reruns single-process.
+# `make evaluate` copies the section from the committed capacity.json, so results.md is complete after either target. Run
+# `make evaluate-capacity` after any change to the engine, the parameters or the seed, then `make evaluate` (or just keep results.md as
+# `make evaluate-capacity` leaves it).
+CAP_PARAMS ?= simulator/params.capacity.yaml
+CAP_JOBS ?= 8
+evaluate-capacity:
+	$(SIMENV) $(PY) -m simulator.sim.cli evaluate-capacity --reps $(REPS) --cases $(CASES) --days $(EVAL_DAYS) --seed $(SEED) $(PARAM_FLAGS) --capacity-params $(CAP_PARAMS) --jobs $(CAP_JOBS) --out-dir docs/results
+
+# Runs evaluate-capacity twice into temp dirs on a reduced size (CAP_CHECK_REPS replications, the second time single-process) and requires identical capacity.json.
+CAP_CHECK_REPS ?= 2
+evaluate-capacity-check:
+	@set -e; a=$$(mktemp -d); b=$$(mktemp -d); \
+	$(SIMENV) $(PY) -m simulator.sim.cli evaluate-capacity --reps $(CAP_CHECK_REPS) --cases $(CASES) --days $(EVAL_DAYS) --seed $(SEED) $(PARAM_FLAGS) --capacity-params $(CAP_PARAMS) --jobs $(CAP_JOBS) --out-dir $$a >/dev/null; \
+	$(SIMENV) $(PY) -m simulator.sim.cli evaluate-capacity --reps $(CAP_CHECK_REPS) --cases $(CASES) --days $(EVAL_DAYS) --seed $(SEED) $(PARAM_FLAGS) --capacity-params $(CAP_PARAMS) --jobs 1 --out-dir $$b >/dev/null; \
+	if diff -q $$a/capacity.json $$b/capacity.json >/dev/null; then \
+		echo "evaluate-capacity-check: PASS, capacity.json identical across runs and process counts (sha256 $$(shasum -a 256 $$a/capacity.json | cut -c1-16))"; rm -rf $$a $$b; \
+	else echo "evaluate-capacity-check: FAIL, capacity.json differs ($$a vs $$b)"; diff $$a/capacity.json $$b/capacity.json | head -20; exit 1; fi
 
 # One arm, one run, with the closure-rule and consent invariants checked on every case log.
 simulate:

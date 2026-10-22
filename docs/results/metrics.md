@@ -10,9 +10,11 @@ that does not exist, or if the worked example in section 9 stops matching the co
 > workload and no queueing, and a supervisor or coordinator acts on an escalation with a fixed probability however many others are open.
 > The orchestrated arm raises **about 232 escalations per 100 cases** in the upper-range scenario (see `escalations_per_100_cases`
 > below), roughly two for every case. Every completion and time gain reported is therefore a gain **before capacity constraints**, and
-> would shrink if the people who must work those escalations, or the colonoscopy slots they ask for, are not there. A capacity model
-> (staff time per escalation, slot supply, queueing) is future work. Until it exists, use `escalations_per_100_cases` to size a pilot,
-> not the completion gains.
+> would shrink if the people who must work those escalations, or the colonoscopy slots they ask for, are not there. The finite-capacity
+> model of ticket B19 (section 12 below; the section "Under finite capacity" of `results.md`) charges for both a shared booking calendar
+> and a daily staff-minutes budget and shows how much of each gain survives; everything else in this file is still the unconstrained
+> model. What remains future work: per-endoscopist rosters, priority classes, overbooking, and a measured rather than assumed supply of
+> slots and staff. Use `escalations_per_100_cases` to size a pilot, and the capacity section for what the gains become when capacity binds.
 
 ## 1. Conventions that apply to every metric
 
@@ -445,3 +447,54 @@ end, orchestrated-only actions at their high end). `effort.scenarios.<scenario>.
 
 Patients' time, the endoscopy unit's procedure and reception work, training, management and IT time, queueing and shift patterns (no capacity model, see the capacity caveat), and the work
 that today's process never does (listed in `effort.model.never_done_in_baseline`).
+
+## 12. Finite capacity (ticket B19)
+
+These metrics exist only in `capacity.json` (written by `make evaluate-capacity`), never in `results.json`, so the unconstrained results keep
+their bytes. They are computed per run from the shared booking calendar and the escalation queue (`simulator/sim/capacity.py`) and aggregated
+like every other metric (mean over replications, percentile bootstrap 95% CI, differences paired by replication). Every outcome metric of
+section 1 to 10 (completion, time to colonoscopy, open share and so on) keeps its definition; under capacity it is simply computed on the
+event logs of a run in which appointments take the earliest free slot and escalations wait for a person.
+
+**The window.** Utilisation metrics are measured over the working days from day 30 to day 150 of the run (`capacity.utilisation_window_start_day`,
+`capacity.utilisation_window_end_day`): results arrive over the first 30 days and the median booking lead is 24 days, so before day 30 hardly
+anyone can hold a booking, and by day 150 about 90% of the baseline arm's appointments have happened.
+
+**Slots.** Supply is `sessions_per_week_per_1000_cases` x `slots_per_session` x `scale` x cases / 1000 slots a week, spread evenly over the working days
+and `providers` providers (integer per provider per day; the running total is floored). A booking takes the earliest working day on or after the lead-time
+date with a free slot at the case's provider and keeps the time of day. A no-show keeps its slot; with probability `dna_backfill_prob` the unit refills it
+from outside the cohort. A patient who withdraws consent and declines care before the day cancels and frees the slot.
+
+| Key | Definition |
+|---|---|
+| `slots_offered` | Slots the calendar offers on the working days of the window, summed over providers. |
+| `slots_booked` | Bookings that hold a slot on a day of the window (attended, no-show, refilled no-show or still to come), not cancellations. |
+| `slot_utilisation` | `slots_booked` / `slots_offered`. At most 1 because a day never holds more bookings than slots. |
+| `slot_used_share` | (attended + refilled no-shows) on a day of the window / `slots_offered`: the slots that did something. At most `slot_utilisation`. |
+| `bookings_per_100_cases` | Appointments booked (and not cancelled) over the whole follow-up, per 100 cases. Rebookings count. |
+| `cancellations_per_100_cases` | Slots given back by a patient who declined care before the day, per 100 cases. |
+| `dna_backfilled_share` | Refilled no-shows / all no-shows (a share of the draw `dna_backfill_prob`). |
+| `request_to_slot_wait_median`, `request_to_slot_wait_p90` | Days from the moment a booking is requested (the specialist accepts the referral, or a rebooking is made) to the appointment day, over all bookings. Includes the lead time the unconstrained model already had. |
+| `capacity_delay_mean`, `capacity_delay_p90` | Days between the lead-time date the unconstrained model would have used and the slot actually given: the wait that exists only because the calendar was full. 0 when the first choice was free. |
+| `booked_late_share` | Share of bookings given a slot one day or more after their first choice. |
+
+**Escalation handling.** The supervisor (rung 1 of the escalation ladder) and the programme coordinator (rung 2, and the watchdog flags) have a daily minutes
+budget, `capacity.staff.*_minutes_per_day_per_1000_cases` x `capacity.staff.scale` x cases / 1000. An escalation (a ladder rung whose action is `escalate`) or a watchdog flag is a
+job of `accept_minutes` plus, when the case is waiting for the patient, `contact_minutes`. Jobs are served first come first served; a job that does not fit in the rest of the
+day's budget starts at the beginning of the next working day. An escalation that waits is raised, called and acted on when it is served; if the case has moved on by then it is
+stale: nothing happens, but the minutes were spent. Owner reminders (rung 0) are not charged.
+
+| Key | Definition |
+|---|---|
+| `esc_jobs_per_100_cases` | Escalations and watchdog flags that needed a person, per 100 cases (rungs that coalesced into another are not counted twice). |
+| `esc_delay_mean`, `esc_delay_p90` | Days from the moment a job is requested to the moment it is served, over jobs served before the end of follow-up. 0 when the person was free. |
+| `esc_delayed_share` | Share of those jobs that waited half a day or more. |
+| `esc_stale_share` | Share of those jobs whose case had moved on (a new step or abandoned) by the time they were served. |
+| `esc_queue_mean`, `esc_queue_max` | Jobs requested but not yet started at the end of a working day of the window: mean and worst day, both roles together. |
+| `esc_supervisor_utilisation`, `esc_coordinator_utilisation` | Minutes of job time falling on working days of the window / (daily budget x working days of the window), per role. Above 1 is impossible; below the demand when work is still queued at the end of the window. |
+
+**Sensitivity design.** Capacity: `capacity.scale` at 0.70, 0.85, 1.00 and 1.15 with staffing at base. Staffing: `capacity.staff.scale` at 0.50, 0.75, 1.00, 1.50, 2.00 and 3.00 with slots at
+base (orchestrated arm only; the baseline raises no escalations, a test pins that its event log does not depend on staffing). Decomposition: the orchestrated arm with only the slots limited
+or only the staff limited (the other limit multiplied by 1,000). All sensitivity differences are orchestrated minus baseline under the same slot supply.
+
+**Not in the count.** Priority classes, overbooking, per-endoscopist rosters, and any demand on the calendar other than this cohort and the refill of no-shows.

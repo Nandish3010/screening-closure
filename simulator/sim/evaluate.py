@@ -276,5 +276,7 @@ def write_results(result: dict, out_dir: Path, ctx: Context | None = None) -> tu
     jpath = out_dir / "results.json"
     jpath.write_text(json.dumps(result, sort_keys=True, indent=2, ensure_ascii=False) + "\n")
     mpath = out_dir / "results.md"
-    mpath.write_text(render_markdown(result))
+    from .capacity_report import load_capacity, section_block
+
+    mpath.write_text(render_markdown(result, section_block(load_capacity(out_dir))))
     return jpath, mpath

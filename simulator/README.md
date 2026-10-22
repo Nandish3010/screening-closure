@@ -26,6 +26,8 @@ make sensitivity               # one-at-a-time parameter sweep (about 1.5 minute
 make sensitivity-check         # rerun the sweep and fail unless the three committed files are byte-identical
 make effort                    # print the "Human effort" section from the committed results.json (the numbers come from make evaluate)
 make effort-check              # fail if results.json predates simulator/sim/effort.py or evidence.md section 11 lacks a source; runs the effort tests
+make evaluate-capacity         # finite colonoscopy slots and costed escalations (ticket B19): about 3 minutes -> docs/results/capacity.json + the "Under finite capacity" section of results.md
+make evaluate-capacity-check   # rerun on 2 replications, multi-process and single-process, and diff capacity.json
 
 python -m simulator.sim.cli run --arm orchestrated --cases 2000 --days 120 --seed 20261017
 python -m simulator.sim.cli evaluate --reps 20
@@ -121,9 +123,10 @@ no-shows, reminders, drop-out, referral rejection with reasons, consent withdraw
 claims, scheduler timer faults and the watchdog backstop, reopening after closure.
 
 Not modelled (deliberately, or not yet):
-- Shared capacity: endoscopy slots, staff workload and queueing. Cases are independent, so the orchestrated arm's extra
-  escalations cost nothing here: about 205 escalations per 100 cases in the upper-range scenario, so every gain reported is before capacity
-  constraints. The volume is reported (`escalations_per_100_cases`) so the pilot can size it; a capacity model is future work.
+- Shared capacity in the headline results: `make evaluate` runs cases independently, so the orchestrated arm's extra
+  escalations cost nothing there (about 232 escalations per 100 cases in the upper-range scenario) and every gain it reports is before capacity
+  constraints. The finite-capacity layer (below, ticket B19) is a separate run and a separate section of `results.md`. Still not modelled even
+  there: per-endoscopist rosters, priority classes (urgent and symptomatic patients), overbooking, any demand on the calendar other than the cohort.
 - Clinical content: findings, pathology, bowel-prep failure, surveillance. Closure means "documented outcome with evidence and a human sign-off".
 - Informed refusal as a closure outcome: the pathway YAML has no such exit, so refusers stay open and are flagged `lost_contact`.
 - The AI drafting layer. Every message is `draft_source: template`; the abstention rate is a placeholder hook.
@@ -224,6 +227,29 @@ every rule-made range. The keys the conservative overlay overrides carry their o
 literature-anchored value. Ranges are not in the parameter hash and the simulator never reads them. To change one, edit the leaf and rerun
 `make sensitivity`; a test fails while the committed `sensitivity.json` is out of date with the parameters and ranges.
 
+## Finite capacity (ticket B19, `make evaluate-capacity`)
+
+`simulator/params.capacity.yaml` is an overlay that only adds `capacity.*` keys; `params.yaml` is untouched, so the parameter hash, the sensitivity sweep and the
+risk-score training do not change, and with the overlay absent the engine is the unconstrained model bit for bit (`ModelParams.capacity` is `None`).
+With it layered on (`--params simulator/params.yaml --params simulator/params.capacity.yaml`, or any scenario stack), every case of a run shares two finite resources
+(`simulator/sim/capacity.py`):
+
+- **A booking calendar per colonoscopy provider** (`SlotBook`): slots per working day (sessions per week per 1,000 cases x 6 colonoscopies a session, scaled to the cohort, over
+  three providers, integer per day). A booking takes the earliest free slot on or after the lead-time date it would have had, keeping the time of day; a no-show keeps its slot
+  and the unit refills it with probability `capacity.dna_backfill_prob` (a pre-drawn latent per appointment, `Latents.u_backfill`, so common random numbers hold); a patient who
+  withdraws consent and declines care before the day cancels and frees the slot. A day never holds more bookings than slots, so utilisation cannot exceed 1.
+- **A daily minutes budget for the supervisor and the programme coordinator** (`StaffQueue`): an escalation (a ladder rung whose action is `escalate`) or a watchdog flag is a job of
+  `accept_minutes` plus `contact_minutes` when the case is waiting for the patient (the same figures as `effort.py`). Jobs are served first come first served; a job that does not
+  fit in the day's budget waits for the next working day, and the escalation is raised, called and acted on when it is served (an `escalated` event then carries `waited_days`).
+  If the case moved on while it waited, the job is stale: no action, but the minutes are spent.
+
+`make evaluate-capacity` runs the same replications and both scenarios unconstrained, at base capacity, with the slot supply at 70/85/100/115% of base, with the escalation budgets at
+50 to 300% of base, and with only one of the two limits binding; it writes `docs/results/capacity.json` (sorted keys, no timestamps, identical across process counts) and splices the
+"Under finite capacity" section into `docs/results/results.md` in place. `make evaluate` copies that section from the committed `capacity.json`; it does not rerun it
+(about 30 simulations per replication, about 3 minutes, against 10 seconds). Metric definitions: `docs/results/metrics.md` section 12; sources: `docs/evidence.md` section 12.
+The base supply is a **calibrated scale device**, not a measurement: slots are sized so that the baseline arm fills about 85% of them between day 30 and day 150, staff so that the
+literature-anchored workload is about 85% of the budget over the same days.
+
 ## Layout
 
 ```
@@ -240,6 +266,10 @@ simulator/params.conservative.yaml  overlay defining the literature-anchored sce
 simulator/sim/evaluate.py   replications, scenarios, bootstrap, results.json
 simulator/sim/report.py     results.md
 simulator/sim/sensitivity.py        one-at-a-time sweep -> sensitivity.json (rules for default ranges: sensitivity_rules.py; md and svg: sensitivity_report.py)
+simulator/sim/capacity.py   finite capacity: SlotBook (booking calendar per provider) and StaffQueue (daily escalation-minutes budget), B19
+simulator/sim/capacity_eval.py   make evaluate-capacity -> capacity.json (capacity and staffing sensitivity, decomposition)
+simulator/sim/capacity_report.py the "Under finite capacity" section of results.md
+simulator/params.capacity.yaml   the capacity overlay (adds capacity.* keys only)
 simulator/sim/runner.py     loading and running helpers
 simulator/sim/cli.py        python -m simulator.sim.cli run | evaluate | sensitivity
 simulator/tests/test_sim_*  determinism, calendar, closure-rule property test, metric arithmetic, params validation, evaluate reproducibility, scenarios and programme reach

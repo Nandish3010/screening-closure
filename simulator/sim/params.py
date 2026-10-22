@@ -239,6 +239,43 @@ def _fgroup(params: Params, prefix: str) -> dict[str, float]:
     return {k: float(v) for k, v in params.group(prefix).items()}
 
 
+def _capacity(p: "Params") -> "CapacityParams | None":
+    if "capacity.enabled" not in p or not p.get("capacity.enabled"):
+        return None
+    return CapacityParams(
+        providers=p.int("capacity.providers"),
+        slots_per_session=p.float("capacity.slots_per_session"),
+        sessions_per_week_per_1000_cases=p.float("capacity.sessions_per_week_per_1000_cases"),
+        scale=p.float("capacity.scale"),
+        dna_backfill_prob=p.float("capacity.dna_backfill_prob"),
+        utilisation_window_start_day=p.int("capacity.utilisation_window_start_day"),
+        utilisation_window_end_day=p.int("capacity.utilisation_window_end_day"),
+        supervisor_minutes_per_day_per_1000_cases=p.float("capacity.staff.supervisor_minutes_per_day_per_1000_cases"),
+        coordinator_minutes_per_day_per_1000_cases=p.float("capacity.staff.coordinator_minutes_per_day_per_1000_cases"),
+        staffing_scale=p.float("capacity.staff.scale"),
+        accept_minutes=p.float("capacity.staff.accept_minutes"),
+        contact_minutes=p.float("capacity.staff.contact_minutes"),
+    )
+
+
+@dataclass(frozen=True)
+class CapacityParams:
+    """Finite colonoscopy slots and escalation-handling minutes (ticket B19, M6). Present only when a parameter file
+    that defines `capacity.enabled: true` (simulator/params.capacity.yaml) is layered over params.yaml."""
+    providers: int
+    slots_per_session: float
+    sessions_per_week_per_1000_cases: float
+    scale: float
+    dna_backfill_prob: float
+    utilisation_window_start_day: int
+    utilisation_window_end_day: int
+    supervisor_minutes_per_day_per_1000_cases: float
+    coordinator_minutes_per_day_per_1000_cases: float
+    staffing_scale: float
+    accept_minutes: float
+    contact_minutes: float
+
+
 @dataclass(frozen=True)
 class ModelParams:
     # simulation / calendar
@@ -341,6 +378,8 @@ class ModelParams:
     ltfu_idle_days: float
     escalation_acted_on_window_working_days: int
     min_group_size: int
+    # finite capacity (B19); None = the unconstrained model every earlier result used
+    capacity: "CapacityParams | None" = None
 
     @classmethod
     def from_params(cls, p: Params) -> "ModelParams":
@@ -444,6 +483,7 @@ class ModelParams:
             ltfu_idle_days=p.float("metrics.ltfu_idle_days"),
             escalation_acted_on_window_working_days=p.int("metrics.escalation_precision_window_working_days"),
             min_group_size=p.int("metrics.min_group_size"),
+            capacity=_capacity(p),
         )
         mp.validate()
         return mp
@@ -471,5 +511,12 @@ class ModelParams:
             raise ParamError("appointment.max_attempts is capped at 4 (size of the pre-drawn latent pool)")
         if self.handoff_max_attempts > 5:
             raise ParamError("handoff.max_attempts is capped at 5 (size of the pre-drawn latent pool)")
+        cp = self.capacity
+        if cp is not None:
+            prob("capacity.dna_backfill_prob", cp.dna_backfill_prob)
+            if cp.providers < 1 or cp.slots_per_session <= 0 or cp.sessions_per_week_per_1000_cases <= 0 or cp.scale <= 0:
+                raise ParamError("capacity: providers >= 1 and slots_per_session, sessions_per_week_per_1000_cases and scale must be positive")
+            if cp.staffing_scale <= 0 or not 0 <= cp.utilisation_window_start_day < cp.utilisation_window_end_day:
+                raise ParamError("capacity: staff.scale must be positive and 0 <= utilisation_window_start_day < utilisation_window_end_day")
         if self.handoff_no_response_prob + self.referral_rejection_rate > 1:
             raise ParamError("handoff.no_response_prob + referral_rejection_rate must be <= 1")
