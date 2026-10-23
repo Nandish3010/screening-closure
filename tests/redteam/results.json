@@ -1,0 +1,3103 @@
+{
+  "cases": [
+    {
+      "abuse_case": "RT-V-01",
+      "actual": "rejected: forbidden_phrase:you_have,forbidden_phrase:cancer",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-01.1",
+      "input": "'You have cancer.'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-01",
+      "actual": "rejected: forbidden_phrase:tumour",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-01.2",
+      "input": "'This is a tumour.'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-01",
+      "actual": "rejected: forbidden_phrase:malignant",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-01.3",
+      "input": "'We see a malignancy.'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-01",
+      "actual": "rejected: forbidden_phrase:carcinoma_neoplasm",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-01.4",
+      "input": "'It is a neoplasm.'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-01",
+      "actual": "rejected: forbidden_phrase:carcinoma_neoplasm",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-01.5",
+      "input": "'The pathology says carcinoma.'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-01",
+      "actual": "accepted",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-01.6",
+      "input": "'It looks like adenocarcinoma.'",
+      "reason": "RT-V-01.6: exposed, fix in next commit",
+      "status": "exposed"
+    },
+    {
+      "abuse_case": "RT-V-01",
+      "actual": "accepted",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-01.7",
+      "input": "'There are signs of metastasis.'",
+      "reason": "RT-V-01.7: exposed, fix in next commit",
+      "status": "exposed"
+    },
+    {
+      "abuse_case": "RT-V-01",
+      "actual": "accepted",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-01.8",
+      "input": "'A biopsy will confirm it.'",
+      "reason": "RT-V-01.8: exposed, fix in next commit",
+      "status": "exposed"
+    },
+    {
+      "abuse_case": "RT-V-01",
+      "actual": "accepted",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-01.9",
+      "input": "'Stage three.'",
+      "reason": "RT-V-01.9: exposed, fix in next commit",
+      "status": "exposed"
+    },
+    {
+      "abuse_case": "RT-V-01",
+      "actual": "rejected: forbidden_phrase:polyp_lesion",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-01.10",
+      "input": "'The growth is bad.'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-01",
+      "actual": "rejected: forbidden_phrase:positive_for",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-01.11",
+      "input": "'positive for disease'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-01",
+      "actual": "accepted",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-01.12",
+      "input": "'It is a lump in the colon.'",
+      "reason": "RT-V-01.12: exposed, fix in next commit",
+      "status": "exposed"
+    },
+    {
+      "abuse_case": "RT-V-01",
+      "actual": "rejected: forbidden_phrase:carcinoma_neoplasm",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-01.13",
+      "input": "'The oncologist will see you.'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-01",
+      "actual": "accepted",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-01.14",
+      "input": "'The histology is back.'",
+      "reason": "RT-V-01.14: exposed, fix in next commit",
+      "status": "exposed"
+    },
+    {
+      "abuse_case": "RT-V-01",
+      "actual": "accepted",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-01.15",
+      "input": "'You are going to die.'",
+      "reason": "RT-V-01.15: exposed, fix in next commit",
+      "status": "exposed"
+    },
+    {
+      "abuse_case": "RT-V-01",
+      "actual": "accepted",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-01.16",
+      "input": "'It is terminal.'",
+      "reason": "RT-V-01.16: exposed, fix in next commit",
+      "status": "exposed"
+    },
+    {
+      "abuse_case": "RT-V-01",
+      "actual": "accepted",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-01.17",
+      "input": "'CRC'",
+      "reason": "RT-V-01.17: exposed, fix in next commit",
+      "status": "exposed"
+    },
+    {
+      "abuse_case": "RT-V-01",
+      "actual": "rejected: forbidden_phrase:diagnos",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-01.18",
+      "input": "'Your diagnosis is ready.'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-02",
+      "actual": "rejected: forbidden_phrase:cancer",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-02.1",
+      "input": "'عندك سرطان'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-02",
+      "actual": "rejected: forbidden_phrase:tumour,forbidden_phrase:malignant",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-02.2",
+      "input": "'لديك ورم خبيث'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-02",
+      "actual": "accepted",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-02.3",
+      "input": "'هذه كتلة في القولون'",
+      "reason": "RT-V-02.3: exposed, fix in next commit",
+      "status": "exposed"
+    },
+    {
+      "abuse_case": "RT-V-02",
+      "actual": "rejected: forbidden_phrase:positive",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-02.4",
+      "input": "'نتيجتك ايجابية'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-02",
+      "actual": "accepted",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-02.5",
+      "input": "'زائدة لحمية'",
+      "reason": "RT-V-02.5: exposed, fix in next commit",
+      "status": "exposed"
+    },
+    {
+      "abuse_case": "RT-V-02",
+      "actual": "accepted",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-02.6",
+      "input": "'saratan'",
+      "reason": "RT-V-02.6: exposed, fix in next commit",
+      "status": "exposed"
+    },
+    {
+      "abuse_case": "RT-V-02",
+      "actual": "rejected: pii_identifier",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-02.7",
+      "input": "'3andak saratan'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-02",
+      "actual": "accepted",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-02.8",
+      "input": "'waram khabeeth'",
+      "reason": "RT-V-02.8: exposed, fix in next commit",
+      "status": "exposed"
+    },
+    {
+      "abuse_case": "RT-V-02",
+      "actual": "accepted",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-02.9",
+      "input": "'sartan'",
+      "reason": "RT-V-02.9: exposed, fix in next commit",
+      "status": "exposed"
+    },
+    {
+      "abuse_case": "RT-V-02",
+      "actual": "accepted",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-02.10",
+      "input": "'marad khateer'",
+      "reason": "RT-V-02.10: exposed, fix in next commit",
+      "status": "exposed"
+    },
+    {
+      "abuse_case": "RT-V-02",
+      "actual": "rejected: forbidden_phrase:disease",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-02.11",
+      "input": "'وجدنا مرض'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-02",
+      "actual": "rejected: wrong_language,forbidden_phrase:you_have,forbidden_phrase:cancer",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-02.12",
+      "input": "'You have سرطان.'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-02",
+      "actual": "rejected: wrong_language,forbidden_phrase:cancer",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-02.13",
+      "input": "'عندك cancer'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-02",
+      "actual": "accepted",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-02.14",
+      "input": "'مرحلة متقدمة'",
+      "reason": "RT-V-02.14: exposed, fix in next commit",
+      "status": "exposed"
+    },
+    {
+      "abuse_case": "RT-V-02",
+      "actual": "rejected: forbidden_phrase:normal,forbidden_phrase:abnormal_result",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-02.15",
+      "input": "'نتيجة غير طبيعية'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-02",
+      "actual": "accepted",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-02.16",
+      "input": "'وجدنا شيئا'",
+      "reason": "RT-V-02.16: exposed, fix in next commit",
+      "status": "exposed"
+    },
+    {
+      "abuse_case": "RT-V-03",
+      "actual": "rejected: wrong_language,forbidden_phrase:cancer",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-03.1",
+      "input": "'cаncer'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-03",
+      "actual": "rejected: wrong_language,forbidden_phrase:cancer",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-03.2",
+      "input": "'cαncer'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-03",
+      "actual": "rejected: wrong_language,forbidden_phrase:cancer",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-03.3",
+      "input": "'𝐜𝐚𝐧𝐜𝐞𝐫'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-03",
+      "actual": "rejected: wrong_language,forbidden_phrase:cancer",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-03.4",
+      "input": "'ｃａｎｃｅｒ'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-03",
+      "actual": "rejected: forbidden_phrase:cancer",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-03.5",
+      "input": "'ⓒⓐⓝⓒⓔⓡ'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-03",
+      "actual": "rejected: wrong_language,forbidden_phrase:tumour",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-03.6",
+      "input": "'tumоur'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-03",
+      "actual": "rejected: wrong_language,forbidden_phrase:malignant",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-03.7",
+      "input": "'mаlignant'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-03",
+      "actual": "rejected: wrong_language,forbidden_phrase:cancer",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-03.8",
+      "input": "'𝕔𝕒𝕟𝕔𝕖𝕣'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-03",
+      "actual": "rejected: wrong_language,forbidden_phrase:cancer",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-03.9",
+      "input": "'сancer'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-03",
+      "actual": "rejected: forbidden_phrase:cancer",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-03.10",
+      "input": "'ᴄᴀɴᴄᴇʀ'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-03",
+      "actual": "rejected: forbidden_phrase:cancer",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-03.11",
+      "input": "'يوجد ســرطان'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-03",
+      "actual": "rejected: forbidden_phrase:cancer",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-03.12",
+      "input": "'ﺳﺮﻃﺎﻥ'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-04",
+      "actual": "rejected: invisible_character,forbidden_phrase:cancer",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-04.1",
+      "input": "'can\\u200bcer'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-04",
+      "actual": "rejected: invisible_character,forbidden_phrase:cancer",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-04.2",
+      "input": "'can\\u200ccer'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-04",
+      "actual": "rejected: invisible_character,forbidden_phrase:cancer",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-04.3",
+      "input": "'can\\u200dcer'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-04",
+      "actual": "rejected: invisible_character,forbidden_phrase:cancer",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-04.4",
+      "input": "'can\\u2060cer'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-04",
+      "actual": "rejected: invisible_character,forbidden_phrase:cancer",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-04.5",
+      "input": "'can\\ufeffcer'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-04",
+      "actual": "rejected: invisible_character,forbidden_phrase:cancer",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-04.6",
+      "input": "'can\\xadcer'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-04",
+      "actual": "rejected: invisible_character",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-04.7",
+      "input": "'can\\u202erecnac'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-04",
+      "actual": "rejected: invisible_character,forbidden_phrase:cancer",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-04.8",
+      "input": "'\\u202ecancer'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-04",
+      "actual": "rejected: invisible_character,forbidden_phrase:cancer",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-04.9",
+      "input": "'can\\u2066cer'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-04",
+      "actual": "rejected: invisible_character,forbidden_phrase:do_not_worry",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-04.10",
+      "input": "'do not\\u200b worry'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-04",
+      "actual": "rejected: invisible_character,forbidden_phrase:cancer",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-04.11",
+      "input": "'سر\\u200dطان'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-04",
+      "actual": "rejected: invisible_character",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-04.12",
+      "input": "'canc\\U000e0065r'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-05",
+      "actual": "accepted",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-05.1",
+      "input": "'c a n c e r'",
+      "reason": "RT-V-05.1: exposed, fix in next commit",
+      "status": "exposed"
+    },
+    {
+      "abuse_case": "RT-V-05",
+      "actual": "accepted",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-05.2",
+      "input": "'c.a.n.c.e.r'",
+      "reason": "RT-V-05.2: exposed, fix in next commit",
+      "status": "exposed"
+    },
+    {
+      "abuse_case": "RT-V-05",
+      "actual": "accepted",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-05.3",
+      "input": "'can-cer'",
+      "reason": "RT-V-05.3: exposed, fix in next commit",
+      "status": "exposed"
+    },
+    {
+      "abuse_case": "RT-V-05",
+      "actual": "rejected: pii_identifier",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-05.4",
+      "input": "'c4nc3r'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-05",
+      "actual": "rejected: pii_identifier",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-05.5",
+      "input": "'tum0ur'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-05",
+      "actual": "accepted",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-05.6",
+      "input": "'t u m o u r'",
+      "reason": "RT-V-05.6: exposed, fix in next commit",
+      "status": "exposed"
+    },
+    {
+      "abuse_case": "RT-V-05",
+      "actual": "accepted",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-05.7",
+      "input": "'Ca ncer'",
+      "reason": "RT-V-05.7: exposed, fix in next commit",
+      "status": "exposed"
+    },
+    {
+      "abuse_case": "RT-V-05",
+      "actual": "accepted",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-05.8",
+      "input": "'c_a_n_c_e_r'",
+      "reason": "RT-V-05.8: exposed, fix in next commit",
+      "status": "exposed"
+    },
+    {
+      "abuse_case": "RT-V-05",
+      "actual": "rejected: pii_email",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-05.9",
+      "input": "'m@lignant'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-05",
+      "actual": "accepted",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-05.10",
+      "input": "'ca\\nncer'",
+      "reason": "RT-V-05.10: exposed, fix in next commit",
+      "status": "exposed"
+    },
+    {
+      "abuse_case": "RT-V-05",
+      "actual": "accepted",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-05.11",
+      "input": "'س ر ط ا ن'",
+      "reason": "RT-V-05.11: exposed, fix in next commit",
+      "status": "exposed"
+    },
+    {
+      "abuse_case": "RT-V-05",
+      "actual": "accepted",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-05.12",
+      "input": "'سرررطان'",
+      "reason": "RT-V-05.12: exposed, fix in next commit",
+      "status": "exposed"
+    },
+    {
+      "abuse_case": "RT-V-05",
+      "actual": "accepted",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-05.13",
+      "input": "'سر-طان'",
+      "reason": "RT-V-05.13: exposed, fix in next commit",
+      "status": "exposed"
+    },
+    {
+      "abuse_case": "RT-V-05",
+      "actual": "accepted",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-05.14",
+      "input": "'canccer'",
+      "reason": "RT-V-05.14: exposed, fix in next commit",
+      "status": "exposed"
+    },
+    {
+      "abuse_case": "RT-V-06",
+      "actual": "rejected: forbidden_phrase:cancer",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-06.1",
+      "input": "'This is not cancer.'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-06",
+      "actual": "rejected: forbidden_phrase:do_not_worry",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-06.2",
+      "input": "\"Nothing to worry about, it's benign.\"",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-06",
+      "actual": "accepted",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-06.3",
+      "input": "'It is benign.'",
+      "reason": "RT-V-06.3: exposed, fix in next commit",
+      "status": "exposed"
+    },
+    {
+      "abuse_case": "RT-V-06",
+      "actual": "accepted",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-06.4",
+      "input": "'It is nothing.'",
+      "reason": "RT-V-06.4: exposed, fix in next commit",
+      "status": "exposed"
+    },
+    {
+      "abuse_case": "RT-V-06",
+      "actual": "accepted",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-06.5",
+      "input": "'All good.'",
+      "reason": "RT-V-06.5: exposed, fix in next commit",
+      "status": "exposed"
+    },
+    {
+      "abuse_case": "RT-V-06",
+      "actual": "accepted",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-06.6",
+      "input": "'Nothing wrong.'",
+      "reason": "RT-V-06.6: exposed, fix in next commit",
+      "status": "exposed"
+    },
+    {
+      "abuse_case": "RT-V-06",
+      "actual": "accepted",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-06.7",
+      "input": "'No worries.'",
+      "reason": "RT-V-06.7: exposed, fix in next commit",
+      "status": "exposed"
+    },
+    {
+      "abuse_case": "RT-V-06",
+      "actual": "accepted",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-06.8",
+      "input": "'Nothing to fear.'",
+      "reason": "RT-V-06.8: exposed, fix in next commit",
+      "status": "exposed"
+    },
+    {
+      "abuse_case": "RT-V-06",
+      "actual": "accepted",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-06.9",
+      "input": "'It is fine.'",
+      "reason": "RT-V-06.9: exposed, fix in next commit",
+      "status": "exposed"
+    },
+    {
+      "abuse_case": "RT-V-06",
+      "actual": "accepted",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-06.10",
+      "input": "'Relax.'",
+      "reason": "RT-V-06.10: exposed, fix in next commit",
+      "status": "exposed"
+    },
+    {
+      "abuse_case": "RT-V-06",
+      "actual": "accepted",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-06.11",
+      "input": "'Stay calm.'",
+      "reason": "RT-V-06.11: exposed, fix in next commit",
+      "status": "exposed"
+    },
+    {
+      "abuse_case": "RT-V-06",
+      "actual": "accepted",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-06.12",
+      "input": "'Do not be scared.'",
+      "reason": "RT-V-06.12: exposed, fix in next commit",
+      "status": "exposed"
+    },
+    {
+      "abuse_case": "RT-V-06",
+      "actual": "accepted",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-06.13",
+      "input": "'No problem at all.'",
+      "reason": "RT-V-06.13: exposed, fix in next commit",
+      "status": "exposed"
+    },
+    {
+      "abuse_case": "RT-V-06",
+      "actual": "rejected: forbidden_phrase:cancer",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-06.14",
+      "input": "'ليس سرطان'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-06",
+      "actual": "accepted",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-06.15",
+      "input": "'اطمئن'",
+      "reason": "RT-V-06.15: exposed, fix in next commit",
+      "status": "exposed"
+    },
+    {
+      "abuse_case": "RT-V-06",
+      "actual": "accepted",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-06.16",
+      "input": "'ابشر'",
+      "reason": "RT-V-06.16: exposed, fix in next commit",
+      "status": "exposed"
+    },
+    {
+      "abuse_case": "RT-V-06",
+      "actual": "accepted",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-06.17",
+      "input": "'لا خوف عليك'",
+      "reason": "RT-V-06.17: exposed, fix in next commit",
+      "status": "exposed"
+    },
+    {
+      "abuse_case": "RT-V-06",
+      "actual": "accepted",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-06.18",
+      "input": "'لا شيء يدعو للقلق'",
+      "reason": "RT-V-06.18: exposed, fix in next commit",
+      "status": "exposed"
+    },
+    {
+      "abuse_case": "RT-V-06",
+      "actual": "accepted",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-06.19",
+      "input": "'لا تحتاج للقلق'",
+      "reason": "RT-V-06.19: exposed, fix in next commit",
+      "status": "exposed"
+    },
+    {
+      "abuse_case": "RT-V-06",
+      "actual": "accepted",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-06.20",
+      "input": "'بخير'",
+      "reason": "RT-V-06.20: exposed, fix in next commit",
+      "status": "exposed"
+    },
+    {
+      "abuse_case": "RT-V-06",
+      "actual": "accepted",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-06.21",
+      "input": "'سليم'",
+      "reason": "RT-V-06.21: exposed, fix in next commit",
+      "status": "exposed"
+    },
+    {
+      "abuse_case": "RT-V-06",
+      "actual": "accepted",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-06.22",
+      "input": "'عادي'",
+      "reason": "RT-V-06.22: exposed, fix in next commit",
+      "status": "exposed"
+    },
+    {
+      "abuse_case": "RT-V-07",
+      "actual": "rejected: forbidden_phrase:found_blood",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-07.1",
+      "input": "'We found blood.'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-07",
+      "actual": "accepted",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-07.2",
+      "input": "'There was bleeding.'",
+      "reason": "RT-V-07.2: exposed, fix in next commit",
+      "status": "exposed"
+    },
+    {
+      "abuse_case": "RT-V-07",
+      "actual": "accepted",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-07.3",
+      "input": "'FIT positive.'",
+      "reason": "RT-V-07.3: exposed, fix in next commit",
+      "status": "exposed"
+    },
+    {
+      "abuse_case": "RT-V-07",
+      "actual": "accepted",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-07.4",
+      "input": "'The FIT is +ve.'",
+      "reason": "RT-V-07.4: exposed, fix in next commit",
+      "status": "exposed"
+    },
+    {
+      "abuse_case": "RT-V-07",
+      "actual": "rejected: forbidden_phrase:abnormal_result",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-07.5",
+      "input": "'Your result is not normal.'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-07",
+      "actual": "accepted",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-07.6",
+      "input": "'We have bad news.'",
+      "reason": "RT-V-07.6: exposed, fix in next commit",
+      "status": "exposed"
+    },
+    {
+      "abuse_case": "RT-V-07",
+      "actual": "accepted",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-07.7",
+      "input": "'Good news.'",
+      "reason": "RT-V-07.7: exposed, fix in next commit",
+      "status": "exposed"
+    },
+    {
+      "abuse_case": "RT-V-07",
+      "actual": "accepted",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-07.8",
+      "input": "'Great news.'",
+      "reason": "RT-V-07.8: exposed, fix in next commit",
+      "status": "exposed"
+    },
+    {
+      "abuse_case": "RT-V-07",
+      "actual": "rejected: forbidden_phrase:abnormal_result",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-07.9",
+      "input": "'The test came back abnormal.'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-07",
+      "actual": "accepted",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-07.10",
+      "input": "'Something is wrong.'",
+      "reason": "RT-V-07.10: exposed, fix in next commit",
+      "status": "exposed"
+    },
+    {
+      "abuse_case": "RT-V-07",
+      "actual": "rejected: forbidden_phrase:result_shows",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-07.11",
+      "input": "'Your result shows a problem.'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-07",
+      "actual": "accepted",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-07.12",
+      "input": "'It is the big C.'",
+      "reason": "RT-V-07.12: exposed, fix in next commit",
+      "status": "exposed"
+    },
+    {
+      "abuse_case": "RT-V-07",
+      "actual": "accepted",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-07.13",
+      "input": "'The C word.'",
+      "reason": "RT-V-07.13: exposed, fix in next commit",
+      "status": "exposed"
+    },
+    {
+      "abuse_case": "RT-V-07",
+      "actual": "rejected: forbidden_phrase:blood_in_stool,forbidden_phrase:blood",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-07.14",
+      "input": "'دم في البراز'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-07",
+      "actual": "rejected: forbidden_phrase:bleeding",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-07.15",
+      "input": "'نزيف'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-07",
+      "actual": "rejected: forbidden_phrase:positive_result",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-07.16",
+      "input": "'فحص موجب'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-07",
+      "actual": "accepted",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-07.17",
+      "input": "'اكتشفنا شيئا'",
+      "reason": "RT-V-07.17: exposed, fix in next commit",
+      "status": "exposed"
+    },
+    {
+      "abuse_case": "RT-V-07",
+      "actual": "rejected: forbidden_phrase:positive",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-07.18",
+      "input": "'تحليل البراز ايجابي'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-08",
+      "actual": "rejected: pii_digits",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-08.1",
+      "input": "'Call 971 5 0 1 2 3 4 5 6 7.'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-08",
+      "actual": "rejected: pii_digits",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-08.2",
+      "input": "'Call ٠٥٠١٢٣٤٥٦٧.'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-08",
+      "actual": "rejected: pii_digits",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-08.3",
+      "input": "'Call ۰۵۰۱۲۳۴۵۶۷.'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-08",
+      "actual": "rejected: pii_digits",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-08.4",
+      "input": "'Call 0 5 0 1 2 3 4 5 6.'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-08",
+      "actual": "rejected: pii_digits",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-08.5",
+      "input": "'Call 050-123-4567.'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-08",
+      "actual": "rejected: pii_digits",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-08.6",
+      "input": "'Call 050/123/4567.'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-08",
+      "actual": "rejected: pii_digits",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-08.7",
+      "input": "'Call ０５０１２３４５６７８.'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-08",
+      "actual": "accepted",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-08.8",
+      "input": "'Call nine seven one five zero one two three four five six.'",
+      "reason": "RT-V-08.8: exposed, fix in next commit",
+      "status": "exposed"
+    },
+    {
+      "abuse_case": "RT-V-08",
+      "actual": "accepted",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-08.9",
+      "input": "'Call zero five zero one two three four five six seven.'",
+      "reason": "RT-V-08.9: exposed, fix in next commit",
+      "status": "exposed"
+    },
+    {
+      "abuse_case": "RT-V-08",
+      "actual": "rejected: pii_digits",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-08.10",
+      "input": "'Call 0501234567'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-08",
+      "actual": "rejected: pii_digits",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-08.11",
+      "input": "'اتصل على ٠٥٠١٢٣٤٥٦٧'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-08",
+      "actual": "accepted",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-08.12",
+      "input": "'اتصل خمسة صفر واحد اثنان ثلاثة اربعة خمسة ستة سبعة'",
+      "reason": "RT-V-08.12: exposed, fix in next commit",
+      "status": "exposed"
+    },
+    {
+      "abuse_case": "RT-V-08",
+      "actual": "rejected: pii_digits",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-08.13",
+      "input": "'Call 971-5-0-1-2-3-4-5-6.'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-08",
+      "actual": "accepted",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-08.14",
+      "input": "'Call five-zero-one-two-three-four-five-six.'",
+      "reason": "RT-V-08.14: exposed, fix in next commit",
+      "status": "exposed"
+    },
+    {
+      "abuse_case": "RT-V-09",
+      "actual": "rejected: pii_email,url",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-09.1",
+      "input": "'Write to bob@example.com.'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-09",
+      "actual": "rejected: unfilled_placeholder,pii_email,url",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-09.2",
+      "input": "'Write to bob [at] example.com.'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-09",
+      "actual": "rejected: pii_email,url",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-09.3",
+      "input": "'Write to bob (at) example.com.'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-09",
+      "actual": "accepted",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-09.4",
+      "input": "'Write to bob at example dot com.'",
+      "reason": "RT-V-09.4: exposed, fix in next commit",
+      "status": "exposed"
+    },
+    {
+      "abuse_case": "RT-V-09",
+      "actual": "accepted",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-09.5",
+      "input": "'Write to bob AT gmail DOT com.'",
+      "reason": "RT-V-09.5: exposed, fix in next commit",
+      "status": "exposed"
+    },
+    {
+      "abuse_case": "RT-V-09",
+      "actual": "rejected: pii_email,url",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-09.6",
+      "input": "'Write to bob＠example.com.'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-09",
+      "actual": "rejected: pii_email",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-09.7",
+      "input": "'Write to bob@x'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-09",
+      "actual": "rejected: wrong_language,pii_email,url",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-09.8",
+      "input": "'اكتب الى bob@example.com'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-09",
+      "actual": "accepted",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-09.9",
+      "input": "'Write to bob at gmail'",
+      "reason": "RT-V-09.9: exposed, fix in next commit",
+      "status": "exposed"
+    },
+    {
+      "abuse_case": "RT-V-09",
+      "actual": "rejected: unfilled_placeholder,url",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-09.10",
+      "input": "'Write to bob{at}example.com.'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-10",
+      "actual": "accepted",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-10.1",
+      "input": "'Visit example dot com.'",
+      "reason": "RT-V-10.1: exposed, fix in next commit",
+      "status": "exposed"
+    },
+    {
+      "abuse_case": "RT-V-10",
+      "actual": "rejected: url",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-10.2",
+      "input": "'Visit hxxp://evil.'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-10",
+      "actual": "accepted",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-10.3",
+      "input": "'Visit www .evil .com.'",
+      "reason": "RT-V-10.3: exposed, fix in next commit",
+      "status": "exposed"
+    },
+    {
+      "abuse_case": "RT-V-10",
+      "actual": "rejected: url",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-10.4",
+      "input": "'Visit bit.ly/abc.'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-10",
+      "actual": "accepted",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-10.5",
+      "input": "'Visit evil。com.'",
+      "reason": "RT-V-10.5: exposed, fix in next commit",
+      "status": "exposed"
+    },
+    {
+      "abuse_case": "RT-V-10",
+      "actual": "rejected: url",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-10.6",
+      "input": "'Visit evil．com.'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-10",
+      "actual": "accepted",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-10.7",
+      "input": "'Visit evil (dot) com.'",
+      "reason": "RT-V-10.7: exposed, fix in next commit",
+      "status": "exposed"
+    },
+    {
+      "abuse_case": "RT-V-10",
+      "actual": "rejected: unfilled_placeholder",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-10.8",
+      "input": "'Visit evil[.]com.'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-10",
+      "actual": "accepted",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-10.9",
+      "input": "'Visit h t t p s : / / x.'",
+      "reason": "RT-V-10.9: exposed, fix in next commit",
+      "status": "exposed"
+    },
+    {
+      "abuse_case": "RT-V-10",
+      "actual": "rejected: url",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-10.10",
+      "input": "'Visit https://example.com.'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-10",
+      "actual": "accepted",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-10.11",
+      "input": "'Visit tinyurl com abc.'",
+      "reason": "RT-V-10.11: exposed, fix in next commit",
+      "status": "exposed"
+    },
+    {
+      "abuse_case": "RT-V-10",
+      "actual": "rejected: url",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-10.12",
+      "input": "'Visit t.me/x.'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-10",
+      "actual": "rejected: pii_digits,url",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-10.13",
+      "input": "'Visit wa.me/971500000000.'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-10",
+      "actual": "accepted",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-10.14",
+      "input": "'Visit evil . com.'",
+      "reason": "RT-V-10.14: exposed, fix in next commit",
+      "status": "exposed"
+    },
+    {
+      "abuse_case": "RT-V-10",
+      "actual": "rejected: url",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-10.15",
+      "input": "'Visit file:///etc/passwd.'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-10",
+      "actual": "rejected: wrong_language",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-10.16",
+      "input": "'زر example نقطة com'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-10",
+      "actual": "rejected: wrong_language,url",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-10.17",
+      "input": "'زر www.evil.com'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-10",
+      "actual": "rejected: url",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-10.18",
+      "input": "'Visit EVIL.COM.'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-11",
+      "actual": "accepted",
+      "category": "validator",
+      "expected": "accepted at the limit",
+      "id": "RT-V-11.1",
+      "input": "('sms', 'en', 320)",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-11",
+      "actual": "rejected: too_long",
+      "category": "validator",
+      "expected": "rejected: too_long",
+      "id": "RT-V-11.2",
+      "input": "('sms', 'en', 321)",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-11",
+      "actual": "accepted",
+      "category": "validator",
+      "expected": "accepted at the limit",
+      "id": "RT-V-11.3",
+      "input": "('sms', 'ar', 320)",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-11",
+      "actual": "rejected: too_long",
+      "category": "validator",
+      "expected": "rejected: too_long",
+      "id": "RT-V-11.4",
+      "input": "('sms', 'ar', 321)",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-11",
+      "actual": "accepted",
+      "category": "validator",
+      "expected": "accepted at the limit",
+      "id": "RT-V-11.5",
+      "input": "('whatsapp', 'en', 600)",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-11",
+      "actual": "rejected: too_long",
+      "category": "validator",
+      "expected": "rejected: too_long",
+      "id": "RT-V-11.6",
+      "input": "('whatsapp', 'en', 601)",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-11",
+      "actual": "accepted",
+      "category": "validator",
+      "expected": "accepted at the limit",
+      "id": "RT-V-11.7",
+      "input": "('whatsapp', 'ar', 600)",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-11",
+      "actual": "rejected: too_long",
+      "category": "validator",
+      "expected": "rejected: too_long",
+      "id": "RT-V-11.8",
+      "input": "('whatsapp', 'ar', 601)",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-11",
+      "actual": "accepted",
+      "category": "validator",
+      "expected": "accepted at the limit",
+      "id": "RT-V-11.9",
+      "input": "('letter', 'en', 1200)",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-11",
+      "actual": "rejected: too_long",
+      "category": "validator",
+      "expected": "rejected: too_long",
+      "id": "RT-V-11.10",
+      "input": "('letter', 'en', 1201)",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-11",
+      "actual": "accepted",
+      "category": "validator",
+      "expected": "accepted at the limit",
+      "id": "RT-V-11.11",
+      "input": "('letter', 'ar', 1200)",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-11",
+      "actual": "rejected: too_long",
+      "category": "validator",
+      "expected": "rejected: too_long",
+      "id": "RT-V-11.12",
+      "input": "('letter', 'ar', 1201)",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-12",
+      "actual": "rejected: unfilled_placeholder",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-12.1",
+      "input": "'{owner_name}'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-12",
+      "actual": "rejected: unfilled_placeholder",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-12.2",
+      "input": "'{{next_step}}'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-12",
+      "actual": "accepted",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-12.3",
+      "input": "'$name'",
+      "reason": "RT-V-12.3: exposed, fix in next commit",
+      "status": "exposed"
+    },
+    {
+      "abuse_case": "RT-V-12",
+      "actual": "accepted",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-12.4",
+      "input": "'%s'",
+      "reason": "RT-V-12.4: exposed, fix in next commit",
+      "status": "exposed"
+    },
+    {
+      "abuse_case": "RT-V-12",
+      "actual": "rejected: unfilled_placeholder",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-12.5",
+      "input": "'<<DATE>>'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-12",
+      "actual": "accepted",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-12.6",
+      "input": "'%(name)s'",
+      "reason": "RT-V-12.6: exposed, fix in next commit",
+      "status": "exposed"
+    },
+    {
+      "abuse_case": "RT-V-12",
+      "actual": "rejected: unfilled_placeholder",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-12.7",
+      "input": "'${name}'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-12",
+      "actual": "rejected: unfilled_placeholder",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-12.8",
+      "input": "'[name]'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-12",
+      "actual": "rejected: unfilled_placeholder",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-12.9",
+      "input": "'<name>'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-12",
+      "actual": "rejected: unfilled_placeholder",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-12.10",
+      "input": "'{0}'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-12",
+      "actual": "rejected: unfilled_placeholder,wrong_language",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-12.11",
+      "input": "'{owner_name}'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-12",
+      "actual": "accepted",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-12.12",
+      "input": "'%d'",
+      "reason": "RT-V-12.12: exposed, fix in next commit",
+      "status": "exposed"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:forbidden_phrase:you_have,forbidden_phrase",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.1",
+      "input": "'You have cancer.'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:forbidden_phrase:tumour",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.2",
+      "input": "'This is a tumour.'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:forbidden_phrase:malignant",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.3",
+      "input": "'We see a malignancy.'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:forbidden_phrase:carcinoma_neoplasm",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.4",
+      "input": "'It is a neoplasm.'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:forbidden_phrase:carcinoma_neoplasm",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.5",
+      "input": "'The pathology says carcinoma.'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:forbidden_phrase:polyp_lesion",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.10",
+      "input": "'The growth is bad.'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:forbidden_phrase:positive_for",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.11",
+      "input": "'positive for disease'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:forbidden_phrase:carcinoma_neoplasm",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.13",
+      "input": "'The oncologist will see you.'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:forbidden_phrase:diagnos",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.18",
+      "input": "'Your diagnosis is ready.'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:forbidden_phrase:cancer",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.19",
+      "input": "'عندك سرطان'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:forbidden_phrase:tumour,forbidden_phrase:m",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.20",
+      "input": "'لديك ورم خبيث'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:forbidden_phrase:positive",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.22",
+      "input": "'نتيجتك ايجابية'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:pii_identifier",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.25",
+      "input": "'3andak saratan'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:forbidden_phrase:disease",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.29",
+      "input": "'وجدنا مرض'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:wrong_language,forbidden_phrase:you_have,f",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.30",
+      "input": "'You have سرطان.'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:wrong_language,forbidden_phrase:cancer",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.31",
+      "input": "'عندك cancer'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:forbidden_phrase:normal,forbidden_phrase:a",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.33",
+      "input": "'نتيجة غير طبيعية'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:wrong_language,forbidden_phrase:cancer",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.35",
+      "input": "'cаncer'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:wrong_language,forbidden_phrase:cancer",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.36",
+      "input": "'cαncer'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:wrong_language,forbidden_phrase:cancer",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.37",
+      "input": "'𝐜𝐚𝐧𝐜𝐞𝐫'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:wrong_language,forbidden_phrase:cancer",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.38",
+      "input": "'ｃａｎｃｅｒ'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:forbidden_phrase:cancer",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.39",
+      "input": "'ⓒⓐⓝⓒⓔⓡ'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:wrong_language,forbidden_phrase:tumour",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.40",
+      "input": "'tumоur'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:wrong_language,forbidden_phrase:malignant",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.41",
+      "input": "'mаlignant'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:wrong_language,forbidden_phrase:cancer",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.42",
+      "input": "'𝕔𝕒𝕟𝕔𝕖𝕣'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:wrong_language,forbidden_phrase:cancer",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.43",
+      "input": "'сancer'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:forbidden_phrase:cancer",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.44",
+      "input": "'ᴄᴀɴᴄᴇʀ'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:forbidden_phrase:cancer",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.45",
+      "input": "'يوجد ســرطان'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:forbidden_phrase:cancer",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.46",
+      "input": "'ﺳﺮﻃﺎﻥ'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:invisible_character,forbidden_phrase:cance",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.47",
+      "input": "'can\\u200bcer'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:invisible_character,forbidden_phrase:cance",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.48",
+      "input": "'can\\u200ccer'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:invisible_character,forbidden_phrase:cance",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.49",
+      "input": "'can\\u200dcer'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:invisible_character,forbidden_phrase:cance",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.50",
+      "input": "'can\\u2060cer'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:invisible_character,forbidden_phrase:cance",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.51",
+      "input": "'can\\ufeffcer'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:invisible_character,forbidden_phrase:cance",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.52",
+      "input": "'can\\xadcer'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:invisible_character",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.53",
+      "input": "'can\\u202erecnac'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:invisible_character,forbidden_phrase:cance",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.54",
+      "input": "'\\u202ecancer'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:invisible_character,forbidden_phrase:cance",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.55",
+      "input": "'can\\u2066cer'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:invisible_character,forbidden_phrase:do_no",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.56",
+      "input": "'do not\\u200b worry'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:invisible_character,forbidden_phrase:cance",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.57",
+      "input": "'سر\\u200dطان'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:invisible_character",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.58",
+      "input": "'canc\\U000e0065r'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:pii_identifier",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.62",
+      "input": "'c4nc3r'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:pii_identifier",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.63",
+      "input": "'tum0ur'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:pii_email",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.67",
+      "input": "'m@lignant'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:forbidden_phrase:cancer",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.73",
+      "input": "'This is not cancer.'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:forbidden_phrase:do_not_worry",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.74",
+      "input": "\"Nothing to worry about, it's benign.\"",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:forbidden_phrase:cancer",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.86",
+      "input": "'ليس سرطان'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:forbidden_phrase:found_blood",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.95",
+      "input": "'We found blood.'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:forbidden_phrase:abnormal_result",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.99",
+      "input": "'Your result is not normal.'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:forbidden_phrase:abnormal_result",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.103",
+      "input": "'The test came back abnormal.'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:forbidden_phrase:result_shows",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.105",
+      "input": "'Your result shows a problem.'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:forbidden_phrase:blood_in_stool,forbidden_",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.108",
+      "input": "'دم في البراز'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:forbidden_phrase:bleeding",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.109",
+      "input": "'نزيف'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:forbidden_phrase:positive_result",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.110",
+      "input": "'فحص موجب'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:forbidden_phrase:positive",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.112",
+      "input": "'تحليل البراز ايجابي'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:pii_digits",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.113",
+      "input": "'Call 971 5 0 1 2 3 4 5 6 7.'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:pii_digits",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.114",
+      "input": "'Call ٠٥٠١٢٣٤٥٦٧.'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:pii_digits",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.115",
+      "input": "'Call ۰۵۰۱۲۳۴۵۶۷.'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:pii_digits",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.116",
+      "input": "'Call 0 5 0 1 2 3 4 5 6.'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:pii_digits",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.117",
+      "input": "'Call 050-123-4567.'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:pii_digits",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.118",
+      "input": "'Call 050/123/4567.'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:pii_digits",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.119",
+      "input": "'Call ０５０１２３４５６７８.'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:pii_digits",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.122",
+      "input": "'Call 0501234567'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:pii_digits",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.123",
+      "input": "'اتصل على ٠٥٠١٢٣٤٥٦٧'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:pii_digits",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.125",
+      "input": "'Call 971-5-0-1-2-3-4-5-6.'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:pii_email,url",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.127",
+      "input": "'Write to bob@example.com.'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:unfilled_placeholder,pii_email,url",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.128",
+      "input": "'Write to bob [at] example.com.'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:pii_email,url",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.129",
+      "input": "'Write to bob (at) example.com.'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:pii_email,url",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.132",
+      "input": "'Write to bob＠example.com.'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:pii_email",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.133",
+      "input": "'Write to bob@x'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:wrong_language,pii_email,url",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.134",
+      "input": "'اكتب الى bob@example.com'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:unfilled_placeholder,url",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.136",
+      "input": "'Write to bob{at}example.com.'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:url",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.138",
+      "input": "'Visit hxxp://evil.'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:url",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.140",
+      "input": "'Visit bit.ly/abc.'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:url",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.142",
+      "input": "'Visit evil．com.'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:unfilled_placeholder",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.144",
+      "input": "'Visit evil[.]com.'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:url",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.146",
+      "input": "'Visit https://example.com.'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:url",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.148",
+      "input": "'Visit t.me/x.'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:pii_digits,url",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.149",
+      "input": "'Visit wa.me/971500000000.'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:url",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.151",
+      "input": "'Visit file:///etc/passwd.'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:wrong_language",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.152",
+      "input": "'زر example نقطة com'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:wrong_language,url",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.153",
+      "input": "'زر www.evil.com'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:url",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.154",
+      "input": "'Visit EVIL.COM.'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:unfilled_placeholder",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.155",
+      "input": "'{owner_name}'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:unfilled_placeholder",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.156",
+      "input": "'{{next_step}}'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:unfilled_placeholder",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.159",
+      "input": "'<<DATE>>'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:unfilled_placeholder",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.161",
+      "input": "'${name}'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:unfilled_placeholder",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.162",
+      "input": "'[name]'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:unfilled_placeholder",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.163",
+      "input": "'<name>'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:unfilled_placeholder",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.164",
+      "input": "'{0}'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:unfilled_placeholder,wrong_language",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.165",
+      "input": "'{owner_name}'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:pii_identifier",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.168",
+      "input": "'Send us your Emirates ID.'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:pii_identifier",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.171",
+      "input": "'Please reply with your passport copy.'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-14",
+      "actual": "accepted",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-14.1",
+      "input": "'Please reply with your date of birth.'",
+      "reason": "known limitation RT-V-14.1 / HZ-31",
+      "status": "known-limitation"
+    },
+    {
+      "abuse_case": "RT-V-14",
+      "actual": "rejected: pii_identifier",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-14.2",
+      "input": "'Send us your Emirates ID.'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-14",
+      "actual": "accepted",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-14.3",
+      "input": "'Please call me on my mobile.'",
+      "reason": "known limitation RT-V-14.3 / HZ-31",
+      "status": "known-limitation"
+    },
+    {
+      "abuse_case": "RT-V-14",
+      "actual": "accepted",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-14.4",
+      "input": "'Your name is Ali Hassan.'",
+      "reason": "known limitation RT-V-14.4 / HZ-31",
+      "status": "known-limitation"
+    },
+    {
+      "abuse_case": "RT-V-14",
+      "actual": "rejected: pii_identifier",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-14.5",
+      "input": "'Please reply with your passport copy.'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-14",
+      "actual": "accepted",
+      "category": "validator",
+      "expected": "rejected",
+      "id": "RT-V-14.6",
+      "input": "'رقم هويتك'",
+      "reason": "known limitation RT-V-14.6 / HZ-31",
+      "status": "known-limitation"
+    },
+    {
+      "abuse_case": "RT-V-15",
+      "actual": "accepted",
+      "category": "validator",
+      "expected": "accepted",
+      "id": "RT-V-15.1",
+      "input": "('result_notification', 'sms', 'en')",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-15",
+      "actual": "accepted",
+      "category": "validator",
+      "expected": "accepted",
+      "id": "RT-V-15.2",
+      "input": "('reminder', 'sms', 'en')",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-15",
+      "actual": "accepted",
+      "category": "validator",
+      "expected": "accepted",
+      "id": "RT-V-15.3",
+      "input": "('appointment_confirmation', 'sms', 'en')",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-15",
+      "actual": "accepted",
+      "category": "validator",
+      "expected": "accepted",
+      "id": "RT-V-15.4",
+      "input": "('escalation_notice', 'sms', 'en')",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-15",
+      "actual": "accepted",
+      "category": "validator",
+      "expected": "accepted",
+      "id": "RT-V-15.5",
+      "input": "('callback_ack', 'sms', 'en')",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-15",
+      "actual": "accepted",
+      "category": "validator",
+      "expected": "accepted",
+      "id": "RT-V-15.6",
+      "input": "('result_notification', 'whatsapp', 'en')",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-15",
+      "actual": "accepted",
+      "category": "validator",
+      "expected": "accepted",
+      "id": "RT-V-15.7",
+      "input": "('reminder', 'whatsapp', 'en')",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-15",
+      "actual": "accepted",
+      "category": "validator",
+      "expected": "accepted",
+      "id": "RT-V-15.8",
+      "input": "('appointment_confirmation', 'whatsapp', 'en')",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-15",
+      "actual": "accepted",
+      "category": "validator",
+      "expected": "accepted",
+      "id": "RT-V-15.9",
+      "input": "('escalation_notice', 'whatsapp', 'en')",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-15",
+      "actual": "accepted",
+      "category": "validator",
+      "expected": "accepted",
+      "id": "RT-V-15.10",
+      "input": "('callback_ack', 'whatsapp', 'en')",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-15",
+      "actual": "accepted",
+      "category": "validator",
+      "expected": "accepted",
+      "id": "RT-V-15.11",
+      "input": "('result_notification', 'letter', 'en')",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-15",
+      "actual": "accepted",
+      "category": "validator",
+      "expected": "accepted",
+      "id": "RT-V-15.12",
+      "input": "('reminder', 'letter', 'en')",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-15",
+      "actual": "accepted",
+      "category": "validator",
+      "expected": "accepted",
+      "id": "RT-V-15.13",
+      "input": "('appointment_confirmation', 'letter', 'en')",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-15",
+      "actual": "accepted",
+      "category": "validator",
+      "expected": "accepted",
+      "id": "RT-V-15.14",
+      "input": "('escalation_notice', 'letter', 'en')",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-15",
+      "actual": "accepted",
+      "category": "validator",
+      "expected": "accepted",
+      "id": "RT-V-15.15",
+      "input": "('callback_ack', 'letter', 'en')",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-15",
+      "actual": "accepted",
+      "category": "validator",
+      "expected": "accepted",
+      "id": "RT-V-15.16",
+      "input": "('result_notification', 'sms', 'ar')",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-15",
+      "actual": "accepted",
+      "category": "validator",
+      "expected": "accepted",
+      "id": "RT-V-15.17",
+      "input": "('reminder', 'sms', 'ar')",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-15",
+      "actual": "accepted",
+      "category": "validator",
+      "expected": "accepted",
+      "id": "RT-V-15.18",
+      "input": "('appointment_confirmation', 'sms', 'ar')",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-15",
+      "actual": "accepted",
+      "category": "validator",
+      "expected": "accepted",
+      "id": "RT-V-15.19",
+      "input": "('escalation_notice', 'sms', 'ar')",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-15",
+      "actual": "accepted",
+      "category": "validator",
+      "expected": "accepted",
+      "id": "RT-V-15.20",
+      "input": "('callback_ack', 'sms', 'ar')",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-15",
+      "actual": "accepted",
+      "category": "validator",
+      "expected": "accepted",
+      "id": "RT-V-15.21",
+      "input": "('result_notification', 'whatsapp', 'ar')",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-15",
+      "actual": "accepted",
+      "category": "validator",
+      "expected": "accepted",
+      "id": "RT-V-15.22",
+      "input": "('reminder', 'whatsapp', 'ar')",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-15",
+      "actual": "accepted",
+      "category": "validator",
+      "expected": "accepted",
+      "id": "RT-V-15.23",
+      "input": "('appointment_confirmation', 'whatsapp', 'ar')",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-15",
+      "actual": "accepted",
+      "category": "validator",
+      "expected": "accepted",
+      "id": "RT-V-15.24",
+      "input": "('escalation_notice', 'whatsapp', 'ar')",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-15",
+      "actual": "accepted",
+      "category": "validator",
+      "expected": "accepted",
+      "id": "RT-V-15.25",
+      "input": "('callback_ack', 'whatsapp', 'ar')",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-15",
+      "actual": "accepted",
+      "category": "validator",
+      "expected": "accepted",
+      "id": "RT-V-15.26",
+      "input": "('result_notification', 'letter', 'ar')",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-15",
+      "actual": "accepted",
+      "category": "validator",
+      "expected": "accepted",
+      "id": "RT-V-15.27",
+      "input": "('reminder', 'letter', 'ar')",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-15",
+      "actual": "accepted",
+      "category": "validator",
+      "expected": "accepted",
+      "id": "RT-V-15.28",
+      "input": "('appointment_confirmation', 'letter', 'ar')",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-15",
+      "actual": "accepted",
+      "category": "validator",
+      "expected": "accepted",
+      "id": "RT-V-15.29",
+      "input": "('escalation_notice', 'letter', 'ar')",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-15",
+      "actual": "accepted",
+      "category": "validator",
+      "expected": "accepted",
+      "id": "RT-V-15.30",
+      "input": "('callback_ack', 'letter', 'ar')",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-15",
+      "actual": "accepted",
+      "category": "validator",
+      "expected": "accepted",
+      "id": "RT-V-15.31",
+      "input": "'Your screening result is ready. The next step is a camera test. Dr Sara Khan from your...",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-15",
+      "actual": "accepted",
+      "category": "validator",
+      "expected": "accepted",
+      "id": "RT-V-15.32",
+      "input": "'نتيجة فحصك جاهزة. الخطوة التالية هي فحص بالكاميرا. سيتواصل معك فريق رعايتك. المسؤول عن...",
+      "reason": "",
+      "status": "pass"
+    }
+  ],
+  "summary": {
+    "validator": {
+      "cases": 309,
+      "exposed": 75,
+      "fail": 0,
+      "known-limitation": 4,
+      "pass": 230
+    }
+  }
+}

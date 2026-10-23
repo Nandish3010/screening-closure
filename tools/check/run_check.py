@@ -13,6 +13,7 @@ Stages (each is a make target, so each can be run on its own):
     tracker-lint  TRACKER / TEST-CASES / LOG cross-references, done rows have real commits
     test-security secret scan of tracked files and history (F9; F7/F8 extend this target)
     test-tools    the cross-cutting tests in tests/ (scanner, linters, load harness)
+    test-redteam  the adversarial red-team suite, tests/redteam (D14; no database, no network)
     load-check    sweep over 1,000 seeded cases (F6; full sizes are `make test-load`);
                   SKIPPED loudly if Postgres on :5433 is unreachable
     risk-check    the committed risk score (model.json, docs/results/risk/, the generated blocks of
@@ -82,6 +83,7 @@ STAGES = [
     Stage("tracker-lint"),
     Stage("test-security"),
     Stage("test-tools"),
+    Stage("test-redteam"),
     Stage("load-check", needs_pg=True),
     Stage("risk-check"),
     Stage("review-packs-check"),
