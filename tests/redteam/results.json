@@ -1682,23 +1682,23 @@
     },
     {
       "abuse_case": "RT-V-12",
-      "actual": "accepted",
+      "actual": "rejected: unfilled_placeholder",
       "category": "validator",
       "expected": "rejected",
       "id": "RT-V-12.3",
       "input": "'$name'",
-      "reason": "RT-V-12.3: exposed, fix in next commit",
-      "status": "exposed"
+      "reason": "",
+      "status": "pass"
     },
     {
       "abuse_case": "RT-V-12",
-      "actual": "accepted",
+      "actual": "rejected: unfilled_placeholder",
       "category": "validator",
       "expected": "rejected",
       "id": "RT-V-12.4",
       "input": "'%s'",
-      "reason": "RT-V-12.4: exposed, fix in next commit",
-      "status": "exposed"
+      "reason": "",
+      "status": "pass"
     },
     {
       "abuse_case": "RT-V-12",
@@ -1712,13 +1712,13 @@
     },
     {
       "abuse_case": "RT-V-12",
-      "actual": "accepted",
+      "actual": "rejected: unfilled_placeholder",
       "category": "validator",
       "expected": "rejected",
       "id": "RT-V-12.6",
       "input": "'%(name)s'",
-      "reason": "RT-V-12.6: exposed, fix in next commit",
-      "status": "exposed"
+      "reason": "",
+      "status": "pass"
     },
     {
       "abuse_case": "RT-V-12",
@@ -1772,13 +1772,13 @@
     },
     {
       "abuse_case": "RT-V-12",
-      "actual": "accepted",
+      "actual": "rejected: unfilled_placeholder",
       "category": "validator",
       "expected": "rejected",
       "id": "RT-V-12.12",
       "input": "'%d'",
-      "reason": "RT-V-12.12: exposed, fix in next commit",
-      "status": "exposed"
+      "reason": "",
+      "status": "pass"
     },
     {
       "abuse_case": "RT-V-13",
@@ -3345,8 +3345,38 @@
       "actual": "fallback_used=True provider=template reason=validation_failed:unfilled_placeholder",
       "category": "validator",
       "expected": "template returned, fallback_used",
+      "id": "RT-V-13.157",
+      "input": "'$name'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:unfilled_placeholder",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.158",
+      "input": "'%s'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:unfilled_placeholder",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
       "id": "RT-V-13.159",
       "input": "'<<DATE>>'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:unfilled_placeholder",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.160",
+      "input": "'%(name)s'",
       "reason": "",
       "status": "pass"
     },
@@ -3397,6 +3427,16 @@
       "expected": "template returned, fallback_used",
       "id": "RT-V-13.165",
       "input": "'{owner_name}'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:unfilled_placeholder",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.166",
+      "input": "'%d'",
       "reason": "",
       "status": "pass"
     },
@@ -3803,11 +3843,11 @@
   ],
   "summary": {
     "validator": {
-      "cases": 380,
-      "exposed": 4,
+      "cases": 384,
+      "exposed": 0,
       "fail": 0,
       "known-limitation": 4,
-      "pass": 372
+      "pass": 380
     }
   }
 }

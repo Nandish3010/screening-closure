@@ -242,7 +242,8 @@ def forbidden_hits(text: str) -> list[ForbiddenPhrase]:
 
 # ---------------------------------------------------------------- personal data and links
 
-_PLACEHOLDER = re.compile(r"[{}]|\[[^\]]{0,40}\]|<[^>]{0,40}>")
+# Braces, [..], <..>; and the other template syntaxes a model might echo: $name, ${name}, %s, %d, %(name)s (RT-V-12).
+_PLACEHOLDER = re.compile(r"[{}]|\[[^\]]{0,40}\]|<[^>]{0,40}>|\$[A-Za-z_]|%\(\w+\)[sdif]|%[sdif]\b")
 # Seven digits, however they are punctuated: space, dash, dot, brackets, and `/` and `,` (050/123/4567, 050,123,4567).
 _LONG_DIGITS = re.compile(r"(?<![\w])\+?\d(?:[\s\-.()/,]*\d){6,}")
 # `@`; "[at]" and "(at)"; "bob at example dot com"; "at gmail" (a well-known mail host after "at") (RT-V-09).
@@ -271,7 +272,7 @@ _URL = re.compile(
 _SPOKEN_DOT = re.compile(r"\s*(?:\(dot\)|\[dot\]|\{dot\}|\[\.\]|\bdot\b|نقطة)\s*", re.IGNORECASE)
 _SPACE_BEFORE_DOT = re.compile(r"(?<=\w)\s+\.\s*(?=\w)")
 _SHORTENER = re.compile(r"\b(?:tinyurl|bitly|rebrandly|cutt\s*ly)\b|\bhxxps?\b", re.IGNORECASE)
-_SCHEME_SQUEEZED = re.compile(r"(?:https?|ftp|file):|://", re.IGNORECASE)
+_SCHEME_SQUEEZED = re.compile(r"(?:https?|ftp):|://", re.IGNORECASE)
 
 
 def has_disguised_url(scan: str) -> bool:
