@@ -199,16 +199,45 @@ def load_forbidden_phrases() -> tuple[ForbiddenPhrase, ...]:
     return tuple(out)
 
 
+# Spelling tricks: a word is broken up with spaces, dots, dashes or underscores ("c a n c e r", "can-cer"), stretched with
+# repeated letters ("canccer", "سرررطان") or written with digits and symbols for letters ("c4nc3r"). For the disease
+# stems below the text is also matched with every non-letter dropped, repeats collapsed and digits read as letters.
+# A stem found only that way is a hit on the entry named here. The price is an occasional false rejection of text such
+# as "can certainly", which costs one template message (RT-V-05).
+_LEET = str.maketrans({"4": "a", "3": "e", "0": "o", "1": "i", "5": "s", "7": "t", "@": "a", "$": "s", "!": "i"})
+_SQUEEZED_EN = (
+    ("cancer", "cancer"), ("tumou?r", "tumour"), ("malignan", "malignant"), ("carcinoma|neoplas", "carcinoma_neoplasm"),
+    ("diagnos", "diagnos"), ("saratan|sartan", "arabizi_cancer"),
+)
+_SQUEEZED_AR = (("سرطان", "cancer"), ("خبيث", "malignant"), ("تشخيص", "diagnosis"), ("كارسينوما", "carcinoma"))
+
+
+def _squeezed_hits(text: str, found: set[tuple[str, str]]) -> list[ForbiddenPhrase]:
+    by_key = {(fp.language, fp.id): fp for fp in load_forbidden_phrases()}
+    latin = re.sub(r"(.)\1+", r"\1", re.sub(r"[^a-z]+", "", skeleton(text).translate(_LEET)))
+    arabic = re.sub(r"(.)\1+", r"\1", re.sub(r"[^ء-ي]+", "", normalise_arabic("".join(c for c in text if not _invisible(c)))))
+    hits = []
+    for lang, haystack, table in (("en", latin, _SQUEEZED_EN), ("ar", arabic, _SQUEEZED_AR)):
+        for stem, entry_id in table:
+            key = (lang, entry_id)
+            if key not in found and key in by_key and re.search(stem, haystack):
+                found.add(key)
+                hits.append(by_key[key])
+    return hits
+
+
 def forbidden_hits(text: str) -> list[ForbiddenPhrase]:
     """Every forbidden-phrase entry (either language) found in `text`. English entries are matched on the
-    text's skeleton, so look-alike Cyrillic or Greek letters and hidden characters do not hide a word."""
+    text's skeleton, so look-alike Cyrillic or Greek letters and hidden characters do not hide a word, and the disease
+    stems are matched again with the text squeezed (spaces, punctuation, repeats, digit-for-letter)."""
     plain = text.casefold()
     latin = skeleton(text)
     arabic = normalise_arabic("".join(c for c in text if not _invisible(c)))
-    return [
+    hits = [
         fp for fp in load_forbidden_phrases()
         if (fp.pattern.search(arabic) if fp.language == "ar" else (fp.pattern.search(plain) or fp.pattern.search(latin)))
     ]
+    return hits + _squeezed_hits(text, {(fp.language, fp.id) for fp in hits})
 
 
 # ---------------------------------------------------------------- personal data and links

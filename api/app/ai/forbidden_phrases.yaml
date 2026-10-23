@@ -146,17 +146,17 @@ en:
   - id: blood_bleeding  # D14 red-team: added
     regex: "blood\\w*|bleed\\w*"
     category: result_disclosure
-    rationale: "IFHAS: abnormal results are communicated with the participant present. Blood is what the FIT test looks for, so naming it hints at the result."
+    rationale: "IFHAS: abnormal results are communicated with the participant present"
     example: "There was bleeding."
   - id: positive_bare  # D14 red-team: added
     regex: "positive|negative|(?:fit|test|result|screening) (?:is )?[+-]ve"
     category: result_disclosure
-    rationale: "IFHAS: abnormal results are communicated with the participant present. Any positive or negative is read as a result ('FIT positive', 'FIT is +ve')."
+    rationale: "IFHAS: abnormal results are communicated with the participant present"
     example: "FIT positive."
   - id: not_normal  # D14 red-team: added
     regex: "not normal|something (?:is )?wrong|(?:bad|good|great|worrying|sad) news|a problem with your (?:result|test|screening)"
     category: result_disclosure
-    rationale: "IFHAS: abnormal results are communicated with the participant present. Hints at the outcome without a disease word."
+    rationale: "IFHAS: abnormal results are communicated with the participant present"
     example: "We have bad news."
   - id: benign_term  # D14 red-team: added
     regex: "benign|non[- ]?cancerous|harmless"
