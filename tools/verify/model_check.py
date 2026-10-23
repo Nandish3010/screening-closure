@@ -293,7 +293,8 @@ SLICES = {
     ),
     "ladders": Slice(
         "ladders", "state SLA and milestone breaches, the escalation ladders, coalescing (also_for, attached_to)",
-        {**BASE, "mark_overdue": ALL, "escalate": ALL, "escalation_accepted": ALL,
+        {**BASE, "record_informed_refusal": {"by-spec"},  # one counsellor form here: the ladders do not read it (keeps the slice small)
+         "mark_overdue": ALL, "escalate": ALL, "escalation_accepted": ALL,
          "handoff_requested": {"plain", "auto"}, "handoff_accepted": {"plain"},
          "handoff_rejected": {"capacity", "bounce"}, "reassign": {"to-spec"}},
         restrict={"accept_ownership": (PCO,), "handoff_requested": (PCO,), "handoff_accepted": (SPEC,),

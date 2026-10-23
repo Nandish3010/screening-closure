@@ -89,17 +89,17 @@ Results of `make verify` at the commit of this ticket, on the development Mac:
 
 | Slice | Abstract states | Accepted transitions | `step()` calls | Depth | Saturation | Abstraction pairs | Non-interference | Table probes | Replays |
 |---|---|---|---|---|---|---|---|---|---|
-| messaging | 864 | 44,540 | 179,712 | 16 | level 17 added nothing | 1,000 | 864 | 29,268 | 864 |
-| ownership | 1,448 | 33,808 | 278,016 | 14 | level 15 added nothing | 1,000 | 966 | 25,272 | 1,448 |
-| ladders | 6,745 | 133,805 | 1,632,290 | 20 | level 21 added nothing | 1,000 | 422 | 32,994 | 6,745 |
-| **total** | **9,057** | 212,153 | 2,090,018 | | all saturated | | | | |
+| messaging | 2,016 | 93,048 | 582,624 | 16 | level 17 added nothing | 1,000 | 808 | 42,939 | 2,016 |
+| ownership | 2,908 | 68,940 | 793,884 | 14 | level 15 added nothing | 1,000 | 832 | 38,850 | 2,908 |
+| ladders | 12,147 | 255,099 | 3,583,365 | 21 | level 22 added nothing | 1,000 | 405 | 44,394 | 12,147 |
+| **total** | **17,071** | 417,087 | 4,959,873 | | all saturated | | | | |
 
 Notes on the table:
 
 - **Depth** is the length of the longest shortest trace from `case_created`. The saturation column names the BFS level that added no new state.
-- **Time:** 36 to 50 seconds on an unloaded machine; about 90 seconds when other work is running. The budget is three minutes.
+- **Time:** about 70 seconds while other work was running (36 to 50 seconds before A33 added the refusal path, the cancel event and the HL7 actor to the alphabet; the ladders slice keeps one counsellor form to stay small). The budget is three minutes.
 - **States per level:** `make verify` prints the new states per level and the states per state name.
-- **Gate cases:** the route gate refused 2,384 closes that the machine accepted with a foreign signer or a malformed reference. The append-time guard refused 52 unlisted templates that the machine accepted. In both cases the refusal comes from the layer that ADR-021 and ADR-032 put in charge.
+- **Gate cases:** the route gate refused 4,592 closes that the machine accepted with a foreign signer or a malformed reference. The append-time guard refused 104 unlisted templates that the machine accepted. In both cases the refusal comes from the layer that ADR-021 and ADR-032 put in charge.
 
 ### A real bug, found and fixed
 
