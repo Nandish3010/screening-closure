@@ -446,6 +446,8 @@ def test_the_scan_routes_are_for_the_scheduler_and_the_automation_token_only(fre
 def test_service_tokens_outside_dev_must_be_distinct_long_and_not_the_default(monkeypatch):
     good = {"scheduler": "s" * 40, "watchdog": "w" * 40, "automation": "a" * 40}
     monkeypatch.setattr(app_settings, "app_env", "prod")
+    monkeypatch.setattr(app_settings, "auth_mode", "oidc")  # A29
+    monkeypatch.setattr(app_settings, "oidc_issuer", "https://idp.example/realms/x")
     monkeypatch.setattr(app_settings, "dev_login_enabled", False)
     monkeypatch.setattr(app_settings, "dev_auth_secret", "x" * 40)
     monkeypatch.setattr(app_settings, "scheduler_service_token", good["scheduler"])

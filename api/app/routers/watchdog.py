@@ -10,13 +10,15 @@
 from fastapi import APIRouter
 from pydantic import BaseModel, ConfigDict, Field
 
-from app import fhir_projection, ops
+from app import fhir_projection, leader, ops
 from app.clock import clock
 from app.config import settings
 from app.routers import cases
+from app.routers.scheduler import FOLLOWER_PREFIX
 from app.watchdog import run_idle_scan
 
 router = APIRouter(tags=["watchdog"])
+FOLLOWER_MAX_AGE_SECONDS = 120  # a follower that has not beaten for this long is gone, not idle
 
 
 class Scan(BaseModel):
@@ -58,7 +60,17 @@ def scan(body: Scan | None = None) -> dict:
 def heartbeats() -> dict:
     """The age of the latest heartbeat of each service (None until it has beaten once)."""
     beats = ops.store.heartbeats()
-    return {name: (beats[name].to_json() if name in beats else None) for name in ("scheduler", "watchdog")}
+    out = {name: (beats[name].to_json() if name in beats else None) for name in ("scheduler", "watchdog")}
+    # A31: scheduler instances that are not leading beat as `scheduler-follower-<holder>` and report role "follower".
+    cur = leader.store.current(leader.SCHEDULER_LEASE)
+    out["followers"] = sorted(
+        (b.to_json() for n, b in beats.items()
+         if n.startswith(FOLLOWER_PREFIX) and b.age_seconds <= FOLLOWER_MAX_AGE_SECONDS
+         and not (cur and b.info.get("holder") == cur.holder)),  # a follower that has since won is the leader now
+        key=lambda b: b["service"],
+    )
+    out["leader"] = cur.to_json() if cur else None
+    return out
 
 
 @router.get("/alerts")

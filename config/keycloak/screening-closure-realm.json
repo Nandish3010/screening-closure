@@ -1,0 +1,271 @@
+{
+  "realm": "screening-closure",
+  "enabled": true,
+  "displayName": "Screening Closure (UAE PASS stand-in)",
+  "sslRequired": "external",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": false,
+  "bruteForceProtected": true,
+  "accessTokenLifespan": 300,
+  "ssoSessionIdleTimeout": 28800,
+  "ssoSessionMaxLifespan": 28800,
+  "roles": {
+    "realm": [
+      {
+        "name": "lab",
+        "description": "Screening Closure role: lab"
+      },
+      {
+        "name": "primary_care_owner",
+        "description": "Screening Closure role: primary_care_owner"
+      },
+      {
+        "name": "specialist_owner",
+        "description": "Screening Closure role: specialist_owner"
+      },
+      {
+        "name": "coordinator",
+        "description": "Screening Closure role: coordinator"
+      },
+      {
+        "name": "patient",
+        "description": "Screening Closure role: patient"
+      },
+      {
+        "name": "supervisor",
+        "description": "Screening Closure role: supervisor"
+      }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "screening-closure-web",
+      "name": "Screening Closure web app",
+      "enabled": true,
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "redirectUris": [
+        "http://localhost:5173/*",
+        "http://127.0.0.1:5173/*",
+        "http://localhost:4173/*",
+        "http://127.0.0.1:4173/*",
+        "http://localhost:4175/*",
+        "http://127.0.0.1:4175/*"
+      ],
+      "webOrigins": [
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://localhost:4173",
+        "http://127.0.0.1:4173",
+        "http://localhost:4175",
+        "http://127.0.0.1:4175"
+      ],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "+"
+      },
+      "protocolMappers": [
+        {
+          "name": "api-audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "config": {
+            "included.custom.audience": "screening-closure",
+            "access.token.claim": "true",
+            "id.token.claim": "false"
+          }
+        },
+        {
+          "name": "full-name",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-full-name-mapper",
+          "config": {
+            "access.token.claim": "true",
+            "id.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        },
+        {
+          "name": "provider",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "config": {
+            "user.attribute": "provider",
+            "claim.name": "provider",
+            "jsonType.label": "String",
+            "access.token.claim": "true",
+            "id.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        },
+        {
+          "name": "patient_ref",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "config": {
+            "user.attribute": "patient_ref",
+            "claim.name": "patient_ref",
+            "jsonType.label": "String",
+            "access.token.claim": "true",
+            "id.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        }
+      ]
+    }
+  ],
+  "users": [
+    {
+      "username": "lab.intake",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Lab",
+      "lastName": "Intake",
+      "email": "lab.intake@demo.invalid",
+      "attributes": {},
+      "realmRoles": [
+        "lab"
+      ],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "${KC_PW_LAB}",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "username": "maryam.alsuwaidi",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Maryam",
+      "lastName": "Al Suwaidi",
+      "email": "maryam.alsuwaidi@demo.invalid",
+      "attributes": {},
+      "realmRoles": [
+        "coordinator"
+      ],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "${KC_PW_COORDINATOR}",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "username": "layla.haddad",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Dr. Layla",
+      "lastName": "Haddad",
+      "email": "layla.haddad@demo.invalid",
+      "attributes": {
+        "provider": [
+          "Riverside Primary Care"
+        ]
+      },
+      "realmRoles": [
+        "primary_care_owner"
+      ],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "${KC_PW_OWNER}",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "username": "karim.nasser",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Dr. Karim",
+      "lastName": "Nasser",
+      "email": "karim.nasser@demo.invalid",
+      "attributes": {
+        "provider": [
+          "Corniche Gastro Unit"
+        ]
+      },
+      "realmRoles": [
+        "specialist_owner"
+      ],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "${KC_PW_SPECIALIST}",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "username": "huda.rahman",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Dr. Huda",
+      "lastName": "Rahman",
+      "email": "huda.rahman@demo.invalid",
+      "attributes": {
+        "provider": [
+          "Marina Digestive Health"
+        ]
+      },
+      "realmRoles": [
+        "primary_care_owner"
+      ],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "${KC_PW_CLINICIAN}",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "username": "noura.alhammadi",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Dr. Noura",
+      "lastName": "Al Hammadi",
+      "email": "noura.alhammadi@demo.invalid",
+      "attributes": {},
+      "realmRoles": [
+        "supervisor"
+      ],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "${KC_PW_SUPERVISOR}",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "username": "demo.patient",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Demo",
+      "lastName": "Patient",
+      "email": "demo.patient@demo.invalid",
+      "attributes": {
+        "patient_ref": [
+          "${DEMO_PATIENT_REF:Patient/demo-patient}"
+        ]
+      },
+      "realmRoles": [
+        "patient"
+      ],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "${KC_PW_PATIENT}",
+          "temporary": false
+        }
+      ]
+    }
+  ]
+}

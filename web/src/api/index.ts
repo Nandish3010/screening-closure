@@ -1,6 +1,7 @@
 import type { ApiClient } from "./contract";
 import { createHttpAdapter } from "./httpAdapter";
 import { createMockAdapter } from "./mockAdapter";
+import { createOidcClient } from "./oidc";
 
 export * from "./contract";
 export { createMockAdapter, createHttpAdapter };
@@ -36,6 +37,15 @@ export function mockAutomationFromEnv(search: string = typeof location === "unde
 /** Chosen at build time by VITE_API_ADAPTER=mock|http (default mock). */
 export function createClientFromEnv(): ApiClient {
   const env = import.meta.env;
-  if (env.VITE_API_ADAPTER === "http") return createHttpAdapter(env.VITE_API_URL || "http://localhost:8000");
+  if (env.VITE_API_ADAPTER === "http") {
+    const url = env.VITE_API_URL || "http://localhost:8000";
+    if (env.VITE_AUTH_MODE !== "oidc") return createHttpAdapter(url);
+    const oidc = createOidcClient({
+      issuer: env.VITE_OIDC_ISSUER || "http://localhost:8180/realms/screening-closure",
+      clientId: env.VITE_OIDC_CLIENT_ID || "screening-closure-web",
+      redirectUri: `${location.origin}/`,
+    });
+    return createHttpAdapter(url, (...a) => fetch(...a), { oidc });
+  }
   return createMockAdapter(undefined, { automation: mockAutomationFromEnv() });
 }

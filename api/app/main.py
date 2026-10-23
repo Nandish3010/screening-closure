@@ -5,7 +5,7 @@ from contextlib import asynccontextmanager
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app import auth, automation, confirmatory, evidence, fhir_projection, notify, ops, outreach_policy, policy, users
+from app import auth, automation, confirmatory, evidence, fhir_projection, leader, notify, ops, outreach_policy, policy, users
 from app.clock import clock
 from app.config import settings
 from app.events import InMemoryEventStore
@@ -22,6 +22,30 @@ log = logging.getLogger("app.main")
 
 pathway = load_pathway(settings.pathway_path)
 cases.pathway = pathway
+
+
+def _start_clock(clock_store) -> None:
+    """Bring the clock up against the event log (A30, ADR-041). Sim mode resumes from the persisted row, and if the log
+    already holds events later than that (a stretch in wall mode wrote them) moves forward to the latest, never back.
+    Wall mode touches no clock row, and refuses to start if the log holds an event dated in the future (a sim stretch ran
+    ahead of real time): every timer computed from that log would be wrong."""
+    latest = cases.store.latest_event_at()
+    if clock.mode == "wall":
+        now = clock.now()
+        if latest is not None and latest > now:
+            raise RuntimeError(
+                f"CLOCK_MODE=wall but the event log holds an event dated {latest.isoformat()}, after now ({now.isoformat()}): "
+                "the database was written under a simulation clock that ran ahead of real time. Use CLOCK_MODE=sim, or "
+                "restore a snapshot."
+            )
+        log.info("clock: WALL (real UTC time); the persisted sim clock row is left untouched")
+        return
+    resumed = clock.bind(clock_store)
+    if latest is not None and latest > resumed:
+        log.warning("clock: SIM resumed at %s but the log holds events up to %s (written in wall mode); moving forward",
+                    resumed.isoformat(), latest.isoformat())
+        resumed = clock.advance_to(latest)
+    log.info("clock: SIM resumed at %s", resumed.isoformat())
 
 
 @asynccontextmanager
@@ -52,8 +76,11 @@ async def lifespan(app: FastAPI):
         notify.log = PostgresNotificationLog(pool)
         users.directory = PostgresUserDirectory(pool)
         ops.store = PostgresOpsStore(pool)
-        resumed = clock.bind(PostgresClockStore(pool, "main"))
-        log.info("event store: postgres; sim clock resumed at %s", resumed.isoformat())
+        _start_clock(PostgresClockStore(pool, "main"))
+        leader.store = leader.PostgresLeaseStore(pool)
+        leader.api_loop = leader.LeaderLoop(leader.API_LEASE, ttl=settings.leader_lease_ttl_seconds)
+        leader.api_loop.start()  # A31: one API replica runs the background loops; the others idle until it stops renewing
+        log.info("event store: postgres; clock mode: %s; api background leader: %s", clock.mode, leader.api_loop.is_leader)
     else:
         cases.store = InMemoryEventStore()
         notify.log = notify.InMemoryNotificationLog()
@@ -74,6 +101,9 @@ async def lifespan(app: FastAPI):
         projector = getattr(cases.store, "projector", None)
         if projector is not None:
             projector.stop()
+        if leader.api_loop is not None:
+            leader.api_loop.stop()
+            leader.api_loop = None
         if pool is not None:
             pool.close()
 
@@ -95,7 +125,7 @@ app.add_middleware(
 )
 app.include_router(auth_router.router)
 app.include_router(cases.router)
-if settings.app_env == "dev":  # the demo clock exists only in development (SEC-1, ADR-029)
+if settings.app_env == "dev" and clock.mode == "sim":  # the demo clock exists only in development, and only in sim mode (SEC-1, A30)
     app.include_router(clock_router.router)
 app.include_router(scheduler.router)
 app.include_router(watchdog.router)
@@ -111,7 +141,7 @@ def health() -> dict:
     """Public, no patient data. `outreach` (A26, ADR-037) says whether automatic patient messages are signed off:
     `demo_approval` is true while they run only on the demo placeholder, and the web shows an amber banner with
     `approved_by`."""
-    return {"status": "ok", "sim_time": clock.now().isoformat(), "outreach": outreach_policy.public_status()}
+    return {"status": "ok", "sim_time": clock.now().isoformat(), "clock_mode": clock.mode, "outreach": outreach_policy.public_status()}
 
 
 @app.get("/pathways")

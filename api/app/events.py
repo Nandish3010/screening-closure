@@ -157,6 +157,11 @@ class EventStore(Protocol):
         reset while nothing has happened after its start)."""
         ...
 
+    def latest_event_at(self) -> datetime | None:
+        """The latest `at` of any event of any case, or None for an empty store (A30: a switch from wall to sim mode must not
+        leave the sim clock behind the log)."""
+        ...
+
     def abstention_counts(self) -> tuple[int, int] | None:
         """(draft attempts, abstentions) from the `drafts` table, or None where it does not
         exist (the AI cut's migration may not be applied)."""
@@ -271,6 +276,10 @@ class InMemoryEventStore:
     def has_events_after(self, at: datetime) -> bool:
         with self._lock:
             return any(e.at > at for c in self._cases.values() for e in c.events)
+
+    def latest_event_at(self) -> datetime | None:
+        with self._lock:
+            return max((e.at for c in self._cases.values() for e in c.events), default=None)
 
     def abstention_counts(self) -> tuple[int, int] | None:
         return None  # no drafts table in memory

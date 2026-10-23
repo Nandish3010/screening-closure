@@ -1,5 +1,7 @@
 from pathlib import Path
+from typing import Literal
 
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # api/app/config.py -> repo root is three levels up (api/app -> api -> repo)
@@ -28,6 +30,15 @@ class Settings(BaseSettings):
     database_url: str = "postgresql://closure:closure_dev_password@localhost:5432/closure"
     fhir_base_url: str = "http://fhir:8080/fhir"
     sim_clock_start: str = "2026-01-05T08:00:00Z"
+    # A30 (ADR-041): "sim" (default, demo and development) reads the persisted simulation clock and registers /clock/*; "wall"
+    # reads real UTC time and registers no clock route. Chosen at start-up; outside APP_ENV=dev it must be "wall"
+    # (app.auth.secure_config_problems). Anything else refuses to start.
+    clock_mode: Literal["sim", "wall"] = "sim"
+    # A31 (ADR-041): when true the scheduler routes refuse a call that does not carry a current leader fencing token
+    # (X-Leader-Holder / X-Leader-Token). Compose's `scale` profile turns it on. Off, a call without the headers is
+    # allowed (manual runs, older tests); a call WITH stale headers is refused either way.
+    require_leader_fence: bool = False
+    leader_lease_ttl_seconds: float = Field(default=30.0, gt=1, le=3600)
     watchdog_idle_days: int = 7
     llm_provider: str = "template"
     # --- identity (ADR-012) ------------------------------------------------------------
@@ -35,6 +46,21 @@ class Settings(BaseSettings):
     # refuses to start unless DEV_LOGIN_ENABLED=false, DEV_AUTH_SECRET and both service tokens are
     # non-default, at least 32 bytes, and the two service tokens differ (app.auth.assert_secure_config).
     app_env: str = "dev"
+    # How a person proves who they are (A29, ADR-040): "dev" = the HMAC dev-login tokens, "oidc" = JWTs from an OIDC provider
+    # (local Keycloak now, UAE PASS later). Outside APP_ENV=dev only "oidc" starts. Service tokens work in both modes.
+    auth_mode: str = "dev"
+    oidc_issuer: str = ""  # exactly the token's `iss`, e.g. http://localhost:8180/realms/screening-closure
+    oidc_audience: str = "screening-closure"  # the token's `aud`
+    oidc_jwks_url: str = ""  # default: <issuer>/protocol/openid-connect/certs (compose points it at the keycloak service)
+    oidc_role_claim: str = "realm_access.roles"  # dotted path to the list of role names in the token
+    oidc_role_map: str = ""  # "idp_role=our_role,..."; empty = the IdP uses our six role names
+    oidc_leeway_seconds: int = 30  # clock skew allowed on exp and nbf
+    oidc_jwks_cache_seconds: float = 600.0
+    oidc_jwks_min_refetch_seconds: float = 30.0  # at most one refetch per this long when a kid is unknown
+    oidc_jwks_stale_seconds: float = 3600.0  # keep using the last good keys this long if the provider is down
+    oidc_jwks_timeout_seconds: float = 3.0
+    # Dev-login token lifetime on the WALL clock (identity, not case logic; ADR-040). Refresh = log in again.
+    dev_token_lifetime_seconds: int = 8 * 3600
     dev_login_enabled: bool = True
     dev_auth_secret: str = DEV_AUTH_SECRET_DEFAULT
     # Static bearer tokens for the services. A service token maps to a fixed identity

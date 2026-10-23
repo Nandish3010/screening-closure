@@ -61,7 +61,9 @@ def alerts(active=False):
 
 
 def test_t_a31_the_api_exposes_the_age_of_the_latest_heartbeat(wall):
-    assert client.get("/heartbeats", headers=H("coordinator")).json() == {"scheduler": None, "watchdog": None}
+    # A31 added `followers` and `leader` beside the two services
+    assert client.get("/heartbeats", headers=H("coordinator")).json() == {
+        "scheduler": None, "watchdog": None, "followers": [], "leader": None}
     beat(sim_time="2026-01-05T08:00:00+00:00")
     wall.t += 7
     hb = client.get("/heartbeats", headers=H("supervisor")).json()["scheduler"]

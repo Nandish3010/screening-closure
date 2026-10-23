@@ -5,9 +5,16 @@ in the log is derived from the identity (`role:name`), so a client cannot claim 
 clinician, and automated actors (`system:`, `scheduler`, `watchdog`, `model:`) cannot
 authenticate as a user at all: the six user roles are the only roles a token can carry.
 
-Dev tokens are `base64url(json).base64url(HMAC-SHA256(secret, first part))`. They do not
-expire (the API never reads the wall clock); production replaces this module with an OIDC
-verifier behind the same `Identity`.
+Two ways to prove who you are (A29, ADR-040), chosen by `AUTH_MODE`:
+
+* `dev`: tokens are `base64url(json).base64url(HMAC-SHA256(secret, first part))` from `POST /auth/dev-login`. They
+  expire (`exp`, 8 hours by default) on the WALL clock: expiry is an identity concern, not case logic, which stays on
+  the simulation clock (ADR-040 supersedes ADR-012's "never expire"). A refresh is a new login.
+* `oidc`: JWTs from an OIDC provider, verified in `app.oidc` (signature via JWKS, iss, aud, exp, nbf). The role comes
+  from the token's roles, the `role:user_id` actor from `sub` exactly as for dev logins (A14), the display name goes to
+  the users table. The dev login and dev tokens are refused.
+
+Service tokens are static and identical in both modes.
 """
 
 from __future__ import annotations
@@ -17,6 +24,7 @@ import hashlib
 import hmac
 import json
 import re
+import time
 import uuid
 from dataclasses import dataclass
 
@@ -90,6 +98,8 @@ class Identity:
     # The provider (organisation) a clinician acts for. Referral handoffs are addressed to a
     # provider; a clinician may answer one addressed to theirs (A5). Defaults to the name.
     provider: str | None = None
+    # The identity provider's stable `sub` (oidc mode). The opaque id derives from it, never from the display name.
+    subject: str | None = None
 
     @property
     def effective_provider(self) -> str:
@@ -98,13 +108,18 @@ class Identity:
     @property
     def user_id(self) -> str:
         """The opaque id for a user (A14); a service is its own id (`system:<service>`)."""
-        return f"system:{self.name}" if self.kind == "service" else opaque_user_id(self.role, self.name)
+        return f"system:{self.name}" if self.kind == "service" else opaque_user_id(self.role, self.subject or self.name)
 
     @property
     def actor(self) -> str:
         """The string recorded as `actor` on events this identity causes: `role:user_id` for
         people (the id is opaque, A14), `system:<service>` for services."""
         return self.user_id if self.kind == "service" else f"{self.role}:{self.user_id}"
+
+
+def wall_now() -> float:
+    """Seconds since the epoch on the real clock. Used for token lifetimes only (ADR-040); case logic never calls it."""
+    return time.time()  # wall-clock-ok: token lifetime is identity, not case logic (ADR-040)
 
 
 def _b64(raw: bytes) -> str:
@@ -146,12 +161,15 @@ def issue_token(
     patient_ref: str | None = None,
     secret: str | None = None,
     provider: str | None = None,
+    lifetime_seconds: int | None = None,
 ) -> str:
     validate_user(role, name, patient_ref, provider)
     key = secret or settings.dev_auth_secret
     if not _is_dev() and key == DEV_AUTH_SECRET_DEFAULT:
         raise AuthError("the development secret is not usable outside APP_ENV=dev")
-    claims: dict = {"v": 1, "role": role, "name": name}
+    issued = int(wall_now())
+    life = settings.dev_token_lifetime_seconds if lifetime_seconds is None else lifetime_seconds
+    claims: dict = {"v": 1, "role": role, "name": name, "iat": issued, "exp": issued + life}
     if patient_ref is not None:
         claims["patient_ref"] = patient_ref
     if provider is not None:
@@ -182,12 +200,58 @@ def verify_token(token: str, secret: str | None = None) -> Identity:
         raise AuthError("bad signature")
     try:
         claims = json.loads(_unb64(body))
+        exp = claims["exp"]  # a dev token without an expiry is not valid (ADR-040)
+        if isinstance(exp, bool) or not isinstance(exp, int):
+            raise ValueError("bad exp")
         role, name, patient_ref = claims["role"], claims["name"], claims.get("patient_ref")
         provider = claims.get("provider")
         validate_user(role, name, patient_ref, provider)  # a signed token still cannot be a model
     except (ValueError, KeyError, TypeError) as exc:
         raise AuthError("malformed token") from exc
+    if wall_now() >= exp:
+        raise AuthError("token expired")
     return Identity("user", role, name, patient_ref, provider)
+
+
+def token_expiry(token: str) -> int:
+    """The `exp` of a dev token this process just issued (for the login response)."""
+    return int(json.loads(_unb64(token.split(".")[0]))["exp"])
+
+
+_DISPLAY_OK = re.compile(r"[^A-Za-z0-9 ._@-]")
+
+
+def _display_name(claims: dict, user_id_hint: str) -> str:
+    """A safe display name from the token (users table only, never the event log); falls back to an opaque label."""
+    for key in ("name", "preferred_username", "email"):
+        raw = claims.get(key)
+        if isinstance(raw, str):
+            cleaned = " ".join(_DISPLAY_OK.sub("", raw).split())[:64].strip(" ._@-")
+            if cleaned and NAME_RE.match(cleaned):
+                return cleaned
+    return f"user {user_id_hint}"
+
+
+def oidc_identity(token: str) -> Identity:
+    """Verify an OIDC access token and build the Identity (A29). Raises AuthError on anything wrong."""
+    from app import oidc  # late: keeps PyJWT out of the import path of dev-only tools
+
+    try:
+        claims = oidc.verify(token)
+        role = oidc.map_role(claims, USER_ROLES)
+    except oidc.OidcError as exc:
+        raise AuthError(str(exc)) from exc
+    sub = claims.get("sub")
+    if not isinstance(sub, str) or not sub or len(sub) > 256:
+        raise AuthError("bad sub")
+    patient_ref = claims.get("patient_ref") if role == "patient" else None
+    if role == "patient" and (not isinstance(patient_ref, str) or not PATIENT_REF_RE.match(patient_ref)):
+        raise AuthError("patient token without a valid patient_ref claim")
+    provider = claims.get("provider") if role in PROVIDER_ROLES else None
+    if provider is not None and not (isinstance(provider, str) and PROVIDER_RE.match(provider)):
+        provider = None
+    name = _display_name(claims, opaque_user_id(role, sub)[:6])
+    return Identity("user", role, name, patient_ref, provider, subject=sub)
 
 
 def service_identity(token: str) -> Identity | None:
@@ -219,7 +283,19 @@ def service_identity(token: str) -> Identity | None:
 
 
 def authenticate(token: str) -> Identity:
-    return service_identity(token) or verify_token(token)
+    svc = service_identity(token)
+    if svc is not None:
+        return svc
+    return oidc_identity(token) if settings.auth_mode == "oidc" else verify_token(token)
+
+
+def auth_mode_problems() -> list[str]:
+    """Problems with AUTH_MODE itself, checked in every environment (a typo must not silently fall back)."""
+    if settings.auth_mode not in ("dev", "oidc"):
+        return [f"AUTH_MODE {settings.auth_mode!r} is not 'dev' or 'oidc'"]
+    if settings.auth_mode == "oidc" and not settings.oidc_issuer:
+        return ["AUTH_MODE=oidc needs OIDC_ISSUER"]
+    return []
 
 
 MIN_SECRET_BYTES = 32  # DEV_AUTH_SECRET and every service token, outside dev
@@ -227,7 +303,11 @@ MIN_SECRET_BYTES = 32  # DEV_AUTH_SECRET and every service token, outside dev
 
 def secure_config_problems() -> list[str]:
     """What is wrong with the identity configuration for a non-dev environment (empty = fine)."""
-    problems: list[str] = []
+    problems: list[str] = list(auth_mode_problems())
+    if settings.auth_mode != "oidc":
+        problems.append("AUTH_MODE is not 'oidc' (outside APP_ENV=dev people must sign in through an OIDC provider)")
+    elif not settings.oidc_issuer.startswith("https://"):
+        problems.append("OIDC_ISSUER must be an https:// URL")
     if settings.dev_login_enabled:
         problems.append("DEV_LOGIN_ENABLED is true (the passwordless login must be off)")
     secrets = (
@@ -250,6 +330,8 @@ def secure_config_problems() -> list[str]:
     hl7 = settings.hl7_service_token
     if hl7 and hl7 != HL7_TOKEN_DEFAULT and len(hl7.encode()) < MIN_SECRET_BYTES:
         problems.append(f"HL7_SERVICE_TOKEN is shorter than {MIN_SECRET_BYTES} bytes")
+    if settings.clock_mode != "wall":
+        problems.append("CLOCK_MODE is not 'wall' (a deployment outside dev must run on real time, not the simulation clock)")
     if settings.outreach_demo_approval:
         problems.append("OUTREACH_DEMO_APPROVAL is on (a demo placeholder must not stand in for the clinical lead's "
                         "signature on the outreach policy)")
@@ -270,6 +352,9 @@ def secure_config_problems() -> list[str]:
 def assert_secure_config() -> None:
     """Fail closed: refuse to start outside APP_ENV=dev with development settings (SEC-1, ADR-029)."""
     if _is_dev():
+        problems = auth_mode_problems()
+        if problems:
+            raise RuntimeError(f"APP_ENV='dev': " + "; ".join(problems))
         return
     problems = secure_config_problems()
     if problems:
@@ -277,6 +362,18 @@ def assert_secure_config() -> None:
 
 
 _bearer = HTTPBearer(auto_error=False)
+
+
+_seen_oidc: dict[str, tuple[str, str | None]] = {}  # user_id -> (display name, provider) last written by this process
+
+
+def _refresh_directory(identity: Identity) -> None:
+    from app import users
+
+    key = (identity.name, identity.provider)
+    if _seen_oidc.get(identity.user_id) != key:
+        users.record_login(identity)
+        _seen_oidc[identity.user_id] = key
 
 
 def optional_identity(
@@ -291,7 +388,10 @@ def optional_identity(
     if identity.kind == "user":
         from app import users  # late: users imports this module
 
-        users.directory.ensure(identity)  # a valid token always has a display-name row
+        if identity.subject is not None:
+            _refresh_directory(identity)  # oidc: the provider's display name wins, so a rename is picked up
+        else:
+            users.directory.ensure(identity)  # a valid token always has a display-name row
     return identity
 
 

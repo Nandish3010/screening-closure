@@ -626,7 +626,9 @@ class Projector:
         def loop():
             while not self._stop.wait(interval_seconds):
                 try:
-                    if self.queue.count():
+                    from app import leader  # A31: one API replica drains the projection queue, the others idle
+
+                    if leader.api_is_leader() and self.queue.count():
                         self.drain(due_only=True)
                 except Exception:
                     log.exception("FHIR projection drain failed")

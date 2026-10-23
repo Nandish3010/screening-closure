@@ -524,6 +524,7 @@ def sched(monkeypatch):
     monkeypatch.setattr(mod, "run_sweep", lambda: {"sim_time": "2026-01-05T08:00:00+00:00", "cases_evaluated": 0,
                                                    "mark_overdue": 0, "escalate": 0, "rejected": 0, "errors": []})
     monkeypatch.setattr(mod, "BEAT_SECONDS", 0.05)
+    monkeypatch.setattr(mod, "acquire_lease", lambda: {"leader": True, "token": 1})  # A31: the leader's loop
     return mod
 
 
