@@ -127,6 +127,9 @@ def b64d(text: str) -> dict:
     return json.loads(base64.urlsafe_b64decode(text + "=" * (-len(text) % 4)))
 
 
+FAR_EXP = 4102444800  # 2100-01-01: a signed claim set must carry an 'exp' since A29 (ADR-040), or it is refused for that reason alone
+
+
 def b64e(obj) -> str:
     return base64.urlsafe_b64encode(json.dumps(obj, sort_keys=True, separators=(",", ":")).encode()).rstrip(b"=").decode()
 
@@ -283,7 +286,7 @@ def test_patient_ref_must_match_exactly(case, rt):
 @pytest.mark.parametrize("case", params([Case("RT-Z-02.7", "a patient token with no patient_ref (a claim removed and re-signed with the dev secret)", "the patient sees no case and can act on none")]))
 def test_a_patient_without_a_reference_sees_nothing(case, rt):
     a = owned_case("Patient/1")
-    body = b64e({"v": 1, "role": "patient", "name": "no ref"})
+    body = b64e({"v": 1, "role": "patient", "name": "no ref", "exp": FAR_EXP})
     headers = bearer(f"{body}.{auth._sign(body, settings.dev_auth_secret)}")
     before = log_of(a)
     r_list, r_get, r_post = client.get("/cases", headers=headers), client.get(f"/cases/{a}", headers=headers), post(a, "patient_acknowledge", headers, {"lang": "en"})
@@ -501,9 +504,9 @@ TAMPER = [
     ("RT-Z-05.16", "version 2 and extra claims (is_admin, scope, role list), signed: extras must be ignored", None),
 ]
 SIGNED = {
-    "RT-Z-05.10": {"v": 1, "role": "scheduler", "name": "x"}, "RT-Z-05.11": {"v": 1, "role": "root", "name": "x"},
-    "RT-Z-05.14": {"v": 1, "role": "coordinator", "name": "n" * 65}, "RT-Z-05.15": [1, 2, 3],
-    "RT-Z-05.16": {"v": 2, "role": "lab", "name": "Eve", "is_admin": True, "scope": "*", "roles": ["supervisor"]},
+    "RT-Z-05.10": {"v": 1, "role": "scheduler", "name": "x", "exp": FAR_EXP}, "RT-Z-05.11": {"v": 1, "role": "root", "name": "x", "exp": FAR_EXP},
+    "RT-Z-05.14": {"v": 1, "role": "coordinator", "name": "n" * 65, "exp": FAR_EXP}, "RT-Z-05.15": [1, 2, 3],
+    "RT-Z-05.16": {"v": 2, "role": "lab", "name": "Eve", "exp": FAR_EXP, "is_admin": True, "scope": "*", "roles": ["supervisor"]},
 }
 
 
@@ -531,13 +534,12 @@ def test_a_tampered_token_is_nobody(case, rt):
     assert total_events() == n or case.id == "RT-Z-05.16"
 
 
-@pytest.mark.parametrize("case", params([Case("RT-Z-05.17", "a correctly signed token whose 'exp' claim is in the past", "401: an expired token is refused",
-                                              xfail="known limitation RT-Z-05.17 / HZ-33")]))
+@pytest.mark.parametrize("case", params([Case("RT-Z-05.17", "a correctly signed token whose 'exp' claim is in the past", "401: an expired token is refused (closed upstream by A29)")]))
 def test_an_expired_token_is_refused(case, rt):
     body = b64e({"v": 1, "role": "coordinator", "name": "Old Timer", "exp": 1})
     headers = bearer(f"{body}.{auth._sign(body, settings.dev_auth_secret)}")
     r = client.get("/me", headers=headers)
-    rt.actual(f"HTTP {r.status_code}: the dev token carries no expiry and 'exp' is not read")
+    rt.actual(f"HTTP {r.status_code}: the dev token's 'exp' is read against the wall clock (closed upstream by A29)")
     assert r.status_code == 401
 
 
@@ -563,7 +565,7 @@ def test_a_trailing_newline_is_not_a_valid_name_provider_or_reference(case, rt):
     rt.actual(f"HTTP {r.status_code}, token issued: {'token' in r.json()}")
     assert r.status_code == 422 and "token" not in r.json()
     with pytest.raises(auth.AuthError):  # and a correctly signed token carrying it is refused too
-        claims = {"v": 1, **{k: v for k, v in body.items()}}
+        claims = {"v": 1, "exp": FAR_EXP, **{k: v for k, v in body.items()}}
         encoded = b64e(claims)
         auth.verify_token(f"{encoded}.{auth._sign(encoded, settings.dev_auth_secret)}")
 

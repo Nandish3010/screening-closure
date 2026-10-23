@@ -142,7 +142,7 @@ Cases chain calls. For every refused call the second assertion is that no event 
 | RT-Z-02 | Patient scope: patient 1 against patient 2's case by id, timeline, fhir, drafts, replies, notifications and agency; events of the other case; list filters that name the other patient; an event id taken from the other case; the replies route; prefix and variant `patient_ref`s; a token with no `patient_ref` | 404 or 403, identical to an unknown id for the case routes; no event on either case | RT-Z-02.1 to .7 |
 | RT-Z-03 | Service tokens on 12 human actions (approve, reject, accept ownership, close, clinician review, consent, `message_sent`, `message_approved`, reply, create case, draft, confirmatory result) for each of scheduler, watchdog, automation, agency and hl7; the scheduler on the events it may not post; a near-miss token (extra character, upper case, empty, `null`, a dotted suffix, truncated); logging in as `system`, `scheduler`, `watchdog`, `automation`, `agency`, `hl7`, `model`; names that look like actors, 65 characters, empty, leading space, tab, bidi override | 403 or 401; 403 or 422 at login; no token issued | RT-Z-03.1 to .27 |
 | RT-Z-04 | After a handoff the old owner approves, rejects, drafts, contacts, books, changes consent and reads drafts, notifications, agency and fhir; a stranger accepts ownership, approves, closes; the owner closes signing as another clinician, a supervisor, `model:template`, `system:automation`; a supervisor, coordinator, lab and patient close | 403 each; the new owner can decide (control) | RT-Z-04.1 to .5 |
-| RT-Z-05 | Token tampering: role or `patient_ref` edited under the old signature, a changed signature, no signature, no dot, an empty body, a JWT-style `alg none`, three parts, the wrong secret; correctly signed bodies with an automated role, an unknown role, an empty or non-JSON body, a 65-character name, a list; extra claims; an `exp` in the past; a second login; a name, provider or `patient_ref` ending in a newline | 401 (extra claims ignored); expiry and revocation are known limitations | RT-Z-05.1 to .21 |
+| RT-Z-05 | Token tampering: role or `patient_ref` edited under the old signature, a changed signature, no signature, no dot, an empty body, a JWT-style `alg none`, three parts, the wrong secret; correctly signed bodies with an automated role, an unknown role, an empty or non-JSON body, a 65-character name, a list; extra claims; an `exp` in the past; a second login; a name, provider or `patient_ref` ending in a newline | 401 (extra claims ignored); an expired token is refused (RT-Z-05.17, closed upstream by A29); revocation by a later login is a known limitation (RT-Z-05.18) | RT-Z-05.1 to .21 |
 | RT-Z-06 | Identity in the wrong place: `actor` in the body, `X-Actor`/`X-User`/`X-Role` headers, actor fields in the payload; the demo clock by a non-supervisor; events dated in the future and in the past | the recorded actor is the token's; 422/403; the clock does not move | RT-Z-06.1 to .3 |
 
 ## 6. How to run
@@ -166,8 +166,8 @@ The authoritative, per-case table is `tests/redteam/results.md`; the counts belo
 | Replies (RT-R) | 71 | 71 | 0 | 0 | 0 |
 | Agency (RT-A) | 92 | 92 | 0 | 0 | 0 |
 | HL7 and automation (RT-H) | 52 | 51 | 1 | 0 | 0 |
-| Authorisation (RT-Z) | 71 | 69 | 2 | 0 | 0 |
-| Total | 731 | 720 | 11 | 0 | 0 |
+| Authorisation (RT-Z) | 71 | 70 | 1 | 0 | 0 |
+| Total | 731 | 721 | 10 | 0 | 0 |
 
 Of the 392 validator cases, 170 are RT-V-13 (every rejected attack text again through `draft_with_fallback`, which must return the template with `fallback_used` true) and 32 are RT-V-15 benign controls that must be accepted. Some cases in the later categories are controls too: RT-A-01.35 and .36, RT-A-02.15 and .16, RT-H-04.6 and .7, RT-Z-04.2.
 
@@ -205,7 +205,7 @@ The price of the phase B fixes: a scorer that returns a mass above 1 (impossible
 
 ## 10. Known limitations
 
-Eleven cases are strict xfail tests marked `known limitation`, recorded as such in `results.md`. Eight are plain-words content that no word list can name (validator, below); the mitigation is that a human case owner reads and approves every draft before anything is sent (ai-boundary.md section 1: "A draft is only a proposal"; `message_sent` needs an approved draft). The residual risk is HZ-31 in the hazard log. The other three are in the HL7 adapter and the development token (further below). If the validator starts rejecting one of them, its strict xfail fails, which is the prompt to remove the mark.
+Ten cases are strict xfail tests marked `known limitation`, recorded as such in `results.md`. Eight are plain-words content that no word list can name (validator, below); the mitigation is that a human case owner reads and approves every draft before anything is sent (ai-boundary.md section 1: "A draft is only a proposal"; `message_sent` needs an approved draft). The residual risk is HZ-31 in the hazard log. The other two are in the HL7 adapter and the development token (further below). A third development-token case, RT-Z-05.17 (an expired token accepted), was a known limitation until A29 gave dev tokens an 8-hour wall-clock expiry (ADR-040); it is closed upstream by A29, its xfail is removed and it now passes as a plain test. The hand-signed tokens in RT-Z-02.7 and RT-Z-05.10 to .16 carry an `exp` so that they are refused or accepted for the reason the case names, not for a missing expiry. If the validator starts rejecting one of them, its strict xfail fails, which is the prompt to remove the mark.
 
 | Case | Text | Reason |
 |---|---|---|
@@ -223,8 +223,9 @@ Eleven cases are strict xfail tests marked `known limitation`, recorded as such 
 | Case | Behaviour | Reason | Hazard |
 |---|---|---|---|
 | RT-H-02.8 | An `incomplete` colonoscopy report resent under the same control id as a `complete` one is applied again: the recorder is asked twice and the evidence is overwritten | The colonoscopy path writes no case event, so the handler has no record of control ids to compare against; FIT and booking replays are checked against the log (W17). A fix needs a durable idempotency record for a path that today appends nothing | HZ-32 |
-| RT-Z-05.17 | A correctly signed development token with an `exp` in the past is accepted | `app/auth.py` issues tokens that do not expire (the API reads no wall clock; production replaces the module with an OIDC verifier behind the same `Identity`) | HZ-33 |
-| RT-Z-05.18 | An earlier token still works after the same person logs in again | Tokens are stateless and not revoked; the same module | HZ-33 |
+| RT-Z-05.18 | An earlier token still works after the same person logs in again | Tokens are stateless and not revoked by a later login; A29 added expiry, not revocation (identity.md lists revocation as missing). Production replaces the module with an OIDC verifier behind the same `Identity` | HZ-33 |
+
+RT-Z-05.17 (a correctly signed development token with an `exp` in the past was accepted) is **closed upstream by A29**: `verify_token` now requires `exp` and refuses an expired token (`wall_now() >= exp`), so the case is a passing test.
 
 Behaviours the suite pins down that are design choices, not weaknesses: a reply of 600 characters or fewer relies entirely on the model for its label (there is no deterministic opt-out backstop; a longer reply always goes to a person; HZ-25); a reused control id from a different sender is a different message; a different control id for the same patient's positive FIT makes a second case, as a second result; a negative FIT under a reused control id is acknowledged and ignored without comparison; a patient id made only of letters, digits and dashes may itself be an instruction in words, which is why the automation templates carry no patient id (RT-H-03.1, .2).
 

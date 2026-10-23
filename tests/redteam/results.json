@@ -7232,13 +7232,13 @@
     },
     {
       "abuse_case": "RT-Z-05",
-      "actual": "HTTP 200: the dev token carries no expiry and 'exp' is not read",
+      "actual": "HTTP 401: the dev token's 'exp' is read against the wall clock (closed upstream by A29)",
       "category": "authz",
-      "expected": "401: an expired token is refused",
+      "expected": "401: an expired token is refused (closed upstream by A29)",
       "id": "RT-Z-05.17",
       "input": "\"a correctly signed token whose 'exp' claim is in the past\"",
-      "reason": "known limitation RT-Z-05.17 / HZ-33",
-      "status": "known-limitation"
+      "reason": "",
+      "status": "pass"
     },
     {
       "abuse_case": "RT-Z-05",
@@ -7323,8 +7323,8 @@
       "cases": 71,
       "exposed": 0,
       "fail": 0,
-      "known-limitation": 2,
-      "pass": 69
+      "known-limitation": 1,
+      "pass": 70
     },
     "hl7-automation": {
       "cases": 52,
