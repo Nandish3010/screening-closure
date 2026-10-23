@@ -245,7 +245,12 @@ def forbidden_hits(text: str) -> list[ForbiddenPhrase]:
 _PLACEHOLDER = re.compile(r"[{}]|\[[^\]]{0,40}\]|<[^>]{0,40}>")
 # Seven digits, however they are punctuated: space, dash, dot, brackets, and `/` and `,` (050/123/4567, 050,123,4567).
 _LONG_DIGITS = re.compile(r"(?<![\w])\+?\d(?:[\s\-.()/,]*\d){6,}")
-_EMAIL = re.compile(r"@|\b[\w.+-]+\s*(?:\[at\]|\(at\))\s*[\w-]+")
+# `@`; "[at]" and "(at)"; "bob at example dot com"; "at gmail" (a well-known mail host after "at") (RT-V-09).
+_EMAIL = re.compile(
+    r"@|\b[\w.+-]+\s*(?:\[at\]|\(at\))\s*[\w-]+|\bat\s+[\w-]+(?:\s*[\[(]?\s*dot\s*[\])]?\s*[\w-]+)+"
+    r"|\bat\s+(?:gmail|yahoo|hotmail|outlook|icloud|proton\w*|live)\b",
+    re.IGNORECASE,
+)
 _ID_WORDS = re.compile(
     r"\b(?:mrn|emirates\s*id|eid|passport|nhs\s*number|id\s*(?:no|number|card)|file\s*(?:no|number)|"
     r"member\s*id|policy\s*(?:no|number)|medical\s*record)\b"
