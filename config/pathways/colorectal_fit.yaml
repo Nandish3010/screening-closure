@@ -76,6 +76,10 @@ annotations:
   # `reply_classified {intent, confidence, model_id, needs_human}`: the text itself is never in the log.
   - reply_received
   - reply_classified
+  # A32 (ADR-025): the record that a patient's personal data was erased, by `system:erasure` alone. Unlike the others it
+  # is accepted only in a CLOSED case (state_machine.step handles it before the open-state rule above) and it ends the
+  # case: an erased case accepts no further event.
+  - erasure_completed
 # The decisions only a person makes. This list does not enforce anything: the single actor table
 # (ACTOR_EVENTS in api/app/state_machine.py, default deny) decides who may write what, and
 # tests/test_actor_table.py checks that no service row of it holds any of these events, except the one
