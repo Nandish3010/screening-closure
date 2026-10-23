@@ -1,4 +1,4 @@
-.PHONY: agency-run test-demo test-e2e-live demo-scenario demo-stage demo-snapshot demo-restore demo-reset demo-kill-scheduler check docs-check tracker-lint test-security test-tools test-load load-check up down logs test test-db test-db-create test-db-reset test-chaos synthea demo-seed demo-seed-clean evaluate evaluate-capacity evaluate-capacity-check simulate evaluate-check sensitivity sensitivity-check reset web-install web-dev web-build web-test web-e2e test-e2e review-packs review-packs-check test-review-packs test-phi-logs rbac-matrix test-offline fresh-clone risk-report risk-check calibrate-fetch calibrate-fit calibrate-check effort effort-check video video-check video-deps verify hl7-demo hl7-samples
+.PHONY: oidc-up oidc-down agency-run test-demo test-e2e-live demo-scenario demo-stage demo-snapshot demo-restore demo-reset demo-kill-scheduler check docs-check tracker-lint test-security test-tools test-load load-check up down logs test test-db test-db-create test-db-reset test-chaos synthea demo-seed demo-seed-clean evaluate evaluate-capacity evaluate-capacity-check simulate evaluate-check sensitivity sensitivity-check reset web-install web-dev web-build web-test web-e2e test-e2e review-packs review-packs-check test-review-packs test-phi-logs rbac-matrix test-offline fresh-clone risk-report risk-check calibrate-fetch calibrate-fit calibrate-check effort effort-check video video-check video-deps verify hl7-demo hl7-samples
 
 up:
 	docker compose up -d --build
@@ -8,6 +8,15 @@ down:
 
 logs:
 	docker compose logs -f --tail=100
+
+# A29 (ADR-040): the local OIDC provider (Keycloak, a UAE PASS stand-in) and the API in AUTH_MODE=oidc. Generates per-run
+# demo passwords unless they are in .env (KC_PW_*), prints where they are (.oidc-demo-credentials, mode 600, git-ignored).
+# The web app then needs VITE_AUTH_MODE=oidc (docs/governance/identity.md). `make oidc-down` returns the stack to dev mode.
+oidc-up:
+	sh tools/identity/oidc_up.sh up
+
+oidc-down:
+	sh tools/identity/oidc_up.sh down
 
 # Unit tests only (no database needed). Uses the local .venv if present, otherwise
 # runs the api tests in the `test` stage of the api image (service api-test, profile "tests"): the api image that
