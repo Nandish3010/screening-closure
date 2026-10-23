@@ -32,5 +32,6 @@ include = ["app*"]
 testpaths = ["tests"]
 markers = [
   "integration: needs a running Postgres (set DATABASE_URL); run with `make test-db`",
+  "oidc: needs Docker and the keycloak image; run with `make test-oidc`",
   "chaos: stops and starts containers of the running compose stack; run with `make test-chaos` only",
 ]

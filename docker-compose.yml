@@ -252,7 +252,7 @@ services:
     profiles: [tests]
     environment:
       DATABASE_URL: ""
-    command: ["pytest", "tests", "-q", "-m", "not integration and not chaos"]
+    command: ["pytest", "tests", "-q", "-m", "not integration and not chaos and not oidc"]
     networks: [closure]
 
   # Synthetic cohort generator. Not started by `make up` (profile "tools"); run with `make synthea`.
