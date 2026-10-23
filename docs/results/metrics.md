@@ -132,7 +132,10 @@ Cases with **no** colonoscopy by day 270 (never within follow-up, or completed a
 ## 4. Closure, open cases and reopening
 
 ### `closed_share`
-Cases with at least one `close` event within follow-up / all cases. A case closed and later reopened still counts as closed.
+Cases with at least one `close` event that is not a declined closure (below) within follow-up / all cases. A case closed and later reopened still counts as closed.
+
+### `declined_closed_share`
+Cases with a `close` event whose payload says `outcome: declined` (an informed refusal, A33, ADR-042: the owner counselled the patient, recorded the refusal, and a physician who did not counsel them signed) / all cases. **Reported apart: such a case is not in `closed_share`, not in the closure-time medians, not in `open_*` (it stays "open" there, as it does in the baseline arm, where nobody records the refusal), and never counts as a completed colonoscopy.** Only the orchestrated arm has the path, so the baseline's value is 0. Counselling happens five working days after the process notices the refusal (an assumption, not a fitted parameter), and the sign-off three working days later. The headline `lost_to_follow_up_rate` deliberately still counts these patients (no colonoscopy, no progress): exempting them in the orchestrated arm alone would credit the orchestration for relabelling the same patients, because the baseline has no refusal path and calls them lost. The API's live `GET /metrics/closure` takes the other view, because it is a work list: a recorded refusal is a decision, so it is reported as `declined_closures` / `declined_pending_signoff` and is not "lost to follow-up".
 
 ### `time_to_closure_median`, `time_to_closure_p90`
 **Among closed cases only.** Median and 90th percentile, over cases that closed, of the days from `case_created` to the **first** `close`. Conditional on closing:

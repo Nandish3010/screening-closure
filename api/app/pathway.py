@@ -95,6 +95,12 @@ class Pathway:
     sla_clock_start: dict[str, str] = field(default_factory=dict)
     # Milestone name -> definition, in YAML order (A18).
     milestones: dict[str, Milestone] = field(default_factory=dict)
+    # Informed refusal (A33, ADR-042): the side state a recorded refusal waits in, its reason taxonomy and the re-offer
+    # interval in calendar months. None / empty when the pathway has no refusal path.
+    refusal_state: str | None = None
+    refusal_reasons: tuple[str, ...] = ()
+    re_offer_months: int = 12
+    appointment_cancel_reasons: tuple[str, ...] = ()
     raw: dict = field(default_factory=dict, compare=False, repr=False)
 
     @property
@@ -236,6 +242,10 @@ def load_pathway(path: str | Path) -> Pathway:
             handoff_bounce_reason=raw.get("handoff_bounce_reason", "timeout"),
             sla_clock_start=dict(raw.get("sla_clock_start") or {}),
             milestones=_load_milestones(raw.get("milestones")),
+            refusal_state=(raw.get("informed_refusal") or {}).get("state"),
+            refusal_reasons=tuple((raw.get("informed_refusal") or {}).get("reasons", [])),
+            re_offer_months=(raw.get("informed_refusal") or {}).get("re_offer_months", 12),
+            appointment_cancel_reasons=tuple(raw.get("appointment_cancel_reasons", [])),
             raw=raw,
         )
     except KeyError as exc:
@@ -312,10 +322,10 @@ def _validate(pw: Pathway) -> None:
     penultimate = pw.states[-2] if len(pw.states) > 1 else None
     for t in pw.transitions:
         if t.to_state == terminal:
-            if t.from_state != penultimate:
+            if t.from_state not in (penultimate, pw.refusal_state):
                 raise PathwayError(
-                    f"{t.event!r}: only {penultimate!r} may transition to {terminal!r}, "
-                    f"not {t.from_state!r}"
+                    f"{t.event!r}: only {penultimate!r} (or the informed-refusal state, A33) may transition to "
+                    f"{terminal!r}, not {t.from_state!r}"
                 )
             if not {"evidence_ref", "signed_by"} <= set(t.requires):
                 raise PathwayError(
@@ -344,6 +354,21 @@ def _validate(pw: Pathway) -> None:
             raise PathwayError(f"side state {side!r} cannot be entered")
         if not any(t.from_state == side for t in pw.transitions):
             raise PathwayError(f"side state {side!r} cannot be left")
+
+    if pw.refusal_state is not None:
+        if pw.refusal_state not in pw.side_states:
+            raise PathwayError("informed_refusal.state must be one of the side_states")
+        r = pw.refusal_reasons
+        if not r or len(r) != len(set(r)) or not all(isinstance(x, str) and x for x in r):
+            raise PathwayError("informed_refusal.reasons must be unique non-empty strings")
+        if isinstance(pw.re_offer_months, bool) or not isinstance(pw.re_offer_months, int) or not 1 <= pw.re_offer_months <= 120:
+            raise PathwayError("informed_refusal.re_offer_months must be an integer from 1 to 120")
+        for t in pw.transitions:
+            if t.from_state == pw.refusal_state and t.to_state == terminal and ("outcome", "declined") not in t.when:
+                raise PathwayError("the informed-refusal state may close only with `when: {outcome: declined}`")
+    cr = pw.appointment_cancel_reasons
+    if len(cr) != len(set(cr)) or not all(isinstance(x, str) and x for x in cr):
+        raise PathwayError("appointment_cancel_reasons must be unique non-empty strings")
 
     rungs = [r.rung for r in pw.escalation_ladder]
     if len(rungs) != len(set(rungs)):

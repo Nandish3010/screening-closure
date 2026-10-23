@@ -23,7 +23,7 @@
 #     starts with an Arabic word, and each placeholder is followed by Arabic punctuation or text,
 #     never by another placeholder or a digit.
 #   - Never the substrings دم or تنظير (test_ai_validate.py checks the raw text).
-version: 2
+version: 3
 language: ar
 purposes:
   # TODO native-speaker review (H2)
@@ -182,6 +182,31 @@ purposes:
       سيتصل بك أحد أفراد فريق رعايتك ليشرح لك. الخطوة التالية هي {next_step}.
 
       الشخص المسؤول عن رعايتك: {owner_name}.
+
+      مع تحياتنا،
+      فريق رعايتك
+  # TODO native-speaker review (H2)
+  refusal_acknowledgement:
+    description: >-
+      Acknowledges that the patient's decision about the next step has been recorded and that their own doctor has been
+      told (A33). It states no finding. The patient can come back at any time.
+    sms: >-
+      شكراً لحديثك مع فريق رعايتك. تم تسجيل قرارك بشأن الخطوة التالية ({next_step}) وتم إبلاغ طبيبك.
+      يمكنك تغيير رأيك في أي وقت. الشخص المسؤول عن رعايتك: {owner_name}.
+    whatsapp: |-
+      مرحباً، شكراً لحديثك مع فريق رعايتك.
+
+      تم تسجيل قرارك بشأن الخطوة التالية ({next_step}) وتم إبلاغ طبيبك.
+
+      يمكنك تغيير رأيك في أي وقت. الشخص المسؤول عن رعايتك: {owner_name}.
+    letter: |-
+      تحية طيبة،
+
+      شكراً لحديثك مع فريق رعايتك.
+
+      تم تسجيل قرارك بشأن الخطوة التالية ({next_step}) وتم إبلاغ طبيبك.
+
+      يمكنك تغيير رأيك في أي وقت. يرجى التواصل مع فريق رعايتك. الشخص المسؤول عن رعايتك: {owner_name}.
 
       مع تحياتنا،
       فريق رعايتك

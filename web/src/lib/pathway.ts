@@ -30,7 +30,20 @@ export const SIDE_TRANSITIONS: Transition[] = [
   { from: "reopened", event: "clinician_review", to: "clinician_reviewed" },
   { from: "referral_rejected", event: "reassign", to: "owner_accepted", requires: ["owner"] },
   { from: "referral_rejected", event: "handoff_accepted", to: "owner_accepted" },
+  // A34 (ADR-042): a cancelled appointment returns the case to patient_acknowledged; `book_confirmatory` rebooks.
+  { from: "confirmatory_booked", event: "appointment_cancelled", to: "patient_acknowledged" },
+  // A33 (ADR-042): informed refusal, then a physician who is not the counsellor signs a declined closure.
+  { from: "owner_accepted", event: "record_informed_refusal", to: "declined_pending_signoff", requires: ["counselling_ref", "counselled_by", "reason"] },
+  { from: "patient_acknowledged", event: "record_informed_refusal", to: "declined_pending_signoff", requires: ["counselling_ref", "counselled_by", "reason"] },
+  { from: "confirmatory_booked", event: "record_informed_refusal", to: "declined_pending_signoff", requires: ["counselling_ref", "counselled_by", "reason"] },
+  { from: "declined_pending_signoff", event: "reassign", to: "declined_pending_signoff", requires: ["owner"] },
+  { from: "declined_pending_signoff", event: "close", to: "closed", requires: ["evidence_ref", "signed_by"] },
 ];
+
+/** States from which an informed refusal may be recorded (A33). */
+export const REFUSAL_FROM_STATES: readonly string[] = ["owner_accepted", "patient_acknowledged", "confirmatory_booked"];
+/** Calendar months from a recorded refusal to its re-offer date (`informed_refusal.re_offer_months`, assumed 12; H-11 is open). */
+export const RE_OFFER_MONTHS = 12;
 
 /** States from which a rejected (or bounced) handoff sends the case to `referral_rejected`. */
 export const REFERRAL_STATES: readonly string[] = ["patient_acknowledged", "confirmatory_booked"];

@@ -76,7 +76,8 @@ def test_an_oru_creates_a_case_a_siu_books_it_and_the_log_replays(scratch_store,
 
     assert send(client, colonoscopy("PG-C1", "incomplete", patient=patient)) == "AA"
     assert world.completeness == ["incomplete"] and len(scratch_store.events_for(lc.case_id)) == len(events)
-    assert send(client, siu("S15", "PG-S2", patient=patient)) == "AE"
+    assert send(client, siu("S15", "PG-S2", patient=patient)) == "AA"               # A34: a cancel is applied, not an error
+    assert scratch_store.current_state(lc.case_id) == "patient_acknowledged"
     assert send(client, adt("A08", "PG-A1", patient=patient)) == "AA"
 
 

@@ -1,5 +1,5 @@
 pathway: colorectal_fit
-version: 0.2
+version: 0.3
 description: Positive FIT result through confirmatory colonoscopy to documented closure
 states:
   - result_received
@@ -20,6 +20,7 @@ side_states:
   - consent_withdrawn
   - lost_contact
   - reopened
+  - declined_pending_signoff
 transitions:
   # Main path (the closure guard lives on the last row: evidence AND a human sign-off).
   - {from: result_received, event: acknowledge, to: acknowledged}
@@ -47,6 +48,18 @@ transitions:
   # reach `closed` again through a fresh `close` with evidence and a sign-off.
   - {from: closed, event: reopen, to: reopened, requires: [reason]}
   - {from: reopened, event: clinician_review, to: clinician_reviewed}
+  # Appointment cancelled or to be rebooked (A34, ADR-042): the case goes back to patient_acknowledged and `book_confirmatory`
+  # rebooks. The milestone clocks do not move (A25: the colonoscopy clock started at the first referral request and never
+  # restarts); the state SLA of patient_acknowledged (book_confirmatory) starts afresh, as for any state entry.
+  - {from: confirmatory_booked, event: appointment_cancelled, to: patient_acknowledged}
+  # Informed refusal (A33, ADR-042; clinician-review.md section 2.6). A person records the counselling; a DIFFERENT physician
+  # signs the closure with outcome `declined`. The closure row is the only way into `closed` from this side state (the loader
+  # allows it for the state named in `informed_refusal.state` only) and it carries the same evidence_ref and signed_by demand.
+  - {from: [owner_accepted, patient_acknowledged, confirmatory_booked], event: record_informed_refusal, to: declined_pending_signoff, requires: [counselling_ref, counselled_by, reason]}
+  # The signer must be a physician who is not the counsellor, and a clinician acts only on a case they own: if the owner
+  # IS the counsellor, a coordinator or supervisor reassigns the sign-off to another physician (found by the model checker, I7).
+  - {from: declined_pending_signoff, event: reassign, to: declined_pending_signoff, requires: [owner]}
+  - {from: declined_pending_signoff, event: close, to: closed, when: {outcome: declined}, requires: [evidence_ref, signed_by]}
 # Events that annotate a case without changing its main state. Allowed in every open state
 # (never in `closed`). Effects on the read model (overdue, escalation_level, owner, ...) are
 # defined in api/app/state_machine.py. None of these may close a case (loader-validated).
@@ -89,6 +102,7 @@ human_only_events:
   - message_rejected
   - callback_requested
   - reopen
+  - record_informed_refusal
 # Per-state SLAs: working days allowed to perform the event that leaves the state. Each clock starts when the
 # state is entered. These are our own design values (assumed, not sourced); the national standards are the two
 # `milestones` below. The pre-referral SLAs (acknowledge, accept_ownership, contact_patient, patient_acknowledge)
@@ -146,3 +160,13 @@ handoff_response_working_days: 3
 handoff_reject_reasons: [capacity, wrong_service, missing_info, patient_declined]
 handoff_bounce_reason: timeout
 closure_rule: "A case may only enter `closed` via the `close` event carrying evidence_ref and signed_by. No automated actor may emit `close`."
+# Informed refusal (A33, ADR-042). `state` is the side state a recorded refusal waits in for a physician's sign-off (the `close` SLA
+# above applies to it). `reasons` is the taxonomy of `record_informed_refusal.reason` (payloads.py keeps the same list; a test
+# compares them). `re_offer_months`: the case shows `re_offer_due_at` = the refusal's date plus this many calendar months.
+# ASSUMED 12; the AI clinician review proposed 3 (H-11 is open, clinician-review.md). Nothing re-offers automatically.
+informed_refusal:
+  state: declined_pending_signoff
+  reasons: [personal_choice, fear_of_procedure, alternative_test_requested, other_with_note]
+  re_offer_months: 12
+# Appointment cancellation reasons (A34): `appointment_cancelled.reason`.
+appointment_cancel_reasons: [patient_request, patient_unwell, provider_cancelled, capacity, preparation_not_done, other]

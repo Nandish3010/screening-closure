@@ -132,6 +132,12 @@ export const PERMISSIONS = {
   /** Record what the patient wrote back (D13): the coordinator (the API route is coordinator-only). */
   recordReply: ["coordinator"],
   signOff: OWNERS,
+  /** A33: record an informed refusal (the counsellor is named in the payload and must be a physician). */
+  recordRefusal: ["coordinator", ...OWNERS],
+  /** A33: sign a declined closure: a physician who owns the case and did not counsel the patient. */
+  signDeclined: OWNERS,
+  /** A34: cancel a booked appointment (a rebook is `book`). */
+  cancelAppointment: ["coordinator", ...OWNERS],
   reopen: OWNERS,
 } as const satisfies Record<string, readonly Role[]>;
 

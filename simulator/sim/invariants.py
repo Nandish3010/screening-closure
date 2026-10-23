@@ -12,7 +12,7 @@ from typing import Sequence
 
 from app.events import CASE_CREATED
 from app.pathway import Pathway
-from app.state_machine import AUTOMATED_ACTOR_PREFIXES, InvalidTransition, apply
+from app.state_machine import AUTOMATED_ACTOR_PREFIXES, CaseModel, InvalidTransition, step
 from .actors import as_machine_event
 
 OVERLAY_NO_STATE_CHANGE = None  # overlay events are anything outside the pathway's main chain
@@ -27,7 +27,8 @@ def stateful_events(pathway: Pathway) -> frozenset[str]:
     those are kept outside `apply` (the API's property tests cover the engine's side states).
     `close` is in the chain, so the closure guard is always exercised.
     """
-    return frozenset(t.event for t in pathway.main_transitions)
+    # + the informed-refusal event (A33): its declined `close` is replayed with the refusal on record
+    return frozenset(t.event for t in pathway.main_transitions) | {"record_informed_refusal"}
 
 
 def check_case_log(events: Sequence, pathway: Pathway) -> list[str]:
@@ -37,6 +38,7 @@ def check_case_log(events: Sequence, pathway: Pathway) -> list[str]:
     pathway_events = stateful_events(pathway)
     state = pathway.initial_state
     closed_open = False  # between a close and the next reopened
+    refusal = None  # the informed refusal on record (A33): a declined close is replayed against it
     for ev in events:
         if ev.type == CASE_CREATED:
             continue
@@ -56,7 +58,9 @@ def check_case_log(events: Sequence, pathway: Pathway) -> list[str]:
             continue
         if ev.type in pathway_events:
             try:
-                new_state = apply(state, as_machine_event(ev), pathway)
+                new_state = step(CaseModel(state=state, refusal=refusal), as_machine_event(ev), pathway).state
+                if ev.type == "record_informed_refusal":
+                    refusal = {"counselling_ref": ev.payload["counselling_ref"], "counselled_by": ev.payload["counselled_by"]}
             except InvalidTransition as exc:
                 problems.append(f"seq {ev.seq}: {exc}")
                 continue

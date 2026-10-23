@@ -311,20 +311,40 @@ def test_a_date_only_appointment_carries_only_the_date():
     assert payload["appointment_date"] == "2026-01-12" and "appointment_at" not in payload
 
 
-def test_s14_before_any_booking_books_and_for_a_booked_case_is_an_ae_with_the_reason():
+def test_s14_before_any_booking_books_and_for_a_booked_case_with_a_new_time_cancels_and_rebooks():
     case_id = make_case(upto="patient_acknowledged")
     assert ack_of(siu("S14", "S3"))[0] == "AA"                                             # nothing was booked: it books
-    assert ack_of(siu("S14", "S4", start="20260113093000")) == ("AE", "S4", handler.R_RESCHEDULE)
     assert ack_of(siu("S14", "S5"))[2] == handler.D_ALREADY_BOOKED                          # same time: nothing to change
-    assert len([e for e in cases.store.events_for(case_id) if e.type == "book_confirmatory"]) == 1
-    assert ack_of(siu("S12", "S6", start="20260114093000"))[2] == handler.R_RESCHEDULE      # a second booking is not one either
+    assert ack_of(siu("S14", "S4", start="20260113093000"))[0] == "AA"                     # A34: a new time cancels and rebooks
+    kinds = [(e.type, e.actor) for e in cases.store.events_for(case_id) if e.type in ("book_confirmatory", "appointment_cancelled")]
+    assert kinds == [("book_confirmatory", "system:hl7"), ("appointment_cancelled", "system:hl7"), ("book_confirmatory", "system:hl7")]
+    assert cases.store.current_state(case_id) == "confirmatory_booked"
+    assert cases.store.events_for(case_id)[-1].payload["appointment_date"] == "2026-01-13"
+    # redelivery of the reschedule changes nothing
+    assert ack_of(siu("S14", "S4", start="20260113093000"))[0] == "AA"
+    assert len([e for e in cases.store.events_for(case_id) if e.type == "appointment_cancelled"]) == 1
+    # a second S12 with another time for a booked case is a rebooking too
+    assert ack_of(siu("S12", "S6", start="20260114093000"))[0] == "AA"
+    assert len([e for e in cases.store.events_for(case_id) if e.type == "appointment_cancelled"]) == 2
 
 
-def test_s15_cancel_is_an_ae_with_a_reason_and_changes_nothing():
+def test_s15_cancels_a_booked_appointment_as_system_hl7_and_the_case_returns_to_patient_acknowledged():
     case_id = make_case(upto="confirmatory_booked")
-    before = len(cases.store.events_for(case_id))
-    assert ack_of(siu("S15", "S7")) == ("AE", "S7", handler.R_CANCEL)
-    assert len(cases.store.events_for(case_id)) == before
+    assert ack_of(siu("S15", "S7"))[0] == "AA"                                              # A34: ACK AA, not AE
+    cancelled = cases.store.events_for(case_id)[-1]
+    assert (cancelled.type, cancelled.actor) == ("appointment_cancelled", "system:hl7")
+    assert cancelled.payload == {"reason": "other", "by_patient": False}                  # the sender does not say who or why
+    assert cases.store.current_state(case_id) == "patient_acknowledged"
+    assert ack_of(siu("S15", "S7"))[2] == handler.D_DUPLICATE                               # redelivery
+    assert ack_of(siu("S15", "S8"))[0] == "AE" and ack_of(siu("S15", "S8"))[2] == handler.R_NOT_BOOKED  # nothing left to cancel
+    assert len([e for e in cases.store.events_for(case_id) if e.type == "appointment_cancelled"]) == 1
+    # and the booking can be made again from a later SIU
+    assert ack_of(siu("S12", "S9", start="20260120093000"))[0] == "AA"
+    assert cases.store.current_state(case_id) == "confirmatory_booked"
+
+
+def test_s15_for_a_patient_with_no_case_is_an_ae():
+    assert ack_of(siu("S15", "S10", patient="99999"))[0] == "AE"
 
 
 @pytest.mark.parametrize("kind", ["S13", "S16", "S26", "S17"])

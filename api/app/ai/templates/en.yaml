@@ -7,7 +7,7 @@
 # is named as an appointment ("a camera test"), never as a disease or a finding.
 # Placeholders: {owner_name} {next_step} {appointment_date}. Variants ending in `_with_date`
 # are used when an appointment date is supplied. Limits: sms 320, whatsapp 600, letter 1200 chars.
-version: 2
+version: 3
 language: en
 purposes:
   result_notification:
@@ -145,6 +145,30 @@ purposes:
       A person from your care team will call you to explain. The next step is {next_step}.
 
       Your care owner is {owner_name}.
+
+      Kind regards,
+      Your care team
+  refusal_acknowledgement:
+    description: >-
+      Acknowledges that the patient's decision about the next step has been recorded and that their own doctor has been
+      told (A33). It states no finding and does not say what was declined beyond "the next step". The patient can come back at any time.
+    sms: >-
+      Thank you for talking with your care team. Your decision about the next step ({next_step}) has been recorded
+      and your own doctor has been told. You can change your mind at any time: contact {owner_name}.
+    whatsapp: |-
+      Hello. This is a message from your care team.
+
+      Thank you for talking with us. Your decision about the next step ({next_step}) has been recorded, and your own doctor has been told.
+
+      You can change your mind at any time. Your care owner is {owner_name}.
+    letter: |-
+      Hello,
+
+      Thank you for talking with your care team.
+
+      Your decision about the next step ({next_step}) has been recorded, and your own doctor has been told.
+
+      You can change your mind at any time. Please contact your care team and ask for {owner_name}.
 
       Kind regards,
       Your care team

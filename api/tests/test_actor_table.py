@@ -69,7 +69,7 @@ def test_the_table_has_exactly_the_documented_rows():
         *(f"{role}:" for role in HUMAN_ROLES), "system:scheduler", "system:watchdog", "system:notifier",
         "system:consent", "system:automation", "model:", "system:triage", "system:agency:", "system:hl7",
     }
-    assert ACTOR_EVENTS[HL7_ACTOR] == {"book_confirmatory"}  # A28, ADR-039: the HL7 adapter books the appointment, nothing else
+    assert ACTOR_EVENTS[HL7_ACTOR] == {"book_confirmatory", "appointment_cancelled"}  # A28 ADR-039, A34 ADR-042: books and cancels the appointment, nothing else
     assert ACTOR_EVENTS[HL7_ACTOR] == policy.HL7_EVENTS
     assert ACTOR_EVENTS[TRIAGE_ACTOR] == {"reply_received", "reply_classified", "review_requested", "callback_requested"}
     assert ACTOR_EVENTS["system:agency:"] == frozenset()  # agents are labour, not authority (ADR-033): no event at all
