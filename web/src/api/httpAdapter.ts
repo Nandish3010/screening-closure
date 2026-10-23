@@ -4,6 +4,8 @@ import type {
   DraftApproval, DraftRecord, DraftRejection, DraftRequestBody, EffortMetrics, Me, PostEventBody, ReplyBody, ReplyResult, Role, TimelineItem,
 } from "./contract";
 import { ApiError, BACKEND_ROLE, OWNER_SCOPED_ROLES, ROLES } from "./contract";
+import type { OidcClient } from "./oidc";
+import { ROLE_PROVIDERS } from "./identities";
 import { completeDetail, completeSummary, registerActors } from "../lib/derive";
 
 const PATIENT_REF_KEY = "sc.patient_ref";
@@ -28,7 +30,8 @@ async function notFoundAs<T>(p: Promise<T>, fallback: T): Promise<T> {
   }
 }
 
-export function createHttpAdapter(baseUrl: string, fetchImpl: typeof fetch = (...a) => fetch(...a)): ApiClient {
+export function createHttpAdapter(baseUrl: string, fetchImpl: typeof fetch = (...a) => fetch(...a), opts: { oidc?: OidcClient } = {}): ApiClient {
+  const oidc = opts.oidc;
   const base = baseUrl.replace(/\/+$/, "");
 
   // ---- Auth state: the identity we last asked to be, its token, and the login in flight ----
@@ -95,6 +98,7 @@ export function createHttpAdapter(baseUrl: string, fetchImpl: typeof fetch = (..
   }
 
   function login(role: Role, name: string, provider?: string): Promise<void> {
+    if (oidc) return Promise.resolve(); // A29: people sign in at the provider (oidc.signIn), not by naming a role
     const ref = role === "patient" ? patientRef : undefined;
     if (identity && identity.role === role && identity.name === name && identity.provider === provider && identity.patientRef === ref && (token || pendingLogin)) {
       return pendingLogin ?? Promise.resolve();
@@ -122,9 +126,13 @@ export function createHttpAdapter(baseUrl: string, fetchImpl: typeof fetch = (..
   async function request<T>(path: string, init?: RequestInit, retried = false): Promise<T> {
     // Requests wait for a login in flight so a role switch never races a request.
     if (pendingLogin) await pendingLogin.catch(() => undefined);
-    const used = token;
+    const used = oidc ? await oidc.accessToken() : token;
     const res = await send(path, init, used);
-    if (res.status === 401 && identity && !retried) {
+    if (res.status === 401 && oidc) {
+      // Expired or revoked at the provider: refresh once (accessToken renews it); if that fails the app is signed out.
+      if (!retried && used && (await oidc.accessToken({ force: true }))) return request<T>(path, init, true);
+      oidc.signOut();
+    } else if (res.status === 401 && identity && !retried) {
       // Token expired or rejected: log in again once and retry.
       if (token === used) {
         const who = identity;
@@ -158,7 +166,9 @@ export function createHttpAdapter(baseUrl: string, fetchImpl: typeof fetch = (..
     adapter: "http",
     health: () => request("/health"),
     login,
+    oidc,
     async loginPatientFor(caseId: string, name = "Patient"): Promise<void> {
+      if (oidc) return; // the patient's token already carries its patient_ref
       // A patient token needs the patient's own `patient_ref`, which only staff can read from the case.
       const staff = await rawLogin(LOOKUP_LOGIN);
       if (!staff?.token) return; // no auth on this backend
@@ -176,6 +186,7 @@ export function createHttpAdapter(baseUrl: string, fetchImpl: typeof fetch = (..
       await login("patient", name);
     },
     async actorFor(role: Role, name: string, provider?: string): Promise<string> {
+      if (oidc) return `${BACKEND_ROLE[role]}:${name}`; // no way to learn another person's opaque id without their login
       const key = `${role}|${name}|${provider ?? ""}`;
       const hit = actorCache.get(key);
       if (hit) return hit;
@@ -204,8 +215,10 @@ export function createHttpAdapter(baseUrl: string, fetchImpl: typeof fetch = (..
         const backendRole = j.role ?? "coordinator";
         // The UI has more roles than the backend (clinician and owner are both primary_care_owner): the role
         // this session asked to be wins when it maps to the same backend role.
+        // With OIDC nobody "asked": the provider says who they are, and the provider tells two primary-care roles apart.
         const asked = identity && BACKEND_ROLE[identity.role] === backendRole ? identity.role : undefined;
-        const role = asked ?? (ROLES.find((r) => BACKEND_ROLE[r] === backendRole) ?? (backendRole === "supervisor" ? "coordinator" : "coordinator"));
+        const byProvider = oidc ? ROLES.find((r) => BACKEND_ROLE[r] === backendRole && j.provider && ROLE_PROVIDERS[r] === j.provider) : undefined;
+        const role = asked ?? byProvider ?? (ROLES.find((r) => BACKEND_ROLE[r] === backendRole) ?? (backendRole === "supervisor" ? "coordinator" : "coordinator"));
         return { role, name: j.display_name ?? j.name ?? "Coordinator", user_id: j.user_id, provider: j.provider, patient_ref: j.patient_ref };
       } catch (e) {
         if (e instanceof ApiError && (e.status === 404 || e.status === 0)) return { role: "coordinator", name: "Coordinator" };

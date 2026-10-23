@@ -4,6 +4,7 @@ Unit tests only: they change `settings` with monkeypatch and never start the app
 """
 
 import json
+import time
 
 import pytest
 from api_helpers import make_client
@@ -21,7 +22,11 @@ from app.config import (
 GOOD = {"x": "a" * 32, "y": "b" * 32, "z": "c" * 32, "w": "d" * 32, "v": "e" * 32}
 
 
-def configure(monkeypatch, *, env, login, secret, sched=GOOD["y"], dog=GOOD["z"], auto=GOOD["w"], agency=GOOD["v"]):
+def configure(monkeypatch, *, env, login, secret, sched=GOOD["y"], dog=GOOD["z"], auto=GOOD["w"], agency=GOOD["v"], mode=None):
+    # A29: outside dev only AUTH_MODE=oidc starts; tests of the dev-token guards pass mode="dev" explicitly.
+    mode = mode or ("dev" if env == "dev" else "oidc")
+    monkeypatch.setattr(settings, "auth_mode", mode)
+    monkeypatch.setattr(settings, "oidc_issuer", "https://idp.example/realms/x" if mode == "oidc" else "")
     monkeypatch.setattr(settings, "app_env", env)
     monkeypatch.setattr(settings, "agency_service_token", agency)
     monkeypatch.setattr(settings, "dev_login_enabled", login)
@@ -33,6 +38,7 @@ def configure(monkeypatch, *, env, login, secret, sched=GOOD["y"], dog=GOOD["z"]
 
 
 def forge(claims, secret):
+    claims = {"exp": int(time.time()) + 3600, **claims}  # dev tokens must carry an expiry (ADR-040)
     body = auth._b64(json.dumps(claims, sort_keys=True, separators=(",", ":")).encode())
     return f"{body}.{auth._sign(body, secret)}"
 
@@ -130,10 +136,10 @@ def test_token_forged_with_the_default_secret_is_401_outside_dev(monkeypatch, en
     configure(monkeypatch, env="dev", login=True, secret=DEV_AUTH_SECRET_DEFAULT)
     assert client.get("/me", headers={"Authorization": f"Bearer {forged}"}).status_code == 200
     # Outside dev: refused with the default secret still configured ...
-    configure(monkeypatch, env=env, login=False, secret=DEV_AUTH_SECRET_DEFAULT)
+    configure(monkeypatch, env=env, login=False, secret=DEV_AUTH_SECRET_DEFAULT, mode="dev")
     assert client.get("/me", headers={"Authorization": f"Bearer {forged}"}).status_code == 401
     # ... and refused when a real secret is configured (the forged signature simply fails) ...
-    configure(monkeypatch, env=env, login=False, secret=GOOD["x"])
+    configure(monkeypatch, env=env, login=False, secret=GOOD["x"], mode="dev")
     assert client.get("/me", headers={"Authorization": f"Bearer {forged}"}).status_code == 401
     # ... while a token signed with the real secret works.
     genuine = forge({"v": 1, "role": "supervisor", "name": "carol"}, GOOD["x"])
@@ -144,7 +150,7 @@ def test_verify_token_refuses_an_explicit_default_secret_outside_dev(monkeypatch
     token = forge({"v": 1, "role": "lab", "name": "x"}, DEV_AUTH_SECRET_DEFAULT)
     configure(monkeypatch, env="dev", login=True, secret=DEV_AUTH_SECRET_DEFAULT)
     assert auth.verify_token(token, secret=DEV_AUTH_SECRET_DEFAULT).role == "lab"
-    configure(monkeypatch, env="prod", login=False, secret=GOOD["x"])
+    configure(monkeypatch, env="prod", login=False, secret=GOOD["x"], mode="dev")
     with pytest.raises(auth.AuthError):
         auth.verify_token(token, secret=DEV_AUTH_SECRET_DEFAULT)
     with pytest.raises(auth.AuthError):
