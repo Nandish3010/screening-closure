@@ -143,6 +143,21 @@ en:
     category: result_disclosure
     rationale: "IFHAS: abnormal results are communicated with the participant present"
     example: "Your result shows a problem."
+  - id: clinical_findings  # D14 red-team: added
+    regex: "\\w*carcinoma\\w*|metasta\\w*|biops\\w*|histolog\\w*|patholog\\w*|lumps?|masses|crc|stage\\s+(?:[0-4]|one|two|three|four|i{1,3}|iv)\\b"
+    category: disease_term
+    rationale: "Clinical vocabulary for a finding or a disease course; naming it is a diagnosis statement or a result hint, which only the care team may give with the participant present."
+    example: "The biopsy is back."
+  - id: mortality  # D14 red-team: added
+    regex: "die|dies|dying|death|deaths|dead|fatal\\w*|terminal\\w*|hospice|palliative"
+    category: clinical_judgement
+    rationale: "Talk of death or end of life is a prognosis; never for an automated message."
+    example: "You will die."
+  - id: euphemism_c_word  # D14 red-team: added
+    regex: "the (?:big )?c(?:-| )word|the big c"
+    category: disease_term
+    rationale: "A euphemism for cancer is still naming it."
+    example: "It is the big C."
   - id: arabizi_cancer  # D14 red-team: added
     regex: "s[ae]r+[ae]?t[ae]n|sartan\\w*|saratan\\w*"
     category: disease_term
