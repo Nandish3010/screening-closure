@@ -199,24 +199,60 @@ def load_forbidden_phrases() -> tuple[ForbiddenPhrase, ...]:
     return tuple(out)
 
 
+# Spelling tricks: a word is broken up with spaces, dots, dashes or underscores ("c a n c e r", "can-cer"), stretched with
+# repeated letters ("canccer", "سرررطان") or written with digits and symbols for letters ("c4nc3r"). For the disease
+# stems below the text is also matched with every non-letter dropped, repeats collapsed and digits read as letters.
+# A stem found only that way is a hit on the entry named here. The price is an occasional false rejection of text such
+# as "can certainly", which costs one template message (RT-V-05).
+_LEET = str.maketrans({"4": "a", "3": "e", "0": "o", "1": "i", "5": "s", "7": "t", "@": "a", "$": "s", "!": "i"})
+_SQUEEZED_EN = (
+    ("cancer", "cancer"), ("tumou?r", "tumour"), ("malignan", "malignant"), ("carcinoma|neoplas", "carcinoma_neoplasm"),
+    ("diagnos", "diagnos"), ("saratan|sartan", "arabizi_cancer"),
+)
+_SQUEEZED_AR = (("سرطان", "cancer"), ("خبيث", "malignant"), ("تشخيص", "diagnosis"), ("كارسينوما", "carcinoma"))
+
+
+def _squeezed_hits(text: str, found: set[tuple[str, str]]) -> list[ForbiddenPhrase]:
+    by_key = {(fp.language, fp.id): fp for fp in load_forbidden_phrases()}
+    latin = re.sub(r"(.)\1+", r"\1", re.sub(r"[^a-z]+", "", skeleton(text).translate(_LEET)))
+    arabic = re.sub(r"(.)\1+", r"\1", re.sub(r"[^ء-ي]+", "", normalise_arabic("".join(c for c in text if not _invisible(c)))))
+    hits = []
+    for lang, haystack, table in (("en", latin, _SQUEEZED_EN), ("ar", arabic, _SQUEEZED_AR)):
+        for stem, entry_id in table:
+            key = (lang, entry_id)
+            if key not in found and key in by_key and re.search(stem, haystack):
+                found.add(key)
+                hits.append(by_key[key])
+    return hits
+
+
 def forbidden_hits(text: str) -> list[ForbiddenPhrase]:
     """Every forbidden-phrase entry (either language) found in `text`. English entries are matched on the
-    text's skeleton, so look-alike Cyrillic or Greek letters and hidden characters do not hide a word."""
+    text's skeleton, so look-alike Cyrillic or Greek letters and hidden characters do not hide a word, and the disease
+    stems are matched again with the text squeezed (spaces, punctuation, repeats, digit-for-letter)."""
     plain = text.casefold()
     latin = skeleton(text)
     arabic = normalise_arabic("".join(c for c in text if not _invisible(c)))
-    return [
+    hits = [
         fp for fp in load_forbidden_phrases()
         if (fp.pattern.search(arabic) if fp.language == "ar" else (fp.pattern.search(plain) or fp.pattern.search(latin)))
     ]
+    return hits + _squeezed_hits(text, {(fp.language, fp.id) for fp in hits})
 
 
 # ---------------------------------------------------------------- personal data and links
 
-_PLACEHOLDER = re.compile(r"[{}]|\[[^\]]{0,40}\]|<[^>]{0,40}>")
+# Braces, [..], <..>; and the other template syntaxes a model might echo: $name, ${name}, %s, %d, %(name)s (RT-V-12).
+# Also markup a model might emit: a backtick (code span or fence) and a call such as `close_case(...)` (RT-P-03).
+_PLACEHOLDER = re.compile(r"[{}]|\[[^\]]{0,40}\]|<[^>]{0,40}>|\$[A-Za-z_]|%\(\w+\)[sdif]|%[sdif]\b|`|\b\w+_\w+\s*\(")
 # Seven digits, however they are punctuated: space, dash, dot, brackets, and `/` and `,` (050/123/4567, 050,123,4567).
 _LONG_DIGITS = re.compile(r"(?<![\w])\+?\d(?:[\s\-.()/,]*\d){6,}")
-_EMAIL = re.compile(r"@|\b[\w.+-]+\s*(?:\[at\]|\(at\))\s*[\w-]+")
+# `@`; "[at]" and "(at)"; "bob at example dot com"; "at gmail" (a well-known mail host after "at") (RT-V-09).
+_EMAIL = re.compile(
+    r"@|\b[\w.+-]+\s*(?:\[at\]|\(at\))\s*[\w-]+|\bat\s+[\w-]+(?:\s*[\[(]?\s*dot\s*[\])]?\s*[\w-]+)+"
+    r"|\bat\s+(?:gmail|yahoo|hotmail|outlook|icloud|proton\w*|live)\b",
+    re.IGNORECASE,
+)
 _ID_WORDS = re.compile(
     r"\b(?:mrn|emirates\s*id|eid|passport|nhs\s*number|id\s*(?:no|number|card)|file\s*(?:no|number)|"
     r"member\s*id|policy\s*(?:no|number)|medical\s*record)\b"
@@ -231,6 +267,23 @@ _URL = re.compile(
 )
 
 
+# Disguised links (RT-V-10): other full stops (ideographic, halfwidth, "[.]"), a spoken "dot" or "نقطة", a dot with a space
+# before it ("evil . com", "www .evil .com"), shorteners written without a dot ("tinyurl com abc"), and a scheme broken up
+# with spaces ("h t t p s : / /") or spelled "hxxp". The URL pattern then runs on the repaired text.
+_SPOKEN_DOT = re.compile(r"\s*(?:\(dot\)|\[dot\]|\{dot\}|\[\.\]|\bdot\b|نقطة)\s*", re.IGNORECASE)
+_SPACE_BEFORE_DOT = re.compile(r"(?<=\w)\s+\.\s*(?=\w)")
+_SHORTENER = re.compile(r"\b(?:tinyurl|bitly|rebrandly|cutt\s*ly)\b|\bhxxps?\b", re.IGNORECASE)
+_SCHEME_SQUEEZED = re.compile(r"(?:https?|ftp):|://", re.IGNORECASE)
+
+
+def has_disguised_url(scan: str) -> bool:
+    repaired = scan.translate({0x3002: ".", 0xFF61: ".", 0x2024: "."})
+    repaired = _SPACE_BEFORE_DOT.sub(".", _SPOKEN_DOT.sub(".", repaired))
+    return bool(
+        _URL.search(repaired) or _SHORTENER.search(scan) or _SCHEME_SQUEEZED.search(re.sub(r"\s+", "", scan))
+    )
+
+
 _SCRIPT_PREFIX = {"en": "LATIN", "ar": "ARABIC"}
 
 
@@ -241,6 +294,20 @@ def _script_of(char: str) -> str:
         return unicodedata.name(char).split(" ", 1)[0]
     except ValueError:
         return ""
+
+
+_DIGIT_WORDS = {
+    "zero": "0", "one": "1", "two": "2", "three": "3", "four": "4", "five": "5", "six": "6", "seven": "7", "eight": "8",
+    "nine": "9", "صفر": "0", "واحد": "1", "اثنان": "2", "اثنين": "2", "ثلاثة": "3", "ثلاثه": "3", "اربعة": "4", "اربعه": "4",
+    "خمسة": "5", "خمسه": "5", "ستة": "6", "سته": "6", "سبعة": "7", "سبعه": "7", "ثمانية": "8", "ثمانيه": "8",
+    "تسعة": "9", "تسعه": "9",
+}
+_DIGIT_WORD = re.compile(r"(?<![\w])(" + "|".join(_DIGIT_WORDS) + r")(?![\w])", re.IGNORECASE)
+
+
+def _words_to_digits(text: str) -> str:
+    """Number words, English and Arabic, as digits, so "nine seven one five ..." is a phone number like 9715...."""
+    return _DIGIT_WORD.sub(lambda m: _DIGIT_WORDS[m.group(1).lower()], normalise_arabic(text))
 
 
 def _ascii_digits(text: str) -> str:
@@ -287,13 +354,13 @@ def validate(text: str, req: DraftRequest) -> ValidationResult:
         reasons.append(f"{FORBIDDEN_PHRASE}:{hit.id}")
 
     scan = _ascii_digits(unicodedata.normalize("NFKC", residue))
-    if _LONG_DIGITS.search(scan):
+    if _LONG_DIGITS.search(scan) or _LONG_DIGITS.search(_words_to_digits(scan)):
         reasons.append(PII_DIGITS)
     if _EMAIL.search(scan):
         reasons.append(PII_EMAIL)
     if _ID_WORDS.search(normalise_arabic(scan)) or _MIXED_TOKEN.search(scan):
         reasons.append(PII_IDENTIFIER)
-    if _URL.search(scan):
+    if has_disguised_url(scan):
         reasons.append(URL)
 
     return ValidationResult(not reasons, tuple(reasons))
@@ -385,7 +452,7 @@ def draft_with_fallback(
     """
     log = DEFAULT_ABSTENTION_LOG if log is None else log
     log.note_attempt()
-    if isinstance(provider, TemplateProvider):
+    if type(provider) is TemplateProvider:  # exactly the vetted class: a subclass that overrides draft() is validated (RT-P-07.7)
         return provider.draft(req)
 
     reason: str | None = None

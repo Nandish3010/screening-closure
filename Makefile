@@ -1,4 +1,4 @@
-.PHONY: oidc-up oidc-down test-oidc agency-run test-demo test-e2e-live demo-scenario demo-stage demo-snapshot demo-restore demo-reset demo-kill-scheduler check docs-check tracker-lint test-security test-tools test-load load-check up down logs test test-db test-db-create test-db-reset test-chaos synthea demo-seed demo-seed-clean evaluate evaluate-capacity evaluate-capacity-check simulate evaluate-check sensitivity sensitivity-check reset web-install web-dev web-build web-test web-e2e test-e2e review-packs review-packs-check test-review-packs test-phi-logs rbac-matrix test-offline fresh-clone risk-report risk-check calibrate-fetch calibrate-fit calibrate-check effort effort-check video video-check video-deps verify hl7-demo hl7-samples
+.PHONY: test-redteam oidc-up oidc-down test-oidc agency-run test-demo test-e2e-live demo-scenario demo-stage demo-snapshot demo-restore demo-reset demo-kill-scheduler check docs-check tracker-lint test-security test-tools test-load load-check up down logs test test-db test-db-create test-db-reset test-chaos synthea demo-seed demo-seed-clean evaluate evaluate-capacity evaluate-capacity-check simulate evaluate-check sensitivity sensitivity-check reset web-install web-dev web-build web-test web-e2e test-e2e review-packs review-packs-check test-review-packs test-phi-logs rbac-matrix test-offline fresh-clone risk-report risk-check calibrate-fetch calibrate-fit calibrate-check effort effort-check video video-check video-deps verify hl7-demo hl7-samples
 
 up:
 	docker compose up -d --build
@@ -308,8 +308,14 @@ fresh-clone:
 
 # Cross-cutting tests in tests/ (scanner, linters, load harness). PYTHONPATH=api makes a git worktree
 # test its own api/ rather than the checkout the venv was installed from.
+# tests/redteam is excluded: its conftest.py would shadow tests/conftest.py (both import as "conftest"); it runs under test-redteam.
 test-tools:
-	PYTHONPATH=api $(PY) -m pytest tests tools/demo/tests tools/video/tests -q -m "not live"
+	PYTHONPATH=api $(PY) -m pytest tests --ignore=tests/redteam tools/demo/tests tools/video/tests -q -m "not live"
+
+# D14: the adversarial red-team suite (tests/redteam/, docs/governance/red-team.md). No database, no network. It rewrites
+# tests/redteam/results.json and results.md (deterministic; commit them when the suite changes).
+test-redteam:
+	PYTHONPATH=api $(PY) -m pytest tests/redteam -q
 
 # Scheduler sweep over 1k / 10k / 100k seeded open cases in a throwaway `closure_load` database on the
 # compose Postgres (:5433); rewrites docs/results/load.md. KEEP_LOAD_DB=1 keeps the database.

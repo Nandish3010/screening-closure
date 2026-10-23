@@ -269,6 +269,9 @@ def _create_case(msg: Message, patient_ref: str, contact_valid: bool | None) -> 
             contact_valid=contact_valid))
     except HTTPException as exc:
         if exc.status_code == 409:
+            genesis = cases.store.events_for(case_id)
+            if genesis and genesis[0].payload.get("patient_ref") != patient_ref:  # the control id was reused for another patient
+                raise Reject("AE", "205", R_CONTENT_CONFLICT) from None
             return Outcome("AA", None, D_DUPLICATE, "duplicate")
         if exc.status_code == 403:
             raise Reject("AE", "207", R_DENIED) from None
@@ -346,12 +349,14 @@ def _siu(msg: Message, trigger: str) -> Outcome:
 
     event_id = booking_event_id(msg)
     open_cases = _cases_of(patient_ref, ("patient_acknowledged", "confirmatory_booked"))
-    if not open_cases and any(  # a redelivery after the case moved on is still a duplicate, not an error
-            e.event_id == event_id for lc in _cases_of(patient_ref, (None,)) for e in lc.events):
-        return Outcome("AA", None, D_DUPLICATE, "duplicate")
+    if not open_cases:  # a redelivery after the case moved on is still a duplicate, not an error
+        prior = next((e for lc in _cases_of(patient_ref, (None,)) for e in lc.events if e.event_id == event_id), None)
+        if prior is not None:
+            return _duplicate_of(prior, payload)
     lc = _one_case(patient_ref, ("patient_acknowledged", "confirmatory_booked"))
-    if any(e.event_id == event_id for e in lc.events):
-        return Outcome("AA", None, D_DUPLICATE, "duplicate")
+    prior = next((e for e in lc.events if e.event_id == event_id), None)
+    if prior is not None:
+        return _duplicate_of(prior, payload)
     if lc.model is not None and lc.model.state == "confirmatory_booked":
         booked = next((e for e in reversed(lc.events) if e.type == "book_confirmatory"), None)
         same = booked is not None and booked.payload.get("appointment_at") == payload.get("appointment_at") \
@@ -360,6 +365,14 @@ def _siu(msg: Message, trigger: str) -> Outcome:
             return Outcome("AA", None, D_ALREADY_BOOKED, "siu_unchanged")
         raise Reject("AE", "201", R_RESCHEDULE)
     return _book(cases, lc.case_id, payload, event_id)
+
+
+def _duplicate_of(prior: Event, payload: dict) -> Outcome:
+    """A redelivery is a duplicate only if it says what the first message said; the same control id with another time
+    or reference is a conflict the sender must hear about (AE), and the first booking stands."""
+    if prior.payload != payload:
+        raise Reject("AE", "205", R_CONTENT_CONFLICT)
+    return Outcome("AA", None, D_DUPLICATE, "duplicate")
 
 
 def _book(cases, case_id: UUID, payload: dict, event_id: UUID) -> Outcome:
