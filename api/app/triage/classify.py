@@ -72,9 +72,17 @@ def softmax(logits: list[float], temperature: float) -> list[float]:
     return [e / total for e in exps]
 
 
+def _finite(v) -> bool:
+    return isinstance(v, (int, float)) and not isinstance(v, bool) and math.isfinite(v)
+
+
 def decide(scores: dict, cal: Calibration, text: str) -> dict:
     """Pure: the scorer's output and the calibration to the result dict. Tested without any model."""
-    probs = softmax(scores["logits"], cal.temperature)
+    logits, mass = scores["logits"], scores.get("mass", 0.0)
+    if (len(logits) != len(INTENTS) or not all(_finite(v) for v in logits)  # a malformed answer is not a distribution (RT-R-03)
+            or not _finite(mass) or not 0.0 <= mass <= 1.0 + 1e-6):  # mass is a probability: NaN and > 1 compare "safe" below
+        raise ValueError("the scorer's answer is not nine finite logits and a mass in [0, 1]")
+    probs = softmax(logits, cal.temperature)
     best = max(range(len(INTENTS)), key=lambda i: probs[i])
     intent, confidence = INTENTS[best], probs[best]
     needs_human = (

@@ -38,8 +38,8 @@ from app.triage.reply_store import InMemoryReplyStore
 client = make_client()
 CAL = triage.Calibration(temperature=1.0, threshold=0.8, mass_floor=0.5, model_id="rt-model-1")
 ALLOWED = {"reply_received", "reply_classified", "callback_requested", "review_requested"}  # replies.py docstring
-# case id -> weakness class (W14) while its fix is pending
-EXPOSED: dict[str, str] = {i: "W14" for i in ("RT-R-03.2", "RT-R-03.3", "RT-R-03.4", "RT-R-03.5", "RT-R-03.7", "RT-R-03.17")}
+# case id -> weakness class while its fix is pending. Empty now: W14 has been fixed (docs/governance/red-team.md section 9).
+EXPOSED: dict[str, str] = {}
 OWNER = "Dr Sara Khan"
 
 
