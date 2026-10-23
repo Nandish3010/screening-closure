@@ -1,4 +1,4 @@
-.PHONY: agency-run test-demo test-e2e-live demo-scenario demo-stage demo-snapshot demo-restore demo-reset demo-kill-scheduler check docs-check tracker-lint test-security test-tools test-load load-check up down logs test test-db test-db-create test-db-reset test-chaos synthea demo-seed demo-seed-clean evaluate evaluate-capacity evaluate-capacity-check simulate evaluate-check sensitivity sensitivity-check reset web-install web-dev web-build web-test web-e2e test-e2e review-packs review-packs-check test-review-packs test-phi-logs rbac-matrix test-offline fresh-clone risk-report risk-check calibrate-fetch calibrate-fit calibrate-check effort effort-check video video-check video-deps verify hl7-demo hl7-samples
+.PHONY: oidc-up oidc-down test-oidc agency-run test-demo test-e2e-live demo-scenario demo-stage demo-snapshot demo-restore demo-reset demo-kill-scheduler check docs-check tracker-lint test-security test-tools test-load load-check up down logs test test-db test-db-create test-db-reset test-chaos synthea demo-seed demo-seed-clean evaluate evaluate-capacity evaluate-capacity-check simulate evaluate-check sensitivity sensitivity-check reset web-install web-dev web-build web-test web-e2e test-e2e review-packs review-packs-check test-review-packs test-phi-logs rbac-matrix test-offline fresh-clone risk-report risk-check calibrate-fetch calibrate-fit calibrate-check effort effort-check video video-check video-deps verify hl7-demo hl7-samples
 
 up:
 	docker compose up -d --build
@@ -9,14 +9,27 @@ down:
 logs:
 	docker compose logs -f --tail=100
 
+# A29 (ADR-040): the local OIDC provider (Keycloak, a UAE PASS stand-in) and the API in AUTH_MODE=oidc. Generates per-run
+# demo passwords unless they are in .env (KC_PW_*), prints where they are (.oidc-demo-credentials, mode 600, git-ignored).
+# The web app then needs VITE_AUTH_MODE=oidc (docs/governance/identity.md). `make oidc-down` returns the stack to dev mode.
+oidc-up:
+	sh tools/identity/oidc_up.sh up
+
+oidc-down:
+	sh tools/identity/oidc_up.sh down
+
+# The committed realm against a real Keycloak (own compose project, port 18180, throw-away passwords); skips without Docker.
+test-oidc:
+	PYTHONPATH=$(CURDIR)/api $(PY) -m pytest api/tests/test_oidc_keycloak.py -q -m oidc -rs
+
 # Unit tests only (no database needed). Uses the local .venv if present, otherwise
 # runs the api tests in the `test` stage of the api image (service api-test, profile "tests"): the api image that
 # runs in compose has no pytest and no tests (SEC-1). The simulator tests need the venv.
 test:
 	@if [ -x .venv/bin/pytest ]; then \
-		.venv/bin/pytest api/tests simulator/tests -q -m "not integration and not chaos"; \
+		.venv/bin/pytest api/tests simulator/tests -q -m "not integration and not chaos and not oidc"; \
 	else \
-		docker compose --profile tests run --rm --no-deps api-test pytest tests -q -m "not integration and not chaos"; \
+		docker compose --profile tests run --rm --no-deps api-test pytest tests -q -m "not integration and not chaos and not oidc"; \
 	fi
 
 # A27 (ADR-038): exhaustive model checking of the closure engine's state machine. Drives the real `step()` breadth-first

@@ -84,7 +84,7 @@ def _probe(env_value: str | None) -> dict:
         "from app.main import app\n"
         "c = TestClient(app)\n"
         "login = c.post('/auth/dev-login', json={'role': 'supervisor', 'name': 'x'})\n"
-        "body = auth._b64(json.dumps({'v': 1, 'role': 'supervisor', 'name': 'x'}, sort_keys=True, separators=(',', ':')).encode())\n"
+        "body = auth._b64(json.dumps({'v': 1, 'role': 'supervisor', 'name': 'x', 'exp': 4102444800}, sort_keys=True, separators=(',', ':')).encode())\n"
         "from app.config import settings\n"
         "h = {'Authorization': 'Bearer ' + body + '.' + auth._sign(body, settings.dev_auth_secret)}\n"
         "assert c.get('/me', headers=h).status_code == 200  # the supervisor token itself is valid\n"
