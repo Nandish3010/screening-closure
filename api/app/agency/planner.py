@@ -24,6 +24,7 @@ import hashlib
 import json
 import logging
 import re
+import unicodedata
 from dataclasses import dataclass
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
@@ -45,6 +46,8 @@ PLAN_SYSTEM_PROMPT = (
 
 _LINKY = re.compile(r"https?://|www\.|@|\b[a-z0-9-]+\.(com|net|org|ae|io)\b", re.I)
 _LONG_DIGITS = re.compile(r"\d[\d\s\-./]{5,}\d")
+# control (line breaks, NUL), format (bidi overrides, zero-width), surrogate and line/paragraph separator characters
+_UNSAFE_CHARS = frozenset({"Cc", "Cf", "Cs", "Zl", "Zp"})
 
 
 class TaskOrder(BaseModel):
@@ -85,7 +88,7 @@ class ModelPlanReply(BaseModel):
     @field_validator("rationale")
     @classmethod
     def _plain(cls, value: str) -> str:
-        if "\n" in value.strip() or _LINKY.search(value) or _LONG_DIGITS.search(value) or "{" in value:
+        if any(unicodedata.category(c) in _UNSAFE_CHARS for c in value.strip()) or _LINKY.search(value) or _LONG_DIGITS.search(value) or "{" in value:
             raise ValueError("the rationale must be plain sentences: no links, addresses or long numbers")
         return value.strip()
 

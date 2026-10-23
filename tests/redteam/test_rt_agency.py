@@ -36,10 +36,8 @@ from app.events import Event
 from app.routers import cases, drafts
 
 make_client()  # loads app.main (the pathway) like every other module
-# case id -> weakness class while its fix is pending: W15 a rationale with control or formatting characters is accepted,
-# W16 the runner executes whatever a planner object returns (nothing checks it against the candidates)
-EXPOSED: dict[str, str] = {**{f"RT-A-01.{n}": "W15" for n in (22, 23, 24, 26)},
-                           **{f"RT-A-02.{n}": "W16" for n in (1, 2, 3, 4, 5, 6, 8, 9, 10, 11, 12, 14)}}
+# case id -> weakness class while its fix is pending. W15 (planner rationale) is fixed; W16 (the runner trusts a planner object) is pending.
+EXPOSED: dict[str, str] = {f"RT-A-02.{n}": "W16" for n in (1, 2, 3, 4, 5, 6, 8, 9, 10, 11, 12, 14)}
 PROV = Provenance("0" * 64, "template", "rt-planner", False)
 
 
