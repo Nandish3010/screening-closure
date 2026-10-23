@@ -243,7 +243,8 @@ def forbidden_hits(text: str) -> list[ForbiddenPhrase]:
 # ---------------------------------------------------------------- personal data and links
 
 # Braces, [..], <..>; and the other template syntaxes a model might echo: $name, ${name}, %s, %d, %(name)s (RT-V-12).
-_PLACEHOLDER = re.compile(r"[{}]|\[[^\]]{0,40}\]|<[^>]{0,40}>|\$[A-Za-z_]|%\(\w+\)[sdif]|%[sdif]\b")
+# Also markup a model might emit: a backtick (code span or fence) and a call such as `close_case(...)` (RT-P-03).
+_PLACEHOLDER = re.compile(r"[{}]|\[[^\]]{0,40}\]|<[^>]{0,40}>|\$[A-Za-z_]|%\(\w+\)[sdif]|%[sdif]\b|`|\b\w+_\w+\s*\(")
 # Seven digits, however they are punctuated: space, dash, dot, brackets, and `/` and `,` (050/123/4567, 050,123,4567).
 _LONG_DIGITS = re.compile(r"(?<![\w])\+?\d(?:[\s\-.()/,]*\d){6,}")
 # `@`; "[at]" and "(at)"; "bob at example dot com"; "at gmail" (a well-known mail host after "at") (RT-V-09).
