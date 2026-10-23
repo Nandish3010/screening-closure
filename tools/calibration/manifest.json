@@ -47,6 +47,18 @@
       "size_bytes": 10994060,
       "title": "Medical Appointment No Shows (OpenML dataset 43439; Vitoria, Brazil, 2016; 110,527 appointments; uploaded from Kaggle, J. Hoppen / Aquarela)",
       "url": "https://openml.org/data/v1/download/22102264/Medical-Appointment-No-Shows.arff"
+    },
+    {
+      "attribution": "Figures from the AIHW National Bowel Cancer Screening Program monitoring report 2026 as reported by Bowel Cancer Australia.",
+      "downloaded_utc": "2026-10-23T01:36:59Z",
+      "id": "bca-nbcsp2026",
+      "licence": "Website content, no open licence stated; only the published figures (facts) are extracted, the page is not republished",
+      "licence_evidence": "No licence statement found on the page (checked 2026-10-23); facts only",
+      "path": "data/external/bca-nbcsp2026/nbcsp-2026-summary.html",
+      "sha256": "1dd9858dea8cdd0b31dc4e885bd61bb805d20fef379320557f375fd1b088ea49",
+      "size_bytes": 176466,
+      "title": "Bowel Cancer Australia, summary of the AIHW NBCSP monitoring report 2026 (secondary source; AIHW itself is blocked)",
+      "url": "https://www.bowelcanceraustralia.org/?p=15157"
     }
   ],
   "not_downloaded": [
@@ -54,7 +66,7 @@
       "id": "aihw-nbcsp-2024",
       "licence": "CC BY 4.0 (per the ticket; could not be confirmed on the page)",
       "page": "https://www.aihw.gov.au/reports/cancer-screening/nbcsp-monitoring-2024/data",
-      "reason": "The AIHW site answered every request (curl with a browser User-Agent: HTTP 403; browser pane: Cloudflare 'Verify you are human' challenge). Completing a bot-detection challenge is not done by this project, so nothing was downloaded. The owner can place the XLSX by hand in data/external/aihw/ and re-run `make calibrate-fit`."
+      "reason": "The AIHW site answered every request (curl with a browser User-Agent: HTTP 403; browser pane: Cloudflare 'Verify you are human' challenge). Completing a bot-detection challenge is not done by this project, so nothing was downloaded. The owner can place the XLSX by hand in data/external/aihw/ and re-run `make calibrate-fit`. Retried on 2026-10-23 (ticket B20, plain curl and WebFetch): HTTP 403 again, nothing bypassed; a secondary published summary is used instead (id bca-nbcsp2026) and graded as secondary."
     }
   ],
   "note": "External datasets are untrusted input: kept only under data/external/ (gitignored), read only by tools/calibration scripts run with python3 -I."

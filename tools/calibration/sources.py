@@ -55,6 +55,16 @@ SOURCES = [
         "licence_evidence": "OpenML API dataset description field `licence` = 'CC BY-NC-SA 4.0' (https://www.openml.org/api/v1/json/data/43439, checked 2026-10-18); the Kaggle page shows no licence (third-party statement, unconfirmed at source)",
         "attribution": "Medical Appointment No Shows, J. Hoppen / Aquarela Advanced Analytics, via OpenML dataset 43439, CC BY-NC-SA 4.0. Only fitted coefficients derived from it are published, never the data.",
     },
+    {
+        "id": "bca-nbcsp2026",
+        "dir": "bca-nbcsp2026",
+        "file": "nbcsp-2026-summary.html",
+        "url": "https://www.bowelcanceraustralia.org/?p=15157",
+        "title": "Bowel Cancer Australia, summary of the AIHW NBCSP monitoring report 2026 (secondary source; AIHW itself is blocked)",
+        "licence": "Website content, no open licence stated; only the published figures (facts) are extracted, the page is not republished",
+        "licence_evidence": "No licence statement found on the page (checked 2026-10-23); facts only",
+        "attribution": "Figures from the AIHW National Bowel Cancer Screening Program monitoring report 2026 as reported by Bowel Cancer Australia.",
+    },
 ]
 
 # Not downloaded: recorded so the manifest is complete about what was attempted.
@@ -63,6 +73,6 @@ BLOCKED = [
         "id": "aihw-nbcsp-2024",
         "page": "https://www.aihw.gov.au/reports/cancer-screening/nbcsp-monitoring-2024/data",
         "licence": "CC BY 4.0 (per the ticket; could not be confirmed on the page)",
-        "reason": "The AIHW site answered every request (curl with a browser User-Agent: HTTP 403; browser pane: Cloudflare 'Verify you are human' challenge). Completing a bot-detection challenge is not done by this project, so nothing was downloaded. The owner can place the XLSX by hand in data/external/aihw/ and re-run `make calibrate-fit`.",
+        "reason": "The AIHW site answered every request (curl with a browser User-Agent: HTTP 403; browser pane: Cloudflare 'Verify you are human' challenge). Completing a bot-detection challenge is not done by this project, so nothing was downloaded. The owner can place the XLSX by hand in data/external/aihw/ and re-run `make calibrate-fit`. Retried on 2026-10-23 (ticket B20, plain curl and WebFetch): HTTP 403 again, nothing bypassed; a secondary published summary is used instead (id bca-nbcsp2026) and graded as secondary.",
     },
 ]
