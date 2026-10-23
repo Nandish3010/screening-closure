@@ -1,10 +1,15 @@
-.PHONY: oidc-up oidc-down test-oidc agency-run test-demo test-e2e-live demo-scenario demo-stage demo-snapshot demo-restore demo-reset demo-kill-scheduler check docs-check tracker-lint test-security test-tools test-load load-check up down logs test test-db test-db-create test-db-reset test-chaos synthea demo-seed demo-seed-clean evaluate evaluate-capacity evaluate-capacity-check simulate evaluate-check sensitivity sensitivity-check reset web-install web-dev web-build web-test web-e2e test-e2e review-packs review-packs-check test-review-packs test-phi-logs rbac-matrix test-offline fresh-clone risk-report risk-check calibrate-fetch calibrate-fit calibrate-check effort effort-check video video-check video-deps verify hl7-demo hl7-samples
+.PHONY: oidc-up oidc-down test-oidc up-scale agency-run test-demo test-e2e-live demo-scenario demo-stage demo-snapshot demo-restore demo-reset demo-kill-scheduler check docs-check tracker-lint test-security test-tools test-load load-check up down logs test test-db test-db-create test-db-reset test-chaos synthea demo-seed demo-seed-clean evaluate evaluate-capacity evaluate-capacity-check simulate evaluate-check sensitivity sensitivity-check reset web-install web-dev web-build web-test web-e2e test-e2e review-packs review-packs-check test-review-packs test-phi-logs rbac-matrix test-offline fresh-clone risk-report risk-check calibrate-fetch calibrate-fit calibrate-check effort effort-check video video-check video-deps verify hl7-demo hl7-samples
 
 up:
 	docker compose up -d --build
 
+# A31 (ADR-041): two API replicas behind the Caddy proxy (host port PROXY_PORT, default 8100) and two schedulers; the schedulers
+# talk to the API through the proxy, and every scheduler call must carry a current leader token.
+up-scale:
+	SCHEDULER_API_URL=http://proxy:8080 REQUIRE_LEADER_FENCE=true docker compose --profile scale up -d --build
+
 down:
-	docker compose down
+	docker compose --profile scale down
 
 logs:
 	docker compose logs -f --tail=100
@@ -64,6 +69,9 @@ test-db: $(if $(SKIP_DB_CREATE),,test-db-create)
 # Chaos tests (F3, F4, F5; T-A32, T-F3 to T-F7), all marked `chaos`:
 #   * fault injection (api/tests/faults.py, honoured only when APP_ENV=test): duplicate delivery, clock skew,
 #     a store failure after the event insert;
+#   * T-A31 (api/tests/test_chaos_leader.py): kills the scheduler that holds the leader lease on a `make up-scale` stack and asserts
+#     the other takes over within the lease TTL and no event is lost or duplicated; skips itself when the scale stack is not
+#     up. Run it only against your own compose project (COMPOSE_PROJECT_NAME, shifted ports; the test header has the recipe);
 #   * the sweep killed part-way through 5,000 cases (SIGKILL, single process and sharded), rerun, exactly the
 #     planned events once;
 #   * garbage from the drafting model, and consent withdrawn between the approval and the send;

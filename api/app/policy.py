@@ -68,6 +68,9 @@ ROUTE_POLICY: dict[tuple[str, str], object] = {
     # The scheduler service's periodic sweep and its heartbeat.
     ("POST", "/scheduler/sweep"): SCHEDULER,
     ("POST", "/scheduler/heartbeat"): SCHEDULER,
+    # Leader election (A31, ADR-041): the scheduler instances acquire, renew and release the lease through the API.
+    ("POST", "/scheduler/lease"): SCHEDULER,
+    ("POST", "/scheduler/lease/release"): SCHEDULER,
     # The send outbox (ADR-030): the scheduler loop drains approved drafts that have not gone out yet.
     ("POST", "/scheduler/outbox/drain"): SCHEDULER,
     # The automation scans (A21, ADR-032): intake heal (acknowledge, assign owner), auto-reroute, auto-outreach with the

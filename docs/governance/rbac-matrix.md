@@ -54,6 +54,8 @@ Every cell is what the running API did, not what the policy table says: the scri
 | `POST /scheduler/automation-scan` | U | R | R | R | R | R | R | A | R | A | R | R |
 | `POST /scheduler/evidence-scan` | U | R | R | R | R | R | R | A | R | A | R | R |
 | `POST /scheduler/heartbeat` | U | R | R | R | R | R | R | A | R | R | R | R |
+| `POST /scheduler/lease` | U | R | R | R | R | R | R | A | R | R | R | R |
+| `POST /scheduler/lease/release` | U | R | R | R | R | R | R | A | R | R | R | R |
 | `POST /scheduler/outbox/drain` | U | R | R | R | R | R | R | A | R | R | R | R |
 | `POST /scheduler/sweep` | U | R | R | R | R | R | R | A | R | R | R | R |
 | `POST /watchdog/scan` | U | R | R | R | R | R | R | R | A | R | R | R |
@@ -124,6 +126,6 @@ None.
 
 ## What was checked
 
-- 38 routes in the OpenAPI document, 38 entries in `ROUTE_POLICY`: every route has a decision and no decision is stale.
+- 40 routes in the OpenAPI document, 40 entries in `ROUTE_POLICY`: every route has a decision and no decision is stale.
 - 30 event types in `EVENT_POLICY`, plus one unknown type that must be refused for every role.
-- 945 role, route and scope combinations probed with real requests; 0 differ from the policy tables; 0 are documented gaps (see Findings).
+- 969 role, route and scope combinations probed with real requests; 0 differ from the policy tables; 0 are documented gaps (see Findings).

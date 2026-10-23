@@ -57,3 +57,13 @@ def _agency_hook_off(monkeypatch):
     from app.config import settings
 
     monkeypatch.setattr(settings, "agency_every_sweeps", 0)
+
+
+@pytest.fixture(autouse=True)
+def _clock_mode_wall_for_prod_config(monkeypatch):
+    """A30: outside APP_ENV=dev the API refuses to start unless CLOCK_MODE=wall. `settings.clock_mode` only feeds that check
+    and the route registration at import; the `clock` object is fixed at import, so setting it here changes nothing else.
+    The tests of the check itself set it explicitly."""
+    from app.config import settings
+
+    monkeypatch.setattr(settings, "clock_mode", "wall")
