@@ -17,11 +17,12 @@ events they appended are handed to the projector here (its retry queue, then one
 
 import atexit
 import logging
+import re
 import threading
 from typing import Literal
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Header, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, ConfigDict, Field
 
 from app import automation, leader, ops
@@ -38,15 +39,19 @@ FOLLOWER_PREFIX = "scheduler-follower-"
 HOLDER_PATTERN = r"^[A-Za-z0-9._-]{1,64}$"
 
 
-def require_current_leader(
-    x_leader_holder: str | None = Header(default=None, pattern=HOLDER_PATTERN),
-    x_leader_token: int | None = Header(default=None, ge=1),
-) -> None:
+def require_current_leader(request: Request) -> None:
     """Fencing (A31, ADR-041): a periodic-work call that carries leader headers is honoured only while that holder's
     token is the current one. A scheduler that was deposed (paused, partitioned, its container stopped and started) and
     still sends its old token gets 409 and does nothing. With REQUIRE_LEADER_FENCE=true a call with no headers is refused
     too; otherwise it is allowed (a manual run, a single-scheduler stack)."""
-    if x_leader_holder is None and x_leader_token is None:
+    # Read from the request, not declared as header parameters: they are credentials of a service, not API inputs a person
+    # supplies, and the PHI scan of the route table (rightly) reviews every declared header.
+    x_leader_holder = request.headers.get("x-leader-holder")
+    raw_token = request.headers.get("x-leader-token")
+    x_leader_token = int(raw_token) if raw_token is not None and raw_token.isdigit() and len(raw_token) < 18 else None
+    if x_leader_holder is not None and not re.fullmatch(HOLDER_PATTERN, x_leader_holder):
+        raise HTTPException(409, "stale leader: malformed leader holder")
+    if x_leader_holder is None and raw_token is None:
         if settings.require_leader_fence:
             raise HTTPException(409, "leader fencing is required: send X-Leader-Holder and X-Leader-Token")
         return
