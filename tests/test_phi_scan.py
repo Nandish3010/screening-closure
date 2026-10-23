@@ -70,7 +70,7 @@ def test_a_real_dev_token_carrying_the_marker_name_is_found():
 def test_every_path_parameter_is_a_uuid_and_every_query_parameter_is_reviewed():
     problems, rows = ps.review_routes()
     assert problems == []
-    assert {r[3] for r in rows if r[2] == "path"} == {"case_id", "draft_id"}
+    assert {r[3] for r in rows if r[2] == "path"} == {"case_id", "draft_id", "erasure_id"}
     assert {(r[0], r[1], r[3]) for r in rows if r[2] == "query"} == set(ps.QUERY_REVIEW)
 
 

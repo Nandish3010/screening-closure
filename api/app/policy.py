@@ -97,6 +97,11 @@ ROUTE_POLICY: dict[tuple[str, str], object] = {
     ("GET", "/agency/tasks"): frozenset({COORD, SUPER}),
     ("GET", "/agency/inbox"): frozenset({PCO, SPEC, COORD, SUPER}),
     ("GET", "/cases/{case_id}/agency"): frozenset({PCO, SPEC, COORD, SUPER}),
+    # Erasure of a patient's personal data (A32, ADR-025): two supervisors. One requests (a reason from the taxonomy), a
+    # different one approves, and approving performs it. Nobody else, no service token. Reading one request: supervisors.
+    ("POST", "/erasures"): frozenset({SUPER}),
+    ("POST", "/erasures/{erasure_id}/approve"): frozenset({SUPER}),
+    ("GET", "/erasures/{erasure_id}"): frozenset({SUPER}),
 }
 
 # event type -> roles allowed to emit it via POST /cases/{id}/events
@@ -150,6 +155,9 @@ EVENT_POLICY: dict[str, frozenset[str]] = {
     "review_requested": frozenset(),
     # Only the watchdog service (A11); the scheduler no longer holds it.
     "watchdog_flagged": WATCHDOG,
+    # Written in process by the erasure procedure as `system:erasure` (A32, ADR-025) after a second supervisor approved
+    # the request; nobody can post it.
+    "erasure_completed": frozenset(),
 }
 
 # ---- the agency (A22, ADR-033): agents are labour, not authority ----------------------------------------------

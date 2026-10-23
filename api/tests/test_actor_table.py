@@ -67,7 +67,7 @@ def refused_by_the_table(model: CaseModel, type_: str, actor: str) -> bool:
 def test_the_table_has_exactly_the_documented_rows():
     assert set(ACTOR_EVENTS) == {
         *(f"{role}:" for role in HUMAN_ROLES), "system:scheduler", "system:watchdog", "system:notifier",
-        "system:consent", "system:automation", "model:", "system:triage", "system:agency:", "system:hl7",
+        "system:consent", "system:automation", "model:", "system:triage", "system:agency:", "system:hl7", "system:erasure",
     }
     assert ACTOR_EVENTS[HL7_ACTOR] == {"book_confirmatory"}  # A28, ADR-039: the HL7 adapter books the appointment, nothing else
     assert ACTOR_EVENTS[HL7_ACTOR] == policy.HL7_EVENTS

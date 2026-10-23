@@ -129,6 +129,8 @@ SCHEDULER_ACTOR_NAME = "system:scheduler"
 WATCHDOG_ACTOR = "system:watchdog"  # emits watchdog_flagged, and nothing else
 MODEL_ACTOR_PREFIX = "model:"
 NOTIFIER_ACTOR = "system:notifier"  # the notification mock: writes message_sent for an approved draft
+ERASURE_ACTOR = "system:erasure"  # A32 (ADR-025): writes `erasure_completed`, and nothing else
+ERASURE_EVENT = "erasure_completed"
 TRIAGE_ACTOR = "system:triage"  # D13: classifies inbound patient replies (rows below)
 # The agency (A22, ADR-033): agents are labour, not authority. An agency actor may emit NO event: whatever an agent
 # causes on a case is written by the actor that owns that path (the drafting model's `message_drafted` through the
@@ -185,6 +187,7 @@ ACTOR_EVENTS: dict[str, frozenset[str]] = {
     MODEL_ACTOR_PREFIX: frozenset({"message_drafted"}),
     TRIAGE_ACTOR: frozenset({"reply_received", "reply_classified", "review_requested", "callback_requested"}),
     AGENCY_ACTOR_PREFIX: frozenset(),
+    ERASURE_ACTOR: frozenset({ERASURE_EVENT}),
     HL7_ACTOR: frozenset({"book_confirmatory"}),
 }
 # Human-only events (pathway `human_only_events`) a service row may hold, and the rule that makes each one traceable to a
@@ -327,6 +330,7 @@ class CaseModel:
     created_at: datetime | None = None  # the genesis event's `at` (a milestone may start there)
     created_event_id: UUID | None = None  # the genesis event's `event_id` (a milestone started there derives its ids from it)
     milestones: dict = field(default_factory=dict)  # name -> MilestoneState (A18); never mutated in place
+    erased: bool = False  # A32 (ADR-025): `erasure_completed` is in the log; the case accepts no further event
 
     @property
     def milestone_overdue(self) -> bool:
@@ -440,6 +444,14 @@ def step(model: CaseModel, event: Event, pathway: Pathway) -> CaseModel:
         raise InvalidTransition(f"actor {event.actor!r} may not emit {event.type!r} (it is not in its row of the actor table)")
     if pathway.milestones:
         model = start_genesis_milestones(model, pathway)
+    # A32 (ADR-025): an erased case is final, and the erasure record is written in any state of a CLOSED case (it annotates
+    # nothing and moves nothing; the pathway has no transition for it). It is neither activity nor a person looking at the case.
+    if model.erased:
+        raise InvalidTransition(f"case is erased: {event.type!r} refused (the audit trail is closed)")
+    if event.type == ERASURE_EVENT:
+        if model.state != pathway.terminal_state:
+            raise InvalidTransition(f"{ERASURE_EVENT}: only a closed case can be erased, this one is {model.state!r}")
+        return replace(model, last_event_at=_aware(event.at), erased=True)
     _precheck(model, event, pathway)
 
     candidates = pathway.transitions_for(model.state, event.type)

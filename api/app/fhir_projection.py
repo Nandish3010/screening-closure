@@ -578,6 +578,8 @@ class Projector:
 
     def project(self, case_id: UUID, event: Event) -> bool:
         """Best effort: True if projected now, False if queued for retry. Never raises."""
+        if event.type == "erasure_completed":
+            return True  # A32 (ADR-025): the erasure record is not projected; it would re-create what erasure just removed
         try:
             if time.monotonic() < self._down_until:  # wall-clock-ok: HAPI outage backoff only, never about a case
                 raise FhirError("HAPI marked down: queued without trying")

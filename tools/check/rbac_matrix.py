@@ -96,6 +96,9 @@ SCOPE_RULES: dict[tuple[str, str], frozenset[str]] = {
     ("POST", "/drafts/{draft_id}/reject"): frozenset({"owner"}),
     # A22: a case's agency summary, like its notifications: a clinician only on a case they own.
     ("GET", "/cases/{case_id}/agency"): frozenset({"owner"}),
+    # A32: erasure is supervisor-only and names a patient or an erasure, not a case a role could own: no scope rule.
+    ("POST", "/erasures/{erasure_id}/approve"): frozenset(),
+    ("GET", "/erasures/{erasure_id}"): frozenset(),
 }
 
 # Observed behaviour that differs from SCOPE_RULES, with the finding that explains it. The run fails if a
