@@ -24,7 +24,6 @@ client = make_client()
 # case id -> weakness class (W12, W13); the fix commit for a class removes its entries.
 EXPOSED: dict[str, str] = {}
 for _cls, _ids in {
-    "W13": "RT-P-07.7",
 }.items():
     EXPOSED.update({i: _cls for i in _ids.split()})
 FAKE = "rt_fake"

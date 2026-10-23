@@ -452,7 +452,7 @@ def draft_with_fallback(
     """
     log = DEFAULT_ABSTENTION_LOG if log is None else log
     log.note_attempt()
-    if isinstance(provider, TemplateProvider):
+    if type(provider) is TemplateProvider:  # exactly the vetted class: a subclass that overrides draft() is validated (RT-P-07.7)
         return provider.draft(req)
 
     reason: str | None = None

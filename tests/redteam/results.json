@@ -4362,13 +4362,13 @@
     },
     {
       "abuse_case": "RT-P-07",
-      "actual": "HTTP 201, fallback_used=False reason=",
+      "actual": "HTTP 201, fallback_used=True reason=validation_failed:forbidden_phrase:operator_direct",
       "category": "provider",
       "expected": "template text; log gains only message_drafted",
       "id": "RT-P-07.7",
       "input": "'subclass of TemplateProvider returning bad text'",
-      "reason": "RT-P-07.7: exposed, fix in next commit",
-      "status": "exposed"
+      "reason": "",
+      "status": "pass"
     },
     {
       "abuse_case": "RT-P-08",
@@ -4454,10 +4454,10 @@
   "summary": {
     "provider": {
       "cases": 53,
-      "exposed": 1,
+      "exposed": 0,
       "fail": 0,
       "known-limitation": 0,
-      "pass": 52
+      "pass": 53
     },
     "validator": {
       "cases": 392,
