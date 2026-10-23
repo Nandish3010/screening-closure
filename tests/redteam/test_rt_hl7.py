@@ -30,9 +30,9 @@ from app.hl7 import parser as p
 from app.routers import cases, drafts
 
 client = make_client()
-# case id -> weakness class while its fix is pending: W17 a reused control id with different content is ACKed AA "duplicate"
-# (the second message is dropped without saying so), W18 a field with thousands of repetitions costs the square of its size
-EXPOSED: dict[str, str] = {"RT-H-02.2": "W17", "RT-H-02.6": "W17", "RT-H-04.9": "W18", "RT-H-04.10": "W18"}
+# case id -> weakness class while its fix is pending. W17 (a reused control id with different content was ACKed AA "duplicate")
+# is fixed; W18 (a field with thousands of repetitions costs the square of its size) is pending.
+EXPOSED: dict[str, str] = {"RT-H-04.9": "W18", "RT-H-04.10": "W18"}
 PATIENT = "10242"
 SYSTEM = "SCREENING-CLOSURE"
 GOOD_PHONE = "^PRN^CP^^971^50^0000000"
