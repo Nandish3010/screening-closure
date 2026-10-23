@@ -17,6 +17,7 @@ from datetime import UTC, datetime
 
 MAX_MESSAGE_BYTES = 1_048_576
 MAX_SEGMENTS = 2_000
+MAX_REPETITIONS = 100  # per field; the readers re-split a field for every value, so the cost grows with the square
 MLLP_START = b"\x0b"
 MLLP_END = b"\x1c\x0d"
 
@@ -188,6 +189,8 @@ def parse(text: str) -> Message:
         if name == "MSH" and i > 0:
             raise Hl7ParseError("100", "a second MSH segment (batches are not supported)")
         parts = line.split(d.field)
+        if any(part.count(d.repetition) >= MAX_REPETITIONS for part in parts):
+            raise Hl7ParseError("102", "too many repetitions in a field")
         fields = (d.field, *parts[1:]) if name == "MSH" else tuple(parts[1:])
         segments.append(Segment(name, fields, d))
     msg = Message(tuple(segments), d)
