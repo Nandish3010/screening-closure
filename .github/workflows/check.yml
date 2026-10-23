@@ -182,3 +182,5 @@ jobs:
         run: make sensitivity-check SENS_JOBS=$(nproc)
       - name: make risk-check
         run: make risk-check
+      - name: make validate-check
+        run: make validate-check VAL_JOBS=$(nproc)

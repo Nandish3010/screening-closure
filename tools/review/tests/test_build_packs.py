@@ -100,7 +100,7 @@ def test_every_arabic_string_in_the_sources_is_in_the_arabic_pack():
     sources["forbidden_phrases.yaml (example)"] = [e["example"] for e in forbidden]
 
     assert len(sources["web/src/i18n/strings.ts"]) >= 35, "the independent reader found too few catalogue strings"
-    assert len(sources["api/app/ai/templates/ar.yaml"]) == 18
+    assert len(sources["api/app/ai/templates/ar.yaml"]) == 21  # 18 + refusal_acknowledgement (A33, templates v3)
     missing = [(src, s) for src, strings in sources.items() for s in strings if s not in pack]
     assert not missing, f"Arabic strings missing from the Arabic pack: {missing}"
 
