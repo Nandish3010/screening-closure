@@ -15,11 +15,8 @@ from app.ai.templates import SAMPLE_VALUES, render
 from app.ai.validate import AbstentionLog, draft_with_fallback, validate
 from app.ai import provider as prov
 
-# case id -> weakness class (W1..W10); the fix commit for a class removes its entries.
+# case id -> weakness class (W1..W11) while its fix is pending. Empty now: every class has been fixed (docs/governance/red-team.md section 9).
 EXPOSED: dict[str, str] = {}
-for _cls, _ids in {
-}.items():
-    EXPOSED.update({i: _cls for i in _ids.split()})
 LIMITATION: dict[str, str] = {}
 
 GOOD = {

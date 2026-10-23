@@ -21,11 +21,8 @@ from app.ai.provider import CacheMiss, DraftResult, ProviderUnavailable, Templat
 from app.routers import cases, drafts
 
 client = make_client()
-# case id -> weakness class (W12, W13); the fix commit for a class removes its entries.
+# case id -> weakness class (W12, W13) while its fix is pending. Empty now: both have been fixed (docs/governance/red-team.md section 9).
 EXPOSED: dict[str, str] = {}
-for _cls, _ids in {
-}.items():
-    EXPOSED.update({i: _cls for i in _ids.split()})
 FAKE = "rt_fake"
 OWNER = "Dr Sara Khan"
 
