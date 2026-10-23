@@ -48,13 +48,13 @@ def test_unknown_clock_mode_is_refused():
 
 def _probe(clock_mode: str | None, app_env: str = "dev") -> dict:
     code = (
-        "import json\n"
+        "import json, time\n"
         "from fastapi.testclient import TestClient\n"
         "from app import auth\n"
         "from app.main import app\n"
         "from app.config import settings\n"
         "c = TestClient(app)\n"
-        "body = auth._b64(json.dumps({'v': 1, 'role': 'supervisor', 'name': 'x'}, sort_keys=True, separators=(',', ':')).encode())\n"
+        "body = auth._b64(json.dumps({'v': 1, 'role': 'supervisor', 'name': 'x', 'iat': int(time.time()), 'exp': int(time.time()) + 3600}, sort_keys=True, separators=(',', ':')).encode())\n"
         "h = {'Authorization': 'Bearer ' + body + '.' + auth._sign(body, settings.dev_auth_secret)}\n"
         "print(json.dumps({'paths': sorted(p for p in app.openapi()['paths'] if p.startswith('/clock')),\n"
         "  'advance': c.post('/clock/advance', json={'days': 1}, headers=h).status_code,\n"
@@ -95,7 +95,8 @@ def test_outside_dev_the_clock_mode_must_be_wall(monkeypatch):
     base = {"x": "a" * 32}
     for name, value in (("dev_login_enabled", False), ("dev_auth_secret", "s" * 40), ("scheduler_service_token", "y" * 32),
                         ("watchdog_service_token", "z" * 32), ("automation_service_token", "w" * 32),
-                        ("agency_service_token", "v" * 32), ("outreach_demo_approval", False), ("app_env", "prod")):
+                        ("agency_service_token", "v" * 32), ("outreach_demo_approval", False), ("app_env", "prod"),
+                        ("auth_mode", "oidc"), ("oidc_issuer", "https://id.example.test/realms/sc")):
         monkeypatch.setattr(settings, name, value)
     monkeypatch.setattr(settings, "clock_mode", "sim")
     assert any("CLOCK_MODE" in p for p in auth.secure_config_problems())

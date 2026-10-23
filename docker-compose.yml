@@ -133,6 +133,11 @@ services:
       FHIR_PROJECTION: "true"
       # Sweep worker processes behind POST /scheduler/sweep (A17); empty = min(4, cpus), 1 = single process.
       SWEEP_WORKERS: ${SWEEP_WORKERS:-}
+      # Identity (A29, ADR-040): AUTH_MODE=dev (HMAC dev-login) or oidc (Keycloak profile below, `make oidc-up`). The issuer is
+      # the URL the BROWSER uses (it is the token's `iss`); the API fetches the keys from the keycloak service on the network.
+      AUTH_MODE: ${AUTH_MODE:-dev}
+      OIDC_ISSUER: ${OIDC_ISSUER:-http://localhost:${KEYCLOAK_PORT:-8180}/realms/screening-closure}
+      OIDC_JWKS_URL: ${OIDC_JWKS_URL:-http://keycloak:8080/realms/screening-closure/protocol/openid-connect/certs}
       # A30 (ADR-041): `sim` (default: the persisted simulation clock, /clock/* in APP_ENV=dev) or `wall` (real UTC time, no clock routes).
       CLOCK_MODE: ${CLOCK_MODE:-sim}
       # A31 (ADR-041): the lease the scheduler instances and the API replicas elect their leaders with, and whether a scheduler call
@@ -275,6 +280,37 @@ services:
         condition: service_healthy
     networks: [closure]
 
+  # A local OIDC provider standing in for UAE PASS (A29, ADR-040, docs/governance/identity.md). OFF by default (profile "oidc");
+  # `make oidc-up` generates the demo passwords, starts it and switches the API to AUTH_MODE=oidc. Dev mode (start-dev, plain
+  # HTTP, H2 database inside the container): a development tool, never a deployment. The realm is imported from
+  # config/keycloak/screening-closure-realm.json; the passwords in it are placeholders filled from the environment at import.
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.0.7  # pinned; bump deliberately
+    profiles: [oidc]
+    command: ["start-dev", "--import-realm"]
+    ports:
+      - "127.0.0.1:${KEYCLOAK_PORT:-8180}:8080"
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-}
+      # The issuer is the browser-facing URL whatever host the request used; the API reaches keycloak:8080 on the network.
+      KC_HOSTNAME: http://localhost:${KEYCLOAK_PORT:-8180}
+      KC_HOSTNAME_BACKCHANNEL_DYNAMIC: "true"
+      KC_HTTP_ENABLED: "true"
+      # Realm-import placeholders (one password per demo user, plus the demo patient's reference). Empty unless
+      # tools/identity/oidc_up.sh (`make oidc-up`) exported them: start the profile through it, not by hand.
+      KC_PW_LAB: ${KC_PW_LAB:-}
+      KC_PW_COORDINATOR: ${KC_PW_COORDINATOR:-}
+      KC_PW_OWNER: ${KC_PW_OWNER:-}
+      KC_PW_SPECIALIST: ${KC_PW_SPECIALIST:-}
+      KC_PW_CLINICIAN: ${KC_PW_CLINICIAN:-}
+      KC_PW_SUPERVISOR: ${KC_PW_SUPERVISOR:-}
+      KC_PW_PATIENT: ${KC_PW_PATIENT:-}
+      DEMO_PATIENT_REF: ${DEMO_PATIENT_REF:-Patient/demo-patient}
+    volumes:
+      - ./config/keycloak:/opt/keycloak/data/import:ro
+    networks: [closure]
+
   # The api's unit tests, in the image's `test` stage (pytest and the dev extras are NOT in the api image above). The
   # fallback of `make test` when there is no local .venv:  docker compose --profile tests run --rm --no-deps api-test
   api-test:
@@ -284,7 +320,7 @@ services:
     profiles: [tests]
     environment:
       DATABASE_URL: ""
-    command: ["pytest", "tests", "-q", "-m", "not integration and not chaos"]
+    command: ["pytest", "tests", "-q", "-m", "not integration and not chaos and not oidc"]
     networks: [closure]
 
   # Synthetic cohort generator. Not started by `make up` (profile "tools"); run with `make synthea`.

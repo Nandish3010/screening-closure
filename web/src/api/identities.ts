@@ -37,3 +37,17 @@ export function backendActor(role: Role, name: string): string {
 
 /** The owners a coordinator can re-route a bounced or rejected referral to (demo list); `reassign.owner` needs their actor string. */
 export const REASSIGN_TARGETS: readonly Role[] = ["owner", "specialist", "clinician"];
+
+/**
+ * The demo users of the local Keycloak realm (config/keycloak/screening-closure-realm.json), what the header's
+ * "Sign in as" lists in oidc mode (A29). `username` pre-fills the provider's login form (`login_hint`); the password is
+ * generated per run (`make oidc-up`, .oidc-demo-credentials) and never appears in the app.
+ */
+export const DEMO_USERS: ReadonlyArray<{ role: Role; name: string; username: string }> = [
+  { role: "coordinator", name: ROLE_NAMES.coordinator, username: "maryam.alsuwaidi" },
+  { role: "owner", name: ROLE_NAMES.owner, username: "layla.haddad" },
+  { role: "specialist", name: ROLE_NAMES.specialist, username: "karim.nasser" },
+  { role: "clinician", name: ROLE_NAMES.clinician, username: "huda.rahman" },
+  { role: "supervisor", name: ROLE_NAMES.supervisor, username: "noura.alhammadi" },
+  { role: "patient", name: "Demo Patient", username: "demo.patient" },
+];

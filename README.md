@@ -128,6 +128,8 @@ project/     plan, tracker, decisions, log, test cases
 | Test | `verify` | Exhaustive model check of the state machine (`tools/verify/`, ADR-038): 9,057 abstract states, 7 invariants, about a minute, no database |
 | Test | `test-db` (`test-db-create`, `test-db-reset`) | Integration tests against `closure_test`; create or recreate that database |
 | Test | `test-chaos` | Chaos-marked tests: duplicate delivery, clock skew and store failures through the fault harness (F3), a sweep killed part-way (F4), bad model output and consent withdrawn mid-send (F5), and the scheduler container stopped and restarted with the watchdog alert |
+| Test | `test-oidc` | The committed Keycloak realm against a real Keycloak (own compose project, throw-away passwords; skips without Docker) |
+| Run | `oidc-up`, `oidc-down` | Start the local OIDC provider (Keycloak, a UAE PASS stand-in) and put the API in `AUTH_MODE=oidc`; back to dev mode (A29) |
 | Test | `test-tools` | Cross-cutting tests in `tests/` |
 | Test | `test-security` | Secrets and repo hygiene scan; RBAC matrix (F7); no PHI in route parameters or in the logs of an in-process demo walk (F8) |
 | Test | `rbac-matrix` | Rewrite `docs/governance/rbac-matrix.md` from the app; `test-security` fails if the file differs |
@@ -149,6 +151,10 @@ project/     plan, tracker, decisions, log, test cases
 | Risk score | `risk-report`, `risk-check` | Retrain the loss-to-follow-up risk score and rewrite its report and score card (D10); fail if the committed files differ from a fresh run |
 | Reproducibility | `fresh-clone` | Clone the repository into a temporary directory and run the fresh-clone steps there, with the checklist for the second machine (F12) |
 | Test | `test-offline` | The demo scenario with api, HAPI and Postgres on a network with no route out, in its own project (Docker only; a few minutes) |
+
+## Sign-in (identity modes)
+
+Two modes, chosen by `AUTH_MODE` (A29, ADR-040). `dev` (the default) keeps the passwordless dev login for the demo and the mock; its tokens now expire after 8 hours on the wall clock. `oidc` verifies JWTs from an OpenID Connect provider (signature by JWKS, issuer, audience, expiry), maps the token's role to one of the six roles and derives the opaque actor from the provider's `sub`; outside `APP_ENV=dev` the API starts only in this mode. `make oidc-up` starts a local Keycloak that stands in for UAE PASS (demo passwords generated per run into a git-ignored file) and the web app signs in with the authorization code flow and PKCE (`VITE_AUTH_MODE=oidc`). It is not UAE PASS and nothing here claims its behaviour. Details, what is missing (MFA policy, Emirates ID claims, revocation): [docs/governance/identity.md](docs/governance/identity.md).
 
 ## Tests and checks
 

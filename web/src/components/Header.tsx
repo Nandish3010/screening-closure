@@ -3,6 +3,7 @@ import { Link, NavLink, matchPath, useLocation, useNavigate } from "react-router
 import { useApp } from "../app/AppContext";
 import { ROLES, type Role } from "../api/contract";
 import { DEMO_PATIENT_CASE_ID } from "../api/fixtures";
+import { DEMO_USERS } from "../api/identities";
 import { fmtDateTime } from "../lib/format";
 
 export function SimBadge() {
@@ -72,14 +73,33 @@ export function Header() {
           <NavLink to={`/patient/${DEMO_PATIENT_CASE_ID}`}>Patient view</NavLink>
         </nav>
         <div className="header-tools">
-          <label className="role-switch">
-            <span>Role (demo)</span>
-            <select value={role} onChange={(e) => onRole(e.target.value as Role)} aria-label="Switch role">
-              {ROLES.map((r) => (
-                <option key={r} value={r}>{r}</option>
-              ))}
-            </select>
-          </label>
+          {api.oidc ? (
+            <>
+              <label className="role-switch">
+                <span>Sign in as</span>
+                <select
+                  value=""
+                  aria-label="Sign in as"
+                  onChange={(e) => e.target.value && void api.oidc!.signIn({ loginHint: e.target.value, forceLogin: true })}
+                >
+                  <option value="">{role}</option>
+                  {DEMO_USERS.map((u) => (
+                    <option key={u.username} value={u.username}>{u.name} ({u.role})</option>
+                  ))}
+                </select>
+              </label>
+              <button className="btn btn-small" onClick={() => api.oidc!.signOut()}>Sign out</button>
+            </>
+          ) : (
+            <label className="role-switch">
+              <span>Role (demo)</span>
+              <select value={role} onChange={(e) => onRole(e.target.value as Role)} aria-label="Switch role">
+                {ROLES.map((r) => (
+                  <option key={r} value={r}>{r}</option>
+                ))}
+              </select>
+            </label>
+          )}
           <span className="who" title="Acting as">{actorName}</span>
           {role === "supervisor" && <ClockControl />}
           <span className={`adapter adapter-${api.adapter}`} title="API adapter">{api.adapter}</span>

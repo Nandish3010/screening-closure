@@ -1176,6 +1176,11 @@ export interface ApiClient {
    */
   login(role: Role, name: string, provider?: string): Promise<void>;
   /**
+   * Present only on an http adapter built for AUTH_MODE=oidc (A29): people sign in at the identity provider (authorization
+   * code flow with PKCE) instead of picking a role, and `login` does nothing. The app shows a sign-in page until `signedIn()`.
+   */
+  oidc?: import("./oidc").OidcClient;
+  /**
    * Log in as the patient who owns `caseId` (E8). The real API needs `patient_ref` for a patient login and a patient
    * cannot look it up, so the http adapter reads it from the case with a staff login of its own (which does not
    * touch this session), remembers it, then logs in as that patient. No-op for the mock.
