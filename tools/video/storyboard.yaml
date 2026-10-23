@@ -273,9 +273,9 @@ shots:
     beat: Numbers
     submission: true
     route: "card:results"
-    duration: 16
-    caption: "Simulation on synthetic data, literature-anchored scenario, before capacity limits. Closed with evidence and a signature 52% to 66%; lost without anyone told 46% at baseline, 0% where the programme reaches, 21% programme-level. Rerun: make evaluate"
-    narration: "Simulation on synthetic data, literature-anchored, before capacity limits. Cases closed with evidence and a signature rise from fifty-two to sixty-six percent. Cases lost without anyone told: forty-six percent today, zero where the programme reaches, twenty-one percent programme-wide."
+    duration: 20
+    caption: "Simulation on synthetic data, literature-anchored scenario, before capacity limits. Colonoscopy within 180 days 51% to 65%, a ratio of about 1.27 (validated against held-out data; timing is not). Closed with evidence and a signature 52% to 66%; lost without anyone told 46% at baseline, 0% where the programme reaches, 21% programme-level. Rerun: make evaluate"
+    narration: "Simulation on synthetic data, literature-anchored, before capacity limits. Colonoscopy within one hundred eighty days rises from fifty-one to sixty-five percent, a ratio of about one point two seven. Cases closed with evidence and a signature rise from fifty-two to sixty-six percent. Cases lost without anyone told: forty-six percent today, zero where the programme reaches, twenty-one percent programme-wide."
     actions:
       - card:
           kind: results
@@ -286,7 +286,7 @@ shots:
             - "Cases closed (evidence and human sign-off)"
             - "Lost AND never surfaced to a human: programme level"
             - "Lost AND never surfaced to a human: in reach"
-      - hold: 14
+      - hold: 18
 
   - id: 13
     title: Labour

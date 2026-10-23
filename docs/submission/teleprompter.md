@@ -63,10 +63,10 @@ One more cameo. A patient writes back in Gulf Arabic. A small offline model read
 With the model loaded, a clear confirmation is handled, and every question, every opt-out and anything uncertain goes to a person. It can flag. It can never close, send or change consent.
 
 **5:00** [Slide: the results table.]
-These numbers come from a simulation on synthetic data, every parameter sourced or labelled assumed, literature-anchored, before capacity limits. Cases closed with evidence and a signature: fifty-two percent today, sixty-six percent with the system.
+These numbers come from a simulation on synthetic data, literature-anchored, before capacity limits. Colonoscopy within one hundred eighty days: fifty-one percent today, sixty-five percent with the system, a ratio of about one point two seven. That ratio passed validation against held-out data. Speed did not, so we claim none.
 
 **5:15** [Same slide.]
-Cases lost without anyone being told: forty-six percent today. Zero for the cases the programme reaches, twenty-one percent for the programme as a whole, under a stated reach assumption.
+Cases closed with evidence and a signature: fifty-two percent today, sixty-six percent with the system. Cases lost without anyone being told: forty-six percent today, zero where the programme reaches, twenty-one percent programme-wide, under a stated reach assumption.
 
 **5:30** [Slide: labour.]
 Labour: thirty-three percent fewer staff minutes per handled case, eighteen percent across the programme. Our target was forty. It is not met, and we say so. Run make evaluate and change any parameter.
