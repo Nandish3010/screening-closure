@@ -4591,7 +4591,7 @@
     "cases_per_replication": 2000,
     "ci_method": "percentile bootstrap over replications; differences are paired by replication (common random numbers)",
     "follow_up_days": 360,
-    "git_commit": "36e063087ab742e3246aecc2ec07db135f4f8391",
+    "git_commit": "5f85d3146d3e1c78eeecf04860260adcdc53755a",
     "parameter_status_counts": {
       "assumed": 88,
       "calibrated": 16,
@@ -4604,7 +4604,7 @@
     ],
     "params_hash": "ddf9cb663dd810e42c6d6c294403f39c370cba6ecc989937a13031e3fb98a84b",
     "pathway": "colorectal_fit",
-    "pathway_hash": "6c8ecd4a0c378c64a5ada30b88542b7546ecfac118cb0ea5a1a3f5f9e0ed78b7",
+    "pathway_hash": "db06101ee042a55f2a1b495bf3a4e852a6875ad198c8cfc86f9d3b189b3cd9e6",
     "pathway_version": "0.3",
     "replications": 20,
     "scenarios": [

@@ -470,7 +470,7 @@ def reach_paragraph(res: dict) -> str:
     return first + second
 
 
-def render_markdown(res: dict, capacity_block: str | None = None) -> str:
+def render_markdown(res: dict, capacity_block: str | None = None, refusal_block: str | None = None) -> str:
     meta = res["meta"]
     lit = _has(res, LITERATURE)
     gen = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
@@ -519,6 +519,8 @@ def render_markdown(res: dict, capacity_block: str | None = None) -> str:
         parts += [cap, ""]
     if capacity_block is not None:
         parts += [capacity_block, ""]
+    if refusal_block is not None:
+        parts += [refusal_block, ""]
     parts += ["## Summary", ""]
     for scen in scen_order:
         parts += [f"**{SCENARIO_TITLE[scen].capitalize()}.** " + summary_paragraph(res, scen, caveat=scen == scen_order[-1]), ""]

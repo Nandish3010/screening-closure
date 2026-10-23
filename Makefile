@@ -158,13 +158,15 @@ evaluate-check:
 		echo "evaluate-check: PASS, results.json identical across runs (sha256 $$(shasum -a 256 $$a/results.json | cut -c1-16))"; rm -rf $$a $$b; \
 	else echo "evaluate-check: FAIL, results.json differs ($$a vs $$b)"; diff $$a/results.json $$b/results.json | head -20; exit 1; fi
 
-# The orchestrated arm's informed-refusal path switched on (A33, ADR-042; simulator/params.refusal.yaml). Written to a scratch directory, not
-# to docs/results: it moves the labour results the submission quotes, so it is reported (docs/results/metrics.md, declined_closed_share) and
-# adopting it as the headline is the results' owner's decision. REFUSAL_OUT=<dir> to choose where.
+# The orchestrated arm's informed-refusal path switched on (A33, ADR-042; simulator/params.refusal.yaml). The full run goes to a scratch
+# directory, not to docs/results: it moves the labour results the submission quotes, so it is NOT the headline (adopting it is the results'
+# owner's decision). Its summary goes to docs/results/refusal.json and the secondary-scenario section of results.md (simulator/sim/refusal_report.py);
+# `make evaluate` copies that section from the committed refusal.json. REFUSAL_OUT=<dir> to choose where the full run goes.
 REFUSAL_OUT ?= /tmp/refusal-path
 evaluate-refusal:
 	mkdir -p $(REFUSAL_OUT)
 	$(SIMENV) $(PY) -m simulator.sim.cli evaluate --reps $(REPS) --cases $(CASES) --days $(EVAL_DAYS) --seed $(SEED) $(PARAM_FLAGS) --params simulator/params.refusal.yaml --out-dir $(REFUSAL_OUT)
+	$(SIMENV) $(PY) -m simulator.sim.refusal_report $(REFUSAL_OUT)/results.json docs/results
 
 # Human effort per case (ticket B17): the Human effort section of docs/results/results.md is written by `make evaluate` (it is computed from the same
 # event logs, no extra run). `make effort` prints it from the committed results.json; `make effort-check` fails if results.json predates the effort
