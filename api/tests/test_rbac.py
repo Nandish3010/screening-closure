@@ -4,6 +4,7 @@ entry fail closed, and automated actors cannot authenticate."""
 
 import base64
 import json
+import time
 from uuid import UUID, uuid4
 
 import pytest
@@ -92,6 +93,7 @@ def test_dev_login_rejects_bad_input(body):
 
 
 def forge(claims, secret=None):
+    claims = {"exp": int(time.time()) + 3600, **claims}  # dev tokens carry an expiry (ADR-040)
     body = auth._b64(json.dumps(claims, sort_keys=True, separators=(",", ":")).encode())
     return f"{body}.{auth._sign(body, secret or settings.dev_auth_secret)}"
 
@@ -157,6 +159,10 @@ def test_insecure_defaults_refuse_to_start_outside_dev(monkeypatch):
     with pytest.raises(RuntimeError, match="DEV_LOGIN_ENABLED"):
         auth.assert_secure_config()
     monkeypatch.setattr(settings, "dev_login_enabled", False)
+    with pytest.raises(RuntimeError, match="AUTH_MODE"):  # A29: outside dev only oidc starts
+        auth.assert_secure_config()
+    monkeypatch.setattr(settings, "auth_mode", "oidc")
+    monkeypatch.setattr(settings, "oidc_issuer", "https://idp.example/realms/x")
     auth.assert_secure_config()
 
 
