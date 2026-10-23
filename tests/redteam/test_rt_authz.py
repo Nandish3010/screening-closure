@@ -26,9 +26,8 @@ from app.routers import cases, drafts, replies
 from app.triage.reply_store import InMemoryReplyStore
 
 client = make_client()
-# case id -> weakness class while its fix is pending: W19 the name, provider and patient_ref patterns end in `$`, which also
-# matches before a trailing newline
-EXPOSED: dict[str, str] = {"RT-Z-05.19": "W19", "RT-Z-05.20": "W19", "RT-Z-05.21": "W19"}
+# case id -> weakness class while its fix is pending. Empty now: W19 has been fixed (docs/governance/red-team.md section 9).
+EXPOSED: dict[str, str] = {}
 OWNER = "Dr Sara Khan"
 OTHER = "Dr Omar Aziz"
 SERVICES = {
