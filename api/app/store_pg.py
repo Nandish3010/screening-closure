@@ -469,6 +469,10 @@ class PostgresEventStore:
             row = conn.execute("SELECT EXISTS (SELECT 1 FROM events WHERE at > %s)", (at,)).fetchone()
         return bool(row[0])
 
+    def latest_event_at(self):
+        with self._pool.connection() as conn:
+            return conn.execute("SELECT max(at) FROM events").fetchone()[0]
+
     def abstention_counts(self) -> tuple[int, int] | None:
         """(draft attempts, abstentions) if the AI cut's `drafts` table exists, else None.
 

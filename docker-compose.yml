@@ -107,7 +107,7 @@ services:
     env_file:
       - path: .env
         required: false
-    environment:
+    environment: &api-env
       PATHWAY_PATH: /config/pathways/colorectal_fit.yaml
       CALENDAR_PATH: /config/calendar.yaml
       # The automation actor (A21, ADR-032): acknowledge and assign on ingest, re-route, pre-approved outreach, evidence scan.
@@ -133,6 +133,34 @@ services:
       FHIR_PROJECTION: "true"
       # Sweep worker processes behind POST /scheduler/sweep (A17); empty = min(4, cpus), 1 = single process.
       SWEEP_WORKERS: ${SWEEP_WORKERS:-}
+      # A30 (ADR-041): `sim` (default: the persisted simulation clock, /clock/* in APP_ENV=dev) or `wall` (real UTC time, no clock routes).
+      CLOCK_MODE: ${CLOCK_MODE:-sim}
+      # A31 (ADR-041): the lease the scheduler instances and the API replicas elect their leaders with, and whether a scheduler call
+      # without a current fencing token is refused (the `scale` profile sets it).
+      LEADER_LEASE_TTL_SECONDS: ${LEADER_LEASE_TTL_SECONDS:-30}
+      REQUIRE_LEADER_FENCE: ${REQUIRE_LEADER_FENCE:-false}
+    volumes:
+      - ./config:/config:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=2)"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks: [closure]
+
+  # A31: a second API replica (profile `scale`): same image, same environment, same database; no published port, the proxy reaches it.
+  api-2:
+    profiles: [scale]
+    build: *api-build
+    env_file:
+      - path: .env
+        required: false
+    environment: *api-env
     volumes:
       - ./config:/config:ro
     depends_on:
@@ -152,8 +180,12 @@ services:
     env_file:
       - path: .env
         required: false
-    environment:
-      API_URL: http://api:8000
+    environment: &scheduler-env
+      # With the `scale` profile this is the proxy (`SCHEDULER_API_URL=http://proxy:8080`, `make up-scale`); alone, the one API.
+      API_URL: ${SCHEDULER_API_URL:-http://api:8000}
+      # A31: the name this instance leads under (the lease holder); readable in /heartbeats and in the chaos test.
+      SCHEDULER_HOLDER: scheduler-1
+      SCHEDULER_FOLLOWER_POLL_SECONDS: ${SCHEDULER_FOLLOWER_POLL_SECONDS:-2}
       HEARTBEAT_PATH: /heartbeat/scheduler.json
       # It speaks HTTP to the API and has no database connection (SEC-1). Blank what a `.env` copied from
       # .env.example would hand it through env_file: the owner's database URL and password.
@@ -163,6 +195,42 @@ services:
       - heartbeat:/heartbeat
     depends_on:
       api:
+        condition: service_healthy
+    networks: [closure]
+
+  # A31: a second scheduler instance (profile `scale`). It asks for the same lease, finds it held and idles as a `follower`
+  # until the leader stops renewing; then it takes over within the lease TTL. Its own heartbeat file volume.
+  scheduler-2:
+    build: ./scheduler
+    profiles: [scale]
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      <<: *scheduler-env
+      SCHEDULER_HOLDER: scheduler-2
+      API_URL: ${SCHEDULER_API_URL:-http://proxy:8080}
+      HEARTBEAT_PATH: /tmp/scheduler-2.json
+    depends_on:
+      api:
+        condition: service_healthy
+      api-2:
+        condition: service_healthy
+    networks: [closure]
+
+  # A31: a tiny reverse proxy in front of the two API replicas (profile `scale`), round-robin with active health checks. Pinned.
+  # Caddy 2.8.4 (alpine); config in docker/proxy/Caddyfile. Loopback only, like every published port.
+  proxy:
+    image: caddy:2.8.4-alpine@sha256:af32e97399febea808609119bb21544d0265c58a02836576e32a2d082c262c17
+    profiles: [scale]
+    ports:
+      - "127.0.0.1:${PROXY_PORT:-8100}:8080"
+    volumes:
+      - ./docker/proxy/Caddyfile:/etc/caddy/Caddyfile:ro
+    depends_on:
+      api:
+        condition: service_healthy
+      api-2:
         condition: service_healthy
     networks: [closure]
 

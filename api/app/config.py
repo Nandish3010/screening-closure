@@ -1,5 +1,7 @@
 from pathlib import Path
+from typing import Literal
 
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # api/app/config.py -> repo root is three levels up (api/app -> api -> repo)
@@ -28,6 +30,15 @@ class Settings(BaseSettings):
     database_url: str = "postgresql://closure:closure_dev_password@localhost:5432/closure"
     fhir_base_url: str = "http://fhir:8080/fhir"
     sim_clock_start: str = "2026-01-05T08:00:00Z"
+    # A30 (ADR-041): "sim" (default, demo and development) reads the persisted simulation clock and registers /clock/*; "wall"
+    # reads real UTC time and registers no clock route. Chosen at start-up; outside APP_ENV=dev it must be "wall"
+    # (app.auth.secure_config_problems). Anything else refuses to start.
+    clock_mode: Literal["sim", "wall"] = "sim"
+    # A31 (ADR-041): when true the scheduler routes refuse a call that does not carry a current leader fencing token
+    # (X-Leader-Holder / X-Leader-Token). Compose's `scale` profile turns it on. Off, a call without the headers is
+    # allowed (manual runs, older tests); a call WITH stale headers is refused either way.
+    require_leader_fence: bool = False
+    leader_lease_ttl_seconds: float = Field(default=30.0, gt=1, le=3600)
     watchdog_idle_days: int = 7
     llm_provider: str = "template"
     # --- identity (ADR-012) ------------------------------------------------------------
