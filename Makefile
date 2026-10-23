@@ -1,4 +1,4 @@
-.PHONY: oidc-up oidc-down test-oidc up-scale agency-run test-demo test-e2e-live demo-scenario demo-stage demo-snapshot demo-restore demo-reset demo-kill-scheduler check docs-check tracker-lint test-security test-tools test-load load-check up down logs test test-db test-db-create test-db-reset test-chaos synthea demo-seed demo-seed-clean evaluate evaluate-capacity evaluate-capacity-check simulate evaluate-check sensitivity sensitivity-check reset web-install web-dev web-build web-test web-e2e test-e2e review-packs review-packs-check test-review-packs test-phi-logs rbac-matrix test-offline fresh-clone risk-report risk-check calibrate-fetch calibrate-fit calibrate-check effort effort-check video video-check video-deps verify hl7-demo hl7-samples
+.PHONY: evaluate-refusal oidc-up oidc-down test-oidc up-scale agency-run test-demo test-e2e-live demo-scenario demo-stage demo-snapshot demo-restore demo-reset demo-kill-scheduler check docs-check tracker-lint test-security test-tools test-load load-check up down logs test test-db test-db-create test-db-reset test-chaos synthea demo-seed demo-seed-clean evaluate evaluate-capacity evaluate-capacity-check simulate evaluate-check sensitivity sensitivity-check reset web-install web-dev web-build web-test web-e2e test-e2e review-packs review-packs-check test-review-packs test-phi-logs rbac-matrix test-offline fresh-clone risk-report risk-check calibrate-fetch calibrate-fit calibrate-check effort effort-check video video-check video-deps verify hl7-demo hl7-samples
 
 up:
 	docker compose up -d --build
@@ -157,6 +157,14 @@ evaluate-check:
 	if diff -q $$a/results.json $$b/results.json >/dev/null; then \
 		echo "evaluate-check: PASS, results.json identical across runs (sha256 $$(shasum -a 256 $$a/results.json | cut -c1-16))"; rm -rf $$a $$b; \
 	else echo "evaluate-check: FAIL, results.json differs ($$a vs $$b)"; diff $$a/results.json $$b/results.json | head -20; exit 1; fi
+
+# The orchestrated arm's informed-refusal path switched on (A33, ADR-042; simulator/params.refusal.yaml). Written to a scratch directory, not
+# to docs/results: it moves the labour results the submission quotes, so it is reported (docs/results/metrics.md, declined_closed_share) and
+# adopting it as the headline is the results' owner's decision. REFUSAL_OUT=<dir> to choose where.
+REFUSAL_OUT ?= /tmp/refusal-path
+evaluate-refusal:
+	mkdir -p $(REFUSAL_OUT)
+	$(SIMENV) $(PY) -m simulator.sim.cli evaluate --reps $(REPS) --cases $(CASES) --days $(EVAL_DAYS) --seed $(SEED) $(PARAM_FLAGS) --params simulator/params.refusal.yaml --out-dir $(REFUSAL_OUT)
 
 # Human effort per case (ticket B17): the Human effort section of docs/results/results.md is written by `make evaluate` (it is computed from the same
 # event logs, no extra run). `make effort` prints it from the committed results.json; `make effort-check` fails if results.json predates the effort

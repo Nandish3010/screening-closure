@@ -499,6 +499,9 @@ def test_read_model_shape_and_values():
         "outreach_holds": [],
         "contact_confirmed_at": None,
         "backdated_events": 0,
+        "refusal": None,
+        "re_offer_due_at": None,
+        "closure_outcome": None,
         # A18: the referral clock runs from the result (case_created); the colonoscopy clock waits for a referral
         "milestones": {
             "referral_requested": {

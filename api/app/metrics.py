@@ -9,6 +9,10 @@ docs/results/metrics.md wherever the two overlap:
   over cases that closed, so read it with `cases_closed`. "Safe" closure means the closure rule
   held on that event: a human actor, an `evidence_ref` and a `signed_by`; a close without them
   is counted in `unsafe_closures` and left out of the percentiles.
+* Declined closures (A33, ADR-042): a case closed with `outcome: declined` (an informed refusal, signed by a physician) is
+  reported SEPARATELY (`declined_closures`, `declined_pending_signoff`, and its own percentiles). It is never a completed
+  colonoscopy, it is left out of `closures_measured` and the main percentiles (the programme's follow-up KPI counts
+  investigations, clinician-review.md 2.6), and a case with a refusal on record is not "lost to follow-up": the patient decided.
 * Percentiles use linear interpolation at position q x (n - 1).
 * Open means "not currently closed": a reopened case is open again. Age is whole elapsed
   calendar days since the result arrived (0-30, 31-60, 61-90, then 90+ meaning more than 90).
@@ -62,6 +66,10 @@ class CaseRecord:
     flagged: bool                      # an open watchdog flag at the end of the log
     breach_providers: tuple            # provider (or None) at each `mark_overdue`
     dwells: tuple                      # (from_state, to_state, entered_at, left_at), completed visits
+    declined_closure: bool = False     # the case is closed with outcome `declined` (A33)
+    first_safe_close_declined: bool = False  # the first safe close was a declined one (kept out of the main percentiles)
+    refusal_pending: bool = False      # a refusal is recorded and waits for a physician's sign-off
+    refusal_on_record: bool = False    # an informed refusal is on record (pending or closed declined): not lost to follow-up
 
 
 def build_record(
@@ -77,7 +85,7 @@ def build_record(
     t0 = None
     entered_at = None
     first_close = first_safe = None
-    unsafe = completed = lost_flag = surfaced = False
+    unsafe = completed = lost_flag = surfaced = first_safe_declined = False
     last_progress = None
     breach_providers: list = []
     dwells: list = []
@@ -107,6 +115,7 @@ def build_record(
                     and bool(ev.payload.get("signed_by")))
             if safe and first_safe is None:
                 first_safe = at
+                first_safe_declined = (ev.payload or {}).get("outcome") == "declined"
             unsafe = unsafe or not safe
         if model.state != before:
             dwells.append((before, model.state, entered_at, at))
@@ -123,6 +132,10 @@ def build_record(
         lost_contact_flag=lost_flag,
         surfaced=surfaced,
         flagged=model.watchdog_flag is not None,
+        declined_closure=model.state == pathway.terminal_state and model.closure_outcome == "declined",
+        first_safe_close_declined=first_safe_declined,
+        refusal_pending=pathway.refusal_state is not None and model.state == pathway.refusal_state,
+        refusal_on_record=model.refusal is not None,
         breach_providers=tuple(breach_providers),
         dwells=tuple(dwells),
     )
@@ -145,13 +158,27 @@ def _days(a: datetime, b: datetime) -> float:
 
 def time_to_closure(records, calendar: WorkingCalendar, terminal_state: str = "closed") -> dict:
     """P50 / P90 days from result to the first safe close, in calendar and working days."""
-    safe = [r for r in records if r.first_safe_close_at is not None]
+    safe = [r for r in records if r.first_safe_close_at is not None and not r.first_safe_close_declined]
     cal = [_days(r.t0, r.first_safe_close_at) for r in safe]
     wd = [calendar.working_days_between(r.t0, r.first_safe_close_at) for r in safe]
     return {
         "n": len(safe),
         "p50_days": percentile(cal, 0.5), "p90_days": percentile(cal, 0.9),
         "p50_working_days": percentile(wd, 0.5), "p90_working_days": percentile(wd, 0.9),
+    }
+
+
+def declined_closures(records, calendar: WorkingCalendar) -> dict:
+    """Informed-refusal closures (A33), kept apart from the investigated ones: how many are closed declined, how many wait
+    for a physician's sign-off, and the time from the result to the declined closure."""
+    done = [r for r in records if r.first_safe_close_declined and r.first_safe_close_at is not None]
+    cal = [_days(r.t0, r.first_safe_close_at) for r in done]
+    wd = [calendar.working_days_between(r.t0, r.first_safe_close_at) for r in done]
+    return {
+        "declined_closures": sum(1 for r in records if r.declined_closure),
+        "declined_pending_signoff": sum(1 for r in records if r.refusal_pending),
+        "declined_p50_days": percentile(cal, 0.5), "declined_p90_days": percentile(cal, 0.9),
+        "declined_p50_working_days": percentile(wd, 0.5), "declined_p90_working_days": percentile(wd, 0.9),
     }
 
 
@@ -209,7 +236,7 @@ def lost_cases(records, now: datetime) -> dict:
     """Lost to follow-up, and the part of it that nobody was ever told about."""
     lost = never = 0
     for r in records:
-        if r.completed_confirmatory:
+        if r.completed_confirmatory or r.refusal_on_record:  # a refuser is not lost: the patient decided (A33)
             continue
         last = r.last_progress_at or r.t0
         idle = _days(last, _utc(now))
@@ -231,6 +258,8 @@ def closure_metrics(records, now: datetime, calendar: WorkingCalendar, *, termin
         "cases_open": len(records) - closed,
         "cases_closed": closed,
         "closures_measured": ttc["n"],
+        **declined_closures(records, calendar),
+        "cases_closed_investigated": closed - sum(1 for r in records if r.declined_closure),
         "unsafe_closures": sum(1 for r in records if r.unsafe_closure),
         "p50_days": ttc["p50_days"],
         "p90_days": ttc["p90_days"],

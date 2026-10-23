@@ -10,7 +10,7 @@ The checker calls the real `step()`. The machine is not reimplemented. From the 
 
 | | Invariant | How it is checked |
 |---|---|---|
-| I1 | `closed` is entered only by `close`. The closer must be a person (a human role, never `system:*`, `model:*` or the agency), the case must come from `clinician_reviewed`, and the event must carry non-empty `evidence_ref` and `signed_by`. A closed case accepts nothing except `reopen`. The signer must equal the actor and the evidence reference must be well formed. | On every transition into `closed`, and on every event accepted on a closed case. The machine does not check signer = actor or the shape of the evidence reference: since ADR-021 the route does. The checker runs the **real** route gate (`routers.cases._check_signature_and_evidence`) on every close the machine accepted without them, and fails if the gate would let it through. |
+| I1 | `closed` is entered only by `close`. The closer must be a person (a human role, never `system:*`, `model:*` or the agency), the case must come from `clinician_reviewed`, and the event must carry non-empty `evidence_ref` and `signed_by`. A closed case accepts nothing except `reopen`. The signer must equal the actor and the evidence reference must be well formed. **Extended (A33, ADR-042):** a closure with `outcome: declined` comes from `declined_pending_signoff` (and only from there; a recorded refusal closes only as declined), cites exactly the counselling reference recorded with the refusal, and is made and signed by a physician role who is not the counsellor (compared by user id, so the actor and Practitioner forms are one person). The alphabet has the new events (`record_informed_refusal` with three counsellor forms and its malformed variants, `appointment_cancelled`, seven declined-close variants) and the `system:hl7` actor, and `record_informed_refusal` is in `HUMAN_DECISIONS` (I2). The refusal on record (counselling reference and counsellor) is part of the abstract state, because the declined close reads it. | On every transition into `closed`, and on every event accepted on a closed case. The machine does not check signer = actor or the shape of the evidence reference: since ADR-021 the route does. The checker runs the **real** route gate (`routers.cases._check_signature_and_evidence`) on every close the machine accepted without them, and fails if the gate would let it through. |
 | I2 | No automated actor (`system:*`, `model:*`, the agency, bare `scheduler`/`watchdog`) gets `close`, `reopen`, `clinician_review`, `message_approved`, `escalation_accepted`, `consent_updated` or `accept_ownership` accepted. The agency and actors that match no row of the actor table get nothing accepted. | On every accepted transition. The checker uses its own definition of "automated", not `sm.is_automated`, so a mutation of that function cannot hide itself. |
 | I3 | `message_sent` is accepted only in two cases. Either it is from `system:notifier` for a draft in the approved-unsent set, or it is from `system:automation` with `auto: true`, a `<purpose>.<channel>` template and no draft. In both cases the patient must not have withdrawn consent, must consent to the channel, and must have no open `opt_out` or `wrong_number` hold. | On every accepted `message_sent`, against the model before it. The template allow-list is enforced at append time, not in the machine (ADR-032). The checker runs the **real** guard (`outreach_policy.auto_message_guard`, with the policy treated as signed) on every unlisted template the machine accepted, and fails if the guard would admit it. |
 | I4 | While consent is frozen, no outreach is accepted: `contact_patient`, `message_drafted`, `message_approved`, `message_sent` or `handoff_requested`. `consent_frozen` is true exactly in `consent_withdrawn`. | On every accepted transition. The checker keeps its own list of outreach events and does not read `CONSENT_FROZEN_EVENTS`. |
@@ -89,17 +89,17 @@ Results of `make verify` at the commit of this ticket, on the development Mac:
 
 | Slice | Abstract states | Accepted transitions | `step()` calls | Depth | Saturation | Abstraction pairs | Non-interference | Table probes | Replays |
 |---|---|---|---|---|---|---|---|---|---|
-| messaging | 864 | 44,540 | 179,712 | 16 | level 17 added nothing | 1,000 | 864 | 29,268 | 864 |
-| ownership | 1,448 | 33,808 | 278,016 | 14 | level 15 added nothing | 1,000 | 966 | 25,272 | 1,448 |
-| ladders | 6,745 | 133,805 | 1,632,290 | 20 | level 21 added nothing | 1,000 | 422 | 32,994 | 6,745 |
-| **total** | **9,057** | 212,153 | 2,090,018 | | all saturated | | | | |
+| messaging | 2,016 | 93,048 | 582,624 | 16 | level 17 added nothing | 1,000 | 808 | 42,939 | 2,016 |
+| ownership | 2,908 | 68,940 | 793,884 | 14 | level 15 added nothing | 1,000 | 832 | 38,850 | 2,908 |
+| ladders | 12,147 | 255,099 | 3,583,365 | 21 | level 22 added nothing | 1,000 | 405 | 44,394 | 12,147 |
+| **total** | **17,071** | 417,087 | 4,959,873 | | all saturated | | | | |
 
 Notes on the table:
 
 - **Depth** is the length of the longest shortest trace from `case_created`. The saturation column names the BFS level that added no new state.
-- **Time:** 36 to 50 seconds on an unloaded machine; about 90 seconds when other work is running. The budget is three minutes.
+- **Time:** about 70 seconds while other work was running (36 to 50 seconds before A33 added the refusal path, the cancel event and the HL7 actor to the alphabet; the ladders slice keeps one counsellor form to stay small). The budget is three minutes.
 - **States per level:** `make verify` prints the new states per level and the states per state name.
-- **Gate cases:** the route gate refused 2,384 closes that the machine accepted with a foreign signer or a malformed reference. The append-time guard refused 52 unlisted templates that the machine accepted. In both cases the refusal comes from the layer that ADR-021 and ADR-032 put in charge.
+- **Gate cases:** the route gate refused 4,592 closes that the machine accepted with a foreign signer or a malformed reference. The append-time guard refused 104 unlisted templates that the machine accepted. In both cases the refusal comes from the layer that ADR-021 and ADR-032 put in charge.
 
 ### A real bug, found and fixed
 

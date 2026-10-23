@@ -106,6 +106,8 @@ SAMPLES = {
     "complete_confirmatory": {"result_ref": "Procedure/p1"}, "clinician_review": {"signed_by": "Practitioner/abc"},
     "close": {"evidence_ref": "DiagnosticReport/r1", "signed_by": "Practitioner/abc"},
     "reopen": {"reason": "new_finding"},
+    "record_informed_refusal": {"counselling_ref": "DocumentReference/c1", "counselled_by": "specialist_owner:abc", "reason": "personal_choice"},
+    "appointment_cancelled": {"reason": "patient_request", "by_patient": True},
     "mark_overdue": {"state": "acknowledged", "due_at": "2026-01-07T08:00:00+00:00"},
     "escalate": {"rung": "reminder", "state": "acknowledged"},
     "escalation_accepted": {"rung": "reminder"}, "handoff_requested": {"to_provider": "endo-1"},

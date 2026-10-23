@@ -25,7 +25,7 @@
 # earlier placeholder approvals were never real ones; H1 and H2 sign off on the texts as they now stand, and bump the version
 # if they change them.
 version: 1
-template_set_version: 2
+template_set_version: 3
 status: pending_h1_clinical_lead_signoff
 approved_by: null
 max_auto_messages_per_week: 2

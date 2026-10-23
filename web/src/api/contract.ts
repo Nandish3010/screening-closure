@@ -82,6 +82,7 @@ export const SIDE_STATES = [
   "consent_withdrawn",
   "reopened",
   "lost_contact",
+  "declined_pending_signoff",
 ] as const;
 
 export type CaseState = (typeof MAIN_STATES)[number] | (typeof SIDE_STATES)[number];
@@ -211,6 +212,13 @@ export type TransitionEvent = (typeof TRANSITION_EVENTS)[number];
  *                        "DiagnosticReport/<id>" or "Procedure/<id>" and must exist in the FHIR store;
  *                        signed_by must be the caller's own actor ("role:user_id") or "Practitioner/<user_id>"
  *                        with the caller's `user_id` from GET /me, else 403 (signer) or 422 (evidence)
+ *  record_informed_refusal {counselling_ref: "DocumentReference/<id>", counselled_by: "<physician actor or Practitioner/<id>>",
+ *                        reason: RefusalReason, note?: string (required for other_with_note)}   (A33, ADR-042) human only.
+ *                        From owner_accepted, patient_acknowledged or confirmatory_booked to declined_pending_signoff.
+ *  close (declined)      {outcome: "declined", evidence_ref: <the counselling_ref>, signed_by}   (A33) from declined_pending_signoff
+ *                        only, by a physician (owner or specialist) who is NOT the counsellor
+ *  appointment_cancelled {reason: AppointmentCancelReason, by_patient: boolean}   (A34) confirmatory_booked back to
+ *                        patient_acknowledged; `book_confirmatory` rebooks. Milestone clocks do not move (A25).
  *  reopen                {reason: "new_finding"|"evidence_inadequate"|"closed_in_error"|"patient_request"|"other"}
  *  reassign              {owner: string ("role:user_id" of the new owner), provider?: string}
  *  callback_requested    {reason?: "patient_does_not_understand"|"wants_to_speak_to_clinician"|"cannot_attend"|"other", lang?}
@@ -240,6 +248,8 @@ export type NonTransitionEvent =
   | "review_requested"
   | "assign_ownership"
   | "closure_proposed"
+  | "record_informed_refusal"
+  | "appointment_cancelled"
   | "reopen";
 
 /**
@@ -496,7 +506,23 @@ export interface CaseDetail extends Omit<CaseSummary, "pathway" | "created_at" |
   effort?: CaseEffort | null;
   /** A18: referral within 15 working days of the result, colonoscopy within 31 working days of referral. */
   milestones?: Partial<Record<MilestoneName, MilestoneClock>>;
+  /** A33 (LIVE, `read_model.refusal`): the informed refusal on record; null when none (cleared by a reopen). */
+  refusal?: InformedRefusal | null;
+  /** A33: the refusal's date plus the pathway's `re_offer_months` (default 12). A date only: nothing re-offers automatically. */
+  re_offer_due_at?: string | null;
+  /** A33: how the case closed, `declined` or `investigated`; null while open. */
+  closure_outcome?: "declined" | "investigated" | null;
   events: CaseEvent[];
+}
+
+/** `read_model.refusal` (A33). */
+export interface InformedRefusal {
+  counselling_ref: string;
+  counselled_by: string;
+  reason: RefusalReason;
+  recorded_at: string;
+  event_id: string;
+  re_offer_due_at: string;
 }
 
 /** `POST /cases/{id}/replies` body (D13). The sender, the case and the time come from the login, the path and the clock. */
@@ -983,6 +1009,13 @@ export interface Me {
   /** Patients only: the `Patient/<id>` whose case they own (decided by the login, E8). */
   patient_ref?: string;
 }
+
+/** `record_informed_refusal.reason` taxonomy (A33; config/pathways/colorectal_fit.yaml `informed_refusal.reasons`). */
+export const REFUSAL_REASONS = ["personal_choice", "fear_of_procedure", "alternative_test_requested", "other_with_note"] as const;
+export type RefusalReason = (typeof REFUSAL_REASONS)[number];
+/** `appointment_cancelled.reason` taxonomy (A34; the YAML's `appointment_cancel_reasons`). */
+export const APPOINTMENT_CANCEL_REASONS = ["patient_request", "patient_unwell", "provider_cancelled", "capacity", "preparation_not_done", "other"] as const;
+export type AppointmentCancelReason = (typeof APPOINTMENT_CANCEL_REASONS)[number];
 
 /** `reopen.reason` taxonomy (A14). The UI shows the label, the API takes the code. */
 export const REOPEN_REASONS = ["new_finding", "evidence_inadequate", "closed_in_error", "patient_request", "other"] as const;

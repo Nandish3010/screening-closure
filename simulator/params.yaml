@@ -364,6 +364,7 @@ baseline:
 
 # ---- orchestrated arm -------------------------------------------------------------------------
 orchestration:
+  refusal_path_share: {value: 0.0, source: "Design choice, off by default (A33, ADR-042). 0 keeps the committed headline results as they were; simulator/params.refusal.yaml (make evaluate-refusal) sets 1.0", status: assumed, notes: "Share of orchestrated-arm refusers (patients.refusal_prob) whose case takes the informed-refusal path: counselling 5 working days after the process notices them, a recorded refusal, a different physician's declined closure 3 working days later, and no more ladder for them. 0 = they are flagged lost and the ladder runs on, as before the path existed. Switching it on moves the labour results (see docs/results/metrics.md, declined_closed_share), so it is a decision for the results' owner and not on by default. No range: it is a switch, not an uncertain quantity."}
   reaction_delay_median_days: {value: 1.0, source: "assumed, no public source", status: assumed, range: [0.5, 2.0], range_basis: "default rule: duration, value x0.5 and x2"}    # time to act after a reminder or escalation
   reaction_delay_sigma: {value: 0.6, source: "assumed, no public source", status: assumed, range: [0.3, 1.2], range_basis: "default rule: scale, value x0.5 and x2"}
   escalation_effect_prob:     # P(staff act) per ladder rung, keyed by the pathway's notify role

@@ -20,7 +20,8 @@ from dataclasses import dataclass
 from typing import Literal, Protocol, get_args, runtime_checkable
 
 Purpose = Literal[
-    "result_notification", "reminder", "appointment_confirmation", "escalation_notice", "callback_ack"
+    "result_notification", "reminder", "appointment_confirmation", "escalation_notice", "callback_ack",
+    "refusal_acknowledgement",
 ]
 Channel = Literal["sms", "whatsapp", "letter"]
 Language = Literal["ar", "en"]

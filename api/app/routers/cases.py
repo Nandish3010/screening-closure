@@ -219,6 +219,11 @@ def _check_signature_and_evidence(identity: Identity, event_type: str, payload: 
         ref = payload["evidence_ref"]  # shape already checked by the payload schema
         if not evidence.well_formed_ref(ref):  # `Procedure/.`: the URL would collapse to a search
             raise HTTPException(422, f"evidence_ref {ref!r} is not a resource reference")
+        if payload.get("outcome") == "declined":
+            # A33 (ADR-042): the evidence is the counselling record of an informed refusal, not a colonoscopy. It is a
+            # reference held by the clinical record, not a FHIR resource this system writes, so nothing is looked up in HAPI;
+            # the state machine requires it to be exactly the counselling_ref recorded with the refusal.
+            return
         try:
             verdict = evidence.verifier.assess(ref, case_id=case_id, patient_ref=_patient_ref(case_id))
         except evidence.EvidenceUnavailable as exc:
