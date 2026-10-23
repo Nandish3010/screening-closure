@@ -98,7 +98,7 @@ def test_the_shipped_machine_passes_every_invariant(slice_name):
     assert r.ok, mc.render(r)
     s = r.slices[0]
     assert s.saturated and s.levels[-1] > 0 and s.states > 500  # the last level found states, the next found none
-    assert {"I1 closures", "I2 human decisions", "I5 open states", "I6 replays", "I7 states"} <= set(s.checked)
+    assert {"I1 closures", "I2 human decisions", "I5 open states", "I6 replays", "I7 states", "I8 erasures"} <= set(s.checked)
     assert s.table_probes > 0 and s.abstraction_pairs > 0 and s.interference_pairs > 0
 
 
@@ -173,6 +173,20 @@ def test_mutation_consent_freeze_removed_is_caught(monkeypatch):
     monkeypatch.setattr(sm, "CONSENT_FROZEN_EVENTS", frozenset())
     v = _only(mc.check(["messaging"], **FAST), "I4")
     assert v.trace[-2][0] == "consent_updated" and v.trace[-1][0] in mc.OUTREACH
+
+
+def test_mutation_erased_case_may_be_reopened_is_caught(monkeypatch):
+    """A32 (I8): an erased case accepts `reopen` again (the erased flag is ignored for it)."""
+    original = sm.step
+
+    def step(model, event, pw, *a, **kw):
+        if model.erased and event.type == "reopen":
+            model = dataclasses.replace(model, erased=False)
+        return original(model, event, pw, *a, **kw)
+
+    monkeypatch.setattr(sm, "step", step)
+    v = _only(mc.check(["ownership"], **FAST), "I8")
+    assert v.trace[-2][0] == sm.ERASURE_EVENT and v.trace[-1][0] == "reopen"
 
 
 # ---- the checker's own soundness checks bite ------------------------------------------------------------------------

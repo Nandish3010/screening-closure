@@ -155,6 +155,20 @@ class CaseCreated(_Payload):
     registered_provider: Provider | None = None
 
 
+ERASURE_CATEGORIES = (
+    "fhir_resources", "event_patient_reference", "event_notes", "draft_text", "prompt_text", "notification_body",
+    "reply_text", "agency_ledger", "contact_registry", "projection_queue",
+)
+
+
+class ErasureCompleted(_Payload):
+    """A32 (ADR-025): the whole of what the log says about an erasure. The erasure id (a key into the register, which holds
+    opaque ids only) and the categories erased. No count, no reason, no reference, no text."""
+
+    erasure_id: Uuid
+    categories: list[Literal[*ERASURE_CATEGORIES]] = Field(min_length=1, max_length=len(ERASURE_CATEGORIES))
+
+
 class Acknowledge(_Human):
     auto: Literal[True] | None = None  # A21: set only by system:automation (the state machine checks who)
 
@@ -470,6 +484,7 @@ SCHEMAS: dict[str, type[BaseModel]] = {
     "message_sent": MessageSent,
     "callback_requested": CallbackRequested,
     "watchdog_flagged": WatchdogFlagged,
+    "erasure_completed": ErasureCompleted,
 }
 
 

@@ -124,6 +124,7 @@ SAMPLES = {
     "message_sent": {"notification_id": UUID_A, "channel": "sms", "language": "en", "purpose": "first_contact"},
     "callback_requested": {"reason": "patient_does_not_understand", "lang": "en"},
     "watchdog_flagged": {"reason": "idle", "idle_days": 7},
+    "erasure_completed": {"erasure_id": "5b6c1f3e-8d2a-4c47-9e10-2a7f4b9d3c11", "categories": ["draft_text", "fhir_resources"]},
 }
 
 

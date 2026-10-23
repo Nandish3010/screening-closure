@@ -52,6 +52,12 @@ def lookup(patient_ref: str) -> bool | None:
         return _registry.get(patient_ref)
 
 
+def forget(patient_ref: str) -> bool:
+    """Drop the verdict held for a patient (erasure, A32, ADR-025). True if there was one."""
+    with _lock:
+        return _registry.pop(patient_ref, None) is not None
+
+
 def reset() -> None:
     with _lock:
         _registry.clear()

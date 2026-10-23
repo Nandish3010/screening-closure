@@ -1,6 +1,6 @@
 # Model checking the closure engine (A27)
 
-The state machine (`api/app/state_machine.py`, `step`) decides whether every event in the system is valid. Property tests sample random event sequences (T-A1). This document describes an exhaustive check: an explicit-state model checker, `tools/verify/model_check.py`, explores every abstract state the machine can reach from a new case and checks seven invariants on every reachable state and transition. The decision is recorded in [ADR-038](../../project/DECISIONS.md).
+The state machine (`api/app/state_machine.py`, `step`) decides whether every event in the system is valid. Property tests sample random event sequences (T-A1). This document describes an exhaustive check: an explicit-state model checker, `tools/verify/model_check.py`, explores every abstract state the machine can reach from a new case and checks eight invariants on every reachable state and transition. The decision is recorded in [ADR-038](../../project/DECISIONS.md).
 
 Run it with `make verify`. It is pure Python, needs no database and no network, and is a stage of `make check` right after `test`. It exits non-zero on a violation and prints a shortest counterexample.
 
@@ -16,6 +16,7 @@ The checker calls the real `step()`. The machine is not reimplemented. From the 
 | I4 | While consent is frozen, no outreach is accepted: `contact_patient`, `message_drafted`, `message_approved`, `message_sent` or `handoff_requested`. `consent_frozen` is true exactly in `consent_withdrawn`. | On every accepted transition. The checker keeps its own list of outreach events and does not read `CONSENT_FROZEN_EVENTS`. |
 | I5 | Every reachable state other than `closed` has an event that some person may try through the route's gates and that the machine accepts. The gates are role policy (`EVENT_POLICY`), owner scope, payload schema, and the signer and evidence-shape checks. | On the saturated graph. |
 | I6 | Replay is deterministic. Replaying the shortest trace to each representative as a log (`replay_model`) gives exactly the model the search holds, every field and not only the signature. A second replay gives the same result. | For every reachable abstract state. |
+| I8 | Erasure (A32, ADR-025). `erasure_completed` is accepted only on a closed case, only from `system:erasure`, moves no state and marks the case erased; an erased case accepts nothing, not even `reopen`. The alphabet has the event and the actor; `erased` is part of the core signature. | On every accepted transition. |
 | I7 | Bounded liveness. From every reachable state, some sequence of events that people may try (the I5 gates) reaches `closed`, or the state is a documented terminal hold. The list of documented holds (`DOCUMENTED_TERMINAL_HOLDS`) is empty: no hold is needed. | Backward reachability from `closed` over the human edges of the saturated graph. |
 
 Every human edge used for I5 and I7 has passed the route's gates. Route-only approvals (`message_approved` and `message_rejected` through the drafts route) are not counted. Liveness is therefore proved with fewer human moves than people really have, which is the safe direction.
@@ -52,7 +53,7 @@ The read model holds timestamps, event ids, counters and histories, so it is inf
 
 The following fields are left out: timestamps, event ids except the sharing pattern above, `backdated_events`, the message time lists, `consent_history`, the review and triage reasons, `reroute_exhausted_at`, `incomplete_procedure`, `closure_proposal`, `watchdog_flag`, `last_handoff`, `provider`, `referral_accepted_at` and `contact_confirmed_at`. `step` writes these fields for people and reports to read. It never reads them to decide acceptance or the next signature, except as described in the next paragraph.
 
-**Why this is sound for I1 to I7.** Each invariant is a predicate on the event and on signature fields of the model before and after it: state, actor, payload, consent, holds, approved drafts. Suppose two concrete models with the same signature accept the same events and reach successors with the same signature. Then a search over one representative per signature visits every reachable signature and every transition between signatures. The predicates then hold for all concrete models exactly when they hold for the representatives. That premise is not assumed. Two checks test it on the run:
+**Why this is sound for I1 to I8.** Each invariant is a predicate on the event and on signature fields of the model before and after it: state, actor, payload, consent, holds, approved drafts. Suppose two concrete models with the same signature accept the same events and reach successors with the same signature. Then a search over one representative per signature visits every reachable signature and every transition between signatures. The predicates then hold for all concrete models exactly when they hold for the representatives. That premise is not assumed. Two checks test it on the run:
 
 - **Abstraction check.** Up to 1,000 times per slice, the search reaches a concrete model whose signature it has already seen, by another path, and with different hidden fields. The checker then runs the whole alphabet on both models and requires the same accept/refuse result and the same successor signature for every event. A signature that leaves out something `step` reads is reported as `ABSTRACTION`. A test drops the holds from the signature and shows that the check catches it.
 - **Replay (I6)** rebuilds every representative from its trace and requires equality on every field.
@@ -89,15 +90,16 @@ Results of `make verify` at the commit of this ticket, on the development Mac:
 
 | Slice | Abstract states | Accepted transitions | `step()` calls | Depth | Saturation | Abstraction pairs | Non-interference | Table probes | Replays |
 |---|---|---|---|---|---|---|---|---|---|
-| messaging | 2,016 | 93,048 | 582,624 | 16 | level 17 added nothing | 1,000 | 808 | 42,939 | 2,016 |
-| ownership | 2,908 | 68,940 | 793,884 | 14 | level 15 added nothing | 1,000 | 832 | 38,850 | 2,908 |
-| ladders | 12,147 | 255,099 | 3,583,365 | 21 | level 22 added nothing | 1,000 | 405 | 44,394 | 12,147 |
-| **total** | **17,071** | 417,087 | 4,959,873 | | all saturated | | | | |
+| messaging | 2,368 | 93,400 | 686,720 | 16 | level 17 added nothing | 1,000 | 948 | 46,917 | 2,368 |
+| ownership | 3,408 | 69,440 | 933,792 | 14 | level 15 added nothing | 1,000 | 852 | 42,672 | 3,408 |
+| ladders | 12,178 | 255,130 | 3,604,688 | 21 | level 22 added nothing | 1,000 | 406 | 48,678 | 12,178 |
+| **total** | **17,954** | 417,970 | 5,225,200 | | all saturated | | | | |
 
 Notes on the table:
 
 - **Depth** is the length of the longest shortest trace from `case_created`. The saturation column names the BFS level that added no new state.
-- **Time:** about 70 seconds while other work was running (36 to 50 seconds before A33 added the refusal path, the cancel event and the HL7 actor to the alphabet; the ladders slice keeps one counsellor form to stay small). The budget is three minutes.
+- **A32 (erasure)** added `erasure_completed`, `system:erasure`, the `erased` flag in the signature and I8; erased closed cases account for the growth from 17,071 states.
+- **Time:** about 60 to 75 seconds while other work was running (36 to 50 seconds before A33 added the refusal path, the cancel event and the HL7 actor to the alphabet; the ladders slice keeps one counsellor form to stay small). The budget is three minutes.
 - **States per level:** `make verify` prints the new states per level and the states per state name.
 - **Gate cases:** the route gate refused 4,592 closes that the machine accepted with a foreign signer or a malformed reference. The append-time guard refused 104 unlisted templates that the machine accepted. In both cases the refusal comes from the layer that ADR-021 and ADR-032 put in charge.
 

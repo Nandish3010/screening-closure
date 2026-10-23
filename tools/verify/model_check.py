@@ -5,7 +5,7 @@ It drives the REAL `app.state_machine.step` (the machine is not re-implemented):
 pathway it applies every event of a finite alphabet (event type x actor x representative payload, valid and invalid) to
 one concrete representative of every abstract state, breadth-first, until a level adds no new abstract state. On every
 accepted transition it checks the safety invariants I1 to I4; on the saturated graph it checks I5 (a person can always
-act), I6 (replay determinism) and I7 (a person can always reach `closed`). On a violation it prints a shortest
+act), I6 (replay determinism) and I7 (a person can always reach `closed`); I8 (erasure is final, A32) on every transition. On a violation it prints a shortest
 counterexample (BFS order) and exits non-zero.
 
 The search runs in three feature SLICES (messaging and consent, ownership and handoff, SLA ladders). Each slice has the
@@ -73,7 +73,7 @@ CAST = [PCO, SPEC, COORD, SUP]
 FOREIGN_SIGNER = f"specialist_owner:{auth.opaque_user_id('specialist_owner', 'Dr Someone Else')}"
 SERVICES = [
     "system:scheduler", "system:watchdog", "system:notifier", "system:consent", "system:automation",
-    "model:drafter", "system:triage", "system:agency:outreach", "system:hl7",
+    "model:drafter", "system:triage", "system:agency:outreach", "system:hl7", sm.ERASURE_ACTOR,
 ]
 STRANGERS = ["intruder:x1", "scheduler", "system:intake"]  # match no row of the table: may emit nothing
 ACTORS = [*CAST, *SERVICES, *STRANGERS]
@@ -244,6 +244,8 @@ def alphabet(pathway: Pathway) -> list[tuple[str, str, Builder, bool]]:
     add("closure_proposed", "no-evidence", {"auto": True})
     add("reply_received", "plain", {"channel": "sms", "text_ref": "t-1"})
     add("reply_classified", "plain", {"intent": "question", "confidence": 0.9})
+    # A32 (ADR-025): the erasure record, written only by `system:erasure` on a closed case; after it nothing is accepted (I8)
+    add(sm.ERASURE_EVENT, "plain", {"erasure_id": str(uuid5(NS, "erasure")), "categories": ["contact_registry"]})
     add("bogus_event", "plain", {})
     return a
 
@@ -257,7 +259,7 @@ BASE = {
     "acknowledge": ALL, "accept_ownership": ALL, "assign_ownership": ALL, "contact_patient": ALL,
     "patient_acknowledge": ALL, "book_confirmatory": ALL, "complete_confirmatory": ALL, "clinician_review": ALL,
     "close": ALL, "reopen": ALL, "mark_lost_contact": ALL, "record_informed_refusal": ALL, "appointment_cancelled": ALL, "watchdog_flagged": ALL, "closure_proposed": ALL,
-    "reply_received": ALL, "reply_classified": ALL, "bogus_event": ALL,
+    "reply_received": ALL, "reply_classified": ALL, "bogus_event": ALL, sm.ERASURE_EVENT: ALL,
     "consent_updated": {"withdraw", "restore", "empty", "not-bool"},
 }
 
@@ -317,7 +319,7 @@ def signature(m: sm.CaseModel) -> tuple:
     pending = m.pending_handoff
     return (
         # core: the state, consent freeze and where it resumes, and each milestone's clock (started / met / void)
-        (m.state, m.consent_frozen, bool(m.consent.get("withdrawn")), m.resume_state,
+        (m.state, m.erased, m.consent_frozen, bool(m.consent.get("withdrawn")), m.resume_state,
          # the refusal on record: a declined closure reads who counselled and which record (A33)
          None if m.refusal is None else (m.refusal["counselling_ref"], m.refusal["counselled_by"]),
          tuple((ms.started_at is not None, ms.met_at is not None, ms.void) for ms in m.milestones.values())),
@@ -615,8 +617,19 @@ class Checker:
                 if route_gate_refusal(actor, p) is None:
                     out.append(("I1", f"close signed {p.get('signed_by')!r} with evidence {ref!r} passes the machine "
                                       "AND the route gate"))
-        if pre.state == terminal and t != "reopen":
+        if pre.state == terminal and t not in ("reopen", sm.ERASURE_EVENT):
             out.append(("I1", f"{t!r} accepted on a closed case"))
+        # I8 (A32, ADR-025): erasure only on a closed case, only by `system:erasure`, moves no state, and is final
+        if pre.erased:
+            out.append(("I8", f"{t!r} accepted on an erased case"))
+        if t == sm.ERASURE_EVENT:
+            _bump(c, "I8 erasures")
+            if pre.state != terminal:
+                out.append(("I8", f"erasure accepted in {pre.state!r}, not {terminal!r}"))
+            if actor != sm.ERASURE_ACTOR:
+                out.append(("I8", f"erasure written by {actor!r}"))
+            if post.state != pre.state or not post.erased:
+                out.append(("I8", "erasure moved the state or did not mark the case erased"))
         # I2: no automated actor gets a human decision accepted; the agency and unknown actors get nothing accepted
         if t in HUMAN_DECISIONS:
             _bump(c, "I2 human decisions")

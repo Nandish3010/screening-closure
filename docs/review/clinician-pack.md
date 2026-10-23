@@ -135,6 +135,7 @@ Events are the facts the system records. The "who" column follows the authorisat
 | `closure_proposed` | The automation found the colonoscopy report and proposes closing the case. The clinician still reviews and signs; this closes nothing. | The automation only | annotation |  |
 | `reply_received` | The patient wrote back. Only the channel and a reference are logged; the text is kept apart and can be erased. | The reply triage only; nobody can post it | annotation |  |
 | `reply_classified` | The reply triage labels the reply (for example reschedule, wrong number, question) and says whether a person must read it. It changes nothing in the case. | The reply triage only; nobody can post it | annotation |  |
+| `erasure_completed` | Records that a patient's personal data was erased from a closed case, after two supervisors agreed. It says only that and which kinds of data; the case history stays and the case takes no further events. | The erasure procedure only; nobody can post it | annotation |  |
 
 Events listed as human only in the configuration: `escalation_accepted`, `handoff_accepted`, `consent_updated`, `contact_updated`, `message_approved`, `message_rejected`, `callback_requested`, `reopen`, `record_informed_refusal`. Also: no automated actor may emit `close` (checked separately by the state machine).
 
