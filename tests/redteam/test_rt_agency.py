@@ -36,8 +36,8 @@ from app.events import Event
 from app.routers import cases, drafts
 
 make_client()  # loads app.main (the pathway) like every other module
-# case id -> weakness class while its fix is pending. W15 (planner rationale) is fixed; W16 (the runner trusts a planner object) is pending.
-EXPOSED: dict[str, str] = {f"RT-A-02.{n}": "W16" for n in (1, 2, 3, 4, 5, 6, 8, 9, 10, 11, 12, 14)}
+# case id -> weakness class while its fix is pending. Empty now: W15 and W16 have been fixed (docs/governance/red-team.md section 9).
+EXPOSED: dict[str, str] = {}
 PROV = Provenance("0" * 64, "template", "rt-planner", False)
 
 

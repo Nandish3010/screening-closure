@@ -53,7 +53,7 @@ from app.agency.ledger import (
     run_id_for,
     task_id_for,
 )
-from app.agency.planner import DepartmentPlan, TaskOrder, TemplatePlanner, get_planner
+from app.agency.planner import DepartmentPlan, TaskOrder, TemplatePlanner, contained, get_planner
 from app.agency.tools import ToolBox, ToolDenied, ToolFailed
 from app.auth import AGENCY_ROLE, Identity
 from app.state_machine import is_automated
@@ -316,7 +316,7 @@ def _run(L, run_id, now, trigger, created_by, budget_seconds, max_tasks, planner
                 skipped.append({"case_id": o.case_id, "agent_type": o.agent_type, "reason": why})
             else:
                 kept.append(o)
-        plan, prov = planner.plan(dept, DepartmentPlan(orders=kept, deferred=candidates.deferred))
+        plan, prov = contained(planner, dept, DepartmentPlan(orders=kept, deferred=candidates.deferred))
         planned = []
         for o in plan.orders:
             if created >= cap:
