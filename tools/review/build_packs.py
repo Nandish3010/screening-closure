@@ -394,6 +394,7 @@ EVENT_GLOSS = {
     "closure_proposed": ("The automation found the colonoscopy report and proposes closing the case. The clinician still reviews and signs; this closes nothing.", "The automation only"),
     "callback_requested": ("The patient asks for a person to call (does not understand, wants another date, cannot attend).", "Patient, coordinator; relayed by the reply triage from the patient's own reply (otherwise human only)"),
     "watchdog_flagged": ("The watchdog flags a case that has been idle too long.", "Watchdog / scheduler"),
+    "erasure_completed": ("Records that a patient's personal data was erased from a closed case, after two supervisors agreed. It says only that and which kinds of data; the case history stays and the case takes no further events.", "The erasure procedure only; nobody can post it"),
 }
 
 SLA_STEP_GLOSS = {
