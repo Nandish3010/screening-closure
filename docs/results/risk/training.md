@@ -10,7 +10,7 @@ All data are synthetic. The score is a demonstration of the pattern, not a valid
 |---|---|
 | Scenario | literature_anchored, orchestrated arm only |
 | Parameter files | `simulator/params.yaml`, `simulator/params.conservative.yaml` |
-| Parameter hash | `d48f20dc2668a41f3c7f007426bf2dada16ffd4c117a2055c643fed597d7e5c5` |
+| Parameter hash | `90bb0c2a4d93e016722f3896da3847fd6053043f72f01c9a876843235843d520` |
 | Simulator seed | 20261017 |
 | Simulated start date | 2026-01-05 (results arrive over 30 days, each case followed for 180 days) |
 | Simulated cases | 20000 |

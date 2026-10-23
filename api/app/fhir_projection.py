@@ -76,6 +76,7 @@ TASK_STATUS = {
     "referral_rejected": "on-hold",
     "consent_withdrawn": "on-hold",
     "lost_contact": "on-hold",
+    "declined_pending_signoff": "on-hold",  # A33: the patient declined; waiting for a physician's signature
     "reopened": "in-progress",
 }
 _BAD_ID = re.compile(r"[^A-Za-z0-9.-]")
@@ -627,7 +628,9 @@ class Projector:
         def loop():
             while not self._stop.wait(interval_seconds):
                 try:
-                    if self.queue.count():
+                    from app import leader  # A31: one API replica drains the projection queue, the others idle
+
+                    if leader.api_is_leader() and self.queue.count():
                         self.drain(due_only=True)
                 except Exception:
                     log.exception("FHIR projection drain failed")

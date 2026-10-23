@@ -1,11 +1,12 @@
 /** Derivations shared by the mock adapter and the UI (state, owner, SLA clock, handoffs, consent, drafts). */
 import type {
   ActorKind, CaseDetail, CaseEvent, ClosureProposal, IncompleteProcedure, CaseSummary, Consent, ConsentChanges, ConsentHistoryEntry, DraftRecord, EscalationRung, Lang,
-  LastHandoff, MilestoneClock, MilestoneName, PendingHandoff, TimelineItem, WatchdogFlag,
+  InformedRefusal, LastHandoff, MilestoneClock, MilestoneName, PendingHandoff, TimelineItem, WatchdogFlag,
 } from "../api/contract";
-import { ApiError, AUTOMATION_ACTOR, CONSENT_KEYS, HANDOFF_REJECT_REASONS, OUTREACH_HOLD_REASONS, REVIEW_REASONS, TRIAGE_REVIEW_REASONS } from "../api/contract";
 import {
-  MILESTONES, REFERRAL_STATES, SLA_WORKING_DAYS, addWorkingDays, nextTransition,
+  APPOINTMENT_CANCEL_REASONS, ApiError, AUTOMATION_ACTOR, CONSENT_KEYS, REFUSAL_REASONS, HANDOFF_REJECT_REASONS, OUTREACH_HOLD_REASONS, REVIEW_REASONS, TRIAGE_REVIEW_REASONS } from "../api/contract";
+import {
+  MILESTONES, RE_OFFER_MONTHS, REFERRAL_STATES, SLA_WORKING_DAYS, addWorkingDays, nextTransition,
   rungLevel, transitionFor, wholeDaysBetween,
 } from "./pathway";
 
@@ -58,6 +59,50 @@ export function actorName(actor: string): string {
   if (known) return known;
   const i = actor.indexOf(":");
   return i < 0 ? "" : actor.slice(i + 1);
+}
+
+/** The user id inside an actor (`role:user_id`) or a Practitioner reference (`Practitioner/user_id`); the machine compares people by it (A33). */
+export function personId(identity: string): string {
+  return identity.startsWith("Practitioner/") ? identity.slice("Practitioner/".length) : identity.slice(identity.indexOf(":") + 1);
+}
+
+/** Calendar months added to an ISO timestamp, the day clamped to the end of a shorter month (mirrors state_machine.add_months). */
+export function addMonths(iso: string, months: number): string {
+  const d = new Date(iso);
+  const day = d.getUTCDate();
+  d.setUTCDate(1);
+  d.setUTCMonth(d.getUTCMonth() + months);
+  const last = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0)).getUTCDate();
+  d.setUTCDate(Math.min(day, last));
+  return d.toISOString();
+}
+
+/**
+ * The informed refusal on record by replay (A33): the latest `record_informed_refusal`, cleared by a `reopen`. The re-offer date
+ * is the refusal's date plus RE_OFFER_MONTHS (the YAML's `informed_refusal.re_offer_months`); a date only, nothing re-offers.
+ */
+export function refusalOf(events: CaseEvent[]): InformedRefusal | null {
+  let out: InformedRefusal | null = null;
+  for (const ev of events) {
+    if (ev.type === "record_informed_refusal") {
+      out = {
+        counselling_ref: String(ev.payload.counselling_ref ?? ""), counselled_by: String(ev.payload.counselled_by ?? ""),
+        reason: ev.payload.reason as InformedRefusal["reason"], recorded_at: ev.at, event_id: ev.event_id ?? `seq-${ev.seq}`,
+        re_offer_due_at: addMonths(ev.at, RE_OFFER_MONTHS),
+      };
+    } else if (ev.type === "reopen") out = null;
+  }
+  return out;
+}
+
+/** How the case closed (A33): `declined` for an informed-refusal closure, else `investigated`; null while open. */
+export function closureOutcomeOf(events: CaseEvent[]): "declined" | "investigated" | null {
+  let out: "declined" | "investigated" | null = null;
+  for (const ev of events) {
+    if (ev.type === "close") out = ev.payload.outcome === "declined" ? "declined" : "investigated";
+    else if (ev.type === "reopen") out = null;
+  }
+  return out;
 }
 
 /** Automated actors (scheduler, watchdog, models, system jobs) get an "automated" chip in the UI. */
@@ -599,6 +644,9 @@ export function completeDetail(raw: CaseDetail, simNow: string | null = null): C
     outreach_holds: Array.isArray(d.outreach_holds) ? d.outreach_holds : triage.holds,
     closure_proposal: d.closure_proposal !== undefined ? d.closure_proposal : closureProposalOf(events),
     incomplete_procedure: d.incomplete_procedure !== undefined ? d.incomplete_procedure : incompleteProcedureOf(events),
+    refusal: d.refusal !== undefined ? d.refusal : refusalOf(events),
+    re_offer_due_at: d.re_offer_due_at !== undefined ? d.re_offer_due_at : refusalOf(events)?.re_offer_due_at ?? null,
+    closure_outcome: d.closure_outcome !== undefined ? d.closure_outcome : closureOutcomeOf(events),
     milestones: d.milestones ?? milestonesOf(events, simNow),
     last_event_at: d.last_event_at ?? events.at(-1)?.at ?? d.updated_at ?? "",
     watchdog_flagged: d.watchdog_flagged !== undefined ? d.watchdog_flagged : watchdogFlag(events),
@@ -626,6 +674,10 @@ const CONTACT_UPDATE_ROLES = new Set(["coordinator", "primary_care_owner", "spec
 /** Backend roles that are owner-scoped (A5): they act only on cases they own. */
 const OWNER_BACKEND_ROLES = new Set(["primary_care_owner", "specialist_owner"]);
 /** Roles that count as the clinician for reopen (the UI's own "clinician" prefix is still accepted by the mock). */
+const REFUSAL_ROLES = new Set(["coordinator", "primary_care_owner", "specialist_owner", "clinician"]);
+const PHYSICIAN_ROLES = new Set(["primary_care_owner", "specialist_owner", "clinician"]);
+const COUNSELLING_REF = /^DocumentReference\/[A-Za-z0-9-]{1,64}$/;
+const PHYSICIAN_IDENTITY = /^(Practitioner\/[A-Za-z0-9-]{1,64}|(primary_care_owner|specialist_owner|clinician):.{1,64})$/;
 const CLINICIAN_ACTOR_ROLES = new Set(["clinician", "primary_care_owner", "specialist_owner"]);
 /** Events that freeze while consent is withdrawn (A6). */
 const FROZEN_EVENTS = ["contact_patient", "message_drafted", "message_approved", "message_sent", "handoff_requested"];
@@ -710,6 +762,38 @@ export function validateAppend(events: CaseEvent[], type: string, actor: string,
     const given = Object.keys(payload).filter((k) => (CONSENT_KEYS as readonly string[]).includes(k));
     if (given.length === 0) throw new ApiError(422, `consent_updated needs at least one of ${JSON.stringify(CONSENT_KEYS)}`);
     if (given.some((k) => typeof payload[k] !== "boolean")) throw new ApiError(422, "consent_updated values must be booleans");
+  }
+
+  if (type === "record_informed_refusal" || type === "appointment_cancelled") {
+    if (!ctx.internal && !REFUSAL_ROLES.has(actorRole(actor))) throw new ApiError(403, `role '${actorRole(actor)}' may not emit '${type}'`);
+  }
+  if (type === "record_informed_refusal") {
+    if (!COUNSELLING_REF.test(String(payload.counselling_ref ?? ""))) throw new ApiError(422, "counselling_ref must be a DocumentReference/<id>");
+    if (!PHYSICIAN_IDENTITY.test(String(payload.counselled_by ?? ""))) throw new ApiError(422, "counselled_by must be a physician (an owner or specialist) or their Practitioner");
+    if (!(REFUSAL_REASONS as readonly string[]).includes(String(payload.reason))) {
+      throw new ApiError(422, `record_informed_refusal reason must be one of ${JSON.stringify(REFUSAL_REASONS)}`);
+    }
+    if ((payload.reason === "other_with_note") !== Boolean(payload.note)) throw new ApiError(422, "a note goes with reason other_with_note, and that reason needs it");
+  } else if (type === "appointment_cancelled") {
+    if (!(APPOINTMENT_CANCEL_REASONS as readonly string[]).includes(String(payload.reason))) {
+      throw new ApiError(422, `appointment_cancelled reason must be one of ${JSON.stringify(APPOINTMENT_CANCEL_REASONS)}`);
+    }
+    if (typeof payload.by_patient !== "boolean") throw new ApiError(422, "appointment_cancelled needs by_patient (true or false)");
+  }
+  if (type === "close") {
+    const declined = payload.outcome === "declined";
+    if (declined !== (state === "declined_pending_signoff")) {
+      throw new ApiError(409, "close: outcome 'declined' is for a case waiting for the sign-off of an informed refusal, and only for that");
+    }
+    if (declined) {
+      const refusal = refusalOf(events);
+      if (!PHYSICIAN_ROLES.has(actorRole(actor))) throw new ApiError(409, "close (declined): signed by a physician (primary_care_owner or specialist_owner)");
+      if (!refusal || payload.evidence_ref !== refusal.counselling_ref) throw new ApiError(409, "close (declined): evidence_ref must be the counselling record of the refusal");
+      const counsellor = personId(refusal.counselled_by);
+      if (counsellor === personId(actor) || counsellor === personId(String(payload.signed_by ?? ""))) {
+        throw new ApiError(409, "close (declined): the physician who signs must not be the one who counselled the patient");
+      }
+    }
   }
 
   if (ANNOTATION_EVENTS.includes(type) && !(type === "handoff_accepted" && state === "referral_rejected")) return;

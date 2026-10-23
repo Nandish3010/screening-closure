@@ -1,7 +1,7 @@
 # Clinician review pack (H1)
 
 > Generated file. Do not edit by hand. Regenerate with `make review-packs` (tools/review/build_packs.py).
-> Built from pathway `colorectal_fit` v0.2, template set v2, forbidden-phrase list v1.
+> Built from pathway `colorectal_fit` v0.3, template set v3, forbidden-phrase list v1.
 > For: a GP or public-health doctor, 30 minutes
 > All data in this project is synthetic. Nothing here is clinical advice or a claim of real-world performance.
 
@@ -61,10 +61,16 @@ stateDiagram-v2
     lost_contact --> patient_contacted : contact_patient, 3 wd
     closed --> reopened : reopen, needs reason
     reopened --> clinician_reviewed : clinician_review, 5 wd
+    confirmatory_booked --> patient_acknowledged : appointment_cancelled
+    owner_accepted --> declined_pending_signoff : record_informed_refusal, needs counselling_ref and counselled_by and reason
+    patient_acknowledged --> declined_pending_signoff : record_informed_refusal, needs counselling_ref and counselled_by and reason
+    confirmatory_booked --> declined_pending_signoff : record_informed_refusal, needs counselling_ref and counselled_by and reason
+    declined_pending_signoff --> declined_pending_signoff : reassign, 2 wd, needs owner
+    declined_pending_signoff --> closed : close, 3 wd, needs evidence_ref and signed_by, when outcome is declined
     closed --> [*] : loop closed
     classDef side fill:#fff3cd,stroke:#b8860b,color:#000
     classDef final fill:#d4edda,stroke:#2e7d32,color:#000
-    class referral_rejected,consent_withdrawn,lost_contact,reopened side
+    class referral_rejected,consent_withdrawn,lost_contact,reopened,declined_pending_signoff side
     class closed final
 ```
 
@@ -78,10 +84,10 @@ Overdue and escalated are not states. A case can be overdue and in any state, so
 |---|---|---|---|---|
 | `result_received` | main path | A positive FIT (stool blood test) result has arrived from the laboratory. Nobody has taken responsibility yet. | `acknowledge` (Laboratory, coordinator, supervisor; the automation does it when the result arrives)<br>`consent_updated` with withdrawal (patient or coordinator) moves the case to `consent_withdrawn` | 2 working days to `acknowledge` |
 | `acknowledged` | main path | The laboratory, coordinator or supervisor has confirmed the result is logged and is being routed. Still no named owner. | `accept_ownership` (Primary care owner, specialist owner, supervisor)<br>`consent_updated` with withdrawal (patient or coordinator) moves the case to `consent_withdrawn` | 1 working days to `accept_ownership` |
-| `owner_accepted` | main path | A named clinician or service has accepted responsibility (the care owner). From here one named person owns the next step. | `contact_patient` (Care owner, coordinator, supervisor)<br>`consent_updated` with withdrawal (patient or coordinator) moves the case to `consent_withdrawn` | 3 working days to `contact_patient` |
+| `owner_accepted` | main path | A named clinician or service has accepted responsibility (the care owner). From here one named person owns the next step. | `contact_patient` (Care owner, coordinator, supervisor)<br>`record_informed_refusal` (Care owner, coordinator recording the conversation (human only))<br>`consent_updated` with withdrawal (patient or coordinator) moves the case to `consent_withdrawn` | 3 working days to `contact_patient` |
 | `patient_contacted` | main path | The care owner or coordinator has contacted the patient (call, message or letter) with the result and the next step. | `patient_acknowledge` (Patient, coordinator)<br>`mark_lost_contact` (Care owner, coordinator, supervisor)<br>`consent_updated` with withdrawal (patient or coordinator) moves the case to `consent_withdrawn` | 5 working days to `patient_acknowledge` |
-| `patient_acknowledged` | main path | The patient has confirmed they understood (tapped "I understand" or told the coordinator). The colonoscopy can now be booked. | `book_confirmatory` (Care owner, coordinator)<br>`handoff_rejected` (Receiving clinician; scheduler (timeout only))<br>`consent_updated` with withdrawal (patient or coordinator) moves the case to `consent_withdrawn` | 5 working days to `book_confirmatory` |
-| `confirmatory_booked` | main path | A confirmatory colonoscopy appointment is booked. If the booking went through a referral to another provider, that provider has accepted it. | `complete_confirmatory` (Specialist owner; the automation when it finds the colonoscopy report)<br>`handoff_rejected` (Receiving clinician; scheduler (timeout only))<br>`consent_updated` with withdrawal (patient or coordinator) moves the case to `consent_withdrawn` | no time limit |
+| `patient_acknowledged` | main path | The patient has confirmed they understood (tapped "I understand" or told the coordinator). The colonoscopy can now be booked. | `book_confirmatory` (Care owner, coordinator)<br>`handoff_rejected` (Receiving clinician; scheduler (timeout only))<br>`record_informed_refusal` (Care owner, coordinator recording the conversation (human only))<br>`consent_updated` with withdrawal (patient or coordinator) moves the case to `consent_withdrawn` | 5 working days to `book_confirmatory` |
+| `confirmatory_booked` | main path | A confirmatory colonoscopy appointment is booked. If the booking went through a referral to another provider, that provider has accepted it. | `complete_confirmatory` (Specialist owner; the automation when it finds the colonoscopy report)<br>`handoff_rejected` (Receiving clinician; scheduler (timeout only))<br>`appointment_cancelled` (Care owner, coordinator; the hospital interface for a cancellation message)<br>`record_informed_refusal` (Care owner, coordinator recording the conversation (human only))<br>`consent_updated` with withdrawal (patient or coordinator) moves the case to `consent_withdrawn` | no time limit |
 | `confirmatory_completed` | main path | The specialist has recorded that the colonoscopy was done. Findings are not yet reviewed. | `clinician_review` (Primary care owner, specialist owner)<br>`consent_updated` with withdrawal (patient or coordinator) moves the case to `consent_withdrawn` | 5 working days to `clinician_review` |
 | `clinician_reviewed` | main path | A clinician has reviewed the colonoscopy outcome. The case can now be closed, but only with evidence and a signature. | `close` (Primary care owner, specialist owner (never automated))<br>`consent_updated` with withdrawal (patient or coordinator) moves the case to `consent_withdrawn` | 3 working days to `close` |
 | `closed` | main path | The loop is closed. Only possible with an evidence reference and a named clinician's sign-off. No automated actor can do this. | `reopen` (Primary care owner, specialist owner (human only)) | no time limit |
@@ -89,6 +95,7 @@ Overdue and escalated are not states. A case can be overdue and in any state, so
 | `consent_withdrawn` | side state | The patient withdrew consent. Outreach stops, the case is flagged for a person to review, and the earlier state is remembered so it can be restored. | `consent_updated` restoring consent (patient or coordinator) returns the case to the state it was in | no time limit |
 | `lost_contact` | side state | After repeated failed attempts the patient could not be reached. The case stays open and a person decides what to do next. It never closes by itself. | `contact_patient` (Care owner, coordinator, supervisor)<br>`consent_updated` with withdrawal (patient or coordinator) moves the case to `consent_withdrawn` | no time limit |
 | `reopened` | side state | A clinician reopened a closed case, giving a reason. It returns for clinician review and can close again only with fresh evidence and a sign-off. | `clinician_review` (Primary care owner, specialist owner)<br>`consent_updated` with withdrawal (patient or coordinator) moves the case to `consent_withdrawn` | no time limit |
+| `declined_pending_signoff` | side state | The patient was counselled by a physician and declined the colonoscopy, and that is recorded. The case waits for a different physician to sign a closure as declined. It is not a completed colonoscopy and is counted apart. A re-offer date is shown; nothing re-offers automatically. | `reassign` (Coordinator, supervisor)<br>`close` (Primary care owner, specialist owner (never automated))<br>`consent_updated` with withdrawal (patient or coordinator) moves the case to `consent_withdrawn` | no time limit |
 
 ## 4. Events: what can happen and who may do it
 
@@ -103,13 +110,15 @@ Events are the facts the system records. The "who" column follows the authorisat
 | `book_confirmatory` | Book the confirmatory colonoscopy. | Care owner, coordinator | changes state |  |
 | `complete_confirmatory` | Record that the colonoscopy was done. | Specialist owner; the automation when it finds the colonoscopy report | changes state |  |
 | `clinician_review` | Review the colonoscopy outcome. | Primary care owner, specialist owner | changes state |  |
-| `close` | Close the case. Needs an evidence reference and a signature. | Primary care owner, specialist owner (never automated) | changes state |  |
+| `close` | Close the case. Needs an evidence reference and a signature. After an informed refusal the closure says "declined", cites the counselling record, and is signed by a physician who did not counsel the patient. | Primary care owner, specialist owner (never automated) | changes state |  |
 | `handoff_rejected` | The receiving provider refuses, with a reason from the fixed list. The scheduler may also bounce a request that got no answer. | Receiving clinician; scheduler (timeout only) | changes state or annotates |  |
 | `handoff_accepted` | The receiving provider accepts. Ownership moves only now. | Receiving clinician (human only) | changes state or annotates | yes |
-| `reassign` | Give a rejected case a new owner. | Coordinator, supervisor | changes state |  |
+| `reassign` | Give a rejected case a new owner, or hand the sign-off of a declined case to another physician. | Coordinator, supervisor | changes state |  |
 | `consent_updated` | Record the patient's choice of channels, sharing, or withdrawal. | Patient, coordinator recording the patient's instruction (human only) | changes state or annotates | yes |
 | `mark_lost_contact` | Record that the patient could not be reached after repeated attempts. | Care owner, coordinator, supervisor | changes state |  |
 | `reopen` | Reopen a closed case, with a reason. | Primary care owner, specialist owner (human only) | changes state | yes |
+| `appointment_cancelled` | Record that the booked appointment was cancelled, with a reason from a fixed list and whether the patient asked. The case returns to "patient acknowledged" and is booked again. The national clocks do not restart. | Care owner, coordinator; the hospital interface for a cancellation message | changes state |  |
+| `record_informed_refusal` | Record that the patient, counselled by a physician, declines the colonoscopy: a counselling reference, who counselled, and a reason from a fixed list. The case then waits for a different physician to sign a declined closure. | Care owner, coordinator recording the conversation (human only) | changes state | yes |
 | `mark_overdue` | Flag that the time limit for the current step has passed. | Scheduler only | annotation |  |
 | `escalate` | Send the late case up one rung of the ladder. | Scheduler, coordinator, supervisor | annotation |  |
 | `escalation_accepted` | A person accepts an escalation, which stops further rungs for that delay. | A human in the rung's target role (human only) | annotation | yes |
@@ -128,7 +137,7 @@ Events are the facts the system records. The "who" column follows the authorisat
 | `reply_classified` | The reply triage labels the reply (for example reschedule, wrong number, question) and says whether a person must read it. It changes nothing in the case. | The reply triage only; nobody can post it | annotation |  |
 | `erasure_completed` | Records that a patient's personal data was erased from a closed case, after two supervisors agreed. It says only that and which kinds of data; the case history stays and the case takes no further events. | The erasure procedure only; nobody can post it | annotation |  |
 
-Events listed as human only in the configuration: `escalation_accepted`, `handoff_accepted`, `consent_updated`, `contact_updated`, `message_approved`, `message_rejected`, `callback_requested`, `reopen`. Also: no automated actor may emit `close` (checked separately by the state machine).
+Events listed as human only in the configuration: `escalation_accepted`, `handoff_accepted`, `consent_updated`, `contact_updated`, `message_approved`, `message_rejected`, `callback_requested`, `reopen`, `record_informed_refusal`. Also: no automated actor may emit `close` (checked separately by the state machine).
 
 ## 5. Time limits (SLAs)
 
@@ -140,7 +149,7 @@ Each step has a limit in working days. The clock starts when the case enters the
 | `accept_ownership` | A clinician or service accepts the case. | `acknowledged` | the case enters `acknowledged` (after `acknowledge`) | 1 | 3 |
 | `contact_patient` | The patient is contacted with the result. | `owner_accepted` | the case enters `owner_accepted` (after `accept_ownership`, `handoff_accepted`, `reassign`) | 3 | 6 |
 | `patient_acknowledge` | The patient confirms they understood. | `patient_contacted` | the case enters `patient_contacted` (after `contact_patient`) | 5 | 11 |
-| `book_confirmatory` | The colonoscopy is booked. | `patient_acknowledged` | the case enters `patient_acknowledged` (after `patient_acknowledge`) | 5 | 16 |
+| `book_confirmatory` | The colonoscopy is booked. | `patient_acknowledged` | the case enters `patient_acknowledged` (after `patient_acknowledge`, `appointment_cancelled`) | 5 | 16 |
 | `clinician_review` | A clinician reviews the outcome. | `confirmatory_completed` | the case enters `confirmatory_completed` (after `complete_confirmatory`) | 5 | counted from the colonoscopy |
 | `close` | A clinician signs off the closure with evidence (a report or procedure on file). | `clinician_reviewed` | the case enters `clinician_reviewed` (after `clinician_review`) | 3 | counted from the colonoscopy |
 | `reassign` | A rejected or bounced referral is given a new owner. | `referral_rejected` | the case enters `referral_rejected` (after `handoff_rejected`) | 2 | not on the main path |
@@ -200,7 +209,7 @@ A case is handed to another provider with `handoff_requested`. Ownership moves o
 
 ## 9. What the patient reads (English)
 
-70 English strings in three places. The reading-level target is grade 6. Arabic versions are reviewed separately (H2); the IDs below match the Arabic pack. Placeholders in braces are filled in: {owner_name} (the care owner), {next_step} (default "a camera test"), {appointment_date} (for example "Tuesday 3 November 2026"), {name} and {role} on the patient page.
+73 English strings in three places. The reading-level target is grade 6. Arabic versions are reviewed separately (H2); the IDs below match the Arabic pack. Placeholders in braces are filled in: {owner_name} (the care owner), {next_step} (default "a camera test"), {appointment_date} (for example "Tuesday 3 November 2026"), {name} and {role} on the patient page.
 
 ### 9.1 The patient page (web)
 
@@ -344,6 +353,14 @@ Source: `api/app/ai/templates/en.yaml`. These are the default drafts and the fal
 | T17 | WhatsApp | Hello. Thank you for telling us you need help to understand.<br><br>A person from your care team will call you to explain. The next step is {next_step}.<br><br>Your care owner is {owner_name}. | 182 / 600 |
 | T18 | Letter | Hello,<br><br>Thank you for telling us you need help to understand our message.<br><br>A person from your care team will call you to explain. The next step is {next_step}.<br><br>Your care owner is {owner_name}.<br><br>Kind regards,<br>Your care team | 225 / 1200 |
 
+**refusal_acknowledgement.** After a patient's informed refusal is recorded (A33): the decision is recorded, their own doctor has been told, they can come back at any time. States no finding. Goes out as an approved draft through the existing message path; the system holds no GP channel yet, so telling the GP itself is the clinician's act.
+
+| ID | Channel | English text | Chars / limit |
+|---|---|---|---|
+| T19 | SMS | Thank you for talking with your care team. Your decision about the next step ({next_step}) has been recorded and your own doctor has been told. You can change your mind at any time: contact {owner_name}. | 205 / 320 |
+| T20 | WhatsApp | Hello. This is a message from your care team.<br><br>Thank you for talking with us. Your decision about the next step ({next_step}) has been recorded, and your own doctor has been told.<br><br>You can change your mind at any time. Your care owner is {owner_name}. | 253 / 600 |
+| T21 | Letter | Hello,<br><br>Thank you for talking with your care team.<br><br>Your decision about the next step ({next_step}) has been recorded, and your own doctor has been told.<br><br>You can change your mind at any time. Please contact your care team and ask for {owner_name}.<br><br>Kind regards,<br>Your care team | 280 / 1200 |
+
 ### 9.3 Demo draft texts (coordinator app)
 
 Two draft texts in the demo data of the coordinator app. They stand in for a model or template draft and are shown to the coordinator, who approves them.
@@ -412,7 +429,7 @@ The Arabic list has 69 entries (see `arabic-pack.md`). The validator also reject
 
 5. **What counts as evidence to close a case.** A case can close only with an evidence reference and a named clinician's signature after clinician review. What the evidence reference may point to is not restricted today. *Question:* What is acceptable: the colonoscopy report alone, report plus histology, a documented refusal, a letter to the GP? What must be in the sign-off? Who may sign, and is clinician review by itself ever enough?
 
-6. **Informed refusal.** There is no state for a patient who, after a proper discussion, declines the colonoscopy. Today the nearest things are the handoff reason `patient_declined` (declined a referral) and keeping the case open. *Question:* What should happen: close with documented informed refusal (signed by a clinician), keep open with a recall date, offer FIT again next year, or something else? What must be recorded so that the closure is defensible?
+6. **Informed refusal.** A patient who, after a proper discussion with a physician, declines the colonoscopy can now be recorded (`record_informed_refusal`: a counselling reference, who counselled, a reason from a fixed list). The case waits in `declined_pending_signoff` for a different physician to sign a closure marked declined, which is counted apart from completed colonoscopies. A re-offer date is shown, 12 months after the refusal (our assumption; nothing re-offers automatically). The handoff reason `patient_declined` (declined a referral) still exists. *Question:* Is a single signature by a physician who did not counsel the patient enough, or is a second signature needed? Is 12 months the right re-offer date (the earlier review suggested 3)? What must the counselling record contain so that the closure is defensible, and may a coordinator record the conversation?
 
 7. **Lost contact after 3 failed attempts.** A case can be marked lost after 3 failed attempts (the engine checks only that the number given is at least 3). The case stays open. *Question:* Is 3 the right number? What counts as an attempt (call, SMS, WhatsApp, letter), how far apart, and what else must be tried before marking lost (the patient's GP, a registered letter, an emergency contact)?
 
@@ -443,6 +460,7 @@ For each row write keep or change and, if you change it, say what you would do. 
 | S:consent_withdrawn | State `consent_withdrawn`: The patient withdrew consent |  |  |
 | S:lost_contact | State `lost_contact`: After repeated failed attempts the patient could not be reached |  |  |
 | S:reopened | State `reopened`: A clinician reopened a closed case, giving a reason |  |  |
+| S:declined_pending_signoff | State `declined_pending_signoff`: The patient was counselled by a physician and declined the colonoscopy, and that is recorded |  |  |
 | SLA:acknowledge | Time limit `acknowledge`: 2 working days, clock starts when the case enters `result_received` |  |  |
 | SLA:accept_ownership | Time limit `accept_ownership`: 1 working days, clock starts when the case enters `acknowledged` |  |  |
 | SLA:contact_patient | Time limit `contact_patient`: 3 working days, clock starts when the case enters `owner_accepted` |  |  |
@@ -476,6 +494,7 @@ For each row write keep or change and, if you change it, say what you would do. 
 | M:appointment_confirmation | Message `appointment_confirmation` (T10 to T12) |  |  |
 | M:escalation_notice | Message `escalation_notice` (T13 to T15) |  |  |
 | M:callback_ack | Message `callback_ack` (T16 to T18) |  |  |
+| M:refusal_acknowledgement | Message `refusal_acknowledgement` (T19 to T21) |  |  |
 | D | Demo draft texts (D01 to D03) |  |  |
 | F:diagnosis_statement | Forbidden-phrase category `diagnosis_statement` |  |  |
 | F:disease_term | Forbidden-phrase category `disease_term` |  |  |

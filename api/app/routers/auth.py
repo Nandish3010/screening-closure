@@ -22,6 +22,8 @@ def dev_login(body: DevLogin) -> dict:
     # Fail closed (SEC-1): the passwordless login exists only in APP_ENV=dev, whatever the flag says.
     if settings.app_env != "dev" or not settings.dev_login_enabled:
         raise HTTPException(404, "dev login is disabled")
+    if settings.auth_mode != "dev":
+        raise HTTPException(404, "dev login is disabled: AUTH_MODE is oidc")  # A29: people sign in at the provider
     try:
         token = auth.issue_token(body.role, body.name, body.patient_ref, provider=body.provider)
     except AuthError as exc:
@@ -29,7 +31,9 @@ def dev_login(body: DevLogin) -> dict:
         raise HTTPException(status, str(exc)) from exc
     identity = auth.verify_token(token)
     users.record_login(identity)  # the display name goes to the users table, never to the log
-    return {"token": token, "token_type": "bearer", **_me(identity)}
+    exp = auth.token_expiry(token)
+    return {"token": token, "token_type": "bearer", "expires_at": exp, "expires_in": settings.dev_token_lifetime_seconds,
+            **_me(identity)}
 
 
 def _me(identity: Identity) -> dict:

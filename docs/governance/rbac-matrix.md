@@ -57,6 +57,8 @@ Every cell is what the running API did, not what the policy table says: the scri
 | `POST /scheduler/automation-scan` | U | R | R | R | R | R | R | A | R | A | R | R |
 | `POST /scheduler/evidence-scan` | U | R | R | R | R | R | R | A | R | A | R | R |
 | `POST /scheduler/heartbeat` | U | R | R | R | R | R | R | A | R | R | R | R |
+| `POST /scheduler/lease` | U | R | R | R | R | R | R | A | R | R | R | R |
+| `POST /scheduler/lease/release` | U | R | R | R | R | R | R | A | R | R | R | R |
 | `POST /scheduler/outbox/drain` | U | R | R | R | R | R | R | A | R | R | R | R |
 | `POST /scheduler/sweep` | U | R | R | R | R | R | R | A | R | R | R | R |
 | `POST /watchdog/scan` | U | R | R | R | R | R | R | R | A | R | R | R |
@@ -71,6 +73,7 @@ The route admits every role and both service tokens; the event policy then decid
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
 | `accept_ownership` | U | R | A/S | A/S | R | R | A | R | R | R | R | R |
 | `acknowledge` | U | A | R | R | A | R | A | R | R | R | R | R |
+| `appointment_cancelled` | U | R | A/S | A/S | A | R | R | R | R | R | R | R |
 | `assign_ownership` | U | R | R | R | R | R | R | R | R | R | R | R |
 | `book_confirmatory` | U | R | A/S | A/S | A | R | R | R | R | R | R | R |
 | `callback_requested` | U | R | R | R | A | A/S | R | R | R | R | R | R |
@@ -95,6 +98,7 @@ The route admits every role and both service tokens; the event policy then decid
 | `message_sent` | U | R | R | R | R | R | R | R | R | R | R | R |
 | `patient_acknowledge` | U | R | R | R | A | A/S | R | R | R | R | R | R |
 | `reassign` | U | R | R | R | A | R | A | R | R | R | R | R |
+| `record_informed_refusal` | U | R | A/S | A/S | A | R | R | R | R | R | R | R |
 | `reopen` | U | R | A/S | A/S | R | R | R | R | R | R | R | R |
 | `reply_classified` | U | R | R | R | R | R | R | R | R | R | R | R |
 | `reply_received` | U | R | R | R | R | R | R | R | R | R | R | R |
@@ -130,6 +134,6 @@ None.
 
 ## What was checked
 
-- 41 routes in the OpenAPI document, 41 entries in `ROUTE_POLICY`: every route has a decision and no decision is stale.
-- 31 event types in `EVENT_POLICY`, plus one unknown type that must be refused for every role.
-- 1002 role, route and scope combinations probed with real requests; 0 differ from the policy tables; 0 are documented gaps (see Findings).
+- 43 routes in the OpenAPI document, 43 entries in `ROUTE_POLICY`: every route has a decision and no decision is stale.
+- 33 event types in `EVENT_POLICY`, plus one unknown type that must be refused for every role.
+- 1056 role, route and scope combinations probed with real requests; 0 differ from the policy tables; 0 are documented gaps (see Findings).

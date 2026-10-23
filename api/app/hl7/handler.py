@@ -5,8 +5,10 @@
     ORU^R01  a colonoscopy     the report is recorded as FHIR evidence through `confirmatory.recorder`, the path of
                                POST /cases/{id}/confirmatory-result, and only with the completeness the report states
     SIU^S12  book              `book_confirmatory` with the appointment fields, as `system:hl7`
-    SIU^S14  reschedule        accepted when the case has no booking yet; for a booked case the pathway has no event
-    SIU^S15  cancel            for it: ACK AE with the reason (docs/governance/hl7-adapter.md, "Not built")
+    SIU^S14  reschedule        a case with no booking yet is booked; a booked case with a different time is cancelled
+                               (`appointment_cancelled`) and rebooked (`book_confirmatory`), the two events together (A34)
+    SIU^S15  cancel            `appointment_cancelled` as `system:hl7` for a booked case (A34, ADR-042); the sender does not
+                               say who cancelled, so it is recorded as reason `other`, not by the patient
     ADT^A08 / A31              contact validity only (a boolean in a registry; no number kept, no event written)
 
 Everything else is refused with a reason from the fixed list below: AR when the message cannot be read at all or is of a
@@ -52,8 +54,7 @@ R_NO_CASE = "no matching case for the patient"
 R_AMBIGUOUS = "more than one matching case: not attached automatically"
 R_NO_PID = "PID segment missing"
 R_NO_START = "appointment start time missing or unreadable"
-R_RESCHEDULE = "reschedule of a booked appointment is not supported by the pathway"
-R_CANCEL = "cancellation is not supported by the pathway"
+R_NOT_BOOKED = "no booked appointment to cancel for the case"
 R_INVALID_STATE = "the event is not valid in the case's current state"
 R_CONTENT_CONFLICT = "message control id reused with different content"
 R_NO_COMPLETENESS = "colonoscopy completeness not stated"
@@ -115,6 +116,10 @@ def case_id_for(msg: Message) -> UUID:
 
 def booking_event_id(msg: Message) -> UUID:
     return uuid.uuid5(HL7_NAMESPACE, f"siu|{_key(msg)}")
+
+
+def cancel_event_id(msg: Message) -> UUID:
+    return uuid.uuid5(HL7_NAMESPACE, f"siu-cancel|{_key(msg)}")
 
 
 # ---- entry point ------------------------------------------------------------------------------------------------
@@ -326,7 +331,7 @@ def _start_time(msg: Message) -> str:
 def _siu(msg: Message, trigger: str) -> Outcome:
     cfg = current()
     if trigger == "S15":
-        raise Reject("AE", "201", R_CANCEL)
+        return _cancel(msg, cfg)
     sch = msg.first("SCH")
     if sch is None:
         raise Reject("AE", "101", R_NO_START)
@@ -358,8 +363,68 @@ def _siu(msg: Message, trigger: str) -> Outcome:
             and booked.payload.get("appointment_date") == payload["appointment_date"]
         if same:
             return Outcome("AA", None, D_ALREADY_BOOKED, "siu_unchanged")
-        raise Reject("AE", "201", R_RESCHEDULE)
+        return _cancel_and_book(cases, lc.case_id, payload, cancel_event_id(msg), event_id)
     return _book(cases, lc.case_id, payload, event_id)
+
+
+_CANCEL_PAYLOAD = {"reason": "other", "by_patient": False}  # SIU does not say who cancelled or why: never guessed
+
+
+def _append_cancel(cases, case_id: UUID, event_id: UUID) -> Event:
+    policy.authorize_hl7("cancel_appointment")
+    event = Event(case_id, "appointment_cancelled", clock.now(), HL7_ACTOR, dict(_CANCEL_PAYLOAD), event_id)
+    payloads.validate("appointment_cancelled", event.payload)
+    validate_payload(event, cases.pathway)
+    return event
+
+
+def _guarded(fn):
+    try:
+        return fn()
+    except HTTPException:
+        raise Reject("AE", "207", R_DENIED) from None
+    except (InvalidTransition, PayloadError, payloads.PayloadSchemaError):
+        raise Reject("AE", "100", R_INVALID_STATE) from None
+    except (EventContentConflict, EventIdConflict):
+        raise Reject("AE", "205", R_CONTENT_CONFLICT) from None
+
+
+def _cancel(msg: Message, cfg: Hl7Config) -> Outcome:
+    """SIU^S15: cancel the case's booked appointment. A case that is back at `patient_acknowledged` because of THIS message
+    (a redelivery) is a duplicate (AA); any other case without a booking is an AE: nothing was cancelled."""
+    from app.routers import cases
+
+    patient_ref = patient_ref_of(msg.first("PID"), cfg)
+    event_id = cancel_event_id(msg)
+    if any(e.event_id == event_id for lc in _cases_of(patient_ref, (None,)) for e in lc.events):
+        return Outcome("AA", None, D_DUPLICATE, "duplicate")
+    lc = _one_case(patient_ref, ("confirmatory_booked",)) if _cases_of(patient_ref, ("confirmatory_booked",)) \
+        else None
+    if lc is None:
+        if _cases_of(patient_ref, ("patient_acknowledged",)):
+            raise Reject("AE", "100", R_NOT_BOOKED)
+        raise Reject("AE", "204", R_NO_CASE)
+    def go():
+        cases.store.append(_append_cancel(cases, lc.case_id, event_id), cases.pathway)
+    _guarded(go)
+    return Outcome("AA", None, None, "siu_cancel")
+
+
+def _cancel_and_book(cases, case_id: UUID, payload: dict, cancel_id: UUID, book_id: UUID) -> Outcome:
+    """SIU^S14 with a different time for a booked case: cancel and rebook, in one transaction where the store has one."""
+    def go():
+        cancel = _append_cancel(cases, case_id, cancel_id)
+        policy.authorize_hl7("book_confirmatory")
+        book = Event(case_id, "book_confirmatory", clock.now(), HL7_ACTOR, payload, book_id)
+        payloads.validate("book_confirmatory", payload)
+        validate_payload(book, cases.pathway)
+        if hasattr(cases.store, "append_many"):
+            cases.store.append_many([cancel, book], cases.pathway)
+        else:
+            cases.store.append(cancel, cases.pathway)
+            cases.store.append(book, cases.pathway)
+    _guarded(go)
+    return Outcome("AA", None, None, "siu_reschedule")
 
 
 def _book(cases, case_id: UUID, payload: dict, event_id: UUID) -> Outcome:

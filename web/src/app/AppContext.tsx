@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from "react";
 import type { ApiClient, Me, OutreachStatus, Role } from "../api/contract";
 import { BACKEND_ROLE, OWNER_SCOPED_ROLES, ROLES } from "../api/contract";
 import { ROLE_NAMES, ROLE_PROVIDERS, backendActor } from "../api/identities";
@@ -45,25 +45,34 @@ export function AppProvider({ api, children, initialRole }: { api: ApiClient; ch
   const [simTime, setSimTime] = useState<string | null>(null);
   const [outreach, setOutreach] = useState<OutreachStatus | null>(null);
 
+  // OIDC mode (A29): signed in or not is the provider's session, not a role pick. Re-read /me when it changes.
+  const signedIn = useSyncExternalStore(
+    (cb) => api.oidc?.subscribe(cb) ?? (() => undefined),
+    () => (api.oidc ? api.oidc.signedIn() : true),
+  );
+
   // Log in as the chosen role (http: POST /auth/dev-login, then the bearer token rides on every request;
   // mock: no-op). Runs on mount and on every role switch; the adapter makes requests wait for it.
   useEffect(() => {
+    if (api.oidc) return;
     api.login(role, DEFAULT_NAMES[role], ROLE_PROVIDERS[role]).catch(() => undefined);
   }, [api, role]);
 
   useEffect(() => {
     let live = true;
     setMe(null); // a stale /me from the previous role must not name the new one
+    if (api.oidc && !signedIn) return;
     api.me().then((m) => {
       if (!live) return;
       setMe(m);
+      if (api.oidc) setRoleState(m.role); // the provider says who this is
       // /me supplies the default; a role the demo user picked in the switcher wins.
       if (!initialRole && !readRole()) setRoleState(m.role);
     }).catch(() => undefined);
     return () => {
       live = false;
     };
-  }, [api, initialRole, role]);
+  }, [api, initialRole, role, signedIn]);
 
   const refreshSim = useCallback(() => {
     // /health is public and carries the sim clock; /metrics/closure is staff-only, so a clinician or patient would get a 403.
@@ -132,6 +141,12 @@ export const PERMISSIONS = {
   /** Record what the patient wrote back (D13): the coordinator (the API route is coordinator-only). */
   recordReply: ["coordinator"],
   signOff: OWNERS,
+  /** A33: record an informed refusal (the counsellor is named in the payload and must be a physician). */
+  recordRefusal: ["coordinator", ...OWNERS],
+  /** A33: sign a declined closure: a physician who owns the case and did not counsel the patient. */
+  signDeclined: OWNERS,
+  /** A34: cancel a booked appointment (a rebook is `book`). */
+  cancelAppointment: ["coordinator", ...OWNERS],
   reopen: OWNERS,
 } as const satisfies Record<string, readonly Role[]>;
 

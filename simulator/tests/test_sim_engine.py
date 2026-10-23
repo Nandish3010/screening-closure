@@ -5,7 +5,7 @@ from hypothesis import given, settings
 from hypothesis import strategies as st
 
 from app.events import Event
-from app.state_machine import InvalidTransition, apply
+from app.state_machine import CaseModel, InvalidTransition, apply, step
 from simulator.sim.actors import as_machine_event
 from simulator.sim.calendar import WorkingCalendar
 from simulator.sim.engine import ARMS, BASELINE, ORCHESTRATED
@@ -104,11 +104,14 @@ def test_every_case_is_in_a_state_consistent_with_its_log(ctx):
     for c in res.cases:
         # replay the log with the shared state machine: the engine's state must match
         state, pw = ctx.pathway.initial_state, ctx.pathway
+        refusal = None  # the informed refusal on record (A33): a declined close is replayed against it
         for ev in c.log:
             if ev.type == "reopened":
                 state = ev.payload["resume_state"]
             elif ev.type in stateful_events(pw):
-                state = apply(state, as_machine_event(ev), pw)
+                state = step(CaseModel(state=state, refusal=refusal), as_machine_event(ev), pw).state
+                if ev.type == "record_informed_refusal":
+                    refusal = {"counselling_ref": ev.payload["counselling_ref"], "counselled_by": ev.payload["counselled_by"]}
         assert state == c.state
 
 

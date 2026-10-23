@@ -63,6 +63,9 @@ replay of the event log produces:
                          Cleared by a closure proposal (a complete record was found), a close or a reopen
     reroute_exhausted_at when the automation found the reroute list used up (`review_requested`, reason
                          `reroute_exhausted`) until the case leaves `referral_rejected`
+    refusal              the informed refusal on record (A33, ADR-042): counselling_ref, counselled_by, reason, recorded_at,
+                         event_id and re_offer_due_at (the refusal's date plus the pathway's re_offer_months); cleared by a reopen
+    closure_outcome      "declined" or "investigated" once closed (A33), None while open
     backdated_events     how many accepted events had an `at` earlier than the previous event's `at`
                          (T-F4, ADR-027): a user token's backdated event is refused at the API (SEC-2); only the
                          service actors that legitimately post late (the sweep, the notifier) can still produce
@@ -154,6 +157,7 @@ HUMAN_EVENTS = frozenset({
     "complete_confirmatory", "clinician_review", "close", "reopen", "escalate", "escalation_accepted",
     "handoff_requested", "handoff_accepted", "handoff_rejected", "reassign", "consent_updated", "contact_updated",
     "mark_lost_contact", "message_drafted", "message_approved", "message_rejected", "callback_requested",
+    "record_informed_refusal", "appointment_cancelled",
 })
 
 # THE table of who may write what (A3 of the engineering review): actor -> the event types the machine accepts from it.
@@ -169,8 +173,9 @@ HUMAN_EVENTS = frozenset({
 #   system:triage       reply triage (D13): the reply and its classification, a review flag for the triage reasons, and a
 #                       traceable relay of the patient's own callback request (the one human-only event a service row
 #                       holds; `_precheck` limits it to the triage callback reasons with a source_event_id)
-#   system:hl7          the HL7 v2 adapter (A28, ADR-039): `book_confirmatory` with the appointment fields from an SIU
-#                       message, and nothing else; no human-only event, no closure, no state change but the booking
+#   system:hl7          the HL7 v2 adapter (A28, ADR-039, A34 ADR-042): `book_confirmatory` with the appointment fields from
+#                       an SIU message, and `appointment_cancelled` (SIU S15, or a reschedule of a booked case, which
+#                       cancels and rebooks); nothing else; no human-only event, no closure, no state change but those two
 #   system:agency:      the agency's agents (A22, ADR-033): EMPTY, and it stays empty. Drafting goes through the drafts
 #                       route as `model:<provider>`; every other agent only writes its own ledger rows
 # Humans are listed once per role. Nothing but this table decides which actor may emit which event type.
@@ -188,7 +193,7 @@ ACTOR_EVENTS: dict[str, frozenset[str]] = {
     TRIAGE_ACTOR: frozenset({"reply_received", "reply_classified", "review_requested", "callback_requested"}),
     AGENCY_ACTOR_PREFIX: frozenset(),
     ERASURE_ACTOR: frozenset({ERASURE_EVENT}),
-    HL7_ACTOR: frozenset({"book_confirmatory"}),
+    HL7_ACTOR: frozenset({"book_confirmatory", "appointment_cancelled"}),
 }
 # Human-only events (pathway `human_only_events`) a service row may hold, and the rule that makes each one traceable to a
 # person: only triage's relay of the patient's own callback request (D13).
@@ -331,6 +336,11 @@ class CaseModel:
     created_event_id: UUID | None = None  # the genesis event's `event_id` (a milestone started there derives its ids from it)
     milestones: dict = field(default_factory=dict)  # name -> MilestoneState (A18); never mutated in place
     erased: bool = False  # A32 (ADR-025): `erasure_completed` is in the log; the case accepts no further event
+    # A33 (ADR-042): the informed refusal on record {counselling_ref, counselled_by, reason, recorded_at, event_id,
+    # re_offer_due_at}, from `record_informed_refusal` until a reopen; it stays after the declined closure so the case shows
+    # its re-offer date. `closure_outcome`: how the case closed ("declined" or "investigated"), None while open.
+    refusal: dict | None = None
+    closure_outcome: str | None = None
 
     @property
     def milestone_overdue(self) -> bool:
@@ -385,6 +395,9 @@ class CaseModel:
             "outreach_holds": list(self.outreach_holds),
             "contact_confirmed_at": iso(self.contact_confirmed_at),
             "backdated_events": self.backdated_events,
+            "refusal": dict(self.refusal) if self.refusal else None,
+            "re_offer_due_at": self.refusal["re_offer_due_at"] if self.refusal else None,
+            "closure_outcome": self.closure_outcome,
             "milestones": {name: m.to_json() for name, m in self.milestones.items()},
         }
 
@@ -481,6 +494,47 @@ def apply(state: str, event: Event, pathway: Pathway) -> str:
 
 # -- transitions ------------------------------------------------------------------------
 
+PHYSICIAN_ROLES = ("primary_care_owner", "specialist_owner")  # who may sign a declined closure (A33; H-9 is open)
+
+
+def _person_id(identity: str) -> str:
+    """The user id inside an actor (`role:user_id`) or a Practitioner reference (`Practitioner/user_id`)."""
+    return identity.split("/", 1)[1] if identity.startswith("Practitioner/") else identity.split(":", 1)[-1]
+
+
+def add_months(at: datetime, months: int) -> datetime:
+    """`at` plus calendar months, the day clamped to the end of a shorter month (pure; for the re-offer date)."""
+    index = at.year * 12 + (at.month - 1) + months
+    year, month = divmod(index, 12)
+    month += 1
+    for day in (at.day, 30, 29, 28):
+        try:
+            return at.replace(year=year, month=month, day=day)
+        except ValueError:
+            continue
+    raise AssertionError("unreachable")
+
+
+def _check_declined_close(model: CaseModel, event: Event, pathway: Pathway) -> None:
+    """A33: closing with outcome `declined`. The declined closure is only for a recorded refusal and a recorded refusal can
+    only close as declined. A physician (not the counsellor) signs, and the evidence is the counselling record itself."""
+    declined = event.payload.get("outcome") == "declined"
+    waiting = model.state == pathway.refusal_state
+    if declined != waiting:
+        raise InvalidTransition("close: outcome 'declined' is for a case waiting for the sign-off of an informed refusal, and only for that")
+    if not declined:
+        return
+    refusal = model.refusal
+    if refusal is None:
+        raise InvalidTransition("close: no informed refusal on record")
+    if actor_role(event.actor) not in PHYSICIAN_ROLES:
+        raise InvalidTransition(f"close (declined): signed by a physician ({list(PHYSICIAN_ROLES)}), not {actor_role(event.actor)!r}")
+    if event.payload.get("evidence_ref") != refusal["counselling_ref"]:
+        raise InvalidTransition("close (declined): evidence_ref must be the counselling record of the refusal")
+    counsellor = _person_id(refusal["counselled_by"])
+    if counsellor in (_person_id(event.actor), _person_id(str(event.payload.get("signed_by")))):
+        raise InvalidTransition("close (declined): the physician who signs must not be the one who counselled the patient")
+
 
 def _transition(model: CaseModel, event: Event, pathway: Pathway, t: Transition) -> CaseModel:
     # Closure guard: evidence AND human sign-off, never an automated actor.
@@ -489,6 +543,8 @@ def _transition(model: CaseModel, event: Event, pathway: Pathway, t: Transition)
     for key in t.requires:
         if not event.payload.get(key):
             raise InvalidTransition(f"event {event.type!r} requires non-empty {key!r}")
+    if t.to_state == pathway.terminal_state:
+        _check_declined_close(model, event, pathway)
     for key, minimum in t.minimums:
         value = event.payload.get(key)
         if isinstance(value, bool) or not isinstance(value, (int, float)) or value < minimum:
@@ -897,6 +953,14 @@ def validate_payload(event: Event, pathway: Pathway) -> None:
     elif kind == "assign_ownership":
         if not isinstance(payload.get("owner"), str) or not payload["owner"]:
             raise PayloadError("assign_ownership needs the owner it names")
+    elif kind == "record_informed_refusal":
+        if payload.get("reason") not in pathway.refusal_reasons:
+            raise PayloadError(f"record_informed_refusal reason must be one of {list(pathway.refusal_reasons)}")
+    elif kind == "appointment_cancelled":
+        if payload.get("reason") not in pathway.appointment_cancel_reasons:
+            raise PayloadError(f"appointment_cancelled reason must be one of {list(pathway.appointment_cancel_reasons)}")
+        if not isinstance(payload.get("by_patient"), bool):
+            raise PayloadError("appointment_cancelled needs by_patient (true or false)")
     elif kind == "contact_updated":
         if payload.get("contact_valid") is not True:
             raise PayloadError("contact_updated says the contact details are valid: contact_valid must be true")
@@ -1060,6 +1124,17 @@ def _finish(
             # is not anyone looking at the case: it neither restarts the idle clock nor clears the flag.
             out = replace(out, last_human_activity_at=at, last_human_activity_event_id=event.event_id,
                           watchdog_flag=None)
+    if kind == "record_informed_refusal":
+        months = pathway.re_offer_months if pathway is not None else 12
+        out = replace(out, refusal={
+            "counselling_ref": payload["counselling_ref"], "counselled_by": payload["counselled_by"],
+            "reason": payload["reason"], "recorded_at": at.isoformat(), "event_id": str(event.event_id),
+            "re_offer_due_at": add_months(at, months).isoformat(),
+        })
+    elif kind == "close":
+        out = replace(out, closure_outcome=payload.get("outcome") or "investigated")
+    elif kind == "reopen":
+        out = replace(out, refusal=None, closure_outcome=None)
     if kind == "accept_ownership":
         # the provider the owner acts for: the one they name, else the one the automation assigned them under (A21)
         kept = (before or model).provider if (before or model).owner == event.actor else None

@@ -140,6 +140,7 @@ EXPECTED = {
     "completion_360d": None,               # follow-up (180) shorter than 360
     "completion_final": 0.8,
     "delay_harm_share": None,              # follow-up shorter than the 270-day threshold
+    "declined_closed_share": 0.0,          # no informed refusal in the hand-built logs (A33)
     "reopen_rate": 0.25,                   # 1 reopened (C2) of 4 ever closed
     "escalations_per_100_cases": 40.0,     # 2 escalations / 5 cases
     "escalation_acted_on_rate": 0.5,         # C2 d10: patient acks d12, inside 5 working days (to d17); C3 d15: next action d30, outside (d22)

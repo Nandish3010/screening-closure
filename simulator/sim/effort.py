@@ -142,6 +142,8 @@ ACTIONS: tuple[Action, ...] = (
        "assumed: 15 minutes, about one external referral plus follow-up calls (E11-1 12.4 and 8.1)"),
     _a("O_LOST_REVIEW", "Review a case flagged lost (unreachable, declined, repeated no-show) and record the outcome", COORDINATOR, ORCH, 8.0, 4.0, 15.0, "assumed",
        "assumed: 8 minutes"),
+    _a("O_RECORD_REFUSAL", "Counsel a patient who declines and record the informed refusal (A33)", CLINICIAN, ORCH, 15.0, 8.0, 25.0, "assumed",
+       "assumed: 15 minutes for the conversation and the counselling record (the sign-off is charged as O_SIGN_CLOSURE)"),
     _a("O_CONSENT_REVIEW", "Review a consent withdrawal", CLINICIAN, ORCH, 5.0, 3.0, 10.0, "assumed",
        "assumed: 5 minutes"),
     _a("O_CONTACT_RECOVERED", "Find and record a corrected contact for an unreachable patient", COORDINATOR, ORCH, 5.0, 3.0, 10.0, "assumed",
@@ -158,7 +160,7 @@ SHORT = {
     "X_SPECIALIST_REVIEW": "specialist review of referrals", "X_REOPEN_REVIEW": "reopened cases",
     "O_ACCEPT_ESC_SUPERVISOR": "supervisors accepting escalations", "O_ACCEPT_ESC_COORDINATOR": "coordinators accepting escalations and flags",
     "O_SUPERVISOR_CALL": "supervisor phone calls", "O_COORDINATOR_CALL": "coordinator alternate-route contacts", "O_APPROVE_DRAFT": "draft approvals",
-    "O_SIGN_CLOSURE": "signing closures", "O_EXHAUSTED_REROUTE": "exhausted reroute lists", "O_LOST_REVIEW": "lost-case reviews",
+    "O_SIGN_CLOSURE": "signing closures", "O_EXHAUSTED_REROUTE": "exhausted reroute lists", "O_LOST_REVIEW": "lost-case reviews", "O_RECORD_REFUSAL": "informed-refusal counselling",
     "O_CONSENT_REVIEW": "consent reviews", "O_CONTACT_RECOVERED": "corrected contacts", "O_TRANSFER_DECISION": "transfer decisions",
 }
 ACTIONS = tuple(replace(a, short=SHORT[a.id]) for a in ACTIONS)
@@ -264,6 +266,7 @@ EVENT_MAP: dict[str, dict[str, tuple | Callable]] = {
     "complete_confirmatory": {MANUAL: ("M_COMPLETION_RECORD",), ORCH: ("auto:A_EVIDENCE_DETECT",)},
     "clinician_review": {MANUAL: ("M_CLINICIAN_REVIEW",), ORCH: ("auto:A_CLOSURE_PROPOSAL",)},
     "close": {MANUAL: ("M_CLOSE_FILE",), ORCH: ("O_SIGN_CLOSURE",)},
+    "record_informed_refusal": {MANUAL: NONE, ORCH: ("O_RECORD_REFUSAL",)},  # only the orchestrated arm logs it (A33)
     # overlay events (engine.OVERLAY_EVENTS)
     "overdue": {MANUAL: NONE, ORCH: _orch_overdue},
     "escalated": {MANUAL: NONE, ORCH: _orch_escalated},
@@ -401,7 +404,8 @@ def arm_effort(cases: Iterable, reach_cut: float, follow_up_days: float, variant
     acc = {"all": blank(), "in_reach": blank()}
     for c in cases:
         ce = case_effort(c.log, ORCH if c.orch else MANUAL, follow_up_days, variants)
-        closed = any(e.type == "close" for e in c.log)
+        # A declined closure (A33) is not a closed loop in the programme's sense: it is reported apart and not in this denominator
+        closed = any(e.type == "close" and e.payload.get("outcome") != "declined" for e in c.log)
         for key in ("all", "in_reach") if c.lat.u_reach < reach_cut else ("all",):
             a = acc[key]
             a["n_cases"] += 1

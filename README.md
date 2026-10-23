@@ -128,6 +128,8 @@ project/     plan, tracker, decisions, log, test cases
 | Test | `verify` | Exhaustive model check of the state machine (`tools/verify/`, ADR-038): 9,057 abstract states, 7 invariants, about a minute, no database |
 | Test | `test-db` (`test-db-create`, `test-db-reset`) | Integration tests against `closure_test`; create or recreate that database |
 | Test | `test-chaos` | Chaos-marked tests: duplicate delivery, clock skew and store failures through the fault harness (F3), a sweep killed part-way (F4), bad model output and consent withdrawn mid-send (F5), and the scheduler container stopped and restarted with the watchdog alert |
+| Test | `test-oidc` | The committed Keycloak realm against a real Keycloak (own compose project, throw-away passwords; skips without Docker) |
+| Run | `oidc-up`, `oidc-down` | Start the local OIDC provider (Keycloak, a UAE PASS stand-in) and put the API in `AUTH_MODE=oidc`; back to dev mode (A29) |
 | Test | `test-tools` | Cross-cutting tests in `tests/` |
 | Test | `test-security` | Secrets and repo hygiene scan; RBAC matrix (F7); no PHI in route parameters or in the logs of an in-process demo walk (F8) |
 | Test | `rbac-matrix` | Rewrite `docs/governance/rbac-matrix.md` from the app; `test-security` fails if the file differs |
@@ -149,6 +151,10 @@ project/     plan, tracker, decisions, log, test cases
 | Risk score | `risk-report`, `risk-check` | Retrain the loss-to-follow-up risk score and rewrite its report and score card (D10); fail if the committed files differ from a fresh run |
 | Reproducibility | `fresh-clone` | Clone the repository into a temporary directory and run the fresh-clone steps there, with the checklist for the second machine (F12) |
 | Test | `test-offline` | The demo scenario with api, HAPI and Postgres on a network with no route out, in its own project (Docker only; a few minutes) |
+
+## Sign-in (identity modes)
+
+Two modes, chosen by `AUTH_MODE` (A29, ADR-040). `dev` (the default) keeps the passwordless dev login for the demo and the mock; its tokens now expire after 8 hours on the wall clock. `oidc` verifies JWTs from an OpenID Connect provider (signature by JWKS, issuer, audience, expiry), maps the token's role to one of the six roles and derives the opaque actor from the provider's `sub`; outside `APP_ENV=dev` the API starts only in this mode. `make oidc-up` starts a local Keycloak that stands in for UAE PASS (demo passwords generated per run into a git-ignored file) and the web app signs in with the authorization code flow and PKCE (`VITE_AUTH_MODE=oidc`). It is not UAE PASS and nothing here claims its behaviour. Details, what is missing (MFA policy, Emirates ID claims, revocation): [docs/governance/identity.md](docs/governance/identity.md).
 
 ## Tests and checks
 
@@ -185,7 +191,7 @@ Open (project/TRACKER.md):
 - The 100,000-case sweep meets its 5 s target at the default worker count (A20). The committed run in docs/results/load.md shows 8.72 s single process, 3.93 s through `POST /scheduler/sweep` with 4 workers (the default, A17) and 3.17 s with 10 workers, on a shared laptop. The first sweep after migration 012 reads every case once (20.4 s with 4 workers).
 - In review, not done: the messy-case scenarios have no dedicated test (B5); the parameter-override metadata test and the docs-numbers checker are missing (B10).
 - Clinician review (H1) and native Arabic review (H2) are pending. The Arabic text is an unreviewed draft.
-- Not ready for real patients: login is dev-only (OIDC or UAE PASS is not built), tokens do not expire, the clock is a simulation clock on a single API replica, and there is no Malaffi adapter or DoH cloud authorisation. The checklist is [docs/governance/pilot-hardening.md](docs/governance/pilot-hardening.md).
+- Not ready for real patients: login is dev-only (OIDC or UAE PASS is not built), tokens do not expire, there is a wall-clock mode and leader election for several replicas (`CLOCK_MODE`, `make up-scale`, [docs/governance/operations.md](docs/governance/operations.md)) but the demo runs on the simulation clock, and there is no Malaffi adapter or DoH cloud authorisation. The checklist is [docs/governance/pilot-hardening.md](docs/governance/pilot-hardening.md).
 
 ## Licence
 

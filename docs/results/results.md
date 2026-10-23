@@ -1,11 +1,11 @@
 # Evaluation results: baseline vs orchestrated
 
-generated_at: 2026-10-22 18:14:10 UTC (this line is the only non-deterministic content; `results.json` is byte-for-byte reproducible)
+generated_at: 2026-10-23 02:30:31 UTC (this line is the only non-deterministic content; `results.json` is byte-for-byte reproducible)
 
 All data are synthetic. Reproduce every number here with `make evaluate`; verify reproducibility with `make evaluate-check`.
 
 - Seed 20261017, 20 replications x 2,000 cases x 360 days of follow-up, 1000 bootstrap resamples
-- Parameters hash `b90c557e531268dc` (upper range), `d48f20dc2668a41f` (literature anchored), pathway `colorectal_fit` v0.2 hash `234c780c96de6fb1`, git commit `626c62db5955`
+- Parameters hash `ddf9cb663dd810e4` (upper range), `90bb0c2a4d93e016` (literature anchored), pathway `colorectal_fit` v0.3 hash `6c8ecd4a0c378c64`, git commit `36e063087ab7`
 - Intervals are percentile bootstrap 95% CIs over replications; differences are orchestrated minus baseline, paired by replication (same patients and random numbers in both arms).
 
 ## Headline: baseline vs the two orchestrated scenarios
@@ -216,7 +216,7 @@ Definitions of every capacity metric: [`metrics.md`](metrics.md) section 12.
 
 **Literature anchored.** Across 20 simulated replications of 2,000 synthetic positive-FIT cases, the orchestrated arm got 65% of patients to a confirmatory colonoscopy within 180 days, against 51% at baseline (+13.8 percentage points, 95% CI +13.5 to +14.1, which excludes zero). At 90 days 47% of orchestrated cases were still open against 63% at baseline. Among cases that closed, the median time to a signed, evidence-backed closure was 64 days orchestrated against 70 at baseline; that conditional median only covers the 52% of baseline cases that closed at all (66% orchestrated), so an arm that closes more slow cases looks slower on it. Counting the cases that never closed as censored at the end of follow-up instead of dropping them, the Kaplan-Meier median is 83 days orchestrated against 211 at baseline and the restricted mean time to closure within 360 days is 172 against 216 days. 46% of baseline cases were lost without anyone being told, against 21% in the orchestrated arm at programme level; among the 55% of cases the programme reached the orchestrated figure is 0% against 46% for the same patients at baseline, and the programme-level remainder is cases outside the programme's reach, which are handled as today.
 
-**Upper range.** Across 20 simulated replications of 2,000 synthetic positive-FIT cases, the orchestrated arm got 78% of patients to a confirmatory colonoscopy within 180 days, against 51% at baseline (+27.2 percentage points, 95% CI +26.7 to +27.6, which excludes zero). At 90 days 31% of orchestrated cases were still open against 63% at baseline. Among cases that closed, the median time to a signed, evidence-backed closure was 60 days orchestrated against 70 at baseline; that conditional median only covers the 52% of baseline cases that closed at all (78% orchestrated), so an arm that closes more slow cases looks slower on it. Counting the cases that never closed as censored at the end of follow-up instead of dropping them, the Kaplan-Meier median is 67 days orchestrated against 211 at baseline and the restricted mean time to closure within 360 days is 128 against 216 days. 46% of baseline cases were lost without anyone being told, against 0% in the orchestrated arm at programme level, where lost or unreachable cases are flagged to a human and never closed automatically. These results come from a model, not a trial: 103 of 138 parameters are assumed or calibrated rather than measured, so the direction of the effect follows from the mechanisms while its size depends on those inputs. Rerun with `make evaluate` after changing any parameter in `simulator/params.yaml` or `simulator/params.conservative.yaml`.
+**Upper range.** Across 20 simulated replications of 2,000 synthetic positive-FIT cases, the orchestrated arm got 78% of patients to a confirmatory colonoscopy within 180 days, against 51% at baseline (+27.2 percentage points, 95% CI +26.7 to +27.6, which excludes zero). At 90 days 31% of orchestrated cases were still open against 63% at baseline. Among cases that closed, the median time to a signed, evidence-backed closure was 60 days orchestrated against 70 at baseline; that conditional median only covers the 52% of baseline cases that closed at all (78% orchestrated), so an arm that closes more slow cases looks slower on it. Counting the cases that never closed as censored at the end of follow-up instead of dropping them, the Kaplan-Meier median is 67 days orchestrated against 211 at baseline and the restricted mean time to closure within 360 days is 128 against 216 days. 46% of baseline cases were lost without anyone being told, against 0% in the orchestrated arm at programme level, where lost or unreachable cases are flagged to a human and never closed automatically. These results come from a model, not a trial: 104 of 139 parameters are assumed or calibrated rather than measured, so the direction of the effect follows from the mechanisms while its size depends on those inputs. Rerun with `make evaluate` after changing any parameter in `simulator/params.yaml` or `simulator/params.conservative.yaml`.
 
 ## Arm comparison: literature anchored scenario (the one to quote)
 
@@ -233,6 +233,7 @@ Definitions of every capacity metric: [`metrics.md`](metrics.md) section 12.
 | Time to safe closure, Kaplan-Meier median (censoring-aware; n/a = under half closed by end of follow-up) | 210.7 (194.9 to 228.2) | 83.2 (82.6 to 83.8) | -127.5 (-144.0 to -112.1) |
 | Time to safe closure, restricted mean (days event-free within follow-up, censoring-aware) | 216.3 (215.0 to 217.7) | 171.9 (170.6 to 173.3) | -44.4 (-45.5 to -43.4) |
 | Cases closed (with evidence and human sign-off) by end of follow-up | 52.3% (51.7% to 52.9%) | 65.6% (65.0% to 66.1%) | +13.2pp (+12.9pp to +13.7pp) |
+| Cases closed as DECLINED after counselling and a physician's sign-off (informed refusal, A33; not in the row above, not a colonoscopy) | 0.0% (0.0% to 0.0%) | 0.0% (0.0% to 0.0%) | +0.0pp (+0.0pp to +0.0pp) |
 | Time to named owner, median | n/a | 5.0 (4.9 to 5.0) | n/a |
 | Time to named owner, p90 | n/a | 8.7 (8.5 to 8.9) | n/a |
 | Time to first patient contact, median | 12.4 (12.2 to 12.6) | 10.9 (10.8 to 10.9) | -1.5 (-1.6 to -1.4) |
@@ -267,6 +268,7 @@ Definitions of every capacity metric: [`metrics.md`](metrics.md) section 12.
 | Time to safe closure, Kaplan-Meier median (censoring-aware; n/a = under half closed by end of follow-up) | 210.7 (194.9 to 228.2) | 67.1 (66.8 to 67.5) | -143.6 (-160.4 to -128.0) |
 | Time to safe closure, restricted mean (days event-free within follow-up, censoring-aware) | 216.3 (215.0 to 217.7) | 128.2 (127.2 to 129.2) | -88.1 (-89.4 to -86.8) |
 | Cases closed (with evidence and human sign-off) by end of follow-up | 52.3% (51.7% to 52.9%) | 78.5% (78.1% to 78.9%) | +26.2pp (+25.6pp to +26.6pp) |
+| Cases closed as DECLINED after counselling and a physician's sign-off (informed refusal, A33; not in the row above, not a colonoscopy) | 0.0% (0.0% to 0.0%) | 0.0% (0.0% to 0.0%) | +0.0pp (+0.0pp to +0.0pp) |
 | Time to named owner, median | n/a | 5.0 (5.0 to 5.0) | n/a |
 | Time to named owner, p90 | n/a | 8.6 (8.5 to 8.7) | n/a |
 | Time to first patient contact, median | 12.4 (12.2 to 12.6) | 10.0 (10.0 to 10.1) | -2.4 (-2.5 to -2.2) |
@@ -382,6 +384,7 @@ Every human action, the minutes used, the range used in the sweep and where the 
 | `O_SIGN_CLOSURE` Review the machine-prepared evidence and sign the closure | owner clinician | orchestrated | 5 (3 to 8) | assumed | assumed: 5 minutes (the clinician still reads the evidence the engine attached; 8 minutes = today's review plus filing) |
 | `O_EXHAUSTED_REROUTE` Handle an exhausted reroute list (find another service by hand) | coordinator | orchestrated | 15 (8 to 30) | assumed | assumed: 15 minutes, about one external referral plus follow-up calls (E11-1 12.4 and 8.1) |
 | `O_LOST_REVIEW` Review a case flagged lost (unreachable, declined, repeated no-show) and record the outcome | coordinator | orchestrated | 8 (4 to 15) | assumed | assumed: 8 minutes |
+| `O_RECORD_REFUSAL` Counsel a patient who declines and record the informed refusal (A33) | owner clinician | orchestrated | 15 (8 to 25) | assumed | assumed: 15 minutes for the conversation and the counselling record (the sign-off is charged as O_SIGN_CLOSURE) |
 | `O_CONSENT_REVIEW` Review a consent withdrawal | owner clinician | orchestrated | 5 (3 to 10) | assumed | assumed: 5 minutes |
 | `O_CONTACT_RECOVERED` Find and record a corrected contact for an unreachable patient | coordinator | orchestrated | 5 (3 to 10) | assumed | assumed: 5 minutes |
 | `O_TRANSFER_DECISION` Receiving clinician decides on a transfer of the case after a provider switch | owner clinician | orchestrated | 5 (3 to 9.5) | assumed | assumed: 5 minutes; E11-1 'accepting/discussing referral' (9.5) is the upper bound |
@@ -541,7 +544,7 @@ Completion is the share completing the colonoscopy by the end of follow-up. Grou
 
 ## Parameters
 
-Parameter files: `simulator/params.yaml`. Status counts: 87 assumed, 16 calibrated, 8 empirical, 13 sourced, 14 sourced-adjacent. `sourced` and `sourced-adjacent` values are from public documents (details and caveats in `docs/evidence.md`); `calibrated` values were tuned to the published baseline curve; `assumed` values have no public source. This table is the upper-range scenario; the literature-anchored scenario changes only the keys listed below it.
+Parameter files: `simulator/params.yaml`. Status counts: 88 assumed, 16 calibrated, 8 empirical, 13 sourced, 14 sourced-adjacent. `sourced` and `sourced-adjacent` values are from public documents (details and caveats in `docs/evidence.md`); `calibrated` values were tuned to the published baseline curve; `assumed` values have no public source. This table is the upper-range scenario; the literature-anchored scenario changes only the keys listed below it.
 
 | Parameter | Value | Status | Source |
 |---|---|---|---|
@@ -625,6 +628,7 @@ Parameter files: `simulator/params.yaml`. Status counts: 87 assumed, 16 calibrat
 | `orchestration.programme_reach` | 1.0 | assumed | Design choice, not evidence: the upper-range scenario assumes every case in the orchestrated arm receives the orchestrated process. simulator/params.conservative.yaml lowers it (literature-anchored scenario) |
 | `orchestration.reaction_delay_median_days` | 1.0 | assumed | assumed, no public source |
 | `orchestration.reaction_delay_sigma` | 0.6 | assumed | assumed, no public source |
+| `orchestration.refusal_path_share` | 0.0 | assumed | Design choice, off by default (A33, ADR-042). 0 keeps the committed headline results as they were; simulator/params.refusal.yaml (make evaluate-refusal) sets 1.0 |
 | `orchestration.signoff_sla_working_days` | 3 | assumed | assumed, no public source |
 | `orchestration.timer_miss_prob` | 0.02 | assumed | assumed, no public source |
 | `orchestration.transfer_reestablish_days` | 5.0 | assumed | assumed, no public source |

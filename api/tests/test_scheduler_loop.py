@@ -36,6 +36,7 @@ def sched(monkeypatch):
     monkeypatch.setattr(mod, "drain_outbox", lambda: record("drain")() or None)
     monkeypatch.setattr(mod, "run_automation", lambda path: record("scan:" + path)() or None)
     monkeypatch.setattr(mod, "BEAT_SECONDS", 0.05)
+    monkeypatch.setattr(mod, "acquire_lease", lambda: {"leader": True, "token": 1})  # A31: these tests run the leader's loop
     return mod
 
 

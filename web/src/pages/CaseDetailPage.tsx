@@ -4,7 +4,10 @@ import { can, isOwnerScoped, useApp } from "../app/AppContext";
 import type {
   CaseDetail, CaseTimeline, ConsentChanges, ContactChannel, DraftApproval, DraftRecord, EscalationRung, MilestoneClock, ReplyResult, TimelineItem,
 } from "../api/contract";
-import { ApiError, DRAFTS_OWNER_ONLY, HANDOFF_REJECT_REASONS, PROVIDERS, REOPEN_REASONS, type ReopenReason } from "../api/contract";
+import {
+  ApiError, APPOINTMENT_CANCEL_REASONS, DRAFTS_OWNER_ONLY, HANDOFF_REJECT_REASONS, PROVIDERS, REFUSAL_REASONS, REOPEN_REASONS,
+  type AppointmentCancelReason, type RefusalReason, type ReopenReason,
+} from "../api/contract";
 import { REASSIGN_TARGETS, ROLE_NAMES, ROLE_PROVIDERS } from "../api/identities";
 import { AgencyChip } from "../components/AgencyChip";
 import { ActionButton } from "../components/ActionButton";
@@ -16,11 +19,11 @@ import { SignOffPanel } from "../components/SignOffPanel";
 import { Timeline } from "../components/Timeline";
 import {
   actorName as actorNameOf, allowedChannels, consentOf, draftViews, handoffs, hasCallbackPending, lostContact, overdueDays, overdueInfo,
-  patientLang, pendingEscalation, rejectionReasons,
+  patientLang, pendingEscalation, personId, rejectionReasons,
 } from "../lib/derive";
 import { fmtDate, fmtDateTime, titleCase } from "../lib/format";
 import { STAFF } from "../i18n/strings";
-import { ESCALATION_LADDER, HANDOFF_RESPONSE_WORKING_DAYS, MILESTONES, RUNG_LABEL, handoffReasonLabel } from "../lib/pathway";
+import { ESCALATION_LADDER, HANDOFF_RESPONSE_WORKING_DAYS, MILESTONES, REFUSAL_FROM_STATES, RUNG_LABEL, handoffReasonLabel } from "../lib/pathway";
 import type { MilestoneDef } from "../lib/pathway";
 import { WatchdogMarker, watchdogDetail } from "../components/WatchdogMarker";
 import { RiskBar, StatePill } from "./CoordinatorPage";
@@ -33,6 +36,23 @@ const REOPEN_LABEL: Record<ReopenReason, string> = {
   patient_request: "The patient asked for a review",
   other: "Other",
 };
+
+const REFUSAL_LABEL: Record<RefusalReason, string> = {
+  personal_choice: "Personal choice",
+  fear_of_procedure: "Fear of the procedure",
+  alternative_test_requested: "Asked for a different test",
+  other_with_note: "Other (a short note is required)",
+};
+const CANCEL_LABEL: Record<AppointmentCancelReason, string> = {
+  patient_request: "The patient asked to cancel",
+  patient_unwell: "The patient is unwell",
+  provider_cancelled: "The unit cancelled",
+  capacity: "No capacity on the day",
+  preparation_not_done: "Preparation not done",
+  other: "Other",
+};
+/** Physicians who can be named as the counsellor of an informed refusal (the demo logins that are physicians). */
+const COUNSELLORS = ["owner", "specialist", "clinician"] as const;
 
 /**
  * One milestone clock (A18): the standard it is measured against, when it is due, and whether it was met or is
@@ -82,6 +102,13 @@ export function CaseDetailPage() {
   const [resultRef, setResultRef] = useState("");
   const [declineReason, setDeclineReason] = useState<string>(HANDOFF_REJECT_REASONS[0]);
   const [reassignTo, setReassignTo] = useState<(typeof REASSIGN_TARGETS)[number]>(REASSIGN_TARGETS[0]);
+  // A33 informed refusal, A34 cancel
+  const [counsellingRef, setCounsellingRef] = useState("");
+  const [refusalReason, setRefusalReason] = useState<RefusalReason>(REFUSAL_REASONS[0]);
+  const [refusalNote, setRefusalNote] = useState("");
+  const [counsellor, setCounsellor] = useState<(typeof COUNSELLORS)[number]>("owner");
+  const [cancelReason, setCancelReason] = useState<AppointmentCancelReason>(APPOINTMENT_CANCEL_REASONS[0]);
+  const [cancelByPatient, setCancelByPatient] = useState(true);
 
   const reload = useCallback(async () => {
     let denied = false;
@@ -208,6 +235,9 @@ export function CaseDetailPage() {
         {MILESTONES.map((def) => (
           <MilestoneRow key={def.name} def={def} clock={detail.milestones?.[def.name]} now={timeline?.sim_time ?? simTime} closed={closed} />
         ))}
+        {detail.re_offer_due_at && (
+          <div><dt>Re-offer due</dt><dd data-testid="re-offer-due" title="A date only: nothing re-offers automatically (A33)">{fmtDate(detail.re_offer_due_at)}<span className="muted"> · the patient may come back at any time</span></dd></div>
+        )}
         <div><dt>Escalation</dt><dd data-testid="escalation-level">{detail.escalation_level > 0 ? <>Level {detail.escalation_level} of 3{pendingEsc ? " · waiting for a human to accept" : ""}</> : "None"}</dd></div>
         <div><dt>Risk (orders list only)</dt><dd><RiskBar value={detail.risk_score} /></dd></div>
         <div>
@@ -340,6 +370,19 @@ export function CaseDetailPage() {
                 <ActionButton primary testId="record-result" busy={busy} disabledReason={why("recordResult", "specialist", true) ?? (resultRef.trim() ? null : "Enter the result reference first.")} onClick={() => act(() => post("complete_confirmatory", { result_ref: resultRef.trim() }), "Confirmatory result recorded.")}>
                   Record confirmatory result
                 </ActionButton>
+                <div data-testid="cancel-appointment-panel">
+                  <h4>Cancel the appointment</h4>
+                  <p className="muted">The case goes back to "patient acknowledged" so the appointment can be booked again. The 15- and 31-working-day clocks do not restart.</p>
+                  <label className="field"><span>Reason</span>
+                    <select value={cancelReason} onChange={(e) => setCancelReason(e.target.value as AppointmentCancelReason)} data-testid="cancel-reason">
+                      {APPOINTMENT_CANCEL_REASONS.map((r) => <option key={r} value={r}>{CANCEL_LABEL[r]}</option>)}
+                    </select>
+                  </label>
+                  <label className="field"><span><input type="checkbox" checked={cancelByPatient} onChange={(e) => setCancelByPatient(e.target.checked)} data-testid="cancel-by-patient" /> The patient asked for it</span></label>
+                  <ActionButton testId="cancel-appointment" busy={busy} disabledReason={why("cancelAppointment", "coordinator or owner", true)} onClick={() => act(() => post("appointment_cancelled", { reason: cancelReason, by_patient: cancelByPatient }), "Appointment cancelled. Book it again when a new time is agreed.")}>
+                    Cancel appointment
+                  </ActionButton>
+                </div>
               </>
             )}
             {(state === "confirmatory_completed" || state === "clinician_reviewed" || state === "reopened") && (
@@ -362,9 +405,34 @@ export function CaseDetailPage() {
                 }
               />
             )}
-            {state === "referral_rejected" && (
+            {state === "declined_pending_signoff" && detail.refusal && (
+              <div data-testid="declined-signoff-panel">
+                <p>
+                  <strong>The patient declined after counselling.</strong> Counselled by {actorNameOf(detail.refusal.counselled_by) || detail.refusal.counselled_by} on {fmtDate(detail.refusal.recorded_at)};
+                  reason: {REFUSAL_LABEL[detail.refusal.reason] ?? titleCase(detail.refusal.reason)}. Record: <span className="mono">{detail.refusal.counselling_ref}</span>.
+                </p>
+                <p className="muted">A physician who did not counsel the patient signs to close the case as declined. A declined closure is counted apart from completed colonoscopies.</p>
+                <ActionButton
+                  primary
+                  testId="sign-declined"
+                  busy={busy}
+                  disabledReason={
+                    why("signDeclined", "owner, specialist or clinician (the case owner)", true)
+                    ?? (personId(detail.refusal.counselled_by) === personId(actor) || personId(detail.refusal.counselled_by) === personId(userId ? `Practitioner/${userId}` : actor)
+                      ? "You counselled this patient: another physician must sign the closure. A coordinator or supervisor can reassign the case."
+                      : null)
+                  }
+                  onClick={() => act(() => post("close", { outcome: "declined", evidence_ref: detail.refusal!.counselling_ref, signed_by: userId ? `Practitioner/${userId}` : actor }), "Case closed as declined, with your sign-off.")}
+                >
+                  Sign off: close as declined
+                </ActionButton>
+              </div>
+            )}
+            {(state === "referral_rejected" || state === "declined_pending_signoff") && (
               <div data-testid="reassign-panel">
-                <p className="muted">The referral was rejected or bounced. A coordinator or supervisor can re-route it, or the owner can request a new hand-off.</p>
+                <p className="muted">{state === "declined_pending_signoff"
+                  ? "If the owner is the physician who counselled the patient, a coordinator or supervisor reassigns the sign-off to another physician."
+                  : "The referral was rejected or bounced. A coordinator or supervisor can re-route it, or the owner can request a new hand-off."}</p>
                 <label className="field"><span>New owner</span>
                   <select value={reassignTo} onChange={(e) => setReassignTo(e.target.value as (typeof REASSIGN_TARGETS)[number])}>
                     {REASSIGN_TARGETS.map((t) => <option key={t} value={t}>{ROLE_NAMES[t]}</option>)}
@@ -375,10 +443,13 @@ export function CaseDetailPage() {
                   const owner = await api.actorFor(reassignTo, ROLE_NAMES[reassignTo], ROLE_PROVIDERS[reassignTo]);
                   const to = ROLE_PROVIDERS[reassignTo];
                   return post("reassign", { owner, ...(to ? { provider: to } : {}) });
-                }, `Referral re-routed to ${ROLE_NAMES[reassignTo]}.`)}>
-                  Re-route to new owner
+                }, state === "declined_pending_signoff" ? `Sign-off reassigned to ${ROLE_NAMES[reassignTo]}.` : `Referral re-routed to ${ROLE_NAMES[reassignTo]}.`)}>
+                  {state === "declined_pending_signoff" ? "Reassign the sign-off" : "Re-route to new owner"}
                 </ActionButton>
               </div>
+            )}
+            {closed && detail.closure_outcome === "declined" && (
+              <p data-testid="closed-declined">Closed as <strong>declined</strong>: the patient decided against the colonoscopy after counselling and a physician signed. This is not a completed colonoscopy. Re-offer date: {fmtDate(detail.re_offer_due_at)}.</p>
             )}
             {closed && <p>This case is closed. The audit trail below is final unless a clinician reopens it.</p>}
             {!closed && (
@@ -392,6 +463,50 @@ export function CaseDetailPage() {
               </>
             )}
           </section>
+
+          {REFUSAL_FROM_STATES.includes(state) && (
+            <section className="panel" aria-labelledby="refuse-h" data-testid="refusal-panel">
+              <h3 id="refuse-h">Record an informed refusal</h3>
+              <p className="muted">Use this only after a physician has counselled the patient and the patient has declined the colonoscopy. A different physician then signs the closure. Stopping contact is not a refusal.</p>
+              <label className="field"><span>Counselling record (DocumentReference/...)</span>
+                <input value={counsellingRef} onChange={(e) => setCounsellingRef(e.target.value)} placeholder="DocumentReference/counselling-0001" data-testid="counselling-ref" />
+              </label>
+              <label className="field"><span>Counselled by (a physician)</span>
+                <select value={counsellor} onChange={(e) => setCounsellor(e.target.value as (typeof COUNSELLORS)[number])} data-testid="counselled-by">
+                  {COUNSELLORS.map((r) => <option key={r} value={r}>{ROLE_NAMES[r]}</option>)}
+                </select>
+              </label>
+              <label className="field"><span>Reason</span>
+                <select value={refusalReason} onChange={(e) => setRefusalReason(e.target.value as RefusalReason)} data-testid="refusal-reason">
+                  {REFUSAL_REASONS.map((r) => <option key={r} value={r}>{REFUSAL_LABEL[r]}</option>)}
+                </select>
+              </label>
+              {refusalReason === "other_with_note" && (
+                <label className="field"><span>Note (no names or clinical detail, 200 characters at most)</span>
+                  <input maxLength={200} value={refusalNote} onChange={(e) => setRefusalNote(e.target.value)} data-testid="refusal-note" />
+                </label>
+              )}
+              <ActionButton
+                testId="record-refusal"
+                busy={busy}
+                disabledReason={
+                  why("recordRefusal", "coordinator or owner", true)
+                  ?? (/^DocumentReference\/[A-Za-z0-9-]{1,64}$/.test(counsellingRef.trim()) ? null : "Enter the counselling record as DocumentReference/<id>.")
+                  ?? (refusalReason === "other_with_note" && !refusalNote.trim() ? "A short note is required for the reason 'other'." : null)
+                }
+                onClick={() => act(async () => {
+                  // counselled_by is the physician's actor string (role:user_id), which the API alone can tell us.
+                  const counselledBy = await api.actorFor(counsellor, ROLE_NAMES[counsellor], ROLE_PROVIDERS[counsellor]);
+                  return post("record_informed_refusal", {
+                    counselling_ref: counsellingRef.trim(), counselled_by: counselledBy, reason: refusalReason,
+                    ...(refusalReason === "other_with_note" ? { note: refusalNote.trim() } : {}),
+                  });
+                }, "Informed refusal recorded. A physician who did not counsel the patient now signs the closure.")}
+              >
+                Record informed refusal
+              </ActionButton>
+            </section>
+          )}
 
           {closed && (
             <section className="panel" aria-labelledby="reopen-h" data-testid="reopen-panel">

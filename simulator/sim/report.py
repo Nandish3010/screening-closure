@@ -19,6 +19,7 @@ HEADLINE = [
     ("time_to_closure_km_median", "Time to safe closure, Kaplan-Meier median (censoring-aware; n/a = under half closed by end of follow-up)", "days"),
     ("time_to_closure_rmst", "Time to safe closure, restricted mean (days event-free within follow-up, censoring-aware)", "days"),
     ("closed_share", "Cases closed (with evidence and human sign-off) by end of follow-up", "pct"),
+    ("declined_closed_share", "Cases closed as DECLINED after counselling and a physician's sign-off (informed refusal, A33; not in the row above, not a colonoscopy)", "pct"),
     ("time_to_ownership_median", "Time to named owner, median", "days"),
     ("time_to_ownership_p90", "Time to named owner, p90", "days"),
     ("time_to_first_contact_median", "Time to first patient contact, median", "days"),

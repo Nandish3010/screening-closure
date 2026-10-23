@@ -18,7 +18,7 @@ import {
 import { PROVIDER_CLINICIANS, ROLE_NAMES, ROLE_PROVIDERS, backendActor } from "./identities";
 import { ESCALATION_LADDER } from "../lib/pathway";
 import {
-  actorKindOf, actorRole, closureProposalOf, incompleteProcedureOf, completeDetail, consentOf, consentHistoryOf, milestonesOf, overdueDays, pendingEscalation, replayHandoffs,
+  actorKindOf, actorRole, closureOutcomeOf, closureProposalOf, incompleteProcedureOf, refusalOf, completeDetail, consentOf, consentHistoryOf, milestonesOf, overdueDays, pendingEscalation, replayHandoffs,
   replayState, reviewOf, slaClock, summarise, triageReplayOf, validateAppend,
 } from "../lib/derive";
 import { effortMetricsOf, effortOf } from "../lib/effort";
@@ -206,6 +206,9 @@ export function createMockAdapter(
       outreach_holds: triage.holds,
       closure_proposal: closureProposalOf(evs),
       incomplete_procedure: incompleteProcedureOf(evs),
+      refusal: refusalOf(evs),
+      re_offer_due_at: refusalOf(evs)?.re_offer_due_at ?? null,
+      closure_outcome: closureOutcomeOf(evs),
       effort: effortOf(evs),
       milestones: milestonesOf(evs, SIM_NOW),
       events: structuredClone(evs).map(withKind),

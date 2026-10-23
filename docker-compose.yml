@@ -112,7 +112,7 @@ services:
     env_file:
       - path: .env
         required: false
-    environment:
+    environment: &api-env
       PATHWAY_PATH: /config/pathways/colorectal_fit.yaml
       CALENDAR_PATH: /config/calendar.yaml
       # The automation actor (A21, ADR-032): acknowledge and assign on ingest, re-route, pre-approved outreach, evidence scan.
@@ -138,6 +138,39 @@ services:
       FHIR_PROJECTION: "true"
       # Sweep worker processes behind POST /scheduler/sweep (A17); empty = min(4, cpus), 1 = single process.
       SWEEP_WORKERS: ${SWEEP_WORKERS:-}
+      # Identity (A29, ADR-040): AUTH_MODE=dev (HMAC dev-login) or oidc (Keycloak profile below, `make oidc-up`). The issuer is
+      # the URL the BROWSER uses (it is the token's `iss`); the API fetches the keys from the keycloak service on the network.
+      AUTH_MODE: ${AUTH_MODE:-dev}
+      OIDC_ISSUER: ${OIDC_ISSUER:-http://localhost:${KEYCLOAK_PORT:-8180}/realms/screening-closure}
+      OIDC_JWKS_URL: ${OIDC_JWKS_URL:-http://keycloak:8080/realms/screening-closure/protocol/openid-connect/certs}
+      # A30 (ADR-041): `sim` (default: the persisted simulation clock, /clock/* in APP_ENV=dev) or `wall` (real UTC time, no clock routes).
+      CLOCK_MODE: ${CLOCK_MODE:-sim}
+      # A31 (ADR-041): the lease the scheduler instances and the API replicas elect their leaders with, and whether a scheduler call
+      # without a current fencing token is refused (the `scale` profile sets it).
+      LEADER_LEASE_TTL_SECONDS: ${LEADER_LEASE_TTL_SECONDS:-30}
+      REQUIRE_LEADER_FENCE: ${REQUIRE_LEADER_FENCE:-false}
+    volumes:
+      - ./config:/config:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=2)"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks: [closure]
+
+  # A31: a second API replica (profile `scale`): same image, same environment, same database; no published port, the proxy reaches it.
+  api-2:
+    profiles: [scale]
+    build: *api-build
+    env_file:
+      - path: .env
+        required: false
+    environment: *api-env
     volumes:
       - ./config:/config:ro
     depends_on:
@@ -157,8 +190,12 @@ services:
     env_file:
       - path: .env
         required: false
-    environment:
-      API_URL: http://api:8000
+    environment: &scheduler-env
+      # With the `scale` profile this is the proxy (`SCHEDULER_API_URL=http://proxy:8080`, `make up-scale`); alone, the one API.
+      API_URL: ${SCHEDULER_API_URL:-http://api:8000}
+      # A31: the name this instance leads under (the lease holder); readable in /heartbeats and in the chaos test.
+      SCHEDULER_HOLDER: scheduler-1
+      SCHEDULER_FOLLOWER_POLL_SECONDS: ${SCHEDULER_FOLLOWER_POLL_SECONDS:-2}
       HEARTBEAT_PATH: /heartbeat/scheduler.json
       # It speaks HTTP to the API and has no database connection (SEC-1). Blank what a `.env` copied from
       # .env.example would hand it through env_file: the owner's database URL and password.
@@ -168,6 +205,42 @@ services:
       - heartbeat:/heartbeat
     depends_on:
       api:
+        condition: service_healthy
+    networks: [closure]
+
+  # A31: a second scheduler instance (profile `scale`). It asks for the same lease, finds it held and idles as a `follower`
+  # until the leader stops renewing; then it takes over within the lease TTL. Its own heartbeat file volume.
+  scheduler-2:
+    build: ./scheduler
+    profiles: [scale]
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      <<: *scheduler-env
+      SCHEDULER_HOLDER: scheduler-2
+      API_URL: ${SCHEDULER_API_URL:-http://proxy:8080}
+      HEARTBEAT_PATH: /tmp/scheduler-2.json
+    depends_on:
+      api:
+        condition: service_healthy
+      api-2:
+        condition: service_healthy
+    networks: [closure]
+
+  # A31: a tiny reverse proxy in front of the two API replicas (profile `scale`), round-robin with active health checks. Pinned.
+  # Caddy 2.8.4 (alpine); config in docker/proxy/Caddyfile. Loopback only, like every published port.
+  proxy:
+    image: caddy:2.8.4-alpine@sha256:af32e97399febea808609119bb21544d0265c58a02836576e32a2d082c262c17
+    profiles: [scale]
+    ports:
+      - "127.0.0.1:${PROXY_PORT:-8100}:8080"
+    volumes:
+      - ./docker/proxy/Caddyfile:/etc/caddy/Caddyfile:ro
+    depends_on:
+      api:
+        condition: service_healthy
+      api-2:
         condition: service_healthy
     networks: [closure]
 
@@ -212,6 +285,37 @@ services:
         condition: service_healthy
     networks: [closure]
 
+  # A local OIDC provider standing in for UAE PASS (A29, ADR-040, docs/governance/identity.md). OFF by default (profile "oidc");
+  # `make oidc-up` generates the demo passwords, starts it and switches the API to AUTH_MODE=oidc. Dev mode (start-dev, plain
+  # HTTP, H2 database inside the container): a development tool, never a deployment. The realm is imported from
+  # config/keycloak/screening-closure-realm.json; the passwords in it are placeholders filled from the environment at import.
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.0.7  # pinned; bump deliberately
+    profiles: [oidc]
+    command: ["start-dev", "--import-realm"]
+    ports:
+      - "127.0.0.1:${KEYCLOAK_PORT:-8180}:8080"
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-}
+      # The issuer is the browser-facing URL whatever host the request used; the API reaches keycloak:8080 on the network.
+      KC_HOSTNAME: http://localhost:${KEYCLOAK_PORT:-8180}
+      KC_HOSTNAME_BACKCHANNEL_DYNAMIC: "true"
+      KC_HTTP_ENABLED: "true"
+      # Realm-import placeholders (one password per demo user, plus the demo patient's reference). Empty unless
+      # tools/identity/oidc_up.sh (`make oidc-up`) exported them: start the profile through it, not by hand.
+      KC_PW_LAB: ${KC_PW_LAB:-}
+      KC_PW_COORDINATOR: ${KC_PW_COORDINATOR:-}
+      KC_PW_OWNER: ${KC_PW_OWNER:-}
+      KC_PW_SPECIALIST: ${KC_PW_SPECIALIST:-}
+      KC_PW_CLINICIAN: ${KC_PW_CLINICIAN:-}
+      KC_PW_SUPERVISOR: ${KC_PW_SUPERVISOR:-}
+      KC_PW_PATIENT: ${KC_PW_PATIENT:-}
+      DEMO_PATIENT_REF: ${DEMO_PATIENT_REF:-Patient/demo-patient}
+    volumes:
+      - ./config/keycloak:/opt/keycloak/data/import:ro
+    networks: [closure]
+
   # The api's unit tests, in the image's `test` stage (pytest and the dev extras are NOT in the api image above). The
   # fallback of `make test` when there is no local .venv:  docker compose --profile tests run --rm --no-deps api-test
   api-test:
@@ -221,7 +325,7 @@ services:
     profiles: [tests]
     environment:
       DATABASE_URL: ""
-    command: ["pytest", "tests", "-q", "-m", "not integration and not chaos"]
+    command: ["pytest", "tests", "-q", "-m", "not integration and not chaos and not oidc"]
     networks: [closure]
 
   # Synthetic cohort generator. Not started by `make up` (profile "tools"); run with `make synthea`.

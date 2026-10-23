@@ -94,6 +94,19 @@ Signer = Annotated[
     AfterValidator(_no_dot_segment),
 ]
 Note = Annotated[str, StringConstraints(max_length=NOTE_MAX_LENGTH)]
+# A33 (ADR-042): the counselling record of an informed refusal is a FHIR DocumentReference held by the clinical record, by
+# reference (opaque id, no dots). The counsellor is a physician, as an actor (`role:user_id`) or the mapped Practitioner.
+CounsellingRef = Annotated[
+    str, StringConstraints(pattern=r"^DocumentReference/[A-Za-z0-9-]{1,64}$"),
+]
+PhysicianSigner = Annotated[
+    str,
+    StringConstraints(pattern=r"^(Practitioner/[A-Za-z0-9-]{1,64}|(primary_care_owner|specialist_owner):[A-Za-z0-9_-]{1,64})$"),
+]
+# taxonomies of A33 / A34; the pathway YAML holds the same lists (informed_refusal.reasons, appointment_cancel_reasons) and
+# tests/test_informed_refusal.py compares them.
+REFUSAL_REASONS = ("personal_choice", "fear_of_procedure", "alternative_test_requested", "other_with_note")
+APPOINTMENT_CANCEL_REASONS = ("patient_request", "patient_unwell", "provider_cancelled", "capacity", "preparation_not_done", "other")
 
 
 class PayloadSchemaError(ValueError):
@@ -189,8 +202,40 @@ class ClinicianReview(_Human):
 
 
 class Close(_Human):
-    evidence_ref: EvidenceRef
+    """A colonoscopy closure cites a DiagnosticReport or Procedure. An informed-refusal closure (A33) says
+    `outcome: declined` and cites the counselling record (a DocumentReference), and nothing else may."""
+
+    evidence_ref: EvidenceRef | CounsellingRef
     signed_by: Signer
+    outcome: Literal["declined"] | None = None
+
+    @model_validator(mode="after")
+    def _outcome_matches_evidence(self) -> "Close":
+        counselling = self.evidence_ref.startswith("DocumentReference/")
+        if counselling != (self.outcome == "declined"):
+            raise ValueError("outcome 'declined' goes with a DocumentReference counselling record, and only with it")
+        return self
+
+
+class RecordInformedRefusal(_Human):
+    """A33: the patient, counselled, declines the colonoscopy. Human only. `note` is required for other_with_note."""
+
+    counselling_ref: CounsellingRef
+    counselled_by: PhysicianSigner
+    reason: Literal["personal_choice", "fear_of_procedure", "alternative_test_requested", "other_with_note"]
+
+    @model_validator(mode="after")
+    def _note_iff_other(self) -> "RecordInformedRefusal":
+        if (self.reason == "other_with_note") != bool(self.note):
+            raise ValueError("a note goes with reason other_with_note, and that reason needs it")
+        return self
+
+
+class AppointmentCancelled(_Human):
+    """A34: the booked confirmatory appointment is cancelled; `by_patient` says who asked. From a person or `system:hl7` (SIU S15)."""
+
+    reason: Literal["patient_request", "patient_unwell", "provider_cancelled", "capacity", "preparation_not_done", "other"]
+    by_patient: bool
 
 
 class Reopen(_Human):
@@ -415,6 +460,8 @@ SCHEMAS: dict[str, type[BaseModel]] = {
     "complete_confirmatory": CompleteConfirmatory,
     "clinician_review": ClinicianReview,
     "close": Close,
+    "record_informed_refusal": RecordInformedRefusal,
+    "appointment_cancelled": AppointmentCancelled,
     "reopen": Reopen,
     "mark_overdue": MarkOverdue,
     "escalate": Escalate,
