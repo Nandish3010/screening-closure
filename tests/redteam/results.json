@@ -732,7 +732,7 @@
     },
     {
       "abuse_case": "RT-V-06",
-      "actual": "rejected: forbidden_phrase:do_not_worry",
+      "actual": "rejected: forbidden_phrase:do_not_worry,forbidden_phrase:benign_term",
       "category": "validator",
       "expected": "rejected",
       "id": "RT-V-06.2",
@@ -742,113 +742,113 @@
     },
     {
       "abuse_case": "RT-V-06",
-      "actual": "accepted",
+      "actual": "rejected: forbidden_phrase:benign_term",
       "category": "validator",
       "expected": "rejected",
       "id": "RT-V-06.3",
       "input": "'It is benign.'",
-      "reason": "RT-V-06.3: exposed, fix in next commit",
-      "status": "exposed"
+      "reason": "",
+      "status": "pass"
     },
     {
       "abuse_case": "RT-V-06",
-      "actual": "accepted",
+      "actual": "rejected: forbidden_phrase:reassure_nothing",
       "category": "validator",
       "expected": "rejected",
       "id": "RT-V-06.4",
       "input": "'It is nothing.'",
-      "reason": "RT-V-06.4: exposed, fix in next commit",
-      "status": "exposed"
+      "reason": "",
+      "status": "pass"
     },
     {
       "abuse_case": "RT-V-06",
-      "actual": "accepted",
+      "actual": "rejected: forbidden_phrase:reassure_nothing",
       "category": "validator",
       "expected": "rejected",
       "id": "RT-V-06.5",
       "input": "'All good.'",
-      "reason": "RT-V-06.5: exposed, fix in next commit",
-      "status": "exposed"
+      "reason": "",
+      "status": "pass"
     },
     {
       "abuse_case": "RT-V-06",
-      "actual": "accepted",
+      "actual": "rejected: forbidden_phrase:reassure_nothing",
       "category": "validator",
       "expected": "rejected",
       "id": "RT-V-06.6",
       "input": "'Nothing wrong.'",
-      "reason": "RT-V-06.6: exposed, fix in next commit",
-      "status": "exposed"
+      "reason": "",
+      "status": "pass"
     },
     {
       "abuse_case": "RT-V-06",
-      "actual": "accepted",
+      "actual": "rejected: forbidden_phrase:reassure_nothing",
       "category": "validator",
       "expected": "rejected",
       "id": "RT-V-06.7",
       "input": "'No worries.'",
-      "reason": "RT-V-06.7: exposed, fix in next commit",
-      "status": "exposed"
+      "reason": "",
+      "status": "pass"
     },
     {
       "abuse_case": "RT-V-06",
-      "actual": "accepted",
+      "actual": "rejected: forbidden_phrase:reassure_nothing",
       "category": "validator",
       "expected": "rejected",
       "id": "RT-V-06.8",
       "input": "'Nothing to fear.'",
-      "reason": "RT-V-06.8: exposed, fix in next commit",
-      "status": "exposed"
+      "reason": "",
+      "status": "pass"
     },
     {
       "abuse_case": "RT-V-06",
-      "actual": "accepted",
+      "actual": "rejected: forbidden_phrase:reassure_nothing",
       "category": "validator",
       "expected": "rejected",
       "id": "RT-V-06.9",
       "input": "'It is fine.'",
-      "reason": "RT-V-06.9: exposed, fix in next commit",
-      "status": "exposed"
+      "reason": "",
+      "status": "pass"
     },
     {
       "abuse_case": "RT-V-06",
-      "actual": "accepted",
+      "actual": "rejected: forbidden_phrase:reassure_nothing",
       "category": "validator",
       "expected": "rejected",
       "id": "RT-V-06.10",
       "input": "'Relax.'",
-      "reason": "RT-V-06.10: exposed, fix in next commit",
-      "status": "exposed"
+      "reason": "",
+      "status": "pass"
     },
     {
       "abuse_case": "RT-V-06",
-      "actual": "accepted",
+      "actual": "rejected: forbidden_phrase:reassure_nothing",
       "category": "validator",
       "expected": "rejected",
       "id": "RT-V-06.11",
       "input": "'Stay calm.'",
-      "reason": "RT-V-06.11: exposed, fix in next commit",
-      "status": "exposed"
+      "reason": "",
+      "status": "pass"
     },
     {
       "abuse_case": "RT-V-06",
-      "actual": "accepted",
+      "actual": "rejected: forbidden_phrase:reassure_nothing",
       "category": "validator",
       "expected": "rejected",
       "id": "RT-V-06.12",
       "input": "'Do not be scared.'",
-      "reason": "RT-V-06.12: exposed, fix in next commit",
-      "status": "exposed"
+      "reason": "",
+      "status": "pass"
     },
     {
       "abuse_case": "RT-V-06",
-      "actual": "accepted",
+      "actual": "rejected: forbidden_phrase:reassure_nothing",
       "category": "validator",
       "expected": "rejected",
       "id": "RT-V-06.13",
       "input": "'No problem at all.'",
-      "reason": "RT-V-06.13: exposed, fix in next commit",
-      "status": "exposed"
+      "reason": "",
+      "status": "pass"
     },
     {
       "abuse_case": "RT-V-06",
@@ -2402,11 +2402,121 @@
     },
     {
       "abuse_case": "RT-V-13",
-      "actual": "fallback_used=True provider=template reason=validation_failed:forbidden_phrase:do_not_worry",
+      "actual": "fallback_used=True provider=template reason=validation_failed:forbidden_phrase:do_not_worry,forbidden_ph",
       "category": "validator",
       "expected": "template returned, fallback_used",
       "id": "RT-V-13.74",
       "input": "\"Nothing to worry about, it's benign.\"",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:forbidden_phrase:benign_term",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.75",
+      "input": "'It is benign.'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:forbidden_phrase:reassure_nothing",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.76",
+      "input": "'It is nothing.'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:forbidden_phrase:reassure_nothing",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.77",
+      "input": "'All good.'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:forbidden_phrase:reassure_nothing",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.78",
+      "input": "'Nothing wrong.'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:forbidden_phrase:reassure_nothing",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.79",
+      "input": "'No worries.'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:forbidden_phrase:reassure_nothing",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.80",
+      "input": "'Nothing to fear.'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:forbidden_phrase:reassure_nothing",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.81",
+      "input": "'It is fine.'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:forbidden_phrase:reassure_nothing",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.82",
+      "input": "'Relax.'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:forbidden_phrase:reassure_nothing",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.83",
+      "input": "'Stay calm.'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:forbidden_phrase:reassure_nothing",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.84",
+      "input": "'Do not be scared.'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:forbidden_phrase:reassure_nothing",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.85",
+      "input": "'No problem at all.'",
       "reason": "",
       "status": "pass"
     },
@@ -3373,11 +3483,11 @@
   ],
   "summary": {
     "validator": {
-      "cases": 337,
-      "exposed": 47,
+      "cases": 348,
+      "exposed": 36,
       "fail": 0,
       "known-limitation": 4,
-      "pass": 286
+      "pass": 308
     }
   }
 }

@@ -143,6 +143,16 @@ en:
     category: result_disclosure
     rationale: "IFHAS: abnormal results are communicated with the participant present"
     example: "Your result shows a problem."
+  - id: benign_term  # D14 red-team: added
+    regex: "benign|non[- ]?cancerous|harmless"
+    category: false_reassurance
+    rationale: "'Benign' is a pathology statement and a reassurance; both are for a clinician."
+    example: "It is benign."
+  - id: reassure_nothing  # D14 red-team: added
+    regex: "it(?:'|’)?s nothing|it is nothing|nothing wrong|nothing to fear|no problem at all|no worries|all good|(?:it|this|that) is (?:fine|ok|okay)|it(?:'|’)?s (?:fine|ok|okay)|relax|stay calm|(?:do not|don(?:'|’)t) be (?:scared|afraid|frightened|nervous)|no need to be (?:scared|afraid|nervous)"
+    category: false_reassurance
+    rationale: "Reassurance in other words. It predicts an outcome the system cannot know and makes patients less likely to act on the next step."
+    example: "No worries."
   - id: clinical_findings  # D14 red-team: added
     regex: "\\w*carcinoma\\w*|metasta\\w*|biops\\w*|histolog\\w*|patholog\\w*|lumps?|masses|crc|stage\\s+(?:[0-4]|one|two|three|four|i{1,3}|iv)\\b"
     category: disease_term
