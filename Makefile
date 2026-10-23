@@ -295,8 +295,9 @@ fresh-clone:
 
 # Cross-cutting tests in tests/ (scanner, linters, load harness). PYTHONPATH=api makes a git worktree
 # test its own api/ rather than the checkout the venv was installed from.
+# tests/redteam is excluded: its conftest.py would shadow tests/conftest.py (both import as "conftest"); it runs under test-redteam.
 test-tools:
-	PYTHONPATH=api $(PY) -m pytest tests tools/demo/tests tools/video/tests -q -m "not live"
+	PYTHONPATH=api $(PY) -m pytest tests --ignore=tests/redteam tools/demo/tests tools/video/tests -q -m "not live"
 
 # D14: the adversarial red-team suite (tests/redteam/, docs/governance/red-team.md). No database, no network. It rewrites
 # tests/redteam/results.json and results.md (deterministic; commit them when the suite changes).
