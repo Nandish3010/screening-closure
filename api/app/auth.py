@@ -119,7 +119,7 @@ class Identity:
 
 def wall_now() -> float:
     """Seconds since the epoch on the real clock. Used for token lifetimes only (ADR-040); case logic never calls it."""
-    return time.time()
+    return time.time()  # wall-clock-ok: token lifetime is identity, not case logic (ADR-040)
 
 
 def _b64(raw: bytes) -> str:
