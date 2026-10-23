@@ -143,6 +143,11 @@ en:
     category: result_disclosure
     rationale: "IFHAS: abnormal results are communicated with the participant present"
     example: "Your result shows a problem."
+  - id: phonetic_cancer  # D14 red-team: added
+    regex: "k[ae]+n[sz][ae]r"
+    category: disease_term
+    rationale: "Phonetic spelling of 'cancer'."
+    example: "kanser."
   - id: blood_bleeding  # D14 red-team: added
     regex: "blood\\w*|bleed\\w*"
     category: result_disclosure
@@ -621,3 +626,13 @@ ar:
     category: false_reassurance
     rationale: "'Normal/ordinary' is a result statement."
     example: "كل شيء عادي."
+  - id: cancer_loanword  # D14 red-team: added
+    phrase: "كينسر"
+    category: disease_term
+    rationale: "'Cancer' as the English loanword in Arabic or Urdu script (کینسر, كانسر)."
+    example: "عندك كينسر."
+  - id: cancer_loanword_alt  # D14 red-team: added
+    phrase: "كانسر"
+    category: disease_term
+    rationale: "Alternative spelling of the loanword."
+    example: "عندك كانسر."

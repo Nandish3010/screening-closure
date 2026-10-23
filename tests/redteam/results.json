@@ -362,23 +362,23 @@
     },
     {
       "abuse_case": "RT-V-02",
-      "actual": "accepted",
+      "actual": "rejected: forbidden_phrase:cancer_loanword",
       "category": "validator",
       "expected": "rejected",
       "id": "RT-V-02.17",
       "input": "'کینسر'",
-      "reason": "RT-V-02.17: exposed, fix in next commit",
-      "status": "exposed"
+      "reason": "",
+      "status": "pass"
     },
     {
       "abuse_case": "RT-V-02",
-      "actual": "accepted",
+      "actual": "rejected: forbidden_phrase:phonetic_cancer",
       "category": "validator",
       "expected": "rejected",
       "id": "RT-V-02.18",
       "input": "'kanser'",
-      "reason": "RT-V-02.18: exposed, fix in next commit",
-      "status": "exposed"
+      "reason": "",
+      "status": "pass"
     },
     {
       "abuse_case": "RT-V-02",
@@ -2182,6 +2182,26 @@
     },
     {
       "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:forbidden_phrase:cancer_loanword",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.37",
+      "input": "'کینسر'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:forbidden_phrase:phonetic_cancer",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.38",
+      "input": "'kanser'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
       "actual": "fallback_used=True provider=template reason=validation_failed:wrong_language,forbidden_phrase:cancer",
       "category": "validator",
       "expected": "template returned, fallback_used",
@@ -3903,11 +3923,11 @@
   ],
   "summary": {
     "validator": {
-      "cases": 390,
-      "exposed": 2,
+      "cases": 392,
+      "exposed": 0,
       "fail": 0,
       "known-limitation": 8,
-      "pass": 380
+      "pass": 384
     }
   }
 }

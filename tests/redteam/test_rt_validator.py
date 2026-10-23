@@ -18,7 +18,6 @@ from app.ai import provider as prov
 # case id -> weakness class (W1..W10); the fix commit for a class removes its entries.
 EXPOSED: dict[str, str] = {}
 for _cls, _ids in {
-    "W11": "RT-V-02.17 RT-V-02.18",
 }.items():
     EXPOSED.update({i: _cls for i in _ids.split()})
 LIMITATION: dict[str, str] = {}
