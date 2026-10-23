@@ -143,6 +143,26 @@ en:
     category: result_disclosure
     rationale: "IFHAS: abnormal results are communicated with the participant present"
     example: "Your result shows a problem."
+  - id: arabizi_cancer  # D14 red-team: added
+    regex: "s[ae]r+[ae]?t[ae]n|sartan\\w*|saratan\\w*"
+    category: disease_term
+    rationale: "Arabic 'cancer' written in Latin letters (Arabizi). The English list matches only English spellings, so the transliteration passed."
+    example: "3andak saratan."
+  - id: arabizi_tumour  # D14 red-team: added
+    regex: "war[ae]m|awram|awr[ae]m"
+    category: disease_term
+    rationale: "Arabic 'tumour' in Latin letters."
+    example: "Fi waram."
+  - id: arabizi_malignant  # D14 red-team: added
+    regex: "khab[iey]+[ts]h?|khabeeth|khabith|khabis"
+    category: disease_term
+    rationale: "Arabic 'malignant' (khabeeth, khabith) in Latin letters."
+    example: "waram khabeeth."
+  - id: arabizi_disease  # D14 red-team: added
+    regex: "mar[ae]d+|marad\\w*"
+    category: disease_term
+    rationale: "Arabic 'disease' (marad, mared) in Latin letters."
+    example: "marad khateer."
 
 ar:
   # AI Arabic review 2026-10-18 (AI-assisted, not a native-speaker human review; H2 still pending).
