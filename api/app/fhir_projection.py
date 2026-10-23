@@ -76,6 +76,7 @@ TASK_STATUS = {
     "referral_rejected": "on-hold",
     "consent_withdrawn": "on-hold",
     "lost_contact": "on-hold",
+    "declined_pending_signoff": "on-hold",  # A33: the patient declined; waiting for a physician's signature
     "reopened": "in-progress",
 }
 _BAD_ID = re.compile(r"[^A-Za-z0-9.-]")

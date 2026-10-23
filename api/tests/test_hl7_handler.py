@@ -414,9 +414,9 @@ def test_the_registry_is_bounded(monkeypatch):
 # ---- what the adapter may never do ----------------------------------------------------------------------------------
 
 
-def test_the_adapter_has_exactly_three_actions_and_one_event():
-    assert policy.HL7_ACTIONS == {"create_case", "book_confirmatory", "record_confirmatory_result"}
-    assert policy.HL7_EVENTS == {"book_confirmatory"}
+def test_the_adapter_has_exactly_four_actions_and_two_events():
+    assert policy.HL7_ACTIONS == {"create_case", "book_confirmatory", "cancel_appointment", "record_confirmatory_result"}
+    assert policy.HL7_EVENTS == {"book_confirmatory", "appointment_cancelled"}
     for action in ("close", "clinician_review", "reassign", "accept_ownership", "contact_updated", "consent_updated", "delete"):
         with pytest.raises(Exception) as exc:
             policy.authorize_hl7(action)

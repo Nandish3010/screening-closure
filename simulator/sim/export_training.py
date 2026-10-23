@@ -100,6 +100,8 @@ def build_rows(ctx: Context, cases: int, seed: int) -> list[ExportRow]:
         seen = [e for e, r in zip(log, rel) if r <= snapshot]
         state = ctx.pathway.initial_state
         for e in seen:
+            if e.type == "close" and e.payload.get("outcome") == "declined":
+                continue  # A33: a declined closure is not a colonoscopy; the refuser stays at risk of "no colonoscopy" (label 1)
             state = main_to.get(e.type, state)
         stage = F.stage_of(state)
         if stage is None:  # cannot happen: past the colonoscopy means complete_confirmatory is in `seen`
