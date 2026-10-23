@@ -1,4 +1,4 @@
-.PHONY: agency-run test-demo test-e2e-live demo-scenario demo-stage demo-snapshot demo-restore demo-reset demo-kill-scheduler check docs-check tracker-lint test-security test-tools test-load load-check up down logs test test-db test-db-create test-db-reset test-chaos synthea demo-seed demo-seed-clean evaluate evaluate-capacity evaluate-capacity-check simulate evaluate-check sensitivity sensitivity-check reset web-install web-dev web-build web-test web-e2e test-e2e review-packs review-packs-check test-review-packs test-phi-logs rbac-matrix test-offline fresh-clone risk-report risk-check calibrate-fetch calibrate-fit calibrate-check effort effort-check video video-check video-deps verify hl7-demo hl7-samples
+.PHONY: agency-run test-demo test-e2e-live demo-scenario demo-stage demo-snapshot demo-restore demo-reset demo-kill-scheduler check docs-check tracker-lint test-security test-tools test-load load-check up down logs test test-db test-db-create test-db-reset test-chaos synthea demo-seed demo-seed-clean evaluate evaluate-capacity evaluate-capacity-check simulate evaluate-check sensitivity sensitivity-check reset web-install web-dev web-build web-test web-e2e test-e2e review-packs review-packs-check test-review-packs test-phi-logs rbac-matrix test-offline fresh-clone risk-report risk-check calibrate-fetch calibrate-fit calibrate-check validate validate-check validate-targets effort effort-check video video-check video-deps verify hl7-demo hl7-samples
 
 up:
 	docker compose up -d --build
@@ -365,6 +365,22 @@ calibrate-fit:
 calibrate-check:
 	PYTHONPATH=$(CURDIR)/api:$(CURDIR) $(PY) -m pytest tools/calibration/tests -q
 	python3 -I tools/calibration/calibrate.py check
+
+# ---- B20 (M6): validation of the simulator against data it was not calibrated on -> docs/results/validation.{json,md} -------------------
+# `make validate`         run the baseline/orchestrated arms against the held-out targets in tools/calibration/validation_targets.json and write the two files
+#                         (20 replications x 2,000 cases x 360 days, about 1 to 2 minutes with 8 workers; reads no external file, so it runs from a clean clone).
+# `make validate-check`   regenerate twice (multi-process, single-process) and fail unless both agree with each other and with the committed files.
+# `make validate-targets` rebuild the targets file from the local external files (python3 -I parsers, sha256 checked against the manifest; needs
+#                         `make calibrate-fetch` first); with CHECK=1 it only fails if the result differs from the committed file.
+VAL_JOBS ?= 8
+validate:
+	$(SIMENV) $(PY) -W ignore -m simulator.sim.validation run --reps $(REPS) --cases $(CASES) --days $(EVAL_DAYS) --seed $(SEED) --jobs $(VAL_JOBS)
+
+validate-check:
+	$(SIMENV) $(PY) -W ignore -m simulator.sim.validation check --reps $(REPS) --cases $(CASES) --days $(EVAL_DAYS) --seed $(SEED) --jobs $(VAL_JOBS)
+
+validate-targets:
+	python3 -I tools/calibration/validation_targets.py $(if $(CHECK),check,build)
 
 # ---- E16: the 3-minute submission video and the backup demo video, produced without a human recording (tools/video/) -----
 # `make video-check` (no stack, no ffmpeg) validates tools/video/storyboard.yaml (every shot has route, actions, caption, narration, duration; the
