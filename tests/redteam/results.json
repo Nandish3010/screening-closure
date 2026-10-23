@@ -1292,7 +1292,7 @@
     },
     {
       "abuse_case": "RT-V-09",
-      "actual": "rejected: pii_email",
+      "actual": "rejected: pii_email,url",
       "category": "validator",
       "expected": "rejected",
       "id": "RT-V-09.4",
@@ -1302,7 +1302,7 @@
     },
     {
       "abuse_case": "RT-V-09",
-      "actual": "rejected: pii_email",
+      "actual": "rejected: pii_email,url",
       "category": "validator",
       "expected": "rejected",
       "id": "RT-V-09.5",
@@ -1362,13 +1362,13 @@
     },
     {
       "abuse_case": "RT-V-10",
-      "actual": "accepted",
+      "actual": "rejected: url",
       "category": "validator",
       "expected": "rejected",
       "id": "RT-V-10.1",
       "input": "'Visit example dot com.'",
-      "reason": "RT-V-10.1: exposed, fix in next commit",
-      "status": "exposed"
+      "reason": "",
+      "status": "pass"
     },
     {
       "abuse_case": "RT-V-10",
@@ -1382,13 +1382,13 @@
     },
     {
       "abuse_case": "RT-V-10",
-      "actual": "accepted",
+      "actual": "rejected: url",
       "category": "validator",
       "expected": "rejected",
       "id": "RT-V-10.3",
       "input": "'Visit www .evil .com.'",
-      "reason": "RT-V-10.3: exposed, fix in next commit",
-      "status": "exposed"
+      "reason": "",
+      "status": "pass"
     },
     {
       "abuse_case": "RT-V-10",
@@ -1402,13 +1402,13 @@
     },
     {
       "abuse_case": "RT-V-10",
-      "actual": "accepted",
+      "actual": "rejected: url",
       "category": "validator",
       "expected": "rejected",
       "id": "RT-V-10.5",
       "input": "'Visit evil。com.'",
-      "reason": "RT-V-10.5: exposed, fix in next commit",
-      "status": "exposed"
+      "reason": "",
+      "status": "pass"
     },
     {
       "abuse_case": "RT-V-10",
@@ -1422,17 +1422,17 @@
     },
     {
       "abuse_case": "RT-V-10",
-      "actual": "accepted",
+      "actual": "rejected: url",
       "category": "validator",
       "expected": "rejected",
       "id": "RT-V-10.7",
       "input": "'Visit evil (dot) com.'",
-      "reason": "RT-V-10.7: exposed, fix in next commit",
-      "status": "exposed"
+      "reason": "",
+      "status": "pass"
     },
     {
       "abuse_case": "RT-V-10",
-      "actual": "rejected: unfilled_placeholder",
+      "actual": "rejected: unfilled_placeholder,url",
       "category": "validator",
       "expected": "rejected",
       "id": "RT-V-10.8",
@@ -1442,13 +1442,13 @@
     },
     {
       "abuse_case": "RT-V-10",
-      "actual": "accepted",
+      "actual": "rejected: url",
       "category": "validator",
       "expected": "rejected",
       "id": "RT-V-10.9",
       "input": "'Visit h t t p s : / / x.'",
-      "reason": "RT-V-10.9: exposed, fix in next commit",
-      "status": "exposed"
+      "reason": "",
+      "status": "pass"
     },
     {
       "abuse_case": "RT-V-10",
@@ -1462,13 +1462,13 @@
     },
     {
       "abuse_case": "RT-V-10",
-      "actual": "accepted",
+      "actual": "rejected: url",
       "category": "validator",
       "expected": "rejected",
       "id": "RT-V-10.11",
       "input": "'Visit tinyurl com abc.'",
-      "reason": "RT-V-10.11: exposed, fix in next commit",
-      "status": "exposed"
+      "reason": "",
+      "status": "pass"
     },
     {
       "abuse_case": "RT-V-10",
@@ -1492,13 +1492,13 @@
     },
     {
       "abuse_case": "RT-V-10",
-      "actual": "accepted",
+      "actual": "rejected: url",
       "category": "validator",
       "expected": "rejected",
       "id": "RT-V-10.14",
       "input": "'Visit evil . com.'",
-      "reason": "RT-V-10.14: exposed, fix in next commit",
-      "status": "exposed"
+      "reason": "",
+      "status": "pass"
     },
     {
       "abuse_case": "RT-V-10",
@@ -1512,7 +1512,7 @@
     },
     {
       "abuse_case": "RT-V-10",
-      "actual": "rejected: wrong_language",
+      "actual": "rejected: wrong_language,url",
       "category": "validator",
       "expected": "rejected",
       "id": "RT-V-10.16",
@@ -3072,7 +3072,7 @@
     },
     {
       "abuse_case": "RT-V-13",
-      "actual": "fallback_used=True provider=template reason=validation_failed:pii_email",
+      "actual": "fallback_used=True provider=template reason=validation_failed:pii_email,url",
       "category": "validator",
       "expected": "template returned, fallback_used",
       "id": "RT-V-13.130",
@@ -3082,7 +3082,7 @@
     },
     {
       "abuse_case": "RT-V-13",
-      "actual": "fallback_used=True provider=template reason=validation_failed:pii_email",
+      "actual": "fallback_used=True provider=template reason=validation_failed:pii_email,url",
       "category": "validator",
       "expected": "template returned, fallback_used",
       "id": "RT-V-13.131",
@@ -3145,8 +3145,28 @@
       "actual": "fallback_used=True provider=template reason=validation_failed:url",
       "category": "validator",
       "expected": "template returned, fallback_used",
+      "id": "RT-V-13.137",
+      "input": "'Visit example dot com.'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:url",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
       "id": "RT-V-13.138",
       "input": "'Visit hxxp://evil.'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:url",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.139",
+      "input": "'Visit www .evil .com.'",
       "reason": "",
       "status": "pass"
     },
@@ -3165,6 +3185,16 @@
       "actual": "fallback_used=True provider=template reason=validation_failed:url",
       "category": "validator",
       "expected": "template returned, fallback_used",
+      "id": "RT-V-13.141",
+      "input": "'Visit evil。com.'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:url",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
       "id": "RT-V-13.142",
       "input": "'Visit evil．com.'",
       "reason": "",
@@ -3172,7 +3202,17 @@
     },
     {
       "abuse_case": "RT-V-13",
-      "actual": "fallback_used=True provider=template reason=validation_failed:unfilled_placeholder",
+      "actual": "fallback_used=True provider=template reason=validation_failed:url",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.143",
+      "input": "'Visit evil (dot) com.'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:unfilled_placeholder,url",
       "category": "validator",
       "expected": "template returned, fallback_used",
       "id": "RT-V-13.144",
@@ -3185,8 +3225,28 @@
       "actual": "fallback_used=True provider=template reason=validation_failed:url",
       "category": "validator",
       "expected": "template returned, fallback_used",
+      "id": "RT-V-13.145",
+      "input": "'Visit h t t p s : / / x.'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:url",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
       "id": "RT-V-13.146",
       "input": "'Visit https://example.com.'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:url",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.147",
+      "input": "'Visit tinyurl com abc.'",
       "reason": "",
       "status": "pass"
     },
@@ -3215,6 +3275,16 @@
       "actual": "fallback_used=True provider=template reason=validation_failed:url",
       "category": "validator",
       "expected": "template returned, fallback_used",
+      "id": "RT-V-13.150",
+      "input": "'Visit evil . com.'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:url",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
       "id": "RT-V-13.151",
       "input": "'Visit file:///etc/passwd.'",
       "reason": "",
@@ -3222,7 +3292,7 @@
     },
     {
       "abuse_case": "RT-V-13",
-      "actual": "fallback_used=True provider=template reason=validation_failed:wrong_language",
+      "actual": "fallback_used=True provider=template reason=validation_failed:wrong_language,url",
       "category": "validator",
       "expected": "template returned, fallback_used",
       "id": "RT-V-13.152",
@@ -3733,11 +3803,11 @@
   ],
   "summary": {
     "validator": {
-      "cases": 373,
-      "exposed": 11,
+      "cases": 380,
+      "exposed": 4,
       "fail": 0,
       "known-limitation": 4,
-      "pass": 358
+      "pass": 372
     }
   }
 }

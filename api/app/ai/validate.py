@@ -265,6 +265,23 @@ _URL = re.compile(
 )
 
 
+# Disguised links (RT-V-10): other full stops (ideographic, halfwidth, "[.]"), a spoken "dot" or "نقطة", a dot with a space
+# before it ("evil . com", "www .evil .com"), shorteners written without a dot ("tinyurl com abc"), and a scheme broken up
+# with spaces ("h t t p s : / /") or spelled "hxxp". The URL pattern then runs on the repaired text.
+_SPOKEN_DOT = re.compile(r"\s*(?:\(dot\)|\[dot\]|\{dot\}|\[\.\]|\bdot\b|نقطة)\s*", re.IGNORECASE)
+_SPACE_BEFORE_DOT = re.compile(r"(?<=\w)\s+\.\s*(?=\w)")
+_SHORTENER = re.compile(r"\b(?:tinyurl|bitly|rebrandly|cutt\s*ly)\b|\bhxxps?\b", re.IGNORECASE)
+_SCHEME_SQUEEZED = re.compile(r"(?:https?|ftp|file):|://", re.IGNORECASE)
+
+
+def has_disguised_url(scan: str) -> bool:
+    repaired = scan.translate({0x3002: ".", 0xFF61: ".", 0x2024: "."})
+    repaired = _SPACE_BEFORE_DOT.sub(".", _SPOKEN_DOT.sub(".", repaired))
+    return bool(
+        _URL.search(repaired) or _SHORTENER.search(scan) or _SCHEME_SQUEEZED.search(re.sub(r"\s+", "", scan))
+    )
+
+
 _SCRIPT_PREFIX = {"en": "LATIN", "ar": "ARABIC"}
 
 
@@ -341,7 +358,7 @@ def validate(text: str, req: DraftRequest) -> ValidationResult:
         reasons.append(PII_EMAIL)
     if _ID_WORDS.search(normalise_arabic(scan)) or _MIXED_TOKEN.search(scan):
         reasons.append(PII_IDENTIFIER)
-    if _URL.search(scan):
+    if has_disguised_url(scan):
         reasons.append(URL)
 
     return ValidationResult(not reasons, tuple(reasons))
