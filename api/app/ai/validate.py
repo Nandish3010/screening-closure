@@ -272,6 +272,20 @@ def _script_of(char: str) -> str:
         return ""
 
 
+_DIGIT_WORDS = {
+    "zero": "0", "one": "1", "two": "2", "three": "3", "four": "4", "five": "5", "six": "6", "seven": "7", "eight": "8",
+    "nine": "9", "صفر": "0", "واحد": "1", "اثنان": "2", "اثنين": "2", "ثلاثة": "3", "ثلاثه": "3", "اربعة": "4", "اربعه": "4",
+    "خمسة": "5", "خمسه": "5", "ستة": "6", "سته": "6", "سبعة": "7", "سبعه": "7", "ثمانية": "8", "ثمانيه": "8",
+    "تسعة": "9", "تسعه": "9",
+}
+_DIGIT_WORD = re.compile(r"(?<![\w])(" + "|".join(_DIGIT_WORDS) + r")(?![\w])", re.IGNORECASE)
+
+
+def _words_to_digits(text: str) -> str:
+    """Number words, English and Arabic, as digits, so "nine seven one five ..." is a phone number like 9715...."""
+    return _DIGIT_WORD.sub(lambda m: _DIGIT_WORDS[m.group(1).lower()], normalise_arabic(text))
+
+
 def _ascii_digits(text: str) -> str:
     """Every decimal digit of every script (Arabic-Indic, Devanagari, Bengali, fullwidth...) as 0-9."""
     return "".join(str(unicodedata.decimal(c)) if unicodedata.category(c) == "Nd" else c for c in text)
@@ -316,7 +330,7 @@ def validate(text: str, req: DraftRequest) -> ValidationResult:
         reasons.append(f"{FORBIDDEN_PHRASE}:{hit.id}")
 
     scan = _ascii_digits(unicodedata.normalize("NFKC", residue))
-    if _LONG_DIGITS.search(scan):
+    if _LONG_DIGITS.search(scan) or _LONG_DIGITS.search(_words_to_digits(scan)):
         reasons.append(PII_DIGITS)
     if _EMAIL.search(scan):
         reasons.append(PII_EMAIL)

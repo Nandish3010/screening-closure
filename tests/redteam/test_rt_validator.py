@@ -18,7 +18,6 @@ from app.ai import provider as prov
 # case id -> weakness class (W1..W10); the fix commit for a class removes its entries.
 EXPOSED: dict[str, str] = {}
 for _cls, _ids in {
-    "W7": "RT-V-08.8 RT-V-08.9 RT-V-08.12 RT-V-08.14",
     "W8": "RT-V-09.4 RT-V-09.5 RT-V-09.9",
     "W9": "RT-V-10.1 RT-V-10.3 RT-V-10.5 RT-V-10.7 RT-V-10.9 RT-V-10.11 RT-V-10.14",
     "W10": "RT-V-12.3 RT-V-12.4 RT-V-12.6 RT-V-12.12",
