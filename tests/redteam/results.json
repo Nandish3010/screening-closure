@@ -202,13 +202,13 @@
     },
     {
       "abuse_case": "RT-V-02",
-      "actual": "accepted",
+      "actual": "rejected: forbidden_phrase:mass",
       "category": "validator",
       "expected": "rejected",
       "id": "RT-V-02.3",
       "input": "'هذه كتلة في القولون'",
-      "reason": "RT-V-02.3: exposed, fix in next commit",
-      "status": "exposed"
+      "reason": "",
+      "status": "pass"
     },
     {
       "abuse_case": "RT-V-02",
@@ -222,13 +222,13 @@
     },
     {
       "abuse_case": "RT-V-02",
-      "actual": "accepted",
+      "actual": "rejected: forbidden_phrase:fleshy_growth",
       "category": "validator",
       "expected": "rejected",
       "id": "RT-V-02.5",
       "input": "'زائدة لحمية'",
-      "reason": "RT-V-02.5: exposed, fix in next commit",
-      "status": "exposed"
+      "reason": "",
+      "status": "pass"
     },
     {
       "abuse_case": "RT-V-02",
@@ -282,7 +282,7 @@
     },
     {
       "abuse_case": "RT-V-02",
-      "actual": "rejected: forbidden_phrase:disease",
+      "actual": "rejected: forbidden_phrase:disease,forbidden_phrase:we_found",
       "category": "validator",
       "expected": "rejected",
       "id": "RT-V-02.11",
@@ -312,13 +312,13 @@
     },
     {
       "abuse_case": "RT-V-02",
-      "actual": "accepted",
+      "actual": "rejected: forbidden_phrase:advanced_stage",
       "category": "validator",
       "expected": "rejected",
       "id": "RT-V-02.14",
       "input": "'مرحلة متقدمة'",
-      "reason": "RT-V-02.14: exposed, fix in next commit",
-      "status": "exposed"
+      "reason": "",
+      "status": "pass"
     },
     {
       "abuse_case": "RT-V-02",
@@ -332,13 +332,13 @@
     },
     {
       "abuse_case": "RT-V-02",
-      "actual": "accepted",
+      "actual": "rejected: forbidden_phrase:we_found",
       "category": "validator",
       "expected": "rejected",
       "id": "RT-V-02.16",
       "input": "'وجدنا شيئا'",
-      "reason": "RT-V-02.16: exposed, fix in next commit",
-      "status": "exposed"
+      "reason": "",
+      "status": "pass"
     },
     {
       "abuse_case": "RT-V-03",
@@ -862,83 +862,83 @@
     },
     {
       "abuse_case": "RT-V-06",
-      "actual": "accepted",
+      "actual": "rejected: forbidden_phrase:reassure_itmaan",
       "category": "validator",
       "expected": "rejected",
       "id": "RT-V-06.15",
       "input": "'اطمئن'",
-      "reason": "RT-V-06.15: exposed, fix in next commit",
-      "status": "exposed"
+      "reason": "",
+      "status": "pass"
     },
     {
       "abuse_case": "RT-V-06",
-      "actual": "accepted",
+      "actual": "rejected: forbidden_phrase:reassure_ibshir",
       "category": "validator",
       "expected": "rejected",
       "id": "RT-V-06.16",
       "input": "'ابشر'",
-      "reason": "RT-V-06.16: exposed, fix in next commit",
-      "status": "exposed"
+      "reason": "",
+      "status": "pass"
     },
     {
       "abuse_case": "RT-V-06",
-      "actual": "accepted",
+      "actual": "rejected: forbidden_phrase:no_fear",
       "category": "validator",
       "expected": "rejected",
       "id": "RT-V-06.17",
       "input": "'لا خوف عليك'",
-      "reason": "RT-V-06.17: exposed, fix in next commit",
-      "status": "exposed"
+      "reason": "",
+      "status": "pass"
     },
     {
       "abuse_case": "RT-V-06",
-      "actual": "accepted",
+      "actual": "rejected: forbidden_phrase:nothing_to_worry",
       "category": "validator",
       "expected": "rejected",
       "id": "RT-V-06.18",
       "input": "'لا شيء يدعو للقلق'",
-      "reason": "RT-V-06.18: exposed, fix in next commit",
-      "status": "exposed"
+      "reason": "",
+      "status": "pass"
     },
     {
       "abuse_case": "RT-V-06",
-      "actual": "accepted",
+      "actual": "rejected: forbidden_phrase:no_need_to_worry_alt",
       "category": "validator",
       "expected": "rejected",
       "id": "RT-V-06.19",
       "input": "'لا تحتاج للقلق'",
-      "reason": "RT-V-06.19: exposed, fix in next commit",
-      "status": "exposed"
+      "reason": "",
+      "status": "pass"
     },
     {
       "abuse_case": "RT-V-06",
-      "actual": "accepted",
+      "actual": "rejected: forbidden_phrase:fine_bare",
       "category": "validator",
       "expected": "rejected",
       "id": "RT-V-06.20",
       "input": "'بخير'",
-      "reason": "RT-V-06.20: exposed, fix in next commit",
-      "status": "exposed"
+      "reason": "",
+      "status": "pass"
     },
     {
       "abuse_case": "RT-V-06",
-      "actual": "accepted",
+      "actual": "rejected: forbidden_phrase:healthy",
       "category": "validator",
       "expected": "rejected",
       "id": "RT-V-06.21",
       "input": "'سليم'",
-      "reason": "RT-V-06.21: exposed, fix in next commit",
-      "status": "exposed"
+      "reason": "",
+      "status": "pass"
     },
     {
       "abuse_case": "RT-V-06",
-      "actual": "accepted",
+      "actual": "rejected: forbidden_phrase:ordinary",
       "category": "validator",
       "expected": "rejected",
       "id": "RT-V-06.22",
       "input": "'عادي'",
-      "reason": "RT-V-06.22: exposed, fix in next commit",
-      "status": "exposed"
+      "reason": "",
+      "status": "pass"
     },
     {
       "abuse_case": "RT-V-07",
@@ -1102,13 +1102,13 @@
     },
     {
       "abuse_case": "RT-V-07",
-      "actual": "accepted",
+      "actual": "rejected: forbidden_phrase:we_discovered",
       "category": "validator",
       "expected": "rejected",
       "id": "RT-V-07.17",
       "input": "'اكتشفنا شيئا'",
-      "reason": "RT-V-07.17: exposed, fix in next commit",
-      "status": "exposed"
+      "reason": "",
+      "status": "pass"
     },
     {
       "abuse_case": "RT-V-07",
@@ -1982,11 +1982,31 @@
     },
     {
       "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:forbidden_phrase:mass",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.21",
+      "input": "'هذه كتلة في القولون'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
       "actual": "fallback_used=True provider=template reason=validation_failed:forbidden_phrase:positive",
       "category": "validator",
       "expected": "template returned, fallback_used",
       "id": "RT-V-13.22",
       "input": "'نتيجتك ايجابية'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:forbidden_phrase:fleshy_growth",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.23",
+      "input": "'زائدة لحمية'",
       "reason": "",
       "status": "pass"
     },
@@ -2042,7 +2062,7 @@
     },
     {
       "abuse_case": "RT-V-13",
-      "actual": "fallback_used=True provider=template reason=validation_failed:forbidden_phrase:disease",
+      "actual": "fallback_used=True provider=template reason=validation_failed:forbidden_phrase:disease,forbidden_phrase:",
       "category": "validator",
       "expected": "template returned, fallback_used",
       "id": "RT-V-13.29",
@@ -2072,11 +2092,31 @@
     },
     {
       "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:forbidden_phrase:advanced_stage",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.32",
+      "input": "'مرحلة متقدمة'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
       "actual": "fallback_used=True provider=template reason=validation_failed:forbidden_phrase:normal,forbidden_phrase:a",
       "category": "validator",
       "expected": "template returned, fallback_used",
       "id": "RT-V-13.33",
       "input": "'نتيجة غير طبيعية'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:forbidden_phrase:we_found",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.34",
+      "input": "'وجدنا شيئا'",
       "reason": "",
       "status": "pass"
     },
@@ -2382,6 +2422,86 @@
     },
     {
       "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:forbidden_phrase:reassure_itmaan",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.87",
+      "input": "'اطمئن'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:forbidden_phrase:reassure_ibshir",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.88",
+      "input": "'ابشر'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:forbidden_phrase:no_fear",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.89",
+      "input": "'لا خوف عليك'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:forbidden_phrase:nothing_to_worry",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.90",
+      "input": "'لا شيء يدعو للقلق'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:forbidden_phrase:no_need_to_worry_alt",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.91",
+      "input": "'لا تحتاج للقلق'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:forbidden_phrase:fine_bare",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.92",
+      "input": "'بخير'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:forbidden_phrase:healthy",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.93",
+      "input": "'سليم'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:forbidden_phrase:ordinary",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.94",
+      "input": "'عادي'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
       "actual": "fallback_used=True provider=template reason=validation_failed:forbidden_phrase:found_blood",
       "category": "validator",
       "expected": "template returned, fallback_used",
@@ -2467,6 +2587,16 @@
       "expected": "template returned, fallback_used",
       "id": "RT-V-13.110",
       "input": "'فحص موجب'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:forbidden_phrase:we_discovered",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.111",
+      "input": "'اكتشفنا شيئا'",
       "reason": "",
       "status": "pass"
     },
@@ -3243,11 +3373,11 @@
   ],
   "summary": {
     "validator": {
-      "cases": 324,
-      "exposed": 60,
+      "cases": 337,
+      "exposed": 47,
       "fail": 0,
       "known-limitation": 4,
-      "pass": 260
+      "pass": 286
     }
   }
 }

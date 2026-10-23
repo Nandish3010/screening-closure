@@ -531,3 +531,68 @@ ar:
     category: result_disclosure
     rationale: "IFHAS: abnormal results are communicated with the participant present"
     example: "النتيجة غير سليمة."
+  - id: mass  # D14 red-team: added
+    phrase: "كتلة"
+    category: disease_term
+    rationale: "A mass is a finding."
+    example: "هذه كتلة."
+  - id: fleshy_growth  # D14 red-team: added
+    phrase: "لحمية"
+    category: disease_term
+    rationale: "'Fleshy' (زائدة لحمية) is the common word for a polyp."
+    example: "زائدة لحمية."
+  - id: advanced_stage  # D14 red-team: added
+    phrase: "مرحلة متقدمة"
+    category: clinical_judgement
+    rationale: "Staging is a clinical statement."
+    example: "المرحلة متقدمة."
+  - id: we_found  # D14 red-team: added
+    phrase: "وجدنا"
+    category: result_disclosure
+    rationale: "IFHAS: abnormal results are communicated with the participant present"
+    example: "وجدنا شيئا."
+  - id: we_discovered  # D14 red-team: added
+    phrase: "اكتشفنا"
+    category: result_disclosure
+    rationale: "IFHAS: abnormal results are communicated with the participant present"
+    example: "اكتشفنا شيئا."
+  - id: reassure_itmaan  # D14 red-team: added
+    phrase: "اطمئن"
+    category: false_reassurance
+    rationale: "Reassurance."
+    example: "اطمئن."
+  - id: reassure_ibshir  # D14 red-team: added
+    phrase: "ابشر"
+    category: false_reassurance
+    rationale: "Reassurance ('good news')."
+    example: "ابشر."
+  - id: no_fear  # D14 red-team: added
+    phrase: "لا خوف"
+    category: false_reassurance
+    rationale: "Reassurance."
+    example: "لا خوف عليك."
+  - id: nothing_to_worry  # D14 red-team: added
+    phrase: "لا شيء يدعو للقلق"
+    category: false_reassurance
+    rationale: "Reassurance."
+    example: "لا شيء يدعو للقلق."
+  - id: no_need_to_worry_alt  # D14 red-team: added
+    phrase: "لا تحتاج للقلق"
+    category: false_reassurance
+    rationale: "Reassurance."
+    example: "لا تحتاج للقلق."
+  - id: fine_bare  # D14 red-team: added
+    phrase: "بخير"
+    category: false_reassurance
+    rationale: "Predicts an outcome the system cannot know."
+    example: "انت بخير."
+  - id: healthy  # D14 red-team: added
+    phrase: "سليم"
+    category: false_reassurance
+    rationale: "States a clinical condition."
+    example: "انت سليم."
+  - id: ordinary  # D14 red-team: added
+    phrase: "عادي"
+    category: false_reassurance
+    rationale: "'Normal/ordinary' is a result statement."
+    example: "كل شيء عادي."
