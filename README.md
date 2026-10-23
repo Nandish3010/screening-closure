@@ -185,7 +185,7 @@ Open (project/TRACKER.md):
 - The 100,000-case sweep meets its 5 s target at the default worker count (A20). The committed run in docs/results/load.md shows 8.72 s single process, 3.93 s through `POST /scheduler/sweep` with 4 workers (the default, A17) and 3.17 s with 10 workers, on a shared laptop. The first sweep after migration 012 reads every case once (20.4 s with 4 workers).
 - In review, not done: the messy-case scenarios have no dedicated test (B5); the parameter-override metadata test and the docs-numbers checker are missing (B10).
 - Clinician review (H1) and native Arabic review (H2) are pending. The Arabic text is an unreviewed draft.
-- Not ready for real patients: login is dev-only (OIDC or UAE PASS is not built), tokens do not expire, the clock is a simulation clock on a single API replica, and there is no Malaffi adapter or DoH cloud authorisation. The checklist is [docs/governance/pilot-hardening.md](docs/governance/pilot-hardening.md).
+- Not ready for real patients: login is dev-only (OIDC or UAE PASS is not built), tokens do not expire, there is a wall-clock mode and leader election for several replicas (`CLOCK_MODE`, `make up-scale`, [docs/governance/operations.md](docs/governance/operations.md)) but the demo runs on the simulation clock, and there is no Malaffi adapter or DoH cloud authorisation. The checklist is [docs/governance/pilot-hardening.md](docs/governance/pilot-hardening.md).
 
 ## Licence
 
