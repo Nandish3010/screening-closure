@@ -786,9 +786,9 @@
         "of_reps": 20
       },
       "declined_closed_share": {
-        "ci_high": 0.12315,
-        "ci_low": 0.116897,
-        "mean": 0.12025,
+        "ci_high": 0.0,
+        "ci_low": 0.0,
+        "mean": 0.0,
         "n_reps": 20,
         "of_reps": 20
       },
@@ -800,16 +800,16 @@
         "of_reps": 20
       },
       "escalation_acted_on_rate": {
-        "ci_high": 0.451649,
-        "ci_low": 0.444692,
-        "mean": 0.448044,
+        "ci_high": 0.440883,
+        "ci_low": 0.433604,
+        "mean": 0.437143,
         "n_reps": 20,
         "of_reps": 20
       },
       "escalations_per_100_cases": {
-        "ci_high": 232.775063,
-        "ci_low": 229.43975,
-        "mean": 230.9875,
+        "ci_high": 234.052938,
+        "ci_low": 230.694875,
+        "mean": 232.2775,
         "n_reps": 20,
         "of_reps": 20
       },
@@ -1255,9 +1255,9 @@
         "of_reps": 20
       },
       "messy.provider_switch.closed_share": {
-        "ci_high": 0.715767,
-        "ci_low": 0.652264,
-        "mean": 0.683006,
+        "ci_high": 0.658292,
+        "ci_low": 0.597392,
+        "mean": 0.627196,
         "n_reps": 20,
         "of_reps": 20
       },
@@ -1269,30 +1269,30 @@
         "of_reps": 20
       },
       "messy.provider_switch.completion_final": {
-        "ci_high": 0.713176,
-        "ci_low": 0.653512,
-        "mean": 0.683006,
+        "ci_high": 0.657821,
+        "ci_low": 0.59651,
+        "mean": 0.627196,
         "n_reps": 20,
         "of_reps": 20
       },
       "messy.provider_switch.completion_final_unaffected": {
-        "ci_high": 0.791241,
-        "ci_low": 0.783762,
-        "mean": 0.787301,
+        "ci_high": 0.792709,
+        "ci_low": 0.785416,
+        "mean": 0.788915,
         "n_reps": 20,
         "of_reps": 20
       },
       "messy.provider_switch.handled_rate": {
         "ci_high": 1.0,
-        "ci_low": 0.994917,
-        "mean": 0.997958,
+        "ci_low": 1.0,
+        "mean": 1.0,
         "n_reps": 20,
         "of_reps": 20
       },
       "messy.provider_switch.n": {
-        "ci_high": 47.2,
-        "ci_low": 41.89875,
-        "mean": 44.45,
+        "ci_high": 51.5,
+        "ci_low": 45.55,
+        "mean": 48.45,
         "n_reps": 20,
         "of_reps": 20
       },
@@ -1465,9 +1465,9 @@
         "of_reps": 20
       },
       "time_to_first_contact_p90": {
-        "ci_high": 15.452564,
-        "ci_low": 15.267921,
-        "mean": 15.363463,
+        "ci_high": 15.452562,
+        "ci_low": 15.267853,
+        "mean": 15.363398,
         "n_reps": 20,
         "of_reps": 20
       },
@@ -1539,9 +1539,9 @@
       "of_reps": 20
     },
     "declined_closed_share": {
-      "ci_high": 0.123629,
-      "ci_low": 0.116599,
-      "mean": 0.12025,
+      "ci_high": 0.0,
+      "ci_low": 0.0,
+      "mean": 0.0,
       "n_reps": 20,
       "of_reps": 20
     },
@@ -1554,9 +1554,9 @@
     },
     "escalation_acted_on_rate": null,
     "escalations_per_100_cases": {
-      "ci_high": 232.597625,
-      "ci_low": 229.427375,
-      "mean": 230.9875,
+      "ci_high": 233.890125,
+      "ci_low": 230.699812,
+      "mean": 232.2775,
       "n_reps": 20,
       "of_reps": 20
     },
@@ -2002,9 +2002,9 @@
       "of_reps": 20
     },
     "messy.provider_switch.closed_share": {
-      "ci_high": 0.586883,
-      "ci_low": 0.507951,
-      "mean": 0.548073,
+      "ci_high": 0.531773,
+      "ci_low": 0.452432,
+      "mean": 0.492263,
       "n_reps": 20,
       "of_reps": 20
     },
@@ -2016,30 +2016,30 @@
       "of_reps": 20
     },
     "messy.provider_switch.completion_final": {
-      "ci_high": 0.582548,
-      "ci_low": 0.50702,
-      "mean": 0.543766,
+      "ci_high": 0.525408,
+      "ci_low": 0.450715,
+      "mean": 0.487955,
       "n_reps": 20,
       "of_reps": 20
     },
     "messy.provider_switch.completion_final_unaffected": {
-      "ci_high": 0.236789,
-      "ci_low": 0.226962,
-      "mean": 0.231872,
+      "ci_high": 0.238305,
+      "ci_low": 0.228764,
+      "mean": 0.233485,
       "n_reps": 20,
       "of_reps": 20
     },
     "messy.provider_switch.handled_rate": {
       "ci_high": 1.0,
-      "ci_low": 0.994917,
-      "mean": 0.997958,
+      "ci_low": 1.0,
+      "mean": 1.0,
       "n_reps": 20,
       "of_reps": 20
     },
     "messy.provider_switch.n": {
-      "ci_high": -23.8,
-      "ci_low": -27.65125,
-      "mean": -25.75,
+      "ci_high": -19.75,
+      "ci_low": -23.9,
+      "mean": -21.75,
       "n_reps": 20,
       "of_reps": 20
     },
@@ -2212,9 +2212,9 @@
       "of_reps": 20
     },
     "time_to_first_contact_p90": {
-      "ci_high": -7.602483,
-      "ci_low": -8.092018,
-      "mean": -7.828872,
+      "ci_high": -7.602552,
+      "ci_low": -8.092081,
+      "mean": -7.828937,
       "n_reps": 20,
       "of_reps": 20
     },
@@ -2987,18 +2987,17 @@
               "M_RESULT_ACK": 0.44525,
               "M_RESULT_LOOKUP": 0.452725,
               "M_SMS_ATTEMPT": 0.220975,
-              "O_ACCEPT_ESC_COORDINATOR": 0.756825,
-              "O_ACCEPT_ESC_SUPERVISOR": 0.8522,
-              "O_APPROVE_DRAFT": 0.56935,
-              "O_CONSENT_REVIEW": 0.0171,
+              "O_ACCEPT_ESC_COORDINATOR": 1.1582,
+              "O_ACCEPT_ESC_SUPERVISOR": 0.856,
+              "O_APPROVE_DRAFT": 0.9036,
+              "O_CONSENT_REVIEW": 0.017925,
               "O_CONTACT_RECOVERED": 0.036825,
-              "O_COORDINATOR_CALL": 0.328425,
+              "O_COORDINATOR_CALL": 0.659275,
               "O_EXHAUSTED_REROUTE": 0.027575,
-              "O_LOST_REVIEW": 0.046775,
-              "O_RECORD_REFUSAL": 0.065,
-              "O_SIGN_CLOSURE": 0.493425,
-              "O_SUPERVISOR_CALL": 0.240925,
-              "O_TRANSFER_DECISION": 0.01375,
+              "O_LOST_REVIEW": 0.113225,
+              "O_SIGN_CLOSURE": 0.428425,
+              "O_SUPERVISOR_CALL": 0.244325,
+              "O_TRANSFER_DECISION": 0.015,
               "X_BOOK_APPT": 0.346075,
               "X_RECORD_CONTACT": 0.3079,
               "X_REOPEN_REVIEW": 0.01955,
@@ -3009,17 +3008,17 @@
               "auto:A_BOUNCE": 0.328475,
               "auto:A_CLAIM_GUARD": 0.0217,
               "auto:A_CLOSURE_PROPOSAL": 0.428625,
-              "auto:A_CONSENT_LEDGER": 0.07625,
+              "auto:A_CONSENT_LEDGER": 0.085725,
               "auto:A_DEDUP": 0.03215,
-              "auto:A_DELIVERY_FAIL": 0.086475,
-              "auto:A_ESCALATION_EMIT": 1.683375,
+              "auto:A_DELIVERY_FAIL": 0.0866,
+              "auto:A_ESCALATION_EMIT": 2.155,
               "auto:A_EVIDENCE_DETECT": 0.428875,
               "auto:A_INGEST": 0.547275,
-              "auto:A_OVERDUE": 2.317525,
-              "auto:A_REFERRAL_REROUTE": 0.9183,
-              "auto:A_REMINDER_EMIT": 2.227125,
-              "auto:A_REPLY_DETECT": 0.542275,
-              "auto:A_TEMPLATE_OUTREACH": 1.955775
+              "auto:A_OVERDUE": 2.32115,
+              "auto:A_REFERRAL_REROUTE": 0.919525,
+              "auto:A_REMINDER_EMIT": 2.23075,
+              "auto:A_REPLY_DETECT": 0.477325,
+              "auto:A_TEMPLATE_OUTREACH": 1.960425
             }
           },
           "arms": {
@@ -3104,44 +3103,44 @@
             },
             "orchestrated": {
               "automated_actions_per_case": {
-                "ci_high": 13.250629,
-                "ci_low": 13.03296,
-                "mean": 13.141775,
+                "ci_high": 13.683472,
+                "ci_low": 13.458459,
+                "mean": 13.571175,
                 "n_reps": 20,
                 "of_reps": 20
               },
               "automation_share": {
-                "ci_high": 0.612281,
-                "ci_low": 0.607085,
-                "mean": 0.609634,
+                "ci_high": 0.592644,
+                "ci_low": 0.587707,
+                "mean": 0.590103,
                 "n_reps": 20,
                 "of_reps": 20
               },
               "human_actions_per_case": {
-                "ci_high": 8.470102,
-                "ci_low": 8.361374,
-                "mean": 8.41395,
+                "ci_high": 9.501337,
+                "ci_low": 9.35344,
+                "mean": 9.42615,
                 "n_reps": 20,
                 "of_reps": 20
               },
               "minutes_per_case": {
-                "ci_high": 44.157842,
-                "ci_low": 43.626851,
-                "mean": 43.88372,
+                "ci_high": 47.149894,
+                "ci_low": 46.563573,
+                "mean": 46.84402,
                 "n_reps": 20,
                 "of_reps": 20
               },
               "minutes_per_case.coordinator": {
-                "ci_high": 26.916265,
-                "ci_low": 26.413652,
-                "mean": 26.651473,
+                "ci_high": 30.610132,
+                "ci_low": 30.131644,
+                "mean": 30.367942,
                 "n_reps": 20,
                 "of_reps": 20
               },
               "minutes_per_case.owner_clinician": {
-                "ci_high": 10.027957,
-                "ci_low": 9.841028,
-                "mean": 9.930785,
+                "ci_high": 9.25743,
+                "ci_low": 9.098297,
+                "mean": 9.174615,
                 "n_reps": 20,
                 "of_reps": 20
               },
@@ -3153,9 +3152,9 @@
                 "of_reps": 20
               },
               "minutes_per_case.status.assumed": {
-                "ci_high": 17.627206,
-                "ci_low": 17.427519,
-                "mean": 17.526913,
+                "ci_high": 18.19154,
+                "ci_low": 17.972095,
+                "mean": 18.080613,
                 "n_reps": 20,
                 "of_reps": 20
               },
@@ -3167,16 +3166,16 @@
                 "of_reps": 20
               },
               "minutes_per_case.status.sourced-adjacent": {
-                "ci_high": 26.537713,
-                "ci_low": 26.167543,
-                "mean": 26.356808,
+                "ci_high": 28.95773,
+                "ci_low": 28.556005,
+                "mean": 28.763407,
                 "n_reps": 20,
                 "of_reps": 20
               },
               "minutes_per_closed_case": {
-                "ci_high": 67.624333,
-                "ci_low": 66.297794,
-                "mean": 66.935555,
+                "ci_high": 72.248452,
+                "ci_low": 70.66612,
+                "mean": 71.455857,
                 "n_reps": 20,
                 "of_reps": 20
               }
@@ -3184,30 +3183,30 @@
           },
           "reduction": {
             "human_actions_reduction": {
-              "ci_high": 0.139926,
-              "ci_low": 0.128042,
-              "mean": 0.134225,
+              "ci_high": 0.039283,
+              "ci_low": 0.020911,
+              "mean": 0.030031,
               "n_reps": 20,
               "of_reps": 20
             },
             "labour_reduction": {
-              "ci_high": 0.238848,
-              "ci_low": 0.230379,
-              "mean": 0.23469,
+              "ci_high": 0.18798,
+              "ci_low": 0.177612,
+              "mean": 0.183042,
               "n_reps": 20,
               "of_reps": 20
             },
             "labour_reduction.coordinator": {
-              "ci_high": 0.436041,
-              "ci_low": 0.426552,
-              "mean": 0.43107,
+              "ci_high": 0.357059,
+              "ci_low": 0.346462,
+              "mean": 0.351705,
               "n_reps": 20,
               "of_reps": 20
             },
             "labour_reduction.owner_clinician": {
-              "ci_high": -1.227362,
-              "ci_low": -1.304037,
-              "mean": -1.264442,
+              "ci_high": -1.060849,
+              "ci_low": -1.123622,
+              "mean": -1.091756,
               "n_reps": 20,
               "of_reps": 20
             },
@@ -3219,9 +3218,9 @@
               "of_reps": 20
             },
             "labour_reduction_per_closed_case": {
-              "ci_high": 0.394112,
-              "ci_low": 0.384636,
-              "mean": 0.389255,
+              "ci_high": 0.354154,
+              "ci_low": 0.342371,
+              "mean": 0.348023,
               "n_reps": 20,
               "of_reps": 20
             }
@@ -3249,18 +3248,17 @@
               "X_SPECIALIST_REVIEW": 0.645471
             },
             "orchestrated": {
-              "O_ACCEPT_ESC_COORDINATOR": 1.382897,
-              "O_ACCEPT_ESC_SUPERVISOR": 1.55717,
-              "O_APPROVE_DRAFT": 1.040336,
-              "O_CONSENT_REVIEW": 0.031246,
+              "O_ACCEPT_ESC_COORDINATOR": 2.116304,
+              "O_ACCEPT_ESC_SUPERVISOR": 1.564113,
+              "O_APPROVE_DRAFT": 1.651089,
+              "O_CONSENT_REVIEW": 0.032753,
               "O_CONTACT_RECOVERED": 0.067288,
-              "O_COORDINATOR_CALL": 0.60011,
+              "O_COORDINATOR_CALL": 1.20465,
               "O_EXHAUSTED_REROUTE": 0.050386,
-              "O_LOST_REVIEW": 0.085469,
-              "O_RECORD_REFUSAL": 0.11877,
-              "O_SIGN_CLOSURE": 0.901603,
-              "O_SUPERVISOR_CALL": 0.440227,
-              "O_TRANSFER_DECISION": 0.025124,
+              "O_LOST_REVIEW": 0.206889,
+              "O_SIGN_CLOSURE": 0.782833,
+              "O_SUPERVISOR_CALL": 0.446439,
+              "O_TRANSFER_DECISION": 0.027409,
               "X_BOOK_APPT": 0.129779,
               "X_RECORD_CONTACT": 0.01005,
               "X_REOPEN_REVIEW": 0.0238,
@@ -3271,17 +3269,17 @@
               "auto:A_BOUNCE": 0.600201,
               "auto:A_CLAIM_GUARD": 0.039651,
               "auto:A_CLOSURE_PROPOSAL": 0.783199,
-              "auto:A_CONSENT_LEDGER": 0.139327,
+              "auto:A_CONSENT_LEDGER": 0.15664,
               "auto:A_DEDUP": 0.058746,
-              "auto:A_DELIVERY_FAIL": 0.15801,
-              "auto:A_ESCALATION_EMIT": 3.075922,
+              "auto:A_DELIVERY_FAIL": 0.158239,
+              "auto:A_ESCALATION_EMIT": 3.937691,
               "auto:A_EVIDENCE_DETECT": 0.783655,
               "auto:A_INGEST": 1.0,
-              "auto:A_OVERDUE": 4.234663,
-              "auto:A_REFERRAL_REROUTE": 1.67795,
-              "auto:A_REMINDER_EMIT": 4.069481,
-              "auto:A_REPLY_DETECT": 0.990864,
-              "auto:A_TEMPLATE_OUTREACH": 3.57366
+              "auto:A_OVERDUE": 4.241286,
+              "auto:A_REFERRAL_REROUTE": 1.680188,
+              "auto:A_REMINDER_EMIT": 4.076104,
+              "auto:A_REPLY_DETECT": 0.872185,
+              "auto:A_TEMPLATE_OUTREACH": 3.582157
             }
           },
           "arms": {
@@ -3366,44 +3364,44 @@
             },
             "orchestrated": {
               "automated_actions_per_case": {
-                "ci_high": 24.110108,
-                "ci_low": 23.919706,
-                "mean": 24.015055,
+                "ci_high": 24.887999,
+                "ci_low": 24.713728,
+                "mean": 24.799135,
                 "n_reps": 20,
                 "of_reps": 20
               },
               "automation_share": {
-                "ci_high": 0.767965,
-                "ci_low": 0.764105,
-                "mean": 0.765969,
+                "ci_high": 0.732705,
+                "ci_low": 0.72679,
+                "mean": 0.729758,
                 "n_reps": 20,
                 "of_reps": 20
               },
               "human_actions_per_case": {
-                "ci_high": 7.424371,
-                "ci_low": 7.250875,
-                "mean": 7.338682,
+                "ci_high": 9.327891,
+                "ci_low": 9.043797,
+                "mean": 9.186731,
                 "n_reps": 20,
                 "of_reps": 20
               },
               "minutes_per_case": {
-                "ci_high": 33.051199,
-                "ci_low": 32.441593,
-                "mean": 32.763228,
+                "ci_high": 38.610963,
+                "ci_low": 37.681068,
+                "mean": 38.167797,
                 "n_reps": 20,
                 "of_reps": 20
               },
               "minutes_per_case.coordinator": {
-                "ci_high": 10.126994,
-                "ci_low": 9.712864,
-                "mean": 9.919614,
+                "ci_high": 17.115011,
+                "ci_low": 16.282452,
+                "mean": 16.705332,
                 "n_reps": 20,
                 "of_reps": 20
               },
               "minutes_per_case.owner_clinician": {
-                "ci_high": 14.691557,
-                "ci_low": 14.37788,
-                "mean": 14.53381,
+                "ci_high": 13.279283,
+                "ci_low": 13.025038,
+                "mean": 13.152661,
                 "n_reps": 20,
                 "of_reps": 20
               },
@@ -3415,9 +3413,9 @@
                 "of_reps": 20
               },
               "minutes_per_case.status.assumed": {
-                "ci_high": 16.071944,
-                "ci_low": 15.78027,
-                "mean": 15.926673,
+                "ci_high": 17.102053,
+                "ci_low": 16.760092,
+                "mean": 16.937452,
                 "n_reps": 20,
                 "of_reps": 20
               },
@@ -3429,16 +3427,16 @@
                 "of_reps": 20
               },
               "minutes_per_case.status.sourced-adjacent": {
-                "ci_high": 17.035713,
-                "ci_low": 16.650064,
-                "mean": 16.836556,
+                "ci_high": 21.563136,
+                "ci_low": 20.909955,
+                "mean": 21.230345,
                 "n_reps": 20,
                 "of_reps": 20
               },
               "minutes_per_closed_case": {
-                "ci_high": 43.358443,
-                "ci_low": 42.098848,
-                "mean": 42.741792,
+                "ci_high": 50.72163,
+                "ci_low": 48.862308,
+                "mean": 49.800515,
                 "n_reps": 20,
                 "of_reps": 20
               }
@@ -3446,30 +3444,30 @@
           },
           "reduction": {
             "human_actions_reduction": {
-              "ci_high": 0.255472,
-              "ci_low": 0.234991,
-              "mean": 0.245125,
+              "ci_high": 0.071593,
+              "ci_low": 0.039312,
+              "mean": 0.055016,
               "n_reps": 20,
               "of_reps": 20
             },
             "labour_reduction": {
-              "ci_high": 0.434836,
-              "ci_low": 0.421749,
-              "mean": 0.428709,
+              "ci_high": 0.34373,
+              "ci_low": 0.324779,
+              "mean": 0.334463,
               "n_reps": 20,
               "of_reps": 20
             },
             "labour_reduction.coordinator": {
-              "ci_high": 0.792429,
-              "ci_low": 0.784124,
-              "mean": 0.788114,
+              "ci_high": 0.652487,
+              "ci_low": 0.634699,
+              "mean": 0.643146,
               "n_reps": 20,
               "of_reps": 20
             },
             "labour_reduction.owner_clinician": {
-              "ci_high": -2.229746,
-              "ci_low": -2.372923,
-              "mean": -2.300315,
+              "ci_high": -1.92928,
+              "ci_low": -2.04598,
+              "mean": -1.986316,
               "n_reps": 20,
               "of_reps": 20
             },
@@ -3481,9 +3479,9 @@
               "of_reps": 20
             },
             "labour_reduction_per_closed_case": {
-              "ci_high": 0.614288,
-              "ci_low": 0.604353,
-              "mean": 0.609022,
+              "ci_high": 0.552659,
+              "ci_low": 0.536929,
+              "mean": 0.544454,
               "n_reps": 20,
               "of_reps": 20
             }
@@ -3491,231 +3489,222 @@
         },
         "n_reps": 20,
         "robustness": {
-          "all_minutes_high": 0.233785,
-          "all_minutes_low": 0.229379,
-          "baseline_chasing_intensive": 0.273859,
-          "baseline_chasing_not_costed": 0.165643,
-          "coordinator_and_clinician_only": 0.285945,
-          "escalation_outreach_is_an_approved_draft_not_a_call": 0.306201,
-          "headline": 0.23469,
-          "least_favourable_minutes": -0.293314,
-          "no_draft_approval_charge": 0.249588,
-          "orchestrated_bookings_keyed_by_hand": 0.171438
+          "all_minutes_high": 0.178671,
+          "all_minutes_low": 0.176417,
+          "baseline_chasing_intensive": 0.228712,
+          "baseline_chasing_not_costed": 0.102477,
+          "coordinator_and_clinician_only": 0.228142,
+          "escalation_outreach_is_an_approved_draft_not_a_call": 0.296542,
+          "headline": 0.183042,
+          "least_favourable_minutes": -0.476686,
+          "no_draft_approval_charge": 0.206688,
+          "orchestrated_bookings_keyed_by_hand": 0.119789
         },
         "tornado": [
+          {
+            "action": "O_COORDINATOR_CALL",
+            "high_minutes": 12.1,
+            "low_minutes": 3.9,
+            "reduction_at_high": 0.126682,
+            "reduction_at_low": 0.220998,
+            "status": "sourced-adjacent",
+            "swing": 0.094317
+          },
           {
             "action": "M_RESULT_LOOKUP",
             "high_minutes": 14.0,
             "low_minutes": 3.0,
-            "reduction_at_high": 0.277105,
-            "reduction_at_low": 0.22339,
+            "reduction_at_high": 0.232466,
+            "reduction_at_low": 0.169875,
             "status": "assumed",
-            "swing": 0.053714
-          },
-          {
-            "action": "X_SPECIALIST_REVIEW",
-            "high_minutes": 15.7,
-            "low_minutes": 4.75,
-            "reduction_at_high": 0.206747,
-            "reduction_at_low": 0.258875,
-            "status": "sourced-adjacent",
-            "swing": 0.052128
+            "swing": 0.062592
           },
           {
             "action": "M_CHASE_PATIENT",
             "high_minutes": 12.1,
             "low_minutes": 3.9,
-            "reduction_at_high": 0.263643,
-            "reduction_at_low": 0.211596,
+            "reduction_at_high": 0.216799,
+            "reduction_at_low": 0.156115,
             "status": "sourced-adjacent",
-            "swing": 0.052047
-          },
-          {
-            "action": "O_COORDINATOR_CALL",
-            "high_minutes": 12.1,
-            "low_minutes": 3.9,
-            "reduction_at_high": 0.206616,
-            "reduction_at_low": 0.253597,
-            "status": "sourced-adjacent",
-            "swing": 0.046982
-          },
-          {
-            "action": "M_REFERRAL_SEND",
-            "high_minutes": 18.6,
-            "low_minutes": 6.2,
-            "reduction_at_high": 0.255896,
-            "reduction_at_low": 0.210164,
-            "status": "sourced-adjacent",
-            "swing": 0.045732
-          },
-          {
-            "action": "O_ACCEPT_ESC_SUPERVISOR",
-            "high_minutes": 4.0,
-            "low_minutes": 1.0,
-            "reduction_at_high": 0.204963,
-            "reduction_at_low": 0.249553,
-            "status": "assumed",
-            "swing": 0.04459
-          },
-          {
-            "action": "O_SIGN_CLOSURE",
-            "high_minutes": 8.0,
-            "low_minutes": 3.0,
-            "reduction_at_high": 0.208872,
-            "reduction_at_low": 0.251902,
-            "status": "assumed",
-            "swing": 0.043031
+            "swing": 0.060683
           },
           {
             "action": "O_ACCEPT_ESC_COORDINATOR",
             "high_minutes": 4.0,
             "low_minutes": 1.0,
-            "reduction_at_high": 0.208289,
-            "reduction_at_low": 0.24789,
+            "reduction_at_high": 0.142635,
+            "reduction_at_low": 0.203245,
             "status": "assumed",
-            "swing": 0.039601
+            "swing": 0.060611
           },
           {
-            "action": "O_SUPERVISOR_CALL",
-            "high_minutes": 12.1,
-            "low_minutes": 3.9,
-            "reduction_at_high": 0.214097,
-            "reduction_at_low": 0.248559,
+            "action": "M_REFERRAL_SEND",
+            "high_minutes": 18.6,
+            "low_minutes": 6.2,
+            "reduction_at_high": 0.207742,
+            "reduction_at_low": 0.154473,
             "status": "sourced-adjacent",
-            "swing": 0.034461
+            "swing": 0.05327
+          },
+          {
+            "action": "X_SPECIALIST_REVIEW",
+            "high_minutes": 15.7,
+            "low_minutes": 4.75,
+            "reduction_at_high": 0.158455,
+            "reduction_at_low": 0.204323,
+            "status": "sourced-adjacent",
+            "swing": 0.045868
+          },
+          {
+            "action": "O_ACCEPT_ESC_SUPERVISOR",
+            "high_minutes": 4.0,
+            "low_minutes": 1.0,
+            "reduction_at_high": 0.153182,
+            "reduction_at_low": 0.197971,
+            "status": "assumed",
+            "swing": 0.044789
+          },
+          {
+            "action": "O_SIGN_CLOSURE",
+            "high_minutes": 8.0,
+            "low_minutes": 3.0,
+            "reduction_at_high": 0.160626,
+            "reduction_at_low": 0.197986,
+            "status": "assumed",
+            "swing": 0.03736
           },
           {
             "action": "M_HANDOVER",
             "high_minutes": 10.3,
             "low_minutes": 4.75,
-            "reduction_at_high": 0.238856,
-            "reduction_at_low": 0.207434,
+            "reduction_at_high": 0.187896,
+            "reduction_at_low": 0.151279,
             "status": "sourced-adjacent",
-            "swing": 0.031422
+            "swing": 0.036618
           },
           {
-            "action": "X_BOOK_APPT",
-            "high_minutes": 15.1,
-            "low_minutes": 4.0,
-            "reduction_at_high": 0.24851,
-            "reduction_at_low": 0.225946,
+            "action": "O_SUPERVISOR_CALL",
+            "high_minutes": 12.1,
+            "low_minutes": 3.9,
+            "reduction_at_high": 0.162159,
+            "reduction_at_low": 0.197106,
             "status": "sourced-adjacent",
-            "swing": 0.022564
-          },
-          {
-            "action": "M_COMPLETION_RECORD",
-            "high_minutes": 10.0,
-            "low_minutes": 2.5,
-            "reduction_at_high": 0.249099,
-            "reduction_at_low": 0.226953,
-            "status": "assumed",
-            "swing": 0.022146
-          },
-          {
-            "action": "M_CLINICIAN_REVIEW",
-            "high_minutes": 10.0,
-            "low_minutes": 3.0,
-            "reduction_at_high": 0.248882,
-            "reduction_at_low": 0.22863,
-            "status": "assumed",
-            "swing": 0.020252
+            "swing": 0.034947
           },
           {
             "action": "O_APPROVE_DRAFT",
             "high_minutes": 3.0,
             "low_minutes": 1.0,
-            "reduction_at_high": 0.219792,
-            "reduction_at_low": 0.239656,
+            "reduction_at_high": 0.159396,
+            "reduction_at_low": 0.190924,
             "status": "assumed",
-            "swing": 0.019864
+            "swing": 0.031528
           },
           {
-            "action": "O_RECORD_REFUSAL",
-            "high_minutes": 25.0,
-            "low_minutes": 8.0,
-            "reduction_at_high": 0.223348,
-            "reduction_at_low": 0.24263,
-            "status": "assumed",
-            "swing": 0.019282
+            "action": "X_BOOK_APPT",
+            "high_minutes": 15.1,
+            "low_minutes": 4.0,
+            "reduction_at_high": 0.200481,
+            "reduction_at_low": 0.172008,
+            "status": "sourced-adjacent",
+            "swing": 0.028473
           },
           {
-            "action": "M_RESULT_ACK",
-            "high_minutes": 4.0,
-            "low_minutes": 1.0,
-            "reduction_at_high": 0.245076,
-            "reduction_at_low": 0.229225,
-            "status": "assumed",
-            "swing": 0.015852
-          },
-          {
-            "action": "M_LETTER",
-            "high_minutes": 8.0,
-            "low_minutes": 2.0,
-            "reduction_at_high": 0.2448,
-            "reduction_at_low": 0.229378,
-            "status": "assumed",
-            "swing": 0.015421
-          },
-          {
-            "action": "M_CLOSE_FILE",
-            "high_minutes": 6.0,
-            "low_minutes": 2.0,
-            "reduction_at_high": 0.243229,
-            "reduction_at_low": 0.231737,
-            "status": "assumed",
-            "swing": 0.011492
-          },
-          {
-            "action": "O_EXHAUSTED_REROUTE",
-            "high_minutes": 30.0,
-            "low_minutes": 8.0,
-            "reduction_at_high": 0.227477,
-            "reduction_at_low": 0.238056,
-            "status": "assumed",
-            "swing": 0.010579
-          },
-          {
-            "action": "X_RECORD_CONTACT",
-            "high_minutes": 4.0,
-            "low_minutes": 1.0,
-            "reduction_at_high": 0.24162,
-            "reduction_at_low": 0.231102,
-            "status": "assumed",
-            "swing": 0.010518
-          },
-          {
-            "action": "M_CHASE_COMPLETION",
+            "action": "M_COMPLETION_RECORD",
             "high_minutes": 10.0,
             "low_minutes": 2.5,
-            "reduction_at_high": 0.240675,
-            "reduction_at_low": 0.231609,
+            "reduction_at_high": 0.199817,
+            "reduction_at_low": 0.174035,
             "status": "assumed",
-            "swing": 0.009066
+            "swing": 0.025783
+          },
+          {
+            "action": "M_CLINICIAN_REVIEW",
+            "high_minutes": 10.0,
+            "low_minutes": 3.0,
+            "reduction_at_high": 0.199564,
+            "reduction_at_low": 0.175987,
+            "status": "assumed",
+            "swing": 0.023577
           },
           {
             "action": "O_LOST_REVIEW",
             "high_minutes": 15.0,
             "low_minutes": 4.0,
-            "reduction_at_high": 0.22898,
-            "reduction_at_low": 0.237953,
+            "reduction_at_high": 0.169215,
+            "reduction_at_low": 0.190943,
             "status": "assumed",
-            "swing": 0.008973
+            "swing": 0.021728
+          },
+          {
+            "action": "M_RESULT_ACK",
+            "high_minutes": 4.0,
+            "low_minutes": 1.0,
+            "reduction_at_high": 0.195143,
+            "reduction_at_low": 0.176674,
+            "status": "assumed",
+            "swing": 0.018469
+          },
+          {
+            "action": "M_LETTER",
+            "high_minutes": 8.0,
+            "low_minutes": 2.0,
+            "reduction_at_high": 0.194815,
+            "reduction_at_low": 0.176856,
+            "status": "assumed",
+            "swing": 0.017959
+          },
+          {
+            "action": "M_CLOSE_FILE",
+            "high_minutes": 6.0,
+            "low_minutes": 2.0,
+            "reduction_at_high": 0.192981,
+            "reduction_at_low": 0.179604,
+            "status": "assumed",
+            "swing": 0.013377
+          },
+          {
+            "action": "X_RECORD_CONTACT",
+            "high_minutes": 4.0,
+            "low_minutes": 1.0,
+            "reduction_at_high": 0.191147,
+            "reduction_at_low": 0.178846,
+            "status": "assumed",
+            "swing": 0.012301
+          },
+          {
+            "action": "O_EXHAUSTED_REROUTE",
+            "high_minutes": 30.0,
+            "low_minutes": 8.0,
+            "reduction_at_high": 0.175829,
+            "reduction_at_low": 0.186408,
+            "status": "assumed",
+            "swing": 0.010579
+          },
+          {
+            "action": "M_CHASE_COMPLETION",
+            "high_minutes": 10.0,
+            "low_minutes": 2.5,
+            "reduction_at_high": 0.190009,
+            "reduction_at_low": 0.179455,
+            "status": "assumed",
+            "swing": 0.010553
           },
           {
             "action": "M_SMS_ATTEMPT",
             "high_minutes": 3.0,
             "low_minutes": 1.0,
-            "reduction_at_high": 0.238621,
-            "reduction_at_low": 0.233357,
+            "reduction_at_high": 0.187623,
+            "reduction_at_low": 0.181488,
             "status": "assumed",
-            "swing": 0.005263
+            "swing": 0.006135
           },
           {
             "action": "O_CONTACT_RECOVERED",
             "high_minutes": 10.0,
             "low_minutes": 3.0,
-            "reduction_at_high": 0.23148,
-            "reduction_at_low": 0.235974,
+            "reduction_at_high": 0.179832,
+            "reduction_at_low": 0.184326,
             "status": "assumed",
             "swing": 0.004494
           },
@@ -3723,58 +3712,67 @@
             "action": "M_CHASE_SPECIALIST",
             "high_minutes": 12.2,
             "low_minutes": 4.0,
-            "reduction_at_high": 0.236423,
-            "reduction_at_low": 0.232935,
+            "reduction_at_high": 0.185093,
+            "reduction_at_low": 0.180965,
             "status": "sourced-adjacent",
-            "swing": 0.003488
+            "swing": 0.004128
           },
           {
             "action": "M_DUPLICATE_ITEM",
             "high_minutes": 14.0,
             "low_minutes": 3.0,
-            "reduction_at_high": 0.237507,
-            "reduction_at_low": 0.234057,
+            "reduction_at_high": 0.18634,
+            "reduction_at_low": 0.1823,
             "status": "assumed",
-            "swing": 0.003451
+            "swing": 0.004039
           },
           {
             "action": "O_CONSENT_REVIEW",
             "high_minutes": 10.0,
             "low_minutes": 3.0,
-            "reduction_at_high": 0.2332,
-            "reduction_at_low": 0.235286,
+            "reduction_at_high": 0.18148,
+            "reduction_at_low": 0.183667,
             "status": "assumed",
-            "swing": 0.002086
+            "swing": 0.002187
           },
           {
             "action": "O_TRANSFER_DECISION",
             "high_minutes": 9.5,
             "low_minutes": 3.0,
-            "reduction_at_high": 0.233611,
-            "reduction_at_low": 0.235169,
+            "reduction_at_high": 0.181865,
+            "reduction_at_low": 0.183565,
             "status": "assumed",
-            "swing": 0.001558
+            "swing": 0.001699
           },
           {
             "action": "X_REOPEN_REVIEW",
             "high_minutes": 10.0,
             "low_minutes": 3.0,
-            "reduction_at_high": 0.234027,
-            "reduction_at_low": 0.234956,
+            "reduction_at_high": 0.182448,
+            "reduction_at_low": 0.18328,
             "status": "assumed",
-            "swing": 0.000928
+            "swing": 0.000831
           },
           {
             "action": "M_PHONE_ATTEMPT",
             "high_minutes": 12.1,
             "low_minutes": 3.9,
-            "reduction_at_high": 0.23469,
-            "reduction_at_low": 0.23469,
+            "reduction_at_high": 0.183042,
+            "reduction_at_low": 0.183042,
             "status": "sourced-adjacent",
+            "swing": 0.0
+          },
+          {
+            "action": "O_RECORD_REFUSAL",
+            "high_minutes": 25.0,
+            "low_minutes": 8.0,
+            "reduction_at_high": 0.183042,
+            "reduction_at_low": 0.183042,
+            "status": "assumed",
             "swing": 0.0
           }
         ],
-        "tornado_base": 0.23469
+        "tornado_base": 0.183042
       },
       "upper_range": {
         "all": {
@@ -3799,18 +3797,17 @@
               "X_SPECIALIST_REVIEW": 0.643175
             },
             "orchestrated": {
-              "O_ACCEPT_ESC_COORDINATOR": 1.140125,
-              "O_ACCEPT_ESC_SUPERVISOR": 1.5127,
-              "O_APPROVE_DRAFT": 0.864225,
-              "O_CONSENT_REVIEW": 0.03075,
+              "O_ACCEPT_ESC_COORDINATOR": 1.884875,
+              "O_ACCEPT_ESC_SUPERVISOR": 1.519025,
+              "O_APPROVE_DRAFT": 1.484225,
+              "O_CONSENT_REVIEW": 0.031925,
               "O_CONTACT_RECOVERED": 0.075275,
-              "O_COORDINATOR_CALL": 0.45035,
+              "O_COORDINATOR_CALL": 1.064825,
               "O_EXHAUSTED_REROUTE": 0.056125,
-              "O_LOST_REVIEW": 0.05935,
-              "O_RECORD_REFUSAL": 0.12025,
-              "O_SIGN_CLOSURE": 0.92175,
-              "O_SUPERVISOR_CALL": 0.413875,
-              "O_TRANSFER_DECISION": 0.0232,
+              "O_LOST_REVIEW": 0.182025,
+              "O_SIGN_CLOSURE": 0.8015,
+              "O_SUPERVISOR_CALL": 0.4194,
+              "O_TRANSFER_DECISION": 0.0254,
               "X_BOOK_APPT": 0.09885,
               "X_RECORD_CONTACT": 0.005725,
               "X_REOPEN_REVIEW": 0.0242,
@@ -3821,17 +3818,17 @@
               "auto:A_BOUNCE": 0.614525,
               "auto:A_CLAIM_GUARD": 0.0399,
               "auto:A_CLOSURE_PROPOSAL": 0.801575,
-              "auto:A_CONSENT_LEDGER": 0.140725,
+              "auto:A_CONSENT_LEDGER": 0.157425,
               "auto:A_DEDUP": 0.0598,
-              "auto:A_DELIVERY_FAIL": 0.154375,
-              "auto:A_ESCALATION_EMIT": 2.7683,
+              "auto:A_DELIVERY_FAIL": 0.1545,
+              "auto:A_ESCALATION_EMIT": 3.64205,
               "auto:A_EVIDENCE_DETECT": 0.80165,
               "auto:A_INGEST": 1.0,
-              "auto:A_OVERDUE": 4.176675,
-              "auto:A_REFERRAL_REROUTE": 1.7185,
-              "auto:A_REMINDER_EMIT": 4.01105,
-              "auto:A_REPLY_DETECT": 1.006075,
-              "auto:A_TEMPLATE_OUTREACH": 3.492325
+              "auto:A_OVERDUE": 4.182575,
+              "auto:A_REFERRAL_REROUTE": 1.72065,
+              "auto:A_REMINDER_EMIT": 4.01695,
+              "auto:A_REPLY_DETECT": 0.88585,
+              "auto:A_TEMPLATE_OUTREACH": 3.50005
             }
           },
           "arms": {
@@ -3916,44 +3913,44 @@
             },
             "orchestrated": {
               "automated_actions_per_case": {
-                "ci_high": 23.68731,
-                "ci_low": 23.551759,
-                "mean": 23.61725,
+                "ci_high": 24.480855,
+                "ci_low": 24.346988,
+                "mean": 24.409275,
                 "n_reps": 20,
                 "of_reps": 20
               },
               "automation_share": {
-                "ci_high": 0.781277,
-                "ci_low": 0.778217,
-                "mean": 0.779666,
+                "ci_high": 0.743055,
+                "ci_low": 0.738198,
+                "mean": 0.740607,
                 "n_reps": 20,
                 "of_reps": 20
               },
               "human_actions_per_case": {
-                "ci_high": 6.733561,
-                "ci_low": 6.615748,
-                "mean": 6.67475,
+                "ci_high": 8.664984,
+                "ci_low": 8.430791,
+                "mean": 8.551375,
                 "n_reps": 20,
                 "of_reps": 20
               },
               "minutes_per_case": {
-                "ci_high": 30.691497,
-                "ci_low": 30.233594,
-                "mean": 30.463957,
+                "ci_high": 36.365036,
+                "ci_low": 35.548389,
+                "mean": 35.953382,
                 "n_reps": 20,
                 "of_reps": 20
               },
               "minutes_per_case.coordinator": {
-                "ci_high": 8.161005,
-                "ci_low": 7.87871,
-                "mean": 8.01807,
+                "ci_high": 15.274856,
+                "ci_low": 14.577435,
+                "mean": 14.91319,
                 "n_reps": 20,
                 "of_reps": 20
               },
               "minutes_per_case.owner_clinician": {
-                "ci_high": 14.236473,
-                "ci_low": 13.957062,
-                "mean": 14.104888,
+                "ci_high": 12.810559,
+                "ci_low": 12.583675,
+                "mean": 12.699192,
                 "n_reps": 20,
                 "of_reps": 20
               },
@@ -3965,9 +3962,9 @@
                 "of_reps": 20
               },
               "minutes_per_case.status.assumed": {
-                "ci_high": 15.212657,
-                "ci_low": 15.011509,
-                "mean": 15.109737,
+                "ci_high": 16.279921,
+                "ci_low": 15.994761,
+                "mean": 16.135162,
                 "n_reps": 20,
                 "of_reps": 20
               },
@@ -3979,16 +3976,16 @@
                 "of_reps": 20
               },
               "minutes_per_case.status.sourced-adjacent": {
-                "ci_high": 15.503642,
-                "ci_low": 15.204502,
-                "mean": 15.35422,
+                "ci_high": 20.090655,
+                "ci_low": 19.534756,
+                "mean": 19.81822,
                 "n_reps": 20,
                 "of_reps": 20
               },
               "minutes_per_closed_case": {
-                "ci_high": 39.266736,
-                "ci_low": 38.406891,
-                "mean": 38.821933,
+                "ci_high": 46.495211,
+                "ci_low": 45.16281,
+                "mean": 45.821786,
                 "n_reps": 20,
                 "of_reps": 20
               }
@@ -3996,30 +3993,30 @@
           },
           "reduction": {
             "human_actions_reduction": {
-              "ci_high": 0.320212,
-              "ci_low": 0.304953,
-              "mean": 0.313106,
+              "ci_high": 0.13241,
+              "ci_low": 0.105763,
+              "mean": 0.119951,
               "n_reps": 20,
               "of_reps": 20
             },
             "labour_reduction": {
-              "ci_high": 0.473658,
-              "ci_low": 0.463045,
-              "mean": 0.468659,
+              "ci_high": 0.381334,
+              "ci_low": 0.364164,
+              "mean": 0.372895,
               "n_reps": 20,
               "of_reps": 20
             },
             "labour_reduction.coordinator": {
-              "ci_high": 0.83188,
-              "ci_low": 0.825606,
-              "mean": 0.828811,
+              "ci_high": 0.68943,
+              "ci_low": 0.673907,
+              "mean": 0.681591,
               "n_reps": 20,
               "of_reps": 20
             },
             "labour_reduction.owner_clinician": {
-              "ci_high": -2.153906,
-              "ci_low": -2.28107,
-              "mean": -2.216805,
+              "ci_high": -1.842872,
+              "ci_low": -1.950622,
+              "mean": -1.896006,
               "n_reps": 20,
               "of_reps": 20
             },
@@ -4031,9 +4028,9 @@
               "of_reps": 20
             },
             "labour_reduction_per_closed_case": {
-              "ci_high": 0.64911,
-              "ci_low": 0.642437,
-              "mean": 0.645775,
+              "ci_high": 0.587569,
+              "ci_low": 0.576496,
+              "mean": 0.581932,
               "n_reps": 20,
               "of_reps": 20
             }
@@ -4061,18 +4058,17 @@
               "X_SPECIALIST_REVIEW": 0.643175
             },
             "orchestrated": {
-              "O_ACCEPT_ESC_COORDINATOR": 1.140125,
-              "O_ACCEPT_ESC_SUPERVISOR": 1.5127,
-              "O_APPROVE_DRAFT": 0.864225,
-              "O_CONSENT_REVIEW": 0.03075,
+              "O_ACCEPT_ESC_COORDINATOR": 1.884875,
+              "O_ACCEPT_ESC_SUPERVISOR": 1.519025,
+              "O_APPROVE_DRAFT": 1.484225,
+              "O_CONSENT_REVIEW": 0.031925,
               "O_CONTACT_RECOVERED": 0.075275,
-              "O_COORDINATOR_CALL": 0.45035,
+              "O_COORDINATOR_CALL": 1.064825,
               "O_EXHAUSTED_REROUTE": 0.056125,
-              "O_LOST_REVIEW": 0.05935,
-              "O_RECORD_REFUSAL": 0.12025,
-              "O_SIGN_CLOSURE": 0.92175,
-              "O_SUPERVISOR_CALL": 0.413875,
-              "O_TRANSFER_DECISION": 0.0232,
+              "O_LOST_REVIEW": 0.182025,
+              "O_SIGN_CLOSURE": 0.8015,
+              "O_SUPERVISOR_CALL": 0.4194,
+              "O_TRANSFER_DECISION": 0.0254,
               "X_BOOK_APPT": 0.09885,
               "X_RECORD_CONTACT": 0.005725,
               "X_REOPEN_REVIEW": 0.0242,
@@ -4083,17 +4079,17 @@
               "auto:A_BOUNCE": 0.614525,
               "auto:A_CLAIM_GUARD": 0.0399,
               "auto:A_CLOSURE_PROPOSAL": 0.801575,
-              "auto:A_CONSENT_LEDGER": 0.140725,
+              "auto:A_CONSENT_LEDGER": 0.157425,
               "auto:A_DEDUP": 0.0598,
-              "auto:A_DELIVERY_FAIL": 0.154375,
-              "auto:A_ESCALATION_EMIT": 2.7683,
+              "auto:A_DELIVERY_FAIL": 0.1545,
+              "auto:A_ESCALATION_EMIT": 3.64205,
               "auto:A_EVIDENCE_DETECT": 0.80165,
               "auto:A_INGEST": 1.0,
-              "auto:A_OVERDUE": 4.176675,
-              "auto:A_REFERRAL_REROUTE": 1.7185,
-              "auto:A_REMINDER_EMIT": 4.01105,
-              "auto:A_REPLY_DETECT": 1.006075,
-              "auto:A_TEMPLATE_OUTREACH": 3.492325
+              "auto:A_OVERDUE": 4.182575,
+              "auto:A_REFERRAL_REROUTE": 1.72065,
+              "auto:A_REMINDER_EMIT": 4.01695,
+              "auto:A_REPLY_DETECT": 0.88585,
+              "auto:A_TEMPLATE_OUTREACH": 3.50005
             }
           },
           "arms": {
@@ -4178,44 +4174,44 @@
             },
             "orchestrated": {
               "automated_actions_per_case": {
-                "ci_high": 23.679839,
-                "ci_low": 23.548742,
-                "mean": 23.61725,
+                "ci_high": 24.470532,
+                "ci_low": 24.345349,
+                "mean": 24.409275,
                 "n_reps": 20,
                 "of_reps": 20
               },
               "automation_share": {
-                "ci_high": 0.781185,
-                "ci_low": 0.778156,
-                "mean": 0.779666,
+                "ci_high": 0.743024,
+                "ci_low": 0.738095,
+                "mean": 0.740607,
                 "n_reps": 20,
                 "of_reps": 20
               },
               "human_actions_per_case": {
-                "ci_high": 6.741134,
-                "ci_low": 6.617947,
-                "mean": 6.67475,
+                "ci_high": 8.673461,
+                "ci_low": 8.436549,
+                "mean": 8.551375,
                 "n_reps": 20,
                 "of_reps": 20
               },
               "minutes_per_case": {
-                "ci_high": 30.689523,
-                "ci_low": 30.222943,
-                "mean": 30.463957,
+                "ci_high": 36.347925,
+                "ci_low": 35.537747,
+                "mean": 35.953382,
                 "n_reps": 20,
                 "of_reps": 20
               },
               "minutes_per_case.coordinator": {
-                "ci_high": 8.145467,
-                "ci_low": 7.875057,
-                "mean": 8.01807,
+                "ci_high": 15.234574,
+                "ci_low": 14.559348,
+                "mean": 14.91319,
                 "n_reps": 20,
                 "of_reps": 20
               },
               "minutes_per_case.owner_clinician": {
-                "ci_high": 14.247679,
-                "ci_low": 13.963779,
-                "mean": 14.104888,
+                "ci_high": 12.813237,
+                "ci_low": 12.588925,
+                "mean": 12.699192,
                 "n_reps": 20,
                 "of_reps": 20
               },
@@ -4227,9 +4223,9 @@
                 "of_reps": 20
               },
               "minutes_per_case.status.assumed": {
-                "ci_high": 15.209457,
-                "ci_low": 15.013026,
-                "mean": 15.109737,
+                "ci_high": 16.273833,
+                "ci_low": 15.990407,
+                "mean": 16.135162,
                 "n_reps": 20,
                 "of_reps": 20
               },
@@ -4241,16 +4237,16 @@
                 "of_reps": 20
               },
               "minutes_per_case.status.sourced-adjacent": {
-                "ci_high": 15.50463,
-                "ci_low": 15.205914,
-                "mean": 15.35422,
+                "ci_high": 20.091279,
+                "ci_low": 19.54253,
+                "mean": 19.81822,
                 "n_reps": 20,
                 "of_reps": 20
               },
               "minutes_per_closed_case": {
-                "ci_high": 39.284486,
-                "ci_low": 38.372125,
-                "mean": 38.821933,
+                "ci_high": 46.536198,
+                "ci_low": 45.132643,
+                "mean": 45.821786,
                 "n_reps": 20,
                 "of_reps": 20
               }
@@ -4258,30 +4254,30 @@
           },
           "reduction": {
             "human_actions_reduction": {
-              "ci_high": 0.320484,
-              "ci_low": 0.304525,
-              "mean": 0.313106,
+              "ci_high": 0.133475,
+              "ci_low": 0.105098,
+              "mean": 0.119951,
               "n_reps": 20,
               "of_reps": 20
             },
             "labour_reduction": {
-              "ci_high": 0.473863,
-              "ci_low": 0.463113,
-              "mean": 0.468659,
+              "ci_high": 0.381163,
+              "ci_low": 0.364136,
+              "mean": 0.372895,
               "n_reps": 20,
               "of_reps": 20
             },
             "labour_reduction.coordinator": {
-              "ci_high": 0.831995,
-              "ci_low": 0.825748,
-              "mean": 0.828811,
+              "ci_high": 0.688878,
+              "ci_low": 0.674307,
+              "mean": 0.681591,
               "n_reps": 20,
               "of_reps": 20
             },
             "labour_reduction.owner_clinician": {
-              "ci_high": -2.16057,
-              "ci_low": -2.276728,
-              "mean": -2.216805,
+              "ci_high": -1.848215,
+              "ci_low": -1.946073,
+              "mean": -1.896006,
               "n_reps": 20,
               "of_reps": 20
             },
@@ -4293,9 +4289,9 @@
               "of_reps": 20
             },
             "labour_reduction_per_closed_case": {
-              "ci_high": 0.649118,
-              "ci_low": 0.642467,
-              "mean": 0.645775,
+              "ci_high": 0.587213,
+              "ci_low": 0.57655,
+              "mean": 0.581932,
               "n_reps": 20,
               "of_reps": 20
             }
@@ -4303,290 +4299,290 @@
         },
         "n_reps": 20,
         "robustness": {
-          "all_minutes_high": 0.468519,
-          "all_minutes_low": 0.459517,
-          "baseline_chasing_intensive": 0.535516,
-          "baseline_chasing_not_costed": 0.350258,
-          "coordinator_and_clinician_only": 0.568121,
-          "escalation_outreach_is_an_approved_draft_not_a_call": 0.577208,
-          "headline": 0.468659,
-          "least_favourable_minutes": -0.407751,
-          "no_draft_approval_charge": 0.491273,
-          "orchestrated_bookings_keyed_by_hand": 0.352613
+          "all_minutes_high": 0.366347,
+          "all_minutes_low": 0.361312,
+          "baseline_chasing_intensive": 0.45181,
+          "baseline_chasing_not_costed": 0.233126,
+          "coordinator_and_clinician_only": 0.460946,
+          "escalation_outreach_is_an_approved_draft_not_a_call": 0.55932,
+          "headline": 0.372895,
+          "least_favourable_minutes": -0.74769,
+          "no_draft_approval_charge": 0.411734,
+          "orchestrated_bookings_keyed_by_hand": 0.256849
         },
         "tornado": [
           {
-            "action": "X_SPECIALIST_REVIEW",
-            "high_minutes": 15.7,
-            "low_minutes": 4.75,
-            "reduction_at_high": 0.414434,
-            "reduction_at_low": 0.515591,
+            "action": "O_COORDINATOR_CALL",
+            "high_minutes": 12.1,
+            "low_minutes": 3.9,
+            "reduction_at_high": 0.281869,
+            "reduction_at_low": 0.434198,
             "status": "sourced-adjacent",
-            "swing": 0.101157
+            "swing": 0.152329
           },
           {
             "action": "M_RESULT_LOOKUP",
             "high_minutes": 14.0,
             "low_minutes": 3.0,
-            "reduction_at_high": 0.540755,
-            "reduction_at_low": 0.449452,
+            "reduction_at_high": 0.457987,
+            "reduction_at_low": 0.350226,
             "status": "assumed",
-            "swing": 0.091302
+            "swing": 0.107761
           },
           {
             "action": "M_CHASE_PATIENT",
             "high_minutes": 12.1,
             "low_minutes": 3.9,
-            "reduction_at_high": 0.518032,
-            "reduction_at_low": 0.429274,
+            "reduction_at_high": 0.431178,
+            "reduction_at_low": 0.326402,
             "status": "sourced-adjacent",
-            "swing": 0.088758
-          },
-          {
-            "action": "O_SIGN_CLOSURE",
-            "high_minutes": 8.0,
-            "low_minutes": 3.0,
-            "reduction_at_high": 0.420432,
-            "reduction_at_low": 0.500811,
-            "status": "assumed",
-            "swing": 0.080379
-          },
-          {
-            "action": "O_ACCEPT_ESC_SUPERVISOR",
-            "high_minutes": 4.0,
-            "low_minutes": 1.0,
-            "reduction_at_high": 0.415893,
-            "reduction_at_low": 0.495042,
-            "status": "assumed",
-            "swing": 0.079149
-          },
-          {
-            "action": "M_REFERRAL_SEND",
-            "high_minutes": 18.6,
-            "low_minutes": 6.2,
-            "reduction_at_high": 0.504633,
-            "reduction_at_low": 0.427049,
-            "status": "sourced-adjacent",
-            "swing": 0.077584
-          },
-          {
-            "action": "O_COORDINATOR_CALL",
-            "high_minutes": 12.1,
-            "low_minutes": 3.9,
-            "reduction_at_high": 0.43016,
-            "reduction_at_low": 0.494587,
-            "status": "sourced-adjacent",
-            "swing": 0.064427
+            "swing": 0.104776
           },
           {
             "action": "O_ACCEPT_ESC_COORDINATOR",
             "high_minutes": 4.0,
             "low_minutes": 1.0,
-            "reduction_at_high": 0.428885,
-            "reduction_at_low": 0.488546,
+            "reduction_at_high": 0.307137,
+            "reduction_at_low": 0.405774,
             "status": "assumed",
-            "swing": 0.059661
+            "swing": 0.098638
           },
           {
-            "action": "O_SUPERVISOR_CALL",
-            "high_minutes": 12.1,
-            "low_minutes": 3.9,
-            "reduction_at_high": 0.433285,
-            "reduction_at_low": 0.492483,
+            "action": "M_REFERRAL_SEND",
+            "high_minutes": 18.6,
+            "low_minutes": 6.2,
+            "reduction_at_high": 0.41535,
+            "reduction_at_low": 0.323791,
             "status": "sourced-adjacent",
-            "swing": 0.059198
+            "swing": 0.091559
+          },
+          {
+            "action": "X_SPECIALIST_REVIEW",
+            "high_minutes": 15.7,
+            "low_minutes": 4.75,
+            "reduction_at_high": 0.324892,
+            "reduction_at_low": 0.414443,
+            "status": "sourced-adjacent",
+            "swing": 0.089551
+          },
+          {
+            "action": "O_ACCEPT_ESC_SUPERVISOR",
+            "high_minutes": 4.0,
+            "low_minutes": 1.0,
+            "reduction_at_high": 0.319908,
+            "reduction_at_low": 0.399389,
+            "status": "assumed",
+            "swing": 0.07948
+          },
+          {
+            "action": "O_SIGN_CLOSURE",
+            "high_minutes": 8.0,
+            "low_minutes": 3.0,
+            "reduction_at_high": 0.330961,
+            "reduction_at_low": 0.400851,
+            "status": "assumed",
+            "swing": 0.06989
           },
           {
             "action": "M_HANDOVER",
             "high_minutes": 10.3,
             "low_minutes": 4.75,
-            "reduction_at_high": 0.475742,
-            "reduction_at_low": 0.422316,
+            "reduction_at_high": 0.381255,
+            "reduction_at_low": 0.318196,
             "status": "sourced-adjacent",
-            "swing": 0.053427
+            "swing": 0.063059
+          },
+          {
+            "action": "O_SUPERVISOR_CALL",
+            "high_minutes": 12.1,
+            "low_minutes": 3.9,
+            "reduction_at_high": 0.337049,
+            "reduction_at_low": 0.397037,
+            "status": "sourced-adjacent",
+            "swing": 0.059988
           },
           {
             "action": "X_BOOK_APPT",
             "high_minutes": 15.1,
             "low_minutes": 4.0,
-            "reduction_at_high": 0.494526,
-            "reduction_at_low": 0.452292,
+            "reduction_at_high": 0.405472,
+            "reduction_at_low": 0.352283,
             "status": "sourced-adjacent",
-            "swing": 0.042234
-          },
-          {
-            "action": "M_COMPLETION_RECORD",
-            "high_minutes": 10.0,
-            "low_minutes": 2.5,
-            "reduction_at_high": 0.493014,
-            "reduction_at_low": 0.455582,
-            "status": "assumed",
-            "swing": 0.037432
-          },
-          {
-            "action": "O_RECORD_REFUSAL",
-            "high_minutes": 25.0,
-            "low_minutes": 8.0,
-            "reduction_at_high": 0.447682,
-            "reduction_at_low": 0.483343,
-            "status": "assumed",
-            "swing": 0.035662
-          },
-          {
-            "action": "M_CLINICIAN_REVIEW",
-            "high_minutes": 10.0,
-            "low_minutes": 3.0,
-            "reduction_at_high": 0.492637,
-            "reduction_at_low": 0.458421,
-            "status": "assumed",
-            "swing": 0.034216
+            "swing": 0.053189
           },
           {
             "action": "O_APPROVE_DRAFT",
             "high_minutes": 3.0,
             "low_minutes": 1.0,
-            "reduction_at_high": 0.446045,
-            "reduction_at_low": 0.476197,
+            "reduction_at_high": 0.334057,
+            "reduction_at_low": 0.385841,
             "status": "assumed",
-            "swing": 0.030152
+            "swing": 0.051785
           },
           {
-            "action": "M_RESULT_ACK",
-            "high_minutes": 4.0,
-            "low_minutes": 1.0,
-            "reduction_at_high": 0.486296,
-            "reduction_at_low": 0.459378,
-            "status": "assumed",
-            "swing": 0.026918
-          },
-          {
-            "action": "M_LETTER",
-            "high_minutes": 8.0,
-            "low_minutes": 2.0,
-            "reduction_at_high": 0.485781,
-            "reduction_at_low": 0.459663,
-            "status": "assumed",
-            "swing": 0.026117
-          },
-          {
-            "action": "O_EXHAUSTED_REROUTE",
-            "high_minutes": 30.0,
-            "low_minutes": 8.0,
-            "reduction_at_high": 0.453976,
-            "reduction_at_low": 0.475511,
-            "status": "assumed",
-            "swing": 0.021535
-          },
-          {
-            "action": "M_CLOSE_FILE",
-            "high_minutes": 6.0,
-            "low_minutes": 2.0,
-            "reduction_at_high": 0.483078,
-            "reduction_at_low": 0.463672,
-            "status": "assumed",
-            "swing": 0.019406
-          },
-          {
-            "action": "X_RECORD_CONTACT",
-            "high_minutes": 4.0,
-            "low_minutes": 1.0,
-            "reduction_at_high": 0.480559,
-            "reduction_at_low": 0.462499,
-            "status": "assumed",
-            "swing": 0.01806
-          },
-          {
-            "action": "M_CHASE_COMPLETION",
+            "action": "M_COMPLETION_RECORD",
             "high_minutes": 10.0,
             "low_minutes": 2.5,
-            "reduction_at_high": 0.478754,
-            "reduction_at_low": 0.463463,
+            "reduction_at_high": 0.401637,
+            "reduction_at_low": 0.357463,
             "status": "assumed",
-            "swing": 0.015291
+            "swing": 0.044174
+          },
+          {
+            "action": "M_CLINICIAN_REVIEW",
+            "high_minutes": 10.0,
+            "low_minutes": 3.0,
+            "reduction_at_high": 0.401192,
+            "reduction_at_low": 0.360813,
+            "status": "assumed",
+            "swing": 0.04038
           },
           {
             "action": "O_LOST_REVIEW",
             "high_minutes": 15.0,
             "low_minutes": 4.0,
-            "reduction_at_high": 0.461414,
-            "reduction_at_low": 0.472799,
+            "reduction_at_high": 0.35067,
+            "reduction_at_low": 0.385595,
             "status": "assumed",
-            "swing": 0.011385
+            "swing": 0.034925
           },
           {
-            "action": "O_CONTACT_RECOVERED",
-            "high_minutes": 10.0,
-            "low_minutes": 3.0,
-            "reduction_at_high": 0.462096,
-            "reduction_at_low": 0.471284,
+            "action": "M_RESULT_ACK",
+            "high_minutes": 4.0,
+            "low_minutes": 1.0,
+            "reduction_at_high": 0.393712,
+            "reduction_at_low": 0.361941,
             "status": "assumed",
-            "swing": 0.009188
+            "swing": 0.03177
+          },
+          {
+            "action": "M_LETTER",
+            "high_minutes": 8.0,
+            "low_minutes": 2.0,
+            "reduction_at_high": 0.393102,
+            "reduction_at_low": 0.362278,
+            "status": "assumed",
+            "swing": 0.030824
+          },
+          {
+            "action": "M_CLOSE_FILE",
+            "high_minutes": 6.0,
+            "low_minutes": 2.0,
+            "reduction_at_high": 0.389912,
+            "reduction_at_low": 0.36701,
+            "status": "assumed",
+            "swing": 0.022902
+          },
+          {
+            "action": "O_EXHAUSTED_REROUTE",
+            "high_minutes": 30.0,
+            "low_minutes": 8.0,
+            "reduction_at_high": 0.358212,
+            "reduction_at_low": 0.379747,
+            "status": "assumed",
+            "swing": 0.021535
+          },
+          {
+            "action": "X_RECORD_CONTACT",
+            "high_minutes": 4.0,
+            "low_minutes": 1.0,
+            "reduction_at_high": 0.386974,
+            "reduction_at_low": 0.365607,
+            "status": "assumed",
+            "swing": 0.021367
+          },
+          {
+            "action": "M_CHASE_COMPLETION",
+            "high_minutes": 10.0,
+            "low_minutes": 2.5,
+            "reduction_at_high": 0.384811,
+            "reduction_at_low": 0.366761,
+            "status": "assumed",
+            "swing": 0.018049
           },
           {
             "action": "M_SMS_ATTEMPT",
             "high_minutes": 3.0,
             "low_minutes": 1.0,
-            "reduction_at_high": 0.475352,
-            "reduction_at_low": 0.46639,
+            "reduction_at_high": 0.380795,
+            "reduction_at_low": 0.370217,
             "status": "assumed",
-            "swing": 0.008962
+            "swing": 0.010578
+          },
+          {
+            "action": "O_CONTACT_RECOVERED",
+            "high_minutes": 10.0,
+            "low_minutes": 3.0,
+            "reduction_at_high": 0.366332,
+            "reduction_at_low": 0.37552,
+            "status": "assumed",
+            "swing": 0.009188
           },
           {
             "action": "M_CHASE_SPECIALIST",
             "high_minutes": 12.2,
             "low_minutes": 4.0,
-            "reduction_at_high": 0.471937,
-            "reduction_at_low": 0.465339,
+            "reduction_at_high": 0.376764,
+            "reduction_at_low": 0.368978,
             "status": "sourced-adjacent",
-            "swing": 0.006598
+            "swing": 0.007786
           },
           {
             "action": "M_DUPLICATE_ITEM",
             "high_minutes": 14.0,
             "low_minutes": 3.0,
-            "reduction_at_high": 0.4736,
-            "reduction_at_low": 0.467548,
+            "reduction_at_high": 0.378727,
+            "reduction_at_low": 0.371584,
             "status": "assumed",
-            "swing": 0.006052
+            "swing": 0.007143
           },
           {
             "action": "O_CONSENT_REVIEW",
             "high_minutes": 10.0,
             "low_minutes": 3.0,
-            "reduction_at_high": 0.465979,
-            "reduction_at_low": 0.469731,
+            "reduction_at_high": 0.370113,
+            "reduction_at_low": 0.374008,
             "status": "assumed",
-            "swing": 0.003751
+            "swing": 0.003895
           },
           {
             "action": "O_TRANSFER_DECISION",
             "high_minutes": 9.5,
             "low_minutes": 3.0,
-            "reduction_at_high": 0.466838,
-            "reduction_at_low": 0.469468,
+            "reduction_at_high": 0.370902,
+            "reduction_at_low": 0.373781,
             "status": "assumed",
-            "swing": 0.00263
+            "swing": 0.002879
           },
           {
             "action": "X_REOPEN_REVIEW",
             "high_minutes": 10.0,
             "low_minutes": 3.0,
-            "reduction_at_high": 0.467272,
-            "reduction_at_low": 0.469215,
+            "reduction_at_high": 0.371638,
+            "reduction_at_low": 0.373399,
             "status": "assumed",
-            "swing": 0.001942
+            "swing": 0.001761
           },
           {
             "action": "M_PHONE_ATTEMPT",
             "high_minutes": 12.1,
             "low_minutes": 3.9,
-            "reduction_at_high": 0.468659,
-            "reduction_at_low": 0.468659,
+            "reduction_at_high": 0.372895,
+            "reduction_at_low": 0.372895,
             "status": "sourced-adjacent",
+            "swing": 0.0
+          },
+          {
+            "action": "O_RECORD_REFUSAL",
+            "high_minutes": 25.0,
+            "low_minutes": 8.0,
+            "reduction_at_high": 0.372895,
+            "reduction_at_low": 0.372895,
+            "status": "assumed",
             "swing": 0.0
           }
         ],
-        "tornado_base": 0.468659
+        "tornado_base": 0.372895
       }
     }
   },
@@ -4595,9 +4591,9 @@
     "cases_per_replication": 2000,
     "ci_method": "percentile bootstrap over replications; differences are paired by replication (common random numbers)",
     "follow_up_days": 360,
-    "git_commit": "91b5e95cc9c750383f7cbe723a66d67896391b8a",
+    "git_commit": "36e063087ab742e3246aecc2ec07db135f4f8391",
     "parameter_status_counts": {
-      "assumed": 87,
+      "assumed": 88,
       "calibrated": 16,
       "empirical": 8,
       "sourced": 13,
@@ -4606,7 +4602,7 @@
     "params_files": [
       "simulator/params.yaml"
     ],
-    "params_hash": "b90c557e531268dc2522fd0452ee5cbbcf3e0f633b0fd39aa2b37e4ccca0d129",
+    "params_hash": "ddf9cb663dd810e42c6d6c294403f39c370cba6ecc989937a13031e3fb98a84b",
     "pathway": "colorectal_fit",
     "pathway_hash": "6c8ecd4a0c378c64a5ada30b88542b7546ecfac118cb0ea5a1a3f5f9e0ed78b7",
     "pathway_version": "0.3",
@@ -5183,6 +5179,13 @@
       "value": 0.6
     },
     {
+      "key": "orchestration.refusal_path_share",
+      "notes": "Share of orchestrated-arm refusers (patients.refusal_prob) whose case takes the informed-refusal path: counselling 5 working days after the process notices them, a recorded refusal, a different physician's declined closure 3 working days later, and no more ladder for them. 0 = they are flagged lost and the ladder runs on, as before the path existed. Switching it on moves the labour results (see docs/results/metrics.md, declined_closed_share), so it is a decision for the results' owner and not on by default. No range: it is a switch, not an uncertain quantity.",
+      "source": "Design choice, off by default (A33, ADR-042). 0 keeps the committed headline results as they were; simulator/params.refusal.yaml (make evaluate-refusal) sets 1.0",
+      "status": "assumed",
+      "value": 0.0
+    },
+    {
       "key": "orchestration.signoff_sla_working_days",
       "notes": "",
       "source": "assumed, no public source",
@@ -5624,13 +5627,13 @@
         },
         "orchestrated": {
           "counters": {
-            "blocked_messages": 292,
+            "blocked_messages": 336,
             "escalations_coalesced": 278,
-            "timers_missed": 358,
-            "watchdog_flags": 740
+            "timers_missed": 359,
+            "watchdog_flags": 2092
           },
-          "event_hash": "5d86463623b8cd08",
-          "n_events": 56028
+          "event_hash": "7fd63ca15b307345",
+          "n_events": 58222
         }
       },
       "rep": 0,
@@ -5650,13 +5653,13 @@
         },
         "orchestrated": {
           "counters": {
-            "blocked_messages": 130,
+            "blocked_messages": 136,
             "escalations_coalesced": 242,
             "timers_missed": 329,
-            "watchdog_flags": 623
+            "watchdog_flags": 2042
           },
-          "event_hash": "9253ab5963485e1e",
-          "n_events": 55550
+          "event_hash": "21c732f482fbbf06",
+          "n_events": 57758
         }
       },
       "rep": 1,
@@ -5676,13 +5679,13 @@
         },
         "orchestrated": {
           "counters": {
-            "blocked_messages": 201,
+            "blocked_messages": 224,
             "escalations_coalesced": 242,
             "timers_missed": 331,
-            "watchdog_flags": 696
+            "watchdog_flags": 2280
           },
-          "event_hash": "8f6dbe43d44e56a8",
-          "n_events": 55447
+          "event_hash": "3b06efee92aaa3cf",
+          "n_events": 57990
         }
       },
       "rep": 2,
@@ -5702,13 +5705,13 @@
         },
         "orchestrated": {
           "counters": {
-            "blocked_messages": 198,
-            "escalations_coalesced": 241,
+            "blocked_messages": 224,
+            "escalations_coalesced": 243,
             "timers_missed": 324,
-            "watchdog_flags": 675
+            "watchdog_flags": 2218
           },
-          "event_hash": "b4c2efce81655246",
-          "n_events": 56007
+          "event_hash": "f2153e8d28eea219",
+          "n_events": 58510
         }
       },
       "rep": 3,
@@ -5728,13 +5731,13 @@
         },
         "orchestrated": {
           "counters": {
-            "blocked_messages": 184,
+            "blocked_messages": 226,
             "escalations_coalesced": 299,
             "timers_missed": 334,
-            "watchdog_flags": 610
+            "watchdog_flags": 2032
           },
-          "event_hash": "4fa01314cf0d765c",
-          "n_events": 55606
+          "event_hash": "dabf59c5e5536c14",
+          "n_events": 57828
         }
       },
       "rep": 4,
@@ -5754,13 +5757,13 @@
         },
         "orchestrated": {
           "counters": {
-            "blocked_messages": 286,
+            "blocked_messages": 345,
             "escalations_coalesced": 253,
             "timers_missed": 336,
-            "watchdog_flags": 742
+            "watchdog_flags": 2139
           },
-          "event_hash": "d29df80ead6ddd67",
-          "n_events": 56019
+          "event_hash": "f31691ec9b1334c4",
+          "n_events": 58295
         }
       },
       "rep": 5,
@@ -5780,13 +5783,13 @@
         },
         "orchestrated": {
           "counters": {
-            "blocked_messages": 197,
+            "blocked_messages": 223,
             "escalations_coalesced": 266,
             "timers_missed": 346,
-            "watchdog_flags": 585
+            "watchdog_flags": 2052
           },
-          "event_hash": "11198fa71eac996e",
-          "n_events": 55373
+          "event_hash": "33d4691159a758cb",
+          "n_events": 57709
         }
       },
       "rep": 6,
@@ -5806,13 +5809,13 @@
         },
         "orchestrated": {
           "counters": {
-            "blocked_messages": 273,
+            "blocked_messages": 301,
             "escalations_coalesced": 260,
             "timers_missed": 334,
-            "watchdog_flags": 750
+            "watchdog_flags": 2363
           },
-          "event_hash": "f46091f5fcf1fc4a",
-          "n_events": 55826
+          "event_hash": "081817e2a2616b7c",
+          "n_events": 58406
         }
       },
       "rep": 7,
@@ -5832,13 +5835,13 @@
         },
         "orchestrated": {
           "counters": {
-            "blocked_messages": 271,
+            "blocked_messages": 298,
             "escalations_coalesced": 260,
             "timers_missed": 378,
-            "watchdog_flags": 714
+            "watchdog_flags": 2063
           },
-          "event_hash": "f75874812d3db9b2",
-          "n_events": 55861
+          "event_hash": "0c2028dc1f77c02d",
+          "n_events": 57984
         }
       },
       "rep": 8,
@@ -5858,13 +5861,13 @@
         },
         "orchestrated": {
           "counters": {
-            "blocked_messages": 221,
+            "blocked_messages": 252,
             "escalations_coalesced": 276,
             "timers_missed": 302,
-            "watchdog_flags": 718
+            "watchdog_flags": 2236
           },
-          "event_hash": "930d4251cf0ec874",
-          "n_events": 56374
+          "event_hash": "02f2e70ceeb96f12",
+          "n_events": 58757
         }
       },
       "rep": 9,
@@ -5884,13 +5887,13 @@
         },
         "orchestrated": {
           "counters": {
-            "blocked_messages": 214,
+            "blocked_messages": 226,
             "escalations_coalesced": 247,
             "timers_missed": 350,
-            "watchdog_flags": 601
+            "watchdog_flags": 1845
           },
-          "event_hash": "f0ad2e4db29318e2",
-          "n_events": 55807
+          "event_hash": "d15fa9491fe977e6",
+          "n_events": 57792
         }
       },
       "rep": 10,
@@ -5910,13 +5913,13 @@
         },
         "orchestrated": {
           "counters": {
-            "blocked_messages": 182,
+            "blocked_messages": 233,
             "escalations_coalesced": 273,
             "timers_missed": 355,
-            "watchdog_flags": 772
+            "watchdog_flags": 2347
           },
-          "event_hash": "845245ecea735ea5",
-          "n_events": 55790
+          "event_hash": "b005b054bfc14f89",
+          "n_events": 58318
         }
       },
       "rep": 11,
@@ -5936,13 +5939,13 @@
         },
         "orchestrated": {
           "counters": {
-            "blocked_messages": 135,
+            "blocked_messages": 160,
             "escalations_coalesced": 288,
             "timers_missed": 366,
-            "watchdog_flags": 710
+            "watchdog_flags": 2376
           },
-          "event_hash": "5e9ca32e3e26f926",
-          "n_events": 55648
+          "event_hash": "b25c77c9296960c0",
+          "n_events": 58341
         }
       },
       "rep": 12,
@@ -5962,13 +5965,13 @@
         },
         "orchestrated": {
           "counters": {
-            "blocked_messages": 300,
+            "blocked_messages": 326,
             "escalations_coalesced": 286,
             "timers_missed": 349,
-            "watchdog_flags": 684
+            "watchdog_flags": 2006
           },
-          "event_hash": "3b882f7b9b609374",
-          "n_events": 55775
+          "event_hash": "39e84869884b54b1",
+          "n_events": 57876
         }
       },
       "rep": 13,
@@ -5988,13 +5991,13 @@
         },
         "orchestrated": {
           "counters": {
-            "blocked_messages": 208,
+            "blocked_messages": 248,
             "escalations_coalesced": 250,
             "timers_missed": 316,
-            "watchdog_flags": 591
+            "watchdog_flags": 2135
           },
-          "event_hash": "a75769b308938289",
-          "n_events": 54923
+          "event_hash": "608b2394ada8e5d7",
+          "n_events": 57403
         }
       },
       "rep": 14,
@@ -6014,13 +6017,13 @@
         },
         "orchestrated": {
           "counters": {
-            "blocked_messages": 235,
-            "escalations_coalesced": 261,
+            "blocked_messages": 260,
+            "escalations_coalesced": 263,
             "timers_missed": 314,
-            "watchdog_flags": 694
+            "watchdog_flags": 2140
           },
-          "event_hash": "ddecfb84fb4dbebf",
-          "n_events": 55625
+          "event_hash": "ab56eab5e9bda74a",
+          "n_events": 57882
         }
       },
       "rep": 15,
@@ -6040,13 +6043,13 @@
         },
         "orchestrated": {
           "counters": {
-            "blocked_messages": 248,
+            "blocked_messages": 288,
             "escalations_coalesced": 296,
             "timers_missed": 341,
-            "watchdog_flags": 695
+            "watchdog_flags": 2107
           },
-          "event_hash": "9fdf56e3e94813d0",
-          "n_events": 55123
+          "event_hash": "7851fe4f0ddd39c5",
+          "n_events": 57363
         }
       },
       "rep": 16,
@@ -6066,13 +6069,13 @@
         },
         "orchestrated": {
           "counters": {
-            "blocked_messages": 204,
+            "blocked_messages": 217,
             "escalations_coalesced": 345,
-            "timers_missed": 339,
-            "watchdog_flags": 718
+            "timers_missed": 340,
+            "watchdog_flags": 2135
           },
-          "event_hash": "98ac5cee5c9b3112",
-          "n_events": 55650
+          "event_hash": "a0ca2bacc9451d3e",
+          "n_events": 57837
         }
       },
       "rep": 17,
@@ -6092,13 +6095,13 @@
         },
         "orchestrated": {
           "counters": {
-            "blocked_messages": 173,
+            "blocked_messages": 215,
             "escalations_coalesced": 267,
             "timers_missed": 342,
-            "watchdog_flags": 700
+            "watchdog_flags": 2370
           },
-          "event_hash": "39f21a1d72ced975",
-          "n_events": 55903
+          "event_hash": "bf6ac3d76324caa6",
+          "n_events": 58567
         }
       },
       "rep": 18,
@@ -6118,13 +6121,13 @@
         },
         "orchestrated": {
           "counters": {
-            "blocked_messages": 247,
+            "blocked_messages": 282,
             "escalations_coalesced": 272,
             "timers_missed": 308,
-            "watchdog_flags": 700
+            "watchdog_flags": 2267
           },
-          "event_hash": "583ed8135799e4fe",
-          "n_events": 55923
+          "event_hash": "dfbe0d51b64bb6d8",
+          "n_events": 58480
         }
       },
       "rep": 19,
@@ -6920,9 +6923,9 @@
             "of_reps": 20
           },
           "declined_closed_share": {
-            "ci_high": 0.06755,
-            "ci_low": 0.062374,
-            "mean": 0.065,
+            "ci_high": 0.0,
+            "ci_low": 0.0,
+            "mean": 0.0,
             "n_reps": 20,
             "of_reps": 20
           },
@@ -6934,16 +6937,16 @@
             "of_reps": 20
           },
           "escalation_acted_on_rate": {
-            "ci_high": 0.418905,
-            "ci_low": 0.409386,
-            "mean": 0.41426,
+            "ci_high": 0.408558,
+            "ci_low": 0.399225,
+            "mean": 0.404076,
             "n_reps": 20,
             "of_reps": 20
           },
           "escalations_per_100_cases": {
-            "ci_high": 135.710062,
-            "ci_low": 132.504875,
-            "mean": 134.085,
+            "ci_high": 136.445125,
+            "ci_low": 133.246813,
+            "mean": 134.865,
             "n_reps": 20,
             "of_reps": 20
           },
@@ -7389,9 +7392,9 @@
             "of_reps": 20
           },
           "messy.provider_switch.closed_share": {
-            "ci_high": 0.410343,
-            "ci_low": 0.366341,
-            "mean": 0.387651,
+            "ci_high": 0.394538,
+            "ci_low": 0.351875,
+            "mean": 0.372399,
             "n_reps": 20,
             "of_reps": 20
           },
@@ -7403,30 +7406,30 @@
             "of_reps": 20
           },
           "messy.provider_switch.completion_final": {
-            "ci_high": 0.412073,
-            "ci_low": 0.36669,
-            "mean": 0.390374,
+            "ci_high": 0.396932,
+            "ci_low": 0.352124,
+            "mean": 0.37499,
             "n_reps": 20,
             "of_reps": 20
           },
           "messy.provider_switch.completion_final_unaffected": {
-            "ci_high": 0.677634,
-            "ci_low": 0.667048,
-            "mean": 0.672106,
+            "ci_high": 0.678345,
+            "ci_low": 0.66782,
+            "mean": 0.672904,
             "n_reps": 20,
             "of_reps": 20
           },
           "messy.provider_switch.handled_rate": {
-            "ci_high": 0.487092,
-            "ci_low": 0.444314,
-            "mean": 0.465249,
+            "ci_high": 0.508197,
+            "ci_low": 0.465174,
+            "mean": 0.48684,
             "n_reps": 20,
             "of_reps": 20
           },
           "messy.provider_switch.n": {
-            "ci_high": 58.65,
-            "ci_low": 53.04875,
-            "mean": 55.95,
+            "ci_high": 61.05125,
+            "ci_low": 55.4475,
+            "mean": 58.25,
             "n_reps": 20,
             "of_reps": 20
           },
@@ -7592,16 +7595,16 @@
             "of_reps": 20
           },
           "time_to_first_contact_median": {
-            "ci_high": 10.922426,
-            "ci_low": 10.828509,
-            "mean": 10.875946,
+            "ci_high": 10.922684,
+            "ci_low": 10.828744,
+            "mean": 10.876351,
             "n_reps": 20,
             "of_reps": 20
           },
           "time_to_first_contact_p90": {
-            "ci_high": 20.349099,
-            "ci_low": 19.958331,
-            "mean": 20.144679,
+            "ci_high": 20.347431,
+            "ci_low": 19.955546,
+            "mean": 20.143496,
             "n_reps": 20,
             "of_reps": 20
           },
@@ -7673,9 +7676,9 @@
           "of_reps": 20
         },
         "declined_closed_share": {
-          "ci_high": 0.067801,
-          "ci_low": 0.0623,
-          "mean": 0.065,
+          "ci_high": 0.0,
+          "ci_low": 0.0,
+          "mean": 0.0,
           "n_reps": 20,
           "of_reps": 20
         },
@@ -7688,9 +7691,9 @@
         },
         "escalation_acted_on_rate": null,
         "escalations_per_100_cases": {
-          "ci_high": 135.715,
-          "ci_low": 132.362437,
-          "mean": 134.085,
+          "ci_high": 136.464875,
+          "ci_low": 133.117375,
+          "mean": 134.865,
           "n_reps": 20,
           "of_reps": 20
         },
@@ -8136,9 +8139,9 @@
           "of_reps": 20
         },
         "messy.provider_switch.closed_share": {
-          "ci_high": 0.278661,
-          "ci_low": 0.223643,
-          "mean": 0.252718,
+          "ci_high": 0.261566,
+          "ci_low": 0.209828,
+          "mean": 0.237466,
           "n_reps": 20,
           "of_reps": 20
         },
@@ -8150,30 +8153,30 @@
           "of_reps": 20
         },
         "messy.provider_switch.completion_final": {
-          "ci_high": 0.275045,
-          "ci_low": 0.223426,
-          "mean": 0.251134,
+          "ci_high": 0.258828,
+          "ci_low": 0.209303,
+          "mean": 0.235749,
           "n_reps": 20,
           "of_reps": 20
         },
         "messy.provider_switch.completion_final_unaffected": {
-          "ci_high": 0.12014,
-          "ci_low": 0.112796,
-          "mean": 0.116677,
+          "ci_high": 0.120854,
+          "ci_low": 0.113714,
+          "mean": 0.117474,
           "n_reps": 20,
           "of_reps": 20
         },
         "messy.provider_switch.handled_rate": {
-          "ci_high": 0.48646,
-          "ci_low": 0.442371,
-          "mean": 0.465249,
+          "ci_high": 0.509705,
+          "ci_low": 0.463555,
+          "mean": 0.48684,
           "n_reps": 20,
           "of_reps": 20
         },
         "messy.provider_switch.n": {
-          "ci_high": -12.69875,
-          "ci_low": -15.95,
-          "mean": -14.25,
+          "ci_high": -10.29875,
+          "ci_low": -13.70125,
+          "mean": -11.95,
           "n_reps": 20,
           "of_reps": 20
         },
@@ -8339,16 +8342,16 @@
           "of_reps": 20
         },
         "time_to_first_contact_median": {
-          "ci_high": -1.37624,
-          "ci_low": -1.647956,
-          "mean": -1.513106,
+          "ci_high": -1.375559,
+          "ci_low": -1.647802,
+          "mean": -1.512701,
           "n_reps": 20,
           "of_reps": 20
         },
         "time_to_first_contact_p90": {
-          "ci_high": -2.870587,
-          "ci_low": -3.219167,
-          "mean": -3.047656,
+          "ci_high": -2.870616,
+          "ci_low": -3.221533,
+          "mean": -3.048839,
           "n_reps": 20,
           "of_reps": 20
         },
@@ -8415,7 +8418,7 @@
         }
       ],
       "parameter_status_counts": {
-        "assumed": 86,
+        "assumed": 87,
         "calibrated": 17,
         "empirical": 7,
         "sourced": 13,
@@ -8425,7 +8428,7 @@
         "simulator/params.yaml",
         "simulator/params.conservative.yaml"
       ],
-      "params_hash": "d48f20dc2668a41f3c7f007426bf2dada16ffd4c117a2055c643fed597d7e5c5",
+      "params_hash": "90bb0c2a4d93e016722f3896da3847fd6053043f72f01c9a876843235843d520",
       "per_replication": [
         {
           "arms": {
@@ -8441,13 +8444,13 @@
             },
             "orchestrated": {
               "counters": {
-                "blocked_messages": 155,
+                "blocked_messages": 186,
                 "escalations_coalesced": 139,
                 "timers_missed": 184,
-                "watchdog_flags": 538
+                "watchdog_flags": 1298
               },
-              "event_hash": "12026e2c743b9ca9",
-              "n_events": 40309
+              "event_hash": "6b7e78fa40ced20e",
+              "n_events": 41562
             }
           },
           "rep": 0,
@@ -8467,13 +8470,13 @@
             },
             "orchestrated": {
               "counters": {
-                "blocked_messages": 59,
+                "blocked_messages": 65,
                 "escalations_coalesced": 134,
                 "timers_missed": 181,
-                "watchdog_flags": 452
+                "watchdog_flags": 1167
               },
-              "event_hash": "5a2192cd4ce490fb",
-              "n_events": 39284
+              "event_hash": "f5e9895f409017d1",
+              "n_events": 40412
             }
           },
           "rep": 1,
@@ -8493,13 +8496,13 @@
             },
             "orchestrated": {
               "counters": {
-                "blocked_messages": 128,
+                "blocked_messages": 146,
                 "escalations_coalesced": 139,
                 "timers_missed": 176,
-                "watchdog_flags": 535
+                "watchdog_flags": 1393
               },
-              "event_hash": "6d0179ea00f9f58e",
-              "n_events": 39784
+              "event_hash": "818b950918ab6cc8",
+              "n_events": 41152
             }
           },
           "rep": 2,
@@ -8519,13 +8522,13 @@
             },
             "orchestrated": {
               "counters": {
-                "blocked_messages": 130,
+                "blocked_messages": 144,
                 "escalations_coalesced": 119,
                 "timers_missed": 166,
-                "watchdog_flags": 522
+                "watchdog_flags": 1284
               },
-              "event_hash": "5939d1e654d24c34",
-              "n_events": 39637
+              "event_hash": "33abe3b236911578",
+              "n_events": 40888
             }
           },
           "rep": 3,
@@ -8545,13 +8548,13 @@
             },
             "orchestrated": {
               "counters": {
-                "blocked_messages": 77,
+                "blocked_messages": 85,
                 "escalations_coalesced": 131,
                 "timers_missed": 193,
-                "watchdog_flags": 491
+                "watchdog_flags": 1191
               },
-              "event_hash": "aee36f6a5da56da5",
-              "n_events": 39150
+              "event_hash": "11f421a27ac599cb",
+              "n_events": 40208
             }
           },
           "rep": 4,
@@ -8571,13 +8574,13 @@
             },
             "orchestrated": {
               "counters": {
-                "blocked_messages": 148,
+                "blocked_messages": 165,
                 "escalations_coalesced": 116,
                 "timers_missed": 187,
-                "watchdog_flags": 629
+                "watchdog_flags": 1380
               },
-              "event_hash": "b5d02d3aa1efd553",
-              "n_events": 40310
+              "event_hash": "d5f87fdff80e0c54",
+              "n_events": 41551
             }
           },
           "rep": 5,
@@ -8597,13 +8600,13 @@
             },
             "orchestrated": {
               "counters": {
-                "blocked_messages": 77,
+                "blocked_messages": 87,
                 "escalations_coalesced": 131,
                 "timers_missed": 203,
-                "watchdog_flags": 448
+                "watchdog_flags": 1190
               },
-              "event_hash": "bb40acbd785e4ad9",
-              "n_events": 39628
+              "event_hash": "2cdc653376aa5136",
+              "n_events": 40814
             }
           },
           "rep": 6,
@@ -8623,13 +8626,13 @@
             },
             "orchestrated": {
               "counters": {
-                "blocked_messages": 132,
+                "blocked_messages": 147,
                 "escalations_coalesced": 156,
                 "timers_missed": 171,
-                "watchdog_flags": 575
+                "watchdog_flags": 1445
               },
-              "event_hash": "b3fbe340a583ee49",
-              "n_events": 39449
+              "event_hash": "7490b6c14661898e",
+              "n_events": 40849
             }
           },
           "rep": 7,
@@ -8649,13 +8652,13 @@
             },
             "orchestrated": {
               "counters": {
-                "blocked_messages": 143,
+                "blocked_messages": 160,
                 "escalations_coalesced": 135,
                 "timers_missed": 203,
-                "watchdog_flags": 485
+                "watchdog_flags": 1251
               },
-              "event_hash": "3ca77271b6e99acb",
-              "n_events": 39258
+              "event_hash": "e99a89950627c154",
+              "n_events": 40495
             }
           },
           "rep": 8,
@@ -8675,13 +8678,13 @@
             },
             "orchestrated": {
               "counters": {
-                "blocked_messages": 109,
+                "blocked_messages": 129,
                 "escalations_coalesced": 161,
                 "timers_missed": 161,
-                "watchdog_flags": 602
+                "watchdog_flags": 1474
               },
-              "event_hash": "5aafe016ad07cb62",
-              "n_events": 40206
+              "event_hash": "69ce0d6c53cf5e50",
+              "n_events": 41542
             }
           },
           "rep": 9,
@@ -8704,10 +8707,10 @@
                 "blocked_messages": 119,
                 "escalations_coalesced": 127,
                 "timers_missed": 181,
-                "watchdog_flags": 502
+                "watchdog_flags": 1151
               },
-              "event_hash": "55d30417921799fb",
-              "n_events": 39758
+              "event_hash": "c3ccfb90853d76e5",
+              "n_events": 40820
             }
           },
           "rep": 10,
@@ -8727,13 +8730,13 @@
             },
             "orchestrated": {
               "counters": {
-                "blocked_messages": 107,
+                "blocked_messages": 146,
                 "escalations_coalesced": 126,
                 "timers_missed": 193,
-                "watchdog_flags": 520
+                "watchdog_flags": 1288
               },
-              "event_hash": "821563849c60ea6e",
-              "n_events": 38818
+              "event_hash": "bcc7afd2348c7ac8",
+              "n_events": 40036
             }
           },
           "rep": 11,
@@ -8753,13 +8756,13 @@
             },
             "orchestrated": {
               "counters": {
-                "blocked_messages": 39,
+                "blocked_messages": 64,
                 "escalations_coalesced": 143,
                 "timers_missed": 207,
-                "watchdog_flags": 530
+                "watchdog_flags": 1512
               },
-              "event_hash": "68dccfa946ff66c9",
-              "n_events": 39794
+              "event_hash": "82979d866861dd75",
+              "n_events": 41396
             }
           },
           "rep": 12,
@@ -8779,13 +8782,13 @@
             },
             "orchestrated": {
               "counters": {
-                "blocked_messages": 200,
+                "blocked_messages": 227,
                 "escalations_coalesced": 138,
                 "timers_missed": 174,
-                "watchdog_flags": 565
+                "watchdog_flags": 1264
               },
-              "event_hash": "481660778ca9c789",
-              "n_events": 39359
+              "event_hash": "cd8172ab391541b9",
+              "n_events": 40506
             }
           },
           "rep": 13,
@@ -8805,13 +8808,13 @@
             },
             "orchestrated": {
               "counters": {
-                "blocked_messages": 117,
+                "blocked_messages": 132,
                 "escalations_coalesced": 142,
                 "timers_missed": 180,
-                "watchdog_flags": 551
+                "watchdog_flags": 1424
               },
-              "event_hash": "d1bad4348d41ab83",
-              "n_events": 39808
+              "event_hash": "47af7b76e7f8da86",
+              "n_events": 41217
             }
           },
           "rep": 14,
@@ -8831,13 +8834,13 @@
             },
             "orchestrated": {
               "counters": {
-                "blocked_messages": 140,
+                "blocked_messages": 145,
                 "escalations_coalesced": 164,
                 "timers_missed": 158,
-                "watchdog_flags": 528
+                "watchdog_flags": 1329
               },
-              "event_hash": "7ca1dcf95705f05d",
-              "n_events": 40001
+              "event_hash": "edfd1352b22686b5",
+              "n_events": 41274
             }
           },
           "rep": 15,
@@ -8857,13 +8860,13 @@
             },
             "orchestrated": {
               "counters": {
-                "blocked_messages": 94,
+                "blocked_messages": 120,
                 "escalations_coalesced": 149,
                 "timers_missed": 175,
-                "watchdog_flags": 498
+                "watchdog_flags": 1235
               },
-              "event_hash": "0b4fbfe6dbe61f4a",
-              "n_events": 39522
+              "event_hash": "26bc85daf8f9d9cd",
+              "n_events": 40709
             }
           },
           "rep": 16,
@@ -8883,13 +8886,13 @@
             },
             "orchestrated": {
               "counters": {
-                "blocked_messages": 120,
+                "blocked_messages": 129,
                 "escalations_coalesced": 168,
                 "timers_missed": 188,
-                "watchdog_flags": 612
+                "watchdog_flags": 1351
               },
-              "event_hash": "05b82965db2f70d0",
-              "n_events": 40323
+              "event_hash": "1289ec81195cfbe8",
+              "n_events": 41467
             }
           },
           "rep": 17,
@@ -8909,13 +8912,13 @@
             },
             "orchestrated": {
               "counters": {
-                "blocked_messages": 113,
+                "blocked_messages": 129,
                 "escalations_coalesced": 128,
                 "timers_missed": 178,
-                "watchdog_flags": 537
+                "watchdog_flags": 1432
               },
-              "event_hash": "f41e0279e1c3f01c",
-              "n_events": 39267
+              "event_hash": "c6b0340aea453baf",
+              "n_events": 40683
             }
           },
           "rep": 18,
@@ -8935,13 +8938,13 @@
             },
             "orchestrated": {
               "counters": {
-                "blocked_messages": 159,
+                "blocked_messages": 187,
                 "escalations_coalesced": 126,
                 "timers_missed": 171,
-                "watchdog_flags": 607
+                "watchdog_flags": 1563
               },
-              "event_hash": "0b7033a22238b04a",
-              "n_events": 40004
+              "event_hash": "90c7bfb28ea7d123",
+              "n_events": 41554
             }
           },
           "rep": 19,
@@ -9737,9 +9740,9 @@
             "of_reps": 20
           },
           "declined_closed_share": {
-            "ci_high": 0.12315,
-            "ci_low": 0.116897,
-            "mean": 0.12025,
+            "ci_high": 0.0,
+            "ci_low": 0.0,
+            "mean": 0.0,
             "n_reps": 20,
             "of_reps": 20
           },
@@ -9751,16 +9754,16 @@
             "of_reps": 20
           },
           "escalation_acted_on_rate": {
-            "ci_high": 0.451649,
-            "ci_low": 0.444692,
-            "mean": 0.448044,
+            "ci_high": 0.440883,
+            "ci_low": 0.433604,
+            "mean": 0.437143,
             "n_reps": 20,
             "of_reps": 20
           },
           "escalations_per_100_cases": {
-            "ci_high": 232.775063,
-            "ci_low": 229.43975,
-            "mean": 230.9875,
+            "ci_high": 234.052938,
+            "ci_low": 230.694875,
+            "mean": 232.2775,
             "n_reps": 20,
             "of_reps": 20
           },
@@ -10206,9 +10209,9 @@
             "of_reps": 20
           },
           "messy.provider_switch.closed_share": {
-            "ci_high": 0.715767,
-            "ci_low": 0.652264,
-            "mean": 0.683006,
+            "ci_high": 0.658292,
+            "ci_low": 0.597392,
+            "mean": 0.627196,
             "n_reps": 20,
             "of_reps": 20
           },
@@ -10220,30 +10223,30 @@
             "of_reps": 20
           },
           "messy.provider_switch.completion_final": {
-            "ci_high": 0.713176,
-            "ci_low": 0.653512,
-            "mean": 0.683006,
+            "ci_high": 0.657821,
+            "ci_low": 0.59651,
+            "mean": 0.627196,
             "n_reps": 20,
             "of_reps": 20
           },
           "messy.provider_switch.completion_final_unaffected": {
-            "ci_high": 0.791241,
-            "ci_low": 0.783762,
-            "mean": 0.787301,
+            "ci_high": 0.792709,
+            "ci_low": 0.785416,
+            "mean": 0.788915,
             "n_reps": 20,
             "of_reps": 20
           },
           "messy.provider_switch.handled_rate": {
             "ci_high": 1.0,
-            "ci_low": 0.994917,
-            "mean": 0.997958,
+            "ci_low": 1.0,
+            "mean": 1.0,
             "n_reps": 20,
             "of_reps": 20
           },
           "messy.provider_switch.n": {
-            "ci_high": 47.2,
-            "ci_low": 41.89875,
-            "mean": 44.45,
+            "ci_high": 51.5,
+            "ci_low": 45.55,
+            "mean": 48.45,
             "n_reps": 20,
             "of_reps": 20
           },
@@ -10416,9 +10419,9 @@
             "of_reps": 20
           },
           "time_to_first_contact_p90": {
-            "ci_high": 15.452564,
-            "ci_low": 15.267921,
-            "mean": 15.363463,
+            "ci_high": 15.452562,
+            "ci_low": 15.267853,
+            "mean": 15.363398,
             "n_reps": 20,
             "of_reps": 20
           },
@@ -10490,9 +10493,9 @@
           "of_reps": 20
         },
         "declined_closed_share": {
-          "ci_high": 0.123629,
-          "ci_low": 0.116599,
-          "mean": 0.12025,
+          "ci_high": 0.0,
+          "ci_low": 0.0,
+          "mean": 0.0,
           "n_reps": 20,
           "of_reps": 20
         },
@@ -10505,9 +10508,9 @@
         },
         "escalation_acted_on_rate": null,
         "escalations_per_100_cases": {
-          "ci_high": 232.597625,
-          "ci_low": 229.427375,
-          "mean": 230.9875,
+          "ci_high": 233.890125,
+          "ci_low": 230.699812,
+          "mean": 232.2775,
           "n_reps": 20,
           "of_reps": 20
         },
@@ -10953,9 +10956,9 @@
           "of_reps": 20
         },
         "messy.provider_switch.closed_share": {
-          "ci_high": 0.586883,
-          "ci_low": 0.507951,
-          "mean": 0.548073,
+          "ci_high": 0.531773,
+          "ci_low": 0.452432,
+          "mean": 0.492263,
           "n_reps": 20,
           "of_reps": 20
         },
@@ -10967,30 +10970,30 @@
           "of_reps": 20
         },
         "messy.provider_switch.completion_final": {
-          "ci_high": 0.582548,
-          "ci_low": 0.50702,
-          "mean": 0.543766,
+          "ci_high": 0.525408,
+          "ci_low": 0.450715,
+          "mean": 0.487955,
           "n_reps": 20,
           "of_reps": 20
         },
         "messy.provider_switch.completion_final_unaffected": {
-          "ci_high": 0.236789,
-          "ci_low": 0.226962,
-          "mean": 0.231872,
+          "ci_high": 0.238305,
+          "ci_low": 0.228764,
+          "mean": 0.233485,
           "n_reps": 20,
           "of_reps": 20
         },
         "messy.provider_switch.handled_rate": {
           "ci_high": 1.0,
-          "ci_low": 0.994917,
-          "mean": 0.997958,
+          "ci_low": 1.0,
+          "mean": 1.0,
           "n_reps": 20,
           "of_reps": 20
         },
         "messy.provider_switch.n": {
-          "ci_high": -23.8,
-          "ci_low": -27.65125,
-          "mean": -25.75,
+          "ci_high": -19.75,
+          "ci_low": -23.9,
+          "mean": -21.75,
           "n_reps": 20,
           "of_reps": 20
         },
@@ -11163,9 +11166,9 @@
           "of_reps": 20
         },
         "time_to_first_contact_p90": {
-          "ci_high": -7.602483,
-          "ci_low": -8.092018,
-          "mean": -7.828872,
+          "ci_high": -7.602552,
+          "ci_low": -8.092081,
+          "mean": -7.828937,
           "n_reps": 20,
           "of_reps": 20
         },
@@ -11175,7 +11178,7 @@
       "label": "Upper range (mechanism ceiling)",
       "overrides": [],
       "parameter_status_counts": {
-        "assumed": 87,
+        "assumed": 88,
         "calibrated": 16,
         "empirical": 8,
         "sourced": 13,
@@ -11184,7 +11187,7 @@
       "params_files": [
         "simulator/params.yaml"
       ],
-      "params_hash": "b90c557e531268dc2522fd0452ee5cbbcf3e0f633b0fd39aa2b37e4ccca0d129",
+      "params_hash": "ddf9cb663dd810e42c6d6c294403f39c370cba6ecc989937a13031e3fb98a84b",
       "per_replication": [
         {
           "arms": {
@@ -11200,13 +11203,13 @@
             },
             "orchestrated": {
               "counters": {
-                "blocked_messages": 292,
+                "blocked_messages": 336,
                 "escalations_coalesced": 278,
-                "timers_missed": 358,
-                "watchdog_flags": 740
+                "timers_missed": 359,
+                "watchdog_flags": 2092
               },
-              "event_hash": "5d86463623b8cd08",
-              "n_events": 56028
+              "event_hash": "7fd63ca15b307345",
+              "n_events": 58222
             }
           },
           "rep": 0,
@@ -11226,13 +11229,13 @@
             },
             "orchestrated": {
               "counters": {
-                "blocked_messages": 130,
+                "blocked_messages": 136,
                 "escalations_coalesced": 242,
                 "timers_missed": 329,
-                "watchdog_flags": 623
+                "watchdog_flags": 2042
               },
-              "event_hash": "9253ab5963485e1e",
-              "n_events": 55550
+              "event_hash": "21c732f482fbbf06",
+              "n_events": 57758
             }
           },
           "rep": 1,
@@ -11252,13 +11255,13 @@
             },
             "orchestrated": {
               "counters": {
-                "blocked_messages": 201,
+                "blocked_messages": 224,
                 "escalations_coalesced": 242,
                 "timers_missed": 331,
-                "watchdog_flags": 696
+                "watchdog_flags": 2280
               },
-              "event_hash": "8f6dbe43d44e56a8",
-              "n_events": 55447
+              "event_hash": "3b06efee92aaa3cf",
+              "n_events": 57990
             }
           },
           "rep": 2,
@@ -11278,13 +11281,13 @@
             },
             "orchestrated": {
               "counters": {
-                "blocked_messages": 198,
-                "escalations_coalesced": 241,
+                "blocked_messages": 224,
+                "escalations_coalesced": 243,
                 "timers_missed": 324,
-                "watchdog_flags": 675
+                "watchdog_flags": 2218
               },
-              "event_hash": "b4c2efce81655246",
-              "n_events": 56007
+              "event_hash": "f2153e8d28eea219",
+              "n_events": 58510
             }
           },
           "rep": 3,
@@ -11304,13 +11307,13 @@
             },
             "orchestrated": {
               "counters": {
-                "blocked_messages": 184,
+                "blocked_messages": 226,
                 "escalations_coalesced": 299,
                 "timers_missed": 334,
-                "watchdog_flags": 610
+                "watchdog_flags": 2032
               },
-              "event_hash": "4fa01314cf0d765c",
-              "n_events": 55606
+              "event_hash": "dabf59c5e5536c14",
+              "n_events": 57828
             }
           },
           "rep": 4,
@@ -11330,13 +11333,13 @@
             },
             "orchestrated": {
               "counters": {
-                "blocked_messages": 286,
+                "blocked_messages": 345,
                 "escalations_coalesced": 253,
                 "timers_missed": 336,
-                "watchdog_flags": 742
+                "watchdog_flags": 2139
               },
-              "event_hash": "d29df80ead6ddd67",
-              "n_events": 56019
+              "event_hash": "f31691ec9b1334c4",
+              "n_events": 58295
             }
           },
           "rep": 5,
@@ -11356,13 +11359,13 @@
             },
             "orchestrated": {
               "counters": {
-                "blocked_messages": 197,
+                "blocked_messages": 223,
                 "escalations_coalesced": 266,
                 "timers_missed": 346,
-                "watchdog_flags": 585
+                "watchdog_flags": 2052
               },
-              "event_hash": "11198fa71eac996e",
-              "n_events": 55373
+              "event_hash": "33d4691159a758cb",
+              "n_events": 57709
             }
           },
           "rep": 6,
@@ -11382,13 +11385,13 @@
             },
             "orchestrated": {
               "counters": {
-                "blocked_messages": 273,
+                "blocked_messages": 301,
                 "escalations_coalesced": 260,
                 "timers_missed": 334,
-                "watchdog_flags": 750
+                "watchdog_flags": 2363
               },
-              "event_hash": "f46091f5fcf1fc4a",
-              "n_events": 55826
+              "event_hash": "081817e2a2616b7c",
+              "n_events": 58406
             }
           },
           "rep": 7,
@@ -11408,13 +11411,13 @@
             },
             "orchestrated": {
               "counters": {
-                "blocked_messages": 271,
+                "blocked_messages": 298,
                 "escalations_coalesced": 260,
                 "timers_missed": 378,
-                "watchdog_flags": 714
+                "watchdog_flags": 2063
               },
-              "event_hash": "f75874812d3db9b2",
-              "n_events": 55861
+              "event_hash": "0c2028dc1f77c02d",
+              "n_events": 57984
             }
           },
           "rep": 8,
@@ -11434,13 +11437,13 @@
             },
             "orchestrated": {
               "counters": {
-                "blocked_messages": 221,
+                "blocked_messages": 252,
                 "escalations_coalesced": 276,
                 "timers_missed": 302,
-                "watchdog_flags": 718
+                "watchdog_flags": 2236
               },
-              "event_hash": "930d4251cf0ec874",
-              "n_events": 56374
+              "event_hash": "02f2e70ceeb96f12",
+              "n_events": 58757
             }
           },
           "rep": 9,
@@ -11460,13 +11463,13 @@
             },
             "orchestrated": {
               "counters": {
-                "blocked_messages": 214,
+                "blocked_messages": 226,
                 "escalations_coalesced": 247,
                 "timers_missed": 350,
-                "watchdog_flags": 601
+                "watchdog_flags": 1845
               },
-              "event_hash": "f0ad2e4db29318e2",
-              "n_events": 55807
+              "event_hash": "d15fa9491fe977e6",
+              "n_events": 57792
             }
           },
           "rep": 10,
@@ -11486,13 +11489,13 @@
             },
             "orchestrated": {
               "counters": {
-                "blocked_messages": 182,
+                "blocked_messages": 233,
                 "escalations_coalesced": 273,
                 "timers_missed": 355,
-                "watchdog_flags": 772
+                "watchdog_flags": 2347
               },
-              "event_hash": "845245ecea735ea5",
-              "n_events": 55790
+              "event_hash": "b005b054bfc14f89",
+              "n_events": 58318
             }
           },
           "rep": 11,
@@ -11512,13 +11515,13 @@
             },
             "orchestrated": {
               "counters": {
-                "blocked_messages": 135,
+                "blocked_messages": 160,
                 "escalations_coalesced": 288,
                 "timers_missed": 366,
-                "watchdog_flags": 710
+                "watchdog_flags": 2376
               },
-              "event_hash": "5e9ca32e3e26f926",
-              "n_events": 55648
+              "event_hash": "b25c77c9296960c0",
+              "n_events": 58341
             }
           },
           "rep": 12,
@@ -11538,13 +11541,13 @@
             },
             "orchestrated": {
               "counters": {
-                "blocked_messages": 300,
+                "blocked_messages": 326,
                 "escalations_coalesced": 286,
                 "timers_missed": 349,
-                "watchdog_flags": 684
+                "watchdog_flags": 2006
               },
-              "event_hash": "3b882f7b9b609374",
-              "n_events": 55775
+              "event_hash": "39e84869884b54b1",
+              "n_events": 57876
             }
           },
           "rep": 13,
@@ -11564,13 +11567,13 @@
             },
             "orchestrated": {
               "counters": {
-                "blocked_messages": 208,
+                "blocked_messages": 248,
                 "escalations_coalesced": 250,
                 "timers_missed": 316,
-                "watchdog_flags": 591
+                "watchdog_flags": 2135
               },
-              "event_hash": "a75769b308938289",
-              "n_events": 54923
+              "event_hash": "608b2394ada8e5d7",
+              "n_events": 57403
             }
           },
           "rep": 14,
@@ -11590,13 +11593,13 @@
             },
             "orchestrated": {
               "counters": {
-                "blocked_messages": 235,
-                "escalations_coalesced": 261,
+                "blocked_messages": 260,
+                "escalations_coalesced": 263,
                 "timers_missed": 314,
-                "watchdog_flags": 694
+                "watchdog_flags": 2140
               },
-              "event_hash": "ddecfb84fb4dbebf",
-              "n_events": 55625
+              "event_hash": "ab56eab5e9bda74a",
+              "n_events": 57882
             }
           },
           "rep": 15,
@@ -11616,13 +11619,13 @@
             },
             "orchestrated": {
               "counters": {
-                "blocked_messages": 248,
+                "blocked_messages": 288,
                 "escalations_coalesced": 296,
                 "timers_missed": 341,
-                "watchdog_flags": 695
+                "watchdog_flags": 2107
               },
-              "event_hash": "9fdf56e3e94813d0",
-              "n_events": 55123
+              "event_hash": "7851fe4f0ddd39c5",
+              "n_events": 57363
             }
           },
           "rep": 16,
@@ -11642,13 +11645,13 @@
             },
             "orchestrated": {
               "counters": {
-                "blocked_messages": 204,
+                "blocked_messages": 217,
                 "escalations_coalesced": 345,
-                "timers_missed": 339,
-                "watchdog_flags": 718
+                "timers_missed": 340,
+                "watchdog_flags": 2135
               },
-              "event_hash": "98ac5cee5c9b3112",
-              "n_events": 55650
+              "event_hash": "a0ca2bacc9451d3e",
+              "n_events": 57837
             }
           },
           "rep": 17,
@@ -11668,13 +11671,13 @@
             },
             "orchestrated": {
               "counters": {
-                "blocked_messages": 173,
+                "blocked_messages": 215,
                 "escalations_coalesced": 267,
                 "timers_missed": 342,
-                "watchdog_flags": 700
+                "watchdog_flags": 2370
               },
-              "event_hash": "39f21a1d72ced975",
-              "n_events": 55903
+              "event_hash": "bf6ac3d76324caa6",
+              "n_events": 58567
             }
           },
           "rep": 18,
@@ -11694,13 +11697,13 @@
             },
             "orchestrated": {
               "counters": {
-                "blocked_messages": 247,
+                "blocked_messages": 282,
                 "escalations_coalesced": 272,
                 "timers_missed": 308,
-                "watchdog_flags": 700
+                "watchdog_flags": 2267
               },
-              "event_hash": "583ed8135799e4fe",
-              "n_events": 55923
+              "event_hash": "dfbe0d51b64bb6d8",
+              "n_events": 58480
             }
           },
           "rep": 19,

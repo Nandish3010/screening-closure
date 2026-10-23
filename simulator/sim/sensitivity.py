@@ -42,6 +42,7 @@ NOT_QUANTITIES = {
     "calendar.holidays": "a list of dates, empty in the base case",
     "baseline.default_language": "a category (the language of the baseline's single letter), not a quantity",
     "reopen.resume_state": "a pathway state name, not a quantity",
+    "orchestration.refusal_path_share": "a switch for a modelling option (the informed-refusal path, A33), not an uncertain quantity",
 }
 SOURCED_NO_RANGE = "sourced; its source states no plausible range"
 

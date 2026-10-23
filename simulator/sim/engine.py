@@ -562,6 +562,7 @@ class Engine:
         if reason in c.lost_reasons:
             return
         if (c.orch and c.refuses and c.refusal is None and reason in ("ladder_exhausted", "declined_care")
+                and c.lat.u_reach < self.mp.refusal_path_share  # off unless orchestration.refusal_path_share is set (A33)
                 and c.state in (*REFUSAL_STATES, "patient_contacted")):
             # A33: a refuser is not "lost": the owner counsels them and records the refusal (a physician signs the closure).
             # Scheduled once; if the case is not in a state that allows it by then, it is flagged lost as before.
