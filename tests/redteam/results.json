@@ -102,7 +102,7 @@
     },
     {
       "abuse_case": "RT-V-01",
-      "actual": "rejected: forbidden_phrase:positive_for",
+      "actual": "rejected: forbidden_phrase:positive_for,forbidden_phrase:positive_bare",
       "category": "validator",
       "expected": "rejected",
       "id": "RT-V-01.11",
@@ -942,7 +942,7 @@
     },
     {
       "abuse_case": "RT-V-07",
-      "actual": "rejected: forbidden_phrase:found_blood",
+      "actual": "rejected: forbidden_phrase:found_blood,forbidden_phrase:blood_bleeding",
       "category": "validator",
       "expected": "rejected",
       "id": "RT-V-07.1",
@@ -952,37 +952,37 @@
     },
     {
       "abuse_case": "RT-V-07",
-      "actual": "accepted",
+      "actual": "rejected: forbidden_phrase:blood_bleeding",
       "category": "validator",
       "expected": "rejected",
       "id": "RT-V-07.2",
       "input": "'There was bleeding.'",
-      "reason": "RT-V-07.2: exposed, fix in next commit",
-      "status": "exposed"
+      "reason": "",
+      "status": "pass"
     },
     {
       "abuse_case": "RT-V-07",
-      "actual": "accepted",
+      "actual": "rejected: forbidden_phrase:positive_bare",
       "category": "validator",
       "expected": "rejected",
       "id": "RT-V-07.3",
       "input": "'FIT positive.'",
-      "reason": "RT-V-07.3: exposed, fix in next commit",
-      "status": "exposed"
+      "reason": "",
+      "status": "pass"
     },
     {
       "abuse_case": "RT-V-07",
-      "actual": "accepted",
+      "actual": "rejected: forbidden_phrase:positive_bare",
       "category": "validator",
       "expected": "rejected",
       "id": "RT-V-07.4",
       "input": "'The FIT is +ve.'",
-      "reason": "RT-V-07.4: exposed, fix in next commit",
-      "status": "exposed"
+      "reason": "",
+      "status": "pass"
     },
     {
       "abuse_case": "RT-V-07",
-      "actual": "rejected: forbidden_phrase:abnormal_result",
+      "actual": "rejected: forbidden_phrase:abnormal_result,forbidden_phrase:not_normal",
       "category": "validator",
       "expected": "rejected",
       "id": "RT-V-07.5",
@@ -992,33 +992,33 @@
     },
     {
       "abuse_case": "RT-V-07",
-      "actual": "accepted",
+      "actual": "rejected: forbidden_phrase:not_normal",
       "category": "validator",
       "expected": "rejected",
       "id": "RT-V-07.6",
       "input": "'We have bad news.'",
-      "reason": "RT-V-07.6: exposed, fix in next commit",
-      "status": "exposed"
+      "reason": "",
+      "status": "pass"
     },
     {
       "abuse_case": "RT-V-07",
-      "actual": "accepted",
+      "actual": "rejected: forbidden_phrase:not_normal",
       "category": "validator",
       "expected": "rejected",
       "id": "RT-V-07.7",
       "input": "'Good news.'",
-      "reason": "RT-V-07.7: exposed, fix in next commit",
-      "status": "exposed"
+      "reason": "",
+      "status": "pass"
     },
     {
       "abuse_case": "RT-V-07",
-      "actual": "accepted",
+      "actual": "rejected: forbidden_phrase:not_normal",
       "category": "validator",
       "expected": "rejected",
       "id": "RT-V-07.8",
       "input": "'Great news.'",
-      "reason": "RT-V-07.8: exposed, fix in next commit",
-      "status": "exposed"
+      "reason": "",
+      "status": "pass"
     },
     {
       "abuse_case": "RT-V-07",
@@ -1032,13 +1032,13 @@
     },
     {
       "abuse_case": "RT-V-07",
-      "actual": "accepted",
+      "actual": "rejected: forbidden_phrase:not_normal",
       "category": "validator",
       "expected": "rejected",
       "id": "RT-V-07.10",
       "input": "'Something is wrong.'",
-      "reason": "RT-V-07.10: exposed, fix in next commit",
-      "status": "exposed"
+      "reason": "",
+      "status": "pass"
     },
     {
       "abuse_case": "RT-V-07",
@@ -1882,7 +1882,7 @@
     },
     {
       "abuse_case": "RT-V-13",
-      "actual": "fallback_used=True provider=template reason=validation_failed:forbidden_phrase:positive_for",
+      "actual": "fallback_used=True provider=template reason=validation_failed:forbidden_phrase:positive_for,forbidden_ph",
       "category": "validator",
       "expected": "template returned, fallback_used",
       "id": "RT-V-13.11",
@@ -2612,7 +2612,7 @@
     },
     {
       "abuse_case": "RT-V-13",
-      "actual": "fallback_used=True provider=template reason=validation_failed:forbidden_phrase:found_blood",
+      "actual": "fallback_used=True provider=template reason=validation_failed:forbidden_phrase:found_blood,forbidden_phr",
       "category": "validator",
       "expected": "template returned, fallback_used",
       "id": "RT-V-13.95",
@@ -2622,11 +2622,71 @@
     },
     {
       "abuse_case": "RT-V-13",
-      "actual": "fallback_used=True provider=template reason=validation_failed:forbidden_phrase:abnormal_result",
+      "actual": "fallback_used=True provider=template reason=validation_failed:forbidden_phrase:blood_bleeding",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.96",
+      "input": "'There was bleeding.'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:forbidden_phrase:positive_bare",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.97",
+      "input": "'FIT positive.'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:forbidden_phrase:positive_bare",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.98",
+      "input": "'The FIT is +ve.'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:forbidden_phrase:abnormal_result,forbidden",
       "category": "validator",
       "expected": "template returned, fallback_used",
       "id": "RT-V-13.99",
       "input": "'Your result is not normal.'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:forbidden_phrase:not_normal",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.100",
+      "input": "'We have bad news.'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:forbidden_phrase:not_normal",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.101",
+      "input": "'Good news.'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:forbidden_phrase:not_normal",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.102",
+      "input": "'Great news.'",
       "reason": "",
       "status": "pass"
     },
@@ -2637,6 +2697,16 @@
       "expected": "template returned, fallback_used",
       "id": "RT-V-13.103",
       "input": "'The test came back abnormal.'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-13",
+      "actual": "fallback_used=True provider=template reason=validation_failed:forbidden_phrase:not_normal",
+      "category": "validator",
+      "expected": "template returned, fallback_used",
+      "id": "RT-V-13.104",
+      "input": "'Something is wrong.'",
       "reason": "",
       "status": "pass"
     },
@@ -3483,11 +3553,11 @@
   ],
   "summary": {
     "validator": {
-      "cases": 348,
-      "exposed": 36,
+      "cases": 355,
+      "exposed": 29,
       "fail": 0,
       "known-limitation": 4,
-      "pass": 308
+      "pass": 322
     }
   }
 }
