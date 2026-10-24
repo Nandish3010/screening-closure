@@ -161,15 +161,15 @@ The authoritative, per-case table is `tests/redteam/results.md`; the counts belo
 
 | Category | Cases | Pass | Known limitation | Exposed (fix pending) | Fail |
 |---|---|---|---|---|---|
-| Validator (RT-V) | 392 | 384 | 8 | 0 | 0 |
+| Validator (RT-V) | 398 | 390 | 8 | 0 | 0 |
 | Provider (RT-P) | 53 | 53 | 0 | 0 | 0 |
 | Replies (RT-R) | 71 | 71 | 0 | 0 | 0 |
 | Agency (RT-A) | 92 | 92 | 0 | 0 | 0 |
 | HL7 and automation (RT-H) | 52 | 51 | 1 | 0 | 0 |
 | Authorisation (RT-Z) | 71 | 70 | 1 | 0 | 0 |
-| Total | 731 | 721 | 10 | 0 | 0 |
+| Total | 737 | 727 | 10 | 0 | 0 |
 
-Of the 392 validator cases, 170 are RT-V-13 (every rejected attack text again through `draft_with_fallback`, which must return the template with `fallback_used` true) and 32 are RT-V-15 benign controls that must be accepted. Some cases in the later categories are controls too: RT-A-01.35 and .36, RT-A-02.15 and .16, RT-H-04.6 and .7, RT-Z-04.2.
+Of the 398 validator cases, 170 are RT-V-13 (every rejected attack text again through `draft_with_fallback`, which must return the template with `fallback_used` true) and 38 are RT-V-15 benign controls that must be accepted (32 when D14 merged; the six `refusal_acknowledgement` templates of A33 were added with the M6 week 2 integration). Some cases in the later categories are controls too: RT-A-01.35 and .36, RT-A-02.15 and .16, RT-H-04.6 and .7, RT-Z-04.2.
 
 ## 9. Weaknesses found and fixed
 
