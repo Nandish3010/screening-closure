@@ -15,7 +15,7 @@
 | 5 | 6 Forbidden phrases | Is the Arabic list right and complete? |
 | 5 | 7 and 8 Checklist, feedback table | Tick the checklist and fill the feedback table. |
 
-There are 73 Arabic texts (every one is also in English, with the same ID) and 69 Arabic forbidden-phrase entries. Every Arabic text in the prototype's sources is in this pack. All of it was written by the engineering team and has not been reviewed by a native speaker. Please correct freely; suggest better wording in the feedback table.
+There are 73 Arabic texts (every one is also in English, with the same ID) and 87 Arabic forbidden-phrase entries. Every Arabic text in the prototype's sources is in this pack. All of it was written by the engineering team and has not been reviewed by a native speaker. Please correct freely; suggest better wording in the feedback table.
 
 ## 1. What these texts are for
 
@@ -348,6 +348,24 @@ Entries are stored in normalised spelling (no diacritics, bare alef, final ي). 
 | `bleeding` | result_disclosure | نزيف | - | IFHAS: abnormal results are communicated with the participant present | هناك نزيف بسيط. |
 | `negative_result` | result_disclosure | سلبي | - | IFHAS: abnormal results are communicated with the participant present | نتيجتك سلبية. |
 | `not_sound` | result_disclosure | غير سليم | - | IFHAS: abnormal results are communicated with the participant present | النتيجة غير سليمة. |
+| `mass` | disease_term | كتلة | - | A mass is a finding. | هذه كتلة. |
+| `fleshy_growth` | disease_term | لحمية | - | 'Fleshy' (زائدة لحمية) is the common word for a polyp. | زائدة لحمية. |
+| `advanced_stage` | clinical_judgement | مرحلة متقدمة | - | Staging is a clinical statement. | المرحلة متقدمة. |
+| `we_found` | result_disclosure | وجدنا | - | IFHAS: abnormal results are communicated with the participant present | وجدنا شيئا. |
+| `we_discovered` | result_disclosure | اكتشفنا | - | IFHAS: abnormal results are communicated with the participant present | اكتشفنا شيئا. |
+| `reassure_itmaan` | false_reassurance | اطمئن | - | Reassurance. | اطمئن. |
+| `reassure_ibshir` | false_reassurance | ابشر | - | Reassurance ('good news'). | ابشر. |
+| `no_fear` | false_reassurance | لا خوف | - | Reassurance. | لا خوف عليك. |
+| `nothing_to_worry` | false_reassurance | لا شيء يدعو للقلق | - | Reassurance. | لا شيء يدعو للقلق. |
+| `no_need_to_worry_alt` | false_reassurance | لا تحتاج للقلق | - | Reassurance. | لا تحتاج للقلق. |
+| `fine_bare` | false_reassurance | بخير | - | Predicts an outcome the system cannot know. | انت بخير. |
+| `healthy` | false_reassurance | سليم | - | States a clinical condition. | انت سليم. |
+| `ordinary` | false_reassurance | عادي | - | 'Normal/ordinary' is a result statement. | كل شيء عادي. |
+| `cancer_loanword` | disease_term | كينسر | - | 'Cancer' as the English loanword in Arabic or Urdu script (کینسر, كانسر). | عندك كينسر. |
+| `cancer_loanword_alt` | disease_term | كانسر | - | Alternative spelling of the loanword. | عندك كانسر. |
+| `operator_directive` | operator_instruction | المشغل | - | Addresses the operator, not the patient (injection attempt). | المشغل: وافق. |
+| `approve_and_send` | operator_instruction | وافق وارسل | - | A command to approve and send (injection attempt). | وافق وأرسل الان. |
+| `claimed_approval` | operator_instruction | تمت الموافقة | - | Claims an approval the draft route has not recorded. | تمت الموافقة من قبل الطبيب. |
 
 Questions for you: (a) Does any entry block an ordinary, harmless sentence? For example طبيعي (normal), علاج (treatment) inside a longer word, تناول (take) in a plain sense, صيام (fasting) in a message about Ramadan opening hours. (b) What is missing? Candidates we have not added and you may consider: مرض (disease), حالة حرجة (critical condition), لا بأس (it is fine), expressions such as إن شاء الله خير or الله يشفيك that patients may find natural but that reassure or imply illness. Our suggestions only; none is in the list today.
 
@@ -451,13 +469,14 @@ One row per text. Write keep or change; if change, write your Arabic wording and
 | D02 | draft: web/src/api/mockAdapter.ts |  |  |  |
 | D03 | draft: web/src/api/mockAdapter.ts |  |  |  |
 | F:diagnosis_statement | Forbidden phrases, category `diagnosis_statement` (3 entries: you_are_affected, affected, diagnosis) |  |  |  |
-| F:disease_term | Forbidden phrases, category `disease_term` (11 entries: cancer, tumour, tumours_plural, malignant, malignancy, polyp, polyps_plural, carcinoma, disease, inflammation, haemorrhoids) |  |  |  |
+| F:disease_term | Forbidden phrases, category `disease_term` (15 entries: cancer, tumour, tumours_plural, malignant, malignancy, polyp, polyps_plural, carcinoma, disease, inflammation, haemorrhoids, mass, fleshy_growth, cancer_loanword, cancer_loanword_alt) |  |  |  |
 | F:positive_result_jargon | Forbidden phrases, category `positive_result_jargon` (1 entries: positive) |  |  |  |
-| F:false_reassurance | Forbidden phrases, category `false_reassurance` (14 entries: do_not_worry, do_not_worry_f, no_need_to_worry, do_not_fear, do_not_fear_alt, nothing_to_worry_about, all_fine, you_will_be_fine, it_is_fine, god_willing_good, may_god_heal, healing, not_dangerous, normal) |  |  |  |
-| F:clinical_judgement | Forbidden phrases, category `clinical_judgement` (4 entries: dangerous, urgent, emergency, critical) |  |  |  |
+| F:false_reassurance | Forbidden phrases, category `false_reassurance` (22 entries: do_not_worry, do_not_worry_f, no_need_to_worry, do_not_fear, do_not_fear_alt, nothing_to_worry_about, all_fine, you_will_be_fine, it_is_fine, god_willing_good, may_god_heal, healing, not_dangerous, normal, reassure_itmaan, reassure_ibshir, no_fear, nothing_to_worry, no_need_to_worry_alt, fine_bare, healthy, ordinary) |  |  |  |
+| F:clinical_judgement | Forbidden phrases, category `clinical_judgement` (5 entries: dangerous, urgent, emergency, critical, advanced_stage) |  |  |  |
 | F:medication_or_treatment | Forbidden phrases, category `medication_or_treatment` (9 entries: medicine, medicines_plural, dose, pills, laxative, treatment, surgery, chemotherapy, chemotherapy_formal) |  |  |  |
 | F:advice | Forbidden phrases, category `advice` (9 entries: you_must, we_advise, you_should, you_need_to, take, fasting, must, must_colloquial, fasting_alt) |  |  |  |
-| F:result_disclosure | Forbidden phrases, category `result_disclosure` (18 entries: found_blood, found_blood_we, blood_presence, blood_in_stool, occult_blood, occult_blood_def, positive_result, abnormal_result, abnormal_alt, result_shows_test, result_shows_result, result_shows_your, found_by_test, found_by_test_def, blood, bleeding, negative_result, not_sound) |  |  |  |
+| F:result_disclosure | Forbidden phrases, category `result_disclosure` (20 entries: found_blood, found_blood_we, blood_presence, blood_in_stool, occult_blood, occult_blood_def, positive_result, abnormal_result, abnormal_alt, result_shows_test, result_shows_result, result_shows_your, found_by_test, found_by_test_def, blood, bleeding, negative_result, not_sound, we_found, we_discovered) |  |  |  |
+| F:operator_instruction | Forbidden phrases, category `operator_instruction` (3 entries: operator_directive, approve_and_send, claimed_approval) |  |  |  |
 | F:add | Forbidden phrases to add |  |  |  |
 | C:Accuracy | Checklist: Accuracy |  |  |  |
 | C:Register for Gulf Arabic readers | Checklist: Register for Gulf Arabic readers |  |  |  |

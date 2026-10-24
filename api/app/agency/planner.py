@@ -24,6 +24,7 @@ import hashlib
 import json
 import logging
 import re
+import unicodedata
 from dataclasses import dataclass
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
@@ -45,6 +46,8 @@ PLAN_SYSTEM_PROMPT = (
 
 _LINKY = re.compile(r"https?://|www\.|@|\b[a-z0-9-]+\.(com|net|org|ae|io)\b", re.I)
 _LONG_DIGITS = re.compile(r"\d[\d\s\-./]{5,}\d")
+# control (line breaks, NUL), format (bidi overrides, zero-width), surrogate and line/paragraph separator characters
+_UNSAFE_CHARS = frozenset({"Cc", "Cf", "Cs", "Zl", "Zp"})
 
 
 class TaskOrder(BaseModel):
@@ -85,7 +88,7 @@ class ModelPlanReply(BaseModel):
     @field_validator("rationale")
     @classmethod
     def _plain(cls, value: str) -> str:
-        if "\n" in value.strip() or _LINKY.search(value) or _LONG_DIGITS.search(value) or "{" in value:
+        if any(unicodedata.category(c) in _UNSAFE_CHARS for c in value.strip()) or _LINKY.search(value) or _LONG_DIGITS.search(value) or "{" in value:
             raise ValueError("the rationale must be plain sentences: no links, addresses or long numbers")
         return value.strip()
 
@@ -214,6 +217,35 @@ class ModelPlanner:
     def _fallback(self, department, plan, digest, reason) -> tuple[DepartmentPlan, Provenance]:
         out = plan.model_copy(update={"rationale": _template_rationale(department, plan)})
         return out, Provenance(digest, TEMPLATE_PROVIDER, TEMPLATE_MODEL_ID, True, reason)
+
+
+def contained(planner, department: str, plan: DepartmentPlan) -> tuple[DepartmentPlan, Provenance]:
+    """What a head executes after asking `planner` (any object with `plan()`): exactly its own candidate orders, in the
+    planner's order. An order that is not a candidate (added, forged, repeated) is dropped; a candidate the planner left
+    out goes at the end; the deferred list and the order contents are the head's own. A planner that raises, or returns
+    something other than (DepartmentPlan, Provenance), is replaced by the template plan. Anything altered is recorded as
+    `fallback_used` with an abstention reason. A hostile planner object can therefore do no more than a model's reply."""
+    try:
+        got, prov = planner.plan(department, plan)
+        if not isinstance(got, DepartmentPlan) or not isinstance(prov, Provenance) or not isinstance(got.orders, list):
+            raise TypeError("not a (DepartmentPlan, Provenance)")
+        pool, ordered = list(plan.orders), []
+        for o in got.orders:
+            if o in pool:
+                pool.remove(o)
+                ordered.append(o)
+        altered = len(ordered) != len(got.orders) or bool(pool)
+        rationale = got.rationale[:RATIONALE_MAX] if isinstance(got.rationale, str) else ""
+        out = plan.model_copy(update={"orders": [*ordered, *pool], "rationale": rationale})
+        if altered:
+            prov = Provenance(prov.prompt_hash, prov.provider, prov.model_id, True, "plan_altered")
+        return out, prov
+    except Exception as exc:  # noqa: BLE001 - whatever a planner does wrong, the run goes on with the rules' own plan
+        log.info("agency planner %s rejected: %s", getattr(planner, "name", "?"), type(exc).__name__)
+        user = plan_prompt(department, plan)
+        out = plan.model_copy(update={"rationale": _template_rationale(department, plan)})
+        return out, Provenance(prompt_hash(PLAN_SYSTEM_PROMPT, user), TEMPLATE_PROVIDER, TEMPLATE_MODEL_ID, True,
+                               f"planner_error:{type(exc).__name__}")
 
 
 def get_planner():

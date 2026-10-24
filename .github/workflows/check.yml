@@ -45,6 +45,8 @@ jobs:
           .venv/bin/pip install -e './api[dev]'
       - name: make test (api unit and property tests, simulator tests)
         run: make test
+      - name: make test-redteam (D14 adversarial suite)
+        run: make test-redteam
       - name: make evaluate-check
         run: make evaluate-check
       - name: make docs-check

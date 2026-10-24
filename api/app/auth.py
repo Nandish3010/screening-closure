@@ -64,9 +64,9 @@ HL7_ROLE = "hl7"
 # Names that can never be a user role, even by accident.
 AUTOMATED_ROLE_NAMES = ("system", "scheduler", "watchdog", "model", "automation", "agency", "hl7")
 
-NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9 ._@-]{0,63}$")  # no ":" so role:name parses
-PATIENT_REF_RE = re.compile(r"^Patient/[A-Za-z0-9-]{1,64}$")  # the same shape a case's patient_ref must have (SEC-1)
-PROVIDER_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9 ._@/-]{0,99}$")
+NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9 ._@-]{0,63}\Z")  # no ":" so role:name parses; \Z, not $ (which also matches before a trailing newline)
+PATIENT_REF_RE = re.compile(r"^Patient/[A-Za-z0-9-]{1,64}\Z")  # the same shape a case's patient_ref must have (SEC-1)
+PROVIDER_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9 ._@/-]{0,99}\Z")
 PROVIDER_ROLES = ("primary_care_owner", "specialist_owner")  # roles that act for a provider
 
 
