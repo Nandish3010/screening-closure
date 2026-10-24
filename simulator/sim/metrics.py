@@ -51,6 +51,10 @@ class CaseRecord:
     # Within the programme's reach (orchestration.programme_reach): the case gets (orchestrated arm) or would get (baseline
     # arm, same patient and same random number) the orchestrated process. Always True when programme_reach is 1.0.
     in_reach: bool = True
+    # A33: an informed refusal was recorded (the patient decided: not lost to follow-up), and the days of the declined
+    # closures. A declined closure is NOT in `closes`: it is not a completed colonoscopy and is reported separately.
+    refusal_recorded: bool = False
+    declined_closes: tuple[float, ...] = ()
 
 
 def build_record(
@@ -60,6 +64,8 @@ def build_record(
     first_at = events[0].at
     t_owner = t_contact = t_complete = None
     closes: list[float] = []
+    declined: list[float] = []
+    refusal = False
     reopens: list[float] = []
     escalations: list[float] = []
     actions: list[float] = []
@@ -86,7 +92,11 @@ def build_record(
                 if t_complete is None:
                     t_complete = rel
             elif et == "close":
-                closes.append(rel)
+                (declined if ev.payload.get("outcome") == "declined" else closes).append(rel)
+        elif et == "record_informed_refusal":
+            refusal = True
+            actions.append(rel)
+            last_progress = rel
         elif et in EXTRA_ACTIONS:
             actions.append(rel)
             if et == "contact_recovered":
@@ -127,7 +137,7 @@ def build_record(
         closes=tuple(closes), reopens=tuple(reopens), escalations=tuple(escalations),
         actions=tuple(actions), last_progress=last_progress, lost_contact=lost, visible=visible,
         consent_breach=breach, handled=tuple(dict.fromkeys(handled)), n_events=len(events),
-        in_reach=in_reach,
+        in_reach=in_reach, refusal_recorded=refusal, declined_closes=tuple(declined),
     )
 
 
@@ -169,6 +179,9 @@ def _acted_within(rec: CaseRecord, cal: WorkingCalendar, esc: float, window_wd: 
 def is_ltfu(rec: CaseRecord, idle_days: float) -> bool:
     """Lost to follow-up: no confirmatory completion by the end of follow-up and no progress for
     `idle_days` (or an explicit lost_contact flag)."""
+    # A recorded refusal (A33) is deliberately NOT an exemption here: the baseline arm has no refusal path, so a refuser there is
+    # "lost", and exempting them in the orchestrated arm alone would credit the orchestration for relabelling the same patients.
+    # The orchestrated arm's declined closures are reported apart (`declined_closed_share`) instead.
     if rec.t_complete is not None:
         return False
     if rec.lost_contact:
@@ -311,6 +324,7 @@ def compute_metrics(
     else:
         out["delay_harm_share"] = None
 
+    out["declined_closed_share"] = _share([bool(r.declined_closes) for r in records])  # A33: reported apart from closed_share
     closed = [r for r in records if r.closes]
     out["reopen_rate"] = (sum(1 for r in closed if r.reopens) / len(closed)) if closed else None
 

@@ -1,0 +1,16 @@
+# Informed-refusal overlay (A33, ADR-042). Layer it over simulator/params.yaml (make evaluate-refusal does):
+#   python -m simulator.sim.cli evaluate ... --params simulator/params.yaml --params simulator/params.refusal.yaml
+#
+# Turns on the orchestrated arm's informed-refusal path for every refuser: the owner counsels the patient five working days
+# after the process notices them, records the refusal, and a different physician signs a declined closure three working
+# days later, so the ladder stops climbing for a patient who has decided. The baseline arm is unchanged.
+#
+# It is NOT part of the committed headline results: it moves the labour numbers (fewer ladder escalations for refusers), which the
+# submission and the demo script quote, so adopting it is a decision for the owner of those results. docs/results/metrics.md
+# (`declined_closed_share`) says what it changes.
+orchestration:
+  refusal_path_share:
+    value: 1.0
+    source: "Design choice (A33, ADR-042): every orchestrated-arm refuser takes the informed-refusal path"
+    status: assumed
+    notes: "Default 0.0 (off): refusers are flagged lost and the ladder runs on, as before the path existed."

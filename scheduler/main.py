@@ -27,10 +27,14 @@ debugging.
 import json
 import logging
 import os
+import signal
+import socket
+import sys
 import threading
 import time
 import urllib.error
 import urllib.request
+import uuid
 from pathlib import Path
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s scheduler %(levelname)s %(message)s")
@@ -41,9 +45,71 @@ HEARTBEAT_PATH = Path(os.environ.get("HEARTBEAT_PATH", "/tmp/scheduler.json"))
 INTERVAL_SECONDS = int(os.environ.get("SCHEDULER_INTERVAL_SECONDS", "10"))
 # How often a heartbeat is posted while a sweep is running. Well under the watchdog's 60 s limit.
 BEAT_SECONDS = float(os.environ.get("SCHEDULER_HEARTBEAT_SECONDS", "15"))
+# A follower asks for the lease this often (seconds), so a dead leader is replaced about one lease TTL after its last renewal.
+FOLLOWER_POLL_SECONDS = float(os.environ.get("SCHEDULER_FOLLOWER_POLL_SECONDS", "2"))
 # Must match the API's SCHEDULER_SERVICE_TOKEN. The default is the development value; the API
 # refuses to start outside APP_ENV=dev while it still uses the default.
 SERVICE_TOKEN = os.environ.get("SCHEDULER_SERVICE_TOKEN", "dev-only-scheduler-service-token")
+
+# Leader election (A31, ADR-041). Several scheduler instances may run; each asks the API for the "scheduler" lease at the top
+# of every loop. Only the holder sweeps, drains and scans; the others beat as `follower` and idle until the lease frees.
+# HOLDER names this instance; FENCE carries the current fencing token on every call, so the API refuses a deposed
+# leader's late call (HTTP 409). Set by `acquire_lease`; read by `_headers`.
+HOLDER = os.environ.get("SCHEDULER_HOLDER") or f"{socket.gethostname()[:40]}-{uuid.uuid4().hex[:8]}"
+FENCE: dict[str, str] = {}
+LEASE_TTL_GUESS = 9.0  # until the first answer tells the keeper the real TTL (the API default is 30)
+
+
+def _headers(extra: dict | None = None) -> dict:
+    return {"Authorization": f"Bearer {SERVICE_TOKEN}", **FENCE, **(extra or {})}
+
+
+def acquire_lease() -> dict | None:
+    """POST /scheduler/lease: acquire or renew. Returns the API's answer (`leader`, `token`), or None if the API could not
+    be reached or answered badly (the caller idles this loop: not knowing is not leading). A win sets FENCE; a loss or a
+    failure leaves the OLD token in place on purpose, so a late call from a deposed leader is refused as stale by the API
+    instead of passing as an un-fenced one."""
+    request = urllib.request.Request(
+        f"{API_URL}/scheduler/lease", data=json.dumps({"holder": HOLDER}).encode(), method="POST",
+        headers={"Authorization": f"Bearer {SERVICE_TOKEN}", "Content-Type": "application/json"},
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=10) as resp:
+            answer = json.load(resp)
+    except Exception as exc:
+        log.warning("lease not acquired: %s", exc)
+        return None
+    if answer.get("leader"):
+        FENCE.update({"X-Leader-Holder": HOLDER, "X-Leader-Token": str(answer["token"])})
+    return answer
+
+
+class LeaseKeeper(threading.Thread):
+    """Renews the lease every ttl/3 for the life of the process, through the sleep between loops and through a long sweep,
+    so the lease lapses only when this process is really gone or cannot reach the API (then a follower takes over)."""
+
+    def __init__(self) -> None:
+        super().__init__(name="scheduler-lease", daemon=True)
+        self._stop_event = threading.Event()
+        self.ttl = LEASE_TTL_GUESS
+
+    def run(self) -> None:
+        while not self._stop_event.wait(max(self.ttl / 3, 0.5)):
+            answer = acquire_lease()
+            if answer and answer.get("ttl_seconds"):
+                self.ttl = float(answer["ttl_seconds"])
+
+
+def release_lease() -> None:
+    """Best effort on a clean shutdown, so a follower takes over at its next loop instead of after the TTL."""
+    request = urllib.request.Request(
+        f"{API_URL}/scheduler/lease/release", data=json.dumps({"holder": HOLDER}).encode(), method="POST",
+        headers={"Authorization": f"Bearer {SERVICE_TOKEN}", "Content-Type": "application/json"},
+    )
+    try:
+        urllib.request.urlopen(request, timeout=5).read()
+    except Exception as exc:
+        log.warning("lease not released: %s", exc)
 
 
 def run_sweep() -> dict | None:
@@ -52,7 +118,7 @@ def run_sweep() -> dict | None:
         f"{API_URL}/scheduler/sweep",
         data=b"",
         method="POST",
-        headers={"Authorization": f"Bearer {SERVICE_TOKEN}"},
+        headers=_headers(),
     )
     try:
         with urllib.request.urlopen(request, timeout=120) as resp:
@@ -70,7 +136,7 @@ def drain_outbox() -> dict | None:
     committed). A failure is logged and retried next loop, never fatal: the row stays pending."""
     request = urllib.request.Request(
         f"{API_URL}/scheduler/outbox/drain", data=b"", method="POST",
-        headers={"Authorization": f"Bearer {SERVICE_TOKEN}"},
+        headers=_headers(),
     )
     try:
         with urllib.request.urlopen(request, timeout=60) as resp:
@@ -87,7 +153,7 @@ def run_automation(path: str) -> dict | None:
     failure is logged and retried next loop, never fatal and never a reason to skip the sweep."""
     request = urllib.request.Request(
         f"{API_URL}/scheduler/{path}", data=b"", method="POST",
-        headers={"Authorization": f"Bearer {SERVICE_TOKEN}"},
+        headers=_headers(),
     )
     try:
         with urllib.request.urlopen(request, timeout=120) as resp:
@@ -99,7 +165,8 @@ def run_automation(path: str) -> dict | None:
     return None
 
 
-def post_heartbeat(sweep_ok: bool, failures: int, sim_time: str | None = None, sweeping: bool = False) -> None:
+def post_heartbeat(sweep_ok: bool, failures: int, sim_time: str | None = None, sweeping: bool = False,
+                   role: str = "leader") -> None:
     """Tell the API this loop is alive. A failure to reach it is logged, never fatal: the next beat
     tries again, and a missing heartbeat is exactly what the watchdog is there to notice."""
     body = json.dumps({
@@ -108,10 +175,13 @@ def post_heartbeat(sweep_ok: bool, failures: int, sim_time: str | None = None, s
         "interval_seconds": INTERVAL_SECONDS,
         "sim_time": sim_time,
         "sweeping": sweeping,
+        "role": role,
+        "holder": HOLDER,
+        **({"fencing_token": int(FENCE["X-Leader-Token"])} if FENCE else {}),
     }).encode()
     request = urllib.request.Request(
         f"{API_URL}/scheduler/heartbeat", data=body, method="POST",
-        headers={"Authorization": f"Bearer {SERVICE_TOKEN}", "Content-Type": "application/json"},
+        headers=_headers({"Content-Type": "application/json"}),
     )
     try:
         with urllib.request.urlopen(request, timeout=10) as resp:
@@ -163,11 +233,24 @@ class LoopState:
         self.last_ok: float | None = None  # wall time of the last good sweep (debug file only)
         self.sweep_ok = True  # did the last sweep work? (nothing has failed before the first one)
         self.failures = 0
+        self.was_leader = False
 
 
 def loop_once(state: LoopState) -> dict | None:
     """One iteration: heartbeat first (alive, about to sweep), drain the outbox, sweep with a heartbeat
     thread running, then the heartbeat that says how it went."""
+    lease = acquire_lease()
+    if lease is None or not lease.get("leader"):
+        # A follower (or an instance that cannot reach the API): idle. Sweeping, draining and scanning belong to the
+        # leader; doing them here would only race it.
+        if state.was_leader:
+            log.info("no longer the leader (lease held by %s)", (lease or {}).get("leader_holder"))
+        state.was_leader = False
+        post_heartbeat(True, 0, role="follower")
+        return None
+    if not state.was_leader:
+        log.info("this instance (%s) is the leader, fencing token %s", HOLDER, lease["token"])
+    state.was_leader = True
     post_heartbeat(state.sweep_ok, state.failures, sweeping=True)
     drained = drain_outbox()
     if drained and drained.get("drained"):
@@ -203,11 +286,13 @@ def loop_once(state: LoopState) -> dict | None:
 
 
 def main() -> None:
-    log.info("starting; interval=%ss heartbeat=%s api=%s", INTERVAL_SECONDS, HEARTBEAT_PATH, API_URL)
+    log.info("starting; holder=%s interval=%ss heartbeat=%s api=%s", HOLDER, INTERVAL_SECONDS, HEARTBEAT_PATH, API_URL)
     state = LoopState()
+    LeaseKeeper().start()
+    signal.signal(signal.SIGTERM, lambda *_: (release_lease(), sys.exit(0)))  # docker stop: hand the lease over at once
     while True:
         loop_once(state)
-        time.sleep(INTERVAL_SECONDS)
+        time.sleep(INTERVAL_SECONDS if state.was_leader else min(INTERVAL_SECONDS, FOLLOWER_POLL_SECONDS))
 
 
 if __name__ == "__main__":

@@ -51,6 +51,13 @@
         "n_reps": 20,
         "of_reps": 20
       },
+      "declined_closed_share": {
+        "ci_high": 0.0,
+        "ci_low": 0.0,
+        "mean": 0.0,
+        "n_reps": 20,
+        "of_reps": 20
+      },
       "delay_harm_share": {
         "ci_high": 0.473575,
         "ci_low": 0.462922,
@@ -772,6 +779,13 @@
         "of_reps": 20
       },
       "consent_breach_rate_in_reach": {
+        "ci_high": 0.0,
+        "ci_low": 0.0,
+        "mean": 0.0,
+        "n_reps": 20,
+        "of_reps": 20
+      },
+      "declined_closed_share": {
         "ci_high": 0.0,
         "ci_low": 0.0,
         "mean": 0.0,
@@ -1521,6 +1535,13 @@
       "ci_high": -0.00315,
       "ci_low": -0.004575,
       "mean": -0.0038,
+      "n_reps": 20,
+      "of_reps": 20
+    },
+    "declined_closed_share": {
+      "ci_high": 0.0,
+      "ci_low": 0.0,
+      "mean": 0.0,
       "n_reps": 20,
       "of_reps": 20
     },
@@ -2543,6 +2564,19 @@
         },
         {
           "chase": false,
+          "high": 25.0,
+          "id": "O_RECORD_REFUSAL",
+          "label": "Counsel a patient who declines and record the informed refusal (A33)",
+          "low": 8.0,
+          "minutes": 15.0,
+          "process": "orchestrated",
+          "role": "owner_clinician",
+          "short": "informed-refusal counselling",
+          "source": "assumed: 15 minutes for the conversation and the counselling record (the sign-off is charged as O_SIGN_CLOSURE)",
+          "status": "assumed"
+        },
+        {
+          "chase": false,
           "high": 10.0,
           "id": "O_CONSENT_REVIEW",
           "label": "Review a consent withdrawal",
@@ -2683,7 +2717,7 @@
         }
       },
       "chase_default": "default",
-      "effort_hash": "61da3c0996ebccec7c312722e6f6cef4b92bce18843f9626d93e5440be69204b",
+      "effort_hash": "2f48b24e85cefb8d0f73e61e4abfa00db6d51839e26e79287c5bffb020ff69aa",
       "event_map": {
         "accept_ownership": {
           "manual": [
@@ -2848,6 +2882,12 @@
         "provider_switched": {
           "manual": [],
           "orchestrated": []
+        },
+        "record_informed_refusal": {
+          "manual": [],
+          "orchestrated": [
+            "O_RECORD_REFUSAL"
+          ]
         },
         "reminder_sent": {
           "manual": [],
@@ -3721,6 +3761,15 @@
             "reduction_at_low": 0.183042,
             "status": "sourced-adjacent",
             "swing": 0.0
+          },
+          {
+            "action": "O_RECORD_REFUSAL",
+            "high_minutes": 25.0,
+            "low_minutes": 8.0,
+            "reduction_at_high": 0.183042,
+            "reduction_at_low": 0.183042,
+            "status": "assumed",
+            "swing": 0.0
           }
         ],
         "tornado_base": 0.183042
@@ -4522,6 +4571,15 @@
             "reduction_at_low": 0.372895,
             "status": "sourced-adjacent",
             "swing": 0.0
+          },
+          {
+            "action": "O_RECORD_REFUSAL",
+            "high_minutes": 25.0,
+            "low_minutes": 8.0,
+            "reduction_at_high": 0.372895,
+            "reduction_at_low": 0.372895,
+            "status": "assumed",
+            "swing": 0.0
           }
         ],
         "tornado_base": 0.372895
@@ -4533,9 +4591,9 @@
     "cases_per_replication": 2000,
     "ci_method": "percentile bootstrap over replications; differences are paired by replication (common random numbers)",
     "follow_up_days": 360,
-    "git_commit": "626c62db5955b719e1364297127fe7a27567996d",
+    "git_commit": "5f85d3146d3e1c78eeecf04860260adcdc53755a",
     "parameter_status_counts": {
-      "assumed": 87,
+      "assumed": 88,
       "calibrated": 16,
       "empirical": 8,
       "sourced": 13,
@@ -4544,10 +4602,10 @@
     "params_files": [
       "simulator/params.yaml"
     ],
-    "params_hash": "b90c557e531268dc2522fd0452ee5cbbcf3e0f633b0fd39aa2b37e4ccca0d129",
+    "params_hash": "ddf9cb663dd810e42c6d6c294403f39c370cba6ecc989937a13031e3fb98a84b",
     "pathway": "colorectal_fit",
-    "pathway_hash": "234c780c96de6fb110d7cdd88dbadfcb4f2b17456aefb62e72afce680be89a85",
-    "pathway_version": "0.2",
+    "pathway_hash": "db06101ee042a55f2a1b495bf3a4e852a6875ad198c8cfc86f9d3b189b3cd9e6",
+    "pathway_version": "0.3",
     "replications": 20,
     "scenarios": [
       "upper_range",
@@ -5119,6 +5177,13 @@
       "source": "assumed, no public source",
       "status": "assumed",
       "value": 0.6
+    },
+    {
+      "key": "orchestration.refusal_path_share",
+      "notes": "Share of orchestrated-arm refusers (patients.refusal_prob) whose case takes the informed-refusal path: counselling 5 working days after the process notices them, a recorded refusal, a different physician's declined closure 3 working days later, and no more ladder for them. 0 = they are flagged lost and the ladder runs on, as before the path existed. Switching it on moves the labour results (see docs/results/metrics.md, declined_closed_share), so it is a decision for the results' owner and not on by default. No range: it is a switch, not an uncertain quantity.",
+      "source": "Design choice, off by default (A33, ADR-042). 0 keeps the committed headline results as they were; simulator/params.refusal.yaml (make evaluate-refusal) sets 1.0",
+      "status": "assumed",
+      "value": 0.0
     },
     {
       "key": "orchestration.signoff_sla_working_days",
@@ -6123,6 +6188,13 @@
             "n_reps": 20,
             "of_reps": 20
           },
+          "declined_closed_share": {
+            "ci_high": 0.0,
+            "ci_low": 0.0,
+            "mean": 0.0,
+            "n_reps": 20,
+            "of_reps": 20
+          },
           "delay_harm_share": {
             "ci_high": 0.473575,
             "ci_low": 0.462922,
@@ -6844,6 +6916,13 @@
             "of_reps": 20
           },
           "consent_breach_rate_in_reach": {
+            "ci_high": 0.0,
+            "ci_low": 0.0,
+            "mean": 0.0,
+            "n_reps": 20,
+            "of_reps": 20
+          },
+          "declined_closed_share": {
             "ci_high": 0.0,
             "ci_low": 0.0,
             "mean": 0.0,
@@ -7596,6 +7675,13 @@
           "n_reps": 20,
           "of_reps": 20
         },
+        "declined_closed_share": {
+          "ci_high": 0.0,
+          "ci_low": 0.0,
+          "mean": 0.0,
+          "n_reps": 20,
+          "of_reps": 20
+        },
         "delay_harm_share": {
           "ci_high": -0.124474,
           "ci_low": -0.130826,
@@ -8332,7 +8418,7 @@
         }
       ],
       "parameter_status_counts": {
-        "assumed": 86,
+        "assumed": 87,
         "calibrated": 17,
         "empirical": 7,
         "sourced": 13,
@@ -8342,7 +8428,7 @@
         "simulator/params.yaml",
         "simulator/params.conservative.yaml"
       ],
-      "params_hash": "d48f20dc2668a41f3c7f007426bf2dada16ffd4c117a2055c643fed597d7e5c5",
+      "params_hash": "90bb0c2a4d93e016722f3896da3847fd6053043f72f01c9a876843235843d520",
       "per_replication": [
         {
           "arms": {
@@ -8916,6 +9002,13 @@
             "ci_high": 0.0046,
             "ci_low": 0.003125,
             "mean": 0.0038,
+            "n_reps": 20,
+            "of_reps": 20
+          },
+          "declined_closed_share": {
+            "ci_high": 0.0,
+            "ci_low": 0.0,
+            "mean": 0.0,
             "n_reps": 20,
             "of_reps": 20
           },
@@ -9640,6 +9733,13 @@
             "of_reps": 20
           },
           "consent_breach_rate_in_reach": {
+            "ci_high": 0.0,
+            "ci_low": 0.0,
+            "mean": 0.0,
+            "n_reps": 20,
+            "of_reps": 20
+          },
+          "declined_closed_share": {
             "ci_high": 0.0,
             "ci_low": 0.0,
             "mean": 0.0,
@@ -10392,6 +10492,13 @@
           "n_reps": 20,
           "of_reps": 20
         },
+        "declined_closed_share": {
+          "ci_high": 0.0,
+          "ci_low": 0.0,
+          "mean": 0.0,
+          "n_reps": 20,
+          "of_reps": 20
+        },
         "delay_harm_share": {
           "ci_high": -0.248049,
           "ci_low": -0.257052,
@@ -11071,7 +11178,7 @@
       "label": "Upper range (mechanism ceiling)",
       "overrides": [],
       "parameter_status_counts": {
-        "assumed": 87,
+        "assumed": 88,
         "calibrated": 16,
         "empirical": 8,
         "sourced": 13,
@@ -11080,7 +11187,7 @@
       "params_files": [
         "simulator/params.yaml"
       ],
-      "params_hash": "b90c557e531268dc2522fd0452ee5cbbcf3e0f633b0fd39aa2b37e4ccca0d129",
+      "params_hash": "ddf9cb663dd810e42c6d6c294403f39c370cba6ecc989937a13031e3fb98a84b",
       "per_replication": [
         {
           "arms": {

@@ -1,7 +1,7 @@
 # Arabic review pack (H2)
 
 > Generated file. Do not edit by hand. Regenerate with `make review-packs` (tools/review/build_packs.py).
-> Built from pathway `colorectal_fit` v0.2, template set v2, forbidden-phrase list v1.
+> Built from pathway `colorectal_fit` v0.3, template set v3, forbidden-phrase list v1.
 > For: a native Arabic speaker, 30 minutes
 > All data in this project is synthetic. Nothing here is clinical advice or a claim of real-world performance.
 
@@ -15,7 +15,7 @@
 | 5 | 6 Forbidden phrases | Is the Arabic list right and complete? |
 | 5 | 7 and 8 Checklist, feedback table | Tick the checklist and fill the feedback table. |
 
-There are 70 Arabic texts (every one is also in English, with the same ID) and 87 Arabic forbidden-phrase entries. Every Arabic text in the prototype's sources is in this pack. All of it was written by the engineering team and has not been reviewed by a native speaker. Please correct freely; suggest better wording in the feedback table.
+There are 73 Arabic texts (every one is also in English, with the same ID) and 87 Arabic forbidden-phrase entries. Every Arabic text in the prototype's sources is in this pack. All of it was written by the engineering team and has not been reviewed by a native speaker. Please correct freely; suggest better wording in the feedback table.
 
 ## 1. What these texts are for
 
@@ -33,7 +33,7 @@ Hard rules the Arabic must keep:
 | Source | Where | Reading level | Length limit |
 |---|---|---|---|
 | Patient page (IDs W01 to W49) | Web app at `/patient`, Arabic with right-to-left layout | About grade 6: short sentences, everyday words. | None on the page; short lines for a phone screen |
-| Messages (IDs T01 to T18) | SMS, WhatsApp or letter, chosen from the patient's preferred channel | About grade 6: short sentences, everyday words. | SMS 320, WhatsApp 600, letter 1200 characters |
+| Messages (IDs T01 to T21) | SMS, WhatsApp or letter, chosen from the patient's preferred channel | About grade 6: short sentences, everyday words. | SMS 320, WhatsApp 600, letter 1200 characters |
 | Demo drafts (IDs D01 to D03) | Coordinator app, demo data only | About grade 6: short sentences, everyday words. | None |
 
 Placeholders in braces are filled in by the system: `{owner_name}` (the care owner, for example الدكتورة سارة خان), `{next_step}` (supplied in Arabic, default فحص بالكاميرا), `{appointment_date}` (for example الثلاثاء 3 نوفمبر 2026), `{name}` and `{role}` on the patient page.
@@ -46,7 +46,7 @@ Placeholders in braces are filled in by the system: `{owner_name}` (the care own
 
 **Dates and names.** The sample date uses Gregorian month and weekday names in the Gulf style (نوفمبر, الثلاثاء), not the Levantine month names. Titles such as "الدكتورة" are part of the owner's name, supplied by the clinic.
 
-**Orthography we noticed.** The patient page and demo drafts write tanween as ـًا (for example تشخيصًا): 0 cases there against 4 of the other form. The templates write ـاً (for example دماً): 12 cases against 0 of the other form. The Arabic comma ، appears 36 times (letter greetings and closings); sentences end with a Latin full stop. Choose one convention.
+**Orthography we noticed.** The patient page and demo drafts write tanween as ـًا (for example تشخيصًا): 0 cases there against 4 of the other form. The templates write ـاً (for example دماً): 16 cases against 0 of the other form. The Arabic comma ، appears 39 times (letter greetings and closings); sentences end with a Latin full stop. Choose one convention.
 
 **Terminology we use today.** Counts are generated from the texts below. Where one idea has several wordings, please choose one.
 
@@ -56,9 +56,9 @@ Placeholders in braces are filled in by the system: `{owner_name}` (the care own
 | camera test (friendly term) | فحص بالكاميرا : 4 strings (W12, W16, W40, D01)<br>الفحص بالكاميرا : 2 strings (W12, W40)<br>فحص متابعة بالكاميرا : not used |
 | screening test | فحص الكشف المبكر : 12 strings (W01, W04, W07, T01, T02, T03, T04, T06 and 4 more) |
 | test (generic) | فحصك : 3 strings (T03, D01, D02)<br>الفحص : 2 strings (W12, W40) |
-| care team | فريق الرعاية : not used<br>فريق رعايتك : 34 strings (W05, W07, W08, W11, W15, W24, W25, W29 and 26 more)<br>فريق رعايتي : 1 string (W40) |
+| care team | فريق الرعاية : not used<br>فريق رعايتك : 37 strings (W05, W07, W08, W11, W15, W24, W25, W29 and 29 more)<br>فريق رعايتي : 1 string (W40) |
 | care coordinator | منسق الرعاية : 2 strings (W23, W27)<br>منسق رعاية : 1 string (W20) |
-| care owner (the responsible person) | المسؤول عن رعايتك : 10 strings (W19, T05, T07, T09, T10, T11, T12, T16 and 2 more)<br>المسؤول عن متابعة حالتك : not used<br>من يتابع حالتك : not used |
+| care owner (the responsible person) | المسؤول عن رعايتك : 13 strings (W19, T05, T07, T09, T10, T11, T12, T16 and 5 more)<br>المسؤول عن متابعة حالتك : not used<br>من يتابع حالتك : not used |
 | result | نتيجة : 15 strings (W01, W04, W07, W10, T01, T02, T03, T04 and 7 more)<br>نتيجتك : 6 strings (W05, W06, W08, W15, T02, T03)<br>نتيجتي : 1 string (W40) |
 | appointment | موعد : 20 strings (W16, W17, T01, T02, T03, T04, T05, T06 and 12 more) |
 
@@ -228,7 +228,17 @@ Reply when the patient pressed "I don't understand this". A person will call.
 | T17 | WhatsApp | Hello. Thank you for telling us you need help to understand.<br><br>A person from your care team will call you to explain. The next step is {next_step}.<br><br>Your care owner is {owner_name}. | مرحباً، شكراً لإخبارنا أنك بحاجة إلى مساعدة لفهم الرسالة.<br><br>سيتصل بك أحد أفراد فريق رعايتك ليشرح لك. الخطوة التالية هي {next_step}.<br><br>الشخص المسؤول عن رعايتك: {owner_name}. | 182 / 177, 600 |
 | T18 | Letter | Hello,<br><br>Thank you for telling us you need help to understand our message.<br><br>A person from your care team will call you to explain. The next step is {next_step}.<br><br>Your care owner is {owner_name}.<br><br>Kind regards,<br>Your care team | تحية طيبة،<br><br>شكراً لإخبارنا أنك بحاجة إلى مساعدة لفهم رسالتنا.<br><br>سيتصل بك أحد أفراد فريق رعايتك ليشرح لك. الخطوة التالية هي {next_step}.<br><br>الشخص المسؤول عن رعايتك: {owner_name}.<br><br>مع تحياتنا،<br>فريق رعايتك | 225 / 206, 1200 |
 
-### 5.6 Demo draft texts (coordinator app)
+### 5.6 refusal_acknowledgement
+
+After a patient's informed refusal is recorded (A33): the decision is recorded, their own doctor has been told, they can come back at any time. States no finding. Goes out as an approved draft through the existing message path; the system holds no GP channel yet, so telling the GP itself is the clinician's act.
+
+| ID | Channel | English | Arabic | Chars en / ar, limit |
+|---|---|---|---|---|
+| T19 | SMS | Thank you for talking with your care team. Your decision about the next step ({next_step}) has been recorded and your own doctor has been told. You can change your mind at any time: contact {owner_name}. | شكراً لحديثك مع فريق رعايتك. تم تسجيل قرارك بشأن الخطوة التالية ({next_step}) وتم إبلاغ طبيبك. يمكنك تغيير رأيك في أي وقت. الشخص المسؤول عن رعايتك: {owner_name}. | 205 / 168, 320 |
+| T20 | WhatsApp | Hello. This is a message from your care team.<br><br>Thank you for talking with us. Your decision about the next step ({next_step}) has been recorded, and your own doctor has been told.<br><br>You can change your mind at any time. Your care owner is {owner_name}. | مرحباً، شكراً لحديثك مع فريق رعايتك.<br><br>تم تسجيل قرارك بشأن الخطوة التالية ({next_step}) وتم إبلاغ طبيبك.<br><br>يمكنك تغيير رأيك في أي وقت. الشخص المسؤول عن رعايتك: {owner_name}. | 253 / 178, 600 |
+| T21 | Letter | Hello,<br><br>Thank you for talking with your care team.<br><br>Your decision about the next step ({next_step}) has been recorded, and your own doctor has been told.<br><br>You can change your mind at any time. Please contact your care team and ask for {owner_name}.<br><br>Kind regards,<br>Your care team | تحية طيبة،<br><br>شكراً لحديثك مع فريق رعايتك.<br><br>تم تسجيل قرارك بشأن الخطوة التالية ({next_step}) وتم إبلاغ طبيبك.<br><br>يمكنك تغيير رأيك في أي وقت. يرجى التواصل مع فريق رعايتك. الشخص المسؤول عن رعايتك: {owner_name}.<br><br>مع تحياتنا،<br>فريق رعايتك | 280 / 236, 1200 |
+
+### 5.7 Demo draft texts (coordinator app)
 
 Draft text offered to the coordinator in the demo (mock) app, shown in both languages and stored in the `message_drafted` event. It stands in for a model or template draft. A person approves it before anything is "sent".
 
@@ -452,6 +462,9 @@ One row per text. Write keep or change; if change, write your Arabic wording and
 | T16 | template: callback_ack/sms |  |  |  |
 | T17 | template: callback_ack/whatsapp |  |  |  |
 | T18 | template: callback_ack/letter |  |  |  |
+| T19 | template: refusal_acknowledgement/sms |  |  |  |
+| T20 | template: refusal_acknowledgement/whatsapp |  |  |  |
+| T21 | template: refusal_acknowledgement/letter |  |  |  |
 | D01 | draft: web/src/api/mockAdapter.ts |  |  |  |
 | D02 | draft: web/src/api/mockAdapter.ts |  |  |  |
 | D03 | draft: web/src/api/mockAdapter.ts |  |  |  |

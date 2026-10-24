@@ -96,7 +96,9 @@ On screen: the headline table in [results.md](../results/results.md), then the H
 
 > "These numbers come from a simulator on synthetic data, with every parameter sourced or labelled assumed. We quote the literature-anchored scenario, before capacity limits."
 >
-> "Cases closed with evidence and a signature: 52% today, 66% with the system." (results.md headline, `cases_closed`: 52.3% and 65.6%; colonoscopy within 180 days: 51.1% and 64.9%)
+> "Colonoscopy within 180 days: 51% today, 65% with the system, a completion ratio of about 1.27. That ratio held up against held-out trial data. The simulator's timing did not pass the same check, so we make no claim about days saved." (results.md headline, `completion_180d`: 51.1% and 64.9%; [validation.md](../results/validation.md): the ratio is inside the 95% interval of every trial tested, the baseline level matches US usual care, and the time to colonoscopy fails; timing figures in results.md are unvalidated and are not spoken)
+>
+> "Cases closed with evidence and a signature: 52% today, 66% with the system." (results.md headline, `cases_closed`: 52.3% and 65.6%)
 >
 > "Cases lost without anyone being told: 46% today. For the cases the programme reaches it is 0%; for the programme as a whole it is 21%, under an assumption that it reaches 55% of cases." (`silent_loss_rate_in_reach` 0.0%; `silent_loss_rate` 20.8% at programme level under `orchestration.programme_reach` 0.55, a stated assumption; all synthetic)
 >
@@ -130,6 +132,9 @@ Not any more, since A25. The 31-working-day colonoscopy clock starts at the firs
 
 **"The model is not loaded. Is the triage real?"**
 The classifier is real and runs offline on the host (Qwen2.5-1.5B 4-bit with a small LoRA adapter, trained on synthetic replies only: 89.8% top-intent accuracy on held-out synthetic templates, every true opt-out sent to a person, Arabizi below the precision target; [reply-triage-card.md](../governance/reply-triage-card.md)). It needs MLX, which the Linux container does not have, so in the compose stack it fails safe: every reply is read as "other" and goes to a person. That is the behaviour we want to show when the system is unsure. None of it is evidence about real patients (HZ-25).
+
+**"Does it close cases faster?"**
+We do not claim that. The simulator's timing failed validation against held-out data: almost nobody has a colonoscopy within 30 days in the simulation, against 15% to 33% observed in Australia, Scotland and Kaiser, and it cannot reproduce the roughly 75% attendance of managed national programmes. What passed is the completion ratio (about 1.27 at 180 days, inside the 95% interval of every trial tested) and the baseline completion level for typical US usual care ([validation.md](../results/validation.md)). The pilot measures time to ownership and time to closure for real.
 
 **"The labour target was 40%."**
 Not met, and we say so: 33% per case the system handles and 18% across the programme (literature-anchored), 37% in the upper range. Every minute is a published figure from an adjacent setting or an assumption, none measured in Abu Dhabi; coordinator time falls, owner-clinician and specialist time rise, and at wage-weighted cost the saving disappears (pilot-plan.md, K9). The pilot measures it.
@@ -166,7 +171,7 @@ For the submission video (H4): the same two beats compressed. Each shot maps to 
 | 9 | Signed and closed | R3 | "The real Procedure and the clinician's own signature: closed. A record that says the colonoscopy was incomplete is refused." |
 | 10 | Human effort | R4 | "Human actions against automated actions, minutes against baseline. The minutes are assumed, not measured." |
 | 11 | Triage cameo | R5 | "A reply in Gulf Arabic. The offline model is not loaded here, so the system flags it for a person: it can flag, never close, send or change consent." |
-| 12 | Numbers | Numbers | "Simulation on synthetic data, literature-anchored scenario, before capacity limits. Closed with evidence and a signature 52% to 66%; lost without anyone told 46% at baseline, 0% where the programme reaches, 21% programme-level. Rerun: make evaluate" |
+| 12 | Numbers | Numbers | "Simulation on synthetic data, literature-anchored scenario, before capacity limits. Colonoscopy within 180 days 51% to 65%, a ratio of about 1.27 (validated against held-out data; timing is not). Closed with evidence and a signature 52% to 66%; lost without anyone told 46% at baseline, 0% where the programme reaches, 21% programme-level. Rerun: make evaluate" |
 | 13 | Labour | Numbers | "Labour: 33% fewer staff minutes per case the system handles, 18% across the programme. The 40% target is not met." |
 | 14 | The ask | Ask | "Pilot ask: one programme, two providers, 90 days, shadow mode first. Cases closed without evidence: must stay zero." |
 

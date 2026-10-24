@@ -15,11 +15,12 @@
 
 ### Authority
 
-The adapter is the actor `system:hl7`. It has three actions (`policy.HL7_ACTIONS`, default deny) and one event (its row of the actor table, `ACTOR_EVENTS["system:hl7"] = {book_confirmatory}`):
+The adapter is the actor `system:hl7`. It has four actions (`policy.HL7_ACTIONS`, default deny) and two events (its row of the actor table, `ACTOR_EVENTS["system:hl7"] = {book_confirmatory, appointment_cancelled}`, A34, ADR-042):
 
 1. **create a case** through the function behind `POST /cases` (`routers.cases.create_case`): same payload validation, same genesis event (actor `system:intake`), same automation hook. Not a second code path.
 2. **book the confirmatory appointment**: the event `book_confirmatory` with `appointment_date`, `appointment_at` and `appointment_ref`, from `patient_acknowledged` only (the state machine decides).
-3. **record confirmatory evidence** through `confirmatory.recorder`, the path of `POST /cases/{id}/confirmatory-result`. It appends no event.
+3. **cancel the confirmatory appointment** (`cancel_appointment`): the event `appointment_cancelled` with reason `other` and `by_patient: false` (the SIU message does not say who cancelled or why, so nothing is guessed), from `confirmatory_booked` only; the case returns to `patient_acknowledged` and a later booking rebooks it. The milestone clocks do not move (A25).
+4. **record confirmatory evidence** through `confirmatory.recorder`, the path of `POST /cases/{id}/confirmatory-result`. It appends no event.
 
 The token reaches `POST /hl7` and no other route (`ROUTE_POLICY`; `docs/governance/rbac-matrix.md`, column `hl7`), and no event type through `POST /cases/{id}/events`. It cannot close, sign, reassign, accept ownership, change consent or confirm contact details; no automated actor can close a case. **A result received through the exchange never closes a case** (ADR-001): a recorded colonoscopy is evidence that a clinician may cite in a signed `close`, and `close` still checks it for completeness (ADR-036).
 
@@ -54,13 +55,13 @@ Positive: a case with `patient_ref = Patient/<id>`, `result_ref = DiagnosticRepo
 
 | Field | Use |
 |---|---|
-| PID-3 | The patient, as above. Exactly one case of that patient in `patient_acknowledged` or `confirmatory_booked` must exist; none or several is **AE** (never attached by guessing). |
+| PID-3 | The patient, as above. Exactly one case of that patient in `patient_acknowledged` or `confirmatory_booked` must exist (S15: in `confirmatory_booked`); none or several is **AE** (never attached by guessing). |
 | TQ1-7, else SCH-11 component 4, else AIS-4 | Appointment start. A timestamp with no offset is read in `HL7_UTC_OFFSET` (default `+0400`). Date only: `appointment_date`; date and time: also `appointment_at` (UTC). No readable start is **AE**. |
 | SCH-2, else SCH-1 | `appointment_ref` if it fits the payload schema, otherwise dropped. |
 
-- **S12** (book): `book_confirmatory` by `system:hl7` when the case is in `patient_acknowledged`. For a case already booked: the same time is **AA** (`appointment already booked for this time`), a different time is **AE** (`reschedule of a booked appointment is not supported by the pathway`).
-- **S14** (reschedule): the same as S12. A reschedule of a case with no booking yet is a booking; a reschedule of a booked case is the AE above.
-- **S15** (cancel): always **AE**, `cancellation is not supported by the pathway`.
+- **S12** (book): `book_confirmatory` by `system:hl7` when the case is in `patient_acknowledged`. For a case already booked: the same time is **AA** (`appointment already booked for this time`); a different time is a reschedule (below).
+- **S14** (reschedule): the same as S12. A case with no booking yet is booked. A booked case with a different time is cancelled (`appointment_cancelled`) and rebooked (`book_confirmatory`), the two events appended together (one transaction on the database store); **AA**. A redelivery changes nothing.
+- **S15** (cancel): `appointment_cancelled` by `system:hl7` for the one case of the patient in `confirmatory_booked`; **AA**. A redelivery is **AA** `duplicate`. A patient whose case is in `patient_acknowledged` (nothing booked) is **AE** `no booked appointment to cancel for the case`; no case at all is **AE** `no matching case for the patient`.
 - Other SIU triggers: **AE** `201`.
 
 Redelivery of an S12 or S14 (same MSH-10) is **AA** `duplicate`, also after the case has moved on.
@@ -108,7 +109,7 @@ Each item is an assumption in the code or the mapping that no document we hold s
 - **Outbound.** The only thing sent is an ACK. No status, ownership or due date goes to Malaffi or to a provider EMR (plan: "if the operator permits"; the outbox and the dead-letter queue the plan describes are not built), so there is no outbound failure visibility either.
 - **Certificates, VPN, TLS, authentication of the sender.** `POST /hl7` is protected by a bearer token over whatever the deployment provides; MLLP is clear text and bound to the loopback interface in compose. No mutual TLS, no client certificates, no IP allow-list, no Malaffi security assessment material. A real link needs these from the operator.
 - **Watchdog for the interface.** The plan's "silence on the interface is the dangerous failure" check (no message for a configured period) is not built.
-- **Rescheduling or cancelling a booked appointment.** The pathway has one booking event and no cancellation or rebooking event, and the adapter's row may hold only `book_confirmatory`. S15, and a different time for a booked case, are therefore AE with a reason. Closing this gap is a pathway decision (a `cancel_confirmatory` or `rebook_confirmatory` event and a state) for the owners of the state machine; it is not an adapter change.
+- **Who or why a booking was cancelled.** S15 does not say, and the adapter does not read SCH-6 or the filler status for it: the event records reason `other`, not by the patient. A person can see the sender's reason in the sender's own log.
 - **Contact updates on existing cases**, for the reason above; **a durable contact registry** (it is in memory and lost on a restart); merges and moves (A18, A40), which are refused as unsupported.
 - **Identity matching beyond the exact identifier**: no Emirates-ID lookup, no name and date-of-birth match, no human queue for ambiguous matches (an ambiguous or missing match is an AE and the sender, or a person reading the sender's log, resolves it). No Arabic or transliteration handling.
 - **FHIR mapping of the observation.** The adapter does not create the `Observation` and `DiagnosticReport` of the FIT result; the case's `result_ref` is a reference to a report that does not exist in HAPI (the projection writes it as an identifier-only reference, as it does for any absent resource). `registered_provider` is not mapped from the message (the API's default applies).

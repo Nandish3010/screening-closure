@@ -5,7 +5,7 @@ It drives the REAL `app.state_machine.step` (the machine is not re-implemented):
 pathway it applies every event of a finite alphabet (event type x actor x representative payload, valid and invalid) to
 one concrete representative of every abstract state, breadth-first, until a level adds no new abstract state. On every
 accepted transition it checks the safety invariants I1 to I4; on the saturated graph it checks I5 (a person can always
-act), I6 (replay determinism) and I7 (a person can always reach `closed`). On a violation it prints a shortest
+act), I6 (replay determinism) and I7 (a person can always reach `closed`); I8 (erasure is final, A32) on every transition. On a violation it prints a shortest
 counterexample (BFS order) and exits non-zero.
 
 The search runs in three feature SLICES (messaging and consent, ownership and handoff, SLA ladders). Each slice has the
@@ -73,7 +73,7 @@ CAST = [PCO, SPEC, COORD, SUP]
 FOREIGN_SIGNER = f"specialist_owner:{auth.opaque_user_id('specialist_owner', 'Dr Someone Else')}"
 SERVICES = [
     "system:scheduler", "system:watchdog", "system:notifier", "system:consent", "system:automation",
-    "model:drafter", "system:triage", "system:agency:outreach",
+    "model:drafter", "system:triage", "system:agency:outreach", "system:hl7", sm.ERASURE_ACTOR,
 ]
 STRANGERS = ["intruder:x1", "scheduler", "system:intake"]  # match no row of the table: may emit nothing
 ACTORS = [*CAST, *SERVICES, *STRANGERS]
@@ -83,8 +83,11 @@ AUTOMATED_PREFIXES = ("system:", "model:", "scheduler", "watchdog", "agency")
 # I2: what no automated actor may ever get accepted.
 HUMAN_DECISIONS = frozenset({
     "close", "reopen", "clinician_review", "message_approved", "escalation_accepted", "consent_updated",
-    "accept_ownership",
+    "accept_ownership", "record_informed_refusal",
 })
+# A33 (ADR-042): the counselling record a refusal cites and a declined closure must cite back.
+COUNSELLING = "DocumentReference/counsel-1"
+PHYSICIANS = ("primary_care_owner", "specialist_owner")  # who may sign a declined closure
 # I4: outreach (contacting the patient, or handing them to someone new).
 OUTREACH = frozenset({"contact_patient", "message_drafted", "message_approved", "message_sent", "handoff_requested"})
 # I7: states a case may stay in for ever without a human path to `closed` (documented terminal holds). None is needed:
@@ -145,6 +148,32 @@ def alphabet(pathway: Pathway) -> list[tuple[str, str, Builder, bool]]:
     add("close", "empty-evidence", lambda actor, m: {"evidence_ref": "", "signed_by": actor})
     add("close", "malformed-evidence", lambda actor, m: {"evidence_ref": "Procedure/.", "signed_by": actor})
     add("close", "auto", lambda actor, m: {"evidence_ref": REF, "signed_by": actor, "auto": True})
+    # A33: a declined closure cites the counselling record and says so; the signer is a physician who did not counsel
+    add("close", "declined-ok", lambda actor, m: {"outcome": "declined", "evidence_ref": COUNSELLING, "signed_by": actor})
+    add("close", "declined-practitioner", lambda actor, m: {"outcome": "declined", "evidence_ref": COUNSELLING,
+                                                          "signed_by": _practitioner(actor)})
+    add("close", "declined-other-ref", lambda actor, m: {"outcome": "declined", "evidence_ref": "DocumentReference/other",
+                                                       "signed_by": actor})
+    add("close", "declined-colonoscopy-ref", lambda actor, m: {"outcome": "declined", "evidence_ref": REF, "signed_by": actor})
+    add("close", "declined-no-signer", {"outcome": "declined", "evidence_ref": COUNSELLING})
+    add("close", "counselling-no-outcome", lambda actor, m: {"evidence_ref": COUNSELLING, "signed_by": actor})
+    add("close", "declined-auto", lambda actor, m: {"outcome": "declined", "evidence_ref": COUNSELLING, "signed_by": actor,
+                                                  "auto": True})
+    add("record_informed_refusal", "by-spec", {"counselling_ref": COUNSELLING, "counselled_by": SPEC, "reason": "personal_choice"})
+    add("record_informed_refusal", "by-pco", {"counselling_ref": COUNSELLING, "counselled_by": PCO, "reason": "fear_of_procedure"})
+    add("record_informed_refusal", "by-spec-practitioner", {"counselling_ref": COUNSELLING,
+                                                          "counselled_by": _practitioner(SPEC), "reason": "alternative_test_requested"})
+    add("record_informed_refusal", "other-needs-note", {"counselling_ref": COUNSELLING, "counselled_by": SPEC,
+                                                      "reason": "other_with_note", "note": "n"})
+    add("record_informed_refusal", "bad-reason", {"counselling_ref": COUNSELLING, "counselled_by": SPEC, "reason": "because"})
+    add("record_informed_refusal", "no-counselling", {"counselled_by": SPEC, "reason": "personal_choice"})
+    add("record_informed_refusal", "no-counsellor", {"counselling_ref": COUNSELLING, "reason": "personal_choice"})
+    add("record_informed_refusal", "coordinator-counsellor", {"counselling_ref": COUNSELLING, "counselled_by": COORD,
+                                                            "reason": "personal_choice"})
+    add("appointment_cancelled", "by-patient", {"reason": "patient_request", "by_patient": True})
+    add("appointment_cancelled", "by-provider", {"reason": "provider_cancelled", "by_patient": False})
+    add("appointment_cancelled", "bad-reason", {"reason": "because", "by_patient": False})
+    add("appointment_cancelled", "no-by-patient", {"reason": "other"})
     add("reopen", "reason", {"reason": "new_finding"})
     add("reopen", "no-reason", {})
     add("mark_overdue", "state", lambda actor, m: {"state": m.state, "due_at": PAST}, True)
@@ -215,6 +244,8 @@ def alphabet(pathway: Pathway) -> list[tuple[str, str, Builder, bool]]:
     add("closure_proposed", "no-evidence", {"auto": True})
     add("reply_received", "plain", {"channel": "sms", "text_ref": "t-1"})
     add("reply_classified", "plain", {"intent": "question", "confidence": 0.9})
+    # A32 (ADR-025): the erasure record, written only by `system:erasure` on a closed case; after it nothing is accepted (I8)
+    add(sm.ERASURE_EVENT, "plain", {"erasure_id": str(uuid5(NS, "erasure")), "categories": ["contact_registry"]})
     add("bogus_event", "plain", {})
     return a
 
@@ -227,8 +258,8 @@ ALL = "*"
 BASE = {
     "acknowledge": ALL, "accept_ownership": ALL, "assign_ownership": ALL, "contact_patient": ALL,
     "patient_acknowledge": ALL, "book_confirmatory": ALL, "complete_confirmatory": ALL, "clinician_review": ALL,
-    "close": ALL, "reopen": ALL, "mark_lost_contact": ALL, "watchdog_flagged": ALL, "closure_proposed": ALL,
-    "reply_received": ALL, "reply_classified": ALL, "bogus_event": ALL,
+    "close": ALL, "reopen": ALL, "mark_lost_contact": ALL, "record_informed_refusal": ALL, "appointment_cancelled": ALL, "watchdog_flagged": ALL, "closure_proposed": ALL,
+    "reply_received": ALL, "reply_classified": ALL, "bogus_event": ALL, sm.ERASURE_EVENT: ALL,
     "consent_updated": {"withdraw", "restore", "empty", "not-bool"},
 }
 
@@ -264,7 +295,8 @@ SLICES = {
     ),
     "ladders": Slice(
         "ladders", "state SLA and milestone breaches, the escalation ladders, coalescing (also_for, attached_to)",
-        {**BASE, "mark_overdue": ALL, "escalate": ALL, "escalation_accepted": ALL,
+        {**BASE, "record_informed_refusal": {"by-spec"},  # one counsellor form here: the ladders do not read it (keeps the slice small)
+         "mark_overdue": ALL, "escalate": ALL, "escalation_accepted": ALL,
          "handoff_requested": {"plain", "auto"}, "handoff_accepted": {"plain"},
          "handoff_rejected": {"capacity", "bounce"}, "reassign": {"to-spec"}},
         restrict={"accept_ownership": (PCO,), "handoff_requested": (PCO,), "handoff_accepted": (SPEC,),
@@ -287,7 +319,9 @@ def signature(m: sm.CaseModel) -> tuple:
     pending = m.pending_handoff
     return (
         # core: the state, consent freeze and where it resumes, and each milestone's clock (started / met / void)
-        (m.state, m.consent_frozen, bool(m.consent.get("withdrawn")), m.resume_state,
+        (m.state, m.erased, m.consent_frozen, bool(m.consent.get("withdrawn")), m.resume_state,
+         # the refusal on record: a declined closure reads who counselled and which record (A33)
+         None if m.refusal is None else (m.refusal["counselling_ref"], m.refusal["counselled_by"]),
          tuple((ms.started_at is not None, ms.met_at is not None, ms.void) for ms in m.milestones.values())),
         # messaging: the channel consent, the open holds, the approved-unsent drafts (at most 2: two approvable ids)
         (bool(m.consent.get("channel_sms")), tuple(sorted(m.outreach_holds)), tuple(sorted(m.approved_unsent))),
@@ -348,6 +382,28 @@ def human_admitted(identity: auth.Identity, type_: str, payload: dict, model: sm
     if type_ in ("clinician_review", "close") and signed is not None and not evidence.signed_by_matches(identity, signed):
         return False
     return not (type_ == "close" and not evidence.well_formed_ref(payload["evidence_ref"]))
+
+
+def physician_not_counsellor(pre: sm.CaseModel, actor: str, p: dict) -> list:
+    """I1 extended (A33): a declined closure needs the counselling reference on record, a physician signer, and a signer who
+    is not the counsellor. The counsellor is compared by user id, so `specialist_owner:u1` and `Practitioner/u1` are one."""
+    bad = []
+    refusal = pre.refusal
+    if refusal is None or not refusal.get("counselling_ref"):
+        return [("I1", "a declined closure without a counselling reference on record")]
+    if p.get("evidence_ref") != refusal["counselling_ref"]:
+        bad.append(("I1", f"declined closure cites {p.get('evidence_ref')!r}, not the counselling record"))
+    if actor.split(":", 1)[0] not in PHYSICIANS:
+        bad.append(("I1", f"declined closure by {actor!r}, who is not a physician role"))
+
+    def uid(x: str) -> str:
+        return x.split("/", 1)[1] if x.startswith("Practitioner/") else x.split(":", 1)[-1]
+
+    counsellor = uid(refusal["counselled_by"])
+    for who in (actor, str(p.get("signed_by"))):
+        if uid(who) == counsellor:
+            bad.append(("I1", f"declined closure signed by {who!r}, who is the counsellor"))
+    return bad
 
 
 def route_gate_refusal(actor: str, payload: dict) -> str | None:
@@ -538,8 +594,14 @@ class Checker:
                 out.append(("I1", f"{t!r} entered {terminal!r}"))
             if is_automated(actor) or actor not in HUMAN_BY_ACTOR:
                 out.append(("I1", f"{actor!r} is not a person and closed the case"))
-            if pre.state != self.pw.states[-2]:
-                out.append(("I1", f"closed from {pre.state!r}"))
+            declined = p.get("outcome") == "declined"
+            if pre.state != (self.pw.refusal_state if declined else self.pw.states[-2]):
+                out.append(("I1", f"closed from {pre.state!r} with outcome {p.get('outcome')!r}"))
+            if declined:
+                _bump(c, "I1 declined closures")
+                out.extend(physician_not_counsellor(pre, actor, p))
+            elif pre.state == self.pw.refusal_state:
+                out.append(("I1", "a recorded refusal was closed without outcome 'declined'"))
             if not (isinstance(p.get("evidence_ref"), str) and p["evidence_ref"]):
                 out.append(("I1", "closed without evidence_ref"))
             if not (isinstance(p.get("signed_by"), str) and p["signed_by"]):
@@ -555,8 +617,19 @@ class Checker:
                 if route_gate_refusal(actor, p) is None:
                     out.append(("I1", f"close signed {p.get('signed_by')!r} with evidence {ref!r} passes the machine "
                                       "AND the route gate"))
-        if pre.state == terminal and t != "reopen":
+        if pre.state == terminal and t not in ("reopen", sm.ERASURE_EVENT):
             out.append(("I1", f"{t!r} accepted on a closed case"))
+        # I8 (A32, ADR-025): erasure only on a closed case, only by `system:erasure`, moves no state, and is final
+        if pre.erased:
+            out.append(("I8", f"{t!r} accepted on an erased case"))
+        if t == sm.ERASURE_EVENT:
+            _bump(c, "I8 erasures")
+            if pre.state != terminal:
+                out.append(("I8", f"erasure accepted in {pre.state!r}, not {terminal!r}"))
+            if actor != sm.ERASURE_ACTOR:
+                out.append(("I8", f"erasure written by {actor!r}"))
+            if post.state != pre.state or not post.erased:
+                out.append(("I8", "erasure moved the state or did not mark the case erased"))
         # I2: no automated actor gets a human decision accepted; the agency and unknown actors get nothing accepted
         if t in HUMAN_DECISIONS:
             _bump(c, "I2 human decisions")

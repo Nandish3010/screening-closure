@@ -363,3 +363,23 @@ Research compiled 2026-10-22 for ticket B19 (finite-capacity model in `simulator
 2. **UK evidence, one wave.** E12-1 and E12-3 describe English units with continuous flow; the model has a single wave, so queues form that a steady flow of the same average size would not produce.
 3. **Search-summary rows.** E12-2, E12-4, E12-5, E12-6 and E12-8 are S: re-check the numbers before citing them outside this repository.
 
+
+---
+
+## 13. Held-out validation targets (ticket B20)
+
+Used only to compare the simulator against, never to set a parameter. Results and verdicts: `docs/results/validation.md`; machine-readable targets: `tools/calibration/validation_targets.json`; files, sha256 and licences of the downloaded ones: `tools/calibration/manifest.json`. "Independence" is stated in the validation document for each target. Check column as in the grading note at the top: P = number read in the primary source, S = secondary or search summary only.
+
+| ID | Source | URL | Quantity used | Check |
+|---|---|---|---|---|
+| E13-1 | Issaka et al., integrated safety net, San Francisco, Am J Gastroenterol 2017;112:375 | https://doi.org/10.1038/ajg.2016.555 | 2,238 positive FIT; 1,245 (55.6%) colonoscopy within 12 months; median 184 days (IQR 140-232) | P (abstract, re-read 2026-10-23 at stacks.cdc.gov/view/cdc/79501) |
+| E13-2 | Sea Mar FQHC, BMC Gastroenterol 2021 | https://pmc.ncbi.nlm.nih.gov/articles/PMC8477359/ | 711 abnormal FIT; 22.9%, 37.1%, 42.8% at 90, 180, 360 days; median 83 (52-131) | P (section 2 and 3 above) |
+| E13-3 | Coronado et al., precision navigation RCT, Kaiser Permanente NW, 2021 | https://pmc.ncbi.nlm.nih.gov/articles/PMC9273475/ | 180-day cumulative completion 75.5% (n=200) vs 64.9% (n=215); median 73 vs 88 days; HR 1.35 (1.07-1.72). Counts rounded from the percentages | P (Results text, 2026-10-23) |
+| E13-4 | Azulay et al., SMS reminders after positive FOBT, Israel, JMIR mHealth 2019 | https://pmc.ncbi.nlm.nih.gov/articles/PMC6379817/ | colonoscopy within 120 days 163/232 (70.3%) vs 112/238 (47.1%); unadjusted OR 2.17 (1.49-3.17); control = routine care with a physician alert | P (2026-10-23) |
+| E13-5 | Coronado et al., navigation RCT, Ann Intern Med 2025 | https://pmc.ncbi.nlm.nih.gov/articles/PMC13007779/ | 12-month colonoscopy 55.1% (479) vs 42.1% (488); RD 13.0 pp (6.5-19.4); adjusted OR 1.69 (1.30-2.19). Counts rounded from the adjusted percentages. Not independent (cited in `orchestration.programme_reach`) | P (2026-10-23) |
+| E13-6 | Corley et al., Kaiser Permanente, JAMA 2017;317:1631 | https://jamanetwork.com/journals/jama/fullarticle/2620087 | 33.3% within 30 d, 63.6% 2 months, 74.2% 3, 80.6% 6, 83.2% 12; median 37 (23-62). Transcribed from section 2 and 3, not re-opened | P (transcribed) |
+| E13-7 | Public Health Scotland KPI report 2025-03-04 (parsed, OGL v3) | https://publichealthscotland.scot/media/31821/2025-03-04-bowel-screening-kpi-report.xlsx | Scotland: 26,358 colonoscopies of 35,133 positives (75.0%); 28.8% within 4 weeks and 70.4% within 8 weeks of referral, among those with a colonoscopy; reported median 40 days; board medians 22 to 109 days | P (parsed by `validation_targets.py`) |
+| E13-8 | NHS England BCSP annual report 2024-25, Table 12 (parsed, OGL v3) | https://assets.publishing.service.gov.uk/media/6a4e6212f79c9db2eb438f07/Bowel_Cancer_Screening_Annual_Report_Tables_2024-25.xlsx | England diagnostic uptake after a positive FIT 69,956 of 92,107 (76.0%); regional range 72.0% to 79.5%; provider range 64.8% to 87.6% | P (parsed) |
+| E13-9 | Bowel Cancer Australia summary of the AIHW NBCSP monitoring report 2026 | https://www.bowelcanceraustralia.org/?p=15157 | 73,724 positives (5.8%) in 2024; 14.7% (2023: 13.9%) with a colonoscopy within the recommended 30 days; state waits 132 days (WA) to 202 days (NT), statistic not stated | S (secondary; the AIHW site returned HTTP 403 again on 2026-10-23 and was not bypassed) |
+
+Searched and not found (2026-10-23): published 30/60/90-day colonoscopy proportions for the Dutch programme (only the targets, intake within 15 working days, were found); the AIHW data tables themselves.

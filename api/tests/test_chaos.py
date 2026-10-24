@@ -55,6 +55,8 @@ def scheduler_stopped_then_started():
         get("/alerts")
     except Exception as exc:
         pytest.skip(f"compose stack with A11 not reachable at {API}: {exc}")
+    if get("/heartbeats").get("followers"):  # A31: with a second scheduler up, stopping one is a handover, not an outage
+        pytest.skip("a follower scheduler is running (scale profile): T-A32 needs the single-scheduler stack; see test_chaos_leader.py")
     # start from a healthy state: scheduler running, no open alert
     compose("start", "scheduler")
     assert wait_for(lambda: (get("/heartbeats")["scheduler"] or {"age_seconds": 999})["age_seconds"] < 20 and not scheduler_alert(), 60), \

@@ -3656,7 +3656,7 @@
       "category": "validator",
       "expected": "accepted",
       "id": "RT-V-15.6",
-      "input": "('result_notification', 'whatsapp', 'en')",
+      "input": "('refusal_acknowledgement', 'sms', 'en')",
       "reason": "",
       "status": "pass"
     },
@@ -3666,7 +3666,7 @@
       "category": "validator",
       "expected": "accepted",
       "id": "RT-V-15.7",
-      "input": "('reminder', 'whatsapp', 'en')",
+      "input": "('result_notification', 'whatsapp', 'en')",
       "reason": "",
       "status": "pass"
     },
@@ -3676,7 +3676,7 @@
       "category": "validator",
       "expected": "accepted",
       "id": "RT-V-15.8",
-      "input": "('appointment_confirmation', 'whatsapp', 'en')",
+      "input": "('reminder', 'whatsapp', 'en')",
       "reason": "",
       "status": "pass"
     },
@@ -3686,7 +3686,7 @@
       "category": "validator",
       "expected": "accepted",
       "id": "RT-V-15.9",
-      "input": "('escalation_notice', 'whatsapp', 'en')",
+      "input": "('appointment_confirmation', 'whatsapp', 'en')",
       "reason": "",
       "status": "pass"
     },
@@ -3696,7 +3696,7 @@
       "category": "validator",
       "expected": "accepted",
       "id": "RT-V-15.10",
-      "input": "('callback_ack', 'whatsapp', 'en')",
+      "input": "('escalation_notice', 'whatsapp', 'en')",
       "reason": "",
       "status": "pass"
     },
@@ -3706,7 +3706,7 @@
       "category": "validator",
       "expected": "accepted",
       "id": "RT-V-15.11",
-      "input": "('result_notification', 'letter', 'en')",
+      "input": "('callback_ack', 'whatsapp', 'en')",
       "reason": "",
       "status": "pass"
     },
@@ -3716,7 +3716,7 @@
       "category": "validator",
       "expected": "accepted",
       "id": "RT-V-15.12",
-      "input": "('reminder', 'letter', 'en')",
+      "input": "('refusal_acknowledgement', 'whatsapp', 'en')",
       "reason": "",
       "status": "pass"
     },
@@ -3726,7 +3726,7 @@
       "category": "validator",
       "expected": "accepted",
       "id": "RT-V-15.13",
-      "input": "('appointment_confirmation', 'letter', 'en')",
+      "input": "('result_notification', 'letter', 'en')",
       "reason": "",
       "status": "pass"
     },
@@ -3736,7 +3736,7 @@
       "category": "validator",
       "expected": "accepted",
       "id": "RT-V-15.14",
-      "input": "('escalation_notice', 'letter', 'en')",
+      "input": "('reminder', 'letter', 'en')",
       "reason": "",
       "status": "pass"
     },
@@ -3746,7 +3746,7 @@
       "category": "validator",
       "expected": "accepted",
       "id": "RT-V-15.15",
-      "input": "('callback_ack', 'letter', 'en')",
+      "input": "('appointment_confirmation', 'letter', 'en')",
       "reason": "",
       "status": "pass"
     },
@@ -3756,7 +3756,7 @@
       "category": "validator",
       "expected": "accepted",
       "id": "RT-V-15.16",
-      "input": "('result_notification', 'sms', 'ar')",
+      "input": "('escalation_notice', 'letter', 'en')",
       "reason": "",
       "status": "pass"
     },
@@ -3766,7 +3766,7 @@
       "category": "validator",
       "expected": "accepted",
       "id": "RT-V-15.17",
-      "input": "('reminder', 'sms', 'ar')",
+      "input": "('callback_ack', 'letter', 'en')",
       "reason": "",
       "status": "pass"
     },
@@ -3776,7 +3776,7 @@
       "category": "validator",
       "expected": "accepted",
       "id": "RT-V-15.18",
-      "input": "('appointment_confirmation', 'sms', 'ar')",
+      "input": "('refusal_acknowledgement', 'letter', 'en')",
       "reason": "",
       "status": "pass"
     },
@@ -3786,7 +3786,7 @@
       "category": "validator",
       "expected": "accepted",
       "id": "RT-V-15.19",
-      "input": "('escalation_notice', 'sms', 'ar')",
+      "input": "('result_notification', 'sms', 'ar')",
       "reason": "",
       "status": "pass"
     },
@@ -3796,7 +3796,7 @@
       "category": "validator",
       "expected": "accepted",
       "id": "RT-V-15.20",
-      "input": "('callback_ack', 'sms', 'ar')",
+      "input": "('reminder', 'sms', 'ar')",
       "reason": "",
       "status": "pass"
     },
@@ -3806,7 +3806,7 @@
       "category": "validator",
       "expected": "accepted",
       "id": "RT-V-15.21",
-      "input": "('result_notification', 'whatsapp', 'ar')",
+      "input": "('appointment_confirmation', 'sms', 'ar')",
       "reason": "",
       "status": "pass"
     },
@@ -3816,7 +3816,7 @@
       "category": "validator",
       "expected": "accepted",
       "id": "RT-V-15.22",
-      "input": "('reminder', 'whatsapp', 'ar')",
+      "input": "('escalation_notice', 'sms', 'ar')",
       "reason": "",
       "status": "pass"
     },
@@ -3826,7 +3826,7 @@
       "category": "validator",
       "expected": "accepted",
       "id": "RT-V-15.23",
-      "input": "('appointment_confirmation', 'whatsapp', 'ar')",
+      "input": "('callback_ack', 'sms', 'ar')",
       "reason": "",
       "status": "pass"
     },
@@ -3836,7 +3836,7 @@
       "category": "validator",
       "expected": "accepted",
       "id": "RT-V-15.24",
-      "input": "('escalation_notice', 'whatsapp', 'ar')",
+      "input": "('refusal_acknowledgement', 'sms', 'ar')",
       "reason": "",
       "status": "pass"
     },
@@ -3846,7 +3846,7 @@
       "category": "validator",
       "expected": "accepted",
       "id": "RT-V-15.25",
-      "input": "('callback_ack', 'whatsapp', 'ar')",
+      "input": "('result_notification', 'whatsapp', 'ar')",
       "reason": "",
       "status": "pass"
     },
@@ -3856,7 +3856,7 @@
       "category": "validator",
       "expected": "accepted",
       "id": "RT-V-15.26",
-      "input": "('result_notification', 'letter', 'ar')",
+      "input": "('reminder', 'whatsapp', 'ar')",
       "reason": "",
       "status": "pass"
     },
@@ -3866,7 +3866,7 @@
       "category": "validator",
       "expected": "accepted",
       "id": "RT-V-15.27",
-      "input": "('reminder', 'letter', 'ar')",
+      "input": "('appointment_confirmation', 'whatsapp', 'ar')",
       "reason": "",
       "status": "pass"
     },
@@ -3876,7 +3876,7 @@
       "category": "validator",
       "expected": "accepted",
       "id": "RT-V-15.28",
-      "input": "('appointment_confirmation', 'letter', 'ar')",
+      "input": "('escalation_notice', 'whatsapp', 'ar')",
       "reason": "",
       "status": "pass"
     },
@@ -3886,7 +3886,7 @@
       "category": "validator",
       "expected": "accepted",
       "id": "RT-V-15.29",
-      "input": "('escalation_notice', 'letter', 'ar')",
+      "input": "('callback_ack', 'whatsapp', 'ar')",
       "reason": "",
       "status": "pass"
     },
@@ -3896,7 +3896,7 @@
       "category": "validator",
       "expected": "accepted",
       "id": "RT-V-15.30",
-      "input": "('callback_ack', 'letter', 'ar')",
+      "input": "('refusal_acknowledgement', 'whatsapp', 'ar')",
       "reason": "",
       "status": "pass"
     },
@@ -3906,7 +3906,7 @@
       "category": "validator",
       "expected": "accepted",
       "id": "RT-V-15.31",
-      "input": "'Your screening result is ready. The next step is a camera test. Dr Sara Khan from your...",
+      "input": "('result_notification', 'letter', 'ar')",
       "reason": "",
       "status": "pass"
     },
@@ -3916,6 +3916,66 @@
       "category": "validator",
       "expected": "accepted",
       "id": "RT-V-15.32",
+      "input": "('reminder', 'letter', 'ar')",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-15",
+      "actual": "accepted",
+      "category": "validator",
+      "expected": "accepted",
+      "id": "RT-V-15.33",
+      "input": "('appointment_confirmation', 'letter', 'ar')",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-15",
+      "actual": "accepted",
+      "category": "validator",
+      "expected": "accepted",
+      "id": "RT-V-15.34",
+      "input": "('escalation_notice', 'letter', 'ar')",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-15",
+      "actual": "accepted",
+      "category": "validator",
+      "expected": "accepted",
+      "id": "RT-V-15.35",
+      "input": "('callback_ack', 'letter', 'ar')",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-15",
+      "actual": "accepted",
+      "category": "validator",
+      "expected": "accepted",
+      "id": "RT-V-15.36",
+      "input": "('refusal_acknowledgement', 'letter', 'ar')",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-15",
+      "actual": "accepted",
+      "category": "validator",
+      "expected": "accepted",
+      "id": "RT-V-15.37",
+      "input": "'Your screening result is ready. The next step is a camera test. Dr Sara Khan from your...",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-V-15",
+      "actual": "accepted",
+      "category": "validator",
+      "expected": "accepted",
+      "id": "RT-V-15.38",
       "input": "'نتيجة فحصك جاهزة. الخطوة التالية هي فحص بالكاميرا. سيتواصل معك فريق رعايتك. المسؤول عن...",
       "reason": "",
       "status": "pass"
@@ -7348,11 +7408,11 @@
       "pass": 71
     },
     "validator": {
-      "cases": 392,
+      "cases": 398,
       "exposed": 0,
       "fail": 0,
       "known-limitation": 8,
-      "pass": 384
+      "pass": 390
     }
   }
 }

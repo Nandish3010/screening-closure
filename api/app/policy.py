@@ -68,6 +68,9 @@ ROUTE_POLICY: dict[tuple[str, str], object] = {
     # The scheduler service's periodic sweep and its heartbeat.
     ("POST", "/scheduler/sweep"): SCHEDULER,
     ("POST", "/scheduler/heartbeat"): SCHEDULER,
+    # Leader election (A31, ADR-041): the scheduler instances acquire, renew and release the lease through the API.
+    ("POST", "/scheduler/lease"): SCHEDULER,
+    ("POST", "/scheduler/lease/release"): SCHEDULER,
     # The send outbox (ADR-030): the scheduler loop drains approved drafts that have not gone out yet.
     ("POST", "/scheduler/outbox/drain"): SCHEDULER,
     # The automation scans (A21, ADR-032): intake heal (acknowledge, assign owner), auto-reroute, auto-outreach with the
@@ -97,6 +100,11 @@ ROUTE_POLICY: dict[tuple[str, str], object] = {
     ("GET", "/agency/tasks"): frozenset({COORD, SUPER}),
     ("GET", "/agency/inbox"): frozenset({PCO, SPEC, COORD, SUPER}),
     ("GET", "/cases/{case_id}/agency"): frozenset({PCO, SPEC, COORD, SUPER}),
+    # Erasure of a patient's personal data (A32, ADR-025): two supervisors. One requests (a reason from the taxonomy), a
+    # different one approves, and approving performs it. Nobody else, no service token. Reading one request: supervisors.
+    ("POST", "/erasures"): frozenset({SUPER}),
+    ("POST", "/erasures/{erasure_id}/approve"): frozenset({SUPER}),
+    ("GET", "/erasures/{erasure_id}"): frozenset({SUPER}),
 }
 
 # event type -> roles allowed to emit it via POST /cases/{id}/events
@@ -130,6 +138,13 @@ EVENT_POLICY: dict[str, frozenset[str]] = {
     # automatic messages and lifts a contact_valid: false on the case. Owner scoping applies to clinicians.
     "contact_updated": frozenset({PCO, SPEC, COORD, SUPER}),
     "mark_lost_contact": frozenset({PCO, SPEC, COORD, SUPER}),
+    # A33 (ADR-042): a person records the patient's informed refusal after counselling; `counselled_by` must be a physician
+    # (payload schema). The coordinator may record a conversation a physician had; the physician who signs the closure must
+    # be someone else (state machine). Owner scoping applies to clinicians.
+    "record_informed_refusal": frozenset({PCO, SPEC, COORD}),
+    # A34: a person cancels the booked appointment (the patient asked, or the provider did); `system:hl7` does so in process
+    # for an SIU S15 (HL7_EVENTS), never through this route.
+    "appointment_cancelled": frozenset({PCO, SPEC, COORD}),
     "message_drafted": frozenset({PCO, SPEC, COORD}),
     # Only the draft approval route (D5) writes message_approved, because it must come with the
     # approval of a stored draft; posting it here would fake an approval. Nobody may post it.
@@ -150,6 +165,9 @@ EVENT_POLICY: dict[str, frozenset[str]] = {
     "review_requested": frozenset(),
     # Only the watchdog service (A11); the scheduler no longer holds it.
     "watchdog_flagged": WATCHDOG,
+    # Written in process by the erasure procedure as `system:erasure` (A32, ADR-025) after a second supervisor approved
+    # the request; nobody can post it.
+    "erasure_completed": frozenset(),
 }
 
 # ---- the agency (A22, ADR-033): agents are labour, not authority ----------------------------------------------
@@ -174,6 +192,7 @@ AGENCY_NEVER = frozenset({
     "close", "clinician_review", "reopen", "message_approved", "message_rejected", "message_sent",
     "escalation_accepted", "handoff_accepted", "handoff_rejected", "reassign", "consent_updated",
     "accept_ownership", "callback_requested", "handoff_requested", "complete_confirmatory", "reply_classified",
+    "record_informed_refusal", "appointment_cancelled",
 })
 
 
@@ -194,8 +213,8 @@ def authorize_agency(identity: Identity, causes: str) -> None:
 #   record_confirmatory_result  the colonoscopy report is recorded as FHIR evidence by the POST /cases/{id}/confirmatory-result
 #                               path (appends no event; closing still needs a clinician, a signature and complete evidence)
 # It can never close, sign, reassign, accept ownership, change consent or confirm contact details.
-HL7_ACTIONS = frozenset({"create_case", "book_confirmatory", "record_confirmatory_result"})
-HL7_EVENTS = frozenset({"book_confirmatory"})  # equals ACTOR_EVENTS["system:hl7"] (tests/test_actor_table.py)
+HL7_ACTIONS = frozenset({"create_case", "book_confirmatory", "cancel_appointment", "record_confirmatory_result"})
+HL7_EVENTS = frozenset({"book_confirmatory", "appointment_cancelled"})  # equals ACTOR_EVENTS["system:hl7"] (tests/test_actor_table.py)
 
 
 def authorize_hl7(action: str) -> None:

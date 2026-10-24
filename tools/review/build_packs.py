@@ -358,6 +358,7 @@ STATE_GLOSS = {
     "referral_rejected": "The receiving provider turned the referral down, or did not answer in time. The reason is recorded and the case must be re-routed.",
     "consent_withdrawn": "The patient withdrew consent. Outreach stops, the case is flagged for a person to review, and the earlier state is remembered so it can be restored.",
     "lost_contact": "After repeated failed attempts the patient could not be reached. The case stays open and a person decides what to do next. It never closes by itself.",
+    "declined_pending_signoff": "The patient was counselled by a physician and declined the colonoscopy, and that is recorded. The case waits for a different physician to sign a closure as declined. It is not a completed colonoscopy and is counted apart. A re-offer date is shown; nothing re-offers automatically.",
     "reopened": "A clinician reopened a closed case, giving a reason. It returns for clinician review and can close again only with fresh evidence and a sign-off.",
 }
 
@@ -372,9 +373,11 @@ EVENT_GLOSS = {
     "book_confirmatory": ("Book the confirmatory colonoscopy.", "Care owner, coordinator"),
     "complete_confirmatory": ("Record that the colonoscopy was done.", "Specialist owner; the automation when it finds the colonoscopy report"),
     "clinician_review": ("Review the colonoscopy outcome.", "Primary care owner, specialist owner"),
-    "close": ("Close the case. Needs an evidence reference and a signature.", "Primary care owner, specialist owner (never automated)"),
+    "close": ("Close the case. Needs an evidence reference and a signature. After an informed refusal the closure says \"declined\", cites the counselling record, and is signed by a physician who did not counsel the patient.", "Primary care owner, specialist owner (never automated)"),
     "reopen": ("Reopen a closed case, with a reason.", "Primary care owner, specialist owner (human only)"),
-    "reassign": ("Give a rejected case a new owner.", "Coordinator, supervisor"),
+    "reassign": ("Give a rejected case a new owner, or hand the sign-off of a declined case to another physician.", "Coordinator, supervisor"),
+    "record_informed_refusal": ("Record that the patient, counselled by a physician, declines the colonoscopy: a counselling reference, who counselled, and a reason from a fixed list. The case then waits for a different physician to sign a declined closure.", "Care owner, coordinator recording the conversation (human only)"),
+    "appointment_cancelled": ("Record that the booked appointment was cancelled, with a reason from a fixed list and whether the patient asked. The case returns to \"patient acknowledged\" and is booked again. The national clocks do not restart.", "Care owner, coordinator; the hospital interface for a cancellation message"),
     "handoff_requested": ("Ask another provider to take over the case (an annotation; ownership has not moved).", "Care owner, supervisor; the automation, to the next provider on the list after a refusal or no answer"),
     "handoff_accepted": ("The receiving provider accepts. Ownership moves only now.", "Receiving clinician (human only)"),
     "handoff_rejected": ("The receiving provider refuses, with a reason from the fixed list. The scheduler may also bounce a request that got no answer.", "Receiving clinician; scheduler (timeout only)"),
@@ -394,6 +397,7 @@ EVENT_GLOSS = {
     "closure_proposed": ("The automation found the colonoscopy report and proposes closing the case. The clinician still reviews and signs; this closes nothing.", "The automation only"),
     "callback_requested": ("The patient asks for a person to call (does not understand, wants another date, cannot attend).", "Patient, coordinator; relayed by the reply triage from the patient's own reply (otherwise human only)"),
     "watchdog_flagged": ("The watchdog flags a case that has been idle too long.", "Watchdog / scheduler"),
+    "erasure_completed": ("Records that a patient's personal data was erased from a closed case, after two supervisors agreed. It says only that and which kinds of data; the case history stays and the case takes no further events.", "The erasure procedure only; nobody can post it"),
 }
 
 SLA_STEP_GLOSS = {
@@ -557,6 +561,7 @@ PURPOSE_CONTEXT = {
     "appointment_confirmation": "Confirms a booked appointment (a camera test). Always carries the date. Names the appointment, never a disease or a finding.",
     "escalation_notice": "Tells the patient a more senior member of the care team has been told, so the next step is not delayed.",
     "callback_ack": "Reply when the patient pressed \"I don't understand this\". A person will call.",
+    "refusal_acknowledgement": "After a patient's informed refusal is recorded (A33): the decision is recorded, their own doctor has been told, they can come back at any time. States no finding. Goes out as an approved draft through the existing message path; the system holds no GP channel yet, so telling the GP itself is the clinician's act.",
 }
 
 CHANNEL_LABEL = {"sms": "SMS", "whatsapp": "WhatsApp", "letter": "Letter"}
@@ -793,8 +798,8 @@ def questions(pw: dict) -> list[tuple[str, str, str, str]]:
          "A case can close only with an evidence reference and a named clinician's signature after clinician review. What the evidence reference may point to is not restricted today.",
          "What is acceptable: the colonoscopy report alone, report plus histology, a documented refusal, a letter to the GP? What must be in the sign-off? Who may sign, and is clinician review by itself ever enough?"),
         ("refusal", "Informed refusal",
-         "There is no state for a patient who, after a proper discussion, declines the colonoscopy. Today the nearest things are the handoff reason `patient_declined` (declined a referral) and keeping the case open.",
-         "What should happen: close with documented informed refusal (signed by a clinician), keep open with a recall date, offer FIT again next year, or something else? What must be recorded so that the closure is defensible?"),
+         "A patient who, after a proper discussion with a physician, declines the colonoscopy can now be recorded (`record_informed_refusal`: a counselling reference, who counselled, a reason from a fixed list). The case waits in `declined_pending_signoff` for a different physician to sign a closure marked declined, which is counted apart from completed colonoscopies. A re-offer date is shown, 12 months after the refusal (our assumption; nothing re-offers automatically). The handoff reason `patient_declined` (declined a referral) still exists.",
+         "Is a single signature by a physician who did not counsel the patient enough, or is a second signature needed? Is 12 months the right re-offer date (the earlier review suggested 3)? What must the counselling record contain so that the closure is defensible, and may a coordinator record the conversation?"),
         ("lost", f"Lost contact after {n_fail} failed attempts",
          f"A case can be marked lost after {n_fail} failed attempts (the engine checks only that the number given is at least {n_fail}). The case stays open.",
          f"Is {n_fail} the right number? What counts as an attempt (call, SMS, WhatsApp, letter), how far apart, and what else must be tried before marking lost (the patient's GP, a registered letter, an emergency contact)?"),

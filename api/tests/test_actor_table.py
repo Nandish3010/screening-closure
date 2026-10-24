@@ -67,9 +67,9 @@ def refused_by_the_table(model: CaseModel, type_: str, actor: str) -> bool:
 def test_the_table_has_exactly_the_documented_rows():
     assert set(ACTOR_EVENTS) == {
         *(f"{role}:" for role in HUMAN_ROLES), "system:scheduler", "system:watchdog", "system:notifier",
-        "system:consent", "system:automation", "model:", "system:triage", "system:agency:", "system:hl7",
+        "system:consent", "system:automation", "model:", "system:triage", "system:agency:", "system:hl7", "system:erasure",
     }
-    assert ACTOR_EVENTS[HL7_ACTOR] == {"book_confirmatory"}  # A28, ADR-039: the HL7 adapter books the appointment, nothing else
+    assert ACTOR_EVENTS[HL7_ACTOR] == {"book_confirmatory", "appointment_cancelled"}  # A28 ADR-039, A34 ADR-042: books and cancels the appointment, nothing else
     assert ACTOR_EVENTS[HL7_ACTOR] == policy.HL7_EVENTS
     assert ACTOR_EVENTS[TRIAGE_ACTOR] == {"reply_received", "reply_classified", "review_requested", "callback_requested"}
     assert ACTOR_EVENTS["system:agency:"] == frozenset()  # agents are labour, not authority (ADR-033): no event at all
@@ -141,7 +141,7 @@ def test_a_person_is_listed_once_per_role_with_the_same_events_and_the_policy_st
 def test_the_events_only_a_service_writes_are_never_a_persons():
     service_only = set(EVENT_TYPES) - HUMAN_EVENTS - {CASE_CREATED, "bogus_event"}
     assert service_only == {"mark_overdue", "assign_ownership", "closure_proposed", "review_requested", "message_sent",
-                            "watchdog_flagged", "reply_received", "reply_classified"}
+                            "watchdog_flagged", "reply_received", "reply_classified", "erasure_completed"}
     for role in HUMAN_ROLES:
         for type_ in service_only:
             assert type_ not in allowed_events(f"{role}:u1")
@@ -201,6 +201,8 @@ ROW_PROBES = {
     "system:automation": ("acknowledge", {"auto": True}, CaseModel(state="result_received")),
     "model:": ("message_drafted", {}, CaseModel(state="owner_accepted")),
     "system:triage": ("reply_received", {"channel": "sms", "text_ref": _SRC}, CaseModel(state="owner_accepted")),
+    "system:erasure": ("erasure_completed", {"erasure_id": _SRC, "categories": ["event_patient_reference"]},
+                       CaseModel(state="closed")),
     "system:hl7": ("book_confirmatory", {"appointment_date": "2026-01-12", "appointment_at": "2026-01-12T05:30:00Z"},
                    CaseModel(state="patient_acknowledged")),
 }

@@ -1,10 +1,15 @@
-.PHONY: test-redteam oidc-up oidc-down test-oidc agency-run test-demo test-e2e-live demo-scenario demo-stage demo-snapshot demo-restore demo-reset demo-kill-scheduler check docs-check tracker-lint test-security test-tools test-load load-check up down logs test test-db test-db-create test-db-reset test-chaos synthea demo-seed demo-seed-clean evaluate evaluate-capacity evaluate-capacity-check simulate evaluate-check sensitivity sensitivity-check reset web-install web-dev web-build web-test web-e2e test-e2e review-packs review-packs-check test-review-packs test-phi-logs rbac-matrix test-offline fresh-clone risk-report risk-check calibrate-fetch calibrate-fit calibrate-check effort effort-check video video-check video-deps verify hl7-demo hl7-samples
+.PHONY: test-redteam validate validate-check validate-targets evaluate-refusal oidc-up oidc-down test-oidc up-scale agency-run test-demo test-e2e-live demo-scenario demo-stage demo-snapshot demo-restore demo-reset demo-kill-scheduler check docs-check tracker-lint test-security test-tools test-load load-check up down logs test test-db test-db-create test-db-reset test-chaos synthea demo-seed demo-seed-clean evaluate evaluate-capacity evaluate-capacity-check simulate evaluate-check sensitivity sensitivity-check reset web-install web-dev web-build web-test web-e2e test-e2e review-packs review-packs-check test-review-packs test-phi-logs rbac-matrix test-offline fresh-clone risk-report risk-check calibrate-fetch calibrate-fit calibrate-check effort effort-check video video-check video-deps verify hl7-demo hl7-samples
 
 up:
 	docker compose up -d --build
 
+# A31 (ADR-041): two API replicas behind the Caddy proxy (host port PROXY_PORT, default 8100) and two schedulers; the schedulers
+# talk to the API through the proxy, and every scheduler call must carry a current leader token.
+up-scale:
+	SCHEDULER_API_URL=http://proxy:8080 REQUIRE_LEADER_FENCE=true docker compose --profile scale up -d --build
+
 down:
-	docker compose down
+	docker compose --profile scale down
 
 logs:
 	docker compose logs -f --tail=100
@@ -64,6 +69,9 @@ test-db: $(if $(SKIP_DB_CREATE),,test-db-create)
 # Chaos tests (F3, F4, F5; T-A32, T-F3 to T-F7), all marked `chaos`:
 #   * fault injection (api/tests/faults.py, honoured only when APP_ENV=test): duplicate delivery, clock skew,
 #     a store failure after the event insert;
+#   * T-A31 (api/tests/test_chaos_leader.py): kills the scheduler that holds the leader lease on a `make up-scale` stack and asserts
+#     the other takes over within the lease TTL and no event is lost or duplicated; skips itself when the scale stack is not
+#     up. Run it only against your own compose project (COMPOSE_PROJECT_NAME, shifted ports; the test header has the recipe);
 #   * the sweep killed part-way through 5,000 cases (SIGKILL, single process and sharded), rerun, exactly the
 #     planned events once;
 #   * garbage from the drafting model, and consent withdrawn between the approval and the send;
@@ -149,6 +157,16 @@ evaluate-check:
 	if diff -q $$a/results.json $$b/results.json >/dev/null; then \
 		echo "evaluate-check: PASS, results.json identical across runs (sha256 $$(shasum -a 256 $$a/results.json | cut -c1-16))"; rm -rf $$a $$b; \
 	else echo "evaluate-check: FAIL, results.json differs ($$a vs $$b)"; diff $$a/results.json $$b/results.json | head -20; exit 1; fi
+
+# The orchestrated arm's informed-refusal path switched on (A33, ADR-042; simulator/params.refusal.yaml). The full run goes to a scratch
+# directory, not to docs/results: it moves the labour results the submission quotes, so it is NOT the headline (adopting it is the results'
+# owner's decision). Its summary goes to docs/results/refusal.json and the secondary-scenario section of results.md (simulator/sim/refusal_report.py);
+# `make evaluate` copies that section from the committed refusal.json. REFUSAL_OUT=<dir> to choose where the full run goes.
+REFUSAL_OUT ?= /tmp/refusal-path
+evaluate-refusal:
+	mkdir -p $(REFUSAL_OUT)
+	$(SIMENV) $(PY) -m simulator.sim.cli evaluate --reps $(REPS) --cases $(CASES) --days $(EVAL_DAYS) --seed $(SEED) $(PARAM_FLAGS) --params simulator/params.refusal.yaml --out-dir $(REFUSAL_OUT)
+	$(SIMENV) $(PY) -m simulator.sim.refusal_report $(REFUSAL_OUT)/results.json docs/results
 
 # Human effort per case (ticket B17): the Human effort section of docs/results/results.md is written by `make evaluate` (it is computed from the same
 # event logs, no extra run). `make effort` prints it from the committed results.json; `make effort-check` fails if results.json predates the effort
@@ -384,6 +402,22 @@ calibrate-fit:
 calibrate-check:
 	PYTHONPATH=$(CURDIR)/api:$(CURDIR) $(PY) -m pytest tools/calibration/tests -q
 	python3 -I tools/calibration/calibrate.py check
+
+# ---- B20 (M6): validation of the simulator against data it was not calibrated on -> docs/results/validation.{json,md} -------------------
+# `make validate`         run the baseline/orchestrated arms against the held-out targets in tools/calibration/validation_targets.json and write the two files
+#                         (20 replications x 2,000 cases x 360 days, about 1 to 2 minutes with 8 workers; reads no external file, so it runs from a clean clone).
+# `make validate-check`   regenerate twice (multi-process, single-process) and fail unless both agree with each other and with the committed files.
+# `make validate-targets` rebuild the targets file from the local external files (python3 -I parsers, sha256 checked against the manifest; needs
+#                         `make calibrate-fetch` first); with CHECK=1 it only fails if the result differs from the committed file.
+VAL_JOBS ?= 8
+validate:
+	$(SIMENV) $(PY) -W ignore -m simulator.sim.validation run --reps $(REPS) --cases $(CASES) --days $(EVAL_DAYS) --seed $(SEED) --jobs $(VAL_JOBS)
+
+validate-check:
+	$(SIMENV) $(PY) -W ignore -m simulator.sim.validation check --reps $(REPS) --cases $(CASES) --days $(EVAL_DAYS) --seed $(SEED) --jobs $(VAL_JOBS)
+
+validate-targets:
+	python3 -I tools/calibration/validation_targets.py $(if $(CHECK),check,build)
 
 # ---- E16: the 3-minute submission video and the backup demo video, produced without a human recording (tools/video/) -----
 # `make video-check` (no stack, no ffmpeg) validates tools/video/storyboard.yaml (every shot has route, actions, caption, narration, duration; the

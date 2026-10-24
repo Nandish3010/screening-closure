@@ -93,6 +93,7 @@ STAGES = [
     # The slow regeneration checks (about 5.5 minutes together). The whole of `make check` took 13.5 minutes at the M5
     # final merge, inside the 25-minute budget, so they stay in it rather than in a separate target.
     Stage("sensitivity-check"),
+    Stage("validate-check"),  # B20: held-out validation regenerated twice and compared byte for byte (about 2.5 minutes)
     Stage("calibrate-check", needs_path="data/external/MANIFEST.json"),
 ]
 

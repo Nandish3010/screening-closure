@@ -1,0 +1,16 @@
+# A31 (ADR-041): round-robin over the two API replicas, with an active health check so a stopped replica leaves the rotation.
+# Plain HTTP on 8080 inside the compose network; the published port is loopback-only (docker-compose.yml, profile "scale").
+{
+	admin off
+	auto_https off
+}
+
+:8080 {
+	reverse_proxy api:8000 api-2:8000 {
+		lb_policy round_robin
+		lb_try_duration 5s
+		health_uri /health
+		health_interval 2s
+		health_timeout 2s
+	}
+}

@@ -89,3 +89,34 @@ def test_the_labour_figures_are_the_committed_ones_and_the_target_is_said_to_be_
     assert "33% fewer" in SCRIPT and "18% across the programme" in SCRIPT and "not met" in SCRIPT
     storyboard_text = (ROOT / "tools/video/storyboard.yaml").read_text(encoding="utf-8")
     assert "33%" in storyboard_text and "18%" in storyboard_text and "not met" in storyboard_text
+
+
+def test_the_headline_is_the_180_day_ratio_and_the_docs_link_the_validation():
+    """After the held-out validation (docs/results/validation.md) the simulator's timing is not validated: the headline is the
+    180-day completion ratio (about 1.27) and the in-reach silent loss, and no document or spoken line makes a speed claim."""
+    arms = LA["arms"]
+    base180, orch180 = (arms[a]["completion_180d"]["mean"] for a in ("baseline", "orchestrated"))
+    assert (round(base180 * 100, 1), round(orch180 * 100, 1)) == (51.1, 64.9)
+    assert round(orch180 / base180, 2) == 1.27
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    tech = (ROOT / "docs/submission/technical-documentation.md").read_text(encoding="utf-8")
+    assert "1.27" in readme and "docs/results/validation.md" in readme and "51.1% to 64.9%" in readme
+    assert "1.27" in tech and "(../results/validation.md)" in tech and "failed for timing" in tech
+    assert "failed for timing" in readme and "45.7% to 0%" in readme
+    for text in (TELE, SCRIPT, (ROOT / "tools/video/storyboard.yaml").read_text(encoding="utf-8")):
+        assert "1.27" in text or "one point two seven" in text
+    assert "one point two seven" in TELE
+
+
+def test_no_spoken_line_makes_a_speed_claim():
+    storyboard_text = (ROOT / "tools/video/storyboard.yaml").read_text(encoding="utf-8")
+    narration = " ".join(re.findall(r'^\s*narration:\s*"(.*)"\s*$', storyboard_text, re.M))
+    quoted = " ".join(re.findall(r"^> (.*)$", SCRIPT, re.M))
+    banned = re.compile(r"days? (sooner|faster|earlier|saved)|sooner|faster|quicker|median time|time to (safe )?closure (falls|drops)"
+                        r"|within 30 days|30-day completion|days saved", re.I)
+    for name, text in (("teleprompter", spoken(TELE)), ("storyboard narration", narration), ("script quotes", quoted)):
+        for m in banned.finditer(text):
+            context = text[max(0, m.start() - 60): m.end() + 40]
+            # the script quotes may say that we make no such claim ("no claim about days saved")
+            assert "no claim" in context or "claim none" in context, f"{name}: speed claim {m.group(0)!r} in ...{context}..."
+    assert "no claim about days saved" in SCRIPT and "claim none" in TELE

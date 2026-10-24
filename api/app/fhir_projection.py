@@ -76,6 +76,7 @@ TASK_STATUS = {
     "referral_rejected": "on-hold",
     "consent_withdrawn": "on-hold",
     "lost_contact": "on-hold",
+    "declined_pending_signoff": "on-hold",  # A33: the patient declined; waiting for a physician's signature
     "reopened": "in-progress",
 }
 _BAD_ID = re.compile(r"[^A-Za-z0-9.-]")
@@ -578,6 +579,8 @@ class Projector:
 
     def project(self, case_id: UUID, event: Event) -> bool:
         """Best effort: True if projected now, False if queued for retry. Never raises."""
+        if event.type == "erasure_completed":
+            return True  # A32 (ADR-025): the erasure record is not projected; it would re-create what erasure just removed
         try:
             if time.monotonic() < self._down_until:  # wall-clock-ok: HAPI outage backoff only, never about a case
                 raise FhirError("HAPI marked down: queued without trying")
@@ -625,7 +628,9 @@ class Projector:
         def loop():
             while not self._stop.wait(interval_seconds):
                 try:
-                    if self.queue.count():
+                    from app import leader  # A31: one API replica drains the projection queue, the others idle
+
+                    if leader.api_is_leader() and self.queue.count():
                         self.drain(due_only=True)
                 except Exception:
                     log.exception("FHIR projection drain failed")

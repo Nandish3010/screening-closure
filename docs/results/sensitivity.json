@@ -42,7 +42,7 @@
       "params.yaml",
       "params.conservative.yaml"
     ],
-    "params_hash": "0d059aee684649779a12abe2d3462621152885116f33704d761e39ec861f2c0a",
+    "params_hash": "0a4bfd09ff2ce409782e24a28973149ac4c461497fa4ece5ddd3a2f0ec2fcd25",
     "pathway": "colorectal_fit.yaml",
     "rank_metric": "completion_180d",
     "replications": 5,
@@ -187,6 +187,11 @@
       "key": "no_show_rate_by_channel.sms",
       "reason": "sourced; its source states no plausible range",
       "status": "sourced-adjacent"
+    },
+    {
+      "key": "orchestration.refusal_path_share",
+      "reason": "a switch for a modelling option (the informed-refusal path, A33), not an uncertain quantity",
+      "status": "assumed"
     },
     {
       "key": "reopen.resume_state",

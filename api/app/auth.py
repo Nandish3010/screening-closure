@@ -330,6 +330,8 @@ def secure_config_problems() -> list[str]:
     hl7 = settings.hl7_service_token
     if hl7 and hl7 != HL7_TOKEN_DEFAULT and len(hl7.encode()) < MIN_SECRET_BYTES:
         problems.append(f"HL7_SERVICE_TOKEN is shorter than {MIN_SECRET_BYTES} bytes")
+    if settings.clock_mode != "wall":
+        problems.append("CLOCK_MODE is not 'wall' (a deployment outside dev must run on real time, not the simulation clock)")
     if settings.outreach_demo_approval:
         problems.append("OUTREACH_DEMO_APPROVAL is on (a demo placeholder must not stand in for the clinical lead's "
                         "signature on the outreach policy)")

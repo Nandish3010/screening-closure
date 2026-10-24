@@ -34,7 +34,7 @@ from heapq import heappop, heappush
 
 from app.events import CASE_CREATED, Event
 from app.pathway import Pathway
-from app.state_machine import InvalidTransition, apply
+from app.state_machine import CaseModel, InvalidTransition, apply, step
 
 from .actors import as_machine_event
 from .behaviour import (
@@ -47,6 +47,13 @@ from .messy import MessyPlan, draw_messy
 from .metrics import CaseRecord, build_record
 from .params import ModelParams, ParamError
 from .patients import Patient
+
+# A33 (ADR-042): informed refusal in the orchestrated arm. A patient who truly refuses is, once the process notices (the ladder is
+# exhausted, or the appointment is missed), counselled by the owner and the refusal recorded; a physician other than the
+# counsellor signs a declined closure `close_sla` working days later (the pathway's `close` SLA). The counselling delay is an
+# ASSUMPTION (5 working days from the moment the case is flagged), not a fitted parameter. The baseline arm has no such path.
+COUNSELLING_DELAY_WD = 5
+REFUSAL_STATES = ("owner_accepted", "patient_acknowledged", "confirmatory_booked")  # where the pathway allows it
 
 ORCHESTRATED = "orchestrated"
 BASELINE = "baseline"
@@ -83,7 +90,7 @@ class Case:
         "h_cur", "hstate", "appt_idx", "appt_t", "pending_appt", "reminders", "awaiting_patient", "sub",
         "timer_n", "watch_n", "watch_armed", "last_act", "extra_delay", "abandoned", "reopened", "round",
         "bchannel", "lost_reasons", "booked_once", "last_flag", "orch", "ms_met", "ms_timer_n", "ms_requested", "last_rung",
-        "slot_prov",
+        "slot_prov", "refuses", "refusal",
     )
 
     def __init__(self, p: Patient, lat: Latents, msy: MessyPlan, end: float, initial_state: str, bchannel: str,
@@ -102,6 +109,8 @@ class Case:
         self.consent_ok = True  # what the SYSTEM believes (orchestrated consent ledger)
         self.withdrawn = False  # what is TRUE about the patient
         self.declined_care = refuses  # truth: this patient will not act (refusal or consent withdrawal)
+        self.refuses = refuses  # truth: an outright refusal (not a consent withdrawal); the orchestrated arm counsels these (A33)
+        self.refusal: dict | None = None  # the informed refusal on record: {counselling_ref, counselled_by}
         self.dropped_out = False
         self.lapses = 0
         self.resp_idx = 0
@@ -239,7 +248,7 @@ class Engine:
             "recover": self.on_recover, "watch": self.on_watch, "force": self.on_force, "dup": self.on_dup,
             "switch": self.on_switch, "switch_done": self.on_switch_done, "consent": self.on_consent,
             "consent_review": self.on_consent_review, "reopen": self.on_reopen, "self_rebook": self.on_self_rebook,
-            "rung_q": self.on_rung_q, "force_q": self.on_force_q,
+            "rung_q": self.on_rung_q, "force_q": self.on_force_q, "refusal": self.on_refusal, "signoff": self.on_signoff,
         }
         self.cap: SlotBook | None = None  # finite capacity (B19); built in run() once the cohort size is known
         self.staff: StaffQueue | None = None
@@ -552,8 +561,55 @@ class Engine:
     def flag_lost(self, c: Case, t: float, reason: str) -> None:
         if reason in c.lost_reasons:
             return
+        if (c.orch and c.refuses and c.refusal is None and reason in ("ladder_exhausted", "declined_care")
+                and c.lat.u_reach < self.mp.refusal_path_share  # off unless orchestration.refusal_path_share is set (A33)
+                and c.state in (*REFUSAL_STATES, "patient_contacted")):
+            # A33: a refuser is not "lost": the owner counsels them and records the refusal (a physician signs the closure).
+            # Scheduled once; if the case is not in a state that allows it by then, it is flagged lost as before.
+            if "refusal_scheduled" not in c.lost_reasons:
+                c.lost_reasons.append("refusal_scheduled")
+                self.schedule(self.cal.add_working_days_t(t, COUNSELLING_DELAY_WD), "refusal", c)
+            return
         c.lost_reasons.append(reason)
         self.emit(c, t, "lost_contact", "scheduler" if c.orch else "system:intake", {"reason": reason})
+
+    def on_refusal(self, c: Case, t: float, token, data) -> None:
+        """The owner counsels the refuser and records the informed refusal (A33); the case waits for a physician's sign-off."""
+        if c.abandoned or c.state == self.terminal:
+            return
+        if c.state == "patient_contacted":  # the counselling conversation is also the patient's acknowledgement
+            c.state = apply(c.state, as_machine_event(self._log_ev(c, t, "patient_acknowledge", f"staff:outreach-{c.p.idx % 4}",
+                                                                   {"via": "counselling"})), self.pw)
+        if c.state not in REFUSAL_STATES:
+            c.lost_reasons.remove("refusal_scheduled")
+            self.flag_lost(c, t, "declined_care")  # cannot be recorded from here: lost, as before
+            return
+        counsellor = f"owner:pcp-{c.p.idx % 7}"
+        payload = {"counselling_ref": f"DocumentReference/counsel-{c.p.key}", "counselled_by": counsellor,
+                   "reason": "personal_choice"}
+        ev = self._log_ev(c, t, "record_informed_refusal", counsellor, payload)
+        c.state = apply(c.state, as_machine_event(ev), self.pw)
+        c.refusal = {"counselling_ref": payload["counselling_ref"], "counselled_by": counsellor}
+        c.token += 1  # nothing else is awaited: pending step events and timers lapse
+        c.step, c.awaiting_patient = None, False
+        self.schedule(self.cal.add_working_days_t(t, self.slas["close"]), "signoff", c)
+
+    def on_signoff(self, c: Case, t: float, token, data) -> None:
+        """A physician who is not the counsellor signs the declined closure (A33). No reopen is modelled for it."""
+        if c.abandoned or c.state != self.pw.refusal_state or c.refusal is None:
+            return
+        signer = f"clinician:cl-{c.p.idx % 5}"  # a different person from the counsellor (`owner:pcp-N`)
+        ev = self._log_ev(c, t, "close", signer, {"outcome": "declined", "evidence_ref": c.refusal["counselling_ref"],
+                                                   "signed_by": signer})
+        c.state = step(CaseModel(state=c.state, refusal=c.refusal), as_machine_event(ev), self.pw).state
+        c.step = None
+        c.token += 1
+
+    def _log_ev(self, c: Case, t: float, etype: str, actor: str, payload: dict) -> Event:
+        """Build and log a pathway event whose state change the caller applies (the machine runs on the caller's model)."""
+        ev = self._mk(c, t, etype, actor, payload)
+        self._log(c, ev, t)
+        return ev
 
     def on_watch(self, c: Case, t: float, token, data) -> None:
         c.watch_armed = False
@@ -854,6 +910,8 @@ class Engine:
             self.emit(c, t, "duplicate_result_received", "lab:second", {"new_work_item": True})
 
     def _pre_booking(self, c: Case) -> bool:
+        if c.state not in self.states:  # a recorded refusal waiting for its sign-off (A33): nothing to switch or transfer
+            return False
         return self.states.index(c.state) < self.idx_booked
 
     def _reenter_staff_step(self, c: Case) -> bool:

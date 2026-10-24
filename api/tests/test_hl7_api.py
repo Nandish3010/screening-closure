@@ -124,13 +124,14 @@ def test_the_adapter_token_cannot_post_any_event(client, hl7, event_type):
     assert all(policy.HL7 and auth.HL7_ROLE not in roles for roles in policy.EVENT_POLICY.values())
 
 
-def test_the_actor_row_holds_book_confirmatory_and_the_state_machine_refuses_all_else():
-    assert ACTOR_EVENTS[HL7_ACTOR] == {"book_confirmatory"} == allowed_events("system:hl7")
+def test_the_actor_row_holds_book_confirmatory_and_appointment_cancelled_and_the_state_machine_refuses_all_else():
+    row = {"book_confirmatory", "appointment_cancelled"}  # A34, ADR-042: the adapter books and cancels the appointment
+    assert ACTOR_EVENTS[HL7_ACTOR] == row == allowed_events("system:hl7")
     assert allowed_events("system:hl7:x") == frozenset() and allowed_events("system:HL7") == frozenset()
     from app.main import pathway
 
     for state in [*pathway.states, *pathway.side_states]:
-        for event_type in sorted({*pathway.event_types, *policy.EVENT_POLICY, "close", "reopen", "bogus"} - {"book_confirmatory"}):
+        for event_type in sorted({*pathway.event_types, *policy.EVENT_POLICY, "close", "reopen", "bogus"} - row):
             with pytest.raises(InvalidTransition, match="actor table"):
                 step(CaseModel(state=state), __event(event_type), pathway)
 

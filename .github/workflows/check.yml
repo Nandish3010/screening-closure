@@ -111,6 +111,8 @@ jobs:
             -e SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT=ca.uhn.fhir.jpa.model.dialect.HapiFhirPostgresDialect \
             -e SPRING_JPA_PROPERTIES_HIBERNATE_SEARCH_ENABLED=false \
             -e hapi.fhir.reuse_cached_search_results_millis=-1 \
+            -e hapi.fhir.expunge_enabled=true \
+            -e hapi.fhir.delete_expunge_enabled=true \
             -e JAVA_TOOL_OPTIONS=-Xmx2g \
             hapiproject/hapi:v8.12.0-2
       - name: Wait for HAPI (at most 10 minutes; the HAPI tests skip cleanly without it)
@@ -182,3 +184,5 @@ jobs:
         run: make sensitivity-check SENS_JOBS=$(nproc)
       - name: make risk-check
         run: make risk-check
+      - name: make validate-check
+        run: make validate-check VAL_JOBS=$(nproc)

@@ -278,5 +278,8 @@ def write_results(result: dict, out_dir: Path, ctx: Context | None = None) -> tu
     mpath = out_dir / "results.md"
     from .capacity_report import load_capacity, section_block
 
-    mpath.write_text(render_markdown(result, section_block(load_capacity(out_dir))))
+    from . import refusal_report
+
+    refusal_block = refusal_report.section_block(refusal_report.load_refusal(out_dir), result)
+    mpath.write_text(render_markdown(result, section_block(load_capacity(out_dir)), refusal_block))
     return jpath, mpath
