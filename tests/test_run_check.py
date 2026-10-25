@@ -66,6 +66,7 @@ def _fake_run(calls, fail=()):
 
 
 def test_failing_stage_stops_new_stages_serial(monkeypatch, capsys):
+    monkeypatch.setattr(rc, "DEFAULT_KEEP_GOING", False)  # CHECK_KEEP_GOING=1 may be set by the make check running this test
     monkeypatch.setattr(rc, "pg_reachable", lambda: True)
     calls: list[str] = []
     monkeypatch.setattr(rc, "run", _fake_run(calls, {"test-db"}))
@@ -78,6 +79,7 @@ def test_failing_stage_stops_new_stages_serial(monkeypatch, capsys):
 
 
 def test_parallel_failure_and_dependencies(monkeypatch, capsys):
+    monkeypatch.setattr(rc, "DEFAULT_KEEP_GOING", False)
     monkeypatch.setattr(rc, "pg_reachable", lambda: True)
     monkeypatch.setattr(rc, "ensure_web_install", lambda stages, env: None)
     calls: list[str] = []
