@@ -4,6 +4,7 @@ import { useApp } from "../app/AppContext";
 import { ROLES, type Role } from "../api/contract";
 import { DEMO_PATIENT_CASE_ID } from "../api/fixtures";
 import { DEMO_USERS } from "../api/identities";
+import { useTour } from "../judge/JudgeTour";
 import { fmtDateTime } from "../lib/format";
 
 export function SimBadge() {
@@ -43,6 +44,7 @@ function ClockControl() {
 export function Header() {
   const { role, setRole, api, actorName } = useApp();
   const navigate = useNavigate();
+  const tour = useTour();
   const { pathname } = useLocation();
 
   const onRole = (r: Role) => {
@@ -58,12 +60,15 @@ export function Header() {
   };
 
   return (
-    <header className="app-header">
+    <header className={`app-header${pathname.startsWith("/patient") ? " app-header-patient" : ""}`}>
       <div className="header-row">
         <Link className="brand" to="/" aria-label="Screening Closure home">
           <span className="brand-mark" aria-hidden="true">&#10003;</span> Screening Closure
         </Link>
-        <SimBadge />
+        <div className="header-tools">
+          <button type="button" className="btn btn-small btn-tour" onClick={tour.open} aria-haspopup="dialog" data-testid="judge-tour-button">Judge tour</button>
+          <SimBadge />
+        </div>
       </div>
       <div className="header-row">
         <nav aria-label="Main">
@@ -71,6 +76,7 @@ export function Header() {
           <NavLink to="/dashboard">Dashboard</NavLink>
           {(role === "coordinator" || role === "supervisor") && <NavLink to="/agency">Agency</NavLink>}
           <NavLink to={`/patient/${DEMO_PATIENT_CASE_ID}`}>Patient view</NavLink>
+          <NavLink to="/judge">Judge</NavLink>
         </nav>
         <div className="header-tools">
           {api.oidc ? (
