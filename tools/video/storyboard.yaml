@@ -71,7 +71,7 @@ shots:
     route: /coordinator
     duration: 7
     caption: "A named owner, a clock, an audit trail, a clinician-signed closure. Nothing is diagnosed. All data synthetic."
-    narration: "This is an accountability and closure engine: a named owner, a clock, an audit trail and a clinician's signature on every closure. Nothing is diagnosed."
+    narration: "An accountability and closure engine: a named owner, a clock, an audit trail and a clinician's signature on every closure. Nothing is diagnosed."
     actions:
       - goto: /coordinator
       - wait_for: {testid: worklist-row, timeout: 20000}
@@ -275,7 +275,7 @@ shots:
     route: "card:results"
     duration: 20
     caption: "Simulation on synthetic data, literature-anchored scenario, before capacity limits. Colonoscopy within 180 days 51% to 67%, a ratio of about 1.31 (inside the published navigation range; validated against held-out trials; timing is not). Closed with evidence and a signature 53% to 68%; lost without anyone told 45% at baseline, 0% where the programme reaches, 21% programme-level. Rerun: make evaluate"
-    narration: "Simulation on synthetic data, literature-anchored, before capacity limits. Colonoscopy within one hundred eighty days rises from fifty-one to sixty-seven percent, a ratio of about one point three one. Cases closed with evidence and a signature rise from fifty-three to sixty-eight percent. Cases lost without anyone told: forty-five percent today, zero where the programme reaches, twenty-one percent programme-wide."
+    narration: "Synthetic simulation, literature-anchored. Colonoscopy within one hundred eighty days: fifty-one to sixty-seven percent, a ratio of one point three one. Closed with evidence: fifty-three to sixty-eight percent. Lost without anyone told: forty-five percent today, zero where the programme reaches, twenty-one overall."
     actions:
       - card:
           kind: results
@@ -295,7 +295,7 @@ shots:
     route: "card:slide"
     duration: 12
     caption: "Labour: 37% fewer staff minutes per case the system handles, 20% across the programme. The 40% target is not met in realistic scenarios; only the upper bound, a mechanism ceiling, crosses it."
-    narration: "Labour falls thirty-seven percent per handled case and twenty percent programme-wide. Our target was forty percent. It is not met in realistic scenarios; only the upper bound, a mechanism ceiling, crosses it."
+    narration: "Labour falls thirty-seven percent per handled case, twenty percent programme-wide. The forty percent target is not met in realistic scenarios; only the upper bound crosses it."
     actions:
       - card:
           kind: slide
@@ -314,7 +314,7 @@ shots:
     route: "card:slide"
     duration: 11
     caption: "Pilot ask: one programme, two providers, 90 days, shadow mode first. Cases closed without evidence: must stay zero."
-    narration: "The pilot ask: one programme, two providers, ninety days, shadow mode first. Cases closed without evidence must stay at zero. Judges can replay all of this alone with the Judge tour button."
+    narration: "The ask: one programme, two providers, ninety days, shadow mode first. Cases closed without evidence must stay at zero. Judges can replay it alone with the Judge tour."
     actions:
       - card:
           kind: slide

@@ -170,8 +170,8 @@ support_fte_loaded_cost_aed_per_year          300000  assumed           AED per 
 integration_one_off_aed_per_provider          120000  assumed           AED per participating provider, one-off
 members_per_provider                           20000  assumed           screened members per year per provider
 amortisation_years                                 3  assumed           years
-coordinator_minutes_per_case_manual             57.3  assumed           staff minutes (all roles) per actionable case without the engine
-coordinator_minutes_per_case_with_engine        46.8  assumed           staff minutes (all roles) per actionable case with the engine
+coordinator_minutes_per_case_manual             57.7  assumed           staff minutes (all roles) per actionable case without the engine
+coordinator_minutes_per_case_with_engine        46.1  assumed           staff minutes (all roles) per actionable case with the engine
 coordinator_cost_aed_per_hour                    120  assumed           AED per hour
 wage_ratio_nurse                                 1.5  sourced-adjacent  multiple of the coordinator wage, registered nurse
 wage_ratio_clinician                             4.0  sourced-adjacent  multiple of the coordinator wage, GP or owner physician
@@ -218,8 +218,8 @@ cost per screened member           33.73            9.57             4.94
 COORDINATOR TIME (assumed minutes per case, with vs without the engine)
 per year                 10,000 members  50,000 members  200,000 members
 -----------------------  --------------  --------------  ---------------
-coordinator hours saved             123             613            2,450
-value of time saved              14,700          73,500          294,000
+coordinator hours saved             135             677            2,707
+value of time saved              16,240          81,200          324,800
 All roles' minutes are valued at the coordinator rate in this table; the next section weights them by role.
 
 WAGE-WEIGHTED STAFF TIME (coordinator-equivalent minutes per case; synthetic minutes x sourced-adjacent ratios)
@@ -252,10 +252,10 @@ COMMERCIAL OPTIONS (per year; illustrative fees from the inputs file)
 per year                         10,000 members  50,000 members  200,000 members
 -------------------------------  --------------  --------------  ---------------
 A: fee per screened member               60,000         300,000        1,200,000
-A: provider net (saving - fee)          -45,300        -226,500         -906,000
+A: provider net (saving - fee)          -43,760        -218,800         -875,200
 A: operator margin (fee - cost)        -277,280        -178,400          212,400
 B: fee per actionable case               63,000         315,000        1,260,000
-B: provider net (saving - fee)          -48,300        -241,500         -966,000
+B: provider net (saving - fee)          -46,760        -233,800         -935,200
 B: operator margin (fee - cost)        -274,280        -163,400          272,400
 
 90-DAY PILOT (enrolment window plus follow-up tail)
@@ -309,7 +309,7 @@ falls with volume because hosting, licences and the support base are fixed; the 
 shape, not a price.
 ```
 
-How to read it. At the smallest volume the operator's cost to serve is well above either illustrative fee, so a pilot would be priced as an investment or at cost recovery by agreement, not at a steady-state fee. At the largest volume both illustrative fees cover the operator's cost, but the assumed time saved, 10.5 staff minutes per case (57.3 against 46.8, the inputs file's assumed minutes, from an earlier simulator run, synthetic; the current run gives 57.7 against 46.1), is worth far less than either fee when valued at the coordinator rate, so the provider-net lines are negative. The script values every staff minute at the coordinator rate and labels the rows "coordinator hours", although the minutes are all-role minutes; wage-weighted (sourced-adjacent ratios of 4 and 10, section 8 note) there is no saving at all, because weighted staff time per case is 10.5% higher than at baseline (programme level), so those rows overstate the benefit. Read the output as a statement that today's illustrative fees cannot be justified by labour cost alone: the case for a buyer is capacity (grow screening without growing coordinators) and outcomes, and the fees would be set against those, or against measured minutes from K9, not against assumed labour savings.
+How to read it. At the smallest volume the operator's cost to serve is well above either illustrative fee, so a pilot would be priced as an investment or at cost recovery by agreement, not at a steady-state fee. At the largest volume both illustrative fees cover the operator's cost, but the assumed time saved, 11.6 staff minutes per case (57.7 against 46.1, the inputs file's assumed minutes, copied from the B21 regeneration of 25 October 2026, programme level, synthetic), is worth far less than either fee when valued at the coordinator rate, so the provider-net lines are negative. The script values every staff minute at the coordinator rate and labels the rows "coordinator hours", although the minutes are all-role minutes; wage-weighted (sourced-adjacent ratios of 4 and 10, section 8 note) there is no saving at all, because weighted staff time per case is 10.5% higher than at baseline (programme level), so those rows overstate the benefit. Read the output as a statement that today's illustrative fees cannot be justified by labour cost alone: the case for a buyer is capacity (grow screening without growing coordinators) and outcomes, and the fees would be set against those, or against measured minutes from K9, not against assumed labour savings.
 
 How to read the shadow pilot. Same three providers and the same placeholder volumes as the full pilot, so the same 155 expected cases in the window. The total is 105,828 against 577,624 for the full pilot, and 681 per case against 3,718. The difference comes from three assumed inputs: a much smaller one-off integration per provider (15,000 against 120,000, because it is an export mapping and not a live feed), less support, and a smaller hosting and licence footprint. These are assumptions chosen to be plausible, not quotes, and the export format each provider can actually produce is a data request (section 5).
 

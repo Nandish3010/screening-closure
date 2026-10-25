@@ -9,6 +9,8 @@ Both videos are produced by a script from the storyboard of [demo-script.md](dem
 
 **Since that run the storyboard changed (E19): the spoken figures follow the regenerated results (B21), shot 11 reads the reply with the live triage model (D15; run `make triage-serve` first) and shots 11, 13 and 14 are 2 s longer, so the targets now add up to 168 s of shots (175 s with the cards, 5 s under the cap, so check the real length). The measurements below are from the earlier cut and have not been repeated: run `make video` again and replace them (H4 stays open).**
 
+**Re-run for E19 (25 Oct 2026, M6 main with live triage via `make triage-serve`):** `make up`, `make demo-reset`, `make video` recorded 15 of 15 shots, none skipped (shot 11 read the Gulf-Arabic reply as `confirm` on the live model); after shortening the narration of shots 2, 12, 13 and 14, `submission-3min.mp4` is 177.8 s (cap 180 s) and `backup-demo.mp4` 187.8 s. Final shot lengths: 1 8.0, 2 9.4, 3 12.3, 4 12.0, 5 15.0, 6 5.0, 7 12.0, 8 15.0, 9 13.0, 10 10.1, 11 16.0, 12 20.0, 13 12.0, 14 11.2, 15 10.0 s. The paragraph below is the earlier proof run, kept for its method.
+
 **Status: the proof run is done (18 Oct 2026, on the merged code with A24, A25 and A26 and the final demo script).** `make demo-reset`, `make video-deps`, `make video` ran against the real stack and recorded **15 of 15 shots, none skipped**, then narrated and assembled both files; the recorder left the scheduler running and the demo reset (state hash `a0a07a71...` equal to the snapshot's). Measured:
 
 | File | Duration | Size | Format |
