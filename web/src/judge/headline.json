@@ -45,10 +45,14 @@
       "value": "39.9%"
     }
   },
+  "managed_gap_points": {
+    "high": "16",
+    "low": "13"
+  },
   "run": {
     "cases_per_replication": 2000,
     "follow_up_days": 360,
-    "git_commit": "68066b91caeb8a4204a4f367fbe03d59a3bb745c",
+    "git_commit": "80853c84951dbd56a1bf4968686ab2a7fd2dc358",
     "replications": 20
   },
   "scenario": {

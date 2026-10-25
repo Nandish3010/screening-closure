@@ -1,0 +1,12 @@
+# Numbers quoted in README.md or docs/submission/*.md that are not in docs/results and do not come from the other
+# sources tools/check/docs_numbers.py reads (docs/evidence*.md, business-case, pilot-plan, governance, config, simulator params).
+# Each entry: file, number (as written; sign and unit spacing are ignored), reason. An entry that matches nothing is an error.
+# Keep this short. A number that should be in docs/results belongs there, not here.
+allow:
+  - {file: docs/submission/video.md, number: "177.8", reason: "Measured duration (s) of submission-3min.mp4 in the E19 recording run; a build artefact of make video, not a model result."}
+  - {file: docs/submission/video.md, number: "187.8", reason: "Measured duration (s) of backup-demo.mp4 in the E19 recording run; a build artefact of make video."}
+  - {file: docs/submission/video.md, number: "169.95", reason: "Measured duration (s) of submission-3min.mp4 in the 18 Oct proof run; a build artefact of make video."}
+  - {file: docs/submission/video.md, number: "179.95", reason: "Measured duration (s) of backup-demo.mp4 in the 18 Oct proof run; a build artefact of make video."}
+  - {file: docs/submission/video.md, number: "162.9", reason: "Sum of narrated shot lengths (s) in the 18 Oct proof run; a build artefact of make video."}
+  - {file: docs/submission/video.md, number: "22.18", reason: "Node.js version (22.18 or later) required by the recorder; a version string, not a result."}
+  - {file: docs/submission/video.md, number: "17.2", reason: "Measured narration length (s) of shot 12 in the 18 Oct proof run; a build artefact of make video."}

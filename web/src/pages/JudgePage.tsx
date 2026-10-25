@@ -15,7 +15,7 @@ const HEADLINE: { value: string; label: string; note: string }[] = [
   {
     value: `${H.completion_180d.orchestrated.value} vs ${H.completion_180d.baseline.value}`,
     label: "Colonoscopy completed within 180 days (orchestrated vs baseline)",
-    note: `A ratio of ${H.completion_180d.ratio.value}, inside the pooled patient-navigation risk-ratio interval (1.10 to 1.46) that the scenario was anchored at 1.27. The reach parameter was not refitted after the B21 timing change. An input from the literature, not a finding of this project.`,
+    note: `A ratio of ${H.completion_180d.ratio.value}. It is calibrated to published navigation trials: the reach parameter was fitted so that the ratio matches the pooled navigation risk ratio (95% CI 1.10 to 1.46) anchored at 1.27, and was not refitted after the B21 timing change. The model shows the mechanism and what drives it, not new evidence of effect. Only the Azulay comparison in the validation is independent of that fit, and managed-programme completion levels are under-predicted by about ${H.managed_gap_points.low} to ${H.managed_gap_points.high} points.`,
   },
   {
     value: `${H.closed_share.orchestrated.value} vs ${H.closed_share.baseline.value}`,
@@ -23,9 +23,9 @@ const HEADLINE: { value: string; label: string; note: string }[] = [
     note: "Orchestrated vs baseline, 360 days.",
   },
   {
-    value: `${H.silent_loss.orchestrated_in_reach.value} vs ${H.silent_loss.baseline.value}`,
-    label: "Lost to follow-up and never shown to a human, among cases the programme reaches",
-    note: `Zero by construction of the escalation ladder; across all cases (including those never reached) it is ${H.silent_loss.orchestrated_programme.value}.`,
+    value: `${H.silent_loss.baseline.value} to ${H.silent_loss.orchestrated_programme.value}`,
+    label: "Lost to follow-up and never shown to a human, programme level (baseline to orchestrated)",
+    note: `Among the cases the programme reaches it is ${H.silent_loss.orchestrated_in_reach.value}, which is true by construction: every reached case has an owner and a timer. The programme-level figure is the one to quote.`,
   },
   {
     value: H.labour_reduction.literature_all.value,

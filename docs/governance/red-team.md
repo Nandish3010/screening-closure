@@ -43,7 +43,7 @@ Out of scope: the host, the database, the network, supply-chain compromise, and 
 | Replies route and classifier (`app/routers/replies.py`, `app/triage/`) | Reply text is data; the classifier can only label; opt-out always goes to a person |
 | Agency planner and tools (`app/agency/`) | The planner orders candidate tasks and cannot add a task, name a tool or see patient text; no tool decides |
 | Automation (`app/automation.py`) | Only signed, allow-listed templates, with consent and under the cap |
-| HL7 handler and MLLP (`app/hl7/`, `POST /hl7`) | Strict parsing; sender authority; idempotent control ids; ACK/NAK |
+| HL7 handler and MLLP (`app/hl7/`, `POST /hl7`) | Strict parsing; bearer-token authentication on `POST /hl7`; idempotent control ids; ACK/NAK; a sender allow-list (`HL7_ALLOWED_SENDERS`, default the `LABSYS` and `SYNTH-LAB` senders; any other sender gets AR) |
 | Auth and RBAC (`app/auth.py`, `app/policy.py`) | Default deny; owner scoping; patient scoping |
 
 ## 5. Abuse cases and test cases

@@ -104,7 +104,7 @@ def test_the_headline_is_the_180_day_ratio_and_the_docs_link_the_validation():
     """After B21 the simulator's timing is partly validated: two timing claims may be quoted (about 12% with a colonoscopy within
     30 days under today's unmanaged process, provisional; a managed-arm median of about 6 weeks among completers) and are written
     only in the README and the technical documentation. The headline is the 180-day completion ratio (about 1.31, inside the
-    pooled navigation interval; the anchor was 1.27) and the in-reach silent loss. No spoken line makes a speed claim."""
+    pooled navigation interval; calibrated to the anchor 1.27, not evidence) and the programme-level silent loss, with the in-reach 0% stated as true by construction. No spoken line makes a speed claim."""
     arms = LA["arms"]
     base180, orch180 = (arms[a]["completion_180d"]["mean"] for a in ("baseline", "orchestrated"))
     assert (round(base180 * 100, 1), round(orch180 * 100, 1)) == (51.0, 66.7)
@@ -112,7 +112,7 @@ def test_the_headline_is_the_180_day_ratio_and_the_docs_link_the_validation():
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
     tech = (ROOT / "docs/submission/technical-documentation.md").read_text(encoding="utf-8")
     assert "1.31" in readme and "docs/results/validation.md" in readme and "51.0% to 66.7%" in readme
-    assert "45.3% to 0%" in readme and "about 12%" in readme and "about 6 weeks" in readme
+    assert "45.3% to 20.6%" in readme and "by construction" in readme and "about 12%" in readme and "about 6 weeks" in readme
     assert "1.31" in tech and "(../results/validation.md)" in tech and "about 12%" in tech and "about 6 weeks" in tech
     assert "failed for timing" not in readme and "failed for timing" not in tech
     for text in (TELE, SCRIPT, (ROOT / "tools/video/storyboard.yaml").read_text(encoding="utf-8")):

@@ -1,16 +1,16 @@
 # Evaluation results: baseline vs orchestrated
 
-generated_at: 2026-10-25 11:01:06 UTC (this line is the only non-deterministic content; `results.json` is byte-for-byte reproducible)
+generated_at: 2026-10-25 11:22:33 UTC (this line is the only non-deterministic content; `results.json` is byte-for-byte reproducible)
 
 All data are synthetic. Reproduce every number here with `make evaluate`; verify reproducibility with `make evaluate-check`.
 
 - Seed 20261017, 20 replications x 2,000 cases x 360 days of follow-up, 1000 bootstrap resamples
-- Parameters hash `6385daed7c9ef979` (upper range), `358508966c4326d5` (literature anchored), pathway `colorectal_fit` v0.3 hash `db06101ee042a55f`, git commit `68066b91caeb`
+- Parameters hash `6385daed7c9ef979` (upper range), `358508966c4326d5` (literature anchored), pathway `colorectal_fit` v0.3 hash `db06101ee042a55f`, git commit `80853c84951d`
 - Intervals are percentile bootstrap 95% CIs over replications; differences are orchestrated minus baseline, paired by replication (same patients and random numbers in both arms).
 
 ## Headline: baseline vs the two orchestrated scenarios
 
-There are two orchestrated scenarios and one baseline. **Quote the literature-anchored scenario.** It holds the orchestrated arm to what published studies report: the completion effect is held near the pooled patient-navigation risk ratio of 1.27 (95% CI 1.10 to 1.46), SMS reminders add nothing beyond the no-reminder attendance rate (the lower bound of the published range), and escalating to a supervisor or coordinator is no more effective than re-contacting the patient. In it, 67% of patients reach a confirmatory colonoscopy within 180 days against 51% at baseline (ratio 1.31). To hold the average effect to the published figure the scenario lets the orchestrated process reach only 55% of cases, so 21% of cases are still lost without a human being told (programme level; among the cases it reaches the figure is 0%); that is a device for calibrating the average effect, not a prediction of how many cases a real programme would miss. **The upper-range scenario shows the mechanism ceiling**: what ownership, timers, escalation and re-contact could deliver if every case got the full orchestrated process and every escalation worked as assumed. It reaches 82% within 180 days (ratio 1.62), far above anything published for navigation, so read it as an upper bound on the mechanism and not as a forecast. Both scenarios use the same synthetic patients, the same random numbers and the same baseline arm; the baseline was calibrated to published unmanaged completion, and the only orchestrated-arm fit is the reach parameter, set in B12 so the literature-anchored 180-day ratio equalled the navigation risk ratio. It was deliberately not refitted after the B21 timing mixture (the pooled estimate probably includes two of the trials the validation scores the ratio against, so refitting would be circular), which is why the ratio is now 1.31 rather than 1.27; it stays inside the pooled interval (1.10 to 1.46). See validation.md.
+There are two orchestrated scenarios and one baseline. **Quote the literature-anchored scenario.** It holds the orchestrated arm to what published studies report: the completion effect is held near the pooled patient-navigation risk ratio of 1.27 (95% CI 1.10 to 1.46), SMS reminders add nothing beyond the no-reminder attendance rate (the lower bound of the published range), and escalating to a supervisor or coordinator is no more effective than re-contacting the patient. In it, 67% of patients reach a confirmatory colonoscopy within 180 days against 51% at baseline (ratio 1.31). **The ratio is calibrated to published navigation trials, not a validated result**: `orchestration.programme_reach` was fitted in B12 so the ratio matches the pooled navigation risk ratio. The model shows the mechanism and what drives it, not new evidence of effect; only the Azulay comparison in validation.md is independent of that fit. To hold the average effect to the published figure the scenario lets the orchestrated process reach only 55% of cases. Silent loss (lost without a human being told) is 45.3% -> 20.6% at programme level; 0% among the cases the programme reaches, which is true by construction (every reached case has an owner and a timer). The reach is a device for calibrating the average effect, not a prediction of how many cases a real programme would miss. **The upper-range scenario shows the mechanism ceiling**: what ownership, timers, escalation and re-contact could deliver if every case got the full orchestrated process and every escalation worked as assumed. It reaches 82% within 180 days (ratio 1.62), far above anything published for navigation, so read it as an upper bound on the mechanism and not as a forecast. Both scenarios use the same synthetic patients, the same random numbers and the same baseline arm; the baseline was calibrated to published unmanaged completion, and the only orchestrated-arm fit is the reach parameter, set in B12 so the literature-anchored 180-day ratio equalled the navigation risk ratio. It was deliberately not refitted after the B21 timing mixture (the pooled estimate probably includes two of the trials the validation scores the ratio against, so refitting would be circular), which is why the ratio is now 1.31 rather than 1.27; it stays inside the pooled interval (1.10 to 1.46). See validation.md.
 
 | Metric | Baseline | Orchestrated, literature anchored | Orchestrated, upper range |
 |---|---|---|---|
@@ -39,7 +39,7 @@ Metric definitions (numerator, denominator, clocks, censoring) are in [`metrics.
 
 ## Which timing figures may be quoted (held-out validation, B21)
 
-The completion ratio at 180 days is the headline. Timing figures in this file (days to colonoscopy or to closure, shares by 30 or 60 days, days saved) may be quoted only where the held-out validation in [`validation.md`](validation.md) passes; the others stay withdrawn. Generated from `validation.json` by the same rule as the table in validation.md.
+The completion ratio at 180 days is the headline figure, calibrated to published navigation trials (not new evidence of effect). Timing figures in this file (days to colonoscopy or to closure, shares by 30 or 60 days, days saved) may be quoted only where the held-out validation in [`validation.md`](validation.md) passes; the others stay withdrawn. Generated from `validation.json` by the same rule as the table in validation.md.
 
 | Timing claim | Simulated vs observed (held-out validation) | Status |
 |---|---|---|
@@ -263,6 +263,58 @@ Upper range (mechanism ceiling), labour reduction in reach: 40.8% (40.0% to 41.7
 **Reading.** The extra saving is coordinator time: the coordinator's reduction in reach goes from 66.6% (65.8% to 67.5%) to 81.1% (80.7% to 81.5%), because a refuser who has been counselled and closed as declined is no longer chased as a lost case. Escalations per 100 cases barely move (84.9 against 84.2), so the saving is not in the ladder. The owner clinician pays for it (counselling, and a second physician's signature), so owner-clinician minutes rise further than in the headline. Colonoscopy completion and the lost-to-follow-up share (no colonoscopy and no progress) do not change: a refuser has no colonoscopy either way; the declined closures are reported apart from the colonoscopy closures. Timing figures inherit the simulator's unvalidated timing ([`validation.md`](validation.md)).
 <!-- refusal-section:end -->
 
+<!-- abudhabi-section:begin (written by make evaluate-abudhabi; make evaluate copies it from abudhabi.json) -->
+## Sensitivity: an Abu Dhabi-shaped baseline (not the headline)
+
+Generated by `make evaluate-abudhabi` (seed 20261017, 20 replications x 2,000 cases x 360 days, the same cohorts and random numbers as the rest of this file; parameters `simulator/params.yaml` + `simulator/params.abudhabi.yaml`, hashes `d6d848e8e191dba4` (upper range), `c217fad9cfdcc37f` (literature anchored); summary in `docs/results/abudhabi.json`).
+
+**This is a sensitivity run, not the headline.** The headline baseline is the US usual-care curve (Mohl 2023). Here the baseline is calibrated to the Abu Dhabi follow-up audit instead: 436 of 1,429 positives (30.5%) ever had a colonoscopy (Almansoori et al., BMC Cancer 2021, [`docs/evidence.md`](../evidence.md)). That audit covers Emirati nationals in 2015-2016, before IFHAS V10, and gives one 'ever' figure, with a median of 72 days among those who had one and more than half of them within 90 days; the baseline is fitted to the 360-day share, to that median and to that 90-day split. **Programme reach (`orchestration.programme_reach`, 0.55, calibrated against the US baseline and the pooled navigation risk ratio) and every orchestration parameter are unchanged. The ratio in this section is therefore not evidence of effect**: it follows from the lower baseline and the unchanged reach, and no study measured it in Abu Dhabi.
+
+**If Abu Dhabi today looks like the 30.5% audit, the same mechanism moves it to 38.7% at 360 days (literature anchored, simulated, sensitivity run), from 30.6% simulated for the baseline.** Today's baseline may be better or worse than 2015-2016. **The overlay is conservative about the mechanism**: the loss the audit does not explain is placed in `patients.refusal_prob`, a patient-level trait in both arms that the orchestration cannot recover, so the gain here probably understates what ownership and timers could do on the part of that loss that is really missed hand-offs.
+
+**Literature anchored.** Means with percentile-bootstrap 95% intervals over replications; gain is orchestrated minus baseline, in percentage points.
+
+| Colonoscopy completed within | Baseline | Orchestrated | Gain (points) | Ratio |
+|---|---|---|---|---|
+| 90 days | 19.4% (19.2% to 19.7%) | 32.2% (32.0% to 32.5%) | +12.8 (+12.6 to +13.1) | 1.66 |
+| 180 days | 27.4% (27.0% to 27.7%) | 37.1% (36.7% to 37.5%) | +9.8 (+9.5 to +10.0) | 1.36 |
+| 360 days | 30.6% (30.2% to 31.0%) | 38.7% (38.3% to 39.1%) | +8.1 (+7.8 to +8.4) | 1.26 |
+
+| Other | Baseline | Orchestrated |
+|---|---|---|
+| Silent loss, programme level (every case) | 69.3% (68.9% to 69.7%) | 31.5% (31.1% to 31.8%) |
+| Silent loss, among the cases the programme reaches | 69.1% (68.6% to 69.7%) | 0.0% (0.0% to 0.0%) |
+| Median days from positive result to colonoscopy, among completers within 360 days | 70 d (69 to 71) | 46 d (46 to 47) |
+| Cases closed with evidence and sign-off | 29.6% (29.1% to 30.0%) | 38.2% (37.9% to 38.6%) |
+
+**Upper range.** Means with percentile-bootstrap 95% intervals over replications; gain is orchestrated minus baseline, in percentage points.
+
+| Colonoscopy completed within | Baseline | Orchestrated | Gain (points) | Ratio |
+|---|---|---|---|---|
+| 90 days | 19.4% (19.2% to 19.7%) | 44.5% (44.0% to 45.0%) | +25.1 (+24.6 to +25.6) | 2.29 |
+| 180 days | 27.4% (27.0% to 27.7%) | 46.7% (46.3% to 47.2%) | +19.4 (+19.0 to +19.8) | 1.71 |
+| 360 days | 30.6% (30.2% to 31.0%) | 46.9% (46.4% to 47.4%) | +16.3 (+15.9 to +16.7) | 1.53 |
+
+| Other | Baseline | Orchestrated |
+|---|---|---|
+| Silent loss, programme level (every case) | 69.3% (68.9% to 69.7%) | 0.0% (0.0% to 0.0%) |
+| Silent loss, among the cases the programme reaches | 69.3% (68.9% to 69.7%) | 0.0% (0.0% to 0.0%) |
+| Median days from positive result to colonoscopy, among completers within 360 days | 70 d (69 to 71) | 40 d (39 to 40) |
+| Cases closed with evidence and sign-off | 29.6% (29.1% to 30.0%) | 46.9% (46.4% to 47.4%) |
+
+Silent loss is 69.3% -> 31.5% at programme level (literature anchored); the 0% among the cases the programme reaches is true by construction, because every reached case has an owner and a timer. The upper-range scenario is the mechanism ceiling and is not a forecast.
+
+**What the overlay changes** (everything else is inherited from `simulator/params.yaml`; the literature-anchored scenario then adds `simulator/params.conservative.yaml` as usual). Status vocabulary as in `simulator/params.yaml`: sourced, sourced-adjacent, calibrated (fitted here to the audit) or assumed.
+
+| Key | Overlay value | Status | Basis |
+|---|---|---|---|
+| `colonoscopy_completion_12m` | 0.305 | sourced | Almansoori et al., BMC Cancer 2021;21:897, 436 of 1,429 positives (30.5%) 'ever' had follow-up colonoscopy, Emirati nationals, Abu Dhabi ambulatory clinics, 2015-2016. https://pmc.ncbi.nlm.nih.gov/articles/PMC8343888/ |
+| `appointment.fast_lane_share.unmanaged` | 0.4 | calibrated | Calibrated (E20b) so the baseline reproduces the 30.5% Abu Dhabi audit |
+| `patients.refusal_prob` | 0.5 | calibrated | Calibrated (E20b) so the baseline reproduces the 30.5% Abu Dhabi audit |
+
+`gi_referral_non_attendance_abu_dhabi` (0.25) is not read by the engine. It is carried by `patients.refusal_prob`, which applies in both arms, so the orchestration is assumed to recover none of those patients. The audit's 25% does not explain the whole 69.5% not followed up, so `patients.refusal_prob` is calibrated higher and the rest is treated the same way. A smaller change to the unmanaged fast-lane share fits the completer median; slow-lane timing is at its default. 3 and 6 month targets keep their US values.
+<!-- abudhabi-section:end -->
+
 ## Summary
 
 **Literature anchored.** Across 20 simulated replications of 2,000 synthetic positive-FIT cases, the orchestrated arm got 67% of patients to a confirmatory colonoscopy within 180 days, against 51% at baseline (+15.6 percentage points, 95% CI +15.4 to +15.9, which excludes zero). At 90 days 43% of orchestrated cases were still open against 61% at baseline. Among cases that closed, the median time to a signed, evidence-backed closure was 51 days orchestrated against 57 at baseline; that conditional median only covers the 53% of baseline cases that closed at all (68% orchestrated), so an arm that closes more slow cases looks slower on it. Counting the cases that never closed as censored at the end of follow-up instead of dropping them, the Kaplan-Meier median is 70 days orchestrated against 208 at baseline and the restricted mean time to closure within 360 days is 159 against 211 days. 45% of baseline cases were lost without anyone being told, against 21% in the orchestrated arm at programme level; among the 55% of cases the programme reached the orchestrated figure is 0% against 45% for the same patients at baseline, and the programme-level remainder is cases outside the programme's reach, which are handled as today.
@@ -463,7 +515,7 @@ Among baseline completers the simulated time to colonoscopy is median 48 days (I
 | 180 days | 1.31 | 1.62 | 1.27 |
 | 360 days | 1.26 | 1.52 | 1.27 |
 
-The upper-range ratio at 180 days is 1.62 against a pooled risk ratio of 1.27 for patient navigation in published trials. Orchestration here bundles ownership, timers, escalation and human outreach, and the ratio is larger than the navigation figure because the unmanaged baseline loses many cases to missed hand-offs that a managed programme prevents; it is the mechanism ceiling and is bounded above by the managed-programme ceiling. The literature-anchored scenario holds the effect near the navigation figure (ratio 1.31 at 180 days) by reaching only part of the case load (`orchestration.programme_reach`, calibrated in B12 and not refitted after B21), and is the scenario to quote.
+The upper-range ratio at 180 days is 1.62 against a pooled risk ratio of 1.27 for patient navigation in published trials. Orchestration here bundles ownership, timers, escalation and human outreach, and the ratio is larger than the navigation figure because the unmanaged baseline loses many cases to missed hand-offs that a managed programme prevents; it is the mechanism ceiling and is bounded above by the managed-programme ceiling. The literature-anchored scenario holds the effect near the navigation figure (ratio 1.31 at 180 days) by reaching only part of the case load (`orchestration.programme_reach`, calibrated in B12 and not refitted after B21), and is the scenario to quote. That ratio is calibrated to the navigation trials, so it is not independent evidence of effect.
 
 ## Fairness: completion and time to closure by language and channel (literature anchored)
 

@@ -41,7 +41,7 @@ Each is something that is hard to copy in a week and visible in the demo.
 2. **Silent-failure watchdog.** The dangerous failure in this domain is the absence of events, not a bad event. A watchdog flags any open case with no activity for N days, and separately flags the scheduler itself if it stops producing heartbeats. Demo it live by killing the scheduler.
 3. **Judge-runnable evaluation.** `make evaluate` regenerates every number in the documentation from the seeded simulator in under two minutes. Judges can change a parameter and rerun.
 4. **FHIR-native with a named integration target.** Every object is a real FHIR R4 resource. The docs contain a one-page adapter plan for Malaffi, Abu Dhabi's health information exchange, stated as a target, not a claim.
-5. **Arabic-first patient experience.** Right-to-left layout, reviewed by a native speaker, written at roughly grade-6 reading level, with an "I don't understand this" button that routes to a human.
+5. **Arabic-first patient experience.** Right-to-left layout, written at roughly grade-6 reading level, with an "I don't understand this" button that routes to a human. The native-speaker review (H2) is pending, so the Arabic text is unreviewed.
 6. **Governance artefacts judges can hold.** Automated-vs-human decision matrix, hazard log, automation abstention rate, fairness split by language and channel, 90-day pilot plan with cost per case.
 
 Which tickets carry which moat: 1 is already built (T-A1) and re-proved in A2; 2 is A11 and F4; 3 is B1 to B10; 4 is A12 and E3; 5 is C5 to C7; 6 is D10, D11, E5 to E7 and B8.
