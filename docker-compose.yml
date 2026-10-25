@@ -124,6 +124,16 @@ services:
       # The demo runs the automatic path under "DEMO PLACEHOLDER (clinical sign-off pending, H1)": /health reports it and the
       # web shows an amber banner on the case page and the dashboard. The API refuses to start with this on outside APP_ENV=dev.
       OUTREACH_DEMO_APPROVAL: ${OUTREACH_DEMO_APPROVAL:-1}
+      # Model provider (A35, ADR-043). The demo runs offline from the recorded Claude outputs in api/app/ai/cache/: replay mode, network
+      # off, and a prompt with no recording gets the template with abstention reason `cache_miss`. To call Claude live, set
+      # LLM_NETWORK_ENABLED=true and LLM_CACHE_MODE=off (or record) AND pass ANTHROPIC_API_KEY (+ ANTHROPIC_WORKSPACE_ID if the key is
+      # not workspace-scoped) in the environment; this file never passes a key. The agency planner uses rules unless AGENCY_PLANNER=claude.
+      LLM_PROVIDER: ${LLM_PROVIDER:-anthropic}
+      LLM_CACHE_MODE: ${LLM_CACHE_MODE:-replay}
+      LLM_NETWORK_ENABLED: ${LLM_NETWORK_ENABLED:-false}
+      AGENCY_PLANNER: ${AGENCY_PLANNER:-claude}
+      LLM_DAILY_TOKEN_BUDGET: ${LLM_DAILY_TOKEN_BUDGET:-200000}
+      LLM_MAX_TOKENS_PER_CALL: ${LLM_MAX_TOKENS_PER_CALL:-2048}
       # The agency (A22, ADR-033): the scheduler hook starts an agency run every N-th sweep (the code default is 6). 0 = never, which
       # keeps the demo snapshot deterministic: no agency run (and so no agency-drafted message_drafted event on the demo case) fires from
       # the scheduler. Trigger one by hand with `make agency-run`; set AGENCY_EVERY_SWEEPS=6 to rehearse the scheduled runs.

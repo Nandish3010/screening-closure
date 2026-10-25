@@ -12,7 +12,7 @@ from typing import Any
 
 import pytest
 
-CATEGORIES = {"V": "validator", "P": "provider", "R": "replies", "A": "agency", "H": "hl7-automation", "Z": "authz"}
+CATEGORIES = {"V": "validator", "P": "provider", "R": "replies", "A": "agency", "H": "hl7-automation", "Z": "authz", "G": "generated"}
 INPUT_MAX = 90
 
 

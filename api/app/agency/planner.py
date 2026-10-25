@@ -29,7 +29,7 @@ from dataclasses import dataclass
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 
-from app.ai.provider import TEMPLATE_PROVIDER, configured_provider_name
+from app.ai.provider import TEMPLATE_PROVIDER, BudgetExhausted, configured_provider_name
 
 log = logging.getLogger("app.agency.planner")
 
@@ -169,6 +169,11 @@ class ModelPlanner:
             return self._adapter
         from app.ai import adapters
 
+        if self.name == "anthropic":
+            from app.ai import claude
+
+            self._adapter = claude.ClaudePlanAdapter()  # kept, so its ledger and client are reused across departments
+            return self._adapter
         return {"azure_openai": adapters.AzureOpenAIProvider, "jais": adapters.JaisProvider}[self.name]()
 
     @property
@@ -193,7 +198,8 @@ class ModelPlanner:
         text = adapter.complete(PLAN_SYSTEM_PROMPT, user, max_tokens=800)
         if mode == "record":
             cache.write_entry(cache.CacheEntry(digest, self.name, adapter.model_id, "en", text,
-                                               f"{PLAN_SYSTEM_PROMPT}\n---\n{user}"), directory)
+                                               f"{PLAN_SYSTEM_PROMPT}\n---\n{user}", getattr(adapter, "last_usage", None)),
+                              directory)
         return text, adapter.model_id
 
     def plan(self, department: str, plan: DepartmentPlan) -> tuple[DepartmentPlan, Provenance]:
@@ -203,6 +209,8 @@ class ModelPlanner:
             text, model_id = self._ask(user, digest)
         except LookupError:
             return self._fallback(department, plan, digest, "cache_miss")
+        except BudgetExhausted:
+            return self._fallback(department, plan, digest, "budget_exhausted")
         except Exception as exc:  # noqa: BLE001 - unavailable, timeout, misconfigured: the template plan
             return self._fallback(department, plan, digest, f"provider_error:{type(exc).__name__}")
         try:
@@ -248,8 +256,36 @@ def contained(planner, department: str, plan: DepartmentPlan) -> tuple[Departmen
                                f"planner_error:{type(exc).__name__}")
 
 
+class ClaudePlanner(ModelPlanner):
+    """The Claude planner (A35, ADR-043): Sonnet reorders a head's candidates and writes the rationale, as JSON checked by
+    `ModelPlanReply`, behind the record/replay cache (`<cache dir>/agency/anthropic/`), the network switch and the token
+    budget. Same containment as any planner: it cannot add, drop or change an order, or name a tool."""
+
+    def __init__(self, adapter=None) -> None:
+        super().__init__("anthropic", adapter)
+
+
+def configured_planner_name() -> str:
+    """`AGENCY_PLANNER`: environment first, then app settings (.env). `template`, `claude`, or empty = by `LLM_PROVIDER`."""
+    import os
+
+    value = os.environ.get("AGENCY_PLANNER")
+    if value is None:
+        from app.config import settings
+
+        value = settings.agency_planner
+    return (value or "").strip().lower()
+
+
 def get_planner():
-    """`LLM_PROVIDER=template` (the default) plans with rules only; a model provider plans through its cache."""
+    """`AGENCY_PLANNER=claude` plans with Claude; `template` with rules only. Unset: follow `LLM_PROVIDER` (`template`, the
+    default, plans by rules alone; `azure_openai` and `jais` plan through their cache; `anthropic` stays on the rules
+    until `AGENCY_PLANNER=claude` opts in)."""
+    choice = configured_planner_name()
+    if choice == "claude":
+        return ClaudePlanner()
+    if choice == "template":
+        return TemplatePlanner()
     name = configured_provider_name()
     if name == TEMPLATE_PROVIDER:
         return TemplatePlanner()

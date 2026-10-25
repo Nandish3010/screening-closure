@@ -758,6 +758,29 @@ The ledger is the agency's memory (`api/app/agency/ledger.py`, migration `014_ag
 - `patient_declined` is still a handoff rejection reason (the review asked for its removal); it is out of this ticket.
 - Reopening a declined closure goes through `reopened` and `clinician_review`, and then needs a colonoscopy closure; a refuser who is reopened and still declines is counselled again.
 
+## ADR-043: Claude is a real model provider for drafting and for the agency planner, behind the same gates, and it runs offline from a recorded cache
+
+**Context.** The drafting providers (`azure_openai`, `jais`, ADR-018) were adapters over plain HTTP that nobody had run against a real model, and the agency planner (ADR-033) reused them. Ticket A35 (M6) makes Claude a working provider so the prototype shows a real model drafting and planning, without changing any rule about what a model may do and without the demo depending on a network.
+
+**Decision.**
+- **Provider `anthropic`, two models.** `app.ai.claude`: drafting uses Claude Haiku (`claude-haiku-5-5`), planning uses Claude Sonnet (`claude-sonnet-5-5`), through the official `anthropic` SDK. `ANTHROPIC_DRAFT_MODEL` and `ANTHROPIC_PLAN_MODEL` override the ids. Both run at `effort: low`, send no sampling parameters (the 5.5 models reject non-default ones), and the drafting call turns thinking off. The system prompt is the existing `SYSTEM_PROMPT` and the user message the existing `build_prompt`, unchanged, so the rules (no disclosure, no diagnosis, grade 6, exact language, exact placeholders) and the prompt hash are the same as for any provider.
+- **Same gates.** Output goes through `ai.validate` and then the approval gate. Any SDK error, refusal, cut-off or empty answer, any invalid output, and a refused call (budget) gives the template with an abstention reason (`provider_unavailable`, `provider_error:<Class>`, `validation_failed:<rules>`, `budget_exhausted`, `cache_miss`). Error text carries the exception class only.
+- **Network off by default.** A call needs `LLM_NETWORK_ENABLED=true`. The cache (D6) is in front: in `replay` mode (the default) the SDK is not even imported.
+- **Spend cap in the process.** `LLM_DAILY_TOKEN_BUDGET` (UTC day) and `LLM_MAX_TOKENS_PER_CALL` (output of one call), plus `LLM_MAX_INPUT_TOKENS_PER_CALL` (estimated prompt), are enforced before every call by a persistent counter, a SQLite file (`data/llm_usage.sqlite`, `LLM_USAGE_DB`), under a write lock so two processes cannot both spend the last of the budget. A call holds its estimated cost while in flight and is settled with the real counts. The file holds counts, model, purpose and prompt hash, never text.
+- **The planner.** `ClaudePlanner` (`AGENCY_PLANNER=claude`; `template` is the default) is the existing `ModelPlanner` over a Claude adapter. It asks for JSON through `output_config.format` (a JSON schema), not forced tool use, which Sonnet 5.5 rejects. The reply is then parsed by the strict `ModelPlanReply` and contained by `contained()`: it can reorder a head's own candidates and write a sentence, nothing else. The one thing the agency can cause, a draft, still goes through the drafting route and the approval gate.
+- **Provenance of cost.** Token counts are kept per call in the usage ledger (keyed by prompt hash) and, for a recording, in the cache entry. They are not added to the `drafts` table or the agency task row: those are immutable, with triggers and CHECKs, and a column there would be a schema change for a number that is not part of the decision being audited.
+- **Offline demo.** `make claude-record` records every purpose x channel x language for the demo personas and one agency run on the 22-case cohort into `api/app/ai/cache/` (synthetic content only, committed). Default compose is `LLM_PROVIDER=anthropic`, `LLM_CACHE_MODE=replay`, `LLM_NETWORK_ENABLED=false`, `AGENCY_PLANNER=claude`; a prompt with no recording is the template with `cache_miss`.
+- **Red-team augmentation.** `make redteam-generate` (manual, network, never CI) asks Sonnet for adversarial variants into `tests/redteam/generated/*.json`; `make test-redteam` replays them as category RT-G.
+
+**Alternatives considered.** Tool use for the planner's structured answer: Sonnet 5.5 rejects forced tool choice, and `auto` plus a prompt instruction is weaker than a schema. A database column or a new event for token counts: rejected above. Calling the model from the demo: the demo must run with no network (`make test-offline`). A global hard stop in the SDK client: it would not survive a restart or cover two processes.
+
+**Consequences.**
+- No new event type, actor or transition: the decision matrix and the model checker are unaffected.
+- Calls leave the UAE (the API is a US-hosted service). The prototype sends synthetic content only, and the prompts contain no patient data. A production route needs an in-country arrangement that the Department of Health (DoH) approves, which is to verify (ai-boundary.md section 9, hazard HZ-39).
+- A recorded plan replays only for an identical candidate list; a different cohort or time gets the rule order with `cache_miss`. A recorded draft replays for the same owner name, role, language, channel, purpose and appointment date.
+- The recording is only as current as the model: a change of model id or prompt makes new hashes, and the old files are dead weight until re-recorded.
+- The SDK is a runtime dependency of the API image although replay never imports it.
+
 ## Open questions for the owner (M6 week 1)
 
 These are not decisions. Each is a question the M6 work surfaced that needs an owner's answer before anyone changes code. Nothing here has been changed. When one is answered, record the answer as a new ADR that names this entry.

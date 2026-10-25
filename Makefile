@@ -1,4 +1,4 @@
-.PHONY: up-obs check-full evaluate-smoke test-redteam validate validate-check validate-targets evaluate-refusal oidc-up oidc-down test-oidc up-scale agency-run test-demo test-e2e-live demo-scenario demo-stage demo-snapshot demo-restore demo-reset demo-kill-scheduler check docs-check tracker-lint test-security test-tools test-load load-check up down logs test test-db test-db-create test-db-reset test-chaos synthea demo-seed demo-seed-clean evaluate evaluate-capacity evaluate-capacity-check simulate evaluate-check sensitivity sensitivity-check reset web-install web-dev web-build web-test web-e2e test-e2e review-packs review-packs-check test-review-packs test-phi-logs rbac-matrix test-offline fresh-clone risk-report risk-check calibrate-fetch calibrate-fit calibrate-check effort effort-check video video-check video-deps verify hl7-demo hl7-samples
+.PHONY: claude-smoke claude-record redteam-generate up-obs check-full evaluate-smoke test-redteam validate validate-check validate-targets evaluate-refusal oidc-up oidc-down test-oidc up-scale agency-run test-demo test-e2e-live demo-scenario demo-stage demo-snapshot demo-restore demo-reset demo-kill-scheduler check docs-check tracker-lint test-security test-tools test-load load-check up down logs test test-db test-db-create test-db-reset test-chaos synthea demo-seed demo-seed-clean evaluate evaluate-capacity evaluate-capacity-check simulate evaluate-check sensitivity sensitivity-check reset web-install web-dev web-build web-test web-e2e test-e2e review-packs review-packs-check test-review-packs test-phi-logs rbac-matrix test-offline fresh-clone risk-report risk-check calibrate-fetch calibrate-fit calibrate-check effort effort-check video video-check video-deps verify hl7-demo hl7-samples
 
 up:
 	docker compose up -d --build
@@ -356,6 +356,18 @@ test-tools:
 # tests/redteam/results.json and results.md (deterministic; commit them when the suite changes).
 test-redteam:
 	PYTHONPATH=api $(PY) -m pytest tests/redteam -q
+
+# A35 (ADR-043): MANUAL targets that call the Claude API (need ANTHROPIC_API_KEY in the environment or the gitignored .env; never in CI).
+# claude-smoke: one tiny call, prints success or failure only. claude-record: re-record api/app/ai/cache/ (drafts + one agency run).
+# redteam-generate: ask Claude for adversarial variants into tests/redteam/generated/ (committed; `make test-redteam` replays them).
+claude-smoke:
+	$(PY) tools/claude/smoke.py
+
+claude-record:
+	$(PY) tools/claude/record_demo.py
+
+redteam-generate:
+	$(PY) tools/claude/redteam_generate.py
 
 # Scheduler sweep over 1k / 10k / 100k seeded open cases in a throwaway `closure_load` database on the
 # compose Postgres (:5433); rewrites docs/results/load.md. KEEP_LOAD_DB=1 keeps the database.

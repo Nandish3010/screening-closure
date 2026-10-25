@@ -70,6 +70,7 @@ class CacheEntry:
     language: str
     text: str
     prompt: str  # the exact text the hash covers (system message, separator, user message)
+    usage: dict | None = None  # token counts of the recording call (A35); counts only
 
 
 def _path(provider: str, prompt_hash_: str, directory: Path | None = None) -> Path:
@@ -136,7 +137,7 @@ class CachingProvider:
                 raise CacheMiss(f"no recorded output for {self.name} prompt {key[:12]}")
             return DraftResult(entry.text, req.language, self.name, entry.model_id, False, None, key)
         result = self._inner.draft(req)  # record: the real call (needs LLM_NETWORK_ENABLED)
-        write_entry(CacheEntry(key, self.name, result.model_id, req.language, result.text, full_prompt(req)))
+        write_entry(CacheEntry(key, self.name, result.model_id, req.language, result.text, full_prompt(req), result.usage))
         return result
 
 
