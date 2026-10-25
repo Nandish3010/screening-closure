@@ -143,6 +143,8 @@ test.describe("PWA (T-C15)", () => {
     await page.goto(`/patient/${PATIENT_CASE}`);
     const state = await page.evaluate(async () => {
       const reg = await navigator.serviceWorker.ready;
+      // `ready` resolves once a worker is active, which can be a moment before its state reads "activated".
+      for (let i = 0; i < 50 && reg.active?.state !== "activated"; i++) await new Promise((r) => setTimeout(r, 100));
       return { scope: new URL(reg.scope).pathname, active: reg.active?.state };
     });
     expect(state).toEqual({ scope: "/", active: "activated" });

@@ -9,6 +9,8 @@ Reading rules used throughout:
 - **To verify** means not established by the sources read. Every "to verify" item needs a legal or regulator check before it is cited as fact.
 - Article numbers are given only where a source read gave them. Several PDPL provisions are described without article numbers because the sources read did not give them.
 
+Companion documents (E18): the data protection impact assessment, structured on PDPL expectations and GDPR Article 35 practice, is [dpia.md](dpia.md); the control-by-control ADHICS table, with the cloud rule CM 4.2 stated plainly, is [adhics-controls.md](adhics-controls.md). Neither changes the readings below; they use them and add what they found (the Federal Law No. 2 of 2019 retention figure, secondary, in dpia.md section 7; the failure to retrieve ADHICS V2 on 2026-10-25, in adhics-controls.md section 1).
+
 All URLs in this document were accessed on **2026-10-18** unless a different date is shown. The full list is in the section "Sources and access dates" at the end.
 
 ## Summary table
@@ -52,6 +54,8 @@ All URLs in this document were accessed on **2026-10-18** unless a different dat
 | Prototype data | Synthetic data only. No real patient data enters the repository, tests or the demo. | Done |
 
 ### To verify
+
+The impact assessment for a deployment is [dpia.md](dpia.md).
 
 1. Whether PDPL applies to the pilot's data at all, or whether the health-sector rules in items 2 to 4 are the governing regime for health data (secondary sources say health data governed by other legislation is excluded; the instrument was not read).
 2. The status of the Executive Regulations and the penalty provisions.
@@ -108,6 +112,8 @@ Control areas in v0.9 that matter to us (all from the table of contents and text
 | Incident management and continuity | Not designed for production in the prototype. Chaos tests cover scheduler loss and duplicate events (F3, F4). The incident process is a deployment item for the operator. | Deployment item |
 
 ### To verify
+
+The control-by-control table is [adhics-controls.md](adhics-controls.md).
 
 1. The current ADHICS version, its control list, whether our service is a "third party" or itself a regulated entity, and which tier (Basic, Transitional, Advanced) would apply.
 2. The current cloud rule and the DoH exception route (see item 6).

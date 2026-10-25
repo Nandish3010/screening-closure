@@ -3,6 +3,8 @@ import { Header } from "./components/Header";
 import { CoordinatorPage } from "./pages/CoordinatorPage";
 import { CaseDetailPage } from "./pages/CaseDetailPage";
 import { AgencyPage } from "./pages/AgencyPage";
+import { JudgePage } from "./pages/JudgePage";
+import { TourProvider } from "./judge/JudgeTour";
 import { DashboardPage } from "./pages/DashboardPage";
 import { PatientPage, PatientHome } from "./pages/PatientPage";
 import { DEMO_PATIENT_CASE_ID } from "./api/fixtures";
@@ -56,7 +58,7 @@ export default function App({ signInError = null }: { signInError?: string | nul
   );
   if (api.oidc && !signedIn) return <SignInPage error={signInError} />;
   return (
-    <>
+    <TourProvider>
       <a className="skip-link" href="#main">Skip to content</a>
       <Header />
       <div id="main">
@@ -65,12 +67,13 @@ export default function App({ signInError = null }: { signInError?: string | nul
           <Route path="/coordinator" element={<CoordinatorPage />} />
           <Route path="/coordinator/:caseId" element={<CaseDetailPage />} />
           <Route path="/dashboard" element={<DashboardPage />} />
+          <Route path="/judge" element={<JudgePage />} />
           <Route path="/agency" element={<AgencyPage />} />
           <Route path="/patient" element={<PatientHome />} />
           <Route path="/patient/:caseId" element={<PatientPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </div>
-    </>
+    </TourProvider>
   );
 }

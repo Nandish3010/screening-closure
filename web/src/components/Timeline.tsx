@@ -135,6 +135,13 @@ export function Timeline({ items, drafts = [] }: { items: TimelineItem[]; drafts
   const watchdogAt = derivedAt("watchdog");
   const bounceAt = derivedAt("bounce");
   return (
+    <>
+    <p className="tl-legend" aria-label="How to read the timeline" data-testid="timeline-legend">
+      <span><span className="tl-key" aria-hidden="true" /> Done by a person</span>
+      <span><span className="tl-key tl-key-automation" aria-hidden="true" /> Done by the system</span>
+      <span><span className="tl-key tl-key-model" aria-hidden="true" /> AI draft, a person decides</span>
+      <span><span className="tl-key tl-key-milestone" aria-hidden="true" /> Milestone</span>
+    </p>
     <ol className="timeline" aria-label="Case timeline" data-testid="timeline">
       {items.map((it, i) => {
         if (it.kind === "sla_started") {
@@ -149,7 +156,7 @@ export function Timeline({ items, drafts = [] }: { items: TimelineItem[]; drafts
           const def = MILESTONES.find((m) => m.name === it.milestone);
           const label = def?.label ?? titleCase(String(it.milestone));
           return (
-            <li key={itemKey(it, i)} className={`tl ${it.kind === "milestone_breached" ? "tl-breach" : "tl-started"}`} data-kind={it.kind}>
+            <li key={itemKey(it, i)} className={`tl tl-milestone tl-${it.kind.replace("_", "-")}${it.kind === "milestone_breached" ? " tl-breach" : ""}`} data-kind={it.kind}>
               <div className="tl-head">
                 <strong>{it.kind === "milestone_started" ? "Milestone clock started" : it.kind === "milestone_breached" ? "Milestone missed" : "Milestone met"}</strong>
                 <time>{fmtDateTime(it.at)}</time>
@@ -176,7 +183,7 @@ export function Timeline({ items, drafts = [] }: { items: TimelineItem[]; drafts
         }
         if (it.kind === "escalation") {
           return (
-            <li key={itemKey(it, i)} className="tl tl-escalation" data-kind="escalation">
+            <li key={itemKey(it, i)} className="tl tl-escalation" data-kind="escalation" data-actor-kind="service">
               <div className="tl-head"><strong>Escalation ladder: {it.rung}</strong><time>{fmtDateTime(it.at)}</time></div>
               <div>
                 Notify {RUNG_LABEL[it.rung] ?? it.target_role ?? it.rung}
@@ -188,7 +195,7 @@ export function Timeline({ items, drafts = [] }: { items: TimelineItem[]; drafts
         }
         if (it.kind === "bounce") {
           return (
-            <li key={itemKey(it, i)} className="tl tl-bounce" data-kind="bounce" data-testid="tl-bounce">
+            <li key={itemKey(it, i)} className="tl tl-bounce" data-kind="bounce" data-testid="tl-bounce" data-actor-kind="service">
               <div className="tl-head"><strong>Hand-off bounced: no response</strong><time>{fmtDateTime(it.at)}</time></div>
               <div>
                 {it.to_provider ? `${it.to_provider} did not answer` : "The receiving provider did not answer"} in 3 working days.
@@ -199,7 +206,7 @@ export function Timeline({ items, drafts = [] }: { items: TimelineItem[]; drafts
         }
         if (it.kind === "watchdog") {
           return (
-            <li key={itemKey(it, i)} className="tl tl-watchdog" data-kind="watchdog" data-testid="tl-watchdog">
+            <li key={itemKey(it, i)} className="tl tl-watchdog" data-kind="watchdog" data-testid="tl-watchdog" data-actor-kind="service">
               <div className="tl-head"><strong><span aria-hidden="true">&#9888; </span>{WATCHDOG_TEXT}</strong><time>{fmtDateTime(it.at)}</time></div>
               <div>{watchdogDetail({ reason: it.reason === "scheduler_down" ? "scheduler_down" : "idle", idle_days: it.idle_days })}</div>
               <div className="muted">watchdog <AutoChip /></div>
@@ -241,5 +248,6 @@ export function Timeline({ items, drafts = [] }: { items: TimelineItem[]; drafts
         );
       })}
     </ol>
+    </>
   );
 }
