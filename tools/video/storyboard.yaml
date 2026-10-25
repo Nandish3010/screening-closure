@@ -274,7 +274,7 @@ shots:
     route: "card:results"
     duration: 21
     caption: "Simulation on synthetic data, literature-anchored, before capacity limits, against a US-calibrated usual-care baseline. Colonoscopy within 180 days 51% to 67%, a ratio of about 1.31, calibrated to published navigation trials: the model shows the mechanism, not new evidence of effect. Closed with evidence and a signature 53% to 68%. Lost without anyone told, programme-level 45% to 21%; 0% among the cases the programme reaches, true by construction. Rerun: make evaluate"
-    narration: "Synthetic simulation against a US-calibrated usual-care baseline. Colonoscopy within one hundred eighty days: fifty-one to sixty-seven percent, a ratio of one point three one, calibrated to published navigation trials. Closed with evidence: fifty-three to sixty-eight percent. Lost without anyone told: forty-five to twenty-one percent programme-wide; zero among the cases reached, by construction."
+    narration: "Synthetic simulation, US-calibrated baseline. Colonoscopy within one hundred eighty days: fifty-one to sixty-seven, a ratio of one point three one, calibrated to published trials. Closed with evidence: fifty-three to sixty-eight. Lost without anyone told: forty-five to twenty-one percent programme-wide; zero among cases reached, by construction."
     actions:
       - card:
           kind: results
@@ -294,7 +294,7 @@ shots:
     route: "card:slide"
     duration: 10
     caption: "Labour: 37% fewer staff minutes per case the system handles, 20% across the programme. The 40% target is not met in realistic scenarios; only the upper bound, a mechanism ceiling, crosses it."
-    narration: "Labour falls thirty-seven percent per handled case, twenty percent programme-wide. The forty percent target is not met in realistic scenarios; only the upper bound crosses it."
+    narration: "Labour falls thirty-seven percent per handled case, twenty percent programme-wide. The forty percent target is not met in realistic scenarios; only the upper bound does."
     actions:
       - card:
           kind: slide
@@ -313,7 +313,7 @@ shots:
     route: "card:slide"
     duration: 16
     caption: "Pilot ask: one programme, two providers, 90 days, shadow mode first. Cases closed without evidence: must stay zero. Buyer hypothesis: a programme licence across pathways; about 24 to 54 advanced cancers avoided a year in Abu Dhabi (synthetic, assumption-based)."
-    narration: "The ask: one programme, two providers, ninety days, shadow mode first. Cases closed without evidence must stay at zero. Who pays: a programme licence, with Abu Dhabi's public health programme the hypothesised buyer. Judges can replay it with the Judge tour."
+    narration: "The ask: one programme, two providers, ninety days, shadow mode first. Cases closed without evidence must stay zero. Who pays: a programme licence; Abu Dhabi's public health programme is the hypothesised buyer. Replay it with the Judge tour."
     actions:
       - card:
           kind: slide
