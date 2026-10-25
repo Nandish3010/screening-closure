@@ -18,15 +18,15 @@ export function BarChart({
 
   if (horizontal) {
     const rowH = 34;
-    const labelW = 190;
-    const w = 520;
+    const labelW = 170;
+    const w = 420;
     const h = data.length * rowH + 8;
     return (
       <figure className="chart" data-testid={`chart-${title}`}>
-        <figcaption>{title}</figcaption>
+        <figcaption>{title}<small>Unit: {unit}. Synthetic data.</small></figcaption>
         <svg viewBox={`0 0 ${w} ${h}`} role="img" aria-label={`${title}. ${summary}`} className="svg-chart">
           {data.map((d, i) => {
-            const bw = ((w - labelW - 50) * d.value) / max;
+            const bw = ((w - labelW - 40) * d.value) / max;
             return (
               <g key={d.label} transform={`translate(0 ${i * rowH + 4})`}>
                 <text x={labelW - 8} y={rowH / 2} textAnchor="end" dominantBaseline="middle" className="chart-label">{d.label}</text>
@@ -40,14 +40,14 @@ export function BarChart({
     );
   }
 
-  const w = 520;
-  const h = 240;
+  const w = 420;
+  const h = 220;
   const padB = 36;
   const padT = 20;
   const bw = (w - 20) / data.length;
   return (
     <figure className="chart" data-testid={`chart-${title}`}>
-      <figcaption>{title}</figcaption>
+      <figcaption>{title}<small>Unit: {unit}. Synthetic data.</small></figcaption>
       <svg viewBox={`0 0 ${w} ${h}`} role="img" aria-label={`${title}. ${summary}`} className="svg-chart">
         <line x1={10} x2={w - 10} y1={h - padB} y2={h - padB} className="chart-axis" />
         {data.map((d, i) => {

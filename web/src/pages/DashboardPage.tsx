@@ -78,7 +78,7 @@ export function DashboardPage() {
 
   return (
     <main className="container">
-      <h1>Closure dashboard</h1>
+      <div className="page-head"><h1>Closure dashboard</h1><span className="chip chip-synthetic" data-testid="synthetic-chip">Synthetic data</span></div>
       <OutreachDemoBanner />
       <p className="muted" data-testid="dashboard-subtitle">
         {api.adapter === "http"
@@ -114,8 +114,8 @@ export function DashboardPage() {
       {m && (
         <>
           <div className="kpis">
-            <div className="kpi" data-testid="kpi-p50"><span className="kpi-label">Median time to closure (P50)</span><span className="kpi-value"><Days value={m.p50_days} /></span></div>
-            <div className="kpi" data-testid="kpi-p90"><span className="kpi-label">P90 time to closure</span><span className="kpi-value"><Days value={m.p90_days} /></span></div>
+            <div className="kpi" data-testid="kpi-p50"><span className="kpi-label">Median time to closure (P50)</span><span className="kpi-value"><Days value={m.p50_days} /></span><span className="kpi-note">Calendar time from result to first safe close. Synthetic cases.</span></div>
+            <div className="kpi" data-testid="kpi-p90"><span className="kpi-label">P90 time to closure</span><span className="kpi-value"><Days value={m.p90_days} /></span><span className="kpi-note">9 in 10 closed cases close within this time. Synthetic cases.</span></div>
           </div>
           <div className="charts">
             <BarChart
