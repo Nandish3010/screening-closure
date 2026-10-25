@@ -1,4 +1,4 @@
-.PHONY: test-redteam validate validate-check validate-targets evaluate-refusal oidc-up oidc-down test-oidc up-scale agency-run test-demo test-e2e-live demo-scenario demo-stage demo-snapshot demo-restore demo-reset demo-kill-scheduler check docs-check tracker-lint test-security test-tools test-load load-check up down logs test test-db test-db-create test-db-reset test-chaos synthea demo-seed demo-seed-clean evaluate evaluate-capacity evaluate-capacity-check simulate evaluate-check sensitivity sensitivity-check reset web-install web-dev web-build web-test web-e2e test-e2e review-packs review-packs-check test-review-packs test-phi-logs rbac-matrix test-offline fresh-clone risk-report risk-check calibrate-fetch calibrate-fit calibrate-check effort effort-check video video-check video-deps verify hl7-demo hl7-samples
+.PHONY: check-full evaluate-smoke test-redteam validate validate-check validate-targets evaluate-refusal oidc-up oidc-down test-oidc up-scale agency-run test-demo test-e2e-live demo-scenario demo-stage demo-snapshot demo-restore demo-reset demo-kill-scheduler check docs-check tracker-lint test-security test-tools test-load load-check up down logs test test-db test-db-create test-db-reset test-chaos synthea demo-seed demo-seed-clean evaluate evaluate-capacity evaluate-capacity-check simulate evaluate-check sensitivity sensitivity-check reset web-install web-dev web-build web-test web-e2e test-e2e review-packs review-packs-check test-review-packs test-phi-logs rbac-matrix test-offline fresh-clone risk-report risk-check calibrate-fetch calibrate-fit calibrate-check effort effort-check video video-check video-deps verify hl7-demo hl7-samples
 
 up:
 	docker compose up -d --build
@@ -27,12 +27,16 @@ oidc-down:
 test-oidc:
 	PYTHONPATH=$(CURDIR)/api $(PY) -m pytest api/tests/test_oidc_keycloak.py -q -m oidc -rs
 
+# F15: pytest-xdist, one worker per core, whole files per worker (XDIST= to run serially). The integration tests give each worker its own
+# database, closure_test_gw<N>, copied from the migrated template closure_test_tpl (api/tests/xdist_db.py).
+XDIST ?= -n auto --dist loadfile
+
 # Unit tests only (no database needed). Uses the local .venv if present, otherwise
 # runs the api tests in the `test` stage of the api image (service api-test, profile "tests"): the api image that
 # runs in compose has no pytest and no tests (SEC-1). The simulator tests need the venv.
 test:
 	@if [ -x .venv/bin/pytest ]; then \
-		.venv/bin/pytest api/tests simulator/tests -q -m "not integration and not chaos and not oidc"; \
+		.venv/bin/pytest api/tests simulator/tests -q -m "not integration and not chaos and not oidc" $(XDIST); \
 	else \
 		docker compose --profile tests run --rm --no-deps api-test pytest tests -q -m "not integration and not chaos and not oidc"; \
 	fi
@@ -60,11 +64,12 @@ test-db-create:
 # Drops and recreates the test database (empty; the next `make test-db` migrates it again).
 test-db-reset:
 	$(PSQL_ADMIN) -c "DROP DATABASE IF EXISTS closure_test WITH (FORCE)"
+	$(PSQL_ADMIN) -c "DROP DATABASE IF EXISTS closure_test_tpl WITH (FORCE)"
 	$(PSQL_ADMIN) -c "CREATE DATABASE closure_test OWNER closure"
 
 # CI (SKIP_DB_CREATE=1) creates closure_test itself, against a Postgres service container with no compose stack.
 test-db: $(if $(SKIP_DB_CREATE),,test-db-create)
-	DATABASE_URL=$(TEST_DATABASE_URL) $(if $(wildcard .venv/bin/pytest),.venv/bin/pytest,python3 -m pytest) api/tests -q -m "integration and not chaos"
+	DATABASE_URL=$(TEST_DATABASE_URL) $(if $(wildcard .venv/bin/pytest),.venv/bin/pytest,python3 -m pytest) api/tests -q -m "integration and not chaos" $(XDIST)
 
 # Chaos tests (F3, F4, F5; T-A32, T-F3 to T-F7), all marked `chaos`:
 #   * fault injection (api/tests/faults.py, honoured only when APP_ENV=test): duplicate delivery, clock skew,
@@ -270,12 +275,23 @@ agency-run:
 	$(PY) tools/demo/agency_run.py
 
 # ---- Cut F: hardening, reproducibility, `make check` (F1, F6, F9) ----------------------------------
-# `make check` runs, in order and stopping at the first failure: test, verify, test-db (skipped loudly if
-# Postgres on :5433 is down), web-test, web-build, evaluate-check, docs-check, tracker-lint,
-# test-security, test-tools, a reduced load check, risk-check, review-packs-check, test-review-packs and web-e2e. Each stage is its own target. Run every stage
-# even after a failure (for reporting): `make check CHECK_KEEP_GOING=1`.
+# `make check` (F15) is the FAST tier: test, verify, test-db, web-test, web-build, web-e2e, docs-check, tracker-lint, test-security,
+# test-tools, test-redteam, load-check, review-packs-check, test-review-packs, effort-check and evaluate-smoke, run concurrently
+# (CHECK_JOBS, default min(cores, 6); CHECK_SERIAL=1 for one at a time, in order, stopping at the first failure). Each stage is its
+# own target. CHECK_KEEP_GOING=1 runs every stage even after a failure. The simulator-heavy stages join automatically when the diff
+# against main touches the simulator, the pathways or their parameters; `make check-full` always runs them.
 check:
-	$(PY) tools/check/run_check.py $(if $(CHECK_KEEP_GOING),--keep-going)
+	$(PY) tools/check/run_check.py --tier fast $(if $(CHECK_KEEP_GOING),--keep-going) $(if $(CHECK_SERIAL),--serial)
+
+# Everything: the fast tier plus the simulator-heavy checks (sensitivity-check, full evaluate-check, risk-check, calibrate-check,
+# validate-check, evaluate-capacity-check). `make check` adds those by itself when the diff against main touches simulator/,
+# config/pathways/, simulator params or the other paths in tools/check/run_check.py (HEAVY_PATH_PREFIXES); CHECK_HEAVY=1/0 forces.
+check-full:
+	$(PY) tools/check/run_check.py --tier full $(if $(CHECK_KEEP_GOING),--keep-going) $(if $(CHECK_SERIAL),--serial)
+
+# The evaluate determinism check at 1 replication (the fast tier's smoke; `evaluate-check` is the full 20).
+evaluate-smoke:
+	$(MAKE) --no-print-directory evaluate-check REPS=1
 
 # Broken relative links and ragged tables in docs/ and project/ (README.md too), and any TODO in docs/
 # outside lines carrying an H1/H2 review marker.
