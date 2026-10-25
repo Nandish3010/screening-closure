@@ -103,6 +103,7 @@ def write_entry(entry: CacheEntry, directory: Path | None = None) -> Path:
     try:
         with os.fdopen(fd, "w", encoding="utf-8") as fh:
             fh.write(body)
+        os.chmod(tmp, 0o644)  # mkstemp makes it 0600; the image's unprivileged user must be able to read a recording
         os.replace(tmp, path)
     except BaseException:
         Path(tmp).unlink(missing_ok=True)

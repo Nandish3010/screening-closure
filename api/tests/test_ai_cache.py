@@ -204,3 +204,11 @@ def test_registry_wraps_model_providers_in_the_cache_and_keeps_names():
     for name in ("azure_openai", "jais"):
         p = get_provider(name)
         assert isinstance(p, CachingProvider) and p.name == name
+
+
+def test_a_recording_is_world_readable_so_the_unprivileged_container_user_can_replay_it(tmp_path):
+    """mkstemp makes 0600 files; COPY keeps the mode, and the image runs as uid 10001, so a 0600 recording was a silent
+    `cache_miss` in the demo stack (found by the offline replay check, A35)."""
+    entry = CacheEntry("a" * 64, "anthropic", "claude-haiku-5-5", "en", GOOD, "prompt")
+    path = write_entry(entry, tmp_path)
+    assert path.stat().st_mode & 0o777 == 0o644
