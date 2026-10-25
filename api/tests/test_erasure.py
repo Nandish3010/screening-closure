@@ -41,7 +41,7 @@ pytestmark = [
 
 AT = datetime(2026, 1, 5, 8, 0, tzinfo=UTC)
 OWNER = "primary_care_owner:dr_erasure"
-SIGNED = {"signed_by": "Practitioner/dr-erasure"}
+SIGNED = {"signed_by": "Practitioner/dr_erasure"}
 CATEGORIES_ALL = {"fhir_resources", "event_patient_reference", "event_notes", "draft_text", "prompt_text", "notification_body",
                   "reply_text", "agency_ledger", "contact_registry", "projection_queue"}
 
@@ -357,7 +357,7 @@ def test_t_a79_erasure_leaves_no_trace_of_the_patient_and_keeps_the_audit_trail(
         close = conn.execute("SELECT payload FROM events WHERE case_id = %s AND type = 'close'", (s.cases[0],)).fetchone()[0]
     assert genesis["patient_ref"].startswith("Patient/erased-") and genesis["patient_ref"] != s.ref
     assert set(last) == {"erasure_id", "categories"} and last["erasure_id"] == eid
-    assert close["evidence_ref"] == f"DiagnosticReport/{s.report}" and close["signed_by"] == "Practitioner/dr-erasure"  # auditable
+    assert close["evidence_ref"] == f"DiagnosticReport/{s.report}" and close["signed_by"] == "Practitioner/dr_erasure"  # auditable
 
     # the erased case accepts nothing more, and is not projected again
     r = world["client"].post(f"/cases/{s.cases[0]}/events", json={"type": "reopen", "payload": {"reason": "new_finding"}},
