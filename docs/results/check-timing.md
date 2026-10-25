@@ -66,10 +66,10 @@ not part of this baseline.
 |---|---:|---:|
 | Local fast tier, `make check` (16 stages, 6 at a time) | 14 min 44 s (serial, all 18 stages) | **2 min 25 s** (145.2 s) |
 | Local full tier, `make check-full` (21 stages; `calibrate-check` skipped) | no equivalent (about 17 min serial with validate-check) | **10 min 56 s** (655.6 s) |
-| CI, pull request without simulator changes | not measured (serial `unit` job alone about 12 minutes) | CI_PR |
-| CI, pull request with simulator changes | | CI_PR_HEAVY |
+| CI, pull request without simulator changes (PR #9 run 40165345666) | not measured (the old `unit` job ran about ten gates one after another) | **6 min 24 s** (longest job `unit-sim`; `unit-api` 5:27, `db` 3:31, `verify` 3:01, `web` 2:17, `tools-and-docs` 2:05, `redteam` 0:53) |
+| CI, pull request with simulator changes (same run, which touched Makefile and check.yml, so the filter fired) | the heavy checks ran only nightly | 23 min 17 s: `sensitivity-check` on the 4-core runner is the longest leg (validate 11:44, evaluate 10:21, capacity 9:35, risk 1:09) |
 
-The target was a local fast check under 6 minutes and a CI pull-request wall time under 10 minutes.
+The target was a local fast check under 6 minutes (met: 2 min 25 s) and a CI pull-request wall time under 10 minutes (met for a pull request that does not touch the simulator: 6 min 24 s; not met when the heavy filter fires, because `sensitivity-check` alone takes 23 minutes on a hosted 4-core runner. Splitting its sweep across several matrix legs is the next step).
 
 Per stage, local fast tier (wall seconds, stages overlap; total 672 s of stage time in 145 s):
 

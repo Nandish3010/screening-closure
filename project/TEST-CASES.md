@@ -228,5 +228,6 @@ Thresholds marked "proposed" are starting points to be confirmed by the owning t
 | T-F16 | Cross-reference lint: every test ID used in TRACKER.md exists in TEST-CASES.md, and every ticket ID used in TEST-CASES.md exists in TRACKER.md. | unit | `make tracker-lint` (tools/check/tracker_lint.py; tests/test_tracker_lint.py), also a stage of `make check` | No dangling reference in either direction. | existing | F1 |
 | T-F17 | CI: a clean GitHub Actions runner runs the fresh-clone script and `make check` green from an empty checkout. | integration | `.github/workflows/check.yml` and `.github/workflows/fresh-clone.yml` run on a pull request | Test passes; definition of done in TRACKER.md met. | built | F13 |
 | T-F18 | Observability and deployment: traces and metrics reach the collector in compose; the Helm chart and the infrastructure templates lint and render. | integration | `make test-db` plus `helm lint` and the template validation in CI | Test passes; definition of done in TRACKER.md met. Planned, not written yet. | planned | F14 |
+| T-F19 | Fast check: the xdist run passes with a database per worker, the `_test` guard still refuses lookalike names, the stage pool respects dependencies and the failure rules, and the tiers and the path rule select the stages the brief lists. | integration | `make test-tools` (tests/test_run_check.py), `make test-db` (api/tests/test_testdb_guard.py), `make check` | Test passes; definition of done in TRACKER.md met. | built | F15 |
 
-Total: 172 test cases.
+Total: 173 test cases.
