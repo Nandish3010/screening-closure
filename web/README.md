@@ -6,6 +6,7 @@ Vite + React + TypeScript. Three surfaces on one typed API client:
 |---|---|
 | `/coordinator`, `/coordinator/:caseId` | Coordinator / owner app: worklist (most overdue first, then risk), filters, case timeline, actions |
 | `/patient/:caseId` (and `/patient`) | Patient PWA, Arabic + English, installable, last case renders offline |
+| `/judge` | Judge summary: positioning line, headline with caveats, links to repo docs, `make check`. The header's **Judge tour** button runs a 7-step guided walk (problem, a case timeline, the closure guard, the agency inbox, the effort counter, the numbers, this page) on the current data; it only navigates and reads, posts nothing, and works on both adapters |
 | `/dashboard` | Closure dashboard: P50/P90, open by age, breaches by provider, bottleneck by transition (live: computed by `GET /metrics/closure` from the cases in the database; mock adapter: fixed fixture values, see below) |
 
 Every page shows a permanent **SIMULATED TIME** badge in the header (from `sim_time` in `GET /metrics/closure`).
@@ -111,4 +112,13 @@ Header role switcher (coordinator / owner / specialist / clinician / supervisor 
   - `a11y.spec.ts`: axe-core (WCAG 2.0/2.1 A and AA) on the worklist, the case page (as coordinator and as owner, with a bounced and a frozen case), the patient page in English and Arabic, and the dashboard (with the scheduler banner), in light and dark; fails on any serious or critical violation (a self-test proves the audit catches a missing alt text and an unnamed button). PWA: the manifest has name, short name, start URL, scope, standalone display, theme colours and 192 and 512 px icons that are all served; a service worker with a fetch handler is active and controls the page.
   - `flows.spec.ts`: the first-pass flows (coordinator, watchdog, reopen, patient, dashboard badge, offline reload).
 - Playwright does not need a download if a Chromium headless shell is already in `~/Library/Caches/ms-playwright` (macOS) or `~/.cache/ms-playwright` (Linux, CI) (`playwright.config.ts` picks the newest one; override with `PW_CHROMIUM_PATH`). Otherwise `npx playwright install chromium`.
-- Screenshots (`web/screenshots/`, light and dark): captured against the live stack (http adapter, after `make demo-reset`), so actors show opaque ids and roles and the header adapter badge reads `http`, not `mock`. `SCREENSHOTS=1 npx playwright test e2e/screenshots.spec.ts` regenerates them from the mock adapter instead (fixture cases and fixture dashboard values; the header adapter badge reads `mock`), which is the offline fallback.
+- Screenshots (`web/screenshots/`, light and dark) are captured with `SCREENSHOTS=1 npx playwright test e2e/screenshots.spec.ts` from the mock adapter (fixture cases and fixture dashboard values; the header adapter badge reads `mock`), the offline fallback. They also cover the agency organisation, the judge summary and the judge tour.
+
+## Design system and judge mode (C12, C13)
+
+- `src/styles.css` opens with the tokens: one accent (`--brand`), semantic status colours (red = act now, amber = held or escalated, green = system or in time), spacing 4/8/12/16/24/32 (`--s-1`..`--s-6`), type 12/14/16/20/26/40 px (`--fs-*`), light and dark values. Charts use the accent only.
+- Status chips: `chip-overdue`, `chip-escalated`, `chip-auto`/`chip-automation` (automated), `chip-held` (consent frozen, hand-off pending), `chip-declined`. Each carries its words, never colour alone.
+- Worklist columns: Case, Age (days since the result), State, Owner, Next due, Flags, Last activity, Risk, plus an at-a-glance count row.
+- Timeline: a solid dot is a person, a green ring the system, a grey ring a service, an amber dotted diamond an AI draft; squares are milestones (green met, red missed). A legend sits above it.
+- Dashboard numbers carry a "Synthetic data" chip and their unit; the agency organisation is drawn as a tree from the supervisor to the departments.
+- Judge mode: `src/judge/JudgeTour.tsx` (steps, overlay, `TourProvider`), `src/judge/links.ts` (repository document links, plain anchors, nothing fetched), `src/pages/JudgePage.tsx`. The headline figures on `/judge` are quoted from `docs/results/results.md` (literature-anchored scenario) and do not update when the evaluation is re-run. Tests: `tests/judge.test.tsx`, `e2e/judge.spec.ts` (axe, light and dark).

@@ -8,6 +8,13 @@ import { fmtDate, fmtDateTime, shortId, titleCase } from "../lib/format";
 import { overdueInfo } from "../lib/derive";
 import { WatchdogMarker } from "../components/WatchdogMarker";
 
+/** Whole days from the case's creation to "now" (the sim clock); null when either is unknown. */
+function ageDays(created: string | null | undefined, now: string | null): number | null {
+  if (!created || !now) return null;
+  const d = Math.floor((new Date(now).getTime() - new Date(created).getTime()) / 86_400_000);
+  return Number.isFinite(d) ? Math.max(0, d) : null;
+}
+
 export function StatePill({ state }: { state: string }) {
   return <span className={`pill pill-${state}`}>{titleCase(state)}</span>;
 }
@@ -45,7 +52,7 @@ export function CoordinatorPage() {
 
   return (
     <main className="container">
-      <h1>Worklist</h1>
+      <div className="page-head"><h1>Worklist</h1><span className="chip chip-synthetic">Synthetic data</span></div>
       <p className="muted">Most overdue first, then highest risk of loss to follow-up. The risk score only orders this list; it never closes, escalates or decides care.</p>
 
       {api.createCase && (
@@ -90,35 +97,51 @@ export function CoordinatorPage() {
       {cases && (
         <>
           <p className="muted" role="status">{rows.length} of {cases.length} cases</p>
+          <ul className="plain summary-chips" aria-label="At a glance" data-testid="worklist-summary">
+            <li><span className="chip chip-bad chip-overdue">{rows.filter((c) => overdueInfo(c, now).overdue).length} overdue</span></li>
+            <li><span className="chip chip-warn chip-escalated">{rows.filter((c) => c.escalation_level > 0).length} escalated</span></li>
+            <li><span className="chip chip-watchdog">{rows.filter((c) => c.watchdog_flagged).length} with nobody looking</span></li>
+            <li><span className="chip chip-held">{rows.filter((c) => c.consent_frozen || c.pending_handoff).length} held</span></li>
+          </ul>
           <div className="table-wrap">
             <table className="worklist" data-testid="worklist">
               <thead>
-                <tr><th>Case</th><th>State</th><th>Owner</th><th>Due</th><th>Overdue</th><th>Escalation</th><th>Flags</th><th>Last activity</th><th>Risk</th></tr>
+                <tr><th>Case</th><th>Age</th><th>State</th><th>Owner</th><th>Next due</th><th>Flags</th><th>Last activity</th><th>Risk</th></tr>
               </thead>
               <tbody>
                 {rows.map((c) => {
                   const od = overdueInfo(c, now);
+                  const age = ageDays(c.created_at, now);
+                  const bouncedNow = !!(c.last_handoff?.bounced && c.state === "referral_rejected");
+                  const noFlags = !od.overdue && c.escalation_level === 0 && !c.watchdog_flagged && !c.consent_frozen && !c.pending_handoff && !bouncedNow && c.state !== "declined_pending_signoff";
                   return (
                     <tr key={c.case_id} data-testid="worklist-row" className={`${od.overdue ? "row-overdue" : ""} ${c.watchdog_flagged ? "row-watchdog" : ""}`.trim()}>
-                      <td data-label="Case"><Link to={`/coordinator/${c.case_id}`}>{shortId(c.case_id)}</Link></td>
+                      <td data-label="Case" className="nowrap"><Link to={`/coordinator/${c.case_id}`}>{shortId(c.case_id)}</Link></td>
+                      <td data-label="Age" className="nowrap num" title="Days since the result was received">{age === null ? "-" : `${age} d`}</td>
                       <td data-label="State"><StatePill state={c.state} /></td>
-                      <td data-label="Owner">{c.owner ?? <span className="muted">Unowned</span>}{c.provider && <span className="muted"> · {c.provider}</span>}</td>
-                      <td data-label="Due">{fmtDate(c.due_at)}</td>
-                      <td data-label="Overdue">{od.overdue ? <span className="chip chip-bad">{od.days > 0 ? `${od.days} day${od.days === 1 ? "" : "s"}` : "overdue"}</span> : <span className="muted">-</span>}</td>
-                      <td data-label="Escalation">{c.escalation_level > 0 ? <span className="chip chip-warn" title={`Escalation level ${c.escalation_level} of 3`}>Level {c.escalation_level}</span> : <span className="muted">-</span>}</td>
-                      <td data-label="Flags">
-                        {c.watchdog_flagged && <WatchdogMarker flag={c.watchdog_flagged} compact />}
-                        {c.consent_frozen && <span className="chip chip-warn" title="Patient consent is frozen: do not contact the patient">Consent frozen</span>}
-                        {c.pending_handoff && <span className="chip chip-warn" data-testid="pending-handoff-chip" title={`Hand-off to ${c.pending_handoff.to_provider} is waiting for acceptance`}>Hand-off pending</span>}
-                        {c.last_handoff?.bounced && c.state === "referral_rejected" && <span className="chip chip-bad" data-testid="bounced-chip" title="The provider did not answer in 3 working days">Hand-off bounced</span>}
-                        {!c.watchdog_flagged && !c.consent_frozen && !c.pending_handoff && !(c.last_handoff?.bounced && c.state === "referral_rejected") && <span className="muted">-</span>}
+                      <td data-label="Owner">
+                        {c.owner ? <span className="owner-name">{c.owner}</span> : <span className="muted">Unowned</span>}
+                        {c.provider && <span className="owner-sub">{c.provider}</span>}
                       </td>
-                      <td data-label="Last activity">{fmtDateTime(c.last_event_at)}</td>
+                      <td data-label="Next due" className="nowrap num">{fmtDate(c.due_at)}</td>
+                      <td data-label="Flags">
+                        <span className="flags">
+                          {od.overdue && <span className="chip chip-bad chip-overdue">{od.days > 0 ? `Overdue: ${od.days} ${od.days === 1 ? "day" : "days"}` : "Overdue"}</span>}
+                          {c.escalation_level > 0 && <span className="chip chip-warn chip-escalated" title={`Escalation level ${c.escalation_level} of 3`}>Escalated: Level {c.escalation_level}</span>}
+                          {c.watchdog_flagged && <WatchdogMarker flag={c.watchdog_flagged} compact />}
+                          {c.consent_frozen && <span className="chip chip-held" title="Patient consent is frozen: do not contact the patient">Consent frozen</span>}
+                          {c.pending_handoff && <span className="chip chip-held" data-testid="pending-handoff-chip" title={`Hand-off to ${c.pending_handoff.to_provider} is waiting for acceptance`}>Hand-off pending</span>}
+                          {bouncedNow && <span className="chip chip-bad" data-testid="bounced-chip" title="The provider did not answer in 3 working days">Hand-off bounced</span>}
+                          {c.state === "declined_pending_signoff" && <span className="chip chip-declined" title="The patient declined after counselling; a physician signs the closure">Declined by patient</span>}
+                          {noFlags && <span className="muted">-</span>}
+                        </span>
+                      </td>
+                      <td data-label="Last activity" className="nowrap num">{fmtDateTime(c.last_event_at)}</td>
                       <td data-label="Risk"><RiskBar value={c.risk_score} /></td>
                     </tr>
                   );
                 })}
-                {rows.length === 0 && <tr><td colSpan={9}>No cases match these filters.</td></tr>}
+                {rows.length === 0 && <tr><td colSpan={8}>No cases match these filters.</td></tr>}
               </tbody>
             </table>
           </div>
