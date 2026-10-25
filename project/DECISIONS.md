@@ -776,7 +776,7 @@ The ledger is the agency's memory (`api/app/agency/ledger.py`, migration `014_ag
 
 **Consequences.**
 - No new event type, actor or transition: the decision matrix and the model checker are unaffected.
-- Calls leave the UAE (the API is a US-hosted service). The prototype sends synthetic content only, and the prompts contain no patient data. A production route needs an in-country arrangement that the Department of Health (DoH) approves, which is to verify (ai-boundary.md section 9, hazard HZ-39).
+- Calls leave the UAE (the API is a US-hosted service). The prototype sends synthetic content only, and the prompts contain no patient data. A production route needs an in-country arrangement that the Department of Health (DoH) approves, which is to verify (ai-boundary.md section 9, hazard HZ-42).
 - A recorded plan replays only for an identical candidate list; a different cohort or time gets the rule order with `cache_miss`. A recorded draft replays for the same owner name, role, language, channel, purpose and appointment date.
 - The recording is only as current as the model: a change of model id or prompt makes new hashes, and the old files are dead weight until re-recorded.
 - The SDK is a runtime dependency of the API image although replay never imports it.
