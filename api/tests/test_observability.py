@@ -58,6 +58,10 @@ def test_sweep_and_llm_recorders_show_up_in_the_exposition(client):
     assert "closure_escalations_emitted_total" in text and "closure_overdue_marked_total" in text
     assert "closure_sweep_duration_seconds_bucket" in text
     assert "closure_llm_tokens_total" in text and "azure_openai" in text
+    observability.record_llm_usage("anthropic", {"input_tokens": 120, "output_tokens": 40, "cache_read_input_tokens": 5,
+                                                 "cache_creation_input_tokens": 0})  # A35: Claude's usage counts
+    text = client.get("/metrics", headers=login_headers(client, "supervisor")).text
+    assert 'provider="anthropic"' in text and 'kind="cache_read"' in text
     assert "closure_leader" in text and "closure_cases_overdue" in text and "closure_outbox_pending" in text
 
 

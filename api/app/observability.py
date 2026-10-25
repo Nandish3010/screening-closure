@@ -346,7 +346,10 @@ def record_llm_usage(provider: str, usage: object) -> None:
     """`usage` is the provider's usage object (OpenAI-compatible: prompt_tokens, completion_tokens). Anything else is ignored."""
     if _llm_tokens is None or not isinstance(usage, dict):
         return
-    for kind, key in (("prompt", "prompt_tokens"), ("completion", "completion_tokens")):
+    # OpenAI-compatible keys, and Anthropic's (input_tokens, output_tokens, cache reads and writes; A35)
+    for kind, key in (("prompt", "prompt_tokens"), ("completion", "completion_tokens"), ("prompt", "input_tokens"),
+                      ("completion", "output_tokens"), ("cache_read", "cache_read_input_tokens"),
+                      ("cache_write", "cache_creation_input_tokens")):
         n = usage.get(key)
         if isinstance(n, int) and not isinstance(n, bool) and n > 0:
             _llm_tokens.add(n, {"provider": provider, "kind": kind})

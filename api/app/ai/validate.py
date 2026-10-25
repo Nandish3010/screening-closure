@@ -23,6 +23,7 @@ import yaml
 from app.ai.provider import (
     CHANNEL_MAX_CHARS,
     DraftRequest,
+    BudgetExhausted,
     CacheMiss,
     DraftResult,
     ProviderUnavailable,
@@ -57,6 +58,7 @@ PROVIDER_UNAVAILABLE = "provider_unavailable"
 PROVIDER_ERROR = "provider_error"
 VALIDATION_FAILED = "validation_failed"
 INVALID_RESULT = "invalid_result"
+BUDGET_EXHAUSTED = "budget_exhausted"  # the token budget or per-call cap refused the call (A35)
 CACHE_MISS = "cache_miss"  # replay mode had no recorded output (D6)
 
 MIN_LETTERS = 5  # fewer letters than this once our own values are removed is not a message
@@ -460,6 +462,8 @@ def draft_with_fallback(
         result = provider.draft(req)
     except CacheMiss:  # before ProviderUnavailable: CacheMiss is a subclass
         reason = CACHE_MISS
+    except BudgetExhausted:  # likewise a subclass
+        reason = BUDGET_EXHAUSTED
     except ProviderUnavailable:
         reason = PROVIDER_UNAVAILABLE
     except Exception as exc:  # noqa: BLE001 - any provider failure must fall back
