@@ -3,7 +3,8 @@
 * The regression tests for the bug: an approved draft was sent while an opt-out or wrong-number hold was open (the hold
   stopped only the automation's messages). The state machine now refuses it until a person clears the hold.
 * Seeded mutations, each put in with monkeypatch and each caught with a counterexample: automation may close, the
-  evidence check removed, message_sent without approval, the hold bug put back, the consent freeze removed.
+  evidence check removed, message_sent without approval, the hold bug put back, the consent freeze removed, and (A36) the
+  signer check removed and the referral hold removed.
 * The checker's own soundness checks bite: a signature that forgets a field step reads is reported (ABSTRACTION), and an
   event that reads another slice's fields is reported (INTERFERENCE).
 
@@ -173,6 +174,35 @@ def test_mutation_consent_freeze_removed_is_caught(monkeypatch):
     monkeypatch.setattr(sm, "CONSENT_FROZEN_EVENTS", frozenset())
     v = _only(mc.check(["messaging"], **FAST), "I4")
     assert v.trace[-2][0] == "consent_updated" and v.trace[-1][0] in mc.OUTREACH
+
+
+def test_mutation_signer_check_removed_is_caught(monkeypatch):
+    """A36 (ADR-044): the machine's signer = closer rule is gone. Since A36 there is no route-gate exception for it, so I1
+    reports the close signed in someone else's name with a counterexample."""
+    monkeypatch.setattr(sm, "_check_signer", lambda event: None)
+    v = _only(mc.check(["ownership"], **FAST), "I1")
+    assert v.trace[-1][0] in ("close", "clinician_review") and "signer is not" in v.message
+    assert v.trace[-1][3].get("signed_by") == mc.FOREIGN_SIGNER
+
+
+def test_mutation_referral_hold_removed_is_caught(monkeypatch):
+    """A36 (ADR-044): a held referral may be accepted again (the hold reads as none). I4 reports it."""
+    monkeypatch.setattr(sm, "referral_hold", lambda model: None)
+    v = _only(mc.check(["ownership"], **FAST), "I4")
+    assert "held" in v.message
+    assert "consent_updated" in [t for t, *_ in v.trace] and v.trace[-1][0] in (*mc.REFERRAL, "handoff_rejected")
+
+
+def test_a_signature_without_the_sharing_flag_is_reported(monkeypatch):
+    """A36: the referral hold reads `share_with_specialist`; a signature that drops it merges models step tells apart."""
+    original = mc.signature
+
+    def coarse(m):
+        core, msg, own, lad = original(m)
+        return (*core[:5], True, *core[6:]), msg, own, lad
+
+    monkeypatch.setattr(mc, "signature", coarse)
+    _only(mc.check(["ownership"], abstraction_samples=5000, interference_samples=0), "ABSTRACTION")
 
 
 def test_mutation_erased_case_may_be_reopened_is_caught(monkeypatch):

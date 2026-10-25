@@ -156,7 +156,7 @@ def test_t_a30_closed_cases_are_never_flagged(store):
     steps = [("acknowledge", LAB, 1, None), ("accept_ownership", OWNER, 2, None), ("contact_patient", OWNER, 3, None),
              ("patient_acknowledge", PAT, 4, None), ("book_confirmatory", SPEC, 5, None),
              ("complete_confirmatory", SPEC, 6, None), ("clinician_review", SPEC, 7, None),
-             ("close", SPEC, 8, {"evidence_ref": "DiagnosticReport/1", "signed_by": "Practitioner/9"})]
+             ("close", SPEC, 8, {"evidence_ref": "DiagnosticReport/1", "signed_by": SPEC})]
     cid = new_case(store, steps)
     assert store.current_state(cid) == "closed"
     assert scan(store, cid, 500).flagged == 0 and flags(store, cid) == []
@@ -275,7 +275,7 @@ def test_t_a30_a_closed_case_refuses_a_flag_even_from_the_watchdog(served):
     # walk to closed by direct appends
     for type_, actor, payload in [("accept_ownership", OWNER, {}), ("contact_patient", OWNER, {}), ("patient_acknowledge", PAT, {}),
                                   ("book_confirmatory", SPEC, {}), ("complete_confirmatory", SPEC, {}), ("clinician_review", SPEC, {}),
-                                  ("close", SPEC, {"evidence_ref": "DiagnosticReport/1", "signed_by": "Practitioner/9"})]:
+                                  ("close", SPEC, {"evidence_ref": "DiagnosticReport/1", "signed_by": SPEC})]:
         cases.store.append(Event(UUID(cid), type_, clock.now(), actor, payload), PATHWAY)
     r = client.post(f"/cases/{cid}/events", json={"type": "watchdog_flagged", "payload": {"reason": "idle"}}, headers=WD)
     assert r.status_code == 409

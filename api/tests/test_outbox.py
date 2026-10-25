@@ -298,7 +298,7 @@ def test_a_case_that_closed_after_the_approval_blocks_the_send(world, crashing_d
     steps = [("contact_patient", "primary_care_owner:x", {}), ("patient_acknowledge", "patient:p", {}),
              ("book_confirmatory", "primary_care_owner:x", {}), ("complete_confirmatory", "specialist_owner:s", {}),
              ("clinician_review", "primary_care_owner:x", {}),
-             ("close", "primary_care_owner:x", {"evidence_ref": "DiagnosticReport/1", "signed_by": "Practitioner/9"})]
+             ("close", "primary_care_owner:x", {"evidence_ref": "DiagnosticReport/1", "signed_by": "primary_care_owner:x"})]
     for t, a, p in steps:
         cases.store.append(Event(case_id, t, clock.now(), a, p), PATHWAY)
     assert cases.store.current_state(case_id) == "closed"

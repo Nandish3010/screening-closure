@@ -182,7 +182,7 @@ def test_a_closed_case_cannot_be_messaged_and_logs_nothing(no_network):
     for i, (type_, actor, payload) in enumerate([
         ("patient_acknowledge", "patient:p", {}), ("book_confirmatory", OWNER, {}),
         ("complete_confirmatory", "specialist_owner:s", {}), ("clinician_review", OWNER, {}),
-        ("close", OWNER, {"evidence_ref": "DiagnosticReport/1", "signed_by": "Practitioner/9"}),
+        ("close", OWNER, {"evidence_ref": "DiagnosticReport/1", "signed_by": OWNER}),
     ], start=2):
         store.append(Event(cid, type_, at(0, i * 3), actor, payload), PATHWAY)
     assert store.current_state(cid) == "closed"

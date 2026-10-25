@@ -48,7 +48,7 @@ from app import payloads
 from app.calendar import WorkingCalendar
 from app.events import CaseNotFound, Event, EventContentConflict, EventIdConflict, EventStore
 from app.pathway import Pathway
-from app.state_machine import CONSENT_WITHDRAWN, CaseModel, InvalidTransition, MilestoneState, step
+from app.state_machine import CONSENT_WITHDRAWN, CaseModel, InvalidTransition, MilestoneState, referral_hold, step
 
 log = logging.getLogger("app.sweep")
 
@@ -101,14 +101,16 @@ def milestone_due_at(
 def handoff_due_at(
     model: CaseModel, pathway: Pathway, calendar: WorkingCalendar
 ) -> datetime | None:
-    """When the pending handoff request expires unanswered, or None if nothing is pending.
+    """When the pending handoff request expires unanswered, or None if nothing is pending or the request is held.
 
-    Counted in working days from the request (`handoff_response_working_days`, ADR-016).
+    Counted in working days from the request (`handoff_response_working_days`, ADR-016). A36 (ADR-044): the timer does
+    not run while the referral is held (consent withdrawn, or sharing with the specialist refused), and when the hold
+    ends it starts again, in full, from `resumed_at`.
     """
     pending = model.pending_handoff
-    if not pending:
+    if not pending or referral_hold(model) is not None:
         return None
-    requested = datetime.fromisoformat(pending["requested_at"])
+    requested = datetime.fromisoformat(pending.get("resumed_at") or pending["requested_at"])
     return _utc(calendar.add_working_days(requested, pathway.handoff_response_working_days))
 
 
@@ -118,7 +120,7 @@ def handoff_due_at(
 # every driver reads it back; NULL in that column means "not computed", which the sweep always evaluates.
 NEVER = datetime(9999, 12, 31, tzinfo=UTC)
 # Bump when the rules in `next_due_at` change, so every stored value is recomputed by the next sweep.
-NEXT_DUE_RULES_VERSION = 1
+NEXT_DUE_RULES_VERSION = 2  # 2: A36, a held referral has no bounce timer
 
 
 def _next_trigger(

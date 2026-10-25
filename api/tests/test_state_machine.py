@@ -52,7 +52,12 @@ AUTOMATED = [
     "system:triage", "system:agency:acme",
 ]
 ACTORS = [*HUMANS, *AUTOMATED]
-SIGNED = {"evidence_ref": "DiagnosticReport/1", "signed_by": "Practitioner/9"}
+SIGNED = {"evidence_ref": "DiagnosticReport/1", "signed_by": "Practitioner/9"}  # someone else's signature for most actors
+
+
+def signed(actor: str) -> dict:
+    """Closure evidence signed by `actor` themselves (A36: the machine requires the signer to be the closer)."""
+    return {"evidence_ref": "DiagnosticReport/1", "signed_by": f"Practitioner/{actor.split(':', 1)[-1]}"}
 HUMAN_ONLY = {
     "escalation_accepted", "handoff_accepted", "consent_updated", "message_approved",
     "callback_requested", "reopen",
@@ -156,6 +161,11 @@ def check_step(prev: CaseModel, ev: Event, new: CaseModel) -> None:
             assert ev.actor != "system:scheduler"
     elif ev.type == "reassign":
         assert new.pending_handoff is None
+    elif ev.type == "consent_updated" and prev.pending_handoff is not None:
+        # A36: a consent change holds a pending request, never cancels it; ending the hold may only add `resumed_at`
+        assert new.pending_handoff is not None
+        assert {k: v for k, v in new.pending_handoff.items() if k != "resumed_at"} == {
+            k: v for k, v in prev.pending_handoff.items() if k != "resumed_at"}
     else:
         assert new.pending_handoff == prev.pending_handoff
     # (f) consent ledger (A6): history is append-only, the current value is the replay of it
@@ -238,6 +248,7 @@ def plausible_event(draw, model: CaseModel, at: datetime):
     if type_ == "escalation_accepted" and model.escalation_level:
         payload["rung"] = PATHWAY.rung_at(model.escalation_level).rung
     actor = draw(st.sampled_from(HUMANS * 4 + AUTOMATED))
+    payload["signed_by"] = signed(actor)["signed_by"]  # the actor's own (A36); noise_event signs in someone else's name
     capable = [a for a in ACTORS if type_ in allowed_events(a)]  # an actor the table lets write this type
     if capable and draw(st.integers(0, 3)) > 0:
         actor = draw(st.sampled_from(capable))
@@ -294,7 +305,7 @@ def event_sequences(draw):
     events = []
     # a valid prefix of the main path, so late states (and `closed`, `reopened`) are reached
     for i, t in enumerate(PATHWAY.main_transitions[: draw(st.integers(0, len(MAIN) - 1))]):
-        ev = make_event(t.event, "primary_care_owner:pc", dict(SIGNED), AT + timedelta(days=i + 1))
+        ev = make_event(t.event, "primary_care_owner:pc", signed("primary_care_owner:pc"), AT + timedelta(days=i + 1))
         events.append(ev)
         model = step(model, ev, PATHWAY)
     for i in range(len(events), len(events) + draw(st.integers(0, 30))):
@@ -324,6 +335,7 @@ def test_never_closed_without_evidence_and_human_signoff(events):
         last = closers[-1]
         assert last.payload.get("evidence_ref"), "closed without evidence_ref"
         assert last.payload.get("signed_by"), "closed without signed_by"
+        assert last.payload["signed_by"] == signed(last.actor)["signed_by"], "closed in someone else's name (A36)"
         assert not is_automated(last.actor), "a closure signed by an automated actor"
         assert last.actor != AUTOMATION_ACTOR
         # nothing happened after the last close except annotations that cannot reopen
@@ -414,7 +426,7 @@ def test_every_prefix_of_a_history_replays_to_the_incremental_model(events):
 def test_every_pathway_transition_is_reachable_in_order():
     state = PATHWAY.initial_state
     for t in PATHWAY.main_transitions:
-        state = apply(state, make_event(t.event, "primary_care_owner:dr_a", dict(SIGNED)), PATHWAY)
+        state = apply(state, make_event(t.event, "primary_care_owner:dr_a", signed("primary_care_owner:dr_a")), PATHWAY)
         assert state == t.to_state
     assert state == "closed"
 
@@ -439,7 +451,7 @@ def test_automated_actor_cannot_close():
 def test_close_is_rejected_from_every_other_open_state(state):
     model = dataclasses.replace(start_model(), state=state)
     with pytest.raises(InvalidTransition):
-        step(model, make_event("close", "primary_care_owner:dr_a", dict(SIGNED)), PATHWAY)
+        step(model, make_event("close", "primary_care_owner:dr_a", signed("primary_care_owner:dr_a")), PATHWAY)
 
 
 # ---- unit tests: read model and flags ------------------------------------------------------
@@ -480,6 +492,7 @@ def test_read_model_shape_and_values():
         "breach_due_at": None,
         "provider": None,
         "pending_handoff": None,
+        "referral_held": None,
         "approved_unsent_drafts": [],
         "last_handoff": None,
         "consent": {
@@ -772,7 +785,7 @@ FULL_RUN = [
     ("book_confirmatory", OWNER, {}),
     ("complete_confirmatory", "specialist_owner:s", {}),
     ("clinician_review", OWNER, {}),
-    ("close", OWNER, dict(SIGNED)),
+    ("close", OWNER, signed(OWNER)),
 ]
 
 
@@ -785,12 +798,12 @@ def test_reopen_needs_a_human_and_a_reason_and_cannot_skip_review():
             step(closed, make_event("reopen", actor, payload), PATHWAY)
     reopened = step(closed, make_event("reopen", OWNER, {"reason": "pathology amended"}), PATHWAY)
     assert reopened.state == "reopened"
-    for payload in ({}, dict(SIGNED)):  # reopened cannot jump back to closed
+    for payload in ({}, signed(OWNER)):  # reopened cannot jump back to closed
         with pytest.raises(InvalidTransition):
             step(reopened, make_event("close", OWNER, payload), PATHWAY)
     reviewed = step(reopened, make_event("clinician_review", OWNER, {}), PATHWAY)
     assert reviewed.state == "clinician_reviewed"
-    assert step(reviewed, make_event("close", OWNER, dict(SIGNED)), PATHWAY).state == "closed"
+    assert step(reviewed, make_event("close", OWNER, signed(OWNER)), PATHWAY).state == "closed"
     with pytest.raises(InvalidTransition):  # reopen is only for closed cases
         step(drive(*TO_CONTACTED), make_event("reopen", OWNER, {"reason": "x"}), PATHWAY)
 

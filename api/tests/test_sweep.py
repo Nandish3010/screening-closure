@@ -195,7 +195,7 @@ def test_a_later_transition_gets_its_own_breach():
 
 def test_sweep_skips_closed_cases_and_honours_only():
     closed_steps = [
-        make_event(t.event, "primary_care_owner:k", {"evidence_ref": "x", "signed_by": "y"}, at(i + 1))
+        make_event(t.event, "primary_care_owner:k", {"evidence_ref": "x", "signed_by": "primary_care_owner:k"}, at(i + 1))
         for i, t in enumerate(PATHWAY.main_transitions)
     ]
     store, (done, open1, open2) = make_store(closed_steps, [], [])

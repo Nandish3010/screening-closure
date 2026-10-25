@@ -90,6 +90,8 @@ COUNSELLING = "DocumentReference/counsel-1"
 PHYSICIANS = ("primary_care_owner", "specialist_owner")  # who may sign a declined closure
 # I4: outreach (contacting the patient, or handing them to someone new).
 OUTREACH = frozenset({"contact_patient", "message_drafted", "message_approved", "message_sent", "handoff_requested"})
+# I4 extended (A36, ADR-044): the referral events, refused while consent is withdrawn or sharing is refused.
+REFERRAL = frozenset({"handoff_requested", "handoff_accepted"})
 # I7: states a case may stay in for ever without a human path to `closed` (documented terminal holds). None is needed:
 # every reachable open state has one. Kept explicit, so adding one is a reviewed change to this file.
 DOCUMENTED_TERMINAL_HOLDS: frozenset[str] = frozenset()
@@ -110,6 +112,23 @@ RUNGS = ("reminder", "supervisor", "coordinator")
 SENT = {"channel": "sms", "language": "en", "purpose": "reminder"}
 AUTO_TEMPLATE = {"auto": True, "template_id": "reminder.sms", "template_version": 1, "purpose": "reminder",
                  "channel": "sms", "language": "en", "notification_id": "n-auto"}
+
+
+def _uid(identity: str) -> str | None:
+    """The checker's OWN reading of a signer (never sm.signer_resolves_to, so a mutation of it cannot hide itself)."""
+    if identity.startswith("Practitioner/"):
+        return identity[len("Practitioner/"):] or None
+    return identity.split(":", 1)[1] or None if ":" in identity else None
+
+
+def signer_is_actor(actor: str, signed_by) -> bool:
+    """A36 (ADR-044): `signed_by` resolves to the actor (same user id, as `role:user_id` or `Practitioner/user_id`)."""
+    return isinstance(signed_by, str) and _uid(signed_by) is not None and _uid(signed_by) == _uid(actor)
+
+
+def referral_held(m: sm.CaseModel) -> bool:
+    """A36: consent withdrawn, or sharing with the specialist refused (the checker's own reading of the ledger)."""
+    return bool(m.consent_frozen or m.consent.get("withdrawn") or m.consent.get("share_with_specialist") is False)
 
 
 def _practitioner(actor: str) -> str:
@@ -138,6 +157,7 @@ def alphabet(pathway: Pathway) -> list[tuple[str, str, Builder, bool]]:
     add("complete_confirmatory", "auto", {"auto": True})
     add("clinician_review", "plain", {})
     add("clinician_review", "signed-self", lambda actor, m: {"signed_by": _practitioner(actor)})
+    add("clinician_review", "signed-other", {"signed_by": FOREIGN_SIGNER})
     # close: evidence present / absent / incomplete (empty, malformed); signer self / Practitioner-self / other / none
     add("close", "ok-self", lambda actor, m: {"evidence_ref": REF, "signed_by": actor})
     add("close", "ok-practitioner", lambda actor, m: {"evidence_ref": REF, "signed_by": _practitioner(actor)})
@@ -212,6 +232,8 @@ def alphabet(pathway: Pathway) -> list[tuple[str, str, Builder, bool]]:
     add("consent_updated", "restore", {"withdrawn": False})
     add("consent_updated", "sms-off", {"channel_sms": False})
     add("consent_updated", "sms-on", {"channel_sms": True})
+    add("consent_updated", "share-off", {"share_with_specialist": False})  # A36: the referral is held
+    add("consent_updated", "share-on", {"share_with_specialist": True})
     add("consent_updated", "empty", {})
     add("consent_updated", "not-bool", {"withdrawn": "yes"})
     add("contact_updated", "valid", {"contact_valid": True})
@@ -289,6 +311,8 @@ SLICES = {
     "ownership": Slice(
         "ownership", "owner, referral handoff (request, accept, reject, bounce), reassignment, re-route flags",
         {**BASE, "handoff_requested": ALL, "handoff_accepted": ALL, "handoff_rejected": ALL, "reassign": ALL,
+         # A36: sharing refused and restored, so a referral is held and released in every ownership situation
+         "consent_updated": {*BASE["consent_updated"], "share-off", "share-on"},
          "review_requested": {"reroute_exhausted", "consent_withdrawn", "incomplete_procedure", "triage_uncertain",
                               "already_done", "bogus"}},
         perturb=("messaging", "ladders"),
@@ -318,8 +342,10 @@ def signature(m: sm.CaseModel) -> tuple:
     ladders = [m.escalation_event_id, *(ms.escalation_event_id for ms in m.milestones.values())]
     pending = m.pending_handoff
     return (
-        # core: the state, consent freeze and where it resumes, and each milestone's clock (started / met / void)
+        # core: the state, consent freeze and where it resumes, sharing with the specialist (the referral hold, A36, read
+        # by the ownership events and written by consent), and each milestone's clock (started / met / void)
         (m.state, m.erased, m.consent_frozen, bool(m.consent.get("withdrawn")), m.resume_state,
+         m.consent.get("share_with_specialist") is not False,
          # the refusal on record: a declined closure reads who counselled and which record (A33)
          None if m.refusal is None else (m.refusal["counselling_ref"], m.refusal["counselled_by"]),
          tuple((ms.started_at is not None, ms.met_at is not None, ms.void) for ms in m.milestones.values())),
@@ -606,17 +632,20 @@ class Checker:
                 out.append(("I1", "closed without evidence_ref"))
             if not (isinstance(p.get("signed_by"), str) and p["signed_by"]):
                 out.append(("I1", "closed without signed_by"))
-            # signer = actor and a well-formed reference: the route's job (ADR-021), not the machine's. Every close the
-            # machine accepts without them must be refused by the REAL route gate.
-            ident = HUMAN_BY_ACTOR.get(actor)
-            signer_ok = ident is not None and p.get("signed_by") in (ident.actor, f"Practitioner/{ident.user_id}")
+            # signer = closer: the machine's own rule since A36 (ADR-044), checked here with no route exception
+            if not signer_is_actor(actor, p.get("signed_by")):
+                out.append(("I1", f"close by {actor!r} signed {p.get('signed_by')!r}: the signer is not the closer"))
+            # a well-formed reference stays the route's job (ADR-021): every close the machine accepts with a malformed one
+            # must be refused by the REAL route gate
             ref = p.get("evidence_ref")
-            ref_ok = isinstance(ref, str) and ref.partition("/")[2].strip(".") != ""
-            if not (signer_ok and ref_ok):
-                _bump(self.r.delegated, "I1: foreign signer or malformed evidence -> refused by the route gate (ADR-021)")
+            if not (isinstance(ref, str) and ref.partition("/")[2].strip(".") != ""):
+                _bump(self.r.delegated, "I1: malformed evidence -> refused by the route gate (ADR-021)")
                 if route_gate_refusal(actor, p) is None:
-                    out.append(("I1", f"close signed {p.get('signed_by')!r} with evidence {ref!r} passes the machine "
-                                      "AND the route gate"))
+                    out.append(("I1", f"close with evidence {ref!r} passes the machine AND the route gate"))
+        if t == "clinician_review" and p.get("signed_by") is not None:
+            _bump(c, "I1 signed reviews")
+            if not signer_is_actor(actor, p["signed_by"]):
+                out.append(("I1", f"clinician_review by {actor!r} signed {p['signed_by']!r}: the signer is not the reviewer"))
         if pre.state == terminal and t not in ("reopen", sm.ERASURE_EVENT):
             out.append(("I1", f"{t!r} accepted on a closed case"))
         # I8 (A32, ADR-025): erasure only on a closed case, only by `system:erasure`, moves no state, and is final
@@ -670,6 +699,19 @@ class Checker:
                 out.append(("I4", f"{t!r} accepted while consent is frozen"))
         if (post.state == sm.CONSENT_WITHDRAWN) != post.consent_frozen:
             out.append(("I4", "consent_frozen out of step with the consent_withdrawn state"))
+        # I4 extended (A36, ADR-044): while consent is withdrawn or sharing refused no referral is requested or accepted,
+        # the scheduler does not bounce a pending one, and a consent change never cancels a pending request (it is held)
+        if referral_held(pre):
+            _bump(c, "I4 held referral transitions")
+            if t in REFERRAL:
+                out.append(("I4", f"{t!r} accepted while the referral is held (consent withdrawn or sharing refused)"))
+            if t == "handoff_rejected" and actor == "system:scheduler":
+                out.append(("I4", "a held referral request was bounced by the scheduler"))
+        if t == "consent_updated" and pre.pending_handoff is not None:
+            kept = post.pending_handoff is not None and all(
+                post.pending_handoff.get(k) == v for k, v in pre.pending_handoff.items() if k != "resumed_at")
+            if not kept:
+                out.append(("I4", "a consent change cancelled or altered a pending referral request"))
         return out
 
     # -- the search --
