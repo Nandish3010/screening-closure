@@ -68,55 +68,56 @@ def test_the_demo_script_storyboard_table_is_the_yaml_storyboard():
     assert [s["id"] for s in sb["shots"] if not s.get("submission")] == [15]  # the backup-only extra named under the table
 
 
-@pytest.mark.xfail(strict=True, reason="B21 (PR #16) regenerated docs/results with the timing mixture; the spoken and written figures in "
-                   "docs/submission/*, README.md and tools/video/storyboard.yaml (and the pins below) are refreshed by the docs-refresh ticket, which "
-                   "must remove this marker (strict: the test fails as soon as the docs match again)")
 def test_the_spoken_figures_match_the_committed_results():
     arms = LA["arms"]
     closed_base, closed_orch = (arms[a]["closed_share"]["mean"] for a in ("baseline", "orchestrated"))
-    assert round(closed_base * 100) == 52 and round(closed_orch * 100) == 66, (closed_base, closed_orch)
-    assert round(arms["baseline"]["silent_loss_rate"]["mean"] * 100) == 46
+    assert round(closed_base * 100) == 53 and round(closed_orch * 100) == 68, (closed_base, closed_orch)
+    assert round(arms["baseline"]["silent_loss_rate"]["mean"] * 100) == 45
     assert round(arms["orchestrated"]["silent_loss_rate"]["mean"] * 100) == 21
     assert arms["orchestrated"]["silent_loss_rate_in_reach"]["mean"] == 0
     for text in (TELE, SCRIPT, (ROOT / "tools/video/storyboard.yaml").read_text(encoding="utf-8")):
-        assert "fifty-two" in text or "52%" in text
-        assert "sixty-six" in text or "66%" in text
+        assert "fifty-three" in text or "53%" in text
+        assert "sixty-eight" in text or "68%" in text
 
 
-@pytest.mark.xfail(strict=True, reason="B21 (PR #16) regenerated docs/results with the timing mixture; the spoken and written figures in "
-                   "docs/submission/*, README.md and tools/video/storyboard.yaml (and the pins below) are refreshed by the docs-refresh ticket, which "
-                   "must remove this marker (strict: the test fails as soon as the docs match again)")
-def test_the_labour_figures_are_the_committed_ones_and_the_target_is_said_to_be_missed():
+def test_the_labour_figures_are_the_committed_ones_and_the_target_is_said_to_be_not_met_in_realistic_scenarios():
     eff = RESULTS["effort"]["scenarios"]
     programme = eff["literature_anchored"]["all"]["reduction"]["labour_reduction"]["mean"]
     in_reach = eff["literature_anchored"]["in_reach"]["reduction"]["labour_reduction"]["mean"]
     upper = eff["upper_range"]["all"]["reduction"]["labour_reduction"]["mean"]
-    assert (round(in_reach * 100), round(programme * 100), round(upper * 100)) == (33, 18, 37)
-    assert max(in_reach, programme, upper) < 0.40  # the target is not met in any scenario
-    assert "thirty-three percent" in TELE and "eighteen percent" in TELE and "not met" in TELE
-    assert "33% fewer" in SCRIPT and "18% across the programme" in SCRIPT and "not met" in SCRIPT
+    assert (round(in_reach * 100), round(programme * 100), round(upper * 100)) == (37, 20, 41)
+    # not met in the realistic (literature-anchored) scenarios; only the upper bound, a mechanism ceiling, crosses it
+    assert in_reach < 0.40 and programme < 0.40
+    assert upper >= 0.40
+    assert "thirty-seven percent" in TELE and "twenty percent" in TELE and "not met" in TELE
+    assert "37% fewer" in SCRIPT and "20% across the programme" in SCRIPT and "not met" in SCRIPT
     storyboard_text = (ROOT / "tools/video/storyboard.yaml").read_text(encoding="utf-8")
-    assert "33%" in storyboard_text and "18%" in storyboard_text and "not met" in storyboard_text
+    assert "37%" in storyboard_text and "20%" in storyboard_text and "not met" in storyboard_text
+    tech = (ROOT / "docs/submission/technical-documentation.md").read_text(encoding="utf-8")
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    for name, text in (("teleprompter", TELE), ("script", SCRIPT), ("storyboard", storyboard_text), ("README", readme),
+                       ("technical documentation", tech)):
+        assert "in every scenario" not in text.lower(), f"{name}: the target is no longer missed in every scenario"
 
 
-@pytest.mark.xfail(strict=True, reason="B21 (PR #16) regenerated docs/results with the timing mixture; the spoken and written figures in "
-                   "docs/submission/*, README.md and tools/video/storyboard.yaml (and the pins below) are refreshed by the docs-refresh ticket, which "
-                   "must remove this marker (strict: the test fails as soon as the docs match again)")
 def test_the_headline_is_the_180_day_ratio_and_the_docs_link_the_validation():
-    """After the held-out validation (docs/results/validation.md) the simulator's timing is not validated: the headline is the
-    180-day completion ratio (about 1.27) and the in-reach silent loss, and no document or spoken line makes a speed claim."""
+    """After B21 the simulator's timing is partly validated: two timing claims may be quoted (about 12% with a colonoscopy within
+    30 days under today's unmanaged process, provisional; a managed-arm median of about 6 weeks among completers) and are written
+    only in the README and the technical documentation. The headline is the 180-day completion ratio (about 1.31, inside the
+    pooled navigation interval; the anchor was 1.27) and the in-reach silent loss. No spoken line makes a speed claim."""
     arms = LA["arms"]
     base180, orch180 = (arms[a]["completion_180d"]["mean"] for a in ("baseline", "orchestrated"))
-    assert (round(base180 * 100, 1), round(orch180 * 100, 1)) == (51.1, 64.9)
-    assert round(orch180 / base180, 2) == 1.27
+    assert (round(base180 * 100, 1), round(orch180 * 100, 1)) == (51.0, 66.7)
+    assert round(orch180 / base180, 2) == 1.31
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
     tech = (ROOT / "docs/submission/technical-documentation.md").read_text(encoding="utf-8")
-    assert "1.27" in readme and "docs/results/validation.md" in readme and "51.1% to 64.9%" in readme
-    assert "1.27" in tech and "(../results/validation.md)" in tech and "failed for timing" in tech
-    assert "failed for timing" in readme and "45.7% to 0%" in readme
+    assert "1.31" in readme and "docs/results/validation.md" in readme and "51.0% to 66.7%" in readme
+    assert "45.3% to 0%" in readme and "about 12%" in readme and "about 6 weeks" in readme
+    assert "1.31" in tech and "(../results/validation.md)" in tech and "about 12%" in tech and "about 6 weeks" in tech
+    assert "failed for timing" not in readme and "failed for timing" not in tech
     for text in (TELE, SCRIPT, (ROOT / "tools/video/storyboard.yaml").read_text(encoding="utf-8")):
-        assert "1.27" in text or "one point two seven" in text
-    assert "one point two seven" in TELE
+        assert "1.31" in text or "one point three one" in text
+    assert "one point three one" in TELE
 
 
 def test_no_spoken_line_makes_a_speed_claim():

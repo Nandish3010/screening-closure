@@ -1,3 +1,4 @@
+import headline from "./headline.json";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useApp } from "../app/AppContext";
@@ -94,7 +95,7 @@ export const TOUR_STEPS: Step[] = [
     body: (
       <>
         <p>Human actions against automated actions, counted from the event log, with the reduction in human time against the programme target of 40%.</p>
-        <p>The minutes behind the percentage are <strong>assumed, not measured</strong>. In the literature-anchored simulation the target is <strong>not met</strong>: 18.3% across all cases, 33.4% among cases the programme reaches. The card shows the live figure for the data you are on.</p>
+        <p>The minutes behind the percentage are <strong>assumed, not measured</strong>. In the literature-anchored simulation the target is <strong>not met in realistic scenarios</strong>: {headline.labour_reduction.literature_all.value} across all cases, {headline.labour_reduction.literature_in_reach.value} among cases the programme reaches; only the upper bound crosses it. The card shows the live figure for the data you are on.</p>
       </>
     ),
     route: () => "/dashboard",

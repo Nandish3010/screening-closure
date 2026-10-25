@@ -10,7 +10,7 @@
 # target in seconds), and optionally submission: true (in the 3-minute video; every shot is in the backup video) and
 # optional: true (skipped, not failed, when its route is absent or its guard element never shows up).
 #
-# Targets: the 14 shots add up to 158 s, which with the 3 s title card and the 4 s end card is 165 s, inside the 180 s
+# Targets: the 14 shots add up to 168 s, which with the 3 s title card and the 4 s end card is 175 s, inside the 180 s
 # cap. The final length of a shot is max(narration length, target); `make video-check` checks the targets, `assemble.sh`
 # checks the real lengths.
 #
@@ -22,6 +22,7 @@
 #   fill: {label: "Field label", value: "text"}
 #   scroll: {testid: id} | {text: "visible text"} | {heading: "Heading"}      scrolls the element into the middle of the screen
 #   wait_for: {testid|text|heading: ..., contains: "text", absent: true, timeout: ms, reload_every: ms}
+#   (shot 11 needs `make triage-serve` running on the host: it waits for "Read as confirm", so it fails loudly without it)
 #   hold: seconds                    let the viewer read
 #   caption: "text"                  change the on-screen caption from here on
 #   cut: start | end                 the video between the two markers is removed (dead waiting); the shot keeps its caption
@@ -70,7 +71,7 @@ shots:
     route: /coordinator
     duration: 7
     caption: "A named owner, a clock, an audit trail, a clinician-signed closure. Nothing is diagnosed. All data synthetic."
-    narration: "This is an accountability and closure engine: a named owner, a clock, an audit trail and a clinician's signature on every closure. Nothing is diagnosed."
+    narration: "An accountability and closure engine: a named owner, a clock, an audit trail and a clinician's signature on every closure. Nothing is diagnosed."
     actions:
       - goto: /coordinator
       - wait_for: {testid: worklist-row, timeout: 20000}
@@ -249,12 +250,12 @@ shots:
 
   - id: 11
     title: Triage cameo
-    beat: "Reveal 5. A Gulf-Arabic reply, a person reads it"
+    beat: "Reveal 5. A Gulf-Arabic reply, read live"
     submission: true
     route: "/coordinator/{case}"
-    duration: 14
-    caption: "A reply in Gulf Arabic. The offline model is not loaded here, so the system flags it for a person: it can flag, never close, send or change consent."
-    narration: "A patient replies in Gulf Arabic. The offline model is not loaded on this laptop, so the system does what it is built to do when unsure: it flags the case, and a person reads the reply."
+    duration: 16
+    caption: "A reply in Gulf Arabic, read live by an offline model: a clear confirmation needs no person. An opt-out is caught by a keyword rule first and always goes to a person. It can flag, never close, send or change consent."
+    narration: "A patient replies in Gulf Arabic that she will come on Sunday. An offline model on this laptop reads a confirmation, and no person is needed. An opt-out is caught first by a keyword rule and goes to a person."
     actions:
       - goto: "/coordinator/{case}"
       - role: coordinator
@@ -263,10 +264,9 @@ shots:
       - fill: {label: "Patient's reply", value: "ان شاء الله بجي يوم الأحد"}
       - hold: 1
       - click: {testid: record-reply}
-      - wait_for: {testid: reply-result, timeout: 30000}
-      - hold: 2
-      - scroll: {testid: triage-review-banner}
-      - hold: 3
+      - wait_for: {testid: reply-result, contains: "Read as confirm", timeout: 30000}
+      - scroll: {testid: reply-result}
+      - hold: 5
 
   - id: 12
     title: Numbers
@@ -274,8 +274,8 @@ shots:
     submission: true
     route: "card:results"
     duration: 20
-    caption: "Simulation on synthetic data, literature-anchored scenario, before capacity limits. Colonoscopy within 180 days 51% to 65%, a ratio of about 1.27 (validated against held-out data; timing is not). Closed with evidence and a signature 52% to 66%; lost without anyone told 46% at baseline, 0% where the programme reaches, 21% programme-level. Rerun: make evaluate"
-    narration: "Simulation on synthetic data, literature-anchored, before capacity limits. Colonoscopy within one hundred eighty days rises from fifty-one to sixty-five percent, a ratio of about one point two seven. Cases closed with evidence and a signature rise from fifty-two to sixty-six percent. Cases lost without anyone told: forty-six percent today, zero where the programme reaches, twenty-one percent programme-wide."
+    caption: "Simulation on synthetic data, literature-anchored scenario, before capacity limits. Colonoscopy within 180 days 51% to 67%, a ratio of about 1.31 (inside the published navigation range; validated against held-out trials; timing is not). Closed with evidence and a signature 53% to 68%; lost without anyone told 45% at baseline, 0% where the programme reaches, 21% programme-level. Rerun: make evaluate"
+    narration: "Synthetic simulation, literature-anchored. Colonoscopy within one hundred eighty days: fifty-one to sixty-seven percent, a ratio of one point three one. Closed with evidence: fifty-three to sixty-eight percent. Lost without anyone told: forty-five percent today, zero where the programme reaches, twenty-one overall."
     actions:
       - card:
           kind: results
@@ -293,17 +293,17 @@ shots:
     beat: Numbers
     submission: true
     route: "card:slide"
-    duration: 10
-    caption: "Labour: 33% fewer staff minutes per case the system handles, 18% across the programme. The 40% target is not met."
-    narration: "Labour falls thirty-three percent per handled case and eighteen percent programme-wide. Our target was forty. It is not met, and we say so."
+    duration: 12
+    caption: "Labour: 37% fewer staff minutes per case the system handles, 20% across the programme. The 40% target is not met in realistic scenarios; only the upper bound, a mechanism ceiling, crosses it."
+    narration: "Labour falls thirty-seven percent per handled case, twenty percent programme-wide. The forty percent target is not met in realistic scenarios; only the upper bound crosses it."
     actions:
       - card:
           kind: slide
           heading: "Labour, in the same simulation"
           bullets:
-            - "33% fewer staff minutes per case the system handles (in reach)"
-            - "18% fewer across the whole programme (0.55 reach assumption)"
-            - "The 40% target is not met"
+            - "37% fewer staff minutes per case the system handles (in reach)"
+            - "20% fewer across the whole programme (0.55 reach assumption)"
+            - "The 40% target is not met in realistic scenarios; only the upper bound (a mechanism ceiling) crosses it"
             - "Minutes are published or assumed; synthetic"
       - hold: 8
 
@@ -312,9 +312,9 @@ shots:
     beat: Ask
     submission: true
     route: "card:slide"
-    duration: 9
+    duration: 11
     caption: "Pilot ask: one programme, two providers, 90 days, shadow mode first. Cases closed without evidence: must stay zero."
-    narration: "The pilot ask: one programme, two providers, ninety days, shadow mode first. Cases closed without evidence must stay at zero."
+    narration: "The ask: one programme, two providers, ninety days, shadow mode first. Cases closed without evidence must stay at zero. Judges can replay it alone with the Judge tour."
     actions:
       - card:
           kind: slide
@@ -324,6 +324,7 @@ shots:
             - "Two providers"
             - "Ninety days, shadow mode first: 30 days watching, nothing sent"
             - "Cases closed without evidence: must stay at zero. If it moves, we stop"
+            - "Judges: the Judge tour button (header) replays this, read-only"
       - hold: 7
 
   # ---- Backup-only extra: not in the 3-minute cut. Skipped, not failed, if the element is absent. ------------------------

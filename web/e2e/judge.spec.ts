@@ -74,7 +74,7 @@ test("the tour starts as the coordinator even when another role was selected", a
 test("the judge page: positioning line, headline with caveats, repo documents, make check", async ({ page }) => {
   await page.goto("/judge");
   await expect(page.getByTestId("judge-positioning")).toContainText("named owner, a clock, an audit trail and a clinician-signed closure");
-  await expect(page.getByTestId("judge-headline")).toContainText("18.3%");
+  await expect(page.getByTestId("judge-headline")).toContainText("20.1%");
   await expect(page.getByTestId("judge-caveats")).toContainText("synthetic");
   await expect(page.getByTestId("judge-caveats")).toContainText("Minutes saved are assumed");
   await expect(page.getByTestId("judge-make-check")).toHaveText("make check");

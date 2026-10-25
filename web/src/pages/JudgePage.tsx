@@ -3,16 +3,35 @@ import { useApp } from "../app/AppContext";
 import { DOCS, docHref, type DocLink } from "../judge/links";
 import { useTour } from "../judge/JudgeTour";
 
+import headline from "../judge/headline.json";
+
 /**
- * Judge summary (C13): one static page. Nothing here is fetched. The headline figures are quoted from
- * docs/results/results.md (literature-anchored scenario, before capacity limits); they do not update when the evaluation is
- * re-run, so the page names the document and the command that regenerates it.
+ * Judge summary (C13): one static page. Nothing here is fetched. The headline figures come from src/judge/headline.json,
+ * which `make judge-headline` generates from docs/results/results.json (literature-anchored scenario, before capacity
+ * limits). They update when that command is re-run, not live; `make judge-headline-check` fails if the file is stale.
  */
+const H = headline;
 const HEADLINE: { value: string; label: string; note: string }[] = [
-  { value: "64.9% vs 51.1%", label: "Colonoscopy completed within 180 days (orchestrated vs baseline)", note: "A ratio of 1.27, which is the pooled patient-navigation risk ratio the scenario is anchored to: an input from the literature, not a finding of this project." },
-  { value: "65.6% vs 52.3%", label: "Cases closed with evidence and a human sign-off by end of follow-up", note: "Orchestrated vs baseline, 360 days." },
-  { value: "0.0% vs 45.7%", label: "Lost to follow-up and never shown to a human, among cases the programme reaches", note: "Zero by construction of the escalation ladder; across all cases (including those never reached) it is 20.8%." },
-  { value: "18.3%", label: "Reduction in human time per case, all cases (33.4% among cases reached)", note: "The 40% target is not met. The minutes per action are assumed, not measured." },
+  {
+    value: `${H.completion_180d.orchestrated.value} vs ${H.completion_180d.baseline.value}`,
+    label: "Colonoscopy completed within 180 days (orchestrated vs baseline)",
+    note: `A ratio of ${H.completion_180d.ratio.value}, inside the pooled patient-navigation risk-ratio interval (1.10 to 1.46) that the scenario was anchored at 1.27. The reach parameter was not refitted after the B21 timing change. An input from the literature, not a finding of this project.`,
+  },
+  {
+    value: `${H.closed_share.orchestrated.value} vs ${H.closed_share.baseline.value}`,
+    label: "Cases closed with evidence and a human sign-off by end of follow-up",
+    note: "Orchestrated vs baseline, 360 days.",
+  },
+  {
+    value: `${H.silent_loss.orchestrated_in_reach.value} vs ${H.silent_loss.baseline.value}`,
+    label: "Lost to follow-up and never shown to a human, among cases the programme reaches",
+    note: `Zero by construction of the escalation ladder; across all cases (including those never reached) it is ${H.silent_loss.orchestrated_programme.value}.`,
+  },
+  {
+    value: H.labour_reduction.literature_all.value,
+    label: `Reduction in human time per case, all cases (${H.labour_reduction.literature_in_reach.value} among cases reached)`,
+    note: `The 40% target is not met in realistic scenarios; only the upper bound, a mechanism ceiling, crosses it (${H.labour_reduction.upper_all.value}). The minutes per action are assumed, not measured.`,
+  },
 ];
 
 const CAVEATS = [

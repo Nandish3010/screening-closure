@@ -1,4 +1,4 @@
-.PHONY: claude-smoke claude-record redteam-generate triage-serve up-obs check-full evaluate-smoke test-redteam validate validate-check validate-targets evaluate-refusal oidc-up oidc-down test-oidc up-scale agency-run test-demo test-e2e-live demo-scenario demo-stage demo-snapshot demo-restore demo-reset demo-kill-scheduler check docs-check tracker-lint test-security test-tools test-load load-check up down logs test test-db test-db-create test-db-reset test-chaos synthea demo-seed demo-seed-clean evaluate evaluate-capacity evaluate-capacity-check simulate evaluate-check sensitivity sensitivity-check reset web-install web-dev web-build web-test web-e2e test-e2e review-packs review-packs-check test-review-packs test-phi-logs rbac-matrix test-offline fresh-clone risk-report risk-check calibrate-fetch calibrate-fit calibrate-check effort effort-check video video-check video-deps verify hl7-demo hl7-samples
+.PHONY: claude-smoke claude-record redteam-generate triage-serve up-obs check-full evaluate-smoke test-redteam validate validate-check validate-targets evaluate-refusal oidc-up oidc-down test-oidc up-scale agency-run test-demo test-e2e-live demo-scenario demo-stage demo-snapshot demo-restore demo-reset demo-kill-scheduler check docs-check tracker-lint test-security test-tools test-load load-check up down logs test test-db test-db-create test-db-reset test-chaos synthea demo-seed demo-seed-clean evaluate evaluate-capacity evaluate-capacity-check simulate evaluate-check sensitivity sensitivity-check reset web-install web-dev web-build web-test web-e2e test-e2e review-packs review-packs-check test-review-packs test-phi-logs rbac-matrix test-offline fresh-clone risk-report risk-check calibrate-fetch calibrate-fit calibrate-check effort effort-check video video-check video-deps verify hl7-demo hl7-samples judge-headline judge-headline-check
 
 up:
 	docker compose up -d --build
@@ -182,6 +182,13 @@ evaluate-refusal:
 # Human effort per case (ticket B17): the Human effort section of docs/results/results.md is written by `make evaluate` (it is computed from the same
 # event logs, no extra run). `make effort` prints it from the committed results.json; `make effort-check` fails if results.json predates the effort
 # model in simulator/sim/effort.py or docs/evidence.md section 11 lacks a source, and runs the effort tests (hand-computed arithmetic on the five-case scenario).
+# E19: the /judge page figures (web/src/judge/headline.json) are generated from docs/results/results.json, not retyped.
+judge-headline:
+	$(PY) tools/judge/make_headline.py
+
+judge-headline-check:
+	$(PY) tools/judge/make_headline.py --check
+
 effort:
 	$(SIMENV) $(PY) -m simulator.sim.cli effort
 
