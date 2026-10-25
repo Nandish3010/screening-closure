@@ -110,6 +110,8 @@ def forge(claims, secret=None):
         forge({"v": 1, "role": "lab", "name": "a:b"}),
         forge({"v": 1}),
     ],
+    # Stable ids: the forged tokens embed the current time, and xdist workers must collect identical test ids (F15).
+    ids=["empty", "garbage", "two-parts", "wrong-secret", "model-role", "scheduler-role", "colon-in-name", "no-role"],
 )
 def test_bad_tokens_are_401(token):
     r = client.get("/me", headers={"Authorization": f"Bearer {token}"})

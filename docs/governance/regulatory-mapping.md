@@ -101,7 +101,7 @@ Control areas in v0.9 that matter to us (all from the table of contents and text
 |---|---|---|
 | Access control | Roles (lab, primary care owner, specialist owner, coordinator, supervisor, patient); event actor derived from identity; per-route policy tested for every role (A8, F7); sign-in through OIDC with expiring tokens, tested against a Keycloak stand-in (A29). Periodic access review is an operating procedure for the provider and the operator; not built. | Built, see A8, A14, F7, [rbac-matrix.md](rbac-matrix.md), ADR-012, ADR-019; access review is a deployment procedure |
 | Monitoring and logging | Append-only event log of every state change with actor and time; a watchdog flags idle cases and a stopped scheduler (A11). Centralised security logging for infrastructure is a deployment item. | Built, see A11, ADR-023; centralised logging is a deployment item |
-| Information exchange | One outbound path for messages (notification mock in the prototype); an adapter boundary for exchange with Malaffi (see the adapter plan). | Outbound path built, see A7, ADR-018 (a mock that writes to a log); the Malaffi adapter is future |
+| Information exchange | One outbound path for messages (notification mock in the prototype); an adapter boundary for exchange with Malaffi (the inbound HL7 v2 adapter is built, see [hl7-adapter.md](hl7-adapter.md), and the adapter plan). | Outbound path built, see A7, ADR-018 (a mock that writes to a log); the HL7 v2 adapter is built (A28, ADR-039, [hl7-adapter.md](hl7-adapter.md)) and unconfirmed by Malaffi: no connection to Malaffi and no agreement with its operator exist; an outbound path to Malaffi is future |
 | Health information protection | Minimisation by strict payload schemas (A14, ADR-019), consent ledger (A6, ADR-017), no patient data in URLs or logs (T-F10, T-F11). Erasure is built (A32, item 1; [erasure.md](erasure.md)); its conflict with the retention duty and backup handling are to verify. | Built, see A6, A14, A32, ADR-017, ADR-019, ADR-025, T-F10, T-F11, T-A79; retention conflict to verify |
 | Third-party security | The model provider is optional and off by default; any provider would need to be in-country and inside the provider's third-party assessment. | By design |
 | Secure development | Tests, the HAPI image pinned to a version tag (F12, ADR-006), a secrets scan and a compose lint in `make test-security`, a script-checked fresh clone (F12). Full dependency pinning and a software-composition scan are not built. | Built, see F12, ADR-006, `make test-security`; dependency scanning is future |
@@ -164,7 +164,7 @@ On the public pages read, no. The resources page lists, on request only, "Malaff
 
 ### How our design meets or uses it
 
-Malaffi is a stated target, not an integration; nothing in the prototype connects to it. The adapter plan is in [malaffi-adapter-plan.md](malaffi-adapter-plan.md). Design relevance: our engine is FHIR R4 internally; the boundary adapter translates; consent and identity assumptions are listed in the plan.
+Malaffi is a stated target, not an integration; nothing in the prototype connects to it. The HL7 v2 adapter is built and unconfirmed by Malaffi (its mappings are our reading of the standard; see [hl7-adapter.md](hl7-adapter.md)); the adapter plan is in [malaffi-adapter-plan.md](malaffi-adapter-plan.md). Design relevance: our engine is FHIR R4 internally; the boundary adapter translates; consent and identity assumptions are listed in the plan.
 
 ### To verify
 

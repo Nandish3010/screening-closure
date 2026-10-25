@@ -1,0 +1,15 @@
+name: python-env
+description: Python 3.12 with a pip cache and the api dev extras in .venv, where the Makefile expects them (F15)
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-python@v5
+      with:
+        python-version: "3.12" # the api image's Python
+        cache: pip
+        cache-dependency-path: api/pyproject.toml
+    - name: Python environment (.venv, as the Makefile expects)
+      shell: bash
+      run: |
+        python -m venv .venv
+        .venv/bin/pip install -e './api[dev]'

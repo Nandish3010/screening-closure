@@ -687,7 +687,7 @@ The ledger is the agency's memory (`api/app/agency/ledger.py`, migration `014_ag
 - **Off unless configured.** The service token has a development default that authenticates only in `APP_ENV=dev`; outside dev the adapter is off until `HL7_SERVICE_TOKEN` is set to 32 or more bytes, so existing deployments need no change.
 
 **Consequences.**
-- The pathway has no cancellation or rebooking event, so SIU S15 and a different time for a booked case are ACKed AE with the reason. Whether to add them is a state-machine decision, not an adapter change; the adapter's row would then gain the event.
+- The pathway has no cancellation or rebooking event, so SIU S15 and a different time for a booked case are ACKed AE with the reason. Whether to add them is a state-machine decision, not an adapter change; the adapter's row would then gain the event. *Update: ADR-042 (A34) made this decision: `appointment_cancelled` exists, and SIU S15 is now ACKed AA (not AE); see ADR-042.*
 - A case's genesis does not record that it came from HL7; the derived case id, the ACK and the log kind are the traces. An origin field would need a payload-schema change.
 - Contact verdicts are lost on a restart and do not reach existing cases. Finding a patient's case reads the open cases of the relevant states, per message.
 - Nothing here is certified, connected or tested with Malaffi; outbound messages, certificates, VPN and the interface watchdog are not built (docs/governance/hl7-adapter.md lists what Malaffi must confirm and what is not built).
@@ -753,7 +753,7 @@ The ledger is the agency's memory (`api/app/agency/ledger.py`, migration `014_ag
 - **HL7.** SIU S15 appends `appointment_cancelled` as `system:hl7` with reason `other` and `by_patient: false` (the message does not say who cancelled or why, and the adapter does not guess): ACK AA, redelivery AA duplicate, no booking to cancel AE. A reschedule (S14, or a second S12 with another time) of a booked case appends the cancellation and the booking together. `ACTOR_EVENTS["system:hl7"]` is `{book_confirmatory, appointment_cancelled}` and `HL7_ACTIONS` gains `cancel_appointment`. This answers open question (c), option 1, with one event instead of two (`cancel_confirmatory` and `rebook_confirmatory`): a rebooking is the existing booking event.
 
 **Consequences.**
-- The pathway is version 0.3. The model checker (`make verify`) covers both events, the declined closure, the new state and the new `system:hl7` actor; it explores about 17,000 abstract states in three slices (9,000 before), in about 70 seconds.
+- The pathway is version 0.3. The model checker (`make verify`) covers both events, the declined closure, the new state and the new `system:hl7` actor; it explores about 17,000 abstract states in three slices (9,000 before), in about 70 seconds. *Update: with invariant I8 for erasure (A32, ADR-025) the model checker now reports 17,954 abstract states in three slices.*
 - A declined closure is signed by one physician who is not the counsellor. Whether a second signature is needed, and who may sign (H-9), stay open for the clinical lead. The coordinator may record a refusal; whether that is acceptable is open.
 - `patient_declined` is still a handoff rejection reason (the review asked for its removal); it is out of this ticket.
 - Reopening a declined closure goes through `reopened` and `clinician_review`, and then needs a colonoscopy closure; a refuser who is reopened and still declines is counselled again.

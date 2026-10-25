@@ -1,8 +1,17 @@
-# Continuous integration (F13, M6): the gates of `make check` split into jobs that run in parallel on GitHub-hosted runners.
-# `unit` needs nothing but Python; `db` adds Postgres 16 (and HAPI FHIR when it starts); `web` runs the frontend tests, the
-# production build and the Playwright suite against the mock adapter; `heavy` (manual and nightly) runs the slow
-# regeneration checks. Not covered here (they need the whole compose stack): load-check, test-offline, test-demo, the live
-# e2e; `.github/workflows/fresh-clone.yml` brings the stack up from a clean clone instead.
+# Continuous integration (F13, M6; split for speed in F15): the gates of `make check` as parallel jobs on GitHub-hosted runners.
+#   unit-api         api unit and property tests, parallel with pytest-xdist (`make test` minus the simulator tests)
+#   unit-sim         simulator tests, parallel with xdist
+#   verify           the exhaustive model check (single process, the longest job; runs beside the others)
+#   tools-and-docs   docs-check, tracker-lint, security gates, tool tests, reviewer packs, effort, evaluate determinism smoke
+#   redteam          the adversarial suite (D14)
+#   db               Postgres 16 (and HAPI FHIR when it starts); each xdist worker has its own database (api/tests/xdist_db.py)
+#   web              frontend tests, production build, Playwright against the mock adapter
+#   simulator-heavy  sensitivity, full evaluate, validate, capacity and risk regeneration checks, one matrix leg each. Runs on a
+#                    pull request or push only when simulator/, config/pathways/ (and the other paths in the filter below, the
+#                    same list as HEAVY_PATH_PREFIXES in tools/check/run_check.py) change; always on the nightly schedule and
+#                    on manual runs.
+# Every job caches pip or npm, and the web job caches the Playwright browsers. Not covered here (they need the whole compose
+# stack): load-check, test-offline, test-demo, the live e2e; `.github/workflows/fresh-clone.yml` brings the stack up from a clean clone.
 name: check
 
 on:
@@ -12,43 +21,88 @@ on:
     branches: [main]
   workflow_dispatch:
   schedule:
-    - cron: "17 2 * * *" # nightly, runs the `heavy` job (and the others) on the default branch
+    - cron: "17 2 * * *" # nightly: every job, including simulator-heavy, on the default branch
 
 permissions:
   contents: read
 
+# A new push to a pull request cancels the run it supersedes; pushes to main and the nightly run are never cancelled.
 concurrency:
   group: check-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
   TRIAGE_ENABLED: "0" # the MLX triage model only exists on Apple silicon; the classifier answers "unavailable"
   PIP_DISABLE_PIP_VERSION_CHECK: "1"
 
 jobs:
-  unit:
-    name: unit
+  changes:
+    name: changes
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      simulator: ${{ steps.filter.outputs.simulator }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            simulator:
+              - 'simulator/**'
+              - 'config/pathways/**'
+              - 'tools/calibration/**'
+              - 'docs/results/**'
+              - 'api/app/risk/**'
+              - 'api/app/state_machine.py'
+              - 'api/app/pathway.py'
+              - 'api/app/events.py'
+              - 'api/app/effort.py'
+              - 'api/app/calendar.py'
+              - 'Makefile'
+              - '.github/workflows/check.yml'
+
+  unit-api:
+    name: unit-api
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/python-env
+      - name: api unit and property tests (xdist, whole files per worker)
+        run: .venv/bin/pytest api/tests -q -m "not integration and not chaos and not oidc" -n auto --dist loadfile
+
+  unit-sim:
+    name: unit-sim
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/python-env
+      - name: simulator tests (xdist)
+        run: .venv/bin/pytest simulator/tests -q -n auto --dist loadfile
+
+  verify:
+    name: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/python-env
+      - run: make verify
+
+  tools-and-docs:
+    name: tools-and-docs
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0 # tracker-lint and the secrets scan read the git history
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12" # the api image's Python
-          cache: pip
-          cache-dependency-path: api/pyproject.toml
-      - name: Python environment (.venv, as the Makefile expects)
-        run: |
-          python -m venv .venv
-          .venv/bin/pip install -e './api[dev]'
-      - name: make test (api unit and property tests, simulator tests)
-        run: make test
-      - name: make test-redteam (D14 adversarial suite)
-        run: make test-redteam
-      - name: make evaluate-check
-        run: make evaluate-check
+      - uses: ./.github/actions/python-env
       - name: make docs-check
         run: make docs-check
       - name: make tracker-lint
@@ -57,10 +111,22 @@ jobs:
         run: make test-security
       - name: make test-tools
         run: make test-tools
-      - name: make review-packs-check
-        run: make review-packs-check
+      - name: make review-packs-check and test-review-packs
+        run: make review-packs-check test-review-packs
       - name: make effort-check
         run: make effort-check
+      - name: make evaluate-smoke (determinism at 1 replication)
+        run: make evaluate-smoke
+
+  redteam:
+    name: redteam
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/python-env
+      - name: make test-redteam (D14 adversarial suite)
+        run: make test-redteam
 
   db:
     name: db
@@ -86,21 +152,12 @@ jobs:
       TEST_FHIR_URL: http://localhost:8080/fhir
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-          cache: pip
-          cache-dependency-path: api/pyproject.toml
-      - name: Python environment
-        run: |
-          python -m venv .venv
-          .venv/bin/pip install -e './api[dev]'
       - name: Create the closure_test and hapi databases
         run: |
           # The compose stack does this in docker/postgres-init; here it is the same script, run against the service container.
           psql -h localhost -p 5433 -U closure -d postgres -v ON_ERROR_STOP=1 \
             -c "CREATE DATABASE closure_test OWNER closure" -c "CREATE DATABASE hapi OWNER closure"
-      - name: Start HAPI FHIR (same image and settings as docker-compose.yml)
+      - name: Start HAPI FHIR (same image and settings as docker-compose.yml); it boots while the Python environment is built
         run: |
           docker run -d --name hapi --network host \
             -e hapi.fhir.fhir_version=R4 \
@@ -115,6 +172,7 @@ jobs:
             -e hapi.fhir.delete_expunge_enabled=true \
             -e JAVA_TOOL_OPTIONS=-Xmx2g \
             hapiproject/hapi:v8.12.0-2
+      - uses: ./.github/actions/python-env
       - name: Wait for HAPI (at most 10 minutes; the HAPI tests skip cleanly without it)
         run: |
           for i in $(seq 1 120); do
@@ -122,7 +180,7 @@ jobs:
             sleep 5
           done
           echo "::warning::HAPI did not answer within 10 minutes; its tests will skip"
-      - name: make test-db
+      - name: make test-db (xdist, a database per worker copied from the migrated template closure_test_tpl)
         run: make test-db SKIP_DB_CREATE=1
       - name: HAPI log tail
         if: always()
@@ -132,9 +190,6 @@ jobs:
     name: web
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    defaults:
-      run:
-        working-directory: web
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -143,16 +198,26 @@ jobs:
           cache: npm
           cache-dependency-path: web/package-lock.json
       - run: npm ci
+        working-directory: web
+      - name: Playwright browser cache
+        id: pw-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('web/package-lock.json') }}
+      - name: Playwright system libraries (and the browser, unless cached)
+        working-directory: web
+        run: |
+          if [ "${{ steps.pw-cache.outputs.cache-hit }}" = "true" ]; then npx playwright install-deps chromium; else npx playwright install --with-deps chromium; fi
       - name: make web-test
-        run: make -C .. web-test
+        run: make web-test
       - name: make web-build
-        run: make -C .. web-build
-      - name: Playwright browser (chromium and its system libraries)
-        run: npx playwright install --with-deps chromium
-      - name: make web-e2e (mock adapter)
-        run: make -C .. web-e2e
+        run: make web-build
+      - name: make web-e2e (mock adapter, serving the build above)
+        run: make web-e2e
         env:
           E2E_PORT: "4173"
+          E2E_PREBUILT: "1"
       - name: Playwright artifacts
         if: failure()
         uses: actions/upload-artifact@v4
@@ -161,28 +226,21 @@ jobs:
           path: web/test-results
           if-no-files-found: ignore
 
-  heavy:
-    name: heavy
+  simulator-heavy:
+    name: simulator-heavy (${{ matrix.target }})
+    needs: changes
+    # Pull requests and pushes: only when a simulator-related path changed. Nightly and manual runs: always.
+    if: needs.changes.outputs.simulator == 'true' || github.event_name == 'workflow_dispatch' || github.event_name == 'schedule'
     runs-on: ubuntu-latest
-    # Slow regeneration checks: manual runs and the nightly schedule only, never on push or pull_request.
-    if: github.event_name == 'workflow_dispatch' || github.event_name == 'schedule'
     timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [sensitivity-check, evaluate-check, validate-check, evaluate-capacity-check, risk-check]
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-          cache: pip
-          cache-dependency-path: api/pyproject.toml
-      - name: Python environment
-        run: |
-          python -m venv .venv
-          .venv/bin/pip install -e './api[dev]'
-      - name: make sensitivity-check
-        run: make sensitivity-check SENS_JOBS=$(nproc)
-      - name: make risk-check
-        run: make risk-check
-      - name: make validate-check
-        run: make validate-check VAL_JOBS=$(nproc)
+      - uses: ./.github/actions/python-env
+      - name: make ${{ matrix.target }}
+        run: make ${{ matrix.target }} SENS_JOBS=$(nproc) VAL_JOBS=$(nproc) CAP_JOBS=$(nproc)
