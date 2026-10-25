@@ -33,8 +33,8 @@ pytestmark = [
 
 PATHWAY = load_pathway(app_settings.pathway_path)
 AT = datetime(2026, 1, 5, 8, 0, tzinfo=UTC)
-SIGNED = {"evidence_ref": "DiagnosticReport/1", "signed_by": "Practitioner/9"}
 HUMAN = "primary_care_owner:dr_a"
+SIGNED = {"evidence_ref": "DiagnosticReport/1", "signed_by": "Practitioner/dr_a"}  # HUMAN signs (A36)
 
 
 @pytest.fixture(scope="module")
@@ -249,7 +249,7 @@ def test_side_states_flags_and_read_model_persist_through_replay(store, pool):
     for t in ("patient_acknowledge", "book_confirmatory", "complete_confirmatory", "clinician_review"):
         send(t, "primary_care_owner:k", day=15)
     assert not store.read_model(case_id, PATHWAY).overdue
-    assert send("close", "primary_care_owner:k", SIGNED, day=16) == "closed"
+    assert send("close", "primary_care_owner:k", {**SIGNED, "signed_by": "primary_care_owner:k"}, day=16) == "closed"
     with pytest.raises(InvalidTransition):
         send("reopen", "system:scheduler", {"reason": "x"}, day=17)
     assert send("reopen", "primary_care_owner:k", {"reason": "amended report"}, day=17) == "reopened"

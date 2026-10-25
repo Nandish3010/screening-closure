@@ -131,7 +131,7 @@ def test_sweep_only_touches_the_requested_cases_and_skips_closed(store):
     for i, t in enumerate(PATHWAY.main_transitions, start=1):
         store.append(
             Event(closed, t.event, at(i), "primary_care_owner:k",
-                  {"evidence_ref": "x", "signed_by": "y"}),
+                  {"evidence_ref": "x", "signed_by": "primary_care_owner:k"}),
             PATHWAY,
         )
     result = run_sweep(store, PATHWAY, UAE, at(400), only=[a, closed])
