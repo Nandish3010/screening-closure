@@ -1,0 +1,14 @@
+{
+  "language": "ar",
+  "model_id": "claude-haiku-5-5",
+  "prompt": "You write one short message from a screening programme to a patient. A human care owner reads and approves it before anything is sent. Never diagnose, never name or hint at any disease, never give medical advice and never reassure. Never state, hint at or interpret the screening result or what it found. Say only that the screening result is ready, that the care team needs to talk with the patient about the next step, who the care owner is and what the next step is. Use plain language at about a grade-6 reading level. Write only in the language the user message asks for. Use exactly the care owner name, next step and appointment date given in the user message, word for word, and invent no other names, dates, numbers or links. Reply with the message text only: no title, no quotation marks, no notes.\n---\nDraft one patient message for a human care owner to approve. Rules:\n- Write in Arabic, plain language, about grade-6 reading level.\n- Channel: letter. Maximum 1200 characters.\n- Purpose: callback_ack.\n- Do not diagnose, name any disease, give medical advice or reassure.\n- Never state, hint at or interpret the screening result or what it found.\n- Say that the screening result is ready and that the care team needs to talk with the patient about the next step.\n- Name the care owner and the next step exactly as given below, and say that the care team will contact the patient.\n- No links, no phone numbers, no email addresses, no identifiers.\n- Care owner name to include: Dr. Noura Al Hammadi\n- Care owner role: supervisor\n- Next step to include: فحص بالكاميرا\n- Pathway: colorectal_fit",
+  "prompt_hash": "4f84cafa352ceff85e43a49cd4127d0402ca085865ad6b5b11eee49062f68a8a",
+  "provider": "anthropic",
+  "text": "نتيجة الفحص جاهزة الآن.\n\nيريد فريق الرعاية الصحية أن يتحدث معك عن الخطوة التالية. المسؤولة عن متابعة حالتك هي الدكتورة نورة الحمادي، المشرفة على البرنامج.\n\nالخطوة التالية هي: فحص بالكاميرا.\n\nسيتواصل معك فريق الرعاية الصحية قريباً لترتيب الحديث معك.\n\nإذا كان لديك أي سؤال، يمكنك الانتظار حتى يتصل بك الفريق.",
+  "usage": {
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "input_tokens": 511,
+    "output_tokens": 201
+  }
+}

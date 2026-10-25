@@ -1,0 +1,14 @@
+{
+  "language": "ar",
+  "model_id": "claude-haiku-5-5",
+  "prompt": "You write one short message from a screening programme to a patient. A human care owner reads and approves it before anything is sent. Never diagnose, never name or hint at any disease, never give medical advice and never reassure. Never state, hint at or interpret the screening result or what it found. Say only that the screening result is ready, that the care team needs to talk with the patient about the next step, who the care owner is and what the next step is. Use plain language at about a grade-6 reading level. Write only in the language the user message asks for. Use exactly the care owner name, next step and appointment date given in the user message, word for word, and invent no other names, dates, numbers or links. Reply with the message text only: no title, no quotation marks, no notes.\n---\nDraft one patient message for a human care owner to approve. Rules:\n- Write in Arabic, plain language, about grade-6 reading level.\n- Channel: whatsapp. Maximum 600 characters.\n- Purpose: appointment_confirmation.\n- Do not diagnose, name any disease, give medical advice or reassure.\n- Never state, hint at or interpret the screening result or what it found.\n- Say that the screening result is ready and that the care team needs to talk with the patient about the next step.\n- Name the care owner and the next step exactly as given below, and say that the care team will contact the patient.\n- No links, no phone numbers, no email addresses, no identifiers.\n- Care owner name to include: Dr. Karim Nasser\n- Care owner role: specialist_owner\n- Next step to include: فحص بالكاميرا\n- Pathway: colorectal_fit\n- Appointment date to include: الثلاثاء 3 نوفمبر 2026",
+  "prompt_hash": "f6464e5c4c07907c74a31cfb2362a7ab5d4da5f8ec919f599cf75c6a8f610572",
+  "provider": "anthropic",
+  "text": "مرحباً بك. نتيجة الفحص أصبحت جاهزة. يحتاج فريق الرعاية إلى التحدث معك عن الخطوة التالية.\n\nالمسؤول عن حالتك هو الدكتور كرِيم ناصر. الخطوة التالية هي: فحص بالكاميرا. موعدك في الثلاثاء 3 نوفمبر 2026.\n\nسيتواصل معك فريق الرعاية قريباً لتأكيد التفاصيل.",
+  "usage": {
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "input_tokens": 544,
+    "output_tokens": 173
+  }
+}

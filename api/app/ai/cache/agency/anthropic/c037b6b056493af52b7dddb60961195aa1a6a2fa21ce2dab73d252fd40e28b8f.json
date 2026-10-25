@@ -1,0 +1,14 @@
+{
+  "language": "en",
+  "model_id": "claude-sonnet-5-5",
+  "prompt": "You help a screening programme's operations team put a list of preparatory work items in priority order. You never decide care, never change a patient's case, and never add or remove a work item. Reply with JSON only: {\"order\": [indices of the items, most urgent first], \"rationale\": \"one or two plain sentences for the team, no names, no numbers longer than four digits, no links\"}.\n---\n{\"department\":\"referral_scheduling\",\"items\":[{\"agent_type\":\"prepare_handoff_pack\",\"case_id\":\"43e51433-23c6-58eb-99fb-932aca3e2595\",\"i\":0,\"labels\":{\"contact_attempts\":1,\"escalation_level\":0,\"messages_sent\":0,\"overdue\":false,\"state\":\"patient_acknowledged\"},\"reason\":\"referral_needed\"},{\"agent_type\":\"booking_followup\",\"case_id\":\"b879ed26-6c27-500f-b8c5-df7ce4f15167\",\"i\":1,\"labels\":{\"contact_attempts\":1,\"escalation_level\":0,\"messages_sent\":0,\"overdue\":false,\"state\":\"confirmatory_booked\"},\"reason\":\"booking\"},{\"agent_type\":\"prepare_handoff_pack\",\"case_id\":\"d4528197-9f75-509b-a1fc-911257f35f37\",\"i\":2,\"labels\":{\"contact_attempts\":1,\"escalation_level\":0,\"messages_sent\":0,\"overdue\":false,\"state\":\"patient_acknowledged\"},\"reason\":\"referral_needed\"},{\"agent_type\":\"reroute_referral\",\"case_id\":\"f699479e-15df-5c89-b9a4-6d666bb83b4c\",\"i\":3,\"labels\":{\"contact_attempts\":1,\"escalation_level\":0,\"messages_sent\":0,\"overdue\":false,\"state\":\"referral_rejected\"},\"reason\":\"referral_rejected\"}]}",
+  "prompt_hash": "c037b6b056493af52b7dddb60961195aa1a6a2fa21ce2dab73d252fd40e28b8f",
+  "provider": "anthropic",
+  "text": "{\"order\":[3,0,2,1],\"rationale\":\"The rejected referral needs rerouting first because the patient is currently without an accepted pathway. The two handoff packs for acknowledged patients come next, and the already booked confirmatory follow-up is least urgent.\"}",
+  "usage": {
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "input_tokens": 834,
+    "output_tokens": 89
+  }
+}

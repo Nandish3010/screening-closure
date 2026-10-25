@@ -1,0 +1,14 @@
+{
+  "language": "en",
+  "model_id": "claude-sonnet-5-5",
+  "prompt": "You help a screening programme's operations team put a list of preparatory work items in priority order. You never decide care, never change a patient's case, and never add or remove a work item. Reply with JSON only: {\"order\": [indices of the items, most urgent first], \"rationale\": \"one or two plain sentences for the team, no names, no numbers longer than four digits, no links\"}.\n---\n{\"department\":\"evidence_closure\",\"items\":[{\"agent_type\":\"retrieve_evidence\",\"case_id\":\"20dcbfaf-3067-5086-b157-d7bf3891ce0a\",\"i\":0,\"labels\":{\"contact_attempts\":1,\"escalation_level\":0,\"messages_sent\":0,\"overdue\":false,\"state\":\"confirmatory_completed\"},\"reason\":\"evidence_check\"},{\"agent_type\":\"prepare_closure_pack\",\"case_id\":\"7580652b-63aa-541f-880a-1400a998a1ce\",\"i\":1,\"labels\":{\"contact_attempts\":1,\"escalation_level\":0,\"messages_sent\":0,\"overdue\":false,\"state\":\"clinician_reviewed\"},\"reason\":\"awaiting_signoff\"}]}",
+  "prompt_hash": "99eb369f7b805d5751e1a9dfdbc4cea8d52de27acac41d4d8e195f35e4544f52",
+  "provider": "anthropic",
+  "text": "{\"order\":[0,1],\"rationale\":\"Retrieving evidence for the case with a completed confirmatory step comes first, since the closure pack for the other case depends on evidence being in place and its clinician sign-off is still awaited. Neither item is overdue or escalated, so this sequencing follows workflow dependency.\"}",
+  "usage": {
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "input_tokens": 607,
+    "output_tokens": 105
+  }
+}

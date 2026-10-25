@@ -1,0 +1,14 @@
+{
+  "language": "en",
+  "model_id": "claude-sonnet-5-5",
+  "prompt": "You help a screening programme's operations team put a list of preparatory work items in priority order. You never decide care, never change a patient's case, and never add or remove a work item. Reply with JSON only: {\"order\": [indices of the items, most urgent first], \"rationale\": \"one or two plain sentences for the team, no names, no numbers longer than four digits, no links\"}.\n---\n{\"department\":\"outreach\",\"items\":[{\"agent_type\":\"draft_message\",\"case_id\":\"0b64b02e-f9e2-5ed8-98dd-7f4a5d214ba7\",\"i\":0,\"labels\":{\"contact_attempts\":1,\"escalation_level\":0,\"messages_sent\":0,\"overdue\":false,\"state\":\"patient_contacted\"},\"reason\":\"awaiting_acknowledgement\"},{\"agent_type\":\"followup_call_prep\",\"case_id\":\"25d7dc4d-65d3-5590-af2d-4f543e248c39\",\"i\":1,\"labels\":{\"contact_attempts\":2,\"escalation_level\":0,\"messages_sent\":0,\"overdue\":false,\"state\":\"patient_contacted\"},\"reason\":\"awaiting_acknowledgement\"},{\"agent_type\":\"draft_message\",\"case_id\":\"304e57bf-1c10-51ae-925d-9243bf7c1a79\",\"i\":2,\"labels\":{\"contact_attempts\":0,\"escalation_level\":0,\"messages_sent\":0,\"overdue\":false,\"state\":\"owner_accepted\"},\"reason\":\"awaiting_contact\"},{\"agent_type\":\"draft_message\",\"case_id\":\"40236459-b5a9-5a0c-8598-5193c326fbf2\",\"i\":3,\"labels\":{\"contact_attempts\":1,\"escalation_level\":0,\"messages_sent\":0,\"overdue\":false,\"state\":\"patient_contacted\"},\"reason\":\"awaiting_acknowledgement\"},{\"agent_type\":\"draft_message\",\"case_id\":\"8f99211f-36d4-531d-87f8-5b9c5b23ce66\",\"i\":4,\"labels\":{\"contact_attempts\":0,\"escalation_level\":0,\"messages_sent\":0,\"overdue\":false,\"state\":\"owner_accepted\"},\"reason\":\"awaiting_contact\"},{\"agent_type\":\"followup_call_prep\",\"case_id\":\"a007ada0-df9c-5925-be91-53e229380c29\",\"i\":5,\"labels\":{\"contact_attempts\":1,\"escalation_level\":0,\"messages_sent\":0,\"overdue\":false,\"state\":\"lost_contact\"},\"reason\":\"lost_contact\"},{\"agent_type\":\"draft_message\",\"case_id\":\"dd1c8c9f-3d46-5e51-b81d-d80ae742a5f3\",\"i\":6,\"labels\":{\"contact_attempts\":0,\"escalation_level\":0,\"messages_sent\":0,\"overdue\":false,\"state\":\"owner_accepted\"},\"reason\":\"awaiting_contact\"}]}",
+  "prompt_hash": "41683ae0c1b79af25cebf657b47e4da17ae5e89b6da4bd17630dcea864d41c97",
+  "provider": "anthropic",
+  "text": "{\"order\":[5,1,0,3,2,4,6],\"rationale\":\"The lost-contact case comes first because it is the most at risk of dropping out, followed by the case with the most unacknowledged contact attempts. Then come the other contacted cases awaiting acknowledgement, and last the newly accepted cases that have not yet been contacted and are not overdue.\"}",
+  "usage": {
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "input_tokens": 1189,
+    "output_tokens": 119
+  }
+}
