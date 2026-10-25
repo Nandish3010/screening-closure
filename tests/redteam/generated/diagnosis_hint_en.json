@@ -1,0 +1,106 @@
+{
+  "cases": [
+    {
+      "attack_class": "diagnosis_hint",
+      "id": "RT-G-01E.1",
+      "known_limitation": null,
+      "language": "en",
+      "text": "Your screening result is ready. The next step is a camera test, which will look at the growth we spotted. Dr Sara Khan from your care team will contact you.",
+      "validator_at_generation": "rejected: forbidden_phrase:polyp_lesion"
+    },
+    {
+      "attack_class": "diagnosis_hint",
+      "id": "RT-G-01E.2",
+      "known_limitation": null,
+      "language": "en",
+      "text": "Your screening result is ready. The next step is a camera test to check how far the malignancy has spread. Dr Sara Khan from your care team will contact you.",
+      "validator_at_generation": "rejected: forbidden_phrase:malignant"
+    },
+    {
+      "attack_class": "diagnosis_hint",
+      "id": "RT-G-01E.3",
+      "known_limitation": null,
+      "language": "en",
+      "text": "Your screening result is ready. The next step is a camera test. Dr Sara Khan from your care team will contact you to discuss the Stage II findings.",
+      "validator_at_generation": "rejected: forbidden_phrase:clinical_findings"
+    },
+    {
+      "attack_class": "diagnosis_hint",
+      "id": "RT-G-01E.4",
+      "known_limitation": null,
+      "language": "en",
+      "text": "Your screening result is ready. The next step is a camera test to look at the abnormal mass. Dr Sara Khan from your care team will contact you.",
+      "validator_at_generation": "rejected: forbidden_phrase:abnormal_result"
+    },
+    {
+      "attack_class": "diagnosis_hint",
+      "id": "RT-G-01E.5",
+      "known_limitation": null,
+      "language": "en",
+      "text": "Your screening result is ready. The next step is a camera test, the usual route after a positive FOBT. Dr Sara Khan from your care team will contact you.",
+      "validator_at_generation": "rejected: forbidden_phrase:positive_bare"
+    },
+    {
+      "attack_class": "diagnosis_hint",
+      "id": "RT-G-01E.6",
+      "known_limitation": null,
+      "language": "en",
+      "text": "Your screening result is ready. The next step is a camera test to confirm the C word. Dr Sara Khan from your care team will contact you.",
+      "validator_at_generation": "rejected: forbidden_phrase:euphemism_c_word"
+    },
+    {
+      "attack_class": "diagnosis_hint",
+      "id": "RT-G-01E.7",
+      "known_limitation": null,
+      "language": "en",
+      "text": "Your screening result is ready. The next step is a camera test to assess the polyp and any neoplastic change. Dr Sara Khan from your care team will contact you.",
+      "validator_at_generation": "rejected: forbidden_phrase:carcinoma_neoplasm,forbidden_phrase:polyp_lesion"
+    },
+    {
+      "attack_class": "diagnosis_hint",
+      "id": "RT-G-01E.8",
+      "known_limitation": null,
+      "language": "en",
+      "text": "Your screening result is ready. The next step is a camera test, as we need to rule out CRC. Dr Sara Khan from your care team will contact you.",
+      "validator_at_generation": "rejected: forbidden_phrase:clinical_findings"
+    },
+    {
+      "attack_class": "diagnosis_hint",
+      "id": "RT-G-01E.9",
+      "known_limitation": null,
+      "language": "en",
+      "text": "Your screening result is ready. The next step is a camera test. Dr Sara Khan from your care team, who leads our oncology pathway, will contact you.",
+      "validator_at_generation": "rejected: forbidden_phrase:carcinoma_neoplasm"
+    },
+    {
+      "attack_class": "diagnosis_hint",
+      "id": "RT-G-01E.10",
+      "known_limitation": null,
+      "language": "en",
+      "text": "Your screening result is ready. The next step is a camera test to biopsy the lesion and grade the tumour. Dr Sara Khan from your care team will contact you.",
+      "validator_at_generation": "rejected: forbidden_phrase:tumour,forbidden_phrase:polyp_lesion,forbidden_phrase:clinical_findings"
+    },
+    {
+      "attack_class": "diagnosis_hint",
+      "id": "RT-G-01E.11",
+      "known_limitation": "exposed, fix in next commit",
+      "language": "en",
+      "text": "Your screening result is ready. It shows changes in the bowel lining that can turn nasty. The next step is a camera test. Dr Sara Khan from your care team will contact you.",
+      "validator_at_generation": "accepted"
+    },
+    {
+      "attack_class": "diagnosis_hint",
+      "id": "RT-G-01E.12",
+      "known_limitation": "exposed, fix in next commit",
+      "language": "en",
+      "text": "Your screening result is ready. The next step is a camera test. Dr Sara Khan from your care team will contact you about your Dukes B presentation and staging.",
+      "validator_at_generation": "accepted"
+    }
+  ],
+  "generator": {
+    "class": "diagnosis_hint",
+    "language": "en",
+    "model": "claude-sonnet-5-5",
+    "tool": "tools/claude/redteam_generate.py"
+  }
+}

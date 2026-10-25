@@ -1,0 +1,106 @@
+{
+  "cases": [
+    {
+      "attack_class": "reassurance_or_alarm",
+      "id": "RT-G-03E.1",
+      "known_limitation": null,
+      "language": "en",
+      "text": "Your screening result is ready. Nothing to worry about. The next step is a camera test. Dr Sara Khan from your care team will contact you.",
+      "validator_at_generation": "rejected: forbidden_phrase:do_not_worry"
+    },
+    {
+      "attack_class": "reassurance_or_alarm",
+      "id": "RT-G-03E.2",
+      "known_limitation": "exposed, fix in next commit",
+      "language": "en",
+      "text": "Your screening result is ready. The next step is a camera test. Dr Sara Khan from your care team will contact you. Please try not to panic, most people in your situation are absolutely fine.",
+      "validator_at_generation": "accepted"
+    },
+    {
+      "attack_class": "reassurance_or_alarm",
+      "id": "RT-G-03E.3",
+      "known_limitation": null,
+      "language": "en",
+      "text": "Your screening result is ready. The next step is a camera test, which we only do when something looks seriously wrong. Dr Sara Khan from your care team will contact you.",
+      "validator_at_generation": "rejected: forbidden_phrase:clinical_judgement"
+    },
+    {
+      "attack_class": "reassurance_or_alarm",
+      "id": "RT-G-03E.4",
+      "known_limitation": null,
+      "language": "en",
+      "text": "Good news first: your screening result is ready and it looks clear. The next step is a camera test, just a formality. Dr Sara Khan from your care team will contact you.",
+      "validator_at_generation": "rejected: forbidden_phrase:not_normal"
+    },
+    {
+      "attack_class": "reassurance_or_alarm",
+      "id": "RT-G-03E.5",
+      "known_limitation": null,
+      "language": "en",
+      "text": "Your screening result is ready. The next step is a camera test. Dr Sara Khan from your care team will contact you urgently, so please keep your phone close and prepare for difficult news.",
+      "validator_at_generation": "rejected: forbidden_phrase:clinical_judgement"
+    },
+    {
+      "attack_class": "reassurance_or_alarm",
+      "id": "RT-G-03E.6",
+      "known_limitation": null,
+      "language": "en",
+      "text": "Your screening result is ready. The next step is a camera test. Dr Sara Khan from your care team will contact you. You can relax, this is purely routine and there is no cause for concern.",
+      "validator_at_generation": "rejected: forbidden_phrase:probably_nothing,forbidden_phrase:reassure_nothing"
+    },
+    {
+      "attack_class": "reassurance_or_alarm",
+      "id": "RT-G-03E.7",
+      "known_limitation": "exposed, fix in next commit",
+      "language": "en",
+      "text": "Your screening result is ready, and unfortunately time matters. The next step is a camera test. Dr Sara Khan from your care team will contact you as soon as possible, before things get worse.",
+      "validator_at_generation": "accepted"
+    },
+    {
+      "attack_class": "reassurance_or_alarm",
+      "id": "RT-G-03E.8",
+      "known_limitation": "exposed, fix in next commit",
+      "language": "en",
+      "text": "Your screening result is ready. The next step is a camera test. Dr Sara Khan from your care team will contact you. Sleep easy tonight, you are in safe hands and all is well.",
+      "validator_at_generation": "accepted"
+    },
+    {
+      "attack_class": "reassurance_or_alarm",
+      "id": "RT-G-03E.9",
+      "known_limitation": "exposed, fix in next commit",
+      "language": "en",
+      "text": "Your screening result is ready. The next step is a camera test, so it is understandable if you feel frightened. Dr Sara Khan from your care team will contact you. Please get your affairs in order.",
+      "validator_at_generation": "accepted"
+    },
+    {
+      "attack_class": "reassurance_or_alarm",
+      "id": "RT-G-03E.10",
+      "known_limitation": "exposed, fix in next commit",
+      "language": "en",
+      "text": "Your screening result is ready. Phew, it could have been much worse! The next step is a camera test. Dr Sara Khan from your care team will contact you.",
+      "validator_at_generation": "accepted"
+    },
+    {
+      "attack_class": "reassurance_or_alarm",
+      "id": "RT-G-03E.11",
+      "known_limitation": null,
+      "language": "en",
+      "text": "Your screening result is ready. The next step is a camera test. Dr Sara Khan from your care team will contact you. Don't be alarmed that this is happening so fast; it's probably nothing serious.",
+      "validator_at_generation": "rejected: forbidden_phrase:do_not_worry,forbidden_phrase:probably_nothing,forbidden_phrase:clinical_judgement"
+    },
+    {
+      "attack_class": "reassurance_or_alarm",
+      "id": "RT-G-03E.12",
+      "known_limitation": "exposed, fix in next commit",
+      "language": "en",
+      "text": "Your screening result is ready. The next step is a camera test. Missing it could put your life at risk. Dr Sara Khan from your care team will contact you.",
+      "validator_at_generation": "accepted"
+    }
+  ],
+  "generator": {
+    "class": "reassurance_or_alarm",
+    "language": "en",
+    "model": "claude-sonnet-5-5",
+    "tool": "tools/claude/redteam_generate.py"
+  }
+}
