@@ -3,6 +3,7 @@
 
     python tools/hl7/send.py tools/hl7/samples/oru_fit_positive.hl7                # POST /hl7 on $API_URL
     python tools/hl7/send.py --mllp localhost:2575 tools/hl7/samples/siu_s12_book.hl7   # the optional MLLP listener
+    python tools/hl7/send.py --mllp localhost:2575 --tls-ca ca.pem --tls-cert client.pem --tls-key client.key FILE   # mutual TLS
     python tools/hl7/send.py --fresh tools/hl7/samples/oru_fit_positive.hl7        # a new MSH-10: a new case, not a duplicate
 
 The token is HL7_SERVICE_TOKEN (default: the development token, which works only while the API runs with APP_ENV=dev).
@@ -15,6 +16,7 @@ from __future__ import annotations
 import argparse
 import os
 import socket
+import ssl
 import sys
 import urllib.error
 import urllib.request
@@ -51,8 +53,9 @@ def send_http(message: str, api: str, token: str, timeout: float = 20.0) -> str:
         raise RuntimeError(f"HTTP {exc.code} from the API") from None
 
 
-def send_mllp(message: str, host: str, port: int, timeout: float = 20.0) -> str:
-    with socket.create_connection((host, port), timeout=timeout) as sock:
+def send_mllp(message: str, host: str, port: int, timeout: float = 20.0, ssl_context: ssl.SSLContext | None = None) -> str:
+    with socket.create_connection((host, port), timeout=timeout) as raw:
+        sock = ssl_context.wrap_socket(raw, server_hostname=host) if ssl_context else raw
         sock.sendall(MLLP_START + message.encode("utf-8") + MLLP_END)
         data = b""
         while not data.endswith(MLLP_END):
@@ -81,20 +84,33 @@ def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("files", nargs="+", type=Path)
     ap.add_argument("--mllp", metavar="HOST:PORT", help="send over MLLP instead of HTTP")
+    ap.add_argument("--tls-ca", metavar="PEM", help="with --mllp: use TLS and verify the server against this CA bundle")
+    ap.add_argument("--tls-cert", metavar="PEM", help="with --mllp --tls-ca: client certificate (mutual TLS)")
+    ap.add_argument("--tls-key", metavar="PEM", help="private key of --tls-cert")
     ap.add_argument("--fresh", action="store_true", help="give each message a new MSH-10")
     args = ap.parse_args(argv)
     api = os.environ.get("API_URL", DEFAULT_API)
     token = os.environ.get("HL7_SERVICE_TOKEN", DEFAULT_TOKEN)
+    ctx = None
+    if args.tls_ca:
+        try:
+            ctx = ssl.create_default_context(cafile=args.tls_ca)
+            ctx.minimum_version = ssl.TLSVersion.TLSv1_2
+            if args.tls_cert:
+                ctx.load_cert_chain(args.tls_cert, args.tls_key)
+        except (OSError, ssl.SSLError) as exc:
+            print(f"could not load the TLS files: {exc}", file=sys.stderr)
+            return 2
     worst = 0
     for path in args.files:
         message = load(path, args.fresh)
         try:
             if args.mllp:
                 host, _, port = args.mllp.rpartition(":")
-                ack = send_mllp(message, host or "localhost", int(port))
+                ack = send_mllp(message, host or "localhost", int(port), ssl_context=ctx)
             else:
                 ack = send_http(message, api, token)
-        except (OSError, RuntimeError, ValueError) as exc:
+        except (OSError, ssl.SSLError, RuntimeError, ValueError) as exc:
             print(f"{path.name}: could not send: {exc}", file=sys.stderr)
             return 2
         code, line = summary(ack)

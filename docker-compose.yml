@@ -301,6 +301,11 @@ services:
     environment:
       API_URL: http://api:8000
       HL7_MLLP_PORT: "2575"
+      # Optional TLS / client certificates (docs/governance/hl7-adapter.md, "TLS and client certificates"); mount the files first.
+      # HL7_TLS_CERT: /certs/server.pem
+      # HL7_TLS_KEY: /certs/server.key
+      # HL7_TLS_CLIENT_CA: /certs/ca.pem
+      # HL7_TLS_ALLOWED_CLIENT_CNS: good-client
       HL7_SERVICE_TOKEN: ${HL7_SERVICE_TOKEN:-dev-only-hl7-service-token}  # the development default works only while APP_ENV=dev
       # Blank what a `.env` copied from .env.example would hand it: it speaks HTTP to the API and needs no database.
       DATABASE_URL: ""

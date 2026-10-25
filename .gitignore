@@ -26,3 +26,6 @@ tools/video/out/
 
 # F14: a filled-in Bicep parameter file (the committed one is main.example.bicepparam)
 deploy/bicep/main.bicepparam
+
+# HL7 TLS test certificates (tools/hl7/gen_test_certs.sh); throw-away, never commit keys
+tools/hl7/.certs/
