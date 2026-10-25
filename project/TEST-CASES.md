@@ -204,7 +204,7 @@ Thresholds marked "proposed" are starting points to be confirmed by the owning t
 | T-E20 | Business case: every number in docs/commercial/business-case.md traces to a cited source, an assumption flagged as such, or a results.json key. | manual | `tools/pilot/tests/test_cost_model.py`; reviewer reads docs/commercial/business-case.md against the evidence table | As stated. | built | E17 |
 | T-E21 | Compliance documents: every ADHICS control row points to a code path, a test or a stated gap. | manual | Reviewer reads docs/governance/ against the code references | Test passes; definition of done in TRACKER.md met. Planned, not written yet. | planned | E18 |
 | T-E22 | Docs refresh: `make docs-check` passes and the numbers quoted in the docs match results.json and the risk report. | unit | `make docs-check` | Test passes; definition of done in TRACKER.md met. Planned, not written yet. | planned | E19 |
-| T-E23 | Re-score: three reviewers each score the six criteria from the submission materials only and the scores are recorded. | manual | Each reviewer scores from README, video and docs; scores collected in docs/ | Test passes; definition of done in TRACKER.md met. Planned, not written yet. | planned | E20 |
+| T-E23 | Re-score: three reviewers each score the six criteria from the submission materials only and the scores are recorded. | manual | Each reviewer scores from README, video and docs; scores collected in docs/ | Three AI reviews scored (CEO/judge, engineering, Codex); scores, means and gaps in docs/submission/rescore.md. Not human judges. | done | E20 |
 
 ## Cut F, Hardening and reproducibility
 
