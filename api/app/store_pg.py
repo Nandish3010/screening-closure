@@ -23,6 +23,7 @@ from app.events import (
     check_batch_ids,
     event_digest,
 )
+from app.leader import check_fence_pg
 from app.pathway import Pathway
 from app.state_machine import CaseModel, InvalidTransition, replay_model, step
 
@@ -120,11 +121,11 @@ class PostgresEventStore:
                 raise CaseAlreadyExists(str(case_id)) from exc
             _insert_event(cur, genesis_event, 1)
 
-    def append(self, event: Event, pathway: Pathway, *, within=None, guard=None) -> str:
-        return self.append_many([event], pathway, within=within, guard=guard)
+    def append(self, event: Event, pathway: Pathway, *, within=None, guard=None, fence=None) -> str:
+        return self.append_many([event], pathway, within=within, guard=guard, fence=fence)
 
     def append_many(
-        self, events: Sequence[Event], pathway: Pathway, *, within=None, guard=None
+        self, events: Sequence[Event], pathway: Pathway, *, within=None, guard=None, fence=None
     ) -> str:
         """Append one or more events of ONE case in a single transaction: one row lock, one log
         read and replay, one commit. Each event is checked against the state the previous one
@@ -144,6 +145,10 @@ class PostgresEventStore:
         (not backdated) checks are re-evaluated on the model the events will actually be applied
         to, not on the read it made earlier. Whatever it raises propagates and nothing is written.
         It is skipped when every event was already stored (an idempotent retry).
+
+        `fence` (F10), a `leader.Fence`, is checked first in this same transaction (`leader.check_fence_pg`): if its
+        lease is not the current, unexpired one, `leader.StaleLeader` is raised and nothing is written, not even an
+        idempotent retry's no-op.
         """
         if not events:
             raise ValueError("append_many needs at least one event")
@@ -158,6 +163,8 @@ class PostgresEventStore:
         # inserted (D5 uses it to record a draft's approval): if it raises, the event is rolled
         # back with it. It is skipped when the event id was already stored (an idempotent retry).
         with self._pool.connection() as conn, conn.cursor() as cur:
+            if fence is not None:
+                check_fence_pg(cur, fence)
             # Serialise writers on this case; held until commit/rollback.
             cur.execute(
                 "SELECT pathway, current_state FROM cases WHERE id = %s FOR UPDATE", (case_id,)
@@ -206,7 +213,7 @@ class PostgresEventStore:
                 within(cur)
             return model.state
 
-    def append_batches(self, batches: Sequence[Sequence[Event]], pathway: Pathway) -> list:
+    def append_batches(self, batches: Sequence[Sequence[Event]], pathway: Pathway, *, fence=None) -> list:
         """`append_many` for several cases at once, in ONE transaction (A20, the sweep's write path).
 
         `batches` holds one list of events per case (each list is what `append_many` would take: events of a single
@@ -225,7 +232,10 @@ class PostgresEventStore:
         Anything that is not a per-case refusal (a lost connection, a deadlock, an event id taken by a concurrent
         writer between the check and the insert) raises, and then NOTHING of the batch is written: the caller falls
         back to `append_many` case by case, which finds each case in a known state. `within` and `guard` are not
-        offered here: they exist for the API's single-case writes."""
+        offered here: they exist for the API's single-case writes.
+
+        `fence` (F10) is checked in the batch's one transaction before any row is read for writing; a stale lease raises
+        `leader.StaleLeader` for the whole batch (it is not a per-case refusal) and nothing is written."""
         if not batches:
             return []
         for events in batches:
@@ -249,6 +259,8 @@ class PostgresEventStore:
         if not live:
             return outcomes
         with self._pool.connection() as conn, conn.cursor() as cur:
+            if fence is not None:
+                check_fence_pg(cur, fence)
             cur.execute(
                 "SELECT id, pathway, current_state FROM cases WHERE id = ANY(%s) ORDER BY id FOR UPDATE",
                 (live,),

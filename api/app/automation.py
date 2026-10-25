@@ -54,6 +54,7 @@ from app import evidence, notify, outreach_policy, payloads, users
 from app.calendar import WorkingCalendar
 from app.config import settings
 from app.events import CaseNotFound, Event, EventIdConflict
+from app.leader import StaleLeader
 from app.pathway import Pathway
 from app.providers import Providers, get_providers
 from app.state_machine import (
@@ -386,6 +387,8 @@ def run_automation_scan(store, pathway: Pathway, now: datetime, calendar: Workin
             _reroute(store, pathway, case_id, model, now, result)
             if policy is not None:
                 _outreach(store, pathway, case_id, model, now, calendar, policy, result)
+        except StaleLeader:
+            raise  # F10: a deposed scheduler's scan stops; it is not "one bad case"
         except Exception as exc:  # noqa: BLE001 - one bad case must not stop the scan for the others
             log.exception("case %s: automation scan failed", case_id)
             result.errors.append(f"{case_id}: {type(exc).__name__}")
