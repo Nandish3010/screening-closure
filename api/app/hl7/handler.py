@@ -62,6 +62,7 @@ R_BAD_COMPLETENESS = "colonoscopy completeness value not recognised"
 R_RECORDER = "evidence store unavailable, retry"
 R_INTERNAL = "internal error, retry"
 R_DENIED = "action not permitted for this interface"
+R_SENDER = "sending application or facility not permitted"
 R_CASE_REFUSED = "case could not be created from this message"
 R_UNSUPPORTED_TYPE = "message type not supported"
 R_UNSUPPORTED_EVENT = "trigger event not supported"
@@ -144,6 +145,9 @@ def handle(raw: str) -> str:
 
 
 def _dispatch(msg: Message) -> Outcome:
+    # MSH-3|MSH-4 is self-asserted, so it is checked against the allow-list before anything else is looked at (F11).
+    if msg.sender not in current().allowed_senders:
+        raise Reject("AR", "207", R_SENDER)
     version = msg.msh.get(12, 1)
     if not version.startswith("2."):
         raise Reject("AR", "203", R_VERSION)

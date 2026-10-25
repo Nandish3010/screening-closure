@@ -87,7 +87,7 @@ HUMAN_DECISIONS = frozenset({
 })
 # A33 (ADR-042): the counselling record a refusal cites and a declined closure must cite back.
 COUNSELLING = "DocumentReference/counsel-1"
-PHYSICIANS = ("primary_care_owner", "specialist_owner")  # who may sign a declined closure
+PHYSICIANS = ("primary_care_owner", "specialist_owner")  # who may review and close (either outcome; E20a F1)
 # I4: outreach (contacting the patient, or handing them to someone new).
 OUTREACH = frozenset({"contact_patient", "message_drafted", "message_approved", "message_sent", "handoff_requested"})
 # I4 extended (A36, ADR-044): the referral events, refused while consent is withdrawn or sharing is refused.
@@ -620,6 +620,8 @@ class Checker:
                 out.append(("I1", f"{t!r} entered {terminal!r}"))
             if is_automated(actor) or actor not in HUMAN_BY_ACTOR:
                 out.append(("I1", f"{actor!r} is not a person and closed the case"))
+            elif actor.split(":", 1)[0] not in PHYSICIANS:  # E20a F1: a person is not enough, it is a physician
+                out.append(("I1", f"{actor!r} is not a physician role and closed the case"))
             declined = p.get("outcome") == "declined"
             if pre.state != (self.pw.refusal_state if declined else self.pw.states[-2]):
                 out.append(("I1", f"closed from {pre.state!r} with outcome {p.get('outcome')!r}"))
@@ -642,6 +644,10 @@ class Checker:
                 _bump(self.r.delegated, "I1: malformed evidence -> refused by the route gate (ADR-021)")
                 if route_gate_refusal(actor, p) is None:
                     out.append(("I1", f"close with evidence {ref!r} passes the machine AND the route gate"))
+        if t == "clinician_review" and post.state != pre.state:
+            _bump(c, "I1 clinician reviews")
+            if actor.split(":", 1)[0] not in PHYSICIANS:  # E20a F1: the review is a physician's, signed or not
+                out.append(("I1", f"clinician_review by {actor!r}, who is not a physician role"))
         if t == "clinician_review" and p.get("signed_by") is not None:
             _bump(c, "I1 signed reviews")
             if not signer_is_actor(actor, p["signed_by"]):

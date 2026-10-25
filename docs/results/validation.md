@@ -204,7 +204,7 @@ The simulated ratio is orchestrated completion over baseline completion at the t
 | completion@360 | 83.2% | 82.6% | 81.0% to 83.8% | -0.6 points | **yes** | yes | no | in-sample (flagged, not scored) |
 | median | 37 d | 39.7 d | 38.7 to 41.1 d | ratio 1.07 | **yes** | no | n/a | held out |
 | p25 | 23 d | 28.4 d | 28.0 to 29.2 d | ratio 1.23 | **yes** | no | n/a | held out |
-| p75 | 62 d | 55.2 d | 53.8 to 56.0 d | ratio 0.89 | **yes** | no | n/a | held out |
+| p75 | 62 d | 55.2 d | 53.8 to 56.1 d | ratio 0.89 | **yes** | no | n/a | held out |
 
 
 ### Public Health Scotland bowel screening, invites 2022-24 (national programme)

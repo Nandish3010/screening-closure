@@ -256,8 +256,14 @@ def classify_remote(base_url: str, text: str, language_hint: str | None, timeout
         if (intent not in INTENTS or not _finite(conf) or not 0.0 <= conf <= 1.0 or not isinstance(model_id, str)
                 or not model_id or len(model_id) > 100 or not isinstance(needs_human, bool)):
             raise ValueError("malformed answer")
-        # The server's word is not trusted on the one rule that does not depend on the model.
-        needs_human = needs_human or intent in ALWAYS_HUMAN or len(text) > MAX_TEXT_CHARS
+        # The server's needs_human is never trusted alone: the rules that do not depend on the model, and the local
+        # confidence threshold (F8), are applied here. The answer has no `mass` score, so mass_floor cannot be applied.
+        try:
+            cal = _calibration if _calibration is not None else Calibration.load()
+            below = conf < cal.threshold
+        except Exception:  # noqa: BLE001 - no calibration to check the confidence against: a person reads it
+            below = True
+        needs_human = needs_human or intent in ALWAYS_HUMAN or len(text) > MAX_TEXT_CHARS or below
         return {"intent": intent, "confidence": round(float(conf), 4), "model_id": model_id, "needs_human": needs_human}
     except Exception as exc:  # noqa: BLE001 - unreachable, slow, malformed: a person reads it
         log.warning("remote reply triage failed (%s); sent to a person", type(exc).__name__)

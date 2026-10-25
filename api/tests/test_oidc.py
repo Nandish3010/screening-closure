@@ -274,7 +274,8 @@ def good_prod(monkeypatch):
     for k, v in {"app_env": "prod", "dev_login_enabled": False, "dev_auth_secret": "a" * 32,
                  "scheduler_service_token": "b" * 32, "watchdog_service_token": "c" * 32,
                  "automation_service_token": "d" * 32, "agency_service_token": "e" * 32,
-                 "outreach_demo_approval": False, "auth_mode": "oidc", "oidc_issuer": ISSUER}.items():
+                 "outreach_demo_approval": False, "fhir_verify_evidence": True,  # E20a F2
+                 "auth_mode": "oidc", "oidc_issuer": ISSUER}.items():
         monkeypatch.setattr(settings, k, v)
 
 

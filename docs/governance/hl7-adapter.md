@@ -117,4 +117,4 @@ Each item is an assumption in the code or the mapping that no document we hold s
 - **Duplicate positives from different control ids** are two cases, as two calls to `POST /cases` are.
 - **Scale.** Finding a patient's case reads the open cases of the relevant states (`load_cases`), one pass per message. Fine for a pilot cohort; an index on `patient_ref` is needed before volume.
 - **Batch (FHS/BHS), ORM/RDS/RAS/VXU/PPR/OMP** and the other types in the circular's minimum dataset; enhanced-mode acknowledgements.
-- **Sender allow-list and replay protection beyond MSH-10.**
+- **Replay protection beyond MSH-10.** A sender allow-list is built: `HL7_ALLOWED_SENDERS`, comma-separated exact `APP|FACILITY` entries (MSH-3|MSH-4), checked before any other work; a message from anyone else is an AR (207, "sending application or facility not permitted") and nothing is applied. The default is the demo sender only (`LABSYS|SYNTH-LAB`); a set but empty value allows nobody. The sender is still self-asserted, so the list narrows the token holder's reach and is not authentication.

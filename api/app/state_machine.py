@@ -513,7 +513,11 @@ def apply(state: str, event: Event, pathway: Pathway) -> str:
 
 # -- transitions ------------------------------------------------------------------------
 
-PHYSICIAN_ROLES = ("primary_care_owner", "specialist_owner")  # who may sign a declined closure (A33; H-9 is open)
+# Who may write a clinical sign-off: `clinician_review` and `close` (either outcome). In the machine (`_check_physician`), so
+# an in-process caller that skips app.policy (automation, HL7, a tool) cannot close as a patient, lab or coordinator (E20a F1).
+# Equal to app.policy.CLINICIANS. The simulator logs its physicians as `clinician:` / `owner:` / `endoscopy:`, which
+# sim.actors maps onto these roles. (H-9, a clinician confirming the role list, is open.)
+PHYSICIAN_ROLES = ("primary_care_owner", "specialist_owner")
 
 
 def _person_id(identity: str) -> str:
@@ -562,9 +566,16 @@ def _check_signer(event: Event) -> None:
             f"Practitioner/<their user id>), not {signed_by!r}")
 
 
+def _check_physician(event: Event) -> None:
+    """E20a F1: a clinical sign-off (`clinician_review`, signed or not, and `close`, either outcome) is a physician's."""
+    if actor_role(event.actor) not in PHYSICIAN_ROLES:
+        raise InvalidTransition(f"{event.type}: only a physician ({list(PHYSICIAN_ROLES)}) may sign this off, not "
+                                f"{actor_role(event.actor)!r}")
+
+
 def _check_declined_close(model: CaseModel, event: Event, pathway: Pathway) -> None:
     """A33: closing with outcome `declined`. The declined closure is only for a recorded refusal and a recorded refusal can
-    only close as declined. A physician (not the counsellor) signs, and the evidence is the counselling record itself."""
+    only close as declined. A physician (`_check_physician`; not the counsellor) signs, and the evidence is the counselling record itself."""
     declined = event.payload.get("outcome") == "declined"
     waiting = model.state == pathway.refusal_state
     if declined != waiting:
@@ -574,8 +585,6 @@ def _check_declined_close(model: CaseModel, event: Event, pathway: Pathway) -> N
     refusal = model.refusal
     if refusal is None:
         raise InvalidTransition("close: no informed refusal on record")
-    if actor_role(event.actor) not in PHYSICIAN_ROLES:
-        raise InvalidTransition(f"close (declined): signed by a physician ({list(PHYSICIAN_ROLES)}), not {actor_role(event.actor)!r}")
     if event.payload.get("evidence_ref") != refusal["counselling_ref"]:
         raise InvalidTransition("close (declined): evidence_ref must be the counselling record of the refusal")
     counsellor = _person_id(refusal["counselled_by"])
@@ -591,9 +600,18 @@ def _transition(model: CaseModel, event: Event, pathway: Pathway, t: Transition)
         if not event.payload.get(key):
             raise InvalidTransition(f"event {event.type!r} requires non-empty {key!r}")
     if t.to_state == pathway.terminal_state or event.type == "clinician_review":
+        _check_physician(event)  # E20a F1: a physician role, whatever route the event came through
         _check_signer(event)  # A36: the signer is the person writing the event
     if t.to_state == pathway.terminal_state:
         _check_declined_close(model, event, pathway)
+    if event.type == "reassign":
+        # E20a F12: both reassign rows hand the case to someone who must review and close it (referral_rejected ->
+        # owner_accepted) or sign its declined closure (declined_pending_signoff): a physician. The payload schema only
+        # says "staff-shaped"; a lab, coordinator or supervisor owner could never close the case.
+        target = event.payload.get("owner")
+        if not isinstance(target, str) or actor_role(target) not in PHYSICIAN_ROLES:
+            raise InvalidTransition(f"reassign: the new owner must be a physician ({list(PHYSICIAN_ROLES)}), "
+                                    f"not {actor_role(str(target))!r}")
     for key, minimum in t.minimums:
         value = event.payload.get(key)
         if isinstance(value, bool) or not isinstance(value, (int, float)) or value < minimum:

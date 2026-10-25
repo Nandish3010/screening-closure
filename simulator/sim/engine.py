@@ -170,6 +170,9 @@ class _Pending:
         self.seq = 0
 
 
+DEADLINE_ORDER = 1 << 60  # heap tie-break offset of a deadline check: after every ordinary event of the same instant
+
+
 def _mask() -> int:
     return ~0xFFFFF & ((1 << 128) - 1)
 
@@ -301,6 +304,13 @@ class Engine:
         self.counter += 1
         heappush(self.heap, (t, self.counter, kind, c, token, data))
 
+    def schedule_deadline(self, t: float, kind: str, c: Case, token: int | None = None, data=None) -> None:
+        """A deadline check (an SLA, a milestone, an unanswered referral) at `t`, run AFTER everything else due at the same
+        instant. The API's sweep breaches only when `now > due` (app.sweep), so a step done exactly at its due time is on
+        time; ordered first, the simulator used to mark it overdue (E20a F6, the conformance test)."""
+        self.counter += 1
+        heappush(self.heap, (t, DEADLINE_ORDER + self.counter, kind, c, token, data))
+
     # ------------------------------------------------------------------------------------------
     # event construction / logging
     # ------------------------------------------------------------------------------------------
@@ -385,7 +395,7 @@ class Engine:
         if k < T_POOL and c.lat.u_timer[k] < self.mp.timer_miss_prob:
             self.counters["timers_missed"] += 1  # the scheduler silently failed to arm this timer
             return
-        self.schedule(self.cal.add_working_days_t(t, sla), "sla_due", c, c.token, sla)
+        self.schedule_deadline(self.cal.add_working_days_t(t, sla), "sla_due", c, c.token, sla)
 
     def arm_milestone(self, c: Case, t: float, m) -> None:
         """A milestone timer (A18): not bound to the case's step token, so it survives state changes until the
@@ -395,7 +405,7 @@ class Engine:
         if c.lat.u_mtimer[k] < self.mp.timer_miss_prob:
             self.counters["timers_missed"] += 1
             return
-        self.schedule(self.cal.add_working_days_t(t, m.working_days), "ms_due", c, None, m.name)
+        self.schedule_deadline(self.cal.add_working_days_t(t, m.working_days), "ms_due", c, None, m.name)
 
     def sched_staff(self, c: Case, t: float, step: str) -> None:
         sd = c.lat.staff[c.round][STAFF_INDEX[step]]
@@ -767,7 +777,7 @@ class Engine:
             at = self.cal.next_working_t(t + self.beh.handoff_delay(c.lat.z_h[h]))
             self.schedule(at, "h_resp", c, c.token, (h, outcome, reason))
         if c.orch:
-            self.schedule(self.cal.add_working_days_t(t, self.mp.handoff_sla_working_days), "h_timeout", c, c.token, h)
+            self.schedule_deadline(self.cal.add_working_days_t(t, self.mp.handoff_sla_working_days), "h_timeout", c, c.token, h)
 
     def on_h_resp(self, c: Case, t: float, token, data) -> None:
         h, outcome, reason = data
