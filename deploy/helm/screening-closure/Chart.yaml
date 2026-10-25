@@ -1,0 +1,6 @@
+apiVersion: v2
+name: screening-closure
+description: Screening closure engine - API, scheduler, watchdog and the schema migration job (F14 template; synthetic-data prototype)
+type: application
+version: 0.1.0
+appVersion: "0.1.0"

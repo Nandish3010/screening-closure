@@ -86,6 +86,17 @@ The handover is the TTL plus up to one poll, never less than the TTL: a follower
 | `CLOCK_MODE=wall` started on a database written under a runaway sim clock | refuses to start with the date of the offending event | API logs |
 | `CLOCK_MODE=sim` after a stretch in wall mode | starts, moves the sim clock forward to the latest event, logs a warning | API logs |
 
+## Observability (F14)
+
+The API collects OpenTelemetry metrics in process and serves them at `GET /metrics`; with `OTEL_EXPORTER_OTLP_ENDPOINT` set it also exports metrics and traces over OTLP/HTTP. `LOG_FORMAT=json` makes every log line a JSON object with `trace_id` and `span_id`. Labels and attributes are counts, state names, lease names and route templates; no patient reference, name, message text or query value is exported (the PHI scan, `make test-security`, still covers the logs).
+
+- **`GET /metrics`** is answered by middleware ahead of the router (so it is not in the OpenAPI document or the route policy table). It needs `Authorization: Bearer`: a **supervisor's token**, or `METRICS_SCRAPE_TOKEN` for a scraper. No token or an invalid one is 401, any other role (and every service token) is 403. The scrape token's development default works only while `APP_ENV=dev`; outside dev only a value someone set (32 bytes or more) is accepted. Tests: `api/tests/test_observability.py`.
+- **Instruments:** `closure_cases_open{state}`, `closure_cases_overdue`, `closure_outbox_pending`, `closure_projection_queue_depth`, `closure_projection_dead_letters`, `closure_leader{lease}`, `closure_service_heartbeat_age_seconds{service}`, `closure_escalations_emitted_total`, `closure_overdue_marked_total`, `closure_sweeps_total{result}`, `closure_sweep_duration_seconds`, `closure_llm_tokens_total{provider,kind}`, and the FastAPI request histogram `http_server_request_duration_seconds{http_route,...}`. The database-backed gauges are computed on demand and cached (`METRICS_CACHE_SECONDS`, 15 by default); the overdue count replays every open case and is cached for `METRICS_OVERDUE_CACHE_SECONDS` (60). Every replica reports the same gauge values, so queries take `max by`.
+- **Traces:** one span per request (route template as the name) and per Postgres statement (parameterised text, never the values). Off unless an OTLP endpoint is set.
+- **Local stack:** `make up-obs` starts the `obs` compose profile: OpenTelemetry Collector (traces to its debug log, metrics re-exposed for Prometheus), Prometheus on `127.0.0.1:9090` with the rules in `config/prometheus/alerts.yml`, Grafana on `127.0.0.1:3000` with the dashboard `config/grafana/dashboards/closure.json` provisioned. Images are pinned by tag and digest.
+
+The SLOs these serve, the alert rules and the deployment shape are in [deployment.md](deployment.md).
+
 ## What is not covered
 
 - Postgres is a single point of failure here (L20); the lease is only as available as the database.

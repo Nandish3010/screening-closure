@@ -5,7 +5,7 @@ from contextlib import asynccontextmanager
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app import auth, automation, confirmatory, evidence, fhir_projection, leader, notify, ops, outreach_policy, policy, users
+from app import auth, automation, confirmatory, evidence, fhir_projection, leader, notify, observability, ops, outreach_policy, policy, users
 from app.clock import clock
 from app.config import settings
 from app.events import InMemoryEventStore
@@ -18,6 +18,7 @@ from app.routers import clock as clock_router
 from app.routers import metrics as metrics_router
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s:     %(name)s: %(message)s")
+observability.configure_logging()  # LOG_FORMAT=json: one JSON object per line with trace_id (F14)
 log = logging.getLogger("app.main")
 
 pathway = load_pathway(settings.pathway_path)
@@ -71,6 +72,7 @@ async def lifespan(app: FastAPI):
         )
 
         pool = create_pool(database_url)
+        observability.configure(pool)
         run_migrations(pool)
         cases.store = PostgresEventStore(pool)
         notify.log = PostgresNotificationLog(pool)
@@ -104,6 +106,7 @@ async def lifespan(app: FastAPI):
         if leader.api_loop is not None:
             leader.api_loop.stop()
             leader.api_loop = None
+        observability.shutdown()
         if pool is not None:
             pool.close()
 
@@ -123,6 +126,9 @@ app.add_middleware(
     allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type"],
 )
+# F14: OpenTelemetry request metrics and spans, and the protected GET /metrics (answered by middleware, outside the route table).
+observability.instrument_app(app)
+app.add_middleware(observability.MetricsMiddleware)
 app.include_router(auth_router.router)
 app.include_router(cases.router)
 if settings.app_env == "dev" and clock.mode == "sim":  # the demo clock exists only in development, and only in sim mode (SEC-1, A30)

@@ -5,6 +5,7 @@
 #   tools-and-docs   docs-check, tracker-lint, security gates, tool tests, reviewer packs, effort, evaluate determinism smoke
 #   redteam          the adversarial suite (D14)
 #   db               Postgres 16 (and HAPI FHIR when it starts); each xdist worker has its own database (api/tests/xdist_db.py)
+#   deploy-templates helm lint/template, bicep build, compose config, promtool and Collector validation, dashboard JSON (F14)
 #   web              frontend tests, production build, Playwright against the mock adapter
 #   simulator-heavy  sensitivity, full evaluate, validate, capacity and risk regeneration checks, one matrix leg each. Runs on a
 #                    pull request or push only when simulator/, config/pathways/ (and the other paths in the filter below, the
@@ -225,6 +226,45 @@ jobs:
           name: playwright-test-results
           path: web/test-results
           if-no-files-found: ignore
+
+  # F14: the deployment templates and the observability configuration are checked, never applied. No cluster, no Azure subscription.
+  deploy-templates:
+    name: deploy-templates
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/setup-helm@v4
+        with:
+          version: v3.16.2
+      - name: helm lint and template (defaults with placeholder secrets, then ingress and OTLP on)
+        run: |
+          helm lint deploy/helm/screening-closure --set secrets.create=true
+          helm template rel deploy/helm/screening-closure --set secrets.create=true > /dev/null
+          helm template rel deploy/helm/screening-closure --set secrets.create=true --set api.ingress.enabled=true \
+            --set app.otlpEndpoint=http://otel-collector:4318 --set networkPolicy.enabled=false > /dev/null
+      - name: bicep build (main and the example parameter file)
+        run: |
+          az bicep install
+          az bicep build --file deploy/bicep/main.bicep --stdout > /dev/null
+          az bicep build-params --file deploy/bicep/main.example.bicepparam --stdout > /dev/null
+      - name: compose files parse, with every profile
+        run: docker compose --profile obs --profile scale --profile oidc --profile hl7 --profile tools --profile tests config -q
+      - name: Prometheus config and rules (promtool), OpenTelemetry Collector config
+        run: |
+          docker run --rm --entrypoint promtool -v "$PWD/config/prometheus:/etc/prometheus:ro" \
+            prom/prometheus:v2.55.1 check config /etc/prometheus/prometheus.yml
+          docker run --rm -v "$PWD/config/otel/collector.yaml:/c.yaml:ro" \
+            otel/opentelemetry-collector-contrib:0.111.0 validate --config=/c.yaml
+      - name: Grafana dashboard is valid JSON with a Prometheus datasource on every panel
+        run: |
+          python3 - <<'EOF'
+          import json
+          d = json.load(open("config/grafana/dashboards/closure.json"))
+          assert d["uid"] == "screening-closure" and d["panels"], "dashboard is empty"
+          assert all(p["datasource"]["uid"] == "prometheus" and p["targets"] for p in d["panels"])
+          print(len(d["panels"]), "panels")
+          EOF
 
   simulator-heavy:
     name: simulator-heavy (${{ matrix.target }})
