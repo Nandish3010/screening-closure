@@ -1,0 +1,45 @@
+# Abu Dhabi-shaped baseline overlay (E20b). Layer it over simulator/params.yaml (make evaluate-abudhabi does):
+#   python -m simulator.sim.cli evaluate ... --params simulator/params.yaml --params simulator/params.abudhabi.yaml
+# (evaluate then builds the literature-anchored scenario by adding params.conservative.yaml on top, as usual.)
+#
+# This is a SENSITIVITY run. It is NOT the headline and it is not evidence. It asks: if usual care in Abu Dhabi looks like the
+# 30.5% follow-up colonoscopy audit (Almansoori et al., BMC Cancer 2021;21:897, 436 of 1,429 positive FIT/gFOBT "ever" had a follow-up
+# colonoscopy, https://pmc.ncbi.nlm.nih.gov/articles/PMC8343888/; docs/evidence.md section 1 and the Abu Dhabi table), what does the
+# same orchestration mechanism do on top of it?
+#
+# Limits, stated once here and repeated in the results.md section:
+#  - the 30.5% covers Emirati nationals in 2015-2016, before IFHAS V10; today's baseline may be better or worse;
+#  - the baseline is calibrated to three things from the audit: about 30.5% completing by 360 days, a median of about 72 days from the
+#    positive result to colonoscopy among those who had one, and more than half of completers done within 90 days;
+#  - orchestration.programme_reach (0.55) was calibrated against the US baseline and the pooled navigation RR of 1.27, and every
+#    orchestration parameter is held unchanged here. The ratio in this scenario is therefore NOT evidence of effect.
+#
+# The unused key gi_referral_non_attendance_abu_dhabi (0.25: about 25% of all positives were referred to GI and did not attend) is
+# not read by the engine. The loss is carried by patients.refusal_prob, a patient-level trait in both arms, which assumes the
+# orchestration recovers none of it (the conservative direction: it understates the mechanism). 0.25 explains only part of the
+# 69.5% not followed up, so refusal_prob is calibrated above it; the rest of the unexplained loss is treated the same way. A smaller
+# change to the unmanaged fast-lane share fits the completer median. Slow-lane timing is at its default. Nothing in the engine changed.
+# Status vocabulary as in params.yaml (sourced | sourced-adjacent | calibrated | assumed).
+
+# Target the overlay reports against. 3m and 6m are left at the inherited Mohl 2023 values (US); the audit gives no time axis
+# (text: "more than 50%" of those who had a colonoscopy had it within 90 days), so no Abu Dhabi value exists for them.
+colonoscopy_completion_12m:
+  value: 0.305
+  source: "Almansoori et al., BMC Cancer 2021;21:897, 436 of 1,429 positives (30.5%) 'ever' had follow-up colonoscopy, Emirati nationals, Abu Dhabi ambulatory clinics, 2015-2016. https://pmc.ncbi.nlm.nih.gov/articles/PMC8343888/"
+  status: sourced
+  notes: "An 'ever' figure with no stated follow-up window, used here as the 360-day target. Pre-IFHAS V10, Emirati nationals only. Inherited default 0.56 (Mohl 2023, US)."
+
+patients:
+  refusal_prob:
+    value: 0.5
+    source: "Calibrated (E20b) so the baseline reproduces the 30.5% Abu Dhabi audit"
+    status: calibrated
+    notes: "Default 0.12 (calibrated to Mohl 2023). The audit's own anchor is gi_referral_non_attendance_abu_dhabi (0.25: about 25% of all positives referred to GI who did not attend, Almansoori 2021, derived in docs/evidence.md), which accounts for only part of the loss; the engine does not read that key. The rest of the loss the audit does not explain is also put here, as a patient-level trait in BOTH arms, so the orchestration is assumed to recover none of it. That is the conservative direction and it understates the mechanism: some of this loss (not referred, not scheduled, lost between steps) is exactly what ownership and timers act on."
+
+appointment:
+  fast_lane_share:
+    unmanaged:
+      value: 0.4
+      source: "Calibrated (E20b) so the baseline reproduces the 30.5% Abu Dhabi audit"
+      status: calibrated
+      notes: "Default 0.84 (calibrated in B21 to Mohl 2023). Lowered so that the median time to colonoscopy among baseline completers is about 72 days, the audit's median (docs/evidence.md), and at least half of the 360-day completion is reached by 90 days. The slow-lane timing (slow_lane_lead_median_days 49, sigma) is left at its default. Managed share (orchestrated cases in reach) is untouched at 0.994."

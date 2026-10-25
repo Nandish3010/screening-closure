@@ -1,0 +1,244 @@
+{
+  "meta": {
+    "cases_per_replication": 2000,
+    "follow_up_days": 360,
+    "params_files": [
+      "simulator/params.yaml",
+      "simulator/params.abudhabi.yaml"
+    ],
+    "pathway_version": "0.3",
+    "replications": 20,
+    "seed": 20261017
+  },
+  "overlay": [
+    {
+      "key": "colonoscopy_completion_12m",
+      "notes": "An 'ever' figure with no stated follow-up window, used here as the 360-day target. Pre-IFHAS V10, Emirati nationals only. Inherited default 0.56 (Mohl 2023, US).",
+      "source": "Almansoori et al., BMC Cancer 2021;21:897, 436 of 1,429 positives (30.5%) 'ever' had follow-up colonoscopy, Emirati nationals, Abu Dhabi ambulatory clinics, 2015-2016. https://pmc.ncbi.nlm.nih.gov/articles/PMC8343888/",
+      "status": "sourced",
+      "value": 0.305
+    },
+    {
+      "key": "patients.refusal_prob",
+      "notes": "Default 0.12 (calibrated to Mohl 2023). The audit's own anchor is gi_referral_non_attendance_abu_dhabi (0.25: about 25% of all positives referred to GI who did not attend, Almansoori 2021, derived in docs/evidence.md), which accounts for only part of the loss; the engine does not read that key. The rest of the loss the audit does not explain is also put here, as a patient-level trait in BOTH arms, so the orchestration is assumed to recover none of it. That is the conservative direction and it understates the mechanism: some of this loss (not referred, not scheduled, lost between steps) is exactly what ownership and timers act on.",
+      "source": "Calibrated (E20b) so the baseline reproduces the 30.5% Abu Dhabi audit",
+      "status": "calibrated",
+      "value": 0.5
+    },
+    {
+      "key": "appointment.fast_lane_share.unmanaged",
+      "notes": "Default 0.84 (calibrated in B21 to Mohl 2023). Lowered so that the median time to colonoscopy among baseline completers is about 72 days, the audit's median (docs/evidence.md), and at least half of the 360-day completion is reached by 90 days. The slow-lane timing (slow_lane_lead_median_days 49, sigma) is left at its default. Managed share (orchestrated cases in reach) is untouched at 0.994.",
+      "source": "Calibrated (E20b) so the baseline reproduces the 30.5% Abu Dhabi audit",
+      "status": "calibrated",
+      "value": 0.4
+    }
+  ],
+  "params_hash": {
+    "literature_anchored": "c217fad9cfdcc37f",
+    "upper_range": "d6d848e8e191dba4"
+  },
+  "scenarios": {
+    "literature_anchored": {
+      "baseline": {
+        "closed_share": {
+          "ci_high": 0.300376,
+          "ci_low": 0.291399,
+          "mean": 0.295925
+        },
+        "completion_180d": {
+          "ci_high": 0.277104,
+          "ci_low": 0.270324,
+          "mean": 0.273575
+        },
+        "completion_360d": {
+          "ci_high": 0.309753,
+          "ci_low": 0.301698,
+          "mean": 0.30575
+        },
+        "completion_90d": {
+          "ci_high": 0.197151,
+          "ci_low": 0.191599,
+          "mean": 0.194225
+        },
+        "silent_loss_rate": {
+          "ci_high": 0.6967,
+          "ci_low": 0.689199,
+          "mean": 0.693025
+        },
+        "silent_loss_rate_in_reach": {
+          "ci_high": 0.696507,
+          "ci_low": 0.685952,
+          "mean": 0.691367
+        },
+        "time_to_colonoscopy_median": {
+          "ci_high": 71.234137,
+          "ci_low": 69.145234,
+          "mean": 70.101305
+        }
+      },
+      "gain": {
+        "completion_180d": {
+          "ci_high": 0.100051,
+          "ci_low": 0.095274,
+          "mean": 0.0975
+        },
+        "completion_360d": {
+          "ci_high": 0.08365,
+          "ci_low": 0.0784,
+          "mean": 0.08095
+        },
+        "completion_90d": {
+          "ci_high": 0.130926,
+          "ci_low": 0.125474,
+          "mean": 0.128175
+        }
+      },
+      "orchestrated": {
+        "closed_share": {
+          "ci_high": 0.386551,
+          "ci_low": 0.378622,
+          "mean": 0.3822
+        },
+        "completion_180d": {
+          "ci_high": 0.37515,
+          "ci_low": 0.367348,
+          "mean": 0.371075
+        },
+        "completion_360d": {
+          "ci_high": 0.391151,
+          "ci_low": 0.382924,
+          "mean": 0.3867
+        },
+        "completion_90d": {
+          "ci_high": 0.32515,
+          "ci_low": 0.319849,
+          "mean": 0.3224
+        },
+        "silent_loss_rate": {
+          "ci_high": 0.318177,
+          "ci_low": 0.311274,
+          "mean": 0.31465
+        },
+        "silent_loss_rate_in_reach": {
+          "ci_high": 0.0,
+          "ci_low": 0.0,
+          "mean": 0.0
+        },
+        "time_to_colonoscopy_median": {
+          "ci_high": 47.158774,
+          "ci_low": 45.834908,
+          "mean": 46.50628
+        }
+      },
+      "ratio": {
+        "completion_180d": 1.3563922142008589,
+        "completion_360d": 1.2647587898609973,
+        "completion_90d": 1.65993049298494
+      }
+    },
+    "upper_range": {
+      "baseline": {
+        "closed_share": {
+          "ci_high": 0.300376,
+          "ci_low": 0.291399,
+          "mean": 0.295925
+        },
+        "completion_180d": {
+          "ci_high": 0.277104,
+          "ci_low": 0.270324,
+          "mean": 0.273575
+        },
+        "completion_360d": {
+          "ci_high": 0.309753,
+          "ci_low": 0.301698,
+          "mean": 0.30575
+        },
+        "completion_90d": {
+          "ci_high": 0.197151,
+          "ci_low": 0.191599,
+          "mean": 0.194225
+        },
+        "silent_loss_rate": {
+          "ci_high": 0.6967,
+          "ci_low": 0.689199,
+          "mean": 0.693025
+        },
+        "silent_loss_rate_in_reach": {
+          "ci_high": 0.696901,
+          "ci_low": 0.688849,
+          "mean": 0.693025
+        },
+        "time_to_colonoscopy_median": {
+          "ci_high": 71.234137,
+          "ci_low": 69.145234,
+          "mean": 70.101305
+        }
+      },
+      "gain": {
+        "completion_180d": {
+          "ci_high": 0.197851,
+          "ci_low": 0.190074,
+          "mean": 0.19385
+        },
+        "completion_360d": {
+          "ci_high": 0.166651,
+          "ci_low": 0.158799,
+          "mean": 0.162875
+        },
+        "completion_90d": {
+          "ci_high": 0.255851,
+          "ci_low": 0.245924,
+          "mean": 0.250625
+        }
+      },
+      "orchestrated": {
+        "closed_share": {
+          "ci_high": 0.473676,
+          "ci_low": 0.464299,
+          "mean": 0.46855
+        },
+        "completion_180d": {
+          "ci_high": 0.472451,
+          "ci_low": 0.462999,
+          "mean": 0.467425
+        },
+        "completion_360d": {
+          "ci_high": 0.473977,
+          "ci_low": 0.46415,
+          "mean": 0.468625
+        },
+        "completion_90d": {
+          "ci_high": 0.450026,
+          "ci_low": 0.440174,
+          "mean": 0.44485
+        },
+        "silent_loss_rate": {
+          "ci_high": 0.0,
+          "ci_low": 0.0,
+          "mean": 0.0
+        },
+        "silent_loss_rate_in_reach": {
+          "ci_high": 0.0,
+          "ci_low": 0.0,
+          "mean": 0.0
+        },
+        "time_to_colonoscopy_median": {
+          "ci_high": 39.95977,
+          "ci_low": 39.056178,
+          "mean": 39.508394
+        }
+      },
+      "ratio": {
+        "completion_180d": 1.7085808279265282,
+        "completion_360d": 1.5327064595257562,
+        "completion_90d": 2.2903848629167203
+      }
+    }
+  },
+  "target": {
+    "completion_360d": 0.305,
+    "followed_up": 436,
+    "median_days": 72,
+    "positives": 1429
+  }
+}

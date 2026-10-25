@@ -1,4 +1,4 @@
-.PHONY: claude-smoke claude-record redteam-generate triage-serve up-obs check-full evaluate-smoke test-redteam validate validate-check validate-targets evaluate-refusal oidc-up oidc-down test-oidc up-scale agency-run test-demo test-e2e-live demo-scenario demo-stage demo-snapshot demo-restore demo-reset demo-kill-scheduler check docs-check tracker-lint test-security test-tools test-load load-check up down logs test test-db test-db-create test-db-reset test-chaos synthea demo-seed demo-seed-clean evaluate evaluate-capacity evaluate-capacity-check simulate evaluate-check sensitivity sensitivity-check reset web-install web-dev web-build web-test web-e2e test-e2e review-packs review-packs-check test-review-packs test-phi-logs rbac-matrix test-offline fresh-clone risk-report risk-check calibrate-fetch calibrate-fit calibrate-check effort effort-check video video-check video-deps verify hl7-demo hl7-samples judge-headline judge-headline-check
+.PHONY: claude-smoke claude-record redteam-generate triage-serve up-obs check-full evaluate-smoke test-redteam validate validate-check validate-targets evaluate-refusal evaluate-abudhabi oidc-up oidc-down test-oidc up-scale agency-run test-demo test-e2e-live demo-scenario demo-stage demo-snapshot demo-restore demo-reset demo-kill-scheduler check docs-check docs-numbers tracker-lint test-security test-tools test-load load-check up down logs test test-db test-db-create test-db-reset test-chaos synthea demo-seed demo-seed-clean evaluate evaluate-capacity evaluate-capacity-check simulate evaluate-check sensitivity sensitivity-check reset web-install web-dev web-build web-test web-e2e test-e2e review-packs review-packs-check test-review-packs test-phi-logs rbac-matrix test-offline fresh-clone risk-report risk-check calibrate-fetch calibrate-fit calibrate-check effort effort-check video video-check video-deps verify hl7-demo hl7-samples judge-headline judge-headline-check
 
 up:
 	docker compose up -d --build
@@ -179,6 +179,16 @@ evaluate-refusal:
 	$(SIMENV) $(PY) -m simulator.sim.cli evaluate --reps $(REPS) --cases $(CASES) --days $(EVAL_DAYS) --seed $(SEED) $(PARAM_FLAGS) --params simulator/params.refusal.yaml --out-dir $(REFUSAL_OUT)
 	$(SIMENV) $(PY) -m simulator.sim.refusal_report $(REFUSAL_OUT)/results.json docs/results
 
+# Abu Dhabi-shaped baseline sensitivity (E20b; simulator/params.abudhabi.yaml): baseline calibrated to the 30.5% Abu Dhabi audit, reach and every
+# orchestration parameter unchanged. A SENSITIVITY run, not the headline. The full run goes to a scratch directory; its summary goes to
+# docs/results/abudhabi.json and a section of results.md (simulator/sim/abudhabi_report.py); `make evaluate` copies that section from the committed
+# abudhabi.json. ABUDHABI_OUT=<dir> to choose where the full run goes.
+ABUDHABI_OUT ?= /tmp/abudhabi-path
+evaluate-abudhabi:
+	mkdir -p $(ABUDHABI_OUT)
+	$(SIMENV) $(PY) -m simulator.sim.cli evaluate --reps $(REPS) --cases $(CASES) --days $(EVAL_DAYS) --seed $(SEED) $(PARAM_FLAGS) --params simulator/params.abudhabi.yaml --out-dir $(ABUDHABI_OUT)
+	$(SIMENV) $(PY) -m simulator.sim.abudhabi_report $(ABUDHABI_OUT)/results.json docs/results
+
 # Human effort per case (ticket B17): the Human effort section of docs/results/results.md is written by `make evaluate` (it is computed from the same
 # event logs, no extra run). `make effort` prints it from the committed results.json; `make effort-check` fails if results.json predates the effort
 # model in simulator/sim/effort.py or docs/evidence.md section 11 lacks a source, and runs the effort tests (hand-computed arithmetic on the five-case scenario).
@@ -317,6 +327,12 @@ evaluate-smoke:
 # outside lines carrying an H1/H2 review marker.
 docs-check:
 	$(PY) tools/check/docs_check.py --readme
+	$(PY) tools/check/docs_numbers.py
+
+# B10 (E20b): every decimal %, pp figure and ratio quoted in README.md and docs/submission/*.md exists in docs/results or the
+# sources it may come from; remaining exceptions are listed with reasons in tools/check/docs_numbers_allow.yaml. Runs as part of `make docs-check` (a `make check` stage).
+docs-numbers:
+	$(PY) tools/check/docs_numbers.py
 
 # Every T-ID in TRACKER.md is in TEST-CASES.md and vice versa; done rows cite commits that exist;
 # milestone counts match the rows; LOG.md is chronological.

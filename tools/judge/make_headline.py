@@ -13,6 +13,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 SRC = ROOT / "docs" / "results" / "results.json"
+VALIDATION = ROOT / "docs" / "results" / "validation.json"
 OUT = ROOT / "web" / "src" / "judge" / "headline.json"
 SCENARIO = "literature_anchored"
 
@@ -21,7 +22,24 @@ def pct(x: float) -> dict:
     return {"value": f"{x * 100:.1f}%", "mean": x}
 
 
-def build(results: dict) -> dict:
+def managed_gap(validation: dict) -> tuple[float, float]:
+    """Smallest and largest shortfall in points (simulated below observed) over the held-out managed-programme completion rows:
+    Kaiser (Corley 2017) at 30 and 60 days, Scotland and England at 12 months. Same rows as validation.md's reading."""
+    def primary(tid: str) -> dict:
+        t = next(x for x in validation["cohort_targets"] if x["id"] == tid)
+        return next(v for v in t["variants"] if v["name"] == t["primary_variant"])
+
+    picks = [("corley-kaiser", "completion@30"), ("corley-kaiser", "completion@60"),
+             ("phs-scotland", "completion@360"), ("nhs-england-bcsp", "completion@360")]
+    gaps = []
+    for tid, metric in picks:
+        r = next(r for r in primary(tid)["rows"] if r["metric"] == metric)
+        assert not r["in_sample"], (tid, metric)
+        gaps.append(-r["diff_points"])
+    return min(gaps), max(gaps)
+
+
+def build(results: dict, validation: dict | None = None) -> dict:
     s = results["scenarios"][SCENARIO]
     arms = s["arms"]
     eff = results["effort"]["scenarios"]
@@ -32,6 +50,8 @@ def build(results: dict) -> dict:
     lit_reach = eff[SCENARIO]["in_reach"]["reduction"]["labour_reduction"]
     up_all = eff["upper_range"]["all"]["reduction"]["labour_reduction"]
     meta = results["meta"]
+    v = validation if validation is not None else json.loads(VALIDATION.read_text())
+    gap_lo, gap_hi = managed_gap(v)
     return {
         "scenario": {"key": SCENARIO, "label": s["label"], "params_hash": s["params_hash"]},
         "run": {
@@ -50,6 +70,8 @@ def build(results: dict) -> dict:
             "orchestrated_in_reach": pct(orch["silent_loss_rate_in_reach"]["mean"]),
             "orchestrated_programme": pct(orch["silent_loss_rate"]["mean"]),
         },
+        # validation.md: the held-out managed-programme completion levels are under-predicted by this many points.
+        "managed_gap_points": {"low": f"{gap_lo:.0f}", "high": f"{gap_hi:.0f}"},
         "labour_reduction": {
             "literature_all": pct(lit_all["mean"]),
             "literature_in_reach": pct(lit_reach["mean"]),

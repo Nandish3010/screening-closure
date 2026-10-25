@@ -7,6 +7,8 @@ Both videos are produced by a script from the storyboard of [demo-script.md](dem
 | `submission-3min.mp4` | Title card (3 s), the shots flagged `submission: true` (14 shots, the storyboard of the demo script), end card (4 s). Hard cap 180 s: `assemble.sh` fails above it. | `tools/video/out/` (gitignored) |
 | `backup-demo.mp4` | The same, plus every other shot that could be recorded (the two reveal shots below, when their pages exist). | `tools/video/out/` (gitignored) |
 
+**E20b changes, not yet recorded:** the Human effort card is no longer a shot (it is not in the spoken demo; the effort counter stays as backup shot 15); shot 10 is the triage cameo and says that no appointment is booked and the FHIR Appointment is a stub; shot 11 is new, the patient's own page at `/patient/<case>` switched to Arabic with the language button (an action that exists in `PatientPage`); shot 8 starts the agency run with `make agency-run` in a terminal and shows the inbox as the specialist, so it needs no supervisor switch; shots 3 and 5 say that messages are mock-only; shots 12 and 14 carry the calibrated-ratio wording, the programme-level silent loss first, and the buyer hypothesis. The targets add up to 170 s of shots (177 s with the cards); the per-shot lengths below are from the earlier cut and the real length has to be measured again (H4 stays open).
+
 **Since that run the storyboard changed (E19): the spoken figures follow the regenerated results (B21), shot 11 reads the reply with the live triage model (D15; run `make triage-serve` first) and shots 11, 13 and 14 are 2 s longer, so the targets now add up to 168 s of shots (175 s with the cards, 5 s under the cap, so check the real length). The measurements below are from the earlier cut and have not been repeated: run `make video` again and replace them (H4 stays open).**
 
 **Re-run for E19 (25 Oct 2026, M6 main with live triage via `make triage-serve`):** `make up`, `make demo-reset`, `make video` recorded 15 of 15 shots, none skipped (shot 11 read the Gulf-Arabic reply as `confirm` on the live model); after shortening the narration of shots 2, 12, 13 and 14, `submission-3min.mp4` is 177.8 s (cap 180 s) and `backup-demo.mp4` 187.8 s. Final shot lengths: 1 8.0, 2 9.4, 3 12.3, 4 12.0, 5 15.0, 6 5.0, 7 12.0, 8 15.0, 9 13.0, 10 10.1, 11 16.0, 12 20.0, 13 12.0, 14 11.2, 15 10.0 s. The paragraph below is the earlier proof run, kept for its method.
@@ -24,14 +26,14 @@ What the first runs found, all fixed before this one: each shot is its own brows
 
 ## Judge tour (C13), backup note
 
-The header **Judge tour** button opens a 7-step, read-only overlay (problem, timeline, closure guard, agency inbox, effort counter, numbers, summary) and `/judge` is the one-page summary. It is not a shot of its own: the submission cut is at its length limit (168 s of shots plus 7 s of cards of the 180 s cap). Shot 14 names it in its narration and on its card as the hand-off. To film it for the backup video only, add a shot with `submission: false`, `optional: true` and `route: /judge`, plus a click on the button and a few holds, and re-run `make video-check`.
+The header **Judge tour** button opens a 7-step, read-only overlay (problem, timeline, closure guard, agency inbox, effort counter, numbers, summary) and `/judge` is the one-page summary. It is not a shot of its own: the submission cut is at its length limit (170 s of shots plus 7 s of cards of the 180 s cap). Shot 14 names it in its narration and on its card as the hand-off. To film it for the backup video only, add a shot with `submission: false`, `optional: true` and `route: /judge`, plus a click on the button and a few holds, and re-run `make video-check`.
 
 ## Regenerate
 
 Run it again after any change to the web app, the demo script or the snapshot, with the stack up on the merged code:
 
 ```
-make triage-serve   # in its own terminal: shot 11 reads the Gulf-Arabic reply live (D15)
+make triage-serve   # in its own terminal: shot 10 reads the Gulf-Arabic reply live (D15)
 make video-check     # the storyboard validates, targets add up to 180 s or less (no stack, no ffmpeg needed)
 make video-deps      # ffmpeg, ffprobe and macOS `say` (and the voice) are installed; says how to fix it if not
 make up              # the stack must be running ...
@@ -67,7 +69,7 @@ Requirements: `ffmpeg` and `ffprobe` (`brew install ffmpeg`), macOS `say` with t
 
 ## Shots, and what to re-record after merges
 
-Shots 1 to 14 are the 14 rows of the storyboard in the demo script, same order, titles and captions (`tests/test_demo_docs.py` checks it): the problem, what this is, **the catch** (shots 3 to 6: an owned case with the amber demo-approval banner and the scheduler stopped, the patient contacted and the clock jump, the watchdog and the restart, the escalation accepted), **the reveal** (shots 7 to 11: a bad reference refused on the prepared second case, the agency run and its one-item inbox, signed and closed, the Human effort card, the Gulf-Arabic reply cameo), the numbers (12, 13) and the ask (14). Their targets add up to 168 s so the two cards fit inside 180 s (see the comment at the top of the YAML). Waiting is cut from the video (the watchdog wait in shot 5, the scheduler stop and the property test run), so the viewer sees the banner appear and clear without a minute of nothing.
+Shots 1 to 14 are the 14 rows of the storyboard in the demo script, same order, titles and captions (`tests/test_demo_docs.py` checks it): the problem, what this is, **the catch** (shots 3 to 6: an owned case with the amber demo-approval banner and the scheduler stopped, the patient contacted and the clock jump, the watchdog and the restart, the escalation accepted), **the reveal** (shots 7 to 11: a bad reference refused on the prepared second case, the agency run (started from a terminal) and its one-item inbox, signed and closed, the Gulf-Arabic reply cameo in shot 10, and the patient's own screen in Arabic, right to left, in shot 11), the numbers (12, 13) and the ask (14). Their targets add up to 170 s so the two cards fit inside 177 s of the 180 s cap (see the comment at the top of the YAML). Waiting is cut from the video (the watchdog wait in shot 5, the scheduler stop and the property test run), so the viewer sees the banner appear and clear without a minute of nothing.
 
 Shot 15, the effort counter on a case page, is `optional: true` and `submission: false`, so it is in the backup video only. The recorder opens its route first and skips an optional shot, with the reason in `shots.json`, when the route redirects to the home page (the app sends unknown routes there) or answers 404, when the guard element never shows up, or when a step fails. It recorded in the proof run (15 of 15, none skipped). Whether it belongs in the 3-minute video is an editing decision: set `submission: true` on it in the YAML and shorten another shot, because `make video-check` and `assemble.sh` hold the total to 180 s.
 

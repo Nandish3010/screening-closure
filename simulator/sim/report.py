@@ -256,7 +256,7 @@ def calibration_section(res: dict) -> str:
             f"because the unmanaged baseline loses many cases to missed hand-offs that a managed programme prevents; it is the mechanism ceiling "
             f"and is bounded above by the managed-programme ceiling."
             + (f" The literature-anchored scenario holds the effect near the navigation figure (ratio {_ratio(res, 'completion_180d', LITERATURE):.2f} at 180 days) "
-               f"by reaching only part of the case load (`orchestration.programme_reach`, calibrated in B12 and not refitted after B21), and is the scenario to quote."
+               f"by reaching only part of the case load (`orchestration.programme_reach`, calibrated in B12 and not refitted after B21), and is the scenario to quote. That ratio is calibrated to the navigation trials, so it is not independent evidence of effect."
                if lit else "")
         )
     return "\n".join(txt)
@@ -418,11 +418,15 @@ def headline_paragraph(res: dict) -> str:
     rl, ru = _ratio(res, key, LITERATURE), _ratio(res, key, UPPER)
     reach = next((o["value"] for o in _sc(res, LITERATURE)["overrides"] if o["key"] == "orchestration.programme_reach"), None)
     silent = _m(res, ORCHESTRATED, "silent_loss_rate", LITERATURE)
+    silent_b = _m(res, BASELINE, "silent_loss_rate", LITERATURE)
     reach_txt = ""
     if reach is not None and silent:
         reach_txt = (
             f" To hold the average effect to the published figure the scenario lets the orchestrated process reach only "
-            f"{pct(reach)} of cases, so {pct(silent['mean'])} of cases are still lost without a human being told (programme level; among the cases it reaches the figure is 0%); that is a device for "
+            f"{pct(reach)} of cases. Silent loss (lost without a human being told) is "
+            + (f"{silent_b['mean'] * 100:.1f}% -> " if silent_b else "")
+            + f"{silent['mean'] * 100:.1f}% at programme level; 0% among the cases the programme reaches, which is true by construction "
+            f"(every reached case has an owner and a timer). The reach is a device for "
             f"calibrating the average effect, not a prediction of how many cases a real programme would miss."
         )
     return (
@@ -430,7 +434,7 @@ def headline_paragraph(res: dict) -> str:
         f"to what published studies report: the completion effect is held near the pooled patient-navigation risk ratio of 1.27 (95% CI 1.10 to 1.46), SMS reminders add "
         f"nothing beyond the no-reminder attendance rate (the lower bound of the published range), and escalating to a supervisor or "
         f"coordinator is no more effective than re-contacting the patient. In it, {pct(l180)} of patients reach a confirmatory colonoscopy "
-        f"within {horizon} against {pct(b180)} at baseline (ratio {rl:.2f}).{reach_txt} **The upper-range scenario shows the mechanism ceiling**: "
+        f"within {horizon} against {pct(b180)} at baseline (ratio {rl:.2f}). **The ratio is calibrated to published navigation trials, not a validated result**: `orchestration.programme_reach` was fitted in B12 so the ratio matches the pooled navigation risk ratio. The model shows the mechanism and what drives it, not new evidence of effect; only the Azulay comparison in validation.md is independent of that fit.{reach_txt} **The upper-range scenario shows the mechanism ceiling**: "
         f"what ownership, timers, escalation and re-contact could deliver if every case got the full orchestrated process and every "
         f"escalation worked as assumed. It reaches {pct(u180)} within {horizon} (ratio {ru:.2f}), far above anything published for navigation, so "
         f"read it as an upper bound on the mechanism and not as a forecast. Both scenarios use the same synthetic patients, the same random "
@@ -495,7 +499,7 @@ def timing_claims_section() -> str | None:
     return "\n".join([
         "## Which timing figures may be quoted (held-out validation, B21)",
         "",
-        "The completion ratio at 180 days is the headline. Timing figures in this file (days to colonoscopy or to closure, shares by 30 or 60 days, days saved) "
+        "The completion ratio at 180 days is the headline figure, calibrated to published navigation trials (not new evidence of effect). Timing figures in this file (days to colonoscopy or to closure, shares by 30 or 60 days, days saved) "
         "may be quoted only where the held-out validation in [`validation.md`](validation.md) passes; the others stay withdrawn. Generated from "
         "`validation.json` by the same rule as the table in validation.md.",
         "",
@@ -503,7 +507,8 @@ def timing_claims_section() -> str | None:
     ])
 
 
-def render_markdown(res: dict, capacity_block: str | None = None, refusal_block: str | None = None) -> str:
+def render_markdown(res: dict, capacity_block: str | None = None, refusal_block: str | None = None,
+                    abudhabi_block: str | None = None) -> str:
     meta = res["meta"]
     lit = _has(res, LITERATURE)
     gen = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
@@ -557,6 +562,8 @@ def render_markdown(res: dict, capacity_block: str | None = None, refusal_block:
         parts += [capacity_block, ""]
     if refusal_block is not None:
         parts += [refusal_block, ""]
+    if abudhabi_block is not None:
+        parts += [abudhabi_block, ""]
     parts += ["## Summary", ""]
     for scen in scen_order:
         parts += [f"**{SCENARIO_TITLE[scen].capitalize()}.** " + summary_paragraph(res, scen, caveat=scen == scen_order[-1]), ""]
