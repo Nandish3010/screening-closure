@@ -263,6 +263,16 @@ def _event_guard(identity: Identity, event_type: str, at: datetime):
     return guard
 
 
+def _retry_time(case_id: UUID, event_id) -> datetime | None:
+    """E20a F9: a request that names an `event_id` and no `at` (the web client) is stamped with the clock's time, and under
+    CLOCK_MODE=wall that time has moved by the time a retry arrives. If the id is already on this case, the retry takes the
+    stored event's `at`, so the idempotency check compares type, actor and payload, and an exact retry returns the stored
+    result instead of 409. A different body under the same id is still EventContentConflict (409)."""
+    if event_id is None:
+        return None
+    return next((e.at for e in store.events_for(case_id) if e.event_id == event_id), None)
+
+
 @router.post("/{case_id}/events", status_code=201)
 def post_event(
     case_id: UUID, body: PostEvent, identity: Identity = Depends(require_identity)
@@ -277,7 +287,7 @@ def post_event(
         if model is None:
             raise HTTPException(404, "case not found")
         policy.authorize_owner_scope(identity, body.type, model)
-    at = body.at or clock.now()
+    at = body.at or _retry_time(case_id, body.event_id) or clock.now()
     if at.tzinfo is None:
         at = at.replace(tzinfo=UTC)
     if at > clock.now():

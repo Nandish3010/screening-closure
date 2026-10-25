@@ -9,3 +9,4 @@ allow:
   - {file: docs/submission/video.md, number: "179.95", reason: "Measured duration (s) of backup-demo.mp4 in the 18 Oct proof run; a build artefact of make video."}
   - {file: docs/submission/video.md, number: "162.9", reason: "Sum of narrated shot lengths (s) in the 18 Oct proof run; a build artefact of make video."}
   - {file: docs/submission/video.md, number: "22.18", reason: "Node.js version (22.18 or later) required by the recorder; a version string, not a result."}
+  - {file: docs/submission/video.md, number: "17.2", reason: "Measured narration length (s) of shot 12 in the 18 Oct proof run; a build artefact of make video."}

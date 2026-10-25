@@ -125,7 +125,8 @@ def test_redelivery_with_the_same_control_id_changes_nothing_and_is_acked_aa():
     assert ack_of(fit("F2"))[0] == "AA" and len(all_cases()) == 2  # another control id is another result
 
 
-def test_the_same_control_id_from_another_sender_is_another_message():
+def test_the_same_control_id_from_another_sender_is_another_message(monkeypatch):
+    monkeypatch.setenv("HL7_ALLOWED_SENDERS", "LABSYS|SYNTH-LAB,LABSYS|OTHER-LAB")
     assert ack_of(fit("F1"))[0] == "AA"
     assert ack_of(fit("F1", sender="LABSYS|OTHER-LAB"))[0] == "AA" and len(all_cases()) == 2
 

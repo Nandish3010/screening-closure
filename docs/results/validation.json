@@ -459,7 +459,7 @@
             {
               "covered_by_replication_interval": false,
               "day": 60,
-              "diff_points": -13.435,
+              "diff_points": -13.4375,
               "in_sample": false,
               "kind": "completion",
               "metric": "completion@60",
@@ -469,7 +469,7 @@
               "sim_hi": 0.520338,
               "sim_inside_obs_interval": false,
               "sim_lo": 0.481212,
-              "sim_mean": 0.50165,
+              "sim_mean": 0.501625,
               "within_tolerance": false
             },
             {
@@ -527,10 +527,10 @@
               "kind": "time",
               "metric": "median",
               "observed": 37.0,
-              "ratio": 1.13929,
-              "sim_hi": 43.130049,
+              "ratio": 1.139236,
+              "sim_hi": 43.111175,
               "sim_lo": 41.162182,
-              "sim_mean": 42.153715,
+              "sim_mean": 42.151728,
               "within_tolerance": true
             },
             {
@@ -540,10 +540,10 @@
               "kind": "time",
               "metric": "p25",
               "observed": 23.0,
-              "ratio": 1.281023,
+              "ratio": 1.281005,
               "sim_hi": 30.840552,
               "sim_lo": 28.558652,
-              "sim_mean": 29.463538,
+              "sim_mean": 29.463105,
               "within_tolerance": false
             },
             {
@@ -553,10 +553,10 @@
               "kind": "time",
               "metric": "p75",
               "observed": 62.0,
-              "ratio": 1.003582,
-              "sim_hi": 63.828947,
+              "ratio": 1.00362,
+              "sim_hi": 63.831716,
               "sim_lo": 59.689647,
-              "sim_mean": 62.222066,
+              "sim_mean": 62.224412,
               "within_tolerance": true
             }
           ],
@@ -588,7 +588,7 @@
             {
               "covered_by_replication_interval": false,
               "day": 60,
-              "diff_points": 2.965,
+              "diff_points": 2.96,
               "in_sample": false,
               "kind": "completion",
               "metric": "completion@60",
@@ -598,13 +598,13 @@
               "sim_hi": 0.679075,
               "sim_inside_obs_interval": false,
               "sim_lo": 0.645062,
-              "sim_mean": 0.66565,
+              "sim_mean": 0.6656,
               "within_tolerance": true
             },
             {
               "covered_by_replication_interval": false,
               "day": 90,
-              "diff_points": 4.105,
+              "diff_points": 4.1025,
               "in_sample": true,
               "kind": "completion",
               "metric": "completion@90",
@@ -614,13 +614,13 @@
               "sim_hi": 0.796913,
               "sim_inside_obs_interval": false,
               "sim_lo": 0.771238,
-              "sim_mean": 0.78305,
+              "sim_mean": 0.783025,
               "within_tolerance": true
             },
             {
               "covered_by_replication_interval": false,
               "day": 180,
-              "diff_points": 1.7875,
+              "diff_points": 1.785,
               "in_sample": true,
               "kind": "completion",
               "metric": "completion@180",
@@ -629,14 +629,14 @@
               "observed": 0.806,
               "sim_hi": 0.836287,
               "sim_inside_obs_interval": false,
-              "sim_lo": 0.8069,
-              "sim_mean": 0.823875,
+              "sim_lo": 0.807138,
+              "sim_mean": 0.82385,
               "within_tolerance": true
             },
             {
               "covered_by_replication_interval": true,
               "day": 360,
-              "diff_points": -0.57,
+              "diff_points": -0.5725,
               "in_sample": true,
               "kind": "completion",
               "metric": "completion@360",
@@ -645,8 +645,8 @@
               "observed": 0.832,
               "sim_hi": 0.838,
               "sim_inside_obs_interval": false,
-              "sim_lo": 0.80985,
-              "sim_mean": 0.8263,
+              "sim_lo": 0.810088,
+              "sim_mean": 0.826275,
               "within_tolerance": true
             },
             {
@@ -656,10 +656,10 @@
               "kind": "time",
               "metric": "median",
               "observed": 37.0,
-              "ratio": 1.0739,
+              "ratio": 1.073903,
               "sim_hi": 41.083111,
               "sim_lo": 38.739673,
-              "sim_mean": 39.734294,
+              "sim_mean": 39.734417,
               "within_tolerance": true
             },
             {
@@ -669,10 +669,10 @@
               "kind": "time",
               "metric": "p25",
               "observed": 23.0,
-              "ratio": 1.232762,
-              "sim_hi": 29.248319,
+              "ratio": 1.232771,
+              "sim_hi": 29.248259,
               "sim_lo": 28.0,
-              "sim_mean": 28.353536,
+              "sim_mean": 28.353729,
               "within_tolerance": true
             },
             {
@@ -682,10 +682,10 @@
               "kind": "time",
               "metric": "p75",
               "observed": 62.0,
-              "ratio": 0.889919,
-              "sim_hi": 56.0,
+              "ratio": 0.889982,
+              "sim_hi": 56.060078,
               "sim_lo": 53.773243,
-              "sim_mean": 55.174987,
+              "sim_mean": 55.178878,
               "within_tolerance": true
             }
           ],
@@ -1083,8 +1083,8 @@
       "sim_baseline": 0.4706,
       "sim_hi": 1.393967,
       "sim_lo": 1.333115,
-      "sim_orchestrated": 0.6421,
-      "sim_ratio": 1.364659,
+      "sim_orchestrated": 0.642075,
+      "sim_ratio": 1.364607,
       "source": {
         "grade": "P",
         "licence": "published figures",
@@ -1120,7 +1120,7 @@
       "sim_hi": 1.333847,
       "sim_lo": 1.283252,
       "sim_orchestrated": 0.666525,
-      "sim_ratio": 1.306879,
+      "sim_ratio": 1.30688,
       "source": {
         "grade": "P",
         "licence": "published figures",
@@ -1154,7 +1154,7 @@
       "scenario": "literature_anchored",
       "sim_baseline": 0.545225,
       "sim_hi": 1.282197,
-      "sim_lo": 1.22887,
+      "sim_lo": 1.229303,
       "sim_orchestrated": 0.684475,
       "sim_ratio": 1.255652,
       "source": {

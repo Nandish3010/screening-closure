@@ -94,12 +94,12 @@ flowchart LR
 ```
 
 - Event sourcing: the `events` table is append-only (triggers reject UPDATE, DELETE and TRUNCATE, with one scoped exception: since migration 016 a single `SECURITY DEFINER` function, `erasure_scrub_case`, may scrub personal data for an approved erasure; the ordinary application role still cannot). State comes from replay. An append validates the event, then writes it in one transaction with the case row locked.
-- Closure invariant: `close` needs an `evidence_ref` that resolves in HAPI and a `signed_by` from a physician, checked inside the state machine. It is property-tested (T-A1). <!-- E20a -->
+- Closure invariant: `close` needs an `evidence_ref` that resolves in HAPI and a `signed_by` from a physician (`primary_care_owner` or `specialist_owner`), checked inside the state machine; outside dev the API refuses to start without evidence verification or a database. It is property-tested (T-A1).
 - A working-day SLA engine drives an escalation ladder to named humans.
 - The watchdog finds open cases nobody is touching, and heartbeats make a stopped scheduler raise an alert.
 - Every event is projected to HAPI FHIR R4 resources. Messages go to a logged notification mock only, and the `Appointment` resource is a proposed stub (no slot time is modelled).
 - Models sit at the edges and cannot move a case, approve a message, change consent or close a case ([AI boundary](docs/governance/ai-boundary.md)).
-- The simulator is offline. It imports the API's pathway loader and calls `apply()`/`step()` on a bare case model for each transition, so the transition rules and the closure guard are shared. The SLA timers, escalation ladder, coalescing, handoff bounce and consent holds are simulator code; it does not import the scheduler sweep (`app.sweep`) or the read model.
+- The simulator is offline. It imports the API's pathway loader and calls `apply()`/`step()` on a bare case model for each transition, so the transition rules and the closure guard are shared. The SLA timers, escalation ladder, coalescing, handoff bounce and consent holds are simulator code; it does not import the scheduler sweep (`app.sweep`) or the read model. A conformance test (`simulator/tests/test_sweep_conformance.py`) replays sampled orchestrated cases through the real store and `app.sweep` and requires the same breaches and ladder rungs, each within one working day. Two differences are documented and not fixed: the simulator counts working days on UTC days and the API on Asia/Dubai days, and when the sweep bounces an unanswered referral the API moves the case to `referral_rejected` while the simulator re-requests from the booking step.
 
 Detail: [docs/submission/technical-documentation.md](docs/submission/technical-documentation.md).
 
@@ -179,7 +179,7 @@ Two modes, chosen by `AUTH_MODE` (A29, ADR-040). `dev` (the default) keeps the p
 
 At the M5 final merge (project/LOG.md, line "M5-final", 2026-10-18), `make check` was green over 17 of 17 stages: 2154 api and simulator tests, 230 integration, 287 web unit, 51 e2e, 188 tool tests, 72 security-gate tests, 19 pack tests, 20 effort tests, 21 calibration tests. Outside it: `make test-chaos` 45 passed, `make test-demo` 2 passed, `make test-e2e-live` 3 passed, `make test-offline` 17 of 17.
 
-The state machine is also model-checked exhaustively by `make verify` (`tools/verify/model_check.py`, [docs/governance/verification.md](docs/governance/verification.md)): 23,730 abstract states (three slices), 8 invariants, and 7 seeded mutations, all caught. It found one real bug, now fixed: an approved draft could be sent while an opt-out or wrong-number hold was open (ADR-038).
+The state machine is also model-checked exhaustively by `make verify` (`tools/verify/model_check.py`, [docs/governance/verification.md](docs/governance/verification.md)): 23,730 abstract states (three slices), 8 invariants, and 8 seeded mutations (M8 removes the physician check), all caught. It found one real bug, now fixed: an approved draft could be sent while an opt-out or wrong-number hold was open (ADR-038).
 
 The closure rule has its own property test: `api/tests/test_state_machine.py::test_never_closed_without_evidence_and_human_signoff`.
 

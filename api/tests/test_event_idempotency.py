@@ -192,3 +192,37 @@ def test_a_sweep_that_meets_a_conflicting_id_reports_a_race_not_an_error():
     store._event_ids[bounce.event_id] = (cid, "someone-elses-digest")
     res = run_sweep(store, PATHWAY, WorkingCalendar(), at(30))
     assert res.rejected == 1 and res.errors == [] and res.handoff_bounced == 0
+
+
+# ---- E20a F9: a retry without `at` (what the web client sends) ----------------------------------------------------
+
+
+def test_a_retry_without_at_after_time_has_passed_is_the_same_event(store):
+    """web/src/api/httpAdapter.ts posts {type, payload, event_id} and no `at`, so the route stamps the clock's time. Under
+    CLOCK_MODE=wall that time moves between a request that timed out and its retry; the retry must still be the same
+    event (201, the stored result, nothing written), not a 409 for a 'different time'."""
+    cid, spec = reviewed_case("Dr Idem F9")
+    key = str(uuid4())
+    body = {"type": "close", "event_id": key,
+            "payload": {"evidence_ref": "DiagnosticReport/r1", "signed_by": actor_of("specialist_owner", "Dr Idem F9")}}
+    first = client.post(f"/cases/{cid}/events", json=body, headers=spec)
+    assert first.status_code == 201 and first.json()["state"] == "closed"
+    n, stored_at = len(store.events_for(UUID(cid))), store.events_for(UUID(cid))[-1].at
+    clock.advance(hours=1)  # the network timeout and the retry: real time has moved on
+    again = client.post(f"/cases/{cid}/events", json=body, headers=spec)
+    assert again.status_code == 201, again.text
+    assert again.json()["state"] == "closed"
+    assert len(store.events_for(UUID(cid))) == n and store.events_for(UUID(cid))[-1].at == stored_at
+
+
+def test_a_retry_without_at_with_another_body_is_still_409(store):
+    """Leaving `at` out keeps the stored event's time, not its content: a different payload under the same key is refused."""
+    cid, spec = reviewed_case("Dr Idem F9b")
+    key = str(uuid4())
+    body = {"type": "close", "event_id": key,
+            "payload": {"evidence_ref": "DiagnosticReport/r1", "signed_by": actor_of("specialist_owner", "Dr Idem F9b")}}
+    assert client.post(f"/cases/{cid}/events", json=body, headers=spec).status_code == 201
+    clock.advance(hours=1)
+    other = {**body, "payload": {**body["payload"], "evidence_ref": "DiagnosticReport/r2"}}
+    r = client.post(f"/cases/{cid}/events", json=other, headers=spec)
+    assert r.status_code == 409 and "different event" in r.json()["detail"]

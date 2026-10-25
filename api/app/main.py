@@ -55,6 +55,9 @@ async def lifespan(app: FastAPI):
     # Read the process environment (not .env/settings): a stray .env must never silently
     # switch a local run onto a database. Unset means the in-memory store.
     database_url = os.environ.get("DATABASE_URL")
+    store_problems = auth.store_config_problems(settings.app_env, database_url)
+    if store_problems:
+        raise RuntimeError("; ".join(store_problems))  # fail closed (E20a F3): never silently non-durable outside dev and test
     pool = None
     confirmatory.configure(settings)
     if isinstance(evidence.configure(settings), evidence.FhirVerifier):

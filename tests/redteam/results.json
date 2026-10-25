@@ -6252,7 +6252,7 @@
     },
     {
       "abuse_case": "RT-H-01",
-      "actual": "ACK AA (ok); 1 case(s); events=[['case_created']]",
+      "actual": "ACK AR (sending application or facility not permitted); 0 case(s); events=[]",
       "category": "hl7-automation",
       "expected": "the case (if any) holds only the validated fields; the text is in no event, draft, notification or ACK",
       "id": "RT-H-01.12",
@@ -6652,7 +6652,7 @@
     },
     {
       "abuse_case": "RT-H-05",
-      "actual": "25 inputs, ACK codes ['AE', 'AR']; 0 case(s) made",
+      "actual": "25 inputs, ACK codes ['AR']; 0 case(s) made",
       "category": "hl7-automation",
       "expected": "never raises; always an ACK of the right shape",
       "id": "RT-H-05.15",

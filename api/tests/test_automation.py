@@ -455,6 +455,7 @@ def test_service_tokens_outside_dev_must_be_distinct_long_and_not_the_default(mo
     monkeypatch.setattr(app_settings, "automation_service_token", good["automation"])
     monkeypatch.setattr(app_settings, "agency_service_token", "")  # A22: optional, empty switches it off
     monkeypatch.setattr(app_settings, "outreach_demo_approval", False)
+    monkeypatch.setattr(app_settings, "fhir_verify_evidence", True)  # E20a F2
     assert auth.secure_config_problems() == []
     monkeypatch.setattr(app_settings, "outreach_demo_approval", True)  # A26: a demo placeholder is not a signature
     assert any("OUTREACH_DEMO_APPROVAL is on" in p for p in auth.secure_config_problems())

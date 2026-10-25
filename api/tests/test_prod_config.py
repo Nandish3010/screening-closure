@@ -35,6 +35,7 @@ def configure(monkeypatch, *, env, login, secret, sched=GOOD["y"], dog=GOOD["z"]
     monkeypatch.setattr(settings, "watchdog_service_token", dog)
     monkeypatch.setattr(settings, "automation_service_token", auto)
     monkeypatch.setattr(settings, "outreach_demo_approval", False)  # A26: the test session turns it on; a prod config must not
+    monkeypatch.setattr(settings, "fhir_verify_evidence", True)  # E20a F2: outside dev closure evidence is verified
 
 
 def forge(claims, secret):
@@ -215,3 +216,39 @@ def test_a_demo_approval_of_the_outreach_policy_is_refused_outside_dev(monkeypat
     monkeypatch.setattr(settings, "app_env", "dev")
     auth.assert_secure_config()  # dev may run the demo placeholder
 
+
+
+def test_closure_evidence_must_be_verified_outside_dev(monkeypatch):
+    """E20a F2: FHIR_VERIFY_EVIDENCE=false outside dev would close cases on any well-formed `Procedure/<id>`. Refused."""
+    configure(monkeypatch, env="production", login=False, secret=GOOD["x"])
+    auth.assert_secure_config()
+    monkeypatch.setattr(settings, "fhir_verify_evidence", False)
+    with pytest.raises(RuntimeError, match="FHIR_VERIFY_EVIDENCE"):
+        auth.assert_secure_config()
+    monkeypatch.setattr(settings, "app_env", "dev")
+    auth.assert_secure_config()  # dev may run without a FHIR store
+
+
+@pytest.mark.parametrize(("env", "database_url", "ok"), [
+    ("dev", None, True), ("test", None, True), ("prod", None, False), ("staging", None, False), ("Dev", None, False),
+    ("prod", "", False), ("prod", "postgresql://u@db/x", True), ("staging", "postgresql://u@db/x", True),
+])
+def test_the_in_memory_store_is_only_for_dev_and_test(env, database_url, ok):
+    """E20a F3: without DATABASE_URL the API would run on the in-memory store (nothing durable). Only dev and test may."""
+    problems = auth.store_config_problems(env, database_url)
+    assert (problems == []) is ok
+    if not ok:
+        assert "DATABASE_URL" in problems[0]
+
+
+def test_the_app_refuses_to_start_on_the_in_memory_store_outside_dev(monkeypatch):
+    """E20a F3, end to end: the lifespan refuses before anything is served."""
+    from fastapi.testclient import TestClient
+
+    from app.main import app
+
+    configure(monkeypatch, env="production", login=False, secret=GOOD["x"])
+    monkeypatch.delenv("DATABASE_URL", raising=False)
+    with pytest.raises(RuntimeError, match="DATABASE_URL"):
+        with TestClient(app):
+            pass

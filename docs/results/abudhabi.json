@@ -78,39 +78,39 @@
       },
       "gain": {
         "completion_180d": {
-          "ci_high": 0.100051,
-          "ci_low": 0.095274,
+          "ci_high": 0.100075,
+          "ci_low": 0.09525,
           "mean": 0.0975
         },
         "completion_360d": {
-          "ci_high": 0.08365,
-          "ci_low": 0.0784,
+          "ci_high": 0.083626,
+          "ci_low": 0.078449,
           "mean": 0.08095
         },
         "completion_90d": {
-          "ci_high": 0.130926,
-          "ci_low": 0.125474,
+          "ci_high": 0.130925,
+          "ci_low": 0.12555,
           "mean": 0.128175
         }
       },
       "orchestrated": {
         "closed_share": {
-          "ci_high": 0.386551,
+          "ci_high": 0.3865,
           "ci_low": 0.378622,
           "mean": 0.3822
         },
         "completion_180d": {
-          "ci_high": 0.37515,
-          "ci_low": 0.367348,
+          "ci_high": 0.375102,
+          "ci_low": 0.367299,
           "mean": 0.371075
         },
         "completion_360d": {
-          "ci_high": 0.391151,
-          "ci_low": 0.382924,
+          "ci_high": 0.391175,
+          "ci_low": 0.382899,
           "mean": 0.3867
         },
         "completion_90d": {
-          "ci_high": 0.32515,
+          "ci_high": 0.325175,
           "ci_low": 0.319849,
           "mean": 0.3224
         },
@@ -125,9 +125,9 @@
           "mean": 0.0
         },
         "time_to_colonoscopy_median": {
-          "ci_high": 47.158774,
-          "ci_low": 45.834908,
-          "mean": 46.50628
+          "ci_high": 47.126106,
+          "ci_low": 45.821129,
+          "mean": 46.487764
         }
       },
       "ratio": {
@@ -177,40 +177,40 @@
       "gain": {
         "completion_180d": {
           "ci_high": 0.197851,
-          "ci_low": 0.190074,
-          "mean": 0.19385
+          "ci_low": 0.190024,
+          "mean": 0.193825
         },
         "completion_360d": {
           "ci_high": 0.166651,
-          "ci_low": 0.158799,
-          "mean": 0.162875
+          "ci_low": 0.158724,
+          "mean": 0.16285
         },
         "completion_90d": {
-          "ci_high": 0.255851,
-          "ci_low": 0.245924,
-          "mean": 0.250625
+          "ci_high": 0.255826,
+          "ci_low": 0.245949,
+          "mean": 0.2506
         }
       },
       "orchestrated": {
         "closed_share": {
-          "ci_high": 0.473676,
-          "ci_low": 0.464299,
-          "mean": 0.46855
+          "ci_high": 0.473626,
+          "ci_low": 0.464274,
+          "mean": 0.468525
         },
         "completion_180d": {
           "ci_high": 0.472451,
           "ci_low": 0.462999,
-          "mean": 0.467425
+          "mean": 0.4674
         },
         "completion_360d": {
-          "ci_high": 0.473977,
-          "ci_low": 0.46415,
-          "mean": 0.468625
+          "ci_high": 0.473952,
+          "ci_low": 0.464124,
+          "mean": 0.4686
         },
         "completion_90d": {
-          "ci_high": 0.450026,
-          "ci_low": 0.440174,
-          "mean": 0.44485
+          "ci_high": 0.450051,
+          "ci_low": 0.44015,
+          "mean": 0.444825
         },
         "silent_loss_rate": {
           "ci_high": 0.0,
@@ -223,15 +223,15 @@
           "mean": 0.0
         },
         "time_to_colonoscopy_median": {
-          "ci_high": 39.95977,
-          "ci_low": 39.056178,
-          "mean": 39.508394
+          "ci_high": 39.95277,
+          "ci_low": 39.056629,
+          "mean": 39.505097
         }
       },
       "ratio": {
-        "completion_180d": 1.7085808279265282,
-        "completion_360d": 1.5327064595257562,
-        "completion_90d": 2.2903848629167203
+        "completion_180d": 1.7084894453075024,
+        "completion_360d": 1.5326246933769418,
+        "completion_90d": 2.290256146222165
       }
     }
   },

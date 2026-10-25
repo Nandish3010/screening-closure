@@ -25,23 +25,23 @@
   },
   "labour_reduction": {
     "literature_all": {
-      "mean": 0.200788,
+      "mean": 0.200781,
       "value": "20.1%"
     },
     "literature_in_reach": {
-      "mean": 0.366785,
+      "mean": 0.366773,
       "value": "36.7%"
     },
     "upper_all": {
-      "mean": 0.408183,
+      "mean": 0.408233,
       "value": "40.8%"
     },
     "upper_all_ci_high": {
-      "mean": 0.41711,
+      "mean": 0.417153,
       "value": "41.7%"
     },
     "upper_all_ci_low": {
-      "mean": 0.399084,
+      "mean": 0.39914,
       "value": "39.9%"
     }
   },
@@ -52,7 +52,7 @@
   "run": {
     "cases_per_replication": 2000,
     "follow_up_days": 360,
-    "git_commit": "b20cace99dfe0299a82f63d08998b82dc6d811e6",
+    "git_commit": "80853c84951dbd56a1bf4968686ab2a7fd2dc358",
     "replications": 20
   },
   "scenario": {

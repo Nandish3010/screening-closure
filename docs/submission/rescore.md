@@ -34,7 +34,7 @@ Three reviewers scored `origin/main` at b20cace (25 Oct 2026) against the six ju
 | 3 Abu Dhabi baseline | New sensitivity overlay `simulator/params.abudhabi.yaml` anchored to the 30.5% audit; `make evaluate-abudhabi`; results.md section "Sensitivity: an Abu Dhabi-shaped baseline"; one labelled line in the talk | [results.md](../results/results.md), [abudhabi.json](../results/abudhabi.json) |
 | 4 Commercial | Programme licence across pathways (FIT, blood-based screening positives, breast and cervical recall), Abu Dhabi's public health programme as the hypothesised buyer; about 24 to 54 advanced cancers avoided a year, with the arithmetic shown; avoided cost alone still does not cover the fee | [business-case.md](../commercial/business-case.md) |
 | 5 Stale text | Capacity Q&A uses the built B19 model; wage ratios consistent (4x and 10x); CI job exists but Actions is unavailable; four AI uses; pathway v0.3 with five side states; service roles listed; erasure as built; simulator's shared parts described exactly; red-team HL7 row matches the code; notifications mock-only and the FHIR Appointment a stub wherever the demo shows them; the Arabic moat marked pending review | README, technical documentation, pilot plan, deployment, red-team, PLAN |
-| 6 Engine | Physician-role check inside the state machine; fail-closed configuration outside dev (E20a) | api/, see E20a |
+| 6 Engine | Physician-role check inside the state machine for `close`, `clinician_review` and `reassign` targets (model-check mutation M8); outside dev the API refuses to start without evidence verification or `DATABASE_URL`; remote triage re-applies the local confidence threshold; an idempotent retry without `at` replays; an HL7 sender allow-list; a simulator/sweep conformance test (E20a, PR #19) | api/, simulator/tests |
 | Demo | Agency headcount line and the effort card cut from the spoken script; fewer role switches; a 10-second Arabic patient screen added; spoken script re-timed to 6:18; 3-minute cut 177 s by its own estimate | demo script, teleprompter, storyboard |
 | Docs | One-page architecture overview at the front of the technical documentation; a docs-numbers checker (B10) that fails when a number quoted in README or docs/submission has no source | technical documentation, `tools/check/docs_numbers.py` |
 
@@ -42,6 +42,6 @@ Three reviewers scored `origin/main` at b20cace (25 Oct 2026) against the six ju
 
 - CI stays off until the billing is resolved or the repository goes public; merges rest on a full local `make check`.
 - Human clinician review (H1), native Arabic review (H2), a buyer or LOI, and any real deployment or Malaffi connection need people, not code.
-- The simulator re-implements the escalation ladder rather than running the API's sweep (engineering F6); no conformance test yet.
+- The simulator still re-implements the escalation ladder rather than running the API's sweep (engineering F6). The new conformance test pins them to within one working day, with two documented differences: UTC against Asia/Dubai working days, and the referral bounce path.
 - Most timing rows still fail held-out validation; no speed claim is made.
-- Remote triage trusting the server's `needs_human` (F8), idempotent retry without `at` (F9), the advisory leader fence (F10), the HL7 sender allow-list (F11) and `reassign` targets (F12) unless E20a lists them as done.
+- The leader fence is checked at request entry, not at the write (F10).
