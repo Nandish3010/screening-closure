@@ -96,6 +96,36 @@ def test_a_too_long_reply_always_needs_a_human_even_if_the_remote_says_otherwise
     assert len(f.bodies[0]["text"]) <= 600
 
 
+def _cal(threshold=0.6):
+    return triage.Calibration(1.0, threshold, 0.5, "cal-1")
+
+
+def test_remote_cannot_clear_needs_human_below_the_local_confidence_threshold(fake, monkeypatch):
+    # F8: the server says needs_human false at confidence 0.1; the local threshold still sends it to a person.
+    triage.set_backend(object(), _cal(0.6))
+    f = fake({**GOOD, "confidence": 0.1, "needs_human": False})
+    monkeypatch.setenv("TRIAGE_REMOTE_URL", f.url)
+    out = triage.classify("I will come tomorrow")
+    assert out["intent"] == "reschedule" and out["needs_human"] is True
+
+
+def test_remote_answer_above_the_threshold_stays_auto_handled(fake, monkeypatch):
+    triage.set_backend(object(), _cal(0.6))
+    f = fake({**GOOD, "confidence": 0.9, "needs_human": False})
+    monkeypatch.setenv("TRIAGE_REMOTE_URL", f.url)
+    assert triage.classify("I will come tomorrow")["needs_human"] is False
+
+
+def test_remote_answer_is_a_person_when_the_local_calibration_cannot_be_loaded(fake, monkeypatch):
+    def boom(*a, **k):
+        raise FileNotFoundError("no calibration")
+
+    monkeypatch.setattr(triage.Calibration, "load", classmethod(boom))
+    f = fake({**GOOD, "confidence": 0.99, "needs_human": False})
+    monkeypatch.setenv("TRIAGE_REMOTE_URL", f.url)
+    assert triage.classify("I will come tomorrow")["needs_human"] is True
+
+
 def test_timeout_is_the_fail_safe_and_is_bounded(fake, monkeypatch):
     f = fake(GOOD, delay=3.0)
     monkeypatch.setenv("TRIAGE_REMOTE_URL", f.url)

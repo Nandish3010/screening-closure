@@ -4,7 +4,7 @@
   stopped only the automation's messages). The state machine now refuses it until a person clears the hold.
 * Seeded mutations, each put in with monkeypatch and each caught with a counterexample: automation may close, the
   evidence check removed, message_sent without approval, the hold bug put back, the consent freeze removed, and (A36) the
-  signer check removed and the referral hold removed.
+  signer check removed and the referral hold removed, and (E20a F1) the physician check removed.
 * The checker's own soundness checks bite: a signature that forgets a field step reads is reported (ABSTRACTION), and an
   event that reads another slice's fields is reported (INTERFERENCE).
 
@@ -120,14 +120,19 @@ def _only(r, invariant: str) -> mc.Violation:
 
 
 def test_mutation_automation_may_close_is_caught(monkeypatch):
-    """The closure guard loses its automated-actor check and the automation's row gains `close`."""
+    """The closure guard loses its automated-actor check (and the physician rule its refusal of the automation), and the
+    automation's row gains `close`."""
     monkeypatch.setitem(sm.ACTOR_EVENTS, sm.AUTOMATION_ACTOR, sm.ACTOR_EVENTS[sm.AUTOMATION_ACTOR] | {"close"})
     monkeypatch.setattr(sm, "is_automated", lambda actor: actor.startswith(("scheduler", "watchdog", "model:"))
                         or (actor.startswith("system:") and actor != sm.AUTOMATION_ACTOR))
+    original = sm._check_physician  # since E20a F1 the physician rule would refuse it too: let the automation through
+    monkeypatch.setattr(sm, "_check_physician", lambda event: None if event.actor == sm.AUTOMATION_ACTOR else original(event))
     v = _only(mc.check(["ownership"], **FAST), "I1")
     last = v.trace[-1]
     assert last[0] == "close" and last[1] == sm.AUTOMATION_ACTOR
-    assert [t for t, *_ in v.trace][-2] == "clinician_review"  # shortest: straight down the main path
+    # shortest: straight down the main path, or to a recorded refusal (with the physician rule open to it, the automation
+    # may sign a declined closure too)
+    assert [t for t, *_ in v.trace][-2] in ("clinician_review", "record_informed_refusal")
 
 
 def test_mutation_evidence_check_removed_is_caught(monkeypatch):
@@ -183,6 +188,15 @@ def test_mutation_signer_check_removed_is_caught(monkeypatch):
     v = _only(mc.check(["ownership"], **FAST), "I1")
     assert v.trace[-1][0] in ("close", "clinician_review") and "signer is not" in v.message
     assert v.trace[-1][3].get("signed_by") == mc.FOREIGN_SIGNER
+
+
+def test_mutation_physician_check_removed_is_caught(monkeypatch):
+    """E20a F1 (M8): the machine's physician rule for `close` and `clinician_review` is gone, so a coordinator or a
+    supervisor (both in the cast) may review and close. I1 reports it with a counterexample."""
+    monkeypatch.setattr(sm, "_check_physician", lambda event: None)
+    v = _only(mc.check(["ownership"], **FAST), "I1")
+    assert v.trace[-1][0] in ("close", "clinician_review") and "not a physician role" in v.message
+    assert v.trace[-1][1].split(":", 1)[0] not in sm.PHYSICIAN_ROLES
 
 
 def test_mutation_referral_hold_removed_is_caught(monkeypatch):

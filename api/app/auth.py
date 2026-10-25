@@ -336,6 +336,9 @@ def secure_config_problems() -> list[str]:
         problems.append(f"METRICS_SCRAPE_TOKEN is shorter than {MIN_SECRET_BYTES} bytes")
     if settings.clock_mode != "wall":
         problems.append("CLOCK_MODE is not 'wall' (a deployment outside dev must run on real time, not the simulation clock)")
+    if not settings.fhir_verify_evidence:
+        problems.append("FHIR_VERIFY_EVIDENCE is not true (outside dev closure evidence must resolve in the FHIR store, "
+                        "not merely be a well-formed reference)")
     if settings.outreach_demo_approval:
         problems.append("OUTREACH_DEMO_APPROVAL is on (a demo placeholder must not stand in for the clinical lead's "
                         "signature on the outreach policy)")
@@ -351,6 +354,18 @@ def secure_config_problems() -> list[str]:
             if a and a == b:
                 problems.append(f"{name_a} and {name_b} are the same value")
     return problems
+
+
+# Where the API may run on the in-memory event store (nothing durable): a laptop and the test suite. Anywhere else a missing
+# DATABASE_URL is a misconfiguration, and the API refuses to start rather than lose every event on restart (E20a F3).
+IN_MEMORY_STORE_ENVS = ("dev", "test")
+
+
+def store_config_problems(app_env: str, database_url: str | None) -> list[str]:
+    """The event-store problem for `app_env` (empty = fine). `database_url` is read from the process environment."""
+    if database_url or app_env in IN_MEMORY_STORE_ENVS:
+        return []
+    return [f"DATABASE_URL is not set (APP_ENV={app_env!r} must not run on the in-memory store: nothing would be durable)"]
 
 
 def assert_secure_config() -> None:

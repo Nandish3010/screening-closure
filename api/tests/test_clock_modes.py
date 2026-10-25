@@ -96,6 +96,7 @@ def test_outside_dev_the_clock_mode_must_be_wall(monkeypatch):
     for name, value in (("dev_login_enabled", False), ("dev_auth_secret", "s" * 40), ("scheduler_service_token", "y" * 32),
                         ("watchdog_service_token", "z" * 32), ("automation_service_token", "w" * 32),
                         ("agency_service_token", "v" * 32), ("outreach_demo_approval", False), ("app_env", "prod"),
+                        ("fhir_verify_evidence", True),
                         ("auth_mode", "oidc"), ("oidc_issuer", "https://id.example.test/realms/sc")):
         monkeypatch.setattr(settings, name, value)
     monkeypatch.setattr(settings, "clock_mode", "sim")
