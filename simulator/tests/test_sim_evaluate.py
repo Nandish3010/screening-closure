@@ -1,5 +1,6 @@
 import json
 
+from simulator.sim import DEFAULT_PARAMS
 from simulator.sim.cli import main
 from simulator.sim.evaluate import evaluate, write_results
 from simulator.sim.runner import load_context
@@ -65,3 +66,37 @@ def test_a_single_replication_reports_no_interval_not_a_zero_width_one(tmp_path)
     # and with two or more replications the interval is there, as before
     many = evaluate(jobs=1, **{**SMALL, "reps": 2})["arms"]["orchestrated"]["completion_90d"]
     assert many["ci_low"] is not None and many["ci_low"] <= many["mean"] <= many["ci_high"]
+
+
+def test_parameter_override_is_recorded_in_the_output_metadata(tmp_path):
+    """T-B13: a layered --params file changes the numbers and is listed, key by key, in the results metadata."""
+    over = tmp_path / "over.yaml"
+    over.write_text("referral_rejection_rate: {value: 0.31, source: test override, status: sourced}\n")
+    ctx = load_context(warn=False)
+    default = evaluate(jobs=1, **SMALL)
+    key = "referral_rejection_rate"
+    default_value = next(p["value"] for p in default["parameters"] if p["key"] == key)
+    assert "parameter_overrides" not in default["meta"]  # the default run is unchanged: no override, no new key
+
+    layered = evaluate(jobs=1, params_paths=[DEFAULT_PARAMS, over], **SMALL)
+    meta = layered["meta"]
+    assert meta["params_hash"] != default["meta"]["params_hash"]
+    assert any(f.endswith("over.yaml") for f in meta["params_files"])
+    assert meta["parameter_overrides"] == [
+        {"key": key, "value": 0.31, "default_value": default_value, "source": "test override", "status": "sourced"}
+    ]
+    assert layered["arms"] != default["arms"]
+
+    write_results(layered, tmp_path / "out", ctx)
+    on_disk = json.loads((tmp_path / "out" / "results.json").read_text())
+    assert on_disk["meta"]["parameter_overrides"][0]["key"] == key
+
+
+def test_cli_override_params_file_is_recorded(tmp_path, capsys):
+    over = tmp_path / "over.yaml"
+    over.write_text("referral_rejection_rate: {value: 0.31, source: test override, status: sourced}\n")
+    out = tmp_path / "out"
+    main(["evaluate", "--reps", "2", "--cases", "100", "--days", "100", "--seed", "7", "--bootstrap", "50", "--no-conservative",
+          "--params", str(DEFAULT_PARAMS), "--params", str(over), "--out-dir", str(out)])
+    meta = json.loads((out / "results.json").read_text())["meta"]
+    assert [o["key"] for o in meta["parameter_overrides"]] == ["referral_rejection_rate"]
