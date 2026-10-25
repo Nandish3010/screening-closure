@@ -1,0 +1,124 @@
+{{- if .Values.networkPolicy.enabled }}
+{{- $np := .Values.networkPolicy }}
+# Default deny, both directions, for every pod of this release.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ .Release.Name }}-default-deny
+  labels:
+    {{- include "sc.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  policyTypes: [Ingress, Egress]
+---
+# DNS for every pod of the release.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ .Release.Name }}-allow-dns
+  labels:
+    {{- include "sc.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels: {{ toYaml $np.dnsNamespaceLabels | nindent 14 }}
+      ports:
+        - { protocol: UDP, port: 53 }
+        - { protocol: TCP, port: 53 }
+---
+# The API: ingress from the scheduler, the watchdog, the ingress controller and Prometheus; egress to the database, the FHIR
+# server, the identity provider and (if set) the OTLP collector.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ .Release.Name }}-api
+  labels:
+    {{- include "sc.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: api
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/instance: {{ .Release.Name }}
+              app.kubernetes.io/name: scheduler
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/instance: {{ .Release.Name }}
+              app.kubernetes.io/name: watchdog
+      ports:
+        - { protocol: TCP, port: {{ .Values.api.port }} }
+    {{- if or $np.ingressFrom $np.metricsFrom }}
+    - from:
+        {{- range concat $np.ingressFrom $np.metricsFrom }}
+        - namespaceSelector:
+            matchLabels: {{ toYaml .namespaceLabels | nindent 14 }}
+        {{- end }}
+      ports:
+        - { protocol: TCP, port: {{ .Values.api.port }} }
+    {{- end }}
+  egress:
+    - to: [{ ipBlock: { cidr: {{ $np.egress.database.cidr | quote }} } }]
+      ports: [{ protocol: TCP, port: {{ $np.egress.database.port }} }]
+    - to: [{ ipBlock: { cidr: {{ $np.egress.fhir.cidr | quote }} } }]
+      ports: [{ protocol: TCP, port: {{ $np.egress.fhir.port }} }]
+    - to: [{ ipBlock: { cidr: {{ $np.egress.oidc.cidr | quote }} } }]
+      ports: [{ protocol: TCP, port: {{ $np.egress.oidc.port }} }]
+    {{- if $np.egress.otlp.cidr }}
+    - to: [{ ipBlock: { cidr: {{ $np.egress.otlp.cidr | quote }} } }]
+      ports: [{ protocol: TCP, port: {{ $np.egress.otlp.port }} }]
+    {{- end }}
+    {{- with $np.egress.extra }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+---
+# The scheduler and the watchdog speak only to the API.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ .Release.Name }}-workers
+  labels:
+    {{- include "sc.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchExpressions:
+      - { key: app.kubernetes.io/name, operator: In, values: [scheduler, watchdog] }
+      - { key: app.kubernetes.io/instance, operator: In, values: [{{ .Release.Name | quote }}] }
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: api
+              app.kubernetes.io/instance: {{ .Release.Name }}
+      ports:
+        - { protocol: TCP, port: {{ .Values.api.port }} }
+---
+# The migration job reaches the database and nothing else.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ .Release.Name }}-migrate
+  labels:
+    {{- include "sc.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: migrate
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  policyTypes: [Egress]
+  egress:
+    - to: [{ ipBlock: { cidr: {{ $np.egress.database.cidr | quote }} } }]
+      ports: [{ protocol: TCP, port: {{ $np.egress.database.port }} }]
+{{- end }}

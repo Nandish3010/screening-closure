@@ -149,6 +149,12 @@ services:
       # without a current fencing token is refused (the `scale` profile sets it).
       LEADER_LEASE_TTL_SECONDS: ${LEADER_LEASE_TTL_SECONDS:-30}
       REQUIRE_LEADER_FENCE: ${REQUIRE_LEADER_FENCE:-false}
+      # F14 observability (docs/governance/deployment.md): metrics are always collected and served at the protected GET /metrics
+      # (a supervisor's token or METRICS_SCRAPE_TOKEN). With an OTLP endpoint set (`make up-obs` sets it to the collector of the
+      # `obs` profile) the API also exports metrics and traces over OTLP/HTTP. LOG_FORMAT=json makes the logs JSON with trace_id.
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
+      OTEL_METRIC_EXPORT_INTERVAL: ${OTEL_METRIC_EXPORT_INTERVAL:-10000}
+      LOG_FORMAT: ${LOG_FORMAT:-text}
     volumes:
       - ./config:/config:ro
     depends_on:
@@ -316,6 +322,52 @@ services:
       - ./config/keycloak:/opt/keycloak/data/import:ro
     networks: [closure]
 
+  # ---- F14: the observability stack (profile `obs`; `make up-obs`). Pinned by digest, every published port on loopback. -----
+  # API --OTLP/HTTP--> otel-collector --> (metrics) prometheus exporter :8889 --scraped by--> prometheus --> grafana.
+  # Traces go to the collector's debug exporter (readable with `docker compose logs otel-collector`); point the collector at the
+  # trace backend the host approves (deployment.md). Nothing here leaves the laptop.
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.111.0@sha256:a2a52e43c1a80aa94120ad78c2db68780eb90e6d11c8db5b3ce2f6a0cc6b5029
+    profiles: [obs]
+    command: ["--config=/etc/otelcol/config.yaml"]
+    volumes:
+      - ./config/otel/collector.yaml:/etc/otelcol/config.yaml:ro
+    networks: [closure]
+
+  prometheus:
+    image: prom/prometheus:v2.55.1@sha256:2659f4c2ebb718e7695cb9b25ffa7d6be64db013daba13e05c875451cf51b0d3
+    profiles: [obs]
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=15d
+    ports:
+      - "127.0.0.1:${PROMETHEUS_PORT:-9090}:9090"
+    volumes:
+      - ./config/prometheus:/etc/prometheus:ro
+      - promdata:/prometheus
+    depends_on: [otel-collector]
+    networks: [closure]
+
+  grafana:
+    image: grafana/grafana:11.3.1@sha256:fa801ab6e1ae035135309580891e09f7eb94d1abdbd2106bdc288030b028158c
+    profiles: [obs]
+    ports:
+      - "127.0.0.1:${GRAFANA_PORT:-3000}:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-closure_grafana_dev}  # development default; loopback only
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+      GF_ANALYTICS_CHECK_FOR_PLUGIN_UPDATES: "false"
+    volumes:
+      - ./config/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./config/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafanadata:/var/lib/grafana
+    depends_on: [prometheus]
+    networks: [closure]
+
   # The api's unit tests, in the image's `test` stage (pytest and the dev extras are NOT in the api image above). The
   # fallback of `make test` when there is no local .venv:  docker compose --profile tests run --rm --no-deps api-test
   api-test:
@@ -347,6 +399,8 @@ services:
 volumes:
   pgdata:
   heartbeat:
+  promdata:
+  grafanadata:
 
 networks:
   closure:
