@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
 
+from app.calendar import load_calendar
 from app.pathway import Pathway, load_pathway
 
 from . import DEFAULT_PARAMS, DEFAULT_PATHWAY, REPO_ROOT
@@ -46,7 +47,13 @@ def context_from_params(params: Params, pathway_path: str | Path | None = None) 
     mp = ModelParams.from_params(params)
     pw_path = Path(pathway_path) if pathway_path else DEFAULT_PATHWAY
     pathway = load_pathway(pw_path)
-    cal = WorkingCalendar(date.fromisoformat(mp.start_date), mp.weekend_weekdays, mp.holidays)
+    # M7-1: the API's calendar (config/calendar.yaml: weekend, holidays, time zone), never one of the simulator's own. The
+    # simulator's parameters still state the working week (they are cited in the evidence register); they must agree.
+    api = load_calendar(REPO_ROOT / "config" / "calendar.yaml")
+    if frozenset(mp.weekend_weekdays) != api.weekend or frozenset(date.fromisoformat(h) for h in mp.holidays) != api.holidays:
+        raise ValueError("working_week.weekend and calendar.holidays must equal config/calendar.yaml (the API's calendar): "
+                         f"weekend {sorted(mp.weekend_weekdays)} vs {sorted(api.weekend)}, holidays {list(mp.holidays)}")
+    cal = WorkingCalendar.from_api(api, date.fromisoformat(mp.start_date))
     if not cal.is_working_day(cal.start):
         raise ValueError(f"simulation.start_date {mp.start_date} must be a working day")
     return Context(params, mp, pathway, pw_path, cal)

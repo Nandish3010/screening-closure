@@ -404,7 +404,7 @@ reopen:
   after_closure_prob: {value: 0.03, source: "assumed, no public source", status: assumed, range: [0.015, 0.045], range_basis: "default rule: rate, value x0.5 and x1.5, clipped to [0, 1]"}
   lag_median_days: {value: 30, source: "assumed, no public source", status: assumed, range: [15, 60], range_basis: "default rule: duration, value x0.5 and x2"}
   lag_sigma: {value: 0.6, source: "assumed, no public source", status: assumed, range: [0.3, 1.2], range_basis: "default rule: scale, value x0.5 and x2"}
-  resume_state: {value: owner_accepted, source: "assumed, no public source", status: assumed}
+  resume_state: {value: reopened, source: "config/pathways/colorectal_fit.yaml: the pathway's reopen transition (closed -> reopened, then clinician_review and a fresh close)", status: assumed}
 
 # ---- messy-case injection ---------------------------------------------------------------------
 # Wrong contact numbers use wrong_contact_rate; provider switches use patients.provider_switch_prob.

@@ -79,7 +79,8 @@ patient_contacted (ADR-011). Side states that change the path are real states.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field, replace
+import dataclasses
+from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 from uuid import UUID
@@ -90,6 +91,27 @@ if TYPE_CHECKING:  # avoid a circular import; events.py imports this module
     from app.events import Event
 
 CASE_CREATED = "case_created"  # genesis marker; does not change state
+
+
+_FIELDS: dict[type, frozenset[str]] = {}
+
+
+def replace(obj, /, **changes):
+    """`dataclasses.replace` for the read model's frozen dataclasses, without re-running `__init__`: a copy of the
+    instance dict with `changes` applied. The model is copied on every event (and the simulator folds every simulated
+    case through it), and `dataclasses.replace` is several times slower. Equal results (api/tests/test_model_replace.py):
+    these classes have no `__post_init__`, no InitVar and no init=False field, and an unknown field is a TypeError."""
+    cls = type(obj)
+    names = _FIELDS.get(cls)
+    if names is None:
+        names = _FIELDS[cls] = frozenset(f.name for f in dataclasses.fields(cls))
+    if not names.issuperset(changes):
+        raise TypeError(f"{cls.__name__} has no field(s) {sorted(set(changes) - names)}")
+    new = object.__new__(cls)
+    d = new.__dict__
+    d.update(obj.__dict__)
+    d.update(changes)
+    return new
 CONSENT_WITHDRAWN = "consent_withdrawn"
 
 # Consent ledger (A6). Keys a `consent_updated` payload may carry (all booleans, any subset).

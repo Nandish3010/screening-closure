@@ -85,7 +85,7 @@ programme-level figures). `silent_loss_rate` and `consent_breach_rate` are also 
 their programme-level values follow from the `programme_reach` assumption.
 
 **Reopening.** A closed case can be reopened once by a late finding (`reopened`, `reopen.after_closure_prob`, about 30 days after closing,
-the same in both arms). A reopen moves the case back to `owner_accepted` and it runs the later steps again. It affects the metrics as
+the same in both arms). A reopen moves the case to `reopened`, the pathway's only way out of `closed`: a clinician reviews it again and signs a fresh close. It affects the metrics as
 follows: a reopened case is **open again** from the reopen onward (`open_30d`, `open_60d`, `open_90d`); it still counts as **closed** in
 `closed_share` and in the `reopen_rate` denominator; its **time to closure is the first close**, not the re-close; its **colonoscopy
 time and completion are those of the first `complete_confirmatory`**; and for `lost_to_follow_up_rate` its progress after the reopen
