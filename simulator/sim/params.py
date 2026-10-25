@@ -235,6 +235,13 @@ def _weekend(working_week: dict) -> tuple[int, ...]:
         raise ParamError("working_week.weekend must list weekday names such as [Sat, Sun]") from exc
 
 
+def _bool(params: Params, key: str) -> bool:
+    v = params.get(key)
+    if not isinstance(v, bool):
+        raise ParamError(f"{key} must be true or false, got {v!r}")
+    return v
+
+
 def _fgroup(params: Params, prefix: str) -> dict[str, float]:
     return {k: float(v) for k, v in params.group(prefix).items()}
 
@@ -320,8 +327,12 @@ class ModelParams:
     self_presentation_median_days: float
     # appointment
     no_show_rate: dict[str, float]
-    booking_lead_median_days: float
-    booking_lead_sigma: float
+    fast_lane_lead_median_days: float
+    fast_lane_lead_sigma: float
+    slow_lane_lead_median_days: float
+    slow_lane_lead_sigma: float
+    fast_lane_share_managed: float
+    fast_lane_share_unmanaged: float
     rebook_lead_median_days: float
     reminder_days_before: tuple[float, ...]
     appointment_max_attempts: int
@@ -343,6 +354,7 @@ class ModelParams:
     baseline_default_language: str
     noshow_self_rebook_prob: float
     noshow_self_rebook_median_days: float
+    programme_managed: bool
     # orchestrated arm
     reaction_delay_median_days: float
     reaction_delay_sigma: float
@@ -432,8 +444,12 @@ class ModelParams:
             self_presentation_prob=p.float("patient_response.self_presentation_prob"),
             self_presentation_median_days=p.float("patient_response.self_presentation_median_days"),
             no_show_rate=no_show,
-            booking_lead_median_days=p.float("appointment.booking_lead_median_days"),
-            booking_lead_sigma=p.float("appointment.booking_lead_sigma"),
+            fast_lane_lead_median_days=p.float("appointment.fast_lane_lead_median_days"),
+            fast_lane_lead_sigma=p.float("appointment.fast_lane_lead_sigma"),
+            slow_lane_lead_median_days=p.float("appointment.slow_lane_lead_median_days"),
+            slow_lane_lead_sigma=p.float("appointment.slow_lane_lead_sigma"),
+            fast_lane_share_managed=p.float("appointment.fast_lane_share.managed"),
+            fast_lane_share_unmanaged=p.float("appointment.fast_lane_share.unmanaged"),
             rebook_lead_median_days=p.float("appointment.rebook_lead_median_days"),
             reminder_days_before=tuple(float(x) for x in p.list("appointment.reminder_days_before")),
             appointment_max_attempts=p.int("appointment.max_attempts"),
@@ -453,6 +469,7 @@ class ModelParams:
             baseline_default_language=p.str("baseline.default_language"),
             noshow_self_rebook_prob=p.float("baseline.noshow_self_rebook_prob"),
             noshow_self_rebook_median_days=p.float("baseline.noshow_self_rebook_median_days"),
+            programme_managed=_bool(p, "baseline.programme_managed"),
             reaction_delay_median_days=p.float("orchestration.reaction_delay_median_days"),
             reaction_delay_sigma=p.float("orchestration.reaction_delay_sigma"),
             escalation_effect_prob=_fgroup(p, "orchestration.escalation_effect_prob"),
@@ -502,7 +519,7 @@ class ModelParams:
             "dropout_residual_multiplier human_dropout_residual_multiplier self_presentation_prob "
             "sms_reminder_effect dna_rate handoff_no_response_prob referral_rejection_rate "
             "declined_reengage_prob baseline_rejection_noticed_prob noshow_self_rebook_prob timer_miss_prob "
-            "watchdog_effect_prob programme_reach refusal_path_share reopen_prob duplicate_result_rate conflicting_ack_rate "
+            "fast_lane_share_managed fast_lane_share_unmanaged watchdog_effect_prob programme_reach refusal_path_share reopen_prob duplicate_result_rate conflicting_ack_rate "
             "consent_after_booking_rate baseline_switch_loss_prob"
         ).split():
             prob(name, getattr(self, name))

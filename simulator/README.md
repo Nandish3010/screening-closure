@@ -124,13 +124,13 @@ claims, scheduler timer faults and the watchdog backstop, reopening after closur
 
 Not modelled (deliberately, or not yet):
 - Shared capacity in the headline results: `make evaluate` runs cases independently, so the orchestrated arm's extra
-  escalations cost nothing there (about 232 escalations per 100 cases in the upper-range scenario) and every gain it reports is before capacity
+  escalations cost nothing there (about 144 escalations per 100 cases in the upper-range scenario) and every gain it reports is before capacity
   constraints. The finite-capacity layer (below, ticket B19) is a separate run and a separate section of `results.md`. Still not modelled even
   there: per-endoscopist rosters, priority classes (urgent and symptomatic patients), overbooking, any demand on the calendar other than the cohort.
 - Clinical content: findings, pathology, bowel-prep failure, surveillance. Closure means "documented outcome with evidence and a human sign-off".
 - Informed refusal as a closure outcome: the pathway YAML has no such exit, so refusers stay open and are flagged `lost_contact`.
 - The AI drafting layer. Every message is `draft_source: template`; the abstention rate is a placeholder hook.
-- Friday half-days, per-provider differences, cost, and any effect of orchestration on how fast staff work when not breaching an SLA (conservative: orchestration only helps by catching late or forgotten steps).
+- Friday half-days, per-provider differences, cost, and any effect of orchestration on how fast staff work when not breaching an SLA, apart from the prompt booking of programme-managed cases (B21 fast lane, see Calibration).
 - The reopen rate is equal in both arms by construction (a late finding arrives after closure regardless of arm).
 - Wrong-contact numbers are modelled as a static patient attribute, not a number that goes stale mid-pathway.
 
@@ -163,6 +163,18 @@ because the same placeholders leave few patients unreachable once a human chases
 (about 1.5x at 180 days) is larger than the 1.27 risk ratio for patient navigation, so it is the mechanism ceiling, not an expected
 effect: quote the literature-anchored scenario below.
 
+**Timing mixture (ticket B21).** Before B21 every case had the same booking lead (24-day median) behind a chain of staff delays, so
+almost nobody had a colonoscopy within 30 days and the held-out timing targets all failed (`docs/results/validation.md`). The first
+booking is now a two-lane mixture. In the **fast lane** the referral is made when the result is reviewed: `accept_ownership`,
+`contact_patient` and `book_confirmatory` carry no delay of their own (they still fall on a working day and can still be forgotten), and
+the booking lead is `appointment.fast_lane_lead_*`. In the **slow lane** the staff delays apply as before and the lead is the
+heavier-tailed `appointment.slow_lane_lead_*`. A case's lane is a per-patient latent (`u_lane`, drawn last, so every earlier draw is
+unchanged); the fast-lane share is `appointment.fast_lane_share.managed` for a programme-managed case (every case the orchestrated
+process reaches, or every case when `baseline.programme_managed` is true) and `.unmanaged` otherwise. This is a change to the
+orchestrated arm too: the engine sends the referral and books by machine, so a reached case is booked promptly. `simulator/sim/timing_fit.py`
+fits the lanes on calibration data only (Public Health Scotland KPI 4 bands for the fast lane, the Mohl curve for the slow lane and the
+unmanaged share; the managed share is NHS England BCSP-S06) and writes `docs/results/timing_fit.json`; it never reads the validation targets.
+
 ### Scenarios: upper range and literature anchored
 
 `make evaluate` runs the same cohorts through the same baseline arm and two versions of the orchestrated arm.
@@ -187,7 +199,12 @@ orchestrated-arm quantity that is fitted rather than taken from a source: it is 
 zero in this scenario. Reach is a calibration device for the average effect, not a forecast of how many cases a programme would miss.
 The fitted value is 0.55 (refit on 2026-10-18 after the A18 milestones and A19 coalescing: 0.50 gave a ratio of 1.248, 0.55 gives 1.272; the probes are in ADR-028).
 
-**Re-fitting reach.** If baseline parameters change, rerun `make evaluate`, read the literature-anchored completion ratio at 180 days
+**B21: reach not refitted.** After the B21 timing mixture the literature-anchored ratio at 180 days is 1.31, not 1.27. Reach was kept at
+0.55 on purpose: the pooled RR it was fitted to probably includes two of the trials the validation scores the ratio against, so refitting
+would be circular (`docs/results/validation.md`). `test_sim_scenarios.py` now requires the ratio to stay inside the pooled 95% CI (1.10 to 1.46)
+and pins reach.
+
+**Re-fitting reach (B12 procedure, kept for reference).** If baseline parameters change, rerun `make evaluate`, read the literature-anchored completion ratio at 180 days
 in `results.md` (calibration section), and adjust `orchestration.programme_reach` in `params.conservative.yaml` until it equals
 `navigation_effect` (completion is close to linear in reach: new reach = reach x (target - 1) / (ratio - 1)). `test_sim_scenarios.py`
 fails if the committed ratio drifts more than 0.03 from the target.

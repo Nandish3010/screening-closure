@@ -35,7 +35,7 @@ orchestration:
     status: calibrated
     range: [0.275, 0.825]
     range_basis: "default rule: rate, value x0.5 and x1.5, clipped to [0, 1]"
-    notes: "Upper-range value 1.0 (every case reached). Refitted 2026-10-18 from 0.50 to 0.55 after A18 milestones and A19 coalescing. Re-fit with the procedure in simulator/README.md if the baseline parameters change. Cases outside the reach are handled exactly as in the baseline arm (same random numbers), so they carry no owner, no timers, no escalation and can be lost silently."
+    notes: "Upper-range value 1.0 (every case reached). Refitted 2026-10-18 from 0.50 to 0.55 after A18 milestones and A19 coalescing. B21 (timing mixture): NOT refitted. The anchor (pooled RR 1.27, J Gen Intern Med 2026) probably pools the Coronado 2021 Kaiser NW and 2025 Annals trials that docs/results/validation.md scores the ratio against, so refitting to it after a structural change would be circular; the literature-anchored 180-day ratio is reported where it lands (1.31, inside the pooled CI 1.10-1.46). Cases outside the reach are handled exactly as in the baseline arm (same random numbers), so they carry no owner, no timers, no escalation and can be lost silently."
 
   # 3. No extra benefit from escalation beyond re-contact. The upper range lets the supervisor and coordinator rungs act
   #    more often and recover more wrong contacts than the first rung (owner reminder / re-contact). Here every rung is

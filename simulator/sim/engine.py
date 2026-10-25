@@ -71,6 +71,8 @@ STEP_KIND = {
     "close": "staff",
 }
 STAFF_INDEX = {s: i for i, s in enumerate(STAFF_STEPS)}
+# B21 timing mixture: the staff steps between the result review and the referral that a fast-lane case does without delay.
+FAST_LANE_STEPS = frozenset(("accept_ownership", "contact_patient", "book_confirmatory"))
 # How each escalation-ladder role reaches a patient who has not responded.
 ROLE_KIND = {"owner": "reminder", "owner_supervisor": "human_call", "programme_coordinator": "coordinator_route"}
 
@@ -90,7 +92,7 @@ class Case:
         "h_cur", "hstate", "appt_idx", "appt_t", "pending_appt", "reminders", "awaiting_patient", "sub",
         "timer_n", "watch_n", "watch_armed", "last_act", "extra_delay", "abandoned", "reopened", "round",
         "bchannel", "lost_reasons", "booked_once", "last_flag", "orch", "ms_met", "ms_timer_n", "ms_requested", "last_rung",
-        "slot_prov", "refuses", "refusal",
+        "slot_prov", "refuses", "refusal", "fast",
     )
 
     def __init__(self, p: Patient, lat: Latents, msy: MessyPlan, end: float, initial_state: str, bchannel: str,
@@ -142,6 +144,7 @@ class Case:
         # notify role -> (working day, step token, the rung event, ladder source) of the last rung emitted to it (A19)
         self.last_rung: dict[str, tuple] = {}
         self.slot_prov: int | None = None  # the colonoscopy provider this case is booked with (capacity model only)
+        self.fast = False  # B21: fast booking lane (set by the engine from the lane latent and programme management)
 
 
 @dataclass
@@ -267,6 +270,9 @@ class Engine:
             reached = self.orch and lat.u_reach < self.mp.programme_reach
             c = Case(p, lat, msy, p.arrival_t + self.days, self.pw.initial_state, self.beh.baseline_channel(lat),
                      lat.u_refuse < self.mp.refusal_prob, reached)
+            # B21: a case is programme-managed when the orchestrated process reaches it, or when the whole setting is a
+            # managed programme (baseline.programme_managed); managed cases are booked promptly more often.
+            c.fast = self.beh.fast_lane(lat, reached or self.mp.programme_managed)
             cases.append(c)
             self.schedule(c.t0, "start", c)
         if self.mp.capacity is not None:
@@ -396,7 +402,10 @@ class Engine:
         extra, c.extra_delay = c.extra_delay, 0.0
         if self.beh.staff_forgets(sd.u_forget):
             return  # never done unless a reminder or escalation prompts it (orchestrated only)
-        self.schedule(self.cal.next_working_t(t + self.beh.staff_delay(step, sd.z_delay) + extra), "act", c, c.token)
+        # B21: in the fast lane the referral is made when the result is reviewed, so the ownership, contact and booking steps
+        # carry no delay of their own (they still happen on a working day and can still be forgotten).
+        delay = 0.0 if (c.fast and step in FAST_LANE_STEPS) else self.beh.staff_delay(step, sd.z_delay)
+        self.schedule(self.cal.next_working_t(t + delay + extra), "act", c, c.token)
 
     # ------------------------------------------------------------------------------------------
     # staff actions
@@ -766,7 +775,7 @@ class Engine:
             return
         if outcome == "accept":
             self.emit(c, t, "handoff_accepted", f"endoscopy:unit-{h}", {"attempt": h})
-            lead = self.beh.lead_days(c.lat, c.appt_idx, False)
+            lead = self.beh.lead_days(c.lat, c.appt_idx, False, c.fast)
             c.pending_appt = self._reserve(c, t, self.cal.next_working_t(t + lead), h)
             who = f"owner:pcp-{c.p.idx % 7}" if c.orch else f"staff:referrals-{c.p.idx % 3}"
             self.advance(c, t, "book_confirmatory", who, {"appointment_on": self.cal.date_of(c.pending_appt).isoformat()})
@@ -813,7 +822,7 @@ class Engine:
         a = c.appt_idx
         appt_t = c.pending_appt
         if appt_t is None:
-            appt_t = self._reserve(c, t, self.cal.next_working_t(t + self.beh.lead_days(c.lat, a, False)))
+            appt_t = self._reserve(c, t, self.cal.next_working_t(t + self.beh.lead_days(c.lat, a, False, c.fast)))
         c.pending_appt = None
         c.appt_t = appt_t
         c.reminders = 0
@@ -895,7 +904,7 @@ class Engine:
         c.token += 1
         c.awaiting_patient = False
         c.sub = None
-        c.pending_appt = self._reserve(c, t, self.cal.next_working_t(t + self.beh.lead_days(c.lat, a, True)))
+        c.pending_appt = self._reserve(c, t, self.cal.next_working_t(t + self.beh.lead_days(c.lat, a, True, c.fast)))
         self.book_appointment(c, t)
 
     # ------------------------------------------------------------------------------------------

@@ -212,9 +212,11 @@ def _lit() -> tuple[list[dict], list[dict]]:
 
 # ------------------------------------------------------------------ build
 def _managed_variants() -> list[dict]:
-    adj = {"staff.forget_prob": 0.0, "referral_rejection_rate": 0.0, "handoff.no_response_prob": 0.0}
+    # B21: a managed programme also books promptly (baseline.programme_managed raises the fast-lane share to
+    # appointment.fast_lane_share.managed, sourced from NHS England BCSP-S06).
+    adj = {"baseline.programme_managed": True, "staff.forget_prob": 0.0, "referral_rejection_rate": 0.0, "handoff.no_response_prob": 0.0}
     return [{"name": "unadjusted", "overrides": {}},
-            {"name": "programme-managed (no forgotten steps, automatic referral)", "overrides": adj}]
+            {"name": "programme-managed (no forgotten steps, automatic referral, prompt booking)", "overrides": adj}]
 
 
 def build() -> dict:
@@ -232,9 +234,10 @@ def build() -> dict:
         {
             "id": "phs-scotland", "title": "Public Health Scotland bowel screening, invites 2022-24 (national programme)",
             "kind": "cohort", "arm": "baseline", "variants": mv, "primary_variant": mv[1]["name"],
-            "n": int(phs["positive_tests"]), "independence": "independent",
-            "independence_note": "The workbook gave reference-only keys (time_to_colonoscopy_managed_ref_*, colonoscopy_uptake_after_positive_scotland) that the simulator does not read, so no simulator behaviour was set from it. The reference keys do quote these numbers, so this is out of sample for the model but not a blind test.",
-            "setting_note": "Managed national programme: the programme issues the referral and owns follow-up. Adjusted variant removes the baseline's forgotten steps, referral rejection and unanswered referrals. The Scottish clock starts at the screening-test REFERRAL date (a few days to two weeks after the result), the simulator's at the result, which biases the comparison against the simulator on the timing rows.",
+            "n": int(phs["positive_tests"]), "independence": "partial",
+            "independence_note": "B21: the fast booking lane (appointment.fast_lane_lead_median_days and _sigma) is calibrated to this workbook's 4- and 8-week shares (KPI 4), so the two band rows and the median (which the lognormal through the bands reproduces to 0.1 day) are IN-SAMPLE and not scored. The 12-month uptake (A4, 75.0%) is not used for any parameter and stays held out (colonoscopy_uptake_after_positive_scotland is a reference key the simulator does not read).",
+            "in_sample_rows": ["completers_within@28", "completers_within@56", "median"],
+            "setting_note": "Managed national programme: the programme issues the referral and owns follow-up. Adjusted variant removes the baseline's forgotten steps, referral rejection and unanswered referrals, and sets baseline.programme_managed (prompt booking, B21). The Scottish clock starts at the screening-test REFERRAL date (a few days to two weeks after the result), the simulator's at the result, which biases the comparison against the simulator on the timing rows.",
             "source": {"url": "https://publichealthscotland.scot/media/31821/2025-03-04-bowel-screening-kpi-report.xlsx", "reference": "KPI_4, A6 and A4 sheets, Scotland / all persons; sha256 " + phs_sha, "grade": "P (parsed)", "licence": "Open Government Licence v3.0"},
             "observed": {"completion": [{"day": 360, "k": int(phs["colonoscopies_performed"]), "n": int(phs["positive_tests"])}],
                          "completer_share": [{"day": 28, "p": phs["share_within_4w"]}, {"day": 56, "p": phs["share_within_8w"]}],
@@ -245,8 +248,8 @@ def build() -> dict:
         {
             "id": "nhs-england-bcsp", "title": "NHS England BCSP 2024-25, diagnostic procedure uptake after a positive FIT (national programme)",
             "kind": "cohort", "arm": "baseline", "variants": mv, "primary_variant": mv[1]["name"],
-            "n": int(eng["sum_definitive_positive"]), "independence": "independent",
-            "independence_note": "Same position as Scotland: colonoscopy_uptake_after_positive_england (0.76) is a reference key the simulator does not read.",
+            "n": int(eng["sum_definitive_positive"]), "independence": "partial",
+            "independence_note": "The scored row, diagnostic uptake (S11, 76.0%), is not used for any parameter (colonoscopy_uptake_after_positive_england is a reference key the simulator does not read). B21: the managed fast-lane share (appointment.fast_lane_share.managed, 0.994) comes from S06 of the same tables (appointment offered within 14 days), so the target is not fully independent of the calibration.",
             "setting_note": "Managed national programme with automatic referral; the table has uptake only, no time axis. Provider-level spread is reported as context (the simulator has one parameter set, so it cannot reproduce between-provider variation).",
             "source": {"url": "https://assets.publishing.service.gov.uk/media/6a4e6212f79c9db2eb438f07/Bowel_Cancer_Screening_Annual_Report_Tables_2024-25.xlsx", "reference": "Table 12 (S11), sum over screening providers; sha256 " + bc_sha, "grade": "P (parsed)", "licence": "Open Government Licence v3.0"},
             "observed": {"completion": [{"day": 360, "k": int(eng["sum_attendance"]), "n": int(eng["sum_definitive_positive"])}]},
