@@ -335,12 +335,15 @@ shots:
     optional: true
     submission: false
     route: "/coordinator/{case2}"
-    requires: {route: "/coordinator/{case2}", testid: effort-counter}
+    # The counter is on the staff case page only (a patient's redacted case JSON carries no effort), and the role from shot 11
+    # (patient) persists in localStorage, so the route is probed here and the role is set in the actions before waiting for it.
+    requires: {route: "/coordinator/{case2}"}
     duration: 10
     caption: "Human actions against automated actions on every case. Minutes saved are assumed, not measured."
     narration: "Every case shows its human actions against its automated actions, with the minutes saved. The minutes are assumed, not measured."
     actions:
       - goto: "/coordinator/{case2}"
+      - role: coordinator
       - wait_for: {testid: effort-counter, timeout: 8000}
       - scroll: {testid: effort-counter}
       - hold: 8
