@@ -46,7 +46,7 @@ def test_every_swept_key_has_a_range_that_contains_its_value_and_says_where_it_c
 
 def test_the_sourced_parameters_that_are_swept_are_exactly_those_with_a_stated_range(stack):
     sourced = {p.key for p in swept(stack) if p.status.startswith("sourced")}
-    assert sourced == {"referral_rejection_rate", "wrong_contact_rate", "sms_reminder_effect"}
+    assert sourced == {"referral_rejection_rate", "wrong_contact_rate", "sms_reminder_effect", "appointment.fast_lane_share.managed"}
     for p in swept(stack):
         if p.status.startswith("sourced"):
             assert p.range_basis.startswith(STATED_PREFIX)

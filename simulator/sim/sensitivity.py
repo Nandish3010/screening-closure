@@ -43,6 +43,7 @@ NOT_QUANTITIES = {
     "baseline.default_language": "a category (the language of the baseline's single letter), not a quantity",
     "reopen.resume_state": "a pathway state name, not a quantity",
     "orchestration.refusal_path_share": "a switch for a modelling option (the informed-refusal path, A33), not an uncertain quantity",
+    "baseline.programme_managed": "a setting (B21: US usual care or a managed national programme), not an uncertain quantity",
 }
 SOURCED_NO_RANGE = "sourced; its source states no plausible range"
 

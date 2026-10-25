@@ -46,6 +46,7 @@ class Latents:
         "u_self", "z_self", "u_consent", "u_consent_when", "u_consent_declines", "z_consent_review",
         "u_reopen", "z_reopen", "u_timer", "u_watch", "z_watch", "u_bchannel",
         "u_switch_loss", "u_switch_rej", "z_switch", "u_switch_reason", "z_review", "u_refuse", "u_reach", "u_mtimer", "u_backfill",
+        "u_lane",
     )
 
 
@@ -86,6 +87,7 @@ def draw_latents(seed: int, key: str) -> Latents:
     L.u_reach = r()  # drawn last so every earlier draw (and every existing result) is unchanged
     L.u_mtimer = [r() for _ in range(M_POOL)]  # A18: after u_reach for the same reason
     L.u_backfill = [r() for _ in range(A_POOL)]  # B19: is the slot of a no-show refilled? Last, so every earlier draw is unchanged
+    L.u_lane = r()  # B21: fast or slow booking lane (timing mixture). Last, so every earlier draw is unchanged
     return L
 
 
@@ -159,10 +161,21 @@ class Behaviour:
         prob = shift_logit(base, -mp.responsiveness_noshow_shift * p.responsiveness)
         return lat.u_noshow[a] < prob
 
-    def lead_days(self, lat: Latents, a: int, rebook: bool) -> float:
+    def lead_days(self, lat: Latents, a: int, rebook: bool, fast: bool) -> float:
+        """Days from the booking decision to the appointment (B21 timing mixture). A first booking is drawn from the
+        case's lane: the fast lane (booked promptly, the managed-programme wait) or the slow lane (unmanaged, heavy-tailed
+        delay). A rebooking after a no-show uses `rebook_lead_median_days` with the fast-lane spread in both lanes."""
         mp = self.mp
-        median = mp.rebook_lead_median_days if rebook else mp.booking_lead_median_days
-        return lognormal(median, mp.booking_lead_sigma, lat.z_lead[a])
+        if rebook:
+            return lognormal(mp.rebook_lead_median_days, mp.fast_lane_lead_sigma, lat.z_lead[a])
+        if fast:
+            return lognormal(mp.fast_lane_lead_median_days, mp.fast_lane_lead_sigma, lat.z_lead[a])
+        return lognormal(mp.slow_lane_lead_median_days, mp.slow_lane_lead_sigma, lat.z_lead[a])
+
+    def fast_lane(self, lat: Latents, managed: bool) -> bool:
+        """Is this case in the fast booking lane? The share depends on whether the pathway is programme-managed (B21)."""
+        mp = self.mp
+        return lat.u_lane < (mp.fast_lane_share_managed if managed else mp.fast_lane_share_unmanaged)
 
     # ---- referral / handoff ----------------------------------------------------------------------
     def handoff_outcome(self, u: float) -> str:

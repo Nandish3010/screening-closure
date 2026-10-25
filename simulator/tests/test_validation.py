@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import math
+from pathlib import Path
 
 import pytest
 
@@ -102,7 +103,7 @@ def test_committed_verdicts_are_pinned_so_a_change_forces_a_look_at_the_reading(
     got = {t["id"]: t["verdict"] for t in res["cohort_targets"]}
     nw, w = "not within tolerance", "within tolerance"
     assert got == {"issaka-sf-safety-net": nw, "seamar-fqhc": nw, "kpnw-usual-care": nw, "azulay-control": w, "corley-kaiser": nw,
-                   "phs-scotland": nw, "nhs-england-bcsp": nw, "aihw-nbcsp-2026-secondary": nw}
+                   "phs-scotland": nw, "nhs-england-bcsp": nw, "aihw-nbcsp-2026-secondary": w}  # B21: Australia's 30-day share now passes
     assert {t["id"]: t["inside_trial_ci"] for t in res["effect_trials"]} == {"azulay-sms": True, "kpnw-navigation": True, "annals-navigation-2025": True}
 
 
@@ -117,3 +118,32 @@ def test_targets_file_is_consistent():
                 assert 0 < c["k"] <= c["n"]
     for tr in d["effect_trials"]:
         assert tr["treated"]["k"] <= tr["treated"]["n"] and tr["control"]["k"] <= tr["control"]["n"]
+
+
+# ---- B21: timing claims and the timing-mixture calibration
+def test_a_timing_claim_passes_only_on_held_out_rows_within_tolerance():
+    from simulator.sim.validation_report import claim_status
+
+    def res(in_sample, within):
+        row = {"metric": "m", "kind": "completion", "in_sample": in_sample, "within_tolerance": within, "sim_mean": 0.1, "observed": 0.1}
+        return {"cohort_targets": [{"id": "t", "title": "T", "primary_variant": "v", "variants": [{"name": "v", "rows": [row]}]}]}
+
+    assert claim_status(res(False, True), (("t", 0, "m"),))[0].startswith("passes")
+    assert claim_status(res(False, False), (("t", 0, "m"),))[0].startswith("fails")
+    assert claim_status(res(True, True), (("t", 0, "m"),))[0].startswith("excluded")  # in-sample can never pass
+
+
+def test_scotland_timing_rows_are_in_sample_because_the_fast_lane_is_fitted_to_them():
+    d = json.loads(TARGETS_PATH.read_text())
+    phs = next(t for t in d["cohort_targets"] if t["id"] == "phs-scotland")
+    assert set(phs["in_sample_rows"]) == {"completers_within@28", "completers_within@56", "median"}
+    assert phs["independence"] == "partial"
+
+
+def test_committed_timing_fit_matches_params_yaml():
+    from simulator.sim.timing_fit import OUT, current
+
+    fit = json.loads(OUT.read_text())
+    assert fit["values"] == current(), "params.yaml timing-mixture values differ from docs/results/timing_fit.json: rerun timing_fit"
+    src = (Path(__file__).resolve().parents[1] / "sim" / "timing_fit.py").read_text()
+    assert "validation_targets" not in src.replace("Nothing here reads tools/calibration/validation_targets.json", "")  # calibration never reads held-out targets

@@ -1,0 +1,44 @@
+{
+  "cases": 2000,
+  "fast_lane_target": {
+    "clock": "accept_ownership to complete_confirmatory, completers",
+    "configuration": {
+      "baseline.programme_managed": true,
+      "handoff.no_response_prob": 0.0,
+      "referral_rejection_rate": 0.0,
+      "staff.forget_prob": 0.0
+    },
+    "observed": {
+      "28": 0.288072,
+      "56": 0.704075
+    },
+    "simulated": {
+      "28": 0.2839,
+      "56": 0.6936
+    }
+  },
+  "note": "B21 timing-mixture calibration (simulator/sim/timing_fit.py). Calibration data only: Public Health Scotland KPI 4 bands (fast lane) and the Mohl 2023 curve (slow lane and unmanaged mix). No validation target is read.",
+  "reps": 6,
+  "seed": 20261017,
+  "slow_lane_target": {
+    "clock": "positive result to complete_confirmatory, all cases",
+    "configuration": "baseline, unmanaged",
+    "observed": {
+      "180": 0.514,
+      "360": 0.561,
+      "90": 0.433
+    },
+    "simulated": {
+      "180": 0.5175,
+      "360": 0.5541,
+      "90": 0.4328
+    }
+  },
+  "values": {
+    "appointment.fast_lane_lead_median_days": 25.4,
+    "appointment.fast_lane_lead_sigma": 0.64,
+    "appointment.fast_lane_share.unmanaged": 0.84,
+    "appointment.slow_lane_lead_median_days": 49.0,
+    "appointment.slow_lane_lead_sigma": 0.84
+  }
+}
