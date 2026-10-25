@@ -180,7 +180,7 @@ jobs:
             sleep 5
           done
           echo "::warning::HAPI did not answer within 10 minutes; its tests will skip"
-      - name: make test-db (xdist: a database per worker, copied from the migrated template closure_test_tpl)
+      - name: make test-db (xdist, a database per worker copied from the migrated template closure_test_tpl)
         run: make test-db SKIP_DB_CREATE=1
       - name: HAPI log tail
         if: always()
