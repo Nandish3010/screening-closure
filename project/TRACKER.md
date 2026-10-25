@@ -8,12 +8,12 @@ One row per ticket. Tickets come from this file and nowhere else. Plan: [PLAN.md
 |---|---|---|---|---|---|
 | M0 | Scaffold, persistence, cohort | 17 Oct (done) | 3 | 3 | done |
 | M1 | Core loop | 18 Oct 04:00 | 16 | 16 | done |
-| M2 | Simulator and `make evaluate` | 18 Oct 10:00 | 20 | 17 | doing |
+| M2 | Simulator and `make evaluate` | 18 Oct 10:00 | 20 | 18 | doing |
 | M3 | Interfaces | 18 Oct 16:00 | 15 | 12 | doing |
 | M4 | AI edge and governance | 18 Oct 18:00 | 11 | 11 | done |
 | M5 | Hardening, docs, demo | 18 Oct 22:30 | 31 | 25 | doing |
 | M6 | 10/10 push | 15 Nov | 24 | 24 | done |
-| Total | | | 120 | 108 | |
+| Total | | | 120 | 109 | |
 
 Tickets per cut: A 35, B 21, C 13, D 15, E 18, F 15 (120, of which 24 are M6 tickets: 19 from ROADMAP-10.md plus B21, A34, F15, A35 and A36; including A13 to A22, A24 to A26, B12 to B18, D12, D13, E14 and E16 added after the first plan, plus the 3 done M0 tickets). Human-owner tasks are listed separately at the bottom.
 
@@ -63,7 +63,7 @@ Tickets per cut: A 35, B 21, C 13, D 15, E 18, F 15 (120, of which 24 are M6 tic
 | B2 | B | Simulator core: seeded per-case random streams, patient behaviour model (acknowledgement delay, reachability, attendance by channel, referral outcome), runs on the injectable sim clock; patient language and channel assigned by the simulator | B1 | done | T-B3, T-B4 | fe6e4be, 42169ca | M2. Synthea has no Arabic or UAE demographics; language and channel assignment is a documented assumption. Shipped at M1 integration; verified by make check 2026-10-18. |
 | B3 | B | Baseline arm: today's process with no named owner, no clocks and no escalation | B2 | done | T-B5 | 42169ca | M2 Shipped at M1 integration; verified by make check 2026-10-18. |
 | B4 | B | Orchestrated arm: drive cases through the real state machine, calendar, ladder, handoff and consent rules in process; 2,000 cases over 90 days in under a minute | B2, A4, A5, A6 | done | T-B6 | 42169ca | M2. In-process, not over HTTP, to meet the time budget. Shipped at M1 integration; verified by make check 2026-10-18. |
-| B5 | B | Messy-case injection: wrong contact, provider switch, duplicate result, conflicting acknowledgements, consent withdrawn | B4 | review | T-B7 | fe6e4be, 42169ca | M2. Duplicate-result deduplication is on the cut line; if cut, count duplicates as a reported hazard instead. Shipped at M1 integration; make check 2026-10-18 passes its unit tests. Status review: T-B7 (five table-driven messy-case scenarios with expected event sequences) has no dedicated test; only the switch-off test exists. |
+| B5 | B | Messy-case injection: wrong contact, provider switch, duplicate result, conflicting acknowledgements, consent withdrawn | B4 | done | T-B7 | fe6e4be, 42169ca | M2. Duplicate-result deduplication is on the cut line; if cut, count duplicates as a reported hazard instead. Shipped at M1 integration; make check 2026-10-18 passes its unit tests. T-B7: simulator/tests/test_messy_cases.py (five table-driven scenarios, both arms, machine logs replayed through the API store and sweep). |
 | B6 | B | Metrics: time-to-ownership, time-to-safe-closure, open at 30/60/90 days, reopen rate, escalation precision, automation abstention rate, using the shared functions from A10 | B3, B4, A10 | done | T-B8 | 42169ca, 08d97c3 | M2. Exact definition of escalation precision fixed here and written to docs/results/metrics.md. Shipped at M1 integration; verified by make check 2026-10-18. |
 | B7 | B | Bootstrap confidence intervals over seeds for every metric | B6 | done | T-B9 | 08d97c3 | M2 Shipped at M1 integration; verified by make check 2026-10-18. |
 | B8 | B | Fairness split by language and contact channel with gap flag | B6 | done | T-B10 | 08d97c3 | M2 Shipped at M1 integration; verified by make check 2026-10-18. |
