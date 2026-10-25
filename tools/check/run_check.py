@@ -7,7 +7,8 @@ Two tiers (F15). `make check` is the FAST tier, the gate before every merge; `ma
          test-redteam, load-check, review-packs-check, test-review-packs, effort-check, and `evaluate-smoke` (the
          evaluate determinism check at 1 replication instead of 20)
   heavy  the simulator-heavy checks: sensitivity-check, evaluate-check (full size; replaces evaluate-smoke), risk-check,
-         calibrate-check, validate-check, evaluate-capacity-check
+         calibrate-check, validate-check, evaluate-capacity-check,
+         evaluate-outcomes-check
   full   fast + heavy
 
 PATH RULE: `make check` adds the heavy stages by itself when the working tree differs from main in a path that can move
@@ -94,6 +95,7 @@ STAGES = [
     Stage("evaluate-check", tier="heavy", weight=130, replaces="evaluate-smoke"),
     Stage("validate-check", tier="heavy", weight=150),  # B20: held-out validation regenerated twice and compared byte for byte
     Stage("evaluate-capacity-check", tier="heavy", weight=120),
+    Stage("evaluate-outcomes-check", tier="heavy", weight=240),  # M7-3: health outcomes regenerated and compared byte for byte
     Stage("risk-check", tier="heavy", weight=15),
     Stage("calibrate-check", tier="heavy", needs_path="data/external/MANIFEST.json", weight=60),
 ]

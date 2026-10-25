@@ -1,4 +1,4 @@
-.PHONY: claude-smoke claude-record redteam-generate triage-serve up-obs check-full evaluate-smoke test-redteam validate validate-check validate-targets evaluate-refusal evaluate-abudhabi oidc-up oidc-down test-oidc up-scale agency-run test-demo test-e2e-live demo-scenario demo-stage demo-snapshot demo-restore demo-reset demo-kill-scheduler check docs-check docs-numbers tracker-lint test-security test-tools test-load load-check up down logs test test-db test-db-create test-db-reset test-chaos synthea demo-seed demo-seed-clean evaluate evaluate-capacity evaluate-capacity-check simulate evaluate-check sensitivity sensitivity-check reset web-install web-dev web-build web-test web-e2e test-e2e review-packs review-packs-check test-review-packs test-phi-logs rbac-matrix test-offline fresh-clone risk-report risk-check calibrate-fetch calibrate-fit calibrate-check effort effort-check video video-check video-deps verify hl7-demo hl7-samples judge-headline judge-headline-check
+.PHONY: evaluate-outcomes evaluate-outcomes-check claude-smoke claude-record redteam-generate triage-serve up-obs check-full evaluate-smoke test-redteam validate validate-check validate-targets evaluate-refusal evaluate-abudhabi oidc-up oidc-down test-oidc up-scale agency-run test-demo test-e2e-live demo-scenario demo-stage demo-snapshot demo-restore demo-reset demo-kill-scheduler check docs-check docs-numbers tracker-lint test-security test-tools test-load load-check up down logs test test-db test-db-create test-db-reset test-chaos synthea demo-seed demo-seed-clean evaluate evaluate-capacity evaluate-capacity-check simulate evaluate-check sensitivity sensitivity-check reset web-install web-dev web-build web-test web-e2e test-e2e review-packs review-packs-check test-review-packs test-phi-logs rbac-matrix test-offline fresh-clone risk-report risk-check calibrate-fetch calibrate-fit calibrate-check effort effort-check video video-check video-deps verify hl7-demo hl7-samples judge-headline judge-headline-check
 
 up:
 	docker compose up -d --build
@@ -189,6 +189,19 @@ evaluate-abudhabi:
 	$(SIMENV) $(PY) -m simulator.sim.cli evaluate --reps $(REPS) --cases $(CASES) --days $(EVAL_DAYS) --seed $(SEED) $(PARAM_FLAGS) --params simulator/params.abudhabi.yaml --out-dir $(ABUDHABI_OUT)
 	$(SIMENV) $(PY) -m simulator.sim.abudhabi_report $(ABUDHABI_OUT)/results.json docs/results
 
+# Health outcomes (ticket M7-3; simulator/sim/outcomes.py, simulator/params.outcomes.yaml): a post-processor that reads the simulator's per-case
+# records (days to colonoscopy, language, channel, contact, reach) for the same replications as `make evaluate`, for the literature-anchored
+# headline, the Abu Dhabi-shaped overlay, the upper range and the headline at base capacity, and turns them into cancers, stage, deaths, life-years
+# and QALYs (3% discount) with a probabilistic sensitivity analysis and an illustrative cost per QALY. Writes docs/results/outcomes.{json,md}.
+# A few minutes with 8 workers (four scenarios, one of them through the capacity calendar). `evaluate-outcomes-check` reruns it and fails unless
+# both committed files are byte-identical to the fresh run; simulator/tests/test_outcomes.py checks that --jobs never changes a byte.
+OUTCOMES_JOBS ?= 8
+evaluate-outcomes:
+	$(SIMENV) $(PY) -m simulator.sim.outcomes --reps $(REPS) --cases $(CASES) --days $(EVAL_DAYS) --seed $(SEED) --jobs $(OUTCOMES_JOBS) --out-dir docs/results
+
+evaluate-outcomes-check:
+	$(SIMENV) $(PY) -m simulator.sim.outcomes --reps $(REPS) --cases $(CASES) --days $(EVAL_DAYS) --seed $(SEED) --jobs $(OUTCOMES_JOBS) --out-dir docs/results --check
+
 # Human effort per case (ticket B17): the Human effort section of docs/results/results.md is written by `make evaluate` (it is computed from the same
 # event logs, no extra run). `make effort` prints it from the committed results.json; `make effort-check` fails if results.json predates the effort
 # model in simulator/sim/effort.py or docs/evidence.md section 11 lacks a source, and runs the effort tests (hand-computed arithmetic on the five-case scenario).
@@ -314,7 +327,7 @@ check:
 	$(PY) tools/check/run_check.py --tier fast $(if $(CHECK_KEEP_GOING),--keep-going) $(if $(CHECK_SERIAL),--serial)
 
 # Everything: the fast tier plus the simulator-heavy checks (sensitivity-check, full evaluate-check, risk-check, calibrate-check,
-# validate-check, evaluate-capacity-check). `make check` adds those by itself when the diff against main touches simulator/,
+# validate-check, evaluate-capacity-check, evaluate-outcomes-check). `make check` adds those by itself when the diff against main touches simulator/,
 # config/pathways/, simulator params or the other paths in tools/check/run_check.py (HEAVY_PATH_PREFIXES); CHECK_HEAVY=1/0 forces.
 check-full:
 	$(PY) tools/check/run_check.py --tier full $(if $(CHECK_KEEP_GOING),--keep-going) $(if $(CHECK_SERIAL),--serial)
