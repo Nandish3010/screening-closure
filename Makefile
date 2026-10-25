@@ -1,4 +1,4 @@
-.PHONY: triage-serve check-full evaluate-smoke test-redteam validate validate-check validate-targets evaluate-refusal oidc-up oidc-down test-oidc up-scale agency-run test-demo test-e2e-live demo-scenario demo-stage demo-snapshot demo-restore demo-reset demo-kill-scheduler check docs-check tracker-lint test-security test-tools test-load load-check up down logs test test-db test-db-create test-db-reset test-chaos synthea demo-seed demo-seed-clean evaluate evaluate-capacity evaluate-capacity-check simulate evaluate-check sensitivity sensitivity-check reset web-install web-dev web-build web-test web-e2e test-e2e review-packs review-packs-check test-review-packs test-phi-logs rbac-matrix test-offline fresh-clone risk-report risk-check calibrate-fetch calibrate-fit calibrate-check effort effort-check video video-check video-deps verify hl7-demo hl7-samples
+.PHONY: triage-serve up-obs check-full evaluate-smoke test-redteam validate validate-check validate-targets evaluate-refusal oidc-up oidc-down test-oidc up-scale agency-run test-demo test-e2e-live demo-scenario demo-stage demo-snapshot demo-restore demo-reset demo-kill-scheduler check docs-check tracker-lint test-security test-tools test-load load-check up down logs test test-db test-db-create test-db-reset test-chaos synthea demo-seed demo-seed-clean evaluate evaluate-capacity evaluate-capacity-check simulate evaluate-check sensitivity sensitivity-check reset web-install web-dev web-build web-test web-e2e test-e2e review-packs review-packs-check test-review-packs test-phi-logs rbac-matrix test-offline fresh-clone risk-report risk-check calibrate-fetch calibrate-fit calibrate-check effort effort-check video video-check video-deps verify hl7-demo hl7-samples
 
 up:
 	docker compose up -d --build
@@ -8,8 +8,14 @@ up:
 up-scale:
 	SCHEDULER_API_URL=http://proxy:8080 REQUIRE_LEADER_FENCE=true docker compose --profile scale up -d --build
 
+# F14: the stack plus the observability profile (OpenTelemetry Collector, Prometheus on 127.0.0.1:9090, Grafana on 127.0.0.1:3000,
+# login admin / GRAFANA_ADMIN_PASSWORD, default closure_grafana_dev). The API exports OTLP to the collector and logs JSON.
+# docs/governance/deployment.md.
+up-obs:
+	OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318 LOG_FORMAT=json docker compose --profile obs up -d --build
+
 down:
-	docker compose --profile scale down
+	docker compose --profile scale --profile obs down
 
 logs:
 	docker compose logs -f --tail=100
