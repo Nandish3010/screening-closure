@@ -15,7 +15,9 @@ replay of the event log produces:
     provider             the provider the owner acts for (set by handoff_accepted, or by
                          accept_ownership / reassign when the payload names one)
     pending_handoff      an unanswered handoff request {to_provider, requested_by, from_owner,
-                         requested_at, requested_event_id}; ownership changes only when it is accepted (A5)
+                         requested_at, requested_event_id, resumed_at?}; ownership changes only when it is accepted (A5).
+                         While the referral is held (consent withdrawn or sharing refused, A36, ADR-044) it stays pending,
+                         and when the hold ends `resumed_at` records when its bounce timer starts again
     last_handoff         outcome of the latest answered or bounced handoff (A5)
     consent_frozen       outreach is frozen (state is consent_withdrawn)
     approved_unsent      draft ids a human approved whose `message_sent` has not been written yet (SEC-2, ADR-030):
@@ -114,6 +116,11 @@ CHANNELS = ("sms", "whatsapp", "phone", "letter")  # contact channels (the `chan
 CONSENT_FROZEN_EVENTS = frozenset(
     {"contact_patient", "message_drafted", "message_approved", "message_sent", "handoff_requested"}
 )
+# A36 (ADR-044): the referral events that move the patient to another provider. They are refused while the referral is
+# HELD: consent is withdrawn, or the patient does not allow sharing with the specialist (`share_with_specialist` false).
+# A request already pending when the hold begins is kept (not cancelled), its bounce timer does not run, and it can be
+# accepted again once consent is restored (`referral_hold` below; the sweep restarts the timer from `resumed_at`).
+REFERRAL_HELD_EVENTS = frozenset({"handoff_requested", "handoff_accepted"})
 CONSENT_ACTOR = "system:consent"  # emits review_requested (reason consent_withdrawn), and nothing else
 # Why a case is flagged for a person (`review_requested.reason`), and the ONE actor that may give each reason
 # (`REVIEW_EMITTER`, enforced in `_precheck`): the consent service when consent is withdrawn (A6), the automation when
@@ -374,6 +381,7 @@ class CaseModel:
             "referral_accepted_at": iso(self.referral_accepted_at),
             "provider": self.provider,
             "pending_handoff": dict(self.pending_handoff) if self.pending_handoff else None,
+            "referral_held": referral_hold(self),
             "last_handoff": dict(self.last_handoff) if self.last_handoff else None,
             "consent": dict(self.consent),
             "consent_history": [dict(h) for h in self.consent_history],
@@ -400,6 +408,17 @@ class CaseModel:
             "closure_outcome": self.closure_outcome,
             "milestones": {name: m.to_json() for name, m in self.milestones.items()},
         }
+
+
+def referral_hold(model: CaseModel) -> str | None:
+    """A36 (ADR-044): why the referral is held, or None. Held while consent is withdrawn or the patient has said their data
+    may not go to the specialist: no referral may be requested or accepted, and a pending request waits (it is neither
+    cancelled nor bounced) until a person records consent again."""
+    if model.consent_frozen or model.consent.get("withdrawn"):
+        return "consent_withdrawn"
+    if model.consent.get("share_with_specialist") is False:
+        return "share_with_specialist_refused"
+    return None
 
 
 def initial_model(pathway: Pathway) -> CaseModel:
@@ -515,6 +534,34 @@ def add_months(at: datetime, months: int) -> datetime:
     raise AssertionError("unreachable")
 
 
+def signer_resolves_to(actor: str, signed_by) -> bool:
+    """A36 (ADR-044, superseding the signer part of ADR-021): `signed_by` names the person who writes the event, as their
+    actor string (`role:user_id`) or as their Practitioner (`Practitioner/user_id`). Compared by user id: user ids are
+    opaque and per role (A14), and the simulator logs a person under a descriptive role name for the same user id."""
+    if not isinstance(signed_by, str) or ":" not in actor:
+        return False
+    if signed_by.startswith("Practitioner/"):
+        signer = signed_by[len("Practitioner/"):]
+    elif ":" in signed_by:
+        signer = signed_by.split(":", 1)[1]
+    else:
+        return False
+    return signer != "" and signer == actor.split(":", 1)[1]
+
+
+def _check_signer(event: Event) -> None:
+    """The signer is the closer (close, either outcome) and the reviewer (`clinician_review.signed_by`, when given). In the
+    machine, so no store, route or in-process caller can write a signature in someone else's name. The route keeps its
+    own check (`routers.cases._check_signature_and_evidence`) as a second layer, with the 403 a person sees."""
+    signed_by = event.payload.get("signed_by")
+    if event.type == "clinician_review" and signed_by is None:
+        return
+    if not signer_resolves_to(event.actor, signed_by):
+        raise InvalidTransition(
+            f"{event.type}: signed_by must be the signer's own identity ({event.actor} or "
+            f"Practitioner/<their user id>), not {signed_by!r}")
+
+
 def _check_declined_close(model: CaseModel, event: Event, pathway: Pathway) -> None:
     """A33: closing with outcome `declined`. The declined closure is only for a recorded refusal and a recorded refusal can
     only close as declined. A physician (not the counsellor) signs, and the evidence is the counselling record itself."""
@@ -543,6 +590,8 @@ def _transition(model: CaseModel, event: Event, pathway: Pathway, t: Transition)
     for key in t.requires:
         if not event.payload.get(key):
             raise InvalidTransition(f"event {event.type!r} requires non-empty {key!r}")
+    if t.to_state == pathway.terminal_state or event.type == "clinician_review":
+        _check_signer(event)  # A36: the signer is the person writing the event
     if t.to_state == pathway.terminal_state:
         _check_declined_close(model, event, pathway)
     for key, minimum in t.minimums:
@@ -1037,6 +1086,16 @@ def _precheck(model: CaseModel, event: Event, pathway: Pathway) -> None:
         if not consented:
             raise InvalidTransition(f"message_sent: {why}")
     pending = model.pending_handoff
+    # A36 (ADR-044): no referral is requested or accepted while it is held (consent withdrawn, or sharing with the
+    # specialist refused); a pending request waits, and the scheduler may not bounce it while it waits.
+    held = referral_hold(model)
+    if held is not None and kind in REFERRAL_HELD_EVENTS:
+        raise InvalidTransition(
+            f"referral held ({held}): {kind!r} is refused while the patient's consent is withdrawn or they do not "
+            "allow sharing with the specialist; a pending request waits until a person records consent again")
+    if (held is not None and kind == "handoff_rejected" and actor == SCHEDULER_ACTOR_NAME
+            and event.payload.get("bounced") is True):
+        raise InvalidTransition(f"referral held ({held}): the bounce timer does not run while the request is held")
     if kind == "handoff_requested":
         if actor == AUTOMATION_ACTOR and model.state != "referral_rejected":
             raise InvalidTransition(
@@ -1181,6 +1240,9 @@ def _finish(
             out = replace(out, auto_message_times=(*out.auto_message_times, at))
     elif kind == "consent_updated":
         out = _clear_hold(_consent_after(out, event, (before or model).consent_frozen), "opt_out")
+        if out.pending_handoff and referral_hold(before or model) is not None and referral_hold(out) is None:
+            # A36: the hold on a pending referral ends; its bounce timer starts again, in full, from now
+            out = replace(out, pending_handoff={**out.pending_handoff, "resumed_at": at.isoformat()})
     elif kind == "contact_updated":
         out = _clear_hold(replace(out, contact_confirmed_at=at), "wrong_number")
     elif kind == "review_requested" and payload["reason"] == "reroute_exhausted":

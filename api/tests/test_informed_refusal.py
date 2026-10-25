@@ -252,8 +252,8 @@ def test_the_machine_refuses_a_declined_close_that_skips_a_rule():
     assert tryclose(pco).state == "closed"                                    # a physician who is not the counsellor
     with pytest.raises(InvalidTransition, match="counselled"):
         tryclose(spec)                                                          # the counsellor
-    with pytest.raises(InvalidTransition, match="counselled"):
-        tryclose(pco, signed_by="Practitioner/sp1")                            # signing as the counsellor's Practitioner
+    with pytest.raises(InvalidTransition, match="signed_by must be the signer's own identity"):
+        tryclose(pco, signed_by="Practitioner/sp1")                            # in the counsellor's name: not the closer's (A36)
     with pytest.raises(InvalidTransition, match="physician"):
         tryclose("coordinator:c")
     with pytest.raises(InvalidTransition, match="counselling record"):

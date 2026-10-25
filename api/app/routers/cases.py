@@ -206,7 +206,9 @@ def _patient_ref(case_id: UUID) -> str | None:
 
 def _check_signature_and_evidence(identity: Identity, event_type: str, payload: dict, case_id: UUID) -> None:
     """A15 (ADR-021): a signature is the signer's own, and closure evidence must resolve AND be this
-    case's own (SEC-2: the resource must be the one named, and belong to this case or its patient)."""
+    case's own (SEC-2: the resource must be the one named, and belong to this case or its patient).
+    Since A36 (ADR-044) the state machine refuses a foreign signer too; this is the second layer, which runs first so a
+    person gets a 403 and a forged signature never causes a FHIR lookup."""
     signed_by = payload.get("signed_by")
     if event_type in ("clinician_review", "close") and signed_by is not None:
         if not evidence.signed_by_matches(identity, signed_by):

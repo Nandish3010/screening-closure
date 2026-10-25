@@ -62,6 +62,7 @@ from app.state_machine import (
     CLOSURE_PROPOSAL_STATES,
     InvalidTransition,
     channel_consent,
+    referral_hold,
 )
 
 log = logging.getLogger("app.automation")
@@ -233,6 +234,9 @@ def _reroute(store, pathway: Pathway, case_id: UUID, model, now: datetime, resul
     """A case waiting for a re-route (`referral_rejected`, nothing pending, no exhausted flag yet): ask the next provider
     in the order, or, when none is left, hand the case to a person."""
     if model.state != "referral_rejected" or model.pending_handoff is not None or model.reroute_exhausted_at is not None:
+        return
+    if referral_hold(model) is not None:
+        result.add("reroute_held")  # A36: consent withdrawn or sharing refused; a person records consent first
         return
     providers = get_providers()
     events = store.events_for(case_id)

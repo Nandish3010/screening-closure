@@ -34,7 +34,7 @@ STEPS = [  # (event, actor) for the main path to closure
     ("clinician_review", SPEC), ("close", SPEC),
 ]
 STATES = [s for s in PATHWAY.states]  # result_received ... closed
-SAFE = {"evidence_ref": "DiagnosticReport/1", "signed_by": "Practitioner/9"}
+SAFE = {"evidence_ref": "DiagnosticReport/1"}  # signed by the closer: `add` fills signed_by in (A36)
 
 
 def ev(cid, type_, actor, at, payload=None):
@@ -55,7 +55,7 @@ class Fixture:
 
     def add(self, name, type_, actor, at, payload=None):
         if type_ == "close":
-            payload = {**SAFE, **(payload or {})}
+            payload = {**SAFE, "signed_by": actor, **(payload or {})}
         self.store.append(ev(self.ids[name], type_, actor, at, payload), PATHWAY)
 
     def walk(self, name, offsets, upto=8):

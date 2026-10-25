@@ -71,7 +71,9 @@ def test_state_machine_rejects_unsafe_closes(ctx):
         apply("clinician_reviewed", close("primary_care_owner:1", evidence_ref="r"), pw)
     with pytest.raises(InvalidTransition):
         apply("patient_acknowledged", close("primary_care_owner:1", evidence_ref="r", signed_by="c"), pw)
-    assert apply("clinician_reviewed", close("primary_care_owner:1", evidence_ref="r", signed_by="c"), pw) == "closed"
+    with pytest.raises(InvalidTransition):  # A36 (ADR-044): signed in someone else's name
+        apply("clinician_reviewed", close("primary_care_owner:1", evidence_ref="r", signed_by="c"), pw)
+    assert apply("clinician_reviewed", close("primary_care_owner:1", evidence_ref="r", signed_by="primary_care_owner:1"), pw) == "closed"
 
 
 @pytest.mark.parametrize("arm", ARMS)
