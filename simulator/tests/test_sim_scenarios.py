@@ -173,7 +173,11 @@ def test_committed_literature_scenario_matches_the_navigation_risk_ratio():
     sc = res["scenarios"]
     b = sc[LITERATURE]["arms"]["baseline"]["completion_180d"]["mean"]
     o = sc[LITERATURE]["arms"]["orchestrated"]["completion_180d"]["mean"]
-    assert abs(o / b - nav) < 0.03, "re-fit orchestration.programme_reach in params.conservative.yaml (see simulator/README.md)"
+    # B21: programme_reach is deliberately not refitted to 1.27 after the timing mixture (the pooled RR probably includes two of the
+    # validation trials, so refitting would be circular; docs/results/validation.md). The ratio must stay inside the pooled 95% CI.
+    assert nav == 1.27 and 1.10 <= o / b <= 1.46, "literature-anchored ratio left the pooled navigation CI (1.10 to 1.46)"
+    reach = next(x["value"] for x in sc[LITERATURE]["overrides"] if x["key"] == "orchestration.programme_reach")
+    assert reach == 0.55, "programme_reach changed: B21 keeps the B12 fit; record any refit and its source in validation.md"
     up = sc[UPPER]["arms"]["orchestrated"]["completion_180d"]["mean"] / b
     assert up > 1.5  # the upper range is the mechanism ceiling
 

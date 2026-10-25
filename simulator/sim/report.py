@@ -255,8 +255,8 @@ def calibration_section(res: dict) -> str:
             f"Orchestration here bundles ownership, timers, escalation and human outreach, and the ratio is larger than the navigation figure "
             f"because the unmanaged baseline loses many cases to missed hand-offs that a managed programme prevents; it is the mechanism ceiling "
             f"and is bounded above by the managed-programme ceiling."
-            + (f" The literature-anchored scenario caps the effect at the navigation figure (ratio {_ratio(res, 'completion_180d', LITERATURE):.2f} at 180 days) "
-               f"by reaching only part of the case load (`orchestration.programme_reach`, calibrated), and is the scenario to quote."
+            + (f" The literature-anchored scenario holds the effect near the navigation figure (ratio {_ratio(res, 'completion_180d', LITERATURE):.2f} at 180 days) "
+               f"by reaching only part of the case load (`orchestration.programme_reach`, calibrated in B12 and not refitted after B21), and is the scenario to quote."
                if lit else "")
         )
     return "\n".join(txt)
@@ -427,7 +427,7 @@ def headline_paragraph(res: dict) -> str:
         )
     return (
         f"There are two orchestrated scenarios and one baseline. **Quote the literature-anchored scenario.** It holds the orchestrated arm "
-        f"to what published studies report: the completion effect equals the pooled patient-navigation risk ratio of 1.27, SMS reminders add "
+        f"to what published studies report: the completion effect is held near the pooled patient-navigation risk ratio of 1.27 (95% CI 1.10 to 1.46), SMS reminders add "
         f"nothing beyond the no-reminder attendance rate (the lower bound of the published range), and escalating to a supervisor or "
         f"coordinator is no more effective than re-contacting the patient. In it, {pct(l180)} of patients reach a confirmatory colonoscopy "
         f"within {horizon} against {pct(b180)} at baseline (ratio {rl:.2f}).{reach_txt} **The upper-range scenario shows the mechanism ceiling**: "
@@ -435,7 +435,9 @@ def headline_paragraph(res: dict) -> str:
         f"escalation worked as assumed. It reaches {pct(u180)} within {horizon} (ratio {ru:.2f}), far above anything published for navigation, so "
         f"read it as an upper bound on the mechanism and not as a forecast. Both scenarios use the same synthetic patients, the same random "
         f"numbers and the same baseline arm; the baseline was calibrated to published unmanaged completion, and the only orchestrated-arm fit "
-        f"is the reach parameter, set so the literature-anchored 180-day ratio equals the navigation risk ratio."
+        f"is the reach parameter, set in B12 so the literature-anchored 180-day ratio equalled the navigation risk ratio. It was deliberately not refitted after "
+        f"the B21 timing mixture (the pooled estimate probably includes two of the trials the validation scores the ratio against, so refitting would be circular), "
+        f"which is why the ratio is now {rl:.2f} rather than 1.27; it stays inside the pooled interval (1.10 to 1.46). See validation.md."
     )
 
 
@@ -468,6 +470,37 @@ def reach_paragraph(res: dict) -> str:
         "In this scenario `programme_reach` is 1.0, so every case is in reach and the programme-level and in-reach figures coincide."
     )
     return first + second
+
+
+def timing_claims_section() -> str | None:
+    """B21: which timing figures in this file may be quoted, from the committed held-out validation (docs/results/validation.json,
+    written by `make validate`; run `make evaluate` again after it so this section is current). None if that file is missing."""
+    import json
+    from pathlib import Path
+
+    from .validation_report import TIMING_CLAIMS, claim_status
+
+    path = Path(__file__).resolve().parents[2] / "docs" / "results" / "validation.json"
+    try:
+        val = json.loads(path.read_text())
+        rows = [(claim, *claim_status(val, tested)) for claim, tested in TIMING_CLAIMS]
+    except (OSError, ValueError, KeyError, StopIteration):
+        return None
+
+    def vals(found):
+        return "; ".join(f"{r['sim_mean']:.0f} d vs {r['observed']:.0f} d" if r["kind"] == "time" else f"{100 * r['sim_mean']:.1f}% vs {100 * r['observed']:.1f}%"
+                         for r in found)
+
+    table = _table(["Timing claim", "Simulated vs observed (held-out validation)", "Status"], [[c, vals(f), f"**{s}**"] for c, s, f in rows])
+    return "\n".join([
+        "## Which timing figures may be quoted (held-out validation, B21)",
+        "",
+        "The completion ratio at 180 days is the headline. Timing figures in this file (days to colonoscopy or to closure, shares by 30 or 60 days, days saved) "
+        "may be quoted only where the held-out validation in [`validation.md`](validation.md) passes; the others stay withdrawn. Generated from "
+        "`validation.json` by the same rule as the table in validation.md.",
+        "",
+        table,
+    ])
 
 
 def render_markdown(res: dict, capacity_block: str | None = None, refusal_block: str | None = None) -> str:
@@ -514,6 +547,9 @@ def render_markdown(res: dict, capacity_block: str | None = None, refusal_block:
         "Metric definitions (numerator, denominator, clocks, censoring) are in [`metrics.md`](metrics.md).",
         "",
     ]
+    tclaims = timing_claims_section()
+    if tclaims:
+        parts += [tclaims, ""]
     cap = capacity_caveat(res)
     if cap:
         parts += [cap, ""]

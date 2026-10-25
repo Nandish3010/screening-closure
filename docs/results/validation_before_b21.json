@@ -1,0 +1,384 @@
+{
+  "cohort_targets": [
+    {
+      "id": "issaka-sf-safety-net",
+      "primary_variant": "unadjusted",
+      "variants": [
+        {
+          "name": "unadjusted",
+          "rows": [
+            {
+              "in_sample": false,
+              "metric": "completion@360",
+              "sim_mean": 0.5408,
+              "within_tolerance": true
+            },
+            {
+              "in_sample": false,
+              "metric": "median",
+              "sim_mean": 61.091752,
+              "within_tolerance": false
+            },
+            {
+              "in_sample": false,
+              "metric": "p25",
+              "sim_mean": 46.496066,
+              "within_tolerance": false
+            },
+            {
+              "in_sample": false,
+              "metric": "p75",
+              "sim_mean": 85.330483,
+              "within_tolerance": false
+            }
+          ],
+          "verdict": "not within tolerance"
+        }
+      ],
+      "verdict": "not within tolerance"
+    },
+    {
+      "id": "seamar-fqhc",
+      "primary_variant": "unadjusted",
+      "variants": [
+        {
+          "name": "unadjusted",
+          "rows": [
+            {
+              "in_sample": false,
+              "metric": "completion@90",
+              "sim_mean": 0.41875,
+              "within_tolerance": false
+            },
+            {
+              "in_sample": false,
+              "metric": "completion@180",
+              "sim_mean": 0.511,
+              "within_tolerance": false
+            },
+            {
+              "in_sample": false,
+              "metric": "completion@360",
+              "sim_mean": 0.5408,
+              "within_tolerance": false
+            },
+            {
+              "in_sample": true,
+              "metric": "median",
+              "sim_mean": 61.091752,
+              "within_tolerance": false
+            },
+            {
+              "in_sample": true,
+              "metric": "p25",
+              "sim_mean": 46.496066,
+              "within_tolerance": true
+            },
+            {
+              "in_sample": true,
+              "metric": "p75",
+              "sim_mean": 85.330483,
+              "within_tolerance": false
+            }
+          ],
+          "verdict": "not within tolerance"
+        }
+      ],
+      "verdict": "not within tolerance"
+    },
+    {
+      "id": "kpnw-usual-care",
+      "primary_variant": "unadjusted",
+      "variants": [
+        {
+          "name": "unadjusted",
+          "rows": [
+            {
+              "in_sample": false,
+              "metric": "completion@180",
+              "sim_mean": 0.511,
+              "within_tolerance": false
+            },
+            {
+              "in_sample": true,
+              "metric": "median",
+              "sim_mean": 61.091752,
+              "within_tolerance": false
+            }
+          ],
+          "verdict": "not within tolerance"
+        }
+      ],
+      "verdict": "not within tolerance"
+    },
+    {
+      "id": "azulay-control",
+      "primary_variant": "unadjusted",
+      "variants": [
+        {
+          "name": "unadjusted",
+          "rows": [
+            {
+              "in_sample": false,
+              "metric": "completion@120",
+              "sim_mean": 0.47345,
+              "within_tolerance": true
+            }
+          ],
+          "verdict": "within tolerance"
+        }
+      ],
+      "verdict": "within tolerance"
+    },
+    {
+      "id": "corley-kaiser",
+      "primary_variant": "literature-anchored orchestrated",
+      "variants": [
+        {
+          "name": "literature-anchored orchestrated",
+          "rows": [
+            {
+              "in_sample": false,
+              "metric": "completion@30",
+              "sim_mean": 0.02775,
+              "within_tolerance": false
+            },
+            {
+              "in_sample": false,
+              "metric": "completion@60",
+              "sim_mean": 0.3869,
+              "within_tolerance": false
+            },
+            {
+              "in_sample": true,
+              "metric": "completion@90",
+              "sim_mean": 0.57475,
+              "within_tolerance": false
+            },
+            {
+              "in_sample": true,
+              "metric": "completion@180",
+              "sim_mean": 0.649225,
+              "within_tolerance": false
+            },
+            {
+              "in_sample": true,
+              "metric": "completion@360",
+              "sim_mean": 0.6643,
+              "within_tolerance": false
+            },
+            {
+              "in_sample": false,
+              "metric": "median",
+              "sim_mean": 55.669284,
+              "within_tolerance": false
+            },
+            {
+              "in_sample": false,
+              "metric": "p25",
+              "sim_mean": 43.271617,
+              "within_tolerance": false
+            },
+            {
+              "in_sample": false,
+              "metric": "p75",
+              "sim_mean": 72.931625,
+              "within_tolerance": true
+            }
+          ],
+          "verdict": "not within tolerance"
+        },
+        {
+          "name": "upper-range orchestrated",
+          "rows": [
+            {
+              "in_sample": false,
+              "metric": "completion@30",
+              "sim_mean": 0.038225,
+              "within_tolerance": false
+            },
+            {
+              "in_sample": false,
+              "metric": "completion@60",
+              "sim_mean": 0.519625,
+              "within_tolerance": false
+            },
+            {
+              "in_sample": true,
+              "metric": "completion@90",
+              "sim_mean": 0.73075,
+              "within_tolerance": true
+            },
+            {
+              "in_sample": true,
+              "metric": "completion@180",
+              "sim_mean": 0.78305,
+              "within_tolerance": true
+            },
+            {
+              "in_sample": true,
+              "metric": "completion@360",
+              "sim_mean": 0.785025,
+              "within_tolerance": true
+            },
+            {
+              "in_sample": false,
+              "metric": "median",
+              "sim_mean": 52.179014,
+              "within_tolerance": false
+            },
+            {
+              "in_sample": false,
+              "metric": "p25",
+              "sim_mean": 41.864995,
+              "within_tolerance": false
+            },
+            {
+              "in_sample": false,
+              "metric": "p75",
+              "sim_mean": 65.76976,
+              "within_tolerance": true
+            }
+          ],
+          "verdict": "not within tolerance"
+        }
+      ],
+      "verdict": "not within tolerance"
+    },
+    {
+      "id": "phs-scotland",
+      "primary_variant": "programme-managed (no forgotten steps, automatic referral)",
+      "variants": [
+        {
+          "name": "unadjusted",
+          "rows": [
+            {
+              "in_sample": false,
+              "metric": "completion@360",
+              "sim_mean": 0.5408,
+              "within_tolerance": false
+            },
+            {
+              "in_sample": false,
+              "metric": "completers_within@28",
+              "sim_mean": 0.019927,
+              "within_tolerance": false
+            },
+            {
+              "in_sample": false,
+              "metric": "completers_within@56",
+              "sim_mean": 0.429421,
+              "within_tolerance": false
+            },
+            {
+              "in_sample": false,
+              "metric": "median",
+              "sim_mean": 61.091752,
+              "within_tolerance": false
+            }
+          ],
+          "verdict": "not within tolerance"
+        },
+        {
+          "name": "programme-managed (no forgotten steps, automatic referral)",
+          "rows": [
+            {
+              "in_sample": false,
+              "metric": "completion@360",
+              "sim_mean": 0.61605,
+              "within_tolerance": false
+            },
+            {
+              "in_sample": false,
+              "metric": "completers_within@28",
+              "sim_mean": 0.020399,
+              "within_tolerance": false
+            },
+            {
+              "in_sample": false,
+              "metric": "completers_within@56",
+              "sim_mean": 0.440078,
+              "within_tolerance": false
+            },
+            {
+              "in_sample": false,
+              "metric": "median",
+              "sim_mean": 60.211807,
+              "within_tolerance": false
+            }
+          ],
+          "verdict": "not within tolerance"
+        }
+      ],
+      "verdict": "not within tolerance"
+    },
+    {
+      "id": "nhs-england-bcsp",
+      "primary_variant": "programme-managed (no forgotten steps, automatic referral)",
+      "variants": [
+        {
+          "name": "unadjusted",
+          "rows": [
+            {
+              "in_sample": false,
+              "metric": "completion@360",
+              "sim_mean": 0.5408,
+              "within_tolerance": false
+            }
+          ],
+          "verdict": "not within tolerance"
+        },
+        {
+          "name": "programme-managed (no forgotten steps, automatic referral)",
+          "rows": [
+            {
+              "in_sample": false,
+              "metric": "completion@360",
+              "sim_mean": 0.61605,
+              "within_tolerance": false
+            }
+          ],
+          "verdict": "not within tolerance"
+        }
+      ],
+      "verdict": "not within tolerance"
+    },
+    {
+      "id": "aihw-nbcsp-2026-secondary",
+      "primary_variant": "unadjusted",
+      "variants": [
+        {
+          "name": "unadjusted",
+          "rows": [
+            {
+              "in_sample": false,
+              "metric": "completion@30",
+              "sim_mean": 0.016975,
+              "within_tolerance": false
+            }
+          ],
+          "verdict": "not within tolerance"
+        }
+      ],
+      "verdict": "not within tolerance"
+    }
+  ],
+  "effect_trials": [
+    {
+      "id": "azulay-sms",
+      "sim_ratio": 1.319556,
+      "verdict": "inside the trial's 95% CI"
+    },
+    {
+      "id": "kpnw-navigation",
+      "sim_ratio": 1.270734,
+      "verdict": "inside the trial's 95% CI"
+    },
+    {
+      "id": "annals-navigation-2025",
+      "sim_ratio": 1.228635,
+      "verdict": "inside the trial's 95% CI"
+    }
+  ],
+  "note": "Snapshot of the B20 validation run before the B21 timing mixture (main at db1d13d, parameter hashes upper-range ddf9cb663dd810e4, literature-anchored 90bb0c2a4d93e016). Read by simulator/sim/validation_report.py for the before/after table only; never regenerated."
+}
