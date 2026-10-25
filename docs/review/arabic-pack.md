@@ -15,7 +15,7 @@
 | 5 | 6 Forbidden phrases | Is the Arabic list right and complete? |
 | 5 | 7 and 8 Checklist, feedback table | Tick the checklist and fill the feedback table. |
 
-There are 73 Arabic texts (every one is also in English, with the same ID) and 87 Arabic forbidden-phrase entries. Every Arabic text in the prototype's sources is in this pack. All of it was written by the engineering team and has not been reviewed by a native speaker. Please correct freely; suggest better wording in the feedback table.
+There are 78 Arabic texts (every one is also in English, with the same ID) and 87 Arabic forbidden-phrase entries. Every Arabic text in the prototype's sources is in this pack. All of it was written by the engineering team and has not been reviewed by a native speaker. Please correct freely; suggest better wording in the feedback table.
 
 ## 1. What these texts are for
 
@@ -32,7 +32,7 @@ Hard rules the Arabic must keep:
 
 | Source | Where | Reading level | Length limit |
 |---|---|---|---|
-| Patient page (IDs W01 to W49) | Web app at `/patient`, Arabic with right-to-left layout | About grade 6: short sentences, everyday words. | None on the page; short lines for a phone screen |
+| Patient page (IDs W01 to W54) | Web app at `/patient`, Arabic with right-to-left layout | About grade 6: short sentences, everyday words. | None on the page; short lines for a phone screen |
 | Messages (IDs T01 to T21) | SMS, WhatsApp or letter, chosen from the patient's preferred channel | About grade 6: short sentences, everyday words. | SMS 320, WhatsApp 600, letter 1200 characters |
 | Demo drafts (IDs D01 to D03) | Coordinator app, demo data only | About grade 6: short sentences, everyday words. | None |
 
@@ -46,20 +46,20 @@ Placeholders in braces are filled in by the system: `{owner_name}` (the care own
 
 **Dates and names.** The sample date uses Gregorian month and weekday names in the Gulf style (نوفمبر, الثلاثاء), not the Levantine month names. Titles such as "الدكتورة" are part of the owner's name, supplied by the clinic.
 
-**Orthography we noticed.** The patient page and demo drafts write tanween as ـًا (for example تشخيصًا): 0 cases there against 4 of the other form. The templates write ـاً (for example دماً): 16 cases against 0 of the other form. The Arabic comma ، appears 39 times (letter greetings and closings); sentences end with a Latin full stop. Choose one convention.
+**Orthography we noticed.** The patient page and demo drafts write tanween as ـًا (for example تشخيصًا): 0 cases there against 4 of the other form. The templates write ـاً (for example دماً): 16 cases against 0 of the other form. The Arabic comma ، appears 40 times (letter greetings and closings); sentences end with a Latin full stop. Choose one convention.
 
 **Terminology we use today.** Counts are generated from the texts below. Where one idea has several wordings, please choose one.
 
 | Concept | Arabic wording in use, with the strings that contain it |
 |---|---|
 | colonoscopy | تنظير القولون : 2 strings (W16, D01) |
-| camera test (friendly term) | فحص بالكاميرا : 4 strings (W12, W16, W40, D01)<br>الفحص بالكاميرا : 2 strings (W12, W40)<br>فحص متابعة بالكاميرا : not used |
+| camera test (friendly term) | فحص بالكاميرا : 4 strings (W12, W16, W45, D01)<br>الفحص بالكاميرا : 2 strings (W12, W45)<br>فحص متابعة بالكاميرا : not used |
 | screening test | فحص الكشف المبكر : 12 strings (W01, W04, W07, T01, T02, T03, T04, T06 and 4 more) |
-| test (generic) | فحصك : 3 strings (T03, D01, D02)<br>الفحص : 2 strings (W12, W40) |
-| care team | فريق الرعاية : not used<br>فريق رعايتك : 37 strings (W05, W07, W08, W11, W15, W24, W25, W29 and 29 more)<br>فريق رعايتي : 1 string (W40) |
+| test (generic) | فحصك : 3 strings (T03, D01, D02)<br>الفحص : 2 strings (W12, W45) |
+| care team | فريق الرعاية : not used<br>فريق رعايتك : 38 strings (W05, W07, W08, W11, W15, W24, W25, W29 and 30 more)<br>فريق رعايتي : 1 string (W45) |
 | care coordinator | منسق الرعاية : 2 strings (W23, W27)<br>منسق رعاية : 1 string (W20) |
 | care owner (the responsible person) | المسؤول عن رعايتك : 13 strings (W19, T05, T07, T09, T10, T11, T12, T16 and 5 more)<br>المسؤول عن متابعة حالتك : not used<br>من يتابع حالتك : not used |
-| result | نتيجة : 15 strings (W01, W04, W07, W10, T01, T02, T03, T04 and 7 more)<br>نتيجتك : 6 strings (W05, W06, W08, W15, T02, T03)<br>نتيجتي : 1 string (W40) |
+| result | نتيجة : 15 strings (W01, W04, W07, W10, T01, T02, T03, T04 and 7 more)<br>نتيجتك : 6 strings (W05, W06, W08, W15, T02, T03)<br>نتيجتي : 1 string (W45) |
 | appointment | موعد : 20 strings (W16, W17, T01, T02, T03, T04, T05, T06 and 12 more) |
 
 ## 4. Patient page strings, by screen section
@@ -147,19 +147,24 @@ Channel, sharing and their save status.
 
 | ID | English | Arabic | Where it appears |
 |---|---|---|---|
-| W34 | Your choices | اختياراتك | Heading of the choices section. |
-| W35 | How may we contact you? | كيف يمكننا التواصل معك؟ | Legend of the group of contact-channel check boxes. Each box is on unless the patient turned it off (an opt-out default); changing one saves at once. |
-| W36 | Phone call | مكالمة هاتفية | Label of the check box for phone calls. |
-| W37 | Text message | رسالة نصية | Label of the check box for text messages. |
-| W38 | WhatsApp | واتساب | Label of the check box for WhatsApp messages. |
-| W39 | Letter | رسالة مكتوبة | Label of the check box for letters. |
-| W40 | My care team may share my result with the specialist who will do my test. | أسمح لفريق رعايتي بمشاركة نتيجتي مع الطبيب الأخصائي الذي سيجري لي الفحص بالكاميرا. | Label of the check box that lets the care team share the result with the specialist. |
-| W41 | Stop all contact | أوقفوا كل تواصل معي | Button under the choices. Withdraws all consent to contact at once: the case is frozen for outreach and a person is asked to review it. Hidden after withdrawal. |
-| W42 | If you stop contact, your care team will not message or call you. A person will check your case. You can still call your care team. | إذا أوقفت التواصل، فلن يرسل لك فريق رعايتك رسائل ولن يتصل بك. سيراجع أحد أفراد فريق رعايتك ملفك. | Small grey text above that button. It says what stopping contact means and that a person will check the case. |
-| W43 | You asked us to stop contact. We will not message or call you. A person on your care team will check your case. You can still call your care team. | طلبت إيقاف التواصل. لن نرسل لك رسائل ولن نتصل بك. سيراجع أحد أفراد فريق رعايتك ملفك. | Yellow banner at the top of the choices section after the patient has stopped all contact. |
-| W44 | You may contact me again | يمكنكم التواصل معي مرة أخرى | Replaces the stop button after withdrawal. Pressing it records that the patient may be contacted again. |
-| W45 | Saved | تم الحفظ | Status line under the choices after a successful save. |
-| W46 | We could not save this. Please try again. | لم نتمكن من الحفظ. يرجى المحاولة مرة أخرى. | Status line if saving the choices fails. |
+| W34 | How we prepare messages | كيف نُعِدّ الرسائل | Heading of a short notice between the buttons and the choices: how messages are prepared (software helps, a member of staff approves each one). |
+| W35 | We use software to help prepare our messages to you. | نستعين ببرنامج حاسوبي في إعداد رسائلنا إليك. | First line of that notice. Says software helps prepare the messages. Says nothing about results. |
+| W36 | A member of staff checks and approves each message before we send it. | يراجع أحد أفراد فريقنا كل رسالة ويوافق عليها قبل إرسالها. | Second line of that notice. A member of staff checks and approves each message before it is sent. |
+| W37 | To speak to a person, press "I don't understand this" or call your care team. | للتحدث مع شخص، يرجى الضغط على «لا أفهم هذا» أو الاتصال بفريق رعايتك. | Third line of that notice. Names the button "I don't understand this" exactly as translated for the key dontUnderstand, and the care team phone. |
+| W38 | You can stop messages at any time. Use "Stop all contact" in "Your choices" below. | يمكنك إيقاف الرسائل في أي وقت. يمكنك ذلك من خلال «أوقفوا كل تواصل معي» في قسم «اختياراتك» أدناه. | Fourth line of that notice. Points to the "Stop all contact" button (key withdrawButton) in the choices section just below; the quoted names must match those two keys and the heading consentHeading. |
+| W39 | Your choices | اختياراتك | Heading of the choices section. |
+| W40 | How may we contact you? | كيف يمكننا التواصل معك؟ | Legend of the group of contact-channel check boxes. Each box is on unless the patient turned it off (an opt-out default); changing one saves at once. |
+| W41 | Phone call | مكالمة هاتفية | Label of the check box for phone calls. |
+| W42 | Text message | رسالة نصية | Label of the check box for text messages. |
+| W43 | WhatsApp | واتساب | Label of the check box for WhatsApp messages. |
+| W44 | Letter | رسالة مكتوبة | Label of the check box for letters. |
+| W45 | My care team may share my result with the specialist who will do my test. | أسمح لفريق رعايتي بمشاركة نتيجتي مع الطبيب الأخصائي الذي سيجري لي الفحص بالكاميرا. | Label of the check box that lets the care team share the result with the specialist. |
+| W46 | Stop all contact | أوقفوا كل تواصل معي | Button under the choices. Withdraws all consent to contact at once: the case is frozen for outreach and a person is asked to review it. Hidden after withdrawal. |
+| W47 | If you stop contact, your care team will not message or call you. A person will check your case. You can still call your care team. | إذا أوقفت التواصل، فلن يرسل لك فريق رعايتك رسائل ولن يتصل بك. سيراجع أحد أفراد فريق رعايتك ملفك. | Small grey text above that button. It says what stopping contact means and that a person will check the case. |
+| W48 | You asked us to stop contact. We will not message or call you. A person on your care team will check your case. You can still call your care team. | طلبت إيقاف التواصل. لن نرسل لك رسائل ولن نتصل بك. سيراجع أحد أفراد فريق رعايتك ملفك. | Yellow banner at the top of the choices section after the patient has stopped all contact. |
+| W49 | You may contact me again | يمكنكم التواصل معي مرة أخرى | Replaces the stop button after withdrawal. Pressing it records that the patient may be contacted again. |
+| W50 | Saved | تم الحفظ | Status line under the choices after a successful save. |
+| W51 | We could not save this. Please try again. | لم نتمكن من الحفظ. يرجى المحاولة مرة أخرى. | Status line if saving the choices fails. |
 
 ### 4.8 Loading, offline and errors
 
@@ -167,9 +172,9 @@ System messages.
 
 | ID | English | Arabic | Where it appears |
 |---|---|---|---|
-| W47 | Loading... | جارٍ التحميل... | Shown instead of the page while the case loads. |
-| W48 | We could not load your information. Please try again. | لم نتمكن من تحميل معلوماتك. يرجى المحاولة مرة أخرى. | Shown if the case cannot be loaded and nothing is saved on the device. |
-| W49 | You are offline. This is the last information we saved. | لا يوجد اتصال بالإنترنت. هذه آخر معلومات حفظناها. | Banner above the result when the device is offline. The last saved information is shown. |
+| W52 | Loading... | جارٍ التحميل... | Shown instead of the page while the case loads. |
+| W53 | We could not load your information. Please try again. | لم نتمكن من تحميل معلوماتك. يرجى المحاولة مرة أخرى. | Shown if the case cannot be loaded and nothing is saved on the device. |
+| W54 | You are offline. This is the last information we saved. | لا يوجد اتصال بالإنترنت. هذه آخر معلومات حفظناها. | Banner above the result when the device is offline. The last saved information is shown. |
 
 ## 5. Messages, by purpose
 
@@ -428,22 +433,27 @@ One row per text. Write keep or change; if change, write your Arabic wording and
 | W31 | web: dontUnderstand |  |  |  |
 | W32 | web: callbackDone |  |  |  |
 | W33 | web: actionFailed |  |  |  |
-| W34 | web: consentHeading |  |  |  |
-| W35 | web: channelLabel |  |  |  |
-| W36 | web: channels.phone |  |  |  |
-| W37 | web: channels.sms |  |  |  |
-| W38 | web: channels.whatsapp |  |  |  |
-| W39 | web: channels.letter |  |  |  |
-| W40 | web: shareLabel |  |  |  |
-| W41 | web: withdrawButton |  |  |  |
-| W42 | web: withdrawHint |  |  |  |
-| W43 | web: withdrawnNotice |  |  |  |
-| W44 | web: resumeButton |  |  |  |
-| W45 | web: saved |  |  |  |
-| W46 | web: saveFailed |  |  |  |
-| W47 | web: loading |  |  |  |
-| W48 | web: loadError |  |  |  |
-| W49 | web: offline |  |  |  |
+| W34 | web: aiNoticeHeading |  |  |  |
+| W35 | web: aiNoticeSoftware |  |  |  |
+| W36 | web: aiNoticeStaff |  |  |  |
+| W37 | web: aiNoticePerson |  |  |  |
+| W38 | web: aiNoticeStop |  |  |  |
+| W39 | web: consentHeading |  |  |  |
+| W40 | web: channelLabel |  |  |  |
+| W41 | web: channels.phone |  |  |  |
+| W42 | web: channels.sms |  |  |  |
+| W43 | web: channels.whatsapp |  |  |  |
+| W44 | web: channels.letter |  |  |  |
+| W45 | web: shareLabel |  |  |  |
+| W46 | web: withdrawButton |  |  |  |
+| W47 | web: withdrawHint |  |  |  |
+| W48 | web: withdrawnNotice |  |  |  |
+| W49 | web: resumeButton |  |  |  |
+| W50 | web: saved |  |  |  |
+| W51 | web: saveFailed |  |  |  |
+| W52 | web: loading |  |  |  |
+| W53 | web: loadError |  |  |  |
+| W54 | web: offline |  |  |  |
 | T01 | template: result_notification/sms |  |  |  |
 | T02 | template: result_notification/whatsapp |  |  |  |
 | T03 | template: result_notification/letter |  |  |  |

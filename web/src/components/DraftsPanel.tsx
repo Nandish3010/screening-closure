@@ -6,6 +6,7 @@ import { actorName } from "../lib/derive";
 import { fmtDateTime } from "../lib/format";
 import { ActionButton } from "./ActionButton";
 import { ActorTag } from "./Timeline";
+import { WhyPanel } from "./WhyPanel";
 
 const PURPOSE_LABEL: Record<DraftPurpose, string> = {
   result_notification: "Result notification",
@@ -182,6 +183,8 @@ export function DraftsPanel({
                   <strong>AI abstained:</strong> {abstentionText(d.abstention_reason)}. The approved template was used instead.
                 </p>
               )}
+              <WhyPanel testId={`why-draft-${d.draft_id}`} subject={`draft ${d.draft_id}`}
+                input={{ kind: "draft", provider: d.provider, model_id: d.model_id, fallback_used: d.fallback_used, abstention_reason: d.abstention_reason }} />
               {d.text ? (
                 <div className="draft-text">
                   <p lang={d.language} dir={dir}>{d.text}</p>

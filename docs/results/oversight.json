@@ -1,0 +1,120 @@
+{
+  "abstention_metric": {
+    "abstentions": 126,
+    "attempts": 126,
+    "by_channel": {
+      "sms": {
+        "abstentions": 94,
+        "attempts": 94,
+        "rate": 1.0
+      },
+      "whatsapp": {
+        "abstentions": 32,
+        "attempts": 32,
+        "rate": 1.0
+      }
+    },
+    "by_language": {
+      "ar": {
+        "abstentions": 42,
+        "attempts": 42,
+        "rate": 1.0
+      },
+      "en": {
+        "abstentions": 84,
+        "attempts": 84,
+        "rate": 1.0
+      }
+    },
+    "rate": 1.0
+  },
+  "agency": {
+    "abstention_reasons": {
+      "cache_miss": 65
+    },
+    "by_status": {
+      "done": 9,
+      "needs_human": 80
+    },
+    "department_head_plans": {
+      "template fallback=True": 5
+    },
+    "planner_configured": "anthropic",
+    "status": "done",
+    "tasks": 89
+  },
+  "cases": 60,
+  "drafts": {
+    "approved": 57,
+    "by_provider": {
+      "template": 126
+    },
+    "decided_by_a_person": 66,
+    "drafted_by_agency_awaiting_a_person": 60,
+    "fallback_rate": 1.0,
+    "fallback_reasons": {
+      "cache_miss": 126
+    },
+    "fallback_used": 126,
+    "median_hours_to_human_decision": 3.0,
+    "n": 126,
+    "p90_hours_to_human_decision": 7.0,
+    "reject_reasons": {
+      "inaccurate": 2,
+      "not_needed": 3,
+      "tone": 2,
+      "wrong_language": 2
+    },
+    "rejected": 9,
+    "requested_by_staff": 66,
+    "undecided": 60
+  },
+  "events": 665,
+  "guarantee": {
+    "ai_events": 302,
+    "ai_events_by_type": {
+      "callback_requested": 20,
+      "message_drafted": 126,
+      "reply_classified": 60,
+      "reply_received": 60,
+      "review_requested": 36
+    },
+    "ai_events_that_changed_state": [],
+    "holds": true,
+    "messages_sent_from_drafts": 57,
+    "sent_without_prior_human_approval": []
+  },
+  "setup": {
+    "cases": 60,
+    "language_mix": {
+      "ar": 0.55,
+      "en": 0.45
+    },
+    "reviewer": {
+      "approve": 0.75,
+      "redraft": 0.15,
+      "reject": 0.1,
+      "review_delay_hours": {
+        "median": 3.0,
+        "sigma": 0.8
+      }
+    },
+    "seed": 20261025
+  },
+  "ticket": "M7-5",
+  "triage": {
+    "auto_handled": 36,
+    "effects": {
+      "callback_requested:cannot_attend": 9,
+      "callback_requested:patient_does_not_understand": 3,
+      "callback_requested:reschedule": 8,
+      "review_requested:already_done": 5,
+      "review_requested:opt_out": 11,
+      "review_requested:triage_uncertain": 13,
+      "review_requested:wrong_number": 7
+    },
+    "needs_human": 24,
+    "opt_out_gate": 1,
+    "replies": 60
+  }
+}

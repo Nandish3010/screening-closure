@@ -354,3 +354,11 @@ body.tour-open { padding-bottom: 46vh; }
 .judge-stat dd { margin: 0; }
 .judge-cmd { background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--r-sm); padding: var(--s-2) var(--s-3); display: block; overflow-x: auto; white-space: pre; }
 .judge-docs li { padding: var(--s-1) 0; }
+
+/* Why? panel: AI transparency disclosure for coordinators (collapsed by default). */
+.why-panel { margin: 0.25rem 0 0.5rem; font-size: var(--fs-sm); }
+.why-panel > summary { cursor: pointer; display: inline-block; color: var(--link); text-decoration: underline; padding: 2px 0; }
+.why-panel dl { display: grid; gap: var(--s-2); margin: var(--s-2) 0; padding: var(--s-2) var(--s-3); background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--r-sm); }
+.why-panel dt { font-size: var(--fs-xs); color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+.why-panel dd { margin: 0; overflow-wrap: anywhere; }
+.why-panel p { margin: 0; }
