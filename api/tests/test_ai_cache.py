@@ -159,7 +159,7 @@ def test_files_are_deterministic_json_with_the_exact_prompt(monkeypatch, tmp_pat
     first = path.read_bytes()
     data = json.loads(first)
     assert data["prompt"] == full_prompt(make_req()) and data["text"] == GOOD
-    assert set(data) == {"prompt_hash", "provider", "model_id", "language", "text", "prompt"}
+    assert set(data) == {"prompt_hash", "provider", "model_id", "language", "text", "prompt", "usage"}
     cp.draft(make_req())
     assert path.read_bytes() == first  # re-recording an unchanged output changes nothing
     assert list(path.parent.glob("*.tmp")) == []

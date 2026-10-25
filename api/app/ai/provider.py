@@ -38,11 +38,15 @@ CHANNEL_MAX_CHARS: dict[str, int] = {"sms": 320, "whatsapp": 600, "letter": 1200
 MAX_FIELD_CHARS = 40
 
 TEMPLATE_PROVIDER = "template"
-PROVIDER_NAMES: tuple[str, ...] = ("template", "azure_openai", "jais")
+PROVIDER_NAMES: tuple[str, ...] = ("template", "azure_openai", "jais", "anthropic")
 
 
 class ProviderUnavailable(Exception):
     """The provider cannot produce a draft now (not configured, offline, timed out, errored)."""
+
+
+class BudgetExhausted(ProviderUnavailable):
+    """The daily token budget or the per-call token cap would be exceeded (A35). Counted as abstention `budget_exhausted`."""
 
 
 class CacheMiss(ProviderUnavailable):
@@ -98,6 +102,7 @@ class DraftResult:
     fallback_used: bool
     abstention_reason: str | None
     prompt_hash: str
+    usage: dict | None = None  # token counts of a live model call (A35); None for a template or a cache replay
 
 
 @runtime_checkable
@@ -210,10 +215,17 @@ def _jais() -> Provider:
     return cache.CachingProvider(adapters.JaisProvider())
 
 
+def _anthropic() -> Provider:
+    from app.ai import cache, claude  # lazy: the SDK is imported only when a call is really made
+
+    return cache.CachingProvider(claude.ClaudeProvider())
+
+
 _REGISTRY: dict[str, Callable[[], Provider]] = {
     "template": TemplateProvider,
     "azure_openai": _azure_openai,
     "jais": _jais,
+    "anthropic": _anthropic,
 }
 
 

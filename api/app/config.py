@@ -42,6 +42,7 @@ class Settings(BaseSettings):
     leader_lease_ttl_seconds: float = Field(default=30.0, gt=1, le=3600)
     watchdog_idle_days: int = 7
     llm_provider: str = "template"
+    agency_planner: str = ""  # A35: "claude" | "template" | "" (follow LLM_PROVIDER); env AGENCY_PLANNER
     # --- identity (ADR-012) ------------------------------------------------------------
     # "dev" allows the built-in defaults below. Any other value (compared exactly: "Dev" is not dev)
     # refuses to start unless DEV_LOGIN_ENABLED=false, DEV_AUTH_SECRET and both service tokens are

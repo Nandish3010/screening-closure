@@ -42,9 +42,10 @@ This is structural, not a policy: the rules above hold even if the model, or a p
 |---|---|
 | `template` | Deterministic, offline. Fills the reviewed template for the purpose, channel and language. Used as the default and as the fallback. |
 | `azure_openai`, `jais` | HTTP adapters (`api/app/ai/adapters.py`) wrapped by the output cache (`api/app/ai/cache.py`). Network calls are off by default (`LLM_NETWORK_ENABLED=false`). Tests and the default configuration never call a real endpoint. |
+| `anthropic` | Claude through the official SDK (`api/app/ai/claude.py`, section 9), wrapped by the same output cache. Haiku drafts; Sonnet plans when `AGENCY_PLANNER=claude`. Network calls off by default; the compose demo replays recorded outputs. |
 | anything else | Startup fails with a clear error (`UnknownProvider`). |
 
-**Switches and keys.** Environment variables only. Real values never go in the repository, and these keys are deliberately not in `.env.example`.
+**Switches and keys.** Environment variables only. Real values never go in the repository, and the Azure and Jais keys are deliberately not in `.env.example` (the Claude variables are there, commented and empty, section 9).
 
 | Variable | Meaning | Default |
 |---|---|---|
@@ -114,7 +115,7 @@ The phrase lists and the Arabic text are pending clinician review (H1) and nativ
 3. Record the abstention (section 6).
 4. Never raise to the caller because of a provider problem. A draft is always produced.
 
-Abstention reasons: `provider_unavailable`, `cache_miss`, `provider_error:<ExceptionName>`, `invalid_result`, and `validation_failed:<rule>[,<rule>...]`.
+Abstention reasons: `provider_unavailable`, `cache_miss`, `budget_exhausted` (the token budget or a per-call cap refused the call, section 9), `provider_error:<ExceptionName>`, `invalid_result`, and `validation_failed:<rule>[,<rule>...]`.
 
 The template is the reviewed text the owner would otherwise write from. Every template for every purpose, channel and language is rendered and validated by the tests, so the fallback itself always passes the rules. When `LLM_PROVIDER=template` there is no model route, so there is nothing to abstain from and nothing is counted as an abstention.
 
@@ -157,3 +158,45 @@ The agency is one supervisor, five department heads and fourteen executioners (`
 **Counted and recorded.** Each plan is stored on its ledger row with its prompt hash, provider, model id and fallback flag, and the exact prompt can be rebuilt from the candidates. A fallback is counted by that flag in the ledger (it is not in the drafting abstention metric of section 6, which counts draft attempts). Drafts that agents request go through the drafting route and are counted in section 6 like any other.
 
 **Tests.** T-A66 (`api/tests/test_agency.py`: free text never reaches a planner or the ledger; plans identical whatever the ordering aid says; `test_model_planner_reorders_from_the_cache_and_cannot_drop_work`, `test_model_planner_falls_back_to_the_template_on_a_bad_reply`, `test_model_planner_with_no_cache_and_no_network_falls_back`).
+
+## 9. Claude as a provider (A35, ADR-043)
+
+Claude is one more provider behind the same boundary. Nothing in sections 1 to 8 changes: it returns text, the validator runs on it, a human approves it, and any failure is the template.
+
+**Models.** Drafting: Claude Haiku (`claude-haiku-5-5`). Planning: Claude Sonnet (`claude-sonnet-5-5`). Override with `ANTHROPIC_DRAFT_MODEL` and `ANTHROPIC_PLAN_MODEL`. Both at `effort: low`; no sampling parameters. The system prompt is the one in `app.ai.provider.SYSTEM_PROMPT` (no disclosure, no diagnosis, no reassurance, grade 6, the exact language, the owner name, next step and date word for word, no other names, dates, numbers or links), unchanged.
+
+**Switches.**
+
+| Variable | Meaning | Default |
+|---|---|---|
+| `LLM_PROVIDER=anthropic` | Draft with Claude. | `template` (compose: `anthropic`) |
+| `AGENCY_PLANNER` | `claude` plans with Claude; `template` with rules; unset follows the provider settings (`anthropic` alone stays on rules). | unset (compose: `claude`) |
+| `LLM_NETWORK_ENABLED` | Must be `true` to call out. | `false` |
+| `LLM_CACHE_MODE` | `replay` (compose default) answers from `api/app/ai/cache/anthropic/` and `cache/agency/anthropic/` and never imports the SDK. | `replay` |
+| `ANTHROPIC_API_KEY` | Read by the SDK from the environment. Never in compose, the repository, a log, an error message or a cache file. `.env` is untracked. | none |
+| `ANTHROPIC_WORKSPACE_ID` | Only for a key that is not scoped to a workspace (sent as `anthropic-workspace-id`). | none |
+| `LLM_DAILY_TOKEN_BUDGET` | Tokens (input, output and cache) per UTC day, across all processes. | `200000` |
+| `LLM_MAX_TOKENS_PER_CALL` | `max_tokens` (output) of one call. | `2048` |
+| `LLM_MAX_INPUT_TOKENS_PER_CALL` | Estimated prompt size of one call; larger is refused. | `30000` |
+| `LLM_USAGE_DB` | The counter's SQLite file. | `data/llm_usage.sqlite` |
+
+**Spend cap.** Before every call a row is inserted in the usage ledger holding the estimated cost; if the day's total plus that estimate would pass the budget, or the output or prompt cap, the call is refused and the draft is the template with the reason `budget_exhausted` (a plan is the rule order, the same reason). After the call the row is settled with the real counts from the response (input, output, cache read and cache write tokens). A failed call keeps its row with zero counts. The ledger holds counts, the model, the purpose (`draft:<purpose>`, `plan`, `redteam`) and the prompt hash, so the cost of a draft or a plan is traceable to its provenance record by hash; it holds no text.
+
+**Data flows.** The prototype sends synthetic content only. A request carries the system prompt and a user message made of the care owner's name and role, the next step, an appointment date and the pathway name (drafting), or the department, agent types, case ids as random UUIDs, reason codes and fixed label keys (planning). It contains no patient name, contact, identifier, result, free text or reply, because the request objects have no field for them (sections 1 and 8). **Calls leave the UAE.** The Claude API is hosted outside the country, so a production use with real patients would need an in-country route (for example a provider-hosted model inside the UAE or the cloud region the Department of Health (DoH) allows) approved by DoH and the data-protection owner: to verify. Until then `LLM_NETWORK_ENABLED` stays `false` in every deployment that handles real data, and the template is the product (hazard HZ-42). Whether the provider retains prompts, and for how long, is also to verify against the contract. Care-owner names are staff names, which are personal data in a production deployment.
+
+**Cache contents.** Files hold the prompt, the output, the model id and token counts. They contain only synthetic names and the sample appointment date. Before committing a recording, grep the directory for `sk-ant`, `@`, long digit runs and `Bearer`; the red-team test `test_generated_files_are_well_formed_and_hold_no_secret` does the same for the generated attack files.
+
+**Model card: the planner.**
+
+| | |
+|---|---|
+| Model | Claude Sonnet (`claude-sonnet-5-5`), general purpose, hosted by the provider; not trained or fine-tuned by us. |
+| Task | Put one department's candidate work items in priority order and write a rationale of at most 400 characters. |
+| Input | JSON of `{i, agent_type, case_id, reason, labels}` items; labels are enums, counts and ISO times. No text about a patient. |
+| Output | `{"order": [int], "rationale": str}` requested as a JSON schema; checked by `ModelPlanReply` (strict types, no extra fields, rationale without links, long digit runs, braces or control characters) and by `contained()`. |
+| Authority | None. It cannot add, drop, change or run a work item or name a tool; anything it leaves out is appended, anything it invents is dropped, and an invalid reply is the rule order. The head executes its own candidates. |
+| Evaluation | Contract and fallback tests with a mocked client (`api/tests/test_ai_claude.py`) and the hostile-reply cases RT-A-01. No measure of whether its order is better than the rule order has been made; the rule order is the default and is what the simulator's labour results use. |
+| Known limits | It sees ids and labels, not clinical context, so its order is a plausible reading of the labels and nothing more. Output varies between runs; the recording fixes one. Cost and latency depend on the provider. It is not a clinical device and makes no decision about care. |
+| Failure | Network, key, budget, refusal, cut-off, schema and containment failures all give the rule order with `fallback_used = true` and an abstention reason in the task ledger. |
+
+**Tests.** `api/tests/test_ai_claude.py` (provider contract, every fallback path, the budget and its persistence, the planner's schema and containment, cache record and replay), `api/tests/test_claude_record.py` (the recorder and the red-team generator end to end with a fake client, then a replay with the network off), and the replay of generated attacks in `tests/redteam/test_rt_generated.py`. No test calls the network; a socket guard fails any that tries. `make claude-smoke` is a manual, one-call check that the key works.

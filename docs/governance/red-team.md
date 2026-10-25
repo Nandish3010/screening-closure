@@ -145,6 +145,12 @@ Cases chain calls. For every refused call the second assertion is that no event 
 | RT-Z-05 | Token tampering: role or `patient_ref` edited under the old signature, a changed signature, no signature, no dot, an empty body, a JWT-style `alg none`, three parts, the wrong secret; correctly signed bodies with an automated role, an unknown role, an empty or non-JSON body, a 65-character name, a list; extra claims; an `exp` in the past; a second login; a name, provider or `patient_ref` ending in a newline | 401 (extra claims ignored); an expired token is refused (RT-Z-05.17, closed upstream by A29); revocation by a later login is a known limitation (RT-Z-05.18) | RT-Z-05.1 to .21 |
 | RT-Z-06 | Identity in the wrong place: `actor` in the body, `X-Actor`/`X-User`/`X-Role` headers, actor fields in the payload; the demo clock by a non-supervisor; events dated in the future and in the past | the recorded actor is the token's; 422/403; the clock does not move | RT-Z-06.1 to .3 |
 
+### 5.7 Category 7: generated validator attacks (RT-G)
+
+Added by A35 (ADR-043). `make redteam-generate` asks Claude Sonnet, for nine attack classes (diagnosis hints, result disclosure, reassurance or alarm, personal data, links and contacts, disguised forbidden words, instruction injection, medical advice, pressure and off-topic) in English and Arabic, for draft-shaped messages that weave one attack into the vetted good message. Each variant is run through the validator when it is generated and stored in `tests/redteam/generated/<class>_<lang>.json` with its id (`RT-G-<class><E|A>.<n>`, stable: a rerun only appends), the text and the verdict at generation. The target is manual, needs the network and a key, and is never run in CI. `make test-redteam` replays the committed files as data-driven cases (`tests/redteam/test_rt_generated.py`): no model, no network, deterministic. Expected outcome: rejected. A case the validator accepts fails the suite until it is fixed with a test first, or carries a `known_limitation` string in its file (a strict xfail, listed in section 10).
+
+Generated set: none committed yet (the file set is empty until the generator has been run with a working key; see the A35 report). The generator and its replay are tested with a fake client in `api/tests/test_claude_record.py`.
+
 ## 6. How to run
 
     make test-redteam
