@@ -16,6 +16,12 @@ dependencies = [
   "psycopg-pool>=3.2",
   "tzdata>=2024.1",  # time zones for the working-day calendar on slim images
   "PyJWT[crypto]>=2.8",  # OIDC access-token verification (A29, ADR-040)
+  # Observability (F14): metrics and traces; the app imports them lazily and runs without them (app/observability.py)
+  "opentelemetry-sdk>=1.30,<2",
+  "opentelemetry-exporter-otlp-proto-http>=1.30,<2",
+  "opentelemetry-exporter-prometheus>=0.51b0,<1",
+  "opentelemetry-instrumentation-fastapi>=0.51b0,<1",
+  "opentelemetry-instrumentation-psycopg>=0.51b0,<1",
 ]
 
 [project.optional-dependencies]

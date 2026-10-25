@@ -1,0 +1,142 @@
+# Screening closure engine - Helm values (F14). Every value is a placeholder or a safe default: no real secret, registry,
+# hostname or address is committed. Nothing here is a deployment claim; docs/governance/deployment.md lists what DoH must
+# authorise first (ADHICS cloud rule).
+
+imagePullSecrets: []
+
+images:
+  api:       { repository: REGISTRY/screening-closure-api,       tag: "0.1.0", pullPolicy: IfNotPresent }
+  scheduler: { repository: REGISTRY/screening-closure-scheduler, tag: "0.1.0", pullPolicy: IfNotPresent }
+  watchdog:  { repository: REGISTRY/screening-closure-watchdog,  tag: "0.1.0", pullPolicy: IfNotPresent }
+
+# Pod and container hardening, applied to every workload (the Python images run as any uid; the api image's own user is 10001).
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 10001
+  runAsGroup: 10001
+  fsGroup: 10001
+  seccompProfile: { type: RuntimeDefault }
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true   # the only writable path is an emptyDir at /tmp
+  capabilities: { drop: [ALL] }
+
+api:
+  replicas: 2                    # A31: several replicas are safe, one is elected leader for the background loops (leader lease)
+  port: 8000
+  resources:
+    requests: { cpu: 500m, memory: 512Mi }
+    limits:   { cpu: "2",  memory: 1Gi }
+  sweepWorkers: ""               # SWEEP_WORKERS; empty = min(4, cpus). Keep it at or below the cpu limit.
+  podDisruptionBudget: { minAvailable: 1 }
+  probes:
+    startup:   { initialDelaySeconds: 5, periodSeconds: 5, failureThreshold: 36 }   # migrations run in the lifespan: allow 3 min
+    liveness:  { periodSeconds: 10, timeoutSeconds: 3, failureThreshold: 6 }
+    readiness: { periodSeconds: 5,  timeoutSeconds: 3, failureThreshold: 3 }
+  service: { type: ClusterIP, port: 8000 }
+  ingress:
+    enabled: false
+    className: ""
+    host: closure.example.invalid   # placeholder
+    tlsSecretName: ""               # TLS terminates here or at the platform's gateway; the API itself speaks plain HTTP
+    annotations: {}
+  topologySpread: true
+
+scheduler:
+  replicas: 2                    # A31: one leads, the other idles as a follower and takes over within the lease TTL
+  intervalSeconds: 10
+  resources:
+    requests: { cpu: 50m,  memory: 64Mi }
+    limits:   { cpu: 250m, memory: 128Mi }
+
+watchdog:
+  replicas: 1
+  idleDays: 7
+  intervalSeconds: 10
+  resources:
+    requests: { cpu: 50m,  memory: 64Mi }
+    limits:   { cpu: 250m, memory: 128Mi }
+
+migrate:
+  resources:
+    requests: { cpu: 100m, memory: 128Mi }
+    limits:   { cpu: 500m, memory: 256Mi }
+  backoffLimit: 2
+  activeDeadlineSeconds: 900
+
+# Non-secret application settings (api/app/config.py). The chart sets the values the API insists on outside APP_ENV=dev:
+# AUTH_MODE=oidc, DEV_LOGIN_ENABLED=false, CLOCK_MODE=wall, no demo approval.
+app:
+  env: production
+  oidcIssuer: https://idp.example.invalid/realms/placeholder   # must be https
+  oidcAudience: screening-closure
+  oidcJwksUrl: ""               # empty = <issuer>/protocol/openid-connect/certs
+  oidcRoleClaim: realm_access.roles
+  oidcRoleMap: ""
+  fhirBaseUrl: https://fhir.example.invalid/fhir               # the host's FHIR server (HAPI or the provider's)
+  fhirVerifyEvidence: "true"
+  fhirProjection: "true"
+  automationEnabled: "true"
+  leaderLeaseTtlSeconds: "30"
+  requireLeaderFence: "true"    # scheduler calls without a current leader token are refused
+  logFormat: json
+  corsAllowOrigins: ""          # the web app's origin(s), comma separated
+  # Observability: leave empty to export nothing (the protected /metrics still works).
+  otlpEndpoint: ""              # e.g. http://otel-collector.observability.svc:4318
+  llmProvider: template         # template = no model call; any other value needs the AI cut's own settings and approval
+
+# Mounted at /config. Create it from the repository's config/ files (docs/governance/deployment.md):
+#   kubectl -n NAMESPACE create configmap screening-closure-config \
+#     --from-file=calendar.yaml=config/calendar.yaml --from-file=colorectal_fit.yaml=config/pathways/colorectal_fit.yaml \
+#     --from-file=providers.yaml=config/providers.yaml --from-file=outreach_policy.yaml=config/outreach_policy.yaml \
+#     --from-file=agency.yaml=config/agency.yaml
+# The outreach policy ships UNSIGNED and an unsigned policy sends nothing: the clinical lead's signature goes into that file.
+config:
+  existingConfigMap: screening-closure-config
+  items:
+    - { key: calendar.yaml,        path: calendar.yaml }
+    - { key: colorectal_fit.yaml,  path: pathways/colorectal_fit.yaml }
+    - { key: providers.yaml,       path: providers.yaml }
+    - { key: outreach_policy.yaml, path: outreach_policy.yaml }
+    - { key: agency.yaml,          path: agency.yaml }
+
+# Secrets. Preferred: `existingSecret` names a Secret that already exists, filled from Azure Key Vault (CSI driver or External
+# Secrets) with the keys listed under `placeholders`. `create: true` renders a Secret from `placeholders` for `helm template`
+# and throw-away clusters ONLY: the values are the literal text CHANGE_ME and the API refuses to start with them.
+#   DATABASE_URL          the unprivileged role closure_app (api)
+#   MIGRATE_DATABASE_URL  the schema owner (migrate job only)
+#   the tokens and DEV_AUTH_SECRET: random, 32 bytes or more, all different
+secrets:
+  existingSecret: screening-closure-secrets  # a Secret's name, not a value  # secrets-scan: allow
+  create: false
+  placeholders:
+    DATABASE_URL: "postgresql://closure_app:CHANGE_ME@DB_HOST:5432/closure?sslmode=require"
+    MIGRATE_DATABASE_URL: "postgresql://closure_owner:CHANGE_ME@DB_HOST:5432/closure?sslmode=require"
+    APP_DB_PASSWORD: CHANGE_ME
+    DEV_AUTH_SECRET: CHANGE_ME
+    SCHEDULER_SERVICE_TOKEN: CHANGE_ME
+    WATCHDOG_SERVICE_TOKEN: CHANGE_ME
+    AUTOMATION_SERVICE_TOKEN: CHANGE_ME
+    AGENCY_SERVICE_TOKEN: CHANGE_ME
+    METRICS_SCRAPE_TOKEN: CHANGE_ME
+
+# Network policy: default deny in both directions for every pod of the release, then only what each component needs.
+networkPolicy:
+  enabled: true
+  dnsNamespaceLabels: { kubernetes.io/metadata.name: kube-system }
+  # Who may reach the API port: pods in these namespaces (the ingress controller; Prometheus for /metrics).
+  ingressFrom:
+    - namespaceLabels: { kubernetes.io/metadata.name: ingress-nginx }
+  metricsFrom:
+    - namespaceLabels: { kubernetes.io/metadata.name: observability }
+  # Egress of the API (and the migrate job for the database). CIDRs are placeholders; use the private endpoints' addresses.
+  egress:
+    database: { cidr: 10.20.2.0/24, port: 5432 }
+    fhir:     { cidr: 10.20.3.0/24, port: 443 }
+    oidc:     { cidr: 10.20.4.0/24, port: 443 }
+    otlp:     { cidr: "", port: 4318 }      # empty = no egress rule
+    extra: []                               # more raw NetworkPolicy egress rules
+
+podAnnotations: {}
+nodeSelector: {}
+tolerations: []

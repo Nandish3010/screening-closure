@@ -1,0 +1,37 @@
+# OpenTelemetry Collector for the `obs` compose profile (F14). The API pushes OTLP/HTTP here; metrics are re-exposed in the
+# Prometheus format for Prometheus to scrape, traces go to the debug exporter. No outbound exporter: nothing leaves the host.
+# For a deployment, replace the exporters with the ones for the backends the host approves (docs/governance/deployment.md).
+receivers:
+  otlp:
+    protocols:
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  memory_limiter:
+    check_interval: 5s
+    limit_mib: 256
+  batch: {}
+
+exporters:
+  prometheus:
+    endpoint: 0.0.0.0:8889
+    resource_to_telemetry_conversion:
+      enabled: true   # service_instance_id etc. become labels, so a dashboard can tell replicas apart
+    metric_expiration: 5m
+  debug:
+    verbosity: basic
+
+service:
+  pipelines:
+    metrics:
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters: [prometheus]
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters: [debug]
+  telemetry:
+    metrics:
+      level: none
