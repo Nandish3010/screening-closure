@@ -330,7 +330,9 @@ def test_an_opt_out_buried_in_a_long_reply_reaches_a_person(case, rt):
     assert_contained(cid, before, snap, [text.strip()[:60]] if len(text.strip()) >= 20 else [])
     stored = client.get(f"/cases/{cid}/replies", headers=H("coordinator")).json()
     assert stored[0]["text"] == text and stored[0]["needs_human"] is True  # the person reads all of it
-    assert scorer.seen == ([text[:MAX_TEXT_CHARS]] if text.strip() else [])  # a blank reply never reaches the model
+    # a blank reply never reaches the model; neither does one the deterministic opt-out gate (D15) answers, wherever in the text the STOP is
+    from app.triage import optout
+    assert scorer.seen == ([text[:MAX_TEXT_CHARS]] if text.strip() and not optout.is_opt_out(text) else [])
 
 
 # ---------------------------------------------------------------------------------------------------- RT-R-05
