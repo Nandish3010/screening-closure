@@ -1,0 +1,73 @@
+{
+  "closed_share": {
+    "baseline": {
+      "mean": 0.527625,
+      "value": "52.8%"
+    },
+    "orchestrated": {
+      "mean": 0.67605,
+      "value": "67.6%"
+    }
+  },
+  "completion_180d": {
+    "baseline": {
+      "mean": 0.5101,
+      "value": "51.0%"
+    },
+    "orchestrated": {
+      "mean": 0.666525,
+      "value": "66.7%"
+    },
+    "ratio": {
+      "mean": 1.3066555577337777,
+      "value": "1.31"
+    }
+  },
+  "labour_reduction": {
+    "literature_all": {
+      "mean": 0.200788,
+      "value": "20.1%"
+    },
+    "literature_in_reach": {
+      "mean": 0.366785,
+      "value": "36.7%"
+    },
+    "upper_all": {
+      "mean": 0.408183,
+      "value": "40.8%"
+    },
+    "upper_all_ci_high": {
+      "mean": 0.41711,
+      "value": "41.7%"
+    },
+    "upper_all_ci_low": {
+      "mean": 0.399084,
+      "value": "39.9%"
+    }
+  },
+  "run": {
+    "cases_per_replication": 2000,
+    "follow_up_days": 360,
+    "git_commit": "db1d13d4a482efe0d6eee64a60ca86a48a1e737d",
+    "replications": 20
+  },
+  "scenario": {
+    "key": "literature_anchored",
+    "label": "Literature anchored (orchestrated effects capped at published levels)",
+    "params_hash": "358508966c4326d5bbf9942003c54d29cf3e55c02bbdf5d3ccb27c13bc4a2c50"
+  },
+  "silent_loss": {
+    "baseline": {
+      "mean": 0.452675,
+      "value": "45.3%"
+    },
+    "orchestrated_in_reach": {
+      "mean": 0.0,
+      "value": "0.0%"
+    },
+    "orchestrated_programme": {
+      "mean": 0.2059,
+      "value": "20.6%"
+    }
+  }
+}
