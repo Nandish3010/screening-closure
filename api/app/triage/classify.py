@@ -9,6 +9,7 @@ calibrated score, not a guarantee (docs/governance/reply-triage-card.md).
 
 `needs_human` is true when ANY of these holds, and these are the only ways to be false:
 
+* the reply says STOP (the deterministic gate in optout.py, which runs before the model and never asks it),
 * the model could not be loaded or failed (fail safe: with no model, every reply goes to a person),
 * the intent is `question`, `other` or `opt_out` (never handled without a person, whatever the confidence),
 * the confidence is below the threshold chosen for >= 0.95 precision on the auto-handled intents,
@@ -18,6 +19,11 @@ calibrated score, not a guarantee (docs/governance/reply-triage-card.md).
 The model is loaded lazily on the first reply. Where this interpreter has mlx it is loaded in process; the API's own
 virtualenv does not, so it is started in a worker process using the interpreter of tools/triage/.venv. If neither
 works, or TRIAGE_ENABLED=0, the classifier is "unavailable" and answers as above.
+
+D15: when TRIAGE_REMOTE_URL is set (compose: http://host.docker.internal:8765) the model is asked over HTTP instead, at
+tools/triage/serve.py running on the host, because MLX cannot run inside the Linux API container. Any error, timeout
+(2 s) or malformed answer from it is the fail-safe answer; it never falls back to the local worker (which would
+start a second model load inside a request). With TRIAGE_REMOTE_URL unset, nothing changes.
 """
 
 from __future__ import annotations
@@ -28,9 +34,12 @@ import math
 import os
 import subprocess
 import threading
+import urllib.error
+import urllib.request
 from pathlib import Path
 from typing import Protocol
 
+from . import optout
 from .labels import ALWAYS_HUMAN, INTENTS, MAX_TEXT_CHARS
 
 log = logging.getLogger("app.triage")
@@ -41,6 +50,7 @@ CALIBRATION_PATH = HERE / "calibration.json"
 UNAVAILABLE_MODEL_ID = "unavailable"
 STARTUP_TIMEOUT_S = 120
 SCORE_TIMEOUT_S = 30
+REMOTE_TIMEOUT_S = 2.0
 
 
 class Scorer(Protocol):
@@ -207,8 +217,20 @@ def _ready() -> tuple[Scorer, Calibration] | None:
 def classify(text: str, language_hint: str | None = None) -> dict:
     """The contract above. Never raises. `language_hint` ('en' or 'ar') is accepted for the caller's benefit; the model
     reads the text itself (it is trained on Arabic, English, Arabizi and mixed script) and does not use the hint."""
+    if isinstance(text, str) and text.strip() and not optout.is_opt_out(text):
+        remote_url = os.environ.get("TRIAGE_REMOTE_URL", "").strip()
+        if remote_url:
+            return classify_remote(remote_url, text, language_hint)
+    return classify_local(text, language_hint)
+
+
+def classify_local(text: str, language_hint: str | None = None) -> dict:
+    """The opt-out gate, then the model in this process or its worker. Never asks TRIAGE_REMOTE_URL (tools/triage/serve.py
+    calls this one, so it can never call itself)."""
     if not isinstance(text, str) or not text.strip():
         return unavailable() | {"model_id": _model_id_or_unavailable()}
+    if optout.is_opt_out(text):  # before any model: an opt-out never depends on one
+        return {"intent": "opt_out", "confidence": 1.0, "model_id": optout.GATE_MODEL_ID, "needs_human": True}
     ready = _ready()
     if ready is None:
         return unavailable()
@@ -218,6 +240,28 @@ def classify(text: str, language_hint: str | None = None) -> dict:
     except Exception:  # noqa: BLE001
         log.warning("reply triage failed on one reply; sent to a person", exc_info=True)
         return unavailable() | {"model_id": cal.model_id}
+
+
+def classify_remote(base_url: str, text: str, language_hint: str | None, timeout: float = REMOTE_TIMEOUT_S) -> dict:
+    """POST {base_url}/classify. The answer is checked field by field; anything else, or any error, is `unavailable()`."""
+    try:
+        body = json.dumps({"text": text[:MAX_TEXT_CHARS], "language_hint": language_hint}, ensure_ascii=False).encode("utf-8")
+        req = urllib.request.Request(base_url.rstrip("/") + "/classify", data=body, method="POST",
+                                     headers={"Content-Type": "application/json; charset=utf-8"})
+        with urllib.request.urlopen(req, timeout=timeout) as resp:  # noqa: S310 - the operator's own URL
+            if resp.status != 200:
+                raise ValueError(f"status {resp.status}")
+            answer = json.loads(resp.read(65536).decode("utf-8"))
+        intent, conf, model_id, needs_human = answer["intent"], answer["confidence"], answer["model_id"], answer["needs_human"]
+        if (intent not in INTENTS or not _finite(conf) or not 0.0 <= conf <= 1.0 or not isinstance(model_id, str)
+                or not model_id or len(model_id) > 100 or not isinstance(needs_human, bool)):
+            raise ValueError("malformed answer")
+        # The server's word is not trusted on the one rule that does not depend on the model.
+        needs_human = needs_human or intent in ALWAYS_HUMAN or len(text) > MAX_TEXT_CHARS
+        return {"intent": intent, "confidence": round(float(conf), 4), "model_id": model_id, "needs_human": needs_human}
+    except Exception as exc:  # noqa: BLE001 - unreachable, slow, malformed: a person reads it
+        log.warning("remote reply triage failed (%s); sent to a person", type(exc).__name__)
+        return unavailable()
 
 
 def _model_id_or_unavailable() -> str:

@@ -6,6 +6,7 @@ Everything the 7-minute GITEX demo needs to start from a known state, run the sa
 |---|---|
 | `make demo-stage` | Stage the demo's second case through the API: walk it to `confirmatory_completed`, owned by Dr. Karim Nasser (the specialist login). Safe to rerun. See [The second case](#the-second-case). |
 | `make demo-snapshot` | Stage the second case (`demo-stage`), then save the current database as the demo snapshot. Do it once on a clean, seeded stack: `make reset && make demo-seed && make demo-snapshot`. |
+| `make triage-serve` | **Start before the demo** (own terminal, leave it running): the fine-tuned reply-triage model on the host (MLX, `tools/triage/.venv`), which the compose API calls at `TRIAGE_REMOTE_URL`. Without it every reply is read as "other" and goes to a person. `curl -s localhost:8765/health` must say `"warm": true`. See `tools/triage/README.md`. |
 | `make demo-reset` | One click: restore the snapshot, reset the simulation clock, and check that the state hash equals the snapshot's. |
 | `make demo-restore` | The restore alone, without the clock reset and the hash check. |
 | `make demo-scenario [UNTIL=<step>]` | Run the scripted story for the named patient through the API, optionally up to and including one step. |

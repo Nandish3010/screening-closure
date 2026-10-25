@@ -23,3 +23,6 @@ data/
 
 # E16 video outputs (recordings, audio, the web build, the two mp4s)
 tools/video/out/
+
+# F14: a filled-in Bicep parameter file (the committed one is main.example.bicepparam)
+deploy/bicep/main.bicepparam

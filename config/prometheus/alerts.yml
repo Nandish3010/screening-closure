@@ -1,0 +1,106 @@
+# Alert rules tied to the SLOs in docs/governance/deployment.md (F14). Loaded by the `obs` profile's Prometheus; a deployment
+# loads the same file into its own Prometheus or translates it. Thresholds are starting points to tune on pilot hardware.
+groups:
+  - name: screening-closure
+    rules:
+      - alert: SchedulerNoLeader
+        expr: max(closure_leader{lease="scheduler-present"}) == 0
+        for: 2m
+        labels: { severity: page }
+        annotations:
+          summary: "No scheduler holds the lease"
+          description: "No scheduler instance has renewed the lease. SLAs are not being swept. The watchdog's scheduler_down alert fires too."
+
+      - alert: SchedulerHeartbeatStale
+        expr: max(closure_service_heartbeat_age_seconds{service="scheduler"}) > 90
+        for: 1m
+        labels: { severity: page }
+        annotations:
+          summary: "Scheduler heartbeat is older than 90 s"
+          description: "The scheduler has stopped beating (down, partitioned or failing every sweep). Compare with GET /alerts."
+
+      - alert: WatchdogHeartbeatStale
+        expr: max(closure_service_heartbeat_age_seconds{service="watchdog"}) > 120
+        for: 2m
+        labels: { severity: page }
+        annotations:
+          summary: "Watchdog heartbeat is older than 120 s"
+          description: "The watchdog that raises scheduler_down is itself down."
+
+      - alert: NoApiLeader
+        expr: max(closure_leader{lease="api-background"}) == 0
+        for: 2m
+        labels: { severity: ticket }
+        annotations:
+          summary: "No API replica is the background leader"
+          description: "The FHIR projection drain is not running. Replicas renew every ttl/3; check database reachability."
+
+      - alert: SweepSlow
+        expr: histogram_quantile(0.95, sum by (le) (rate(closure_sweep_duration_seconds_bucket[15m]))) > 5
+        for: 15m
+        labels: { severity: ticket }
+        annotations:
+          summary: "Sweep p95 above 5 s"
+          description: "The SLO target for a 100,000-case sweep is 5 s (load.md). Check SWEEP_WORKERS against the CPU limit and the open-case count."
+
+      - alert: SweepErrors
+        expr: sum(increase(closure_sweeps_total{result="errors"}[15m])) > 0
+        labels: { severity: ticket }
+        annotations:
+          summary: "A sweep reported errors"
+          description: "Some cases were not evaluated (a log that does not replay, a refused event). See the API logs by trace_id."
+
+      - alert: OutboxBacklog
+        expr: max(closure_outbox_pending) > 0
+        for: 10m
+        labels: { severity: ticket }
+        annotations:
+          summary: "Approved messages are waiting to be sent"
+          description: "The outbox drain (scheduler, every interval) is not emptying it. Messages are sent once; nothing is lost, but patients wait."
+
+      - alert: FhirProjectionDeadLetters
+        expr: max(closure_projection_dead_letters) > 0
+        labels: { severity: page }
+        annotations:
+          summary: "FHIR projection has dead-lettered events"
+          description: "Events were given up on after repeated failures; the FHIR copy of those cases is stale. Also shown by GET /alerts (fhir_projection_dead_letter)."
+
+      - alert: FhirProjectionBacklog
+        expr: max(closure_projection_queue_depth) > 100
+        for: 10m
+        labels: { severity: ticket }
+        annotations:
+          summary: "FHIR projection queue is growing"
+          description: "HAPI or the network is slow or down; the drain retries with backoff."
+
+      - alert: OverdueCasesGrowing
+        expr: max(closure_cases_overdue) > 1.5 * max(closure_cases_overdue offset 1d) and max(closure_cases_overdue) > 20
+        for: 1h
+        labels: { severity: ticket }
+        annotations:
+          summary: "Overdue cases are 50% above yesterday"
+          description: "A programme signal, not an infrastructure fault: escalations are not being accepted. Tell the programme coordinator."
+
+      - alert: ApiHighErrorRate
+        expr: sum(rate(http_server_request_duration_seconds_count{http_response_status_code=~"5.."}[5m])) / sum(rate(http_server_request_duration_seconds_count[5m])) > 0.05
+        for: 10m
+        labels: { severity: page }
+        annotations:
+          summary: "More than 5% of API requests fail with 5xx"
+          description: "The availability SLO burns fast. Check the database and the FHIR server first."
+
+      - alert: ApiSlow
+        expr: histogram_quantile(0.95, sum by (le) (rate(http_server_request_duration_seconds_bucket{http_route!~"/scheduler/.*"}[5m]))) > 1
+        for: 15m
+        labels: { severity: ticket }
+        annotations:
+          summary: "API p95 latency above 1 s"
+          description: "Excludes the scheduler's own routes (a sweep is long by design)."
+
+      - alert: MetricsMissing
+        expr: absent(closure_leader)
+        for: 5m
+        labels: { severity: page }
+        annotations:
+          summary: "The API exports no metrics"
+          description: "The API is down, or the collector or the OTLP path is broken."
