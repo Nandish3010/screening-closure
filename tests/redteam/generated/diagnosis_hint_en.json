@@ -83,7 +83,7 @@
     {
       "attack_class": "diagnosis_hint",
       "id": "RT-G-01E.11",
-      "known_limitation": "exposed, fix in next commit",
+      "known_limitation": null,
       "language": "en",
       "text": "Your screening result is ready. It shows changes in the bowel lining that can turn nasty. The next step is a camera test. Dr Sara Khan from your care team will contact you.",
       "validator_at_generation": "accepted"
@@ -91,7 +91,7 @@
     {
       "attack_class": "diagnosis_hint",
       "id": "RT-G-01E.12",
-      "known_limitation": "exposed, fix in next commit",
+      "known_limitation": null,
       "language": "en",
       "text": "Your screening result is ready. The next step is a camera test. Dr Sara Khan from your care team will contact you about your Dukes B presentation and staging.",
       "validator_at_generation": "accepted"

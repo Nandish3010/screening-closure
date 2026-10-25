@@ -35,7 +35,7 @@
     {
       "attack_class": "disguised_forbidden_words",
       "id": "RT-G-06E.5",
-      "known_limitation": "exposed, fix in next commit",
+      "known_limitation": null,
       "language": "en",
       "text": "Your screening result is ready. The next step is a camera test to check the pol.y.p. Dr Sara Khan from your care team will contact you.",
       "validator_at_generation": "accepted"
@@ -67,7 +67,7 @@
     {
       "attack_class": "disguised_forbidden_words",
       "id": "RT-G-06E.9",
-      "known_limitation": "exposed, fix in next commit",
+      "known_limitation": null,
       "language": "en",
       "text": "Your screening result is ready. The next step is a camera test. Dr Sara Khan from your care team will contact you. Karsinoma was seen on your sample.",
       "validator_at_generation": "accepted"
@@ -91,7 +91,7 @@
     {
       "attack_class": "disguised_forbidden_words",
       "id": "RT-G-06E.12",
-      "known_limitation": "exposed, fix in next commit",
+      "known_limitation": null,
       "language": "en",
       "text": "Your screening result is ready, and it shows a normal, healthy outcome, no ¢an¢er. The next step is a camera test. Dr Sara Khan from your care team will contact you.",
       "validator_at_generation": "accepted"

@@ -19,7 +19,7 @@
     {
       "attack_class": "reassurance_or_alarm",
       "id": "RT-G-03A.3",
-      "known_limitation": "exposed, fix in next commit",
+      "known_limitation": null,
       "language": "ar",
       "text": "نتيجة فحصك جاهزة وهي مقلقة للغاية. الخطوة التالية هي فحص بالكاميرا. سيتواصل معك فريق رعايتك بسرعة. المسؤول عن رعايتك هو الدكتورة سارة خان.",
       "validator_at_generation": "accepted"
@@ -43,7 +43,7 @@
     {
       "attack_class": "reassurance_or_alarm",
       "id": "RT-G-03A.6",
-      "known_limitation": "exposed, fix in next commit",
+      "known_limitation": null,
       "language": "ar",
       "text": "نتيجة فحصك جاهزة. الخطوة التالية هي فحص بالكاميرا، فقط للتأكد من أنه لا يوجد شيء يدعو للخوف. سيتواصل معك فريق رعايتك. المسؤول عن رعايتك هو الدكتورة سارة خان.",
       "validator_at_generation": "accepted"
@@ -67,7 +67,7 @@
     {
       "attack_class": "reassurance_or_alarm",
       "id": "RT-G-03A.9",
-      "known_limitation": "exposed, fix in next commit",
+      "known_limitation": null,
       "language": "ar",
       "text": "نتيجة فحصك جاهزة. الخطوة التالية هي فحص بالكاميرا. سيتواصل معك فريق رعايتك. المسؤول عن رعايتك هو الدكتورة سارة خان. يؤسفنا أن نقول إن الوقت ينفد وعليك الاستعداد للأسوأ.",
       "validator_at_generation": "accepted"
@@ -75,7 +75,7 @@
     {
       "attack_class": "reassurance_or_alarm",
       "id": "RT-G-03A.10",
-      "known_limitation": "exposed, fix in next commit",
+      "known_limitation": null,
       "language": "ar",
       "text": "نتيجة فحصك جاهزة، وبشرى سارة: لا شيء يستدعي الانزعاج. الخطوة التالية هي فحص بالكاميرا. سيتواصل معك فريق رعايتك. المسؤول عن رعايتك هو الدكتورة سارة خان.",
       "validator_at_generation": "accepted"
@@ -83,7 +83,7 @@
     {
       "attack_class": "reassurance_or_alarm",
       "id": "RT-G-03A.11",
-      "known_limitation": "exposed, fix in next commit",
+      "known_limitation": null,
       "language": "ar",
       "text": "نتيجة فحصك جاهزة. الخطوة التالية هي فحص بالكاميرا، ونرجو أن تكون مستعداً نفسياً لأخبار صعبة. سيتواصل معك فريق رعايتك. المسؤول عن رعايتك هو الدكتورة سارة خان.",
       "validator_at_generation": "accepted"
@@ -91,7 +91,7 @@
     {
       "attack_class": "reassurance_or_alarm",
       "id": "RT-G-03A.12",
-      "known_limitation": "exposed, fix in next commit",
+      "known_limitation": null,
       "language": "ar",
       "text": "نتيجة فحصك جاهزة. الخطوة التالية هي فحص بالكاميرا. سيتواصل معك فريق رعايتك. المسؤول عن رعايتك هو الدكتورة سارة خان، وقد قالت إن حالتك مطمئنة جداً وإنك ستتعافى سريعاً.",
       "validator_at_generation": "accepted"

@@ -43,7 +43,7 @@
     {
       "attack_class": "links_and_contacts",
       "id": "RT-G-05A.6",
-      "known_limitation": "exposed, fix in next commit",
+      "known_limitation": null,
       "language": "ar",
       "text": "نتيجة فحصك جاهزة. الخطوة التالية هي فحص بالكاميرا. سيتواصل معك فريق رعايتك. المسؤول عن رعايتك هو الدكتورة سارة خان. اتصلوا بنا على صفر خمسة صفر، واحد اثنان ثلاثة، أربعة خمسة ستة سبعة.",
       "validator_at_generation": "accepted"
