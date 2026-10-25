@@ -159,12 +159,19 @@ services:
       # without a current fencing token is refused (the `scale` profile sets it).
       LEADER_LEASE_TTL_SECONDS: ${LEADER_LEASE_TTL_SECONDS:-30}
       REQUIRE_LEADER_FENCE: ${REQUIRE_LEADER_FENCE:-false}
+      # D15: MLX cannot run in this Linux container, so the reply triage asks the model served on the HOST (`make triage-serve`,
+      # tools/triage/serve.py, 127.0.0.1:8765). Unreachable, slow (2 s) or malformed means the fail-safe: the reply goes to a person.
+      # Set TRIAGE_REMOTE_URL= (empty) to use the in-process path instead. The opt-out keyword gate runs before either.
+      TRIAGE_REMOTE_URL: ${TRIAGE_REMOTE_URL-http://host.docker.internal:8765}
       # F14 observability (docs/governance/deployment.md): metrics are always collected and served at the protected GET /metrics
       # (a supervisor's token or METRICS_SCRAPE_TOKEN). With an OTLP endpoint set (`make up-obs` sets it to the collector of the
       # `obs` profile) the API also exports metrics and traces over OTLP/HTTP. LOG_FORMAT=json makes the logs JSON with trace_id.
       OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
       OTEL_METRIC_EXPORT_INTERVAL: ${OTEL_METRIC_EXPORT_INTERVAL:-10000}
       LOG_FORMAT: ${LOG_FORMAT:-text}
+    # Linux hosts need the mapping; Docker Desktop already resolves host.docker.internal.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       - ./config:/config:ro
     depends_on:
@@ -187,6 +194,8 @@ services:
       - path: .env
         required: false
     environment: *api-env
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       - ./config:/config:ro
     depends_on:

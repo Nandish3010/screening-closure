@@ -1,4 +1,4 @@
-.PHONY: claude-smoke claude-record redteam-generate up-obs check-full evaluate-smoke test-redteam validate validate-check validate-targets evaluate-refusal oidc-up oidc-down test-oidc up-scale agency-run test-demo test-e2e-live demo-scenario demo-stage demo-snapshot demo-restore demo-reset demo-kill-scheduler check docs-check tracker-lint test-security test-tools test-load load-check up down logs test test-db test-db-create test-db-reset test-chaos synthea demo-seed demo-seed-clean evaluate evaluate-capacity evaluate-capacity-check simulate evaluate-check sensitivity sensitivity-check reset web-install web-dev web-build web-test web-e2e test-e2e review-packs review-packs-check test-review-packs test-phi-logs rbac-matrix test-offline fresh-clone risk-report risk-check calibrate-fetch calibrate-fit calibrate-check effort effort-check video video-check video-deps verify hl7-demo hl7-samples
+.PHONY: claude-smoke claude-record redteam-generate triage-serve up-obs check-full evaluate-smoke test-redteam validate validate-check validate-targets evaluate-refusal oidc-up oidc-down test-oidc up-scale agency-run test-demo test-e2e-live demo-scenario demo-stage demo-snapshot demo-restore demo-reset demo-kill-scheduler check docs-check tracker-lint test-security test-tools test-load load-check up down logs test test-db test-db-create test-db-reset test-chaos synthea demo-seed demo-seed-clean evaluate evaluate-capacity evaluate-capacity-check simulate evaluate-check sensitivity sensitivity-check reset web-install web-dev web-build web-test web-e2e test-e2e review-packs review-packs-check test-review-packs test-phi-logs rbac-matrix test-offline fresh-clone risk-report risk-check calibrate-fetch calibrate-fit calibrate-check effort effort-check video video-check video-deps verify hl7-demo hl7-samples
 
 up:
 	docker compose up -d --build
@@ -249,8 +249,15 @@ demo-snapshot: demo-stage
 demo-restore:
 	tools/demo/snapshot.sh restore
 
-# One click: restore the snapshot, reset the sim clock, check the state hash equals the snapshot's (about 25 s).
+# D15: the fine-tuned reply-triage model on the host (MLX, tools/triage/.venv), for the compose API to call at
+# TRIAGE_REMOTE_URL (127.0.0.1:8765). Start it BEFORE the demo (it warms up in a few seconds); without it replies fail safe to a person.
+triage-serve:
+	tools/triage/.venv/bin/python tools/triage/serve.py
+
+# One click: restore the snapshot, reset the sim clock, check the state hash equals the snapshot's (about 25 s). Start `make triage-serve`
+# (own terminal) before the demo so the reply-triage cameo reads replies live.
 demo-reset:
+	@curl -sf -m 2 http://127.0.0.1:8765/health >/dev/null || echo 'note: the triage server is not running (make triage-serve); replies will fail safe to a person'
 	tools/demo/snapshot.sh reset
 
 # T-E9 and T-E10 against the running stack: the scenario end to end and identical after a reset, and the reset

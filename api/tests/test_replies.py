@@ -144,7 +144,7 @@ def test_low_confidence_asks_a_person_instead_of_guessing():
 def test_no_model_means_every_reply_goes_to_a_person():
     triage.set_backend(None)
     cid = new_case()
-    for text in ("intent:confirm yes", "intent:reschedule", "intent:opt_out stop"):
+    for text in ("intent:confirm yes", "intent:reschedule", "intent:opt_out enough"):
         body = reply(cid, text).json()
         assert body["needs_human"] is True and body["model_id"] == "unavailable"
     assert kinds_after_creation(cid).count("callback_requested") == 0
@@ -164,7 +164,7 @@ def test_an_opt_out_never_withdraws_consent_and_never_touches_the_state():
 
 def test_a_triage_flag_does_not_hide_a_later_consent_review():
     cid = new_case()
-    reply(cid, "intent:opt_out stop")
+    reply(cid, "intent:opt_out enough")
     post_event(cid, "consent_updated", "coordinator", {"withdrawn": True})
     types = [e.type for e in log(cid)]
     assert types.count("review_requested") == 2  # the triage one and the consent one
@@ -258,7 +258,7 @@ def test_a_closed_case_stores_the_reply_for_a_person_and_logs_nothing():
         post_event(cid, type_, role, payload, patient_ref="Patient/1" if role == "patient" else None)
     assert state(cid) == "closed"
     n = len(log(cid))
-    r = reply(cid, "intent:opt_out stop")
+    r = reply(cid, "intent:opt_out enough")
     assert r.status_code == 201 and r.json()["logged"] is False and r.json()["applied"] == [] and "closed" in r.json()["note"]
     assert len(log(cid)) == n
     stored = client.get(f"/cases/{cid}/replies", headers=H("coordinator")).json()
@@ -365,3 +365,12 @@ def test_payload_schemas_refuse_text_and_unknown_keys():
 def test_the_pathway_lists_the_two_events_as_annotations():
     assert {"reply_received", "reply_classified"} <= set(cases.pathway.annotations)
     assert not {"reply_received", "reply_classified"} & set(cases.pathway.human_only_events)
+
+
+def test_a_stop_reply_is_an_opt_out_for_a_person_even_with_no_model():  # D15: the keyword gate does not need the model
+    triage.set_backend(None)
+    cid = new_case()
+    body = reply(cid, "STOP").json()
+    assert body["intent"] == "opt_out" and body["needs_human"] is True and body["model_id"].startswith("rule:")
+    reasons = [e.payload["reason"] for e in log(cid) if e.type == "review_requested"]
+    assert reasons == ["opt_out"]
