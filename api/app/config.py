@@ -22,6 +22,7 @@ WATCHDOG_TOKEN_DEFAULT = "dev-only-watchdog-service-token"
 AUTOMATION_TOKEN_DEFAULT = "dev-only-automation-service-token"
 AGENCY_TOKEN_DEFAULT = "dev-only-agency-service-token"
 HL7_TOKEN_DEFAULT = "dev-only-hl7-service-token"
+METRICS_TOKEN_DEFAULT = "dev-only-metrics-scrape-token"
 
 
 class Settings(BaseSettings):
@@ -93,6 +94,10 @@ class Settings(BaseSettings):
     # the POST /cases path, book the confirmatory appointment and record confirmatory evidence (app.policy.HL7_ACTIONS).
     # Empty switches the token off (always safe); set outside dev it is checked like the other tokens.
     hl7_service_token: str = HL7_TOKEN_DEFAULT
+    # F14: a bearer secret a Prometheus scraper presents to GET /metrics (a supervisor's token works too). Its development
+    # default is accepted only while APP_ENV=dev; outside dev only a value someone set (32 bytes or more) opens the endpoint
+    # to a scraper. Empty switches the scrape token off (a supervisor token still works).
+    metrics_scrape_token: str = METRICS_TOKEN_DEFAULT
     # --- the agency (A22, ADR-033): agents are labour, not authority -----------------------------
     # The scheduler hook runs supervisor -> department heads -> executioners after every N-th sweep (0 = never).
     agency_every_sweeps: int = 6

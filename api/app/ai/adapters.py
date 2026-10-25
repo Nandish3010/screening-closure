@@ -140,7 +140,17 @@ class _ChatProvider:
             raise ProviderUnavailable(f"{self.name}: {type(exc).__name__}") from None
         if response.status_code != 200:
             raise ProviderUnavailable(f"{self.name}: HTTP {response.status_code}")
+        self._record_usage(response)
         return self._extract(response)
+
+    def _record_usage(self, response) -> None:
+        """Token counts from an OpenAI-compatible `usage` object, for the llm-tokens metric (F14). Counts only; never text."""
+        try:
+            from app import observability
+
+            observability.record_llm_usage(self.name, response.json().get("usage"))
+        except Exception:  # noqa: BLE001 - a metric must never fail a draft
+            pass
 
     def _extract(self, response) -> str:
         try:

@@ -25,7 +25,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, ConfigDict, Field
 
-from app import automation, leader, ops
+from app import automation, leader, observability, ops
 from app.agency import runner as agency_runner
 from app.calendar import default_calendar
 from app.clock import clock
@@ -135,7 +135,9 @@ class LeaseRequest(BaseModel):
 @router.post("/sweep", dependencies=fenced)
 def sweep() -> dict:
     now = clock.now()
+    started = observability.stopwatch()  # F14: for the sweep-duration metric only
     out = _sweep(now)
+    observability.record_sweep(out, observability.stopwatch() - started)
     # A22: every AGENCY_EVERY_SWEEPS-th sweep starts an agency run in the background (labour, not authority: it
     # writes no case event as the agency). Counted after the sweep, so a sweep is never delayed or failed by it.
     out["agency"] = agency_runner.after_sweep(now)

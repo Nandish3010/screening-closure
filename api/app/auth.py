@@ -36,6 +36,7 @@ from app.config import (
     AGENCY_TOKEN_DEFAULT,
     DEV_AUTH_SECRET_DEFAULT,
     HL7_TOKEN_DEFAULT,
+    METRICS_TOKEN_DEFAULT,
     SCHEDULER_TOKEN_DEFAULT,
     WATCHDOG_TOKEN_DEFAULT,
     settings,
@@ -330,6 +331,9 @@ def secure_config_problems() -> list[str]:
     hl7 = settings.hl7_service_token
     if hl7 and hl7 != HL7_TOKEN_DEFAULT and len(hl7.encode()) < MIN_SECRET_BYTES:
         problems.append(f"HL7_SERVICE_TOKEN is shorter than {MIN_SECRET_BYTES} bytes")
+    scrape = settings.metrics_scrape_token
+    if scrape and scrape != METRICS_TOKEN_DEFAULT and len(scrape.encode()) < MIN_SECRET_BYTES:
+        problems.append(f"METRICS_SCRAPE_TOKEN is shorter than {MIN_SECRET_BYTES} bytes")
     if settings.clock_mode != "wall":
         problems.append("CLOCK_MODE is not 'wall' (a deployment outside dev must run on real time, not the simulation clock)")
     if settings.outreach_demo_approval:
