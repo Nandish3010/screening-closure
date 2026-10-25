@@ -4872,7 +4872,7 @@
     },
     {
       "abuse_case": "RT-R-04",
-      "actual": "intent=confirm, needs_human=True, events=['reply_received', 'reply_classified', 'review_requested']",
+      "actual": "intent=opt_out, needs_human=True, events=['reply_received', 'reply_classified', 'review_requested']",
       "category": "replies",
       "expected": "intent opt_out, or a review request (a person reads all of it); never a silent auto-handling",
       "id": "RT-R-04.1",
@@ -4882,7 +4882,7 @@
     },
     {
       "abuse_case": "RT-R-04",
-      "actual": "intent=confirm, needs_human=True, events=['reply_received', 'reply_classified', 'review_requested']",
+      "actual": "intent=opt_out, needs_human=True, events=['reply_received', 'reply_classified', 'review_requested']",
       "category": "replies",
       "expected": "intent opt_out, or a review request (a person reads all of it); never a silent auto-handling",
       "id": "RT-R-04.2",
@@ -4892,7 +4892,7 @@
     },
     {
       "abuse_case": "RT-R-04",
-      "actual": "intent=confirm, needs_human=True, events=['reply_received', 'reply_classified', 'review_requested']",
+      "actual": "intent=opt_out, needs_human=True, events=['reply_received', 'reply_classified', 'review_requested']",
       "category": "replies",
       "expected": "intent opt_out, or a review request (a person reads all of it); never a silent auto-handling",
       "id": "RT-R-04.3",
@@ -4902,7 +4902,7 @@
     },
     {
       "abuse_case": "RT-R-04",
-      "actual": "intent=confirm, needs_human=True, events=['reply_received', 'reply_classified', 'review_requested']",
+      "actual": "intent=opt_out, needs_human=True, events=['reply_received', 'reply_classified', 'review_requested']",
       "category": "replies",
       "expected": "intent opt_out, or a review request (a person reads all of it); never a silent auto-handling",
       "id": "RT-R-04.4",
@@ -4912,7 +4912,7 @@
     },
     {
       "abuse_case": "RT-R-04",
-      "actual": "intent=confirm, needs_human=True, events=['reply_received', 'reply_classified', 'review_requested']",
+      "actual": "intent=opt_out, needs_human=True, events=['reply_received', 'reply_classified', 'review_requested']",
       "category": "replies",
       "expected": "intent opt_out, or a review request (a person reads all of it); never a silent auto-handling",
       "id": "RT-R-04.5",
@@ -4932,7 +4932,7 @@
     },
     {
       "abuse_case": "RT-R-04",
-      "actual": "intent=confirm, needs_human=True, events=['reply_received', 'reply_classified', 'review_requested']",
+      "actual": "intent=opt_out, needs_human=True, events=['reply_received', 'reply_classified', 'review_requested']",
       "category": "replies",
       "expected": "intent opt_out, or a review request (a person reads all of it); never a silent auto-handling",
       "id": "RT-R-04.7",
@@ -4942,7 +4942,7 @@
     },
     {
       "abuse_case": "RT-R-04",
-      "actual": "intent=confirm, needs_human=True, events=['reply_received', 'reply_classified', 'review_requested']",
+      "actual": "intent=opt_out, needs_human=True, events=['reply_received', 'reply_classified', 'review_requested']",
       "category": "replies",
       "expected": "intent opt_out, or a review request (a person reads all of it); never a silent auto-handling",
       "id": "RT-R-04.8",
@@ -4952,7 +4952,7 @@
     },
     {
       "abuse_case": "RT-R-04",
-      "actual": "intent=confirm, needs_human=True, events=['reply_received', 'reply_classified', 'review_requested']",
+      "actual": "intent=opt_out, needs_human=True, events=['reply_received', 'reply_classified', 'review_requested']",
       "category": "replies",
       "expected": "intent opt_out, or a review request (a person reads all of it); never a silent auto-handling",
       "id": "RT-R-04.9",

@@ -42,3 +42,21 @@ re-runs only the evaluation; `evaluate.py --reuse-scores` re-fits the temperatur
 `api/app/triage/classify.py` loads the model lazily. The API's virtualenv has no `mlx`, so it starts
 `python -m app.triage.worker` with `tools/triage/.venv/bin/python` (override with `TRIAGE_PYTHON`, `TRIAGE_MODEL_PATH`,
 `TRIAGE_ADAPTER_PATH`). `TRIAGE_ENABLED=0` turns the model off. With no model, every reply is `needs_human`.
+
+### Live in the compose demo: `make triage-serve` (D15)
+
+MLX cannot run inside the Linux API container, so the model is served from the host and the compose API calls it:
+
+```sh
+make triage-serve        # tools/triage/serve.py under tools/triage/.venv: loads and warms the model, then listens on 127.0.0.1:8765
+curl -s localhost:8765/health      # {"status": "ok", "model_id": ..., "warm": true}
+```
+
+Compose sets `TRIAGE_REMOTE_URL=http://host.docker.internal:8765` on the API. With it set, `classify()` POSTs `{"text", "language_hint"}`
+to `/classify` (2 s timeout) and uses the answer, which has the contract of `classify()`. Unreachable, slow or malformed is the
+fail-safe (`other`, 0.0, `unavailable`, `needs_human`): the demo still works, the reply just goes to a person. It does not fall
+back to the in-process worker. Unset `TRIAGE_REMOTE_URL` (`TRIAGE_REMOTE_URL= make up`) to get the old local behaviour.
+
+**Opt-out gate.** Before the model (remote or local), `api/app/triage/optout.py` matches STOP-style phrases in English, Arabic
+and Arabizi after normalisation. A match answers `opt_out`, confidence 1.0, `model_id` `rule:opt-out-gate-v1`, `needs_human`
+true, and the model is not asked. It is over-eager on purpose (a false positive costs a person one read).
