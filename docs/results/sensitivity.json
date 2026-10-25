@@ -1797,13 +1797,13 @@
         "metrics": {
           "completion_180d": {
             "baseline": 0.5162,
-            "difference": 0.144,
-            "orchestrated": 0.6602
+            "difference": 0.1442,
+            "orchestrated": 0.6604
           },
           "open_90d": {
             "baseline": 0.606,
-            "difference": -0.1616,
-            "orchestrated": 0.4444
+            "difference": -0.1618,
+            "orchestrated": 0.4442
           },
           "silent_loss_rate": {
             "baseline": 0.4448,
@@ -1816,8 +1816,8 @@
       "range_basis": "stated range: 0.9 (assumed floor for a managed programme) to 1.0 (every referral booked promptly); S06 measures the clinic offer, not the procedure",
       "status": "sourced-adjacent",
       "swing": {
-        "completion_180d": 0.0074,
-        "open_90d": 0.0176,
+        "completion_180d": 0.0072,
+        "open_90d": 0.0174,
         "silent_loss_rate": 0.0
       }
     },
@@ -2587,6 +2587,57 @@
       }
     },
     {
+      "base_value": 5,
+      "high": {
+        "metrics": {
+          "completion_180d": {
+            "baseline": 0.5142,
+            "difference": 0.1528,
+            "orchestrated": 0.667
+          },
+          "open_90d": {
+            "baseline": 0.6114,
+            "difference": -0.1808,
+            "orchestrated": 0.4306
+          },
+          "silent_loss_rate": {
+            "baseline": 0.4454,
+            "difference": -0.238,
+            "orchestrated": 0.2074
+          }
+        },
+        "value": 10
+      },
+      "key": "staff.delay_median_days.contact_patient",
+      "low": {
+        "metrics": {
+          "completion_180d": {
+            "baseline": 0.5178,
+            "difference": 0.15,
+            "orchestrated": 0.6678
+          },
+          "open_90d": {
+            "baseline": 0.6022,
+            "difference": -0.1754,
+            "orchestrated": 0.4268
+          },
+          "silent_loss_rate": {
+            "baseline": 0.4442,
+            "difference": -0.2372,
+            "orchestrated": 0.207
+          }
+        },
+        "value": 2.5
+      },
+      "range_basis": "default rule: duration, value x0.5 and x2",
+      "status": "calibrated",
+      "swing": {
+        "completion_180d": 0.0028,
+        "open_90d": 0.0054,
+        "silent_loss_rate": 0.0008
+      }
+    },
+    {
       "base_value": 0.05,
       "high": {
         "metrics": {
@@ -2740,57 +2791,6 @@
       }
     },
     {
-      "base_value": 5,
-      "high": {
-        "metrics": {
-          "completion_180d": {
-            "baseline": 0.5142,
-            "difference": 0.1526,
-            "orchestrated": 0.6668
-          },
-          "open_90d": {
-            "baseline": 0.6114,
-            "difference": -0.1808,
-            "orchestrated": 0.4306
-          },
-          "silent_loss_rate": {
-            "baseline": 0.4454,
-            "difference": -0.238,
-            "orchestrated": 0.2074
-          }
-        },
-        "value": 10
-      },
-      "key": "staff.delay_median_days.contact_patient",
-      "low": {
-        "metrics": {
-          "completion_180d": {
-            "baseline": 0.5178,
-            "difference": 0.15,
-            "orchestrated": 0.6678
-          },
-          "open_90d": {
-            "baseline": 0.6022,
-            "difference": -0.1754,
-            "orchestrated": 0.4268
-          },
-          "silent_loss_rate": {
-            "baseline": 0.4442,
-            "difference": -0.2372,
-            "orchestrated": 0.207
-          }
-        },
-        "value": 2.5
-      },
-      "range_basis": "default rule: duration, value x0.5 and x2",
-      "status": "calibrated",
-      "swing": {
-        "completion_180d": 0.0026,
-        "open_90d": 0.0054,
-        "silent_loss_rate": 0.0008
-      }
-    },
-    {
       "base_value": 6,
       "high": {
         "metrics": {
@@ -2903,8 +2903,8 @@
           },
           "open_90d": {
             "baseline": 0.718,
-            "difference": -0.1218,
-            "orchestrated": 0.5962
+            "difference": -0.122,
+            "orchestrated": 0.596
           },
           "silent_loss_rate": {
             "baseline": 0.4488,
@@ -2939,7 +2939,7 @@
       "status": "calibrated",
       "swing": {
         "completion_180d": 0.0022,
-        "open_90d": 0.0664,
+        "open_90d": 0.0662,
         "silent_loss_rate": 0.0028
       }
     },
@@ -4113,6 +4113,57 @@
       "swing": {
         "completion_180d": 0.0006,
         "open_90d": 0.0026,
+        "silent_loss_rate": 0.0
+      }
+    },
+    {
+      "base_value": 14,
+      "high": {
+        "metrics": {
+          "completion_180d": {
+            "baseline": 0.5162,
+            "difference": 0.1508,
+            "orchestrated": 0.667
+          },
+          "open_90d": {
+            "baseline": 0.606,
+            "difference": -0.1762,
+            "orchestrated": 0.4298
+          },
+          "silent_loss_rate": {
+            "baseline": 0.4448,
+            "difference": -0.2376,
+            "orchestrated": 0.2072
+          }
+        },
+        "value": 28
+      },
+      "key": "orchestration.watchdog_idle_days",
+      "low": {
+        "metrics": {
+          "completion_180d": {
+            "baseline": 0.5162,
+            "difference": 0.1502,
+            "orchestrated": 0.6664
+          },
+          "open_90d": {
+            "baseline": 0.606,
+            "difference": -0.1782,
+            "orchestrated": 0.4278
+          },
+          "silent_loss_rate": {
+            "baseline": 0.4448,
+            "difference": -0.2376,
+            "orchestrated": 0.2072
+          }
+        },
+        "value": 7
+      },
+      "range_basis": "default rule: duration, value x0.5 and x2",
+      "status": "assumed",
+      "swing": {
+        "completion_180d": 0.0006,
+        "open_90d": 0.002,
         "silent_loss_rate": 0.0
       }
     },
@@ -5397,57 +5448,6 @@
       "swing": {
         "completion_180d": 0.0,
         "open_90d": 0.0,
-        "silent_loss_rate": 0.0
-      }
-    },
-    {
-      "base_value": 14,
-      "high": {
-        "metrics": {
-          "completion_180d": {
-            "baseline": 0.5162,
-            "difference": 0.1508,
-            "orchestrated": 0.667
-          },
-          "open_90d": {
-            "baseline": 0.606,
-            "difference": -0.1762,
-            "orchestrated": 0.4298
-          },
-          "silent_loss_rate": {
-            "baseline": 0.4448,
-            "difference": -0.2376,
-            "orchestrated": 0.2072
-          }
-        },
-        "value": 28
-      },
-      "key": "orchestration.watchdog_idle_days",
-      "low": {
-        "metrics": {
-          "completion_180d": {
-            "baseline": 0.5162,
-            "difference": 0.1508,
-            "orchestrated": 0.667
-          },
-          "open_90d": {
-            "baseline": 0.606,
-            "difference": -0.178,
-            "orchestrated": 0.428
-          },
-          "silent_loss_rate": {
-            "baseline": 0.4448,
-            "difference": -0.2376,
-            "orchestrated": 0.2072
-          }
-        },
-        "value": 7
-      },
-      "range_basis": "default rule: duration, value x0.5 and x2",
-      "status": "assumed",
-      "swing": {
-        "completion_180d": 0.0,
-        "open_90d": 0.0018,
         "silent_loss_rate": 0.0
       }
     },

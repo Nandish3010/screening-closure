@@ -53,67 +53,67 @@
       },
       "effort_all": {
         "labour_reduction": {
-          "ci_high": 0.256577,
-          "ci_low": 0.248044,
-          "mean": 0.25244
+          "ci_high": 0.256548,
+          "ci_low": 0.248058,
+          "mean": 0.252434
         },
         "labour_reduction.coordinator": {
-          "ci_high": 0.448634,
-          "ci_low": 0.43865,
-          "mean": 0.443528
+          "ci_high": 0.448632,
+          "ci_low": 0.438661,
+          "mean": 0.443531
         },
         "labour_reduction.owner_clinician": {
-          "ci_high": -1.082543,
-          "ci_low": -1.161945,
-          "mean": -1.122108
+          "ci_high": -1.082526,
+          "ci_low": -1.161976,
+          "mean": -1.122171
         },
         "labour_reduction.specialist": {
-          "ci_high": -0.213172,
-          "ci_low": -0.225975,
-          "mean": -0.219837
+          "ci_high": -0.213286,
+          "ci_low": -0.225997,
+          "mean": -0.219875
         },
         "labour_reduction_per_closed_case": {
-          "ci_high": 0.420673,
-          "ci_low": 0.412503,
-          "mean": 0.416626
+          "ci_high": 0.420671,
+          "ci_low": 0.412549,
+          "mean": 0.416622
         }
       },
       "effort_in_reach": {
         "labour_reduction": {
-          "ci_high": 0.467245,
-          "ci_low": 0.454331,
-          "mean": 0.461006
+          "ci_high": 0.467218,
+          "ci_low": 0.454346,
+          "mean": 0.460995
         },
         "labour_reduction.coordinator": {
-          "ci_high": 0.814833,
-          "ci_low": 0.80708,
-          "mean": 0.810714
+          "ci_high": 0.814851,
+          "ci_low": 0.807114,
+          "mean": 0.81072
         },
         "labour_reduction.owner_clinician": {
-          "ci_high": -1.965537,
-          "ci_low": -2.11214,
-          "mean": -2.039822
+          "ci_high": -1.965728,
+          "ci_low": -2.112292,
+          "mean": -2.039928
         },
         "labour_reduction.specialist": {
-          "ci_high": -0.388788,
-          "ci_low": -0.412891,
-          "mean": -0.400044
+          "ci_high": -0.388928,
+          "ci_low": -0.412892,
+          "mean": -0.400114
         },
         "labour_reduction_per_closed_case": {
-          "ci_high": 0.647613,
-          "ci_low": 0.640192,
-          "mean": 0.643717
+          "ci_high": 0.647594,
+          "ci_low": 0.640116,
+          "mean": 0.643711
         }
       },
       "orchestrated": {
         "closed_share": {
-          "ci_high": 0.6813,
-          "ci_low": 0.6708,
+          "ci_high": 0.681301,
+          "ci_low": 0.670824,
           "mean": 0.67605
         },
         "completion_180d": {
-          "ci_high": 0.671326,
-          "ci_low": 0.661374,
+          "ci_high": 0.67135,
+          "ci_low": 0.661325,
           "mean": 0.666525
         },
         "declined_closed_share": {
@@ -122,9 +122,9 @@
           "mean": 0.065125
         },
         "escalations_per_100_cases": {
-          "ci_high": 85.432563,
-          "ci_low": 83.017313,
-          "mean": 84.215
+          "ci_high": 85.360438,
+          "ci_low": 82.969875,
+          "mean": 84.1625
         },
         "lost_to_follow_up_rate": {
           "ci_high": 0.319779,
@@ -163,68 +163,68 @@
       },
       "effort_all": {
         "labour_reduction": {
-          "ci_high": 0.509296,
-          "ci_low": 0.497982,
-          "mean": 0.503702
+          "ci_high": 0.509337,
+          "ci_low": 0.498041,
+          "mean": 0.503747
         },
         "labour_reduction.coordinator": {
-          "ci_high": 0.858578,
-          "ci_low": 0.851936,
-          "mean": 0.855224
+          "ci_high": 0.858581,
+          "ci_low": 0.851971,
+          "mean": 0.855238
         },
         "labour_reduction.owner_clinician": {
-          "ci_high": -1.881596,
-          "ci_low": -2.007741,
-          "mean": -1.945191
+          "ci_high": -1.88129,
+          "ci_low": -2.007178,
+          "mean": -1.94475
         },
         "labour_reduction.specialist": {
-          "ci_high": -0.409976,
-          "ci_low": -0.435164,
-          "mean": -0.422139
+          "ci_high": -0.410069,
+          "ci_low": -0.435124,
+          "mean": -0.422137
         },
         "labour_reduction_per_closed_case": {
-          "ci_high": 0.686728,
-          "ci_low": 0.6795,
-          "mean": 0.683141
+          "ci_high": 0.686742,
+          "ci_low": 0.679533,
+          "mean": 0.683161
         }
       },
       "effort_in_reach": {
         "labour_reduction": {
-          "ci_high": 0.508954,
-          "ci_low": 0.498203,
-          "mean": 0.503702
+          "ci_high": 0.509041,
+          "ci_low": 0.498234,
+          "mean": 0.503747
         },
         "labour_reduction.coordinator": {
-          "ci_high": 0.858318,
-          "ci_low": 0.851949,
-          "mean": 0.855224
+          "ci_high": 0.858325,
+          "ci_low": 0.851992,
+          "mean": 0.855238
         },
         "labour_reduction.owner_clinician": {
-          "ci_high": -1.887455,
-          "ci_low": -2.003922,
-          "mean": -1.945191
+          "ci_high": -1.887031,
+          "ci_low": -2.003533,
+          "mean": -1.94475
         },
         "labour_reduction.specialist": {
-          "ci_high": -0.410478,
-          "ci_low": -0.434085,
-          "mean": -0.422139
+          "ci_high": -0.41055,
+          "ci_low": -0.434004,
+          "mean": -0.422137
         },
         "labour_reduction_per_closed_case": {
-          "ci_high": 0.68656,
-          "ci_low": 0.679476,
-          "mean": 0.683141
+          "ci_high": 0.686535,
+          "ci_low": 0.679524,
+          "mean": 0.683161
         }
       },
       "orchestrated": {
         "closed_share": {
-          "ci_high": 0.829701,
-          "ci_low": 0.822574,
-          "mean": 0.826225
+          "ci_high": 0.829676,
+          "ci_low": 0.822549,
+          "mean": 0.8262
         },
         "completion_180d": {
-          "ci_high": 0.8273,
-          "ci_low": 0.82025,
-          "mean": 0.823875
+          "ci_high": 0.827276,
+          "ci_low": 0.820225,
+          "mean": 0.82385
         },
         "declined_closed_share": {
           "ci_high": 0.123201,
@@ -232,14 +232,14 @@
           "mean": 0.1203
         },
         "escalations_per_100_cases": {
-          "ci_high": 144.1375,
-          "ci_low": 140.831938,
-          "mean": 142.475
+          "ci_high": 143.940313,
+          "ci_low": 140.671875,
+          "mean": 142.2975
         },
         "lost_to_follow_up_rate": {
-          "ci_high": 0.177276,
-          "ci_low": 0.170499,
-          "mean": 0.1737
+          "ci_high": 0.177302,
+          "ci_low": 0.170525,
+          "mean": 0.173725
         }
       }
     }
