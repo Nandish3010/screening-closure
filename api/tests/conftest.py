@@ -4,6 +4,7 @@ import os
 
 import pytest
 
+import xdist_db
 from testdb import NotATestDatabase, assert_test_database
 
 
@@ -17,6 +18,18 @@ def pytest_collection_finish(session):
         assert_test_database(url)
     except NotATestDatabase as exc:
         pytest.exit(str(exc), returncode=3)
+    # F15: under xdist every worker works in its own copy of the test database (see xdist_db.py).
+    worker = xdist_db.worker_id(session.config)
+    if worker:
+        worker_url = xdist_db.prepare_worker_database(url, worker)
+        os.environ["DATABASE_URL"] = worker_url
+        session.config._closure_worker_db = worker_url
+
+
+def pytest_sessionfinish(session, exitstatus):
+    worker_url = getattr(session.config, "_closure_worker_db", None)
+    if worker_url:
+        xdist_db.drop_worker_database(worker_url)
 
 
 @pytest.fixture(scope="session", autouse=True)

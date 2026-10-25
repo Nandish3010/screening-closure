@@ -29,6 +29,18 @@ def test_test_database_accepted():
     assert assert_test_database(TEST) == "closure_test"
 
 
+@pytest.mark.parametrize("name", ["closure_test_tpl", "closure_test_gw0", "closure_test_gw17"])
+def test_per_worker_copies_of_the_test_database_are_accepted(name):
+    """F15: xdist workers run in closure_test_gw<N>, made from the template closure_test_tpl."""
+    assert assert_test_database(TEST.rsplit("/", 1)[0] + "/" + name) == name
+
+
+@pytest.mark.parametrize("name", ["closure_gw0", "closure_tpl", "closure_test_gw", "closure_test_gwx", "closure_test_gw0x", "closure_gw0_test_x"])
+def test_lookalike_worker_names_are_refused(name):
+    with pytest.raises(NotATestDatabase):
+        assert_test_database(TEST.rsplit("/", 1)[0] + "/" + name)
+
+
 def test_session_aborts_on_the_dev_url():
     """A real pytest run, with the dev URL, over an integration test: aborts before running it."""
     tests_dir = Path(__file__).parent

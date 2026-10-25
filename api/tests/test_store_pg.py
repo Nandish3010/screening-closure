@@ -12,6 +12,7 @@ from psycopg import errors
 
 from app.config import settings as app_settings
 from app.db import create_pool, migration_files, run_migrations
+from testdb import WORKER_DB_RE
 from app.events import (
     CASE_CREATED,
     CaseNotFound,
@@ -271,4 +272,4 @@ def test_runs_against_the_test_database(pool):
     """T-F2: the session is pointed at a database marked as a test database, not the dev one."""
     with pool.connection() as conn:
         name = conn.execute("SELECT current_database()").fetchone()[0]
-    assert name.endswith("_test"), name
+    assert name.endswith("_test") or WORKER_DB_RE.search(name), name  # F15: per-worker copies under xdist
