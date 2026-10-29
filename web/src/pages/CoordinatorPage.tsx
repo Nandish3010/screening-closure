@@ -7,6 +7,7 @@ import { DEFAULT_FILTERS, UNOWNED, ownersOf, worklist, type WorklistFilters } fr
 import { fmtDate, fmtDateTime, shortId, titleCase } from "../lib/format";
 import { overdueInfo } from "../lib/derive";
 import { WatchdogMarker } from "../components/WatchdogMarker";
+import { WhyPanel } from "../components/WhyPanel";
 
 /** Whole days from the case's creation to "now" (the sim clock); null when either is unknown. */
 function ageDays(created: string | null | undefined, now: string | null): number | null {
@@ -54,6 +55,7 @@ export function CoordinatorPage() {
     <main className="container">
       <div className="page-head"><h1>Worklist</h1><span className="chip chip-synthetic">Synthetic data</span></div>
       <p className="muted">Most overdue first, then highest risk of loss to follow-up. The risk score only orders this list; it never closes, escalates or decides care.</p>
+      <WhyPanel testId="why-risk" subject="risk order" input={{ kind: "risk" }} />
 
       {api.createCase && (
         <p className="muted">

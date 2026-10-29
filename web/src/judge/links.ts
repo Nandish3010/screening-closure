@@ -16,6 +16,11 @@ export const DOCS = {
   aiBoundary: { label: "AI boundary", path: "docs/governance/ai-boundary.md" },
   clinician: { label: "Clinician review and closure", path: "docs/governance/clinician-review.md" },
   riskCard: { label: "Risk score card", path: "docs/governance/risk-score-card.md" },
+  cardDrafting: { label: "Model card: Claude drafting", path: "docs/governance/model-cards/claude-drafting.md" },
+  cardTemplate: { label: "Model card: template fallback", path: "docs/governance/model-cards/template-fallback.md" },
+  cardTriage: { label: "Model card: reply triage", path: "docs/governance/model-cards/reply-triage.md" },
+  cardRisk: { label: "Model card: risk score", path: "docs/governance/model-cards/risk-score.md" },
+  cardPlanner: { label: "Model card: Claude planner", path: "docs/governance/model-cards/claude-planner.md" },
   demo: { label: "Demo script", path: "docs/submission/demo-script.md" },
   tech: { label: "Technical documentation", path: "docs/submission/technical-documentation.md" },
 } satisfies Record<string, DocLink>;

@@ -192,3 +192,107 @@ def test_commercial_input_without_status_is_refused(tmp_path):
     bad.write_text(bad_text, encoding="utf-8")
     with pytest.raises(ValueError, match="usd_aed_peg"):
         cm.load_inputs(bad)
+
+
+# --- pricing and unit economics (M7-4) -----------------------------------------------------------------------
+
+BUSINESS_CASE = ROOT / "docs" / "commercial" / "business-case.md"
+
+
+def _pricing_inputs():
+    _, spec_ = cm.load_inputs(INPUTS)
+    return (spec_, cm.load_delay_shares(RESULTS), cm.load_effort_minutes(RESULTS), cm.load_programme_shares(RESULTS))
+
+
+def test_azure_unit_prices_are_sourced_and_quantities_are_not():
+    spec_, *_ = _pricing_inputs()
+    azure = {n: s for n, s in spec_.items() if s["section"] == "azure"}
+    prices = [n for n in azure if "_usd_" in n]
+    assert prices, "no Azure unit prices"
+    for name in prices:
+        if name == "private_endpoint_usd_per_hour":  # no uaenorth meter in the API; global rate, to verify
+            assert azure[name]["status"] == "assumed"
+        else:
+            assert azure[name]["status"] == "sourced", name
+            assert "Retail Prices API" in azure[name]["basis"], name
+    for name in set(azure) - set(prices):
+        assert azure[name]["status"] == "assumed", name  # sizing is our choice or a template default
+
+
+def test_pricing_inputs_outside_azure_are_never_graded_sourced():
+    spec_, *_ = _pricing_inputs()
+    for name, s in spec_.items():
+        if s["section"] in ("pathways", "pricing", "operator", "buyer"):
+            assert s["status"] in ("assumed", "sourced-adjacent"), name
+
+
+def test_azure_hosting_hand_calculation():
+    spec_, *_ = _pricing_inputs()
+    v = {k: s["value"] for k, s in spec_.items()}
+    lines = {item: usd for item, _, usd in cm.azure_lines(v)}
+    seconds = 730 * 3600
+    assert lines["Container Apps: api, scheduler, watchdog"] == pytest.approx(2.75 * seconds * 0.000024 + 5.5 * seconds * 0.000003)
+    assert lines["PostgreSQL: case database compute"] == pytest.approx(4 * 0.1085 * 730 * 2)
+    host = cm.azure_hosting(v)
+    assert host["prod_usd_month"] == pytest.approx(sum(lines.values()))
+    assert host["total_aed_year"] == pytest.approx(host["prod_usd_month"] * 12 * 3.6725 * 1.4)
+
+
+def test_operator_cost_and_break_even_arithmetic():
+    spec_, shares, effort, prog = _pricing_inputs()
+    m = cm.pricing_model(spec_, shares, effort, prog)
+    ps = m["scopes"]["programme, four pathways"]
+    assert ps["cost"]["total"] == pytest.approx(sum(ps["cost"]["lines"].values()))
+    assert ps["cases"] == pytest.approx(sum(r["cases"] for r in m["volumes"]))
+    assert ps["revenue"]["B2: per closed case"] == pytest.approx(ps["cases"] * prog["orchestrated"]["closed_share"] * 140)
+    assert m["scopes"]["FIT only"]["revenue"]["L: programme licence"] is None
+    fit = m["volumes"][0]
+    assert fit["cases"] == pytest.approx(1_264_000 * 0.20 * 0.07)
+
+
+def test_avoided_cost_alone_does_not_cover_the_fee_at_base():
+    """The honesty guard: if an input change makes avoided treatment cost pay the fee at the base case, the text must change."""
+    spec_, shares, effort, prog = _pricing_inputs()
+    m = cm.pricing_model(spec_, shares, effort, prog)
+    b = m["buyer"]
+    assert b["avoided_cost"] < m["v"]["programme_licence_aed_per_year"]
+    assert b["avoided_cost"] < m["scopes"]["FIT only"]["revenue"]["B1: per tracked case"]
+    assert b["net_labour"] < 0  # wage-weighted labour is a cost in the current routing
+    assert b["silent_loss_prevented"] > 0
+
+
+def test_sensitivity_moves_the_right_way():
+    spec_, shares, effort, prog = _pricing_inputs()
+    base = cm.pricing_model(spec_, shares, effort, prog)
+    low = cm.pricing_model(spec_, shares, effort, prog, case="low")
+    cheap = cm.pricing_model(spec_, shares, effort, prog, hosting_scale=0.5)
+    key = "programme, four pathways"
+    per_case = lambda mm: mm["scopes"][key]["cost"]["total"] / mm["scopes"][key]["cases"]
+    assert per_case(low) > per_case(base)
+    assert cheap["scopes"][key]["cost"]["total"] < base["scopes"][key]["cost"]["total"]
+    late = cm.pricing_model(spec_, shares, effort, prog, or_label=">12 month ORs")
+    assert late["buyer"]["avoided_cost"] > base["buyer"]["avoided_cost"]
+
+
+def test_pricing_block_in_business_case_is_current(capsys):
+    """business-case.md section 9 is generated: regenerate with `python3 tools/pilot/cost_model.py --pricing --write`."""
+    assert cm.main(["--pricing"]) == 0
+    first = capsys.readouterr().out
+    assert cm.main(["--pricing"]) == 0
+    assert first == capsys.readouterr().out  # deterministic
+    doc = BUSINESS_CASE.read_text(encoding="utf-8")
+    start, end = doc.index(cm.PRICING_BEGIN), doc.index(cm.PRICING_END) + len(cm.PRICING_END)
+    assert doc[start:end] + "\n" == first, "stale: run python3 tools/pilot/cost_model.py --pricing --write"
+
+
+def test_outcome_costs_divide_net_cost_by_deaths_and_qalys():
+    """M7-3: section 9.9 divides the 9.7 net cost by the outcomes model's deaths and QALYs, scaled to the FIT volume."""
+    fake = {"scenarios": {"literature_anchored": {"groups": {"all": {
+        "central": {"deaths_avoided_5y": 2.0, "qalys_disc": 20.0, "extra_colonoscopies": 100.0},
+        "psa": {"deaths_avoided_5y": {"p025": 1.0, "p975": 4.0}, "qalys_disc": {"p025": 10.0, "p975": 40.0}}}}}},
+        "parameters": {"colonoscopy_cost_aed": {"value": 4000}}}
+    oc = cm.outcome_costs(fake, 10_000, [("x", 100_000.0)])
+    assert oc["deaths"] == 20.0 and oc["qalys"] == 200.0 and oc["qalys_lo"] == 100.0 and oc["qalys_hi"] == 400.0
+    assert oc["colonoscopy_cost"] == 1000 * 4000
+    assert oc["rows"][0]["net_with_col"] == 100_000 + 4_000_000
+    assert cm.load_outcomes("/nonexistent/outcomes.json") is None

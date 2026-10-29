@@ -43,6 +43,12 @@ export interface PatientStrings {
   understandWait: string;
   dontUnderstand: string;
   callbackDone: string;
+  /** "How we prepare messages": plain, non-disclosing notice that software helps and a person approves (W-AI). */
+  aiNoticeHeading: string;
+  aiNoticeSoftware: string;
+  aiNoticeStaff: string;
+  aiNoticePerson: string;
+  aiNoticeStop: string;
   consentHeading: string;
   channelLabel: string;
   channels: { phone: string; sms: string; whatsapp: string; letter: string };
@@ -95,6 +101,11 @@ export const STRINGS: Record<Lang, PatientStrings> = {
     understandWait: "You can tap this button after your care team has sent you a message.",
     dontUnderstand: "I don't understand this",
     callbackDone: "Thank you. A person from your care team will call you.",
+    aiNoticeHeading: "How we prepare messages",
+    aiNoticeSoftware: "We use software to help prepare our messages to you.",
+    aiNoticeStaff: "A member of staff checks and approves each message before we send it.",
+    aiNoticePerson: "To speak to a person, press \"I don't understand this\" or call your care team.",
+    aiNoticeStop: "You can stop messages at any time. Use \"Stop all contact\" in \"Your choices\" below.",
     consentHeading: "Your choices",
     channelLabel: "How may we contact you?",
     channels: { phone: "Phone call", sms: "Text message", whatsapp: "WhatsApp", letter: "Letter" },
@@ -154,6 +165,12 @@ export const STRINGS: Record<Lang, PatientStrings> = {
     understandWait: "يمكنك الضغط على هذا الزر بعد أن يرسل لك فريق رعايتك رسالة.", // AI Arabic review 2026-10-18
     dontUnderstand: "لا أفهم هذا",
     callbackDone: "شكراً لك. سيتصل بك أحد أفراد فريق رعايتك.", // AI Arabic review 2026-10-18
+    // Plain Modern Standard Arabic, mirrors the English. Not reviewed by a native speaker (H2 pending). No substring دم.
+    aiNoticeHeading: "كيف نُعِدّ الرسائل",
+    aiNoticeSoftware: "نستعين ببرنامج حاسوبي في إعداد رسائلنا إليك.",
+    aiNoticeStaff: "يراجع أحد أفراد فريقنا كل رسالة ويوافق عليها قبل إرسالها.",
+    aiNoticePerson: "للتحدث مع شخص، يرجى الضغط على «لا أفهم هذا» أو الاتصال بفريق رعايتك.",
+    aiNoticeStop: "يمكنك إيقاف الرسائل في أي وقت. يمكنك ذلك من خلال «أوقفوا كل تواصل معي» في قسم «اختياراتك» أدناه.",
     consentHeading: "اختياراتك",
     channelLabel: "كيف يمكننا التواصل معك؟",
     channels: { phone: "مكالمة هاتفية", sms: "رسالة نصية", whatsapp: "واتساب", letter: "رسالة مكتوبة" },

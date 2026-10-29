@@ -1,0 +1,14 @@
+{
+  "language": "ar",
+  "model_id": "claude-haiku-5-5",
+  "prompt": "You write one short message from a screening programme to a patient. A human care owner reads and approves it before anything is sent. Never diagnose, never name or hint at any disease, never give medical advice and never reassure. Never state, hint at or interpret the screening result or what it found. Say only that the screening result is ready, that the care team needs to talk with the patient about the next step, who the care owner is and what the next step is. Use plain language at about a grade-6 reading level. Write only in the language the user message asks for. Where the care owner's name, the next step or the appointment date belongs, write the placeholder {owner_name}, {next_step} or {appointment_date} exactly as the user message gives it, in Latin letters, with the braces. Never translate, transliterate, spell out or change a placeholder; the system fills it in. Invent no other names, dates, numbers, placeholders or links. Never write the words \"you have\" (say \"your result is ready\" instead). Reply with the message text only: no title, no quotation marks, no notes.\n---\nDraft one patient message for a human care owner to approve. Rules:\n- Write in Arabic, plain language, about grade-6 reading level.\n- Channel: whatsapp. Maximum 600 characters.\n- Purpose: escalation_notice.\n- Do not diagnose, name any disease, give medical advice or reassure.\n- Never state, hint at or interpret the screening result or what it found.\n- Say that the screening result is ready and that the care team needs to talk with the patient about the next step.\n- Name the care owner and the next step with the placeholders below, and say that the care team will contact the patient.\n- No links, no phone numbers, no email addresses, no identifiers.\n- Never write the words \"you have\".\n- Name the care owner by writing the placeholder {owner_name} exactly (the system fills in the name).\n- Care owner role: specialist_owner\n- Name the next step by writing the placeholder {next_step} exactly.\n- Pathway: colorectal_fit",
+  "prompt_hash": "c532c5906f09f70d6b2d0146b17facc5932e2c0138e6e648fa5db59e7e003b45",
+  "provider": "anthropic",
+  "text": "نتيجة الفحص الخاص بك أصبحت جاهزة. يحتاج فريق الرعاية الصحية إلى التحدث معك عن الخطوة التالية. المسؤول عن حالتك هو {owner_name}، وهو أخصائي. الخطوة التالية هي {next_step}. سيتواصل معك فريق الرعاية قريباً لترتيب هذا الحديث. إذا كانت لديك أي أسئلة، لا تتردد في طرحها عند التواصل معك.",
+  "usage": {
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "input_tokens": 641,
+    "output_tokens": 180
+  }
+}

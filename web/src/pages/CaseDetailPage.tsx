@@ -12,6 +12,7 @@ import { REASSIGN_TARGETS, ROLE_NAMES, ROLE_PROVIDERS } from "../api/identities"
 import { AgencyChip } from "../components/AgencyChip";
 import { ActionButton } from "../components/ActionButton";
 import { DraftsPanel, approvalMessage } from "../components/DraftsPanel";
+import { WhyPanel } from "../components/WhyPanel";
 import { ClosureProposalBanner } from "../components/ClosureProposalBanner";
 import { EffortCounter } from "../components/EffortCounter";
 import { OutreachDemoBanner } from "../components/OutreachDemoBanner";
@@ -650,6 +651,9 @@ export function CaseDetailPage() {
                 {" "}({Math.round(replyResult.confidence * 100)}% sure, model: {replyResult.model_id}).{" "}
                 {replyResult.needs_human ? STAFF.replyForm.needsPerson : STAFF.replyForm.handled}
               </p>
+            )}
+            {replyResult && (
+              <WhyPanel testId="why-triage-reply" subject="reply label" input={{ kind: "triage", model_id: replyResult.model_id, confidence: replyResult.confidence, needs_human: replyResult.needs_human }} />
             )}
           </section>
 

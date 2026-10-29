@@ -4,6 +4,7 @@ import { MILESTONES, RUNG_LABEL, handoffReasonLabel } from "../lib/pathway";
 import { fmtDateTime, titleCase } from "../lib/format";
 import { actorKindOf, actorName, actorRole, itemKey, kindOfEvent, type DraftView } from "../lib/derive";
 import { WATCHDOG_TEXT, watchdogDetail } from "./WatchdogMarker";
+import { WhyPanel } from "./WhyPanel";
 
 const EVENT_LABEL: Record<string, string> = {
   case_created: "Positive result received",
@@ -240,6 +241,10 @@ export function Timeline({ items, drafts = [] }: { items: TimelineItem[]; drafts
               <div>{watchdogDetail({ reason: it.payload.reason === "scheduler_down" ? "scheduler_down" : "idle", idle_days: typeof it.payload.idle_days === "number" ? it.payload.idle_days : undefined })}</div>
             )}
             {it.type === "message_drafted" && (draft ? <DraftText draft={draft} /> : <div className="muted">Draft text unavailable.</div>)}
+            {it.type === "reply_classified" && (
+              <WhyPanel testId={`why-triage-${it.seq}`} subject={`reply label #${it.seq}`}
+                input={{ kind: "triage", model_id: typeof it.payload.model_id === "string" ? it.payload.model_id : null, confidence: typeof it.payload.confidence === "number" ? it.payload.confidence : null, needs_human: it.payload.needs_human === true }} />
+            )}
             <div className="muted">
               #{it.seq} · <ActorTag actor={it.actor} kind={kindOfEvent(it)} />
               {Object.keys(it.payload).length > 0 && <> · {payloadSummary(it.type, it.payload)}</>}

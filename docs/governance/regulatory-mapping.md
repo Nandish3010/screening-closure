@@ -142,7 +142,7 @@ No source read states that the 2018 policy was repealed. A 2025 standard that re
 |---|---|
 | Human oversight and final authority | Core design: state transitions are decided by deterministic code and humans; a model never moves a case or decides a closure; closure needs evidence and a human sign-off (ADR-001, T-A1). |
 | Point of entry of AI and its boundary | Stated in the design: a model is used only to draft patient messages, behind approval; a simple regression orders the worklist (ADR-007, `docs/design-choices.md`). |
-| Transparency and traceability | Draft prompt, model, draft, approver and time stored as Provenance (D4, D5); event log for everything else. Patients are told the message is automated assistance reviewed by their care team. |
+| Transparency and traceability | Draft prompt, model, draft, approver and time stored as Provenance (D4, D5); event log for everything else. Patients are told, on the patient page in English and Arabic, that messages are prepared with software help and checked and approved by staff, and how to reach a person or stop messages (`ai-notice`, M7-5; Arabic unreviewed, H2). Coordinators see a "Why?" panel on every AI output ([responsible-ai.md](responsible-ai.md)). |
 | Graceful degradation | The engine does not depend on the model; the template fallback is the default (ADR-007). |
 | Validation and monitoring | Output validation, abstention rate reported (D3, D11); calibration check and risk score card for the regression (D10). Post-deployment monitoring is a pilot activity (see the pilot plan). |
 | Privacy and no training on production data | Minimal prompt fields; no training on production data. The risk score is trained on simulator data only. |
