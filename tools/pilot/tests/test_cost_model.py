@@ -283,3 +283,16 @@ def test_pricing_block_in_business_case_is_current(capsys):
     doc = BUSINESS_CASE.read_text(encoding="utf-8")
     start, end = doc.index(cm.PRICING_BEGIN), doc.index(cm.PRICING_END) + len(cm.PRICING_END)
     assert doc[start:end] + "\n" == first, "stale: run python3 tools/pilot/cost_model.py --pricing --write"
+
+
+def test_outcome_costs_divide_net_cost_by_deaths_and_qalys():
+    """M7-3: section 9.9 divides the 9.7 net cost by the outcomes model's deaths and QALYs, scaled to the FIT volume."""
+    fake = {"scenarios": {"literature_anchored": {"groups": {"all": {
+        "central": {"deaths_avoided_5y": 2.0, "qalys_disc": 20.0, "extra_colonoscopies": 100.0},
+        "psa": {"deaths_avoided_5y": {"p025": 1.0, "p975": 4.0}, "qalys_disc": {"p025": 10.0, "p975": 40.0}}}}}},
+        "parameters": {"colonoscopy_cost_aed": {"value": 4000}}}
+    oc = cm.outcome_costs(fake, 10_000, [("x", 100_000.0)])
+    assert oc["deaths"] == 20.0 and oc["qalys"] == 200.0 and oc["qalys_lo"] == 100.0 and oc["qalys_hi"] == 400.0
+    assert oc["colonoscopy_cost"] == 1000 * 4000
+    assert oc["rows"][0]["net_with_col"] == 100_000 + 4_000_000
+    assert cm.load_outcomes("/nonexistent/outcomes.json") is None

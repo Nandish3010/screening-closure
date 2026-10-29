@@ -1,0 +1,246 @@
+# Health-outcomes post-processor parameters (ticket M7-3; simulator/sim/outcomes.py, `make evaluate-outcomes`).
+#
+# These are NOT simulator parameters: the engine never reads this file. simulator/sim/outcomes.py reads the simulator's per-case
+# records (days from the positive FIT to colonoscopy, or none within follow-up) and turns them into cancers, stage, deaths,
+# life-years and QALYs with the values below. Every value names its source, URL, access date and the number extracted; the
+# rows are repeated in docs/evidence.md section 14. Status vocabulary as in simulator/params.yaml: sourced (same quantity,
+# comparable population, read at the URL), sourced-adjacent (a related quantity, another country or setting, or our arithmetic
+# on published counts), assumed (no checkable source; our choice).
+#
+# dist: the distribution the probabilistic sensitivity analysis (PSA) draws from.
+#   fixed                    always `value`
+#   uniform [low, high]      flat between the two
+#   triangular [low, mode, high]
+#   beta [a, b]              Beta(a, b), from published counts
+#   beta_ci [low, high]      Beta with mean `value` and sd (high - low) / 3.92 (method of moments) from a published 95% CI
+#   lognormal_ci [low, high] log-normal with median `value` and log-sd (ln high - ln low) / 3.92, from a published 95% CI on a ratio
+# The deterministic central result uses `value` for every parameter.
+
+psa:
+  draws: 2000
+  seed_label: outcomes-psa   # the PSA stream is derived from the simulation seed and this label (simulator/sim/rng.py)
+
+delay_bins_days:
+  # Corley 2017: no significant excess risk up to 9 months; significant at 10-12 months and beyond 12 months. The simulator follows
+  # each case for 360 days, so "no colonoscopy within 360 days" is the beyond-12-months group (see never_completer_rule).
+  prompt_max: 270
+  late_max: 360
+
+never_completer_rule:
+  value: as_over_12_months
+  status: assumed
+  basis: "A case with no colonoscopy within the 360-day follow-up is given Corley's beyond-12-months risks (it completes late or presents with symptoms later). The same simplification as business-case.md section 4.3 (3). Patients who never present at all would probably fare worse, so this tends to understate the harm of non-completion."
+
+crc_risk_ref:
+  value: 0.0297
+  dist: triangular
+  args: [0.025, 0.0297, 0.055]
+  unit: probability of any colorectal cancer at colonoscopy within 9 months of a positive FIT
+  status: sourced-adjacent
+  source: "Corley et al., JAMA 2017;317(16):1631-1641, abstract (PMID 28444278). Pooled groups 8-30 days to 7-9 months: 30, 28, 31, 31 and 43 per 1,000 in 27,176, 24,644, 8,666, 5,251 and 1,335 patients; our weighted mean 29.7 per 1,000. Range: Abu Dhabi audit 11 cancers in 436 colonoscopies (2.5%, Almansoori, BMC Cancer 2021) to Ding 2022 pooled PPV 5.48% (4.96 to 6.02) and Qatar 19 of 375 (5.1%)."
+  url: "https://www.ebi.ac.uk/europepmc/webservices/rest/search?query=EXT_ID:28444278%20AND%20SRC:MED&resultType=core&format=json"
+  accessed: "2026-10-25"
+
+adv_fraction_ref:
+  value: 0.2582
+  dist: beta
+  args: [515, 1479]
+  unit: share of cancers found within 9 months that are advanced stage (AJCC III or IV)
+  status: sourced-adjacent
+  source: "Corley 2017 abstract: advanced-stage disease (stage III and IV) 8, 7, 7, 9 and 13 per 1,000 in the same five groups; our weighted mean 7.68 per 1,000, so 515 advanced of 1,994 cancers (counts are rate x n, derived)."
+  url: "https://www.ebi.ac.uk/europepmc/webservices/rest/search?query=EXT_ID:28444278%20AND%20SRC:MED&resultType=core&format=json"
+  accessed: "2026-10-25"
+
+or_any_10_12m:
+  value: 1.48
+  dist: lognormal_ci
+  args: [1.05, 2.08]
+  unit: adjusted odds ratio, any CRC, colonoscopy at 10-12 months vs 8-30 days
+  status: sourced-adjacent
+  source: "Corley 2017 abstract: OR 1.48 (95% CI 1.05-2.08), 49 cases per 1,000, n = 748. Kaiser Permanente California 2010-2014, not the UAE; observational."
+  url: "https://jamanetwork.com/journals/jama/fullarticle/2620087"
+  accessed: "2026-10-25"
+
+or_adv_10_12m:
+  value: 1.97
+  dist: lognormal_ci
+  args: [1.14, 3.42]
+  unit: adjusted odds ratio, advanced-stage CRC, 10-12 months vs 8-30 days
+  status: sourced-adjacent
+  source: "Corley 2017 abstract: OR 1.97 (1.14-3.42), 19 cases per 1,000."
+  url: "https://jamanetwork.com/journals/jama/fullarticle/2620087"
+  accessed: "2026-10-25"
+
+or_any_over_12m:
+  value: 2.25
+  dist: lognormal_ci
+  args: [1.89, 2.68]
+  unit: adjusted odds ratio, any CRC, more than 12 months vs 8-30 days
+  status: sourced-adjacent
+  source: "Corley 2017 abstract: OR 2.25 (1.89-2.68), 76 cases per 1,000, n = 747."
+  url: "https://jamanetwork.com/journals/jama/fullarticle/2620087"
+  accessed: "2026-10-25"
+
+or_adv_over_12m:
+  value: 3.22
+  dist: lognormal_ci
+  args: [2.44, 4.25]
+  unit: adjusted odds ratio, advanced-stage CRC, more than 12 months vs 8-30 days
+  status: sourced-adjacent
+  source: "Corley 2017 abstract: OR 3.22 (2.44-4.25), 31 cases per 1,000."
+  url: "https://jamanetwork.com/journals/jama/fullarticle/2620087"
+  accessed: "2026-10-25"
+
+aa_yield:
+  value: 0.2713
+  dist: beta_ci
+  args: [0.2439, 0.2997]
+  unit: advanced adenomas found per completed colonoscopy after a positive FIT
+  status: sourced-adjacent
+  source: "Ding et al., Cancers 2022;14:1073, meta-analysis of FIT programmes, pooled PPV for advanced adenoma 27.13% (24.39-29.97), 49 studies. No GCC programme reports an advanced-adenoma count (Qatar, Saudi pilot and the Abu Dhabi audit were checked)."
+  url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC8870403/"
+  accessed: "2026-10-25"
+
+surv5_localized:
+  value: 0.7985
+  dist: uniform
+  args: [0.7985, 0.913]
+  unit: 5-year CRC survival, early stage (AJCC I-II, read as SEER 'localized')
+  status: sourced-adjacent
+  source: "Central: Saudi National Guard registry, 1,012 patients 2009-2017, CRC-specific 5-year survival localized 79.85% (BMC Cancer 2021, PMC8390280), the only GCC stage-specific figure found. High end: US SEER 2016-2022 5-year relative survival localized 91.3%. No UAE stage-specific survival was found."
+  url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC8390280/"
+  accessed: "2026-10-25"
+
+surv5_regional:
+  value: 0.6325
+  dist: uniform
+  args: [0.6325, 0.752]
+  unit: 5-year CRC survival, stage III (read as 'regional')
+  status: sourced-adjacent
+  source: "Saudi National Guard registry regional 63.25% (PMC8390280); SEER regional 75.2% (https://seer.cancer.gov/statfacts/html/colorect.html)."
+  url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC8390280/"
+  accessed: "2026-10-25"
+
+surv5_distant:
+  value: 0.2031
+  dist: uniform
+  args: [0.169, 0.2031]
+  unit: 5-year CRC survival, stage IV (read as 'distant')
+  status: sourced-adjacent
+  source: "Saudi National Guard registry distant 20.31% (PMC8390280); SEER distant 16.9% (https://seer.cancer.gov/statfacts/html/colorect.html)."
+  url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC8390280/"
+  accessed: "2026-10-25"
+
+stage4_share_of_advanced:
+  value: 0.35
+  dist: uniform
+  args: [0.20, 0.50]
+  unit: share of advanced (III-IV) cancers that are stage IV
+  status: assumed
+  source: "No GCC split for FIT-detected cancers was found. Upper reference: England, all colorectal cancer 2014-2018 with known stage, stage III 30.0% and IV 25.7%, so IV is 46% of III-IV (gov.uk cancer survival in England, 2014-2018). Screen-detected cancers are expected to have a smaller stage IV share; 0.35 (0.20 to 0.50) is our choice."
+  url: "https://www.gov.uk/government/publications/cancer-survival-in-england-for-patients-diagnosed-between-2014-and-2018-and-followed-up-until-2019/cancer-survival-in-england-for-patients-diagnosed-between-2014-and-2018-and-followed-up-to-2019"
+  accessed: "2026-10-25"
+
+age_at_diagnosis:
+  value: 60
+  dist: uniform
+  args: [55, 65]
+  unit: years
+  status: sourced-adjacent
+  source: "Abu Dhabi audit (Almansoori, BMC Cancer 2021): mean age 61.1 (SD 11.2) of the 11 cancers, 56.5 of FIT-positives; Corley 2017 median 61. Range 55 to 65 is ours."
+  url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC8343888/"
+  accessed: "2026-10-25"
+
+life_expectancy_uae:
+  # remaining life expectancy e_x, both sexes, WHO life tables for the United Arab Emirates, 2023 (latest year); linear between ages
+  value: {55: 29.49, 60: 24.79, 65: 20.26}
+  dist: fixed
+  unit: years of life remaining at age x
+  status: sourced
+  source: "WHO Global Health Observatory, life tables, indicator LIFE_0000000035 (ex), ARE, both sexes, 2023: e55 29.49, e60 24.79, e65 20.26."
+  url: "https://ghoapi.azureedge.net/api/LIFE_0000000035?$filter=SpatialDim%20eq%20'ARE'"
+  accessed: "2026-10-25"
+
+years_to_death_if_crc_death:
+  value: 2.0
+  dist: uniform
+  args: [1.0, 3.0]
+  unit: mean years from diagnosis to death among those who die of CRC within 5 years
+  status: assumed
+  source: "Our choice; no source. A death avoided gains the remaining life expectancy at diagnosis minus this."
+
+utility_population:
+  value: 0.80
+  dist: uniform
+  args: [0.756, 0.881]
+  unit: EQ-5D utility weight applied to each life-year gained
+  status: sourced-adjacent
+  source: "Janssen et al. 2019, EQ-5D-3L population norms, Table 5: UK-England 0.819 (55-64) and 0.785 (65-74); USA 0.776 and 0.756; Germany 0.881 and 0.838. No UAE or GCC age-specific norms exist (a UAE EQ-5D-5L value set exists, Value in Health 2025, but not norms)."
+  url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC6438939/"
+  accessed: "2026-10-25"
+
+discount_rate:
+  value: 0.03
+  dist: fixed
+  unit: annual discount rate for life-years and QALYs
+  status: assumed
+  source: "3% a year, the ticket's specification and the common health-economics convention; no UAE guideline was checked."
+
+# --- cost side (illustrative only; the business case's own inputs, docs/commercial/business-case.md and tools/pilot/inputs.yaml)
+fee_per_case_aed:
+  value: 90
+  dist: fixed
+  unit: AED per positive case tracked
+  status: assumed
+  source: "business-case.md section 3, option B, an illustrative price, not an offer."
+
+colonoscopy_cost_aed:
+  value: 4000
+  dist: uniform
+  args: [1800, 7000]
+  unit: AED per diagnostic colonoscopy
+  status: assumed
+  source: "Zavis price directory, colonoscopy in Abu Dhabi AED 1,800 to 7,000, indicative figures compiled by the site, not a tariff. The DoH mandatory tariff was not found. The business case leaves this cost out; it is counted here."
+  url: "https://www.zavis.ai/directory/pricing/colonoscopy/abu-dhabi"
+  accessed: "2026-10-25"
+
+treatment_gap_aed:
+  value: 95694
+  dist: uniform
+  args: [17161, 95694]
+  unit: AED, first-year treatment cost gap stage I to stage IV
+  status: sourced-adjacent
+  source: "business-case.md section 4.1: Saudi single-centre study (PMC10630777), USD 45,317 to above 71,374 at 3.6725 = AED 95,694 (central); Malaysian gap AED 17,161 (low)."
+  url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC10630777/"
+  accessed: "2026-10-25"
+
+stage_pair_factor:
+  value: 0.6
+  dist: uniform
+  args: [0.4, 1.0]
+  unit: share of the stage I-IV cost gap that one advanced-to-early shift saves
+  status: assumed
+  source: "business-case.md section 4.1 and tools/pilot/inputs.yaml outcome.stage_pair_factor."
+
+positives_per_year_abu_dhabi:
+  value: 17696
+  dist: fixed
+  unit: FIT-positive cases a year, Abu Dhabi, central
+  status: sourced-adjacent
+  source: "business-case.md section 1.1 (derived: 1,264,000 residents aged 40-75 x 20% with a FIT result x 7% positive); range 8,216 to 59,724 is not propagated."
+
+gdp_per_capita_usd:
+  value: 50273.51
+  dist: fixed
+  unit: USD, UAE, 2024, current prices
+  status: sourced
+  source: "World Bank API NY.GDP.PCAP.CD, ARE, 2024 (last updated 2026-10-08). Shown for orientation only; no UAE cost-effectiveness threshold is published."
+  url: "https://api.worldbank.org/v2/country/ARE/indicator/NY.GDP.PCAP.CD"
+  accessed: "2026-10-25"
+
+usd_aed:
+  value: 3.6725
+  dist: fixed
+  unit: AED per USD
+  status: sourced
+  source: "Dirham peg, as in business-case.md."

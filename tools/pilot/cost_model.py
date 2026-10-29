@@ -19,6 +19,7 @@ from pathlib import Path
 DEFAULT_INPUTS = Path(__file__).with_name("inputs.yaml")
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_RESULTS = REPO_ROOT / "docs" / "results" / "results.json"
+DEFAULT_OUTCOMES = REPO_ROOT / "docs" / "results" / "outcomes.json"  # M7-3 health outcomes (optional)
 ALLOWED_STATUS = ("assumed", "sourced-adjacent", "sourced")
 LEGACY_SECTIONS = ("inputs", "pilot", "shadow_pilot", "value")
 COMMERCIAL_SECTIONS = ("market", "outcome", "capacity", "benchmark")
@@ -601,7 +602,30 @@ def _payback(upfront, annual):
     return f"{upfront / annual * 12:,.0f} months" if annual > 0 else "none (no positive annual cash)"
 
 
-def pricing_markdown(spec, delay_shares, effort_rows, prog, results_name):
+def load_outcomes(path):
+    """docs/results/outcomes.json (M7-3), or None when it does not exist."""
+    p = Path(path)
+    return json.loads(p.read_text(encoding="utf-8")) if p.exists() else None
+
+
+def outcome_costs(outcomes, fit_cases, net_costs):
+    """Net cost per death avoided and per QALY for each (label, net cost a year), from the outcomes model's literature-anchored
+    per-1,000 results scaled to `fit_cases`. Intervals divide by the PSA bounds of deaths or QALYs (2.5th and 97.5th
+    percentiles); the extra colonoscopies the outcomes model counts are shown as a second net cost."""
+    g = outcomes["scenarios"]["literature_anchored"]["groups"]["all"]
+    k = fit_cases / 1000
+    col_unit = outcomes["parameters"]["colonoscopy_cost_aed"]["value"]
+    out = {"deaths": g["central"]["deaths_avoided_5y"] * k, "qalys": g["central"]["qalys_disc"] * k,
+           "deaths_lo": g["psa"]["deaths_avoided_5y"]["p025"] * k, "deaths_hi": g["psa"]["deaths_avoided_5y"]["p975"] * k,
+           "qalys_lo": g["psa"]["qalys_disc"]["p025"] * k, "qalys_hi": g["psa"]["qalys_disc"]["p975"] * k,
+           "extra_colonoscopies": g["central"]["extra_colonoscopies"] * k, "colonoscopy_unit": col_unit, "rows": []}
+    out["colonoscopy_cost"] = out["extra_colonoscopies"] * col_unit
+    for label, net in net_costs:
+        out["rows"].append({"label": label, "net": net, "net_with_col": net + out["colonoscopy_cost"]})
+    return out
+
+
+def pricing_markdown(spec, delay_shares, effort_rows, prog, results_name, outcomes=None):
     """The generated block of business-case.md section 9 (markdown). Deterministic."""
     m = pricing_model(spec, delay_shares, effort_rows, prog)
     v, host, b = m["v"], m["hosting"], m["buyer"]
@@ -754,6 +778,31 @@ def pricing_markdown(spec, delay_shares, effort_rows, prog, results_name):
     out += [_md(["case", "operator cost a year", "licence margin", "cost per actionable case",
                  "FIT avoided cost covers licence", "buyer net cost per advanced cancer avoided"], rows), ""]
 
+    if outcomes is not None:
+        oc = outcome_costs(outcomes, fit_s["cases"], [
+            (f"B1 per tracked case, FIT only (AED {money(fit_fee)})", fit_fee - b["avoided_cost"]),
+            (f"L programme licence, four pathways (AED {money(lic)}), FIT value only", lic - b["avoided_cost"])])
+
+        def per(net, unit, lo, hi):
+            if net <= 0:
+                return "saves money"
+            return f"{money(net / unit)} ({money(net / hi)} to {money(net / lo)})"
+        out += ["**9.9 Net cost per death avoided and per QALY** (FIT pathway, literature-anchored; deaths and QALYs from "
+                "[outcomes.md](../results/outcomes.md), M7-3: colorectal cancer deaths within 5 years avoided and QALYs "
+                "discounted at 3%, from Corley 2017's delay odds ratios, Saudi and SEER stage survival and WHO UAE life "
+                f"expectancy; for {money(fit_s['cases'])} positives a year that is {oc['deaths']:.1f} deaths "
+                f"({oc['deaths_lo']:.1f} to {oc['deaths_hi']:.1f}) and {money(oc['qalys'])} QALYs ({money(oc['qalys_lo'])} to "
+                f"{money(oc['qalys_hi'])}), 95% PSA intervals. Net cost is the fee less the avoided treatment cost of 9.7, "
+                "10-12 month ORs; the second pair of columns adds the extra colonoscopies the outcomes model counts "
+                f"({money(oc['extra_colonoscopies'])} a year at an assumed AED {money(oc['colonoscopy_unit'])} each), which "
+                "this cost model otherwise leaves to the payer. Ranges divide by the PSA bounds. Illustrative.)", ""]
+        rows = [[r["label"], money(r["net"]), per(r["net"], oc["deaths"], oc["deaths_lo"], oc["deaths_hi"]),
+                 per(r["net"], oc["qalys"], oc["qalys_lo"], oc["qalys_hi"]),
+                 per(r["net_with_col"], oc["deaths"], oc["deaths_lo"], oc["deaths_hi"]),
+                 per(r["net_with_col"], oc["qalys"], oc["qalys_lo"], oc["qalys_hi"])] for r in oc["rows"]]
+        out += [_md(["fee", "net cost a year", "per death avoided", "per QALY", "per death avoided, with colonoscopies",
+                     "per QALY, with colonoscopies"], rows), ""]
+
     coverage = b["avoided_cost"] / lic
     out += [f"**Reading.** At the central inputs the programme licence costs the operator AED {money(cost_p['total'])} a year "
             f"to serve ({prog_s['cost']['total'] / prog_s['cases']:,.1f} per actionable case across "
@@ -764,8 +813,13 @@ def pricing_markdown(spec, delay_shares, effort_rows, prog, results_name):
             "the fee. The buyer pays for the remainder in safety and outcomes: about "
             f"{money(b['silent_loss_prevented'])} positives a year no longer lost without anyone told and "
             f"{b['advanced_avoided']:.0f} to {hi['advanced_avoided']:.0f} advanced-stage cancers avoided (synthetic, "
-            "assumption-based), plus a per-case record against the IFHAS timelines. The other three pathways add volume "
-            "and cost here but no modelled value, because none is built or simulated.", "", PRICING_END]
+            "assumption-based), plus a per-case record against the IFHAS timelines"
+            + (f", and in health terms about {oc['deaths']:.0f} colorectal cancer deaths avoided within 5 years for each year of "
+               f"positives ({oc['deaths_lo']:.0f} to {oc['deaths_hi']:.0f}), at a net cost of about AED "
+               f"{money(oc['rows'][1]['net'] / oc['qalys'])} per QALY on the licence before the extra colonoscopies and "
+               f"AED {money(oc['rows'][1]['net_with_col'] / oc['qalys'])} with them (9.9)" if outcomes is not None else "")
+            + ". The other three pathways add volume and cost here but no modelled value, because none is built or "
+            "simulated.", "", PRICING_END]
     return "\n".join(out) + "\n"
 
 
@@ -782,6 +836,8 @@ def main(argv=None):
     ap.add_argument("--inputs", default=str(DEFAULT_INPUTS), help="inputs file (default: tools/pilot/inputs.yaml)")
     ap.add_argument("--results", default=str(DEFAULT_RESULTS),
                     help="simulator results (default: docs/results/results.json in the repo)")
+    ap.add_argument("--outcomes", default=str(DEFAULT_OUTCOMES),
+                    help="health outcomes for --pricing section 9.9 (default: docs/results/outcomes.json; skipped if absent)")
     ap.add_argument("--commercial", action="store_true",
                     help="print the commercial-case extension (market, outcome value, capacity, benchmarks) instead of the pilot cost report")
     ap.add_argument("--pricing", action="store_true",
@@ -799,7 +855,7 @@ def main(argv=None):
     if args.pricing:
         try:
             text = pricing_markdown(spec, shares, load_effort_minutes(args.results), load_programme_shares(args.results),
-                                    Path(args.results).name)
+                                    Path(args.results).name, load_outcomes(args.outcomes))
         except (KeyError, ValueError) as exc:
             print(f"error: {exc}", file=sys.stderr)
             return 2
