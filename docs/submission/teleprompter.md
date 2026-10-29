@@ -69,7 +69,7 @@ Cases closed with evidence and a signature: fifty-three percent today, sixty-eig
 If Abu Dhabi today looks like the thirty point five percent audit, the same mechanism moves it to about thirty-nine percent within a year. Simulated: a sensitivity run, not a forecast.
 
 **5:30** [Slide: labour.]
-Labour: thirty-six percent fewer staff minutes per handled case, twenty percent across the programme. Our target was forty percent. It is not met in realistic scenarios; only the upper bound, a mechanism ceiling, reaches it.
+Labour: thirty-six percent fewer staff minutes per handled case, twenty percent across the programme. Our target was forty percent. It is not met in realistic scenarios; only the upper bound, a mechanism ceiling, comes close.
 
 **5:45** [Slide: the pilot ask.]
 The ask: one programme, two providers, ninety days, shadow mode first, thirty days sending nothing. One number must stay at zero: cases closed without evidence. A clinician and a native Arabic speaker review the wording first.

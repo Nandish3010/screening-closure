@@ -79,16 +79,16 @@ inputs:
     basis: Period over which the one-off integration cost is spread.
 
   coordinator_minutes_per_case_manual:
-    value: 57.7
+    value: 57.1
     unit: staff minutes (all roles) per actionable case without the engine
     status: assumed
-    basis: "Source: docs/results/results.json effort, baseline arm, human minutes per case (57.7; coordinator 47.1, owner clinician 4.4, specialist 6.2), as in docs/results/results.md Human effort, make evaluate on the merged tree, 25 October 2026 (B21 regeneration, commit db1d13d4a482). Synthetic simulator output; the minutes come from published time studies (66 percent of baseline minutes, sourced-adjacent) and assumptions (34 percent), so the blend is graded assumed, the weaker of the two. All roles are valued at the coordinator rate below, which understates clinician and specialist time; the script's wage-weighted section applies the wage ratios. To be measured in the pilot shadow period (K9)."
+    basis: "Source: docs/results/results.json effort, baseline arm, human minutes per case (57.1; coordinator 46.6, owner clinician 4.5, specialist 6.1), as in docs/results/results.md Human effort, make evaluate on the merged tree, 29 October 2026 (M7-1 regeneration: the simulator runs the API's sweep). Synthetic simulator output; the minutes come from published time studies (66 percent of baseline minutes, sourced-adjacent) and assumptions (34 percent), so the blend is graded assumed, the weaker of the two. All roles are valued at the coordinator rate below, which understates clinician and specialist time; the script's wage-weighted section applies the wage ratios. To be measured in the pilot shadow period (K9)."
 
   coordinator_minutes_per_case_with_engine:
-    value: 46.1
+    value: 45.8
     unit: staff minutes (all roles) per actionable case with the engine
     status: assumed
-    basis: "Source: docs/results/results.json effort, literature-anchored orchestrated arm at programme level (46.1 minutes, 20.1 percent fewer than baseline, 0.55 reach); 36.5 among the cases the programme reaches (36.7 percent fewer); the upper range is 34.1 (40.8 percent fewer). Synthetic; blend graded assumed as above. Coordinator minutes fall (-36.4 percent) but owner-clinician (+95.1 percent) and specialist (+22.0 percent) minutes rise, so valuing all roles at the coordinator rate overstates the saving: at the sourced-adjacent wage ratios (clinician 4, specialist 10, below) weighted staff time per case is higher than at baseline, not lower (see the wage-weighted section of the script output). To be measured in the pilot (K9)."
+    basis: "Source: docs/results/results.json effort, literature-anchored orchestrated arm at programme level (45.8 minutes, 19.7 percent fewer than baseline, 0.55 reach); 36.5 among the cases the programme reaches (36.0 percent fewer); the upper range is 34.3 (40.0 percent fewer). Synthetic; blend graded assumed as above. Coordinator minutes fall (-36.1 percent) but owner-clinician (+94.1 percent) and specialist (+22.6 percent) minutes rise, so valuing all roles at the coordinator rate overstates the saving: at the sourced-adjacent wage ratios (clinician 4, specialist 10, below) weighted staff time per case is higher than at baseline, not lower (see the wage-weighted section of the script output). To be measured in the pilot (K9)."
 
   coordinator_cost_aed_per_hour:
     value: 120

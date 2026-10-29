@@ -293,7 +293,7 @@ shots:
     submission: true
     route: "card:slide"
     duration: 10
-    caption: "Labour: 36% fewer staff minutes per case the system handles, 20% across the programme. The 40% target is not met in realistic scenarios; only the upper bound, a mechanism ceiling, reaches it."
+    caption: "Labour: 36% fewer staff minutes per case the system handles, 20% across the programme. The 40% target is not met in realistic scenarios; only the upper bound, a mechanism ceiling, comes close."
     narration: "Labour falls thirty-six percent per handled case, twenty percent programme-wide. The forty percent target is not met in realistic scenarios; only the upper bound does."
     actions:
       - card:
@@ -302,7 +302,7 @@ shots:
           bullets:
             - "36% fewer staff minutes per case the system handles (in reach)"
             - "20% fewer across the whole programme (0.55 reach assumption)"
-            - "The 40% target is not met in realistic scenarios; only the upper bound (a mechanism ceiling) reaches it, and only just"
+            - "The 40% target is not met in realistic scenarios; only the upper bound (a mechanism ceiling) comes close"
             - "Minutes are published or assumed; synthetic"
       - hold: 8
 

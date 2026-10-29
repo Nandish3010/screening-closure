@@ -86,9 +86,9 @@ def test_the_labour_figures_are_the_committed_ones_and_the_target_is_said_to_be_
     in_reach = eff["literature_anchored"]["in_reach"]["reduction"]["labour_reduction"]["mean"]
     upper = eff["upper_range"]["all"]["reduction"]["labour_reduction"]["mean"]
     assert (round(in_reach * 100), round(programme * 100), round(upper * 100)) == (36, 20, 40)
-    # not met in the realistic (literature-anchored) scenarios; only the upper bound, a mechanism ceiling, reaches it, and only just (39.99%)
+    # not met in the realistic (literature-anchored) scenarios; only the upper bound, a mechanism ceiling, comes close (39.99%)
     assert in_reach < 0.40 and programme < 0.40
-    assert upper >= 0.399  # the upper range reaches the target only within rounding; the docs say "only just"
+    assert 0.39 <= upper < 0.41  # the upper range is about the target (39.99%); the docs say it "comes close", not that it is met
     assert "thirty-six percent" in TELE and "twenty percent" in TELE and "not met" in TELE
     assert "36% fewer" in SCRIPT and "20% across the programme" in SCRIPT and "not met" in SCRIPT
     storyboard_text = (ROOT / "tools/video/storyboard.yaml").read_text(encoding="utf-8")
