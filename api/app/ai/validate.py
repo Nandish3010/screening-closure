@@ -29,6 +29,7 @@ from app.ai.provider import (
     ProviderUnavailable,
     Provider,
     TemplateProvider,
+    fill_placeholders,
 )
 
 FORBIDDEN_PHRASES_PATH = Path(__file__).parent / "forbidden_phrases.yaml"
@@ -476,6 +477,8 @@ def draft_with_fallback(
         if not isinstance(result, DraftResult) or result.language != req.language:
             reason = INVALID_RESULT
         else:
+            if getattr(provider, "fills_placeholders", False):  # a model told to write {owner_name} etc. (A35)
+                result = dataclasses.replace(result, text=fill_placeholders(result.text, req))
             verdict = validate(result.text, req)
             if not verdict.ok:
                 reason = f"{VALIDATION_FAILED}:{','.join(verdict.reasons)}"

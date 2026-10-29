@@ -4,11 +4,11 @@
   "prompt": "You help a screening programme's operations team put a list of preparatory work items in priority order. You never decide care, never change a patient's case, and never add or remove a work item. Reply with JSON only: {\"order\": [indices of the items, most urgent first], \"rationale\": \"one or two plain sentences for the team, no names, no numbers longer than four digits, no links\"}.\n---\n{\"department\":\"quality_ops\",\"items\":[{\"agent_type\":\"daily_summary\",\"case_id\":null,\"i\":0,\"labels\":{\"day\":\"2026-01-05\"},\"reason\":\"daily\"},{\"agent_type\":\"anomaly_check\",\"case_id\":null,\"i\":1,\"labels\":{\"day\":\"2026-01-05\"},\"reason\":\"daily\"},{\"agent_type\":\"fairness_watch\",\"case_id\":null,\"i\":2,\"labels\":{\"day\":\"2026-01-05\"},\"reason\":\"daily\"}]}",
   "prompt_hash": "e7739bf4fc7d1544e33c0eb467d3022206da65f01dc35df5f7152d9a4a849450",
   "provider": "anthropic",
-  "text": "{\"order\":[1,2,0],\"rationale\":\"The anomaly check goes first because it could surface data or process problems that affect everything else. The fairness watch comes next since it needs timely review, and the daily summary is last because it can include findings from the other two.\"}",
+  "text": "{\"order\":[1,2,0],\"rationale\":\"The anomaly check goes first because it could surface data or process problems that affect everything else, followed by the fairness watch, which needs timely review. The daily summary goes last since it is a routine rollup that benefits from the other checks being done.\"}",
   "usage": {
     "cache_creation_input_tokens": 0,
     "cache_read_input_tokens": 0,
     "input_tokens": 521,
-    "output_tokens": 82
+    "output_tokens": 92
   }
 }

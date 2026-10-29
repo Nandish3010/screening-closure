@@ -108,7 +108,7 @@ def test_replay_is_keyed_by_the_prompt(monkeypatch):
     monkeypatch.setenv("LLM_CACHE_MODE", "replay")
     cp = CachingProvider(Counting())
     cp.draft(make_req())  # hit
-    for other in (make_req(language="ar"), make_req(owner_name="Dr Omar"), make_req(channel="letter")):
+    for other in (make_req(language="ar"), make_req(owner_role="specialist_owner"), make_req(channel="letter")):
         with pytest.raises(CacheMiss):
             cp.draft(other)
 

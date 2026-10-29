@@ -127,6 +127,10 @@ class CachingProvider:
     def model_id(self) -> str:
         return self._inner.model_id
 
+    @property
+    def fills_placeholders(self) -> bool:
+        return bool(getattr(self._inner, "fills_placeholders", False))
+
     def draft(self, req: DraftRequest) -> DraftResult:
         mode = self._mode or cache_mode()
         if mode == "off":
