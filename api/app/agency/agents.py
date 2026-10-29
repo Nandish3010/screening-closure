@@ -528,13 +528,40 @@ class AnomalyCheck(Executioner):
 
 class FairnessWatch(Executioner):
     spec = ExecutionerSpec(
-        "quality_ops", "fairness_watch", "Fairness watch by language and channel",
+        "quality_ops", "fairness_watch", "Fairness watch by language, channel and contact quality",
         ("read_abstention", "read_worklist"), FlagsOut,
         ("check that no language or channel group is served worse",),
     )
 
-    GAP = 0.10  # a group this far above the overall rate is flagged
+    # A group is flagged when its overdue rate is more than GAP above the rate of the REST of the open cases and the lower
+    # end of its Wilson 95% interval is still above that rate. M7-1 review of the threshold: 10 points stays (the same
+    # absolute gap as the M7-5 audit's recall flag, about a doubling at the simulated overdue rates), but it is now taken
+    # against the rest, not the overall rate (a large group cannot hide in an average it dominates), and a gap inside
+    # sampling noise is not flagged (with MIN_N = 5, one case moves a small group's rate by 20 points).
+    GAP = 0.10
     MIN_N = 5
+    LANGUAGES = {"en": "en", "ar": "ar", None: "other"}  # `other`: no English or Arabic recorded (another language or unknown)
+
+    @staticmethod
+    def _wilson_low(k: int, n: int, z: float = 1.96) -> float:
+        p = k / n
+        d = 1 + z * z / n
+        return (p + z * z / (2 * n) - z * ((p * (1 - p) + z * z / (4 * n)) / n) ** 0.5) / d
+
+    def _overdue_flags(self, cases, key, kind) -> list[dict]:
+        flags = []
+        groups: dict[str, list] = {}
+        for c in cases:
+            groups.setdefault(key(c), []).append(c)
+        for name, group in sorted(groups.items()):
+            rest = [c for c in cases if key(c) != name]
+            if len(group) < self.MIN_N or not rest:
+                continue
+            k = sum(c.overdue for c in group)
+            rate, rest_rate = k / len(group), sum(c.overdue for c in rest) / len(rest)
+            if rate - rest_rate > self.GAP and self._wilson_low(k, len(group)) > rest_rate:
+                flags.append({"kind": kind, "group": name, "rate": round(rate, 3), "overall": round(rest_rate, 3)})
+        return flags
 
     def run(self, box, order, now):
         ab = box.call("read_abstention")
@@ -548,18 +575,12 @@ class FairnessWatch(Executioner):
                     flags.append({"kind": f"abstention_{dim[3:]}", "group": group, "rate": round(cell["rate"], 3),
                                   "overall": round(overall, 3)})
         if cases:
-            base = sum(c.overdue for c in cases) / len(cases)
-            for lang in ("en", "ar"):
-                group = [c for c in cases if c.language == lang]
-                if len(group) >= self.MIN_N:
-                    rate = sum(c.overdue for c in group) / len(group)
-                    if rate - base > self.GAP:
-                        flags.append({"kind": "overdue_language", "group": lang, "rate": round(rate, 3),
-                                      "overall": round(base, 3)})
+            flags += self._overdue_flags(cases, lambda c: self.LANGUAGES.get(c.language, "other"), "overdue_language")
+            flags += self._overdue_flags(cases, lambda c: getattr(c, "contact_quality", "ok"), "overdue_contact")
         if not flags:
             return Outcome("done", FlagsOut(summary="No group is served measurably worse.", flags=[]))
         return Outcome("needs_human", FlagsOut(
-            summary=f"{len(flags)} group(s) above the overall rate by more than {self.GAP:.0%}.",
+            summary=f"{len(flags)} group(s) above the rest by more than {self.GAP:.0%}, beyond sampling noise.",
             title="Fairness: a group is served worse", assignee_role="supervisor",
             recommended_action="review_fairness", flags=flags))
 

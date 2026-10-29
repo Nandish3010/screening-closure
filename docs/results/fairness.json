@@ -61,27 +61,6 @@
   "flags": [
     {
       "area": "triage",
-      "detail": [
-        "other->confirm",
-        "other->confirm",
-        "other->confirm"
-      ],
-      "group": "ar",
-      "limit": 0,
-      "metric": "always_human_auto_handled",
-      "value": 3
-    },
-    {
-      "area": "triage",
-      "group": "arabizi",
-      "limit": 0.95,
-      "metric": "auto_precision",
-      "of_auto_handled": 42,
-      "value": 0.8095,
-      "wrong_automatic_steps": 8
-    },
-    {
-      "area": "triage",
       "group": "arabizi",
       "limit": 0.1,
       "metric": "macro_recall_gap",
@@ -89,41 +68,10 @@
     },
     {
       "area": "triage",
-      "detail": [
-        "question->reschedule"
-      ],
-      "group": "arabizi",
-      "limit": 0,
-      "metric": "always_human_auto_handled",
-      "value": 1
-    },
-    {
-      "area": "triage",
-      "group": "ar_gulf",
-      "limit": 0.95,
-      "metric": "auto_precision",
-      "of_auto_handled": 45,
-      "value": 0.9111,
-      "wrong_automatic_steps": 4
-    },
-    {
-      "area": "triage",
       "group": "ar_gulf",
       "limit": 0.1,
       "metric": "macro_recall_gap",
       "value": 0.1907
-    },
-    {
-      "area": "triage",
-      "detail": [
-        "other->confirm",
-        "other->confirm",
-        "other->confirm"
-      ],
-      "group": "ar_gulf",
-      "limit": 0,
-      "metric": "always_human_auto_handled",
-      "value": 3
     },
     {
       "area": "validator",
@@ -362,19 +310,15 @@
     "by_dialect": {
       "ar_gulf": {
         "accuracy": 0.7935,
-        "always_human_auto_handled": [
-          "other->confirm",
-          "other->confirm",
-          "other->confirm"
-        ],
-        "always_human_to_person": 0.9118,
-        "auto_handled_n": 45,
-        "auto_precision": 0.9111,
+        "always_human_auto_handled": [],
+        "always_human_to_person": 1.0,
+        "auto_handled_n": 0,
+        "auto_precision": null,
         "auto_precision_ci": [
-          0.7927,
-          0.9649
+          0.0,
+          1.0
         ],
-        "coverage": 0.4891,
+        "coverage": 0.0,
         "macro_precision": 0.7637,
         "macro_recall": 0.8093,
         "n": 92,
@@ -428,7 +372,7 @@
             "support": 13
           }
         },
-        "wrong_automatic_steps": 4
+        "wrong_automatic_steps": 0
       },
       "ar_msa": {
         "accuracy": 0.9902,
@@ -500,20 +444,15 @@
     "by_language": {
       "all": {
         "accuracy": 0.8984,
-        "always_human_auto_handled": [
-          "other->confirm",
-          "other->confirm",
-          "other->confirm",
-          "question->reschedule"
-        ],
-        "always_human_to_person": 0.9783,
-        "auto_handled_n": 320,
-        "auto_precision": 0.9625,
+        "always_human_auto_handled": [],
+        "always_human_to_person": 1.0,
+        "auto_handled_n": 240,
+        "auto_precision": 1.0,
         "auto_precision_ci": [
-          0.9356,
-          0.9784
+          0.9842,
+          1.0
         ],
-        "coverage": 0.5808,
+        "coverage": 0.4356,
         "macro_precision": 0.9059,
         "macro_recall": 0.8986,
         "n": 551,
@@ -567,23 +506,19 @@
             "support": 61
           }
         },
-        "wrong_automatic_steps": 12
+        "wrong_automatic_steps": 0
       },
       "ar": {
         "accuracy": 0.8969,
-        "always_human_auto_handled": [
-          "other->confirm",
-          "other->confirm",
-          "other->confirm"
-        ],
-        "always_human_to_person": 0.9577,
-        "auto_handled_n": 109,
-        "auto_precision": 0.9633,
+        "always_human_auto_handled": [],
+        "always_human_to_person": 1.0,
+        "auto_handled_n": 64,
+        "auto_precision": 1.0,
         "auto_precision_ci": [
-          0.9094,
-          0.9856
+          0.9434,
+          1.0
         ],
-        "coverage": 0.5619,
+        "coverage": 0.3299,
         "macro_precision": 0.9229,
         "macro_recall": 0.9029,
         "n": 194,
@@ -637,21 +572,19 @@
             "support": 25
           }
         },
-        "wrong_automatic_steps": 4
+        "wrong_automatic_steps": 0
       },
       "arabizi": {
         "accuracy": 0.6869,
-        "always_human_auto_handled": [
-          "question->reschedule"
-        ],
-        "always_human_to_person": 0.9706,
-        "auto_handled_n": 42,
-        "auto_precision": 0.8095,
+        "always_human_auto_handled": [],
+        "always_human_to_person": 1.0,
+        "auto_handled_n": 21,
+        "auto_precision": 1.0,
         "auto_precision_ci": [
-          0.667,
-          0.9002
+          0.8454,
+          1.0
         ],
-        "coverage": 0.4242,
+        "coverage": 0.2121,
         "macro_precision": 0.6461,
         "macro_recall": 0.661,
         "n": 99,
@@ -705,7 +638,7 @@
             "support": 14
           }
         },
-        "wrong_automatic_steps": 8
+        "wrong_automatic_steps": 0
       },
       "en": {
         "accuracy": 1.0,
@@ -777,13 +710,13 @@
         "accuracy": 0.9359,
         "always_human_auto_handled": [],
         "always_human_to_person": 1.0,
-        "auto_handled_n": 46,
+        "auto_handled_n": 32,
         "auto_precision": 1.0,
         "auto_precision_ci": [
-          0.9229,
+          0.8928,
           1.0
         ],
-        "coverage": 0.5897,
+        "coverage": 0.4103,
         "macro_precision": 0.9395,
         "macro_recall": 0.9485,
         "n": 78,
@@ -843,27 +776,6 @@
     "flags": [
       {
         "area": "triage",
-        "detail": [
-          "other->confirm",
-          "other->confirm",
-          "other->confirm"
-        ],
-        "group": "ar",
-        "limit": 0,
-        "metric": "always_human_auto_handled",
-        "value": 3
-      },
-      {
-        "area": "triage",
-        "group": "arabizi",
-        "limit": 0.95,
-        "metric": "auto_precision",
-        "of_auto_handled": 42,
-        "value": 0.8095,
-        "wrong_automatic_steps": 8
-      },
-      {
-        "area": "triage",
         "group": "arabizi",
         "limit": 0.1,
         "metric": "macro_recall_gap",
@@ -871,71 +783,153 @@
       },
       {
         "area": "triage",
-        "detail": [
-          "question->reschedule"
-        ],
-        "group": "arabizi",
-        "limit": 0,
-        "metric": "always_human_auto_handled",
-        "value": 1
-      },
-      {
-        "area": "triage",
-        "group": "ar_gulf",
-        "limit": 0.95,
-        "metric": "auto_precision",
-        "of_auto_handled": 45,
-        "value": 0.9111,
-        "wrong_automatic_steps": 4
-      },
-      {
-        "area": "triage",
         "group": "ar_gulf",
         "limit": 0.1,
         "metric": "macro_recall_gap",
         "value": 0.1907
-      },
-      {
-        "area": "triage",
-        "detail": [
-          "other->confirm",
-          "other->confirm",
-          "other->confirm"
-        ],
-        "group": "ar_gulf",
-        "limit": 0,
-        "metric": "always_human_auto_handled",
-        "value": 3
       }
     ],
+    "group_rule": {
+      "arabizi_threshold_fitted_on": "validation",
+      "arabizi_validation_n": 71,
+      "compare": {
+        "all": {
+          "after_auto_handled_n": 240,
+          "after_auto_precision": 1.0,
+          "after_coverage": 0.4356,
+          "before_auto_handled_n": 320,
+          "before_auto_precision": 0.9625,
+          "before_coverage": 0.5808
+        },
+        "ar": {
+          "after_auto_handled_n": 64,
+          "after_auto_precision": 1.0,
+          "after_coverage": 0.3299,
+          "before_auto_handled_n": 109,
+          "before_auto_precision": 0.9633,
+          "before_coverage": 0.5619
+        },
+        "ar_gulf": {
+          "after_auto_handled_n": 0,
+          "after_auto_precision": null,
+          "after_coverage": 0.0,
+          "before_auto_handled_n": 45,
+          "before_auto_precision": 0.9111,
+          "before_coverage": 0.4891
+        },
+        "ar_msa": {
+          "after_auto_handled_n": 64,
+          "after_auto_precision": 1.0,
+          "after_coverage": 0.6275,
+          "before_auto_handled_n": 64,
+          "before_auto_precision": 1.0,
+          "before_coverage": 0.6275
+        },
+        "arabizi": {
+          "after_auto_handled_n": 21,
+          "after_auto_precision": 1.0,
+          "after_coverage": 0.2121,
+          "before_auto_handled_n": 42,
+          "before_auto_precision": 0.8095,
+          "before_coverage": 0.4242
+        },
+        "en": {
+          "after_auto_handled_n": 123,
+          "after_auto_precision": 1.0,
+          "after_coverage": 0.6833,
+          "before_auto_handled_n": 123,
+          "before_auto_precision": 1.0,
+          "before_coverage": 0.6833
+        },
+        "mixed": {
+          "after_auto_handled_n": 32,
+          "after_auto_precision": 1.0,
+          "after_coverage": 0.4103,
+          "before_auto_handled_n": 46,
+          "before_auto_precision": 1.0,
+          "before_coverage": 0.5897
+        }
+      },
+      "deployed_threshold": 0.553,
+      "detection": {
+        "test": {
+          "ar_gulf": {
+            "ar_gulf": 81,
+            "arabizi": 0,
+            "n": 92
+          },
+          "ar_msa": {
+            "ar_gulf": 0,
+            "arabizi": 0,
+            "n": 102
+          },
+          "arabizi": {
+            "ar_gulf": 0,
+            "arabizi": 97,
+            "n": 99
+          },
+          "emoji": {
+            "ar_gulf": 0,
+            "arabizi": 0,
+            "n": 2
+          },
+          "en": {
+            "ar_gulf": 0,
+            "arabizi": 0,
+            "n": 180
+          },
+          "mixed": {
+            "ar_gulf": 14,
+            "arabizi": 0,
+            "n": 76
+          }
+        },
+        "validation": {
+          "ar_gulf": {
+            "ar_gulf": 43,
+            "arabizi": 0,
+            "n": 70
+          },
+          "ar_msa": {
+            "ar_gulf": 0,
+            "arabizi": 0,
+            "n": 81
+          },
+          "arabizi": {
+            "ar_gulf": 0,
+            "arabizi": 66,
+            "n": 71
+          },
+          "emoji": {
+            "ar_gulf": 0,
+            "arabizi": 0,
+            "n": 2
+          },
+          "en": {
+            "ar_gulf": 0,
+            "arabizi": 0,
+            "n": 115
+          },
+          "mixed": {
+            "ar_gulf": 7,
+            "arabizi": 0,
+            "n": 32
+          }
+        }
+      },
+      "extra_staff_review_share": 0.1452,
+      "markers_chosen_with_test_in_view": true,
+      "module": "api/app/triage/dialect.py",
+      "shipped": true,
+      "thresholds": {
+        "ar_gulf": null,
+        "arabizi": 0.918
+      }
+    },
     "integrity": {
       "quantities_checked": 11,
       "reproduces": "docs/results/triage/eval.json"
     },
-    "proposed_mitigations": [
-      {
-        "group": "ar_gulf",
-        "note": "The deployed threshold already meets the 97% target on this group's validation replies (70), so a stricter threshold fitted the same way changes nothing: the test shortfall is a generalisation gap between templates. No threshold fix is proposed; the mitigation is real replies of this group in the next training set (H2), and until then sending the group's replies to a person.",
-        "shipped": false,
-        "threshold": null,
-        "validation_n": 70
-      },
-      {
-        "deployed_threshold": 0.553,
-        "group": "arabizi",
-        "shipped": false,
-        "test_auto_handled_n": 21,
-        "test_auto_precision": 1.0,
-        "test_auto_precision_ci": [
-          0.8454,
-          1.0
-        ],
-        "test_coverage": 0.2121,
-        "threshold": 0.918,
-        "threshold_fitted_on": "validation",
-        "validation_n": 71
-      }
-    ],
     "source": {
       "calibration": "api/app/triage/calibration.json",
       "model_id": "qwen2.5-1.5b-4bit+lora-8b5a49fc",

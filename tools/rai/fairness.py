@@ -40,6 +40,7 @@ sys.path.insert(0, str(ROOT / "api"))
 sys.path.insert(0, str(ROOT / "tests" / "redteam"))  # the red-team attack lists are the validator's test set
 
 from app.triage import classify as triage  # noqa: E402
+from app.triage import dialect  # noqa: E402
 from app.triage import optout  # noqa: E402
 from app.triage.labels import ALWAYS_HUMAN, AUTO_HANDLED, INTENTS  # noqa: E402
 
@@ -224,31 +225,7 @@ def triage_section() -> dict:
             flags.append({"area": "triage", "group": name, "metric": "opt_out_not_to_person",
                           "value": g["opt_out_n"] - g["opt_out_to_person"], "limit": 0})
 
-    # Proposed mitigation (NOT shipped): a stricter threshold per flagged group, fitted on VALIDATION, measured on test.
-    proposals = []
-    for name in sorted({f["group"] for f in flags if f["metric"] == "auto_precision"}):
-        key = "variant" if name.startswith("ar_") else "language"
-        v_idx = [i for i, row in enumerate(val) if row[key] == name]
-        t_idx = [i for i, row in enumerate(test) if row[key] == name]
-        tau = triage_threshold_for([val[i] for i in v_idx], [v_scores[i] for i in v_idx], cal, VAL_PRECISION_TARGET)
-        if tau is None:
-            proposals.append({"group": name, "threshold": None, "shipped": False,
-                              "note": "no threshold reaches the validation target with 10 or more auto-handled replies: route the group to a person"})
-            continue
-        if tau <= cal.threshold:
-            proposals.append({"group": name, "threshold": None, "shipped": False, "validation_n": len(v_idx),
-                              "note": (f"The deployed threshold already meets the {VAL_PRECISION_TARGET:.0%} target on this group's validation replies "
-                                       f"({len(v_idx)}), so a stricter threshold fitted the same way changes nothing: the test shortfall is a "
-                                       "generalisation gap between templates. No threshold fix is proposed; the mitigation is real replies "
-                                       "of this group in the next training set (H2), and until then sending the group's replies to a person.")})
-            continue
-        stricter = triage.Calibration(cal.temperature, tau, cal.mass_floor, cal.model_id)
-        g = group_metrics([test[i] for i in t_idx], replay_with([test[i] for i in t_idx], [t_scores[i] for i in t_idx], stricter))
-        proposals.append({"group": name, "threshold_fitted_on": "validation", "validation_n": len(v_idx), "threshold": tau,
-                          "deployed_threshold": cal.threshold, "test_auto_precision": g["auto_precision"],
-                          "test_auto_precision_ci": g["auto_precision_ci"], "test_coverage": g["coverage"],
-                          "test_auto_handled_n": g["auto_handled_n"], "shipped": False})
-
+    group_rule = group_rule_section(test, val, t_scores, v_scores, cal, groups, dialects)
     return {
         "source": {"test_split": rel(DATASET / "test.jsonl"), "scores": rel(DATA / "triage_scores_test.json"),
                    "scores_sha256": sha256(DATA / "triage_scores_test.json"), "calibration": rel(triage.CALIBRATION_PATH),
@@ -257,8 +234,54 @@ def triage_section() -> dict:
         "by_language": groups,
         "by_dialect": dialects,
         "flags": flags,
-        "proposed_mitigations": proposals,
+        "group_rule": group_rule,
     }
+
+
+def group_rule_section(test, val, t_scores, v_scores, cal, groups, dialects) -> dict:
+    """The shipped dialect rule (M7-1, api/app/triage/dialect.py): Arabizi auto-handled only above its own threshold, Gulf
+    dialect always to a person. Reports the detector on both splits, the per-group results WITHOUT the rule (the global
+    threshold alone, as the M7-5 audit found them) next to the shipped ones, and the extra share of replies a person now
+    reads. Fails if the Arabizi threshold in dialect.py is not the one fitted on the validation split."""
+    v_idx = [i for i, row in enumerate(val) if row["language"] == dialect.ARABIZI]
+    fitted = triage_threshold_for([val[i] for i in v_idx], [v_scores[i] for i in v_idx], cal, VAL_PRECISION_TARGET)
+    if fitted != dialect.GROUP_THRESHOLDS[dialect.ARABIZI]:
+        raise SystemExit(f"fairness: the Arabizi threshold in api/app/triage/dialect.py is "
+                         f"{dialect.GROUP_THRESHOLDS[dialect.ARABIZI]}, the validation split fits {fitted}")
+    detection = {}
+    for split, rows in (("validation", val), ("test", test)):
+        table: dict[str, dict] = {}
+        for row in rows:
+            t = table.setdefault(row["variant"], {"n": 0, "arabizi": 0, "ar_gulf": 0})
+            t["n"] += 1
+            got = dialect.detect(row["text"])
+            if got:
+                t[got] += 1
+        detection[split] = dict(sorted(table.items()))
+    rule = dialect.apply_group_rule
+    dialect.apply_group_rule = lambda result, text: result  # the global rule alone
+    try:
+        without = replay(test, t_scores)
+    finally:
+        dialect.apply_group_rule = rule
+    before: dict[str, dict] = {"all": group_metrics(test, without)}
+    for lang in ("ar", "en", "arabizi", "mixed"):
+        idx = [i for i, row in enumerate(test) if row["language"] == lang]
+        before[lang] = group_metrics([test[i] for i in idx], [without[i] for i in idx])
+    for variant in ("ar_msa", "ar_gulf"):
+        idx = [i for i, row in enumerate(test) if row["variant"] == variant]
+        before[variant] = group_metrics([test[i] for i in idx], [without[i] for i in idx])
+    after = {**groups, **dialects}
+    compare = {name: {"before_auto_precision": before[name]["auto_precision"], "before_coverage": before[name]["coverage"],
+                      "before_auto_handled_n": before[name]["auto_handled_n"],
+                      "after_auto_precision": after[name]["auto_precision"], "after_coverage": after[name]["coverage"],
+                      "after_auto_handled_n": after[name]["auto_handled_n"]} for name in before}
+    return {"shipped": True, "module": "api/app/triage/dialect.py",
+            "thresholds": {k: v for k, v in dialect.GROUP_THRESHOLDS.items()},
+            "arabizi_threshold_fitted_on": "validation", "arabizi_validation_n": len(v_idx), "deployed_threshold": cal.threshold,
+            "detection": detection, "compare": compare,
+            "extra_staff_review_share": r(before["all"]["coverage"] - after["all"]["coverage"]),
+            "markers_chosen_with_test_in_view": True}
 
 
 def replay_with(rows: list[dict], scores: list[dict], cal: triage.Calibration) -> list[dict]:
@@ -457,8 +480,8 @@ def drafting_section() -> dict:
 # =============================================================================================== report
 
 MITIGATIONS = {
-    ("triage", "auto_precision"): "In place: the automatic step for an auto-handled reply is non-clinical (a callback or review request, or nothing for `confirm`), an opt-out never depends on the model (deterministic gate first, then `opt_out` is always human), and every reply stays readable on the case page. Proposed, not shipped (the engine is outside this ticket): the stricter per-group threshold in section 1, or every reply of the group to a person; both need the group detected at run time.",
-    ("triage", "always_human_auto_handled"): "A question or an unclear reply was read as a routine intent and got the automatic step instead of a person. In place: the reply is on the case page and the case keeps its SLA clock and escalation ladder, so silence still escalates. Proposed: the per-group threshold in section 1; coordinators told (Why? panel) that a routine label is a model reading, not a fact.",
+    ("triage", "auto_precision"): "In place: the automatic step for an auto-handled reply is non-clinical (a callback or review request, or nothing for `confirm`), an opt-out never depends on the model (deterministic gate first, then `opt_out` is always human), and every reply stays readable on the case page. Shipped (M7-1): Arabizi and Gulf-dialect replies are detected at run time; Arabizi is auto-handled only above its own threshold and every Gulf reply goes to a person (section 1, Dialect rule).",
+    ("triage", "always_human_auto_handled"): "A question or an unclear reply was read as a routine intent and got the automatic step instead of a person. In place: the reply is on the case page and the case keeps its SLA clock and escalation ladder, so silence still escalates. Shipped (M7-1): the dialect rule in section 1; coordinators told (Why? panel) that a routine label is a model reading, not a fact.",
     ("triage", "macro_recall_gap"): "In place: most misreads cost a person's time rather than safety, because `question`, `other` and `opt_out` always go to a person and low-confidence replies abstain. Planned: real Arabizi and Gulf-dialect replies, reviewed by a native speaker (H2), in the next training set (retraining policy in docs/governance/ai-incidents.md).",
     ("triage", "opt_out_not_to_person"): "A defect: an opt-out must always reach a person. Block the release.",
     ("validator", "false_negative_rate"): "In place: every draft is read and approved by a person before it can be sent (`approved_unsent`, model check I3); the accepted attacks are known limitations HZ-31 (social engineering and plain-words disclosure that no word list can hold).",
@@ -519,14 +542,26 @@ def render_md(res: dict) -> str:
             p = g["per_intent"].get(intent)
             cells.append(f"{pct(p['recall'])} (n={p['support']})" if p else "-")
         L.append(f"| {intent} | " + " | ".join(cells) + " |")
-    for p in t["proposed_mitigations"]:
-        L += ["", f"**Proposed mitigation for {p['group']} (not shipped).** "
-              + (f"A threshold of {p['threshold']} for this group (deployed: {p['deployed_threshold']}), chosen on the validation split "
-                 f"({p['validation_n']} replies) for {pct(VAL_PRECISION_TARGET)} precision, gives {pct(p['test_auto_precision'])} auto-handled precision "
-                 f"({ci(p['test_auto_precision_ci'])}) on the test split at {pct(p['test_coverage'])} coverage "
-                 f"({p['test_auto_handled_n']} replies). It needs the API to tell this group apart at run time, which it does not do today; "
-                 "the alternative is to send every reply of the group to a person."
-                 if p.get("threshold") is not None else p["note"])]  # noqa: E501
+    gr = t["group_rule"]
+    L += ["", "### Dialect rule (shipped, M7-1)", "",
+          f"`{gr['module']}` detects Arabizi and Gulf-dialect Arabic at run time. An Arabizi reply is auto-handled only when the "
+          f"confidence reaches {gr['thresholds']['arabizi']} (deployed global threshold: {gr['deployed_threshold']}; fitted on the "
+          f"{gr['arabizi_validation_n']} Arabizi replies of the validation split for {pct(VAL_PRECISION_TARGET)} precision, the way the "
+          "global threshold was fitted). A Gulf-dialect reply always goes to a person: no threshold reaches the target on this group. "
+          "The table compares the global rule alone (as the M7-5 audit found it) with the shipped rule, on the test split.", "",
+          "| Group | Auto-handled precision before | after | Auto-handled before | after |", "|---|---|---|---|---|"]
+    for name, c in gr["compare"].items():
+        L.append(f"| {name} | {pct(c['before_auto_precision'])} | {pct(c['after_auto_precision'])} | "
+                 f"{c['before_auto_handled_n']} ({pct(c['before_coverage'])}) | {c['after_auto_handled_n']} ({pct(c['after_coverage'])}) |")
+    L += ["", f"Cost: {pct(gr['extra_staff_review_share'])} more of all replies are read by a person instead of being auto-handled.", "",
+          "Detector (replies flagged Arabizi / Gulf, by the variant the reply was written in):", "",
+          "| Split | Variant | n | flagged Arabizi | flagged Gulf |", "|---|---|---|---|---|"]
+    for split, table in gr["detection"].items():
+        for variant, d in table.items():
+            L.append(f"| {split} | {variant} | {d['n']} | {d['arabizi']} | {d['ar_gulf']} |")
+    L += ["", "Caveat: the detector's word lists were extended after reading replies of the test split it missed, so the test-split "
+          "numbers above are optimistic; the validation rows are the fairer read of the detector. Real Arabizi and Gulf replies "
+          "reviewed by a native speaker (H2) are still needed."]
     for name, g in t["by_language"].items():
         if name != "all" and g["always_human_auto_handled"]:
             L += ["", f"Always-human replies acted on without a person ({name}, label->read as): " + ", ".join(g["always_human_auto_handled"]) + "."]
