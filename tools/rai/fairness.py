@@ -344,6 +344,19 @@ def validator_section() -> dict:
             if ok:
                 misses.append({"id": cid, "language": group, "known_limitation": cid in rt.LIMITATION})
 
+    import test_rt_generated as rtg  # tests/redteam/test_rt_generated.py: the Claude-generated attacks (RT-G), replayed
+
+    generated: dict[str, dict] = {}
+    for case in rtg._cases():
+        group = attack_language(case.id, case.input, case.note)
+        ok = validate(case.input, rtg._req(case.note)).ok
+        for table in (attacks, generated):
+            t = table.setdefault(group, {"n": 0, "accepted": 0})
+            t["n"] += 1
+            t["accepted"] += int(ok)
+        if ok:
+            misses.append({"id": case.id, "language": group, "known_limitation": bool(case.xfail)})
+
     benign: dict[str, dict] = {}
     rejected = []
 
@@ -374,6 +387,7 @@ def validator_section() -> dict:
                     "too_few": v["n"] < MIN_GROUP_N} for g, v in sorted(table.items())}
 
     fn, fn_content, fp = rates(attacks, "accepted"), rates(content, "accepted"), rates(benign, "rejected")
+    fn_generated = rates(generated, "accepted")
     flags = []
     for g, v in fn.items():
         if v["rate"] > VALIDATOR_FN_MAX:
@@ -385,10 +399,59 @@ def validator_section() -> dict:
             flags.append({"area": "validator", "group": g, "metric": "false_positive_rate", "value": v["rate"], "limit": VALIDATOR_FP_MAX})
     flags.append({"area": "validator", "group": "arabizi", "metric": "no_benign_controls", "value": 0, "limit": 1,
                   "note": "outbound drafts are English or Arabic only, so there is no Arabizi message to accept"})
-    return {"source": {"attacks": "tests/redteam/test_rt_validator.py (ATTACKS)", "validator": "api/app/ai/validate.py",
+    return {"source": {"attacks": "tests/redteam/test_rt_validator.py (ATTACKS, RT-V) and tests/redteam/generated/*.json (RT-G)", "validator": "api/app/ai/validate.py",
                        "arabizi_labels": sorted(ARABIZI_ATTACKS, key=lambda s: (s.split(".")[0], int(s.split(".")[1])))},
             "false_negative_by_language": fn, "false_negative_content_attacks_by_language": fn_content,
+            "false_negative_generated_by_language": fn_generated,
             "false_positive_by_language": fp, "accepted_attacks": misses, "rejected_benign": rejected, "flags": flags}
+
+
+# =============================================================================================== 4. Claude drafting
+
+
+def drafting_section() -> dict:
+    """Replay of the committed Claude cache (api/app/ai/cache/anthropic) for every demo persona x purpose x channel x
+    language, through the real pipeline (`draft_with_fallback`: placeholders filled, then the validator). Network off."""
+    import os
+
+    os.environ["LLM_NETWORK_ENABLED"] = "false"
+    sys.path.insert(0, str(ROOT / "tools" / "claude"))
+    from record_demo import PERSONAS  # the demo cast the cache was recorded for (no key is read on import)
+
+    from app.ai.cache import CachingProvider
+    from app.ai.claude import ClaudeProvider
+    from app.ai.provider import CHANNELS, LANGUAGES, PURPOSES, DraftRequest
+    from app.ai.templates import DEFAULT_NEXT_STEP, SAMPLE_VALUES
+    from app.ai.validate import AbstentionLog, draft_with_fallback
+
+    replayer = CachingProvider(ClaudeProvider(), mode="replay")
+    log = AbstentionLog()
+    by_lang: dict[str, dict] = {}
+    by_channel: dict[str, dict] = {}
+    reasons: dict[str, int] = {}
+    for role, name in PERSONAS:
+        for language in LANGUAGES:
+            for purpose in PURPOSES:
+                for channel in CHANNELS:
+                    date = SAMPLE_VALUES[language]["appointment_date"] if purpose == "appointment_confirmation" else None
+                    req = DraftRequest(purpose, channel, language, name, role, DEFAULT_NEXT_STEP[language], "colorectal_fit", date)
+                    res = draft_with_fallback(req, replayer, log)
+                    for table, key in ((by_lang, language), (by_channel, channel)):
+                        t = table.setdefault(key, {"n": 0, "accepted": 0})
+                        t["n"] += 1
+                        t["accepted"] += int(not res.fallback_used)
+                    if res.fallback_used:
+                        reasons[res.abstention_reason or "unknown"] = reasons.get(res.abstention_reason or "unknown", 0) + 1
+    for table in (by_lang, by_channel):
+        for v in table.values():
+            v["acceptance"] = r(v["accepted"] / v["n"])
+            v["ci"] = wilson(v["accepted"], v["n"])
+    flags = [{"area": "drafting", "group": g, "metric": "acceptance", "value": v["acceptance"], "limit": 1.0}
+             for g, v in sorted(by_lang.items()) if v["accepted"] < v["n"]]
+    return {"source": {"cache": "api/app/ai/cache/anthropic", "personas": len(PERSONAS), "network": False,
+                       "pipeline": "draft_with_fallback (placeholders filled before the validator)"},
+            "by_language": dict(sorted(by_lang.items())), "by_channel": dict(sorted(by_channel.items())),
+            "fallback_reasons": dict(sorted(reasons.items())), "flags": flags}
 
 
 # =============================================================================================== report
@@ -405,6 +468,7 @@ MITIGATIONS = {
     ("risk", "calibration_in_the_large"): "Retrain or recalibrate before use; the score only orders the worklist meanwhile.",
     ("risk", "auc_gap"): "The score only orders the worklist and never changes a due date or an escalation; a person decides who to call first.",
     ("risk", "ece"): "Recalibrate before use.",
+    ("drafting", "acceptance"): "In place: a rejected or missing recording falls back to the validator-checked template, and every draft is approved by a person. Re-record with `make claude-record`.",
 }
 
 
@@ -417,7 +481,7 @@ def ci(c: list[float]) -> str:
 
 
 def render_md(res: dict) -> str:
-    t, rk, v = res["triage"], res["risk"], res["validator"]
+    t, rk, v = res["triage"], res["risk"], res["validator"]  # res["drafting"] is rendered in section 4
     L = ["# Fairness audit (M7-5)", "",
          "Generated by `tools/rai/fairness.py` (`make rai-fairness`; `make rai-fairness-check` fails if this file differs from a fresh run). "
          "Do not edit by hand.", "",
@@ -484,20 +548,32 @@ def render_md(res: dict) -> str:
     L += ["", "Intersections (language by channel) are not reported: `risk.json` holds one-way groups only. Gap noted for the pilot.", ""]
 
     L += ["## 3. Output validator by language", "",
-          "False negatives: red-team attacks (`tests/redteam/test_rt_validator.py`) the validator ACCEPTED. Language is the script of the attack "
+          "False negatives: red-team attacks the validator ACCEPTED, hand-written (RT-V, `tests/redteam/test_rt_validator.py`) and Claude-generated (RT-G, `tests/redteam/generated/`). Language is the script of the attack "
           "(Arabizi hand-labelled: " + ", ".join(v["source"]["arabizi_labels"]) + "; mixed = Arabic and Latin letters in one attack; "
           "language-neutral attacks such as digits, links and placeholders count under their message's language). False positives: benign "
           "messages REJECTED (every template in every purpose and channel, rendered with four owner names, with and without a date, plus the "
           "channel at-limit texts and the good message).", "",
-          "| Language | Attacks | Accepted (FN) | FN rate (95% CI) | Content attacks only (RT-V-01 to 07): FN rate | Benign | Rejected (FP) | FP rate (95% CI) |",
-          "|---|---|---|---|---|---|---|---|"]
+          "| Language | Attacks (RT-V + RT-G) | Accepted (FN) | FN rate (95% CI) | Content attacks only (RT-V-01 to 07): FN rate | Claude-generated only (RT-G): FN rate | Benign | Rejected (FP) | FP rate (95% CI) |",
+          "|---|---|---|---|---|---|---|---|---|"]
     for g in sorted(set(v["false_negative_by_language"]) | set(v["false_positive_by_language"])):
         a, c, b = v["false_negative_by_language"].get(g), v["false_negative_content_attacks_by_language"].get(g), v["false_positive_by_language"].get(g)
+        gen = v["false_negative_generated_by_language"].get(g)
         L.append(f"| {g} | {a['n'] if a else 0} | {a['accepted'] if a else '-'} | {pct(a['rate']) + ' (' + ci(a['ci']) + ')' if a else '-'} | "
-                 f"{pct(c['rate']) + ' of ' + str(c['n']) if c else '-'} | {b['n'] if b else 0} | {b['rejected'] if b else '-'} | "
+                 f"{pct(c['rate']) + ' of ' + str(c['n']) if c else '-'} | {pct(gen['rate']) + ' of ' + str(gen['n']) if gen else '-'} | {b['n'] if b else 0} | {b['rejected'] if b else '-'} | "
                  f"{pct(b['rate']) + ' (' + ci(b['ci']) + ')' if b else 'none (no outbound text in this script)'} |")
     L += ["", "Accepted attacks: " + (", ".join(f"{m['id']} ({m['language']}{', known limitation HZ-31' if m['known_limitation'] else ''})" for m in v["accepted_attacks"]) or "none") + ".",
           "", "Rejected benign messages: " + (", ".join(f"{x['control']} ({x['language']}: {','.join(x['reasons'])})" for x in v["rejected_benign"]) or "none") + ".", "",
+          "## 4. Claude drafting by language", "",
+          f"Replay of the committed Claude cache (`{res['drafting']['source']['cache']}`) for the {res['drafting']['source']['personas']} demo personas, "
+          "every purpose, channel and language, through the real pipeline (placeholders filled, then the validator), network off. "
+          "Accepted = the model's draft passed and is offered to a person; otherwise the template is used.", "",
+          "| Group | Drafts | Model draft accepted | Acceptance (95% CI) |", "|---|---|---|---|"]
+    for kind in ("by_language", "by_channel"):
+        for gname, x in res["drafting"][kind].items():
+            L.append(f"| {kind[3:]}={gname} | {x['n']} | {x['accepted']} | {pct(x['acceptance'])} ({ci(x['ci'])}) |")
+    L += ["", "Fallback reasons: " + (", ".join(f"`{k}` {n}" for k, n in res["drafting"]["fallback_reasons"].items()) or "none") + ". "
+          "This measures the validator's acceptance of recorded drafts, not their quality: no native-Arabic or clinician review of the "
+          "Claude drafts has happened (H1, H2).", "",
           "## What this does not show", "",
           "- Performance on real patients' replies, real dialect spread (Emirati, Levantine, Egyptian, South Asian English) or real Arabizi spelling.",
           "- Intersectional groups (for example Arabizi on WhatsApp, or age by language) for the risk score.",
@@ -509,8 +585,8 @@ def build() -> tuple[str, str]:
     res = {"ticket": "M7-5", "synthetic_data_only": True,
            "thresholds": {"auto_precision_target": AUTO_PRECISION_TARGET, "macro_recall_gap": MACRO_RECALL_GAP, "risk_auc_gap": RISK_AUC_GAP,
                           "risk_ece_max": RISK_ECE_MAX, "validator_fn_max": VALIDATOR_FN_MAX, "validator_fp_max": VALIDATOR_FP_MAX, "min_group_n": MIN_GROUP_N},
-           "triage": triage_section(), "risk": risk_section(), "validator": validator_section()}
-    res["flags"] = [*res["triage"]["flags"], *res["risk"]["flags"], *res["validator"]["flags"]]
+           "triage": triage_section(), "risk": risk_section(), "validator": validator_section(), "drafting": drafting_section()}
+    res["flags"] = [*res["triage"]["flags"], *res["risk"]["flags"], *res["validator"]["flags"], *res["drafting"]["flags"]]
     return json.dumps(res, indent=2, ensure_ascii=False, sort_keys=True) + "\n", render_md(res)
 
 

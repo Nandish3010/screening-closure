@@ -1,36 +1,36 @@
 {
   "abstention_metric": {
-    "abstentions": 126,
+    "abstentions": 0,
     "attempts": 126,
     "by_channel": {
       "sms": {
-        "abstentions": 94,
+        "abstentions": 0,
         "attempts": 94,
-        "rate": 1.0
+        "rate": 0.0
       },
       "whatsapp": {
-        "abstentions": 32,
+        "abstentions": 0,
         "attempts": 32,
-        "rate": 1.0
+        "rate": 0.0
       }
     },
     "by_language": {
       "ar": {
-        "abstentions": 42,
+        "abstentions": 0,
         "attempts": 42,
-        "rate": 1.0
+        "rate": 0.0
       },
       "en": {
-        "abstentions": 84,
+        "abstentions": 0,
         "attempts": 84,
-        "rate": 1.0
+        "rate": 0.0
       }
     },
-    "rate": 1.0
+    "rate": 0.0
   },
   "agency": {
     "abstention_reasons": {
-      "cache_miss": 65
+      "cache_miss": 5
     },
     "by_status": {
       "done": 9,
@@ -47,15 +47,13 @@
   "drafts": {
     "approved": 57,
     "by_provider": {
-      "template": 126
+      "anthropic": 126
     },
     "decided_by_a_person": 66,
     "drafted_by_agency_awaiting_a_person": 60,
-    "fallback_rate": 1.0,
-    "fallback_reasons": {
-      "cache_miss": 126
-    },
-    "fallback_used": 126,
+    "fallback_rate": 0.0,
+    "fallback_reasons": {},
+    "fallback_used": 0,
     "median_hours_to_human_decision": 3.0,
     "n": 126,
     "p90_hours_to_human_decision": 7.0,
