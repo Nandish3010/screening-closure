@@ -46,11 +46,17 @@ spec:
           readinessProbe:
             exec: { command: ["sh", "-c", "pg_isready -U closure_owner -d closure"] }
             periodSeconds: 3
+            timeoutSeconds: 5
             failureThreshold: 20
+          # timeoutSeconds 10 / failureThreshold 6: the kind nodes share a small Docker VM with other stacks; with the default
+          # 1 s timeout a CPU- or swap-starved VM made pg_isready time out and the kubelet killed a healthy Postgres in the middle
+          # of a drill (crash recovery, dropped connections). A real outage still fails the probe six times in a row (60 s).
           livenessProbe:
             exec: { command: ["sh", "-c", "pg_isready -U closure_owner -d closure"] }
             initialDelaySeconds: 30
             periodSeconds: 10
+            timeoutSeconds: 10
+            failureThreshold: 6
           resources:
             requests: { cpu: 250m, memory: 512Mi }
             limits:   { memory: 1536Mi }
