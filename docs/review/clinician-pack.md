@@ -209,7 +209,7 @@ A case is handed to another provider with `handoff_requested`. Ownership moves o
 
 ## 9. What the patient reads (English)
 
-73 English strings in three places. The reading-level target is grade 6. Arabic versions are reviewed separately (H2); the IDs below match the Arabic pack. Placeholders in braces are filled in: {owner_name} (the care owner), {next_step} (default "a camera test"), {appointment_date} (for example "Tuesday 3 November 2026"), {name} and {role} on the patient page.
+78 English strings in three places. The reading-level target is grade 6. Arabic versions are reviewed separately (H2); the IDs below match the Arabic pack. Placeholders in braces are filled in: {owner_name} (the care owner), {next_step} (default "a camera test"), {appointment_date} (for example "Tuesday 3 November 2026"), {name} and {role} on the patient page.
 
 ### 9.1 The patient page (web)
 
@@ -282,27 +282,32 @@ Shown in the installed app or browser at `/patient`. Source: `web/src/i18n/strin
 
 | ID | English text | Where it appears |
 |---|---|---|
-| W34 | Your choices | Heading of the choices section. |
-| W35 | How may we contact you? | Legend of the group of contact-channel check boxes. Each box is on unless the patient turned it off (an opt-out default); changing one saves at once. |
-| W36 | Phone call | Label of the check box for phone calls. |
-| W37 | Text message | Label of the check box for text messages. |
-| W38 | WhatsApp | Label of the check box for WhatsApp messages. |
-| W39 | Letter | Label of the check box for letters. |
-| W40 | My care team may share my result with the specialist who will do my test. | Label of the check box that lets the care team share the result with the specialist. |
-| W41 | Stop all contact | Button under the choices. Withdraws all consent to contact at once: the case is frozen for outreach and a person is asked to review it. Hidden after withdrawal. |
-| W42 | If you stop contact, your care team will not message or call you. A person will check your case. You can still call your care team. | Small grey text above that button. It says what stopping contact means and that a person will check the case. |
-| W43 | You asked us to stop contact. We will not message or call you. A person on your care team will check your case. You can still call your care team. | Yellow banner at the top of the choices section after the patient has stopped all contact. |
-| W44 | You may contact me again | Replaces the stop button after withdrawal. Pressing it records that the patient may be contacted again. |
-| W45 | Saved | Status line under the choices after a successful save. |
-| W46 | We could not save this. Please try again. | Status line if saving the choices fails. |
+| W34 | How we prepare messages | Heading of a short notice between the buttons and the choices: how messages are prepared (software helps, a member of staff approves each one). |
+| W35 | We use software to help prepare our messages to you. | First line of that notice. Says software helps prepare the messages. Says nothing about results. |
+| W36 | A member of staff checks and approves each message before we send it. | Second line of that notice. A member of staff checks and approves each message before it is sent. |
+| W37 | To speak to a person, press "I don't understand this" or call your care team. | Third line of that notice. Names the button "I don't understand this" exactly as translated for the key dontUnderstand, and the care team phone. |
+| W38 | You can stop messages at any time. Use "Stop all contact" in "Your choices" below. | Fourth line of that notice. Points to the "Stop all contact" button (key withdrawButton) in the choices section just below; the quoted names must match those two keys and the heading consentHeading. |
+| W39 | Your choices | Heading of the choices section. |
+| W40 | How may we contact you? | Legend of the group of contact-channel check boxes. Each box is on unless the patient turned it off (an opt-out default); changing one saves at once. |
+| W41 | Phone call | Label of the check box for phone calls. |
+| W42 | Text message | Label of the check box for text messages. |
+| W43 | WhatsApp | Label of the check box for WhatsApp messages. |
+| W44 | Letter | Label of the check box for letters. |
+| W45 | My care team may share my result with the specialist who will do my test. | Label of the check box that lets the care team share the result with the specialist. |
+| W46 | Stop all contact | Button under the choices. Withdraws all consent to contact at once: the case is frozen for outreach and a person is asked to review it. Hidden after withdrawal. |
+| W47 | If you stop contact, your care team will not message or call you. A person will check your case. You can still call your care team. | Small grey text above that button. It says what stopping contact means and that a person will check the case. |
+| W48 | You asked us to stop contact. We will not message or call you. A person on your care team will check your case. You can still call your care team. | Yellow banner at the top of the choices section after the patient has stopped all contact. |
+| W49 | You may contact me again | Replaces the stop button after withdrawal. Pressing it records that the patient may be contacted again. |
+| W50 | Saved | Status line under the choices after a successful save. |
+| W51 | We could not save this. Please try again. | Status line if saving the choices fails. |
 
 **Loading, offline and errors.** System messages.
 
 | ID | English text | Where it appears |
 |---|---|---|
-| W47 | Loading... | Shown instead of the page while the case loads. |
-| W48 | We could not load your information. Please try again. | Shown if the case cannot be loaded and nothing is saved on the device. |
-| W49 | You are offline. This is the last information we saved. | Banner above the result when the device is offline. The last saved information is shown. |
+| W52 | Loading... | Shown instead of the page while the case loads. |
+| W53 | We could not load your information. Please try again. | Shown if the case cannot be loaded and nothing is saved on the device. |
+| W54 | You are offline. This is the last information we saved. | Banner above the result when the device is offline. The last saved information is shown. |
 
 Not in the catalogue (hard-coded in `web/src/pages/PatientPage.tsx`): a "Demo case" link on the start page and the accessible label "Actions". They are demo scaffolding and not part of this review.
 
@@ -512,8 +517,8 @@ For each row write keep or change and, if you change it, say what you would do. 
 | W:next | Patient page: What happens next (W14 to W17) |  |  |
 | W:owner | Patient page: Who is looking after you (W18 to W27) |  |  |
 | W:actions | Patient page: I understand / I don't understand (W28 to W33) |  |  |
-| W:consent | Patient page: Your choices (contact and sharing) (W34 to W46) |  |  |
-| W:status | Patient page: Loading, offline and errors (W47 to W49) |  |  |
+| W:consent | Patient page: Your choices (contact and sharing) (W34 to W51) |  |  |
+| W:status | Patient page: Loading, offline and errors (W52 to W54) |  |  |
 | M:result_notification | Message `result_notification` (T01 to T03) |  |  |
 | M:reminder | Message `reminder` (T04 to T09) |  |  |
 | M:appointment_confirmation | Message `appointment_confirmation` (T10 to T12) |  |  |

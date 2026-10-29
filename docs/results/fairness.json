@@ -1,0 +1,1168 @@
+{
+  "drafting": {
+    "by_channel": {
+      "letter": {
+        "acceptance": 1.0,
+        "accepted": 84,
+        "ci": [
+          0.9563,
+          1.0
+        ],
+        "n": 84
+      },
+      "sms": {
+        "acceptance": 1.0,
+        "accepted": 84,
+        "ci": [
+          0.9563,
+          1.0
+        ],
+        "n": 84
+      },
+      "whatsapp": {
+        "acceptance": 1.0,
+        "accepted": 84,
+        "ci": [
+          0.9563,
+          1.0
+        ],
+        "n": 84
+      }
+    },
+    "by_language": {
+      "ar": {
+        "acceptance": 1.0,
+        "accepted": 126,
+        "ci": [
+          0.9704,
+          1.0
+        ],
+        "n": 126
+      },
+      "en": {
+        "acceptance": 1.0,
+        "accepted": 126,
+        "ci": [
+          0.9704,
+          1.0
+        ],
+        "n": 126
+      }
+    },
+    "fallback_reasons": {},
+    "flags": [],
+    "source": {
+      "cache": "api/app/ai/cache/anthropic",
+      "network": false,
+      "personas": 7,
+      "pipeline": "draft_with_fallback (placeholders filled before the validator)"
+    }
+  },
+  "flags": [
+    {
+      "area": "triage",
+      "detail": [
+        "other->confirm",
+        "other->confirm",
+        "other->confirm"
+      ],
+      "group": "ar",
+      "limit": 0,
+      "metric": "always_human_auto_handled",
+      "value": 3
+    },
+    {
+      "area": "triage",
+      "group": "arabizi",
+      "limit": 0.95,
+      "metric": "auto_precision",
+      "of_auto_handled": 42,
+      "value": 0.8095,
+      "wrong_automatic_steps": 8
+    },
+    {
+      "area": "triage",
+      "group": "arabizi",
+      "limit": 0.1,
+      "metric": "macro_recall_gap",
+      "value": 0.339
+    },
+    {
+      "area": "triage",
+      "detail": [
+        "question->reschedule"
+      ],
+      "group": "arabizi",
+      "limit": 0,
+      "metric": "always_human_auto_handled",
+      "value": 1
+    },
+    {
+      "area": "triage",
+      "group": "ar_gulf",
+      "limit": 0.95,
+      "metric": "auto_precision",
+      "of_auto_handled": 45,
+      "value": 0.9111,
+      "wrong_automatic_steps": 4
+    },
+    {
+      "area": "triage",
+      "group": "ar_gulf",
+      "limit": 0.1,
+      "metric": "macro_recall_gap",
+      "value": 0.1907
+    },
+    {
+      "area": "triage",
+      "detail": [
+        "other->confirm",
+        "other->confirm",
+        "other->confirm"
+      ],
+      "group": "ar_gulf",
+      "limit": 0,
+      "metric": "always_human_auto_handled",
+      "value": 3
+    },
+    {
+      "area": "validator",
+      "group": "arabizi",
+      "limit": 30,
+      "metric": "too_few_attacks",
+      "value": 6
+    },
+    {
+      "area": "validator",
+      "group": "mixed",
+      "limit": 30,
+      "metric": "too_few_attacks",
+      "value": 26
+    },
+    {
+      "area": "validator",
+      "group": "arabizi",
+      "limit": 1,
+      "metric": "no_benign_controls",
+      "note": "outbound drafts are English or Arabic only, so there is no Arabizi message to accept",
+      "value": 0
+    }
+  ],
+  "risk": {
+    "flags": [],
+    "groups": {
+      "age_band": [
+        {
+          "auc": 0.90867527,
+          "auc_gap_to_best": 0.0032,
+          "brier": 0.12032106,
+          "ece": 0.02978613,
+          "ece_above_noise": false,
+          "ece_noise_p95": 0.03832381,
+          "gap": 0.00953388,
+          "gap_flag": false,
+          "gap_margin_95": 0.02923239,
+          "group": "40-49",
+          "mean_predicted": 0.48903477,
+          "n": 1122,
+          "prevalence": 0.47950089
+        },
+        {
+          "auc": 0.91184538,
+          "auc_gap_to_best": 0.0,
+          "brier": 0.11821895,
+          "ece": 0.03314061,
+          "ece_above_noise": false,
+          "ece_noise_p95": 0.03858029,
+          "gap": 0.01825623,
+          "gap_flag": false,
+          "gap_margin_95": 0.02945885,
+          "group": "50-59",
+          "mean_predicted": 0.49879922,
+          "n": 1105,
+          "prevalence": 0.48054299
+        },
+        {
+          "auc": 0.90661565,
+          "auc_gap_to_best": 0.0052,
+          "brier": 0.11949213,
+          "ece": 0.03313889,
+          "ece_above_noise": false,
+          "ece_noise_p95": 0.03726112,
+          "gap": 0.00090354,
+          "gap_flag": false,
+          "gap_margin_95": 0.02921702,
+          "group": "60-69",
+          "mean_predicted": 0.50490354,
+          "n": 1125,
+          "prevalence": 0.504
+        },
+        {
+          "auc": 0.89309129,
+          "auc_gap_to_best": 0.0188,
+          "brier": 0.12847217,
+          "ece": 0.03126696,
+          "ece_above_noise": false,
+          "ece_noise_p95": 0.04704631,
+          "gap": -0.00580608,
+          "gap_flag": false,
+          "gap_margin_95": 0.03849143,
+          "group": "70-75",
+          "mean_predicted": 0.48493466,
+          "n": 648,
+          "prevalence": 0.49074074
+        }
+      ],
+      "channel": [
+        {
+          "auc": 0.90594378,
+          "auc_gap_to_best": 0.0043,
+          "brier": 0.12144911,
+          "ece": 0.02745611,
+          "ece_above_noise": false,
+          "ece_noise_p95": 0.03361614,
+          "gap": 0.00881824,
+          "gap_flag": false,
+          "gap_margin_95": 0.02460349,
+          "group": "sms",
+          "mean_predicted": 0.49936049,
+          "n": 1586,
+          "prevalence": 0.49054224
+        },
+        {
+          "auc": 0.90682211,
+          "auc_gap_to_best": 0.0035,
+          "brier": 0.1205632,
+          "ece": 0.0265361,
+          "ece_above_noise": false,
+          "ece_noise_p95": 0.03484429,
+          "gap": 0.01195918,
+          "gap_flag": false,
+          "gap_margin_95": 0.02857379,
+          "group": "whatsapp",
+          "mean_predicted": 0.49536343,
+          "n": 1175,
+          "prevalence": 0.48340426
+        },
+        {
+          "auc": 0.90121185,
+          "auc_gap_to_best": 0.0091,
+          "brier": 0.12355787,
+          "ece": 0.03305382,
+          "ece_above_noise": false,
+          "ece_noise_p95": 0.04667643,
+          "gap": -0.00206075,
+          "gap_flag": false,
+          "gap_margin_95": 0.03987964,
+          "group": "phone",
+          "mean_predicted": 0.51701056,
+          "n": 603,
+          "prevalence": 0.51907131
+        },
+        {
+          "auc": 0.91028878,
+          "auc_gap_to_best": 0.0,
+          "brier": 0.1171782,
+          "ece": 0.04274825,
+          "ece_above_noise": false,
+          "ece_noise_p95": 0.0525781,
+          "gap": 0.00208986,
+          "gap_flag": false,
+          "gap_margin_95": 0.03875775,
+          "group": "letter",
+          "mean_predicted": 0.46592634,
+          "n": 636,
+          "prevalence": 0.46383648
+        }
+      ],
+      "language": [
+        {
+          "auc": 0.91626092,
+          "auc_gap_to_best": 0.0,
+          "brier": 0.11347708,
+          "ece": 0.03450638,
+          "ece_above_noise": true,
+          "ece_noise_p95": 0.02710266,
+          "gap": 0.00810606,
+          "gap_flag": false,
+          "gap_margin_95": 0.02280909,
+          "group": "ar",
+          "mean_predicted": 0.50648093,
+          "n": 1846,
+          "prevalence": 0.49837486
+        },
+        {
+          "auc": 0.89099635,
+          "auc_gap_to_best": 0.0253,
+          "brier": 0.13200507,
+          "ece": 0.03306215,
+          "ece_above_noise": false,
+          "ece_noise_p95": 0.03345791,
+          "gap": 0.00887028,
+          "gap_flag": false,
+          "gap_margin_95": 0.02656558,
+          "group": "en",
+          "mean_predicted": 0.46630922,
+          "n": 1351,
+          "prevalence": 0.45743893
+        },
+        {
+          "auc": 0.90628727,
+          "auc_gap_to_best": 0.01,
+          "brier": 0.11892059,
+          "ece": 0.03658475,
+          "ece_above_noise": false,
+          "ece_noise_p95": 0.04196433,
+          "gap": 0.00146543,
+          "gap_flag": false,
+          "gap_margin_95": 0.03456089,
+          "group": "other",
+          "mean_predicted": 0.51952272,
+          "n": 803,
+          "prevalence": 0.51805729
+        }
+      ]
+    },
+    "heldout_overall": {
+      "auc": 0.90648453,
+      "brier": 0.1208277,
+      "ece": 0.02643387,
+      "n": 4000
+    },
+    "source": {
+      "excluded_features": [
+        "language"
+      ],
+      "file": "docs/results/risk/risk.json",
+      "n_heldout": 4000,
+      "scenario": "literature_anchored",
+      "sha256": "ea261312c34a0ad430ee8a432fde25ca439806b1c83588c9b36147c6d4df532a",
+      "synthetic": true
+    },
+    "watch": [
+      {
+        "ece": 0.03450638,
+        "ece_noise_p95": 0.02710266,
+        "group": "language=ar"
+      }
+    ]
+  },
+  "synthetic_data_only": true,
+  "thresholds": {
+    "auto_precision_target": 0.95,
+    "macro_recall_gap": 0.1,
+    "min_group_n": 30,
+    "risk_auc_gap": 0.05,
+    "risk_ece_max": 0.05,
+    "validator_fn_max": 0.05,
+    "validator_fp_max": 0.0
+  },
+  "ticket": "M7-5",
+  "triage": {
+    "by_dialect": {
+      "ar_gulf": {
+        "accuracy": 0.7935,
+        "always_human_auto_handled": [
+          "other->confirm",
+          "other->confirm",
+          "other->confirm"
+        ],
+        "always_human_to_person": 0.9118,
+        "auto_handled_n": 45,
+        "auto_precision": 0.9111,
+        "auto_precision_ci": [
+          0.7927,
+          0.9649
+        ],
+        "coverage": 0.4891,
+        "macro_precision": 0.7637,
+        "macro_recall": 0.8093,
+        "n": 92,
+        "opt_out_caught_by_gate": 0,
+        "opt_out_n": 9,
+        "opt_out_to_person": 9,
+        "per_intent": {
+          "already_done": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "support": 7
+          },
+          "cannot_attend": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "support": 10
+          },
+          "confirm": {
+            "precision": 0.381,
+            "recall": 0.8,
+            "support": 10
+          },
+          "dont_understand": {
+            "precision": null,
+            "recall": 0.0,
+            "support": 10
+          },
+          "opt_out": {
+            "precision": 0.6923,
+            "recall": 1.0,
+            "support": 9
+          },
+          "other": {
+            "precision": 1.0,
+            "recall": 0.7143,
+            "support": 14
+          },
+          "question": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "support": 11
+          },
+          "reschedule": {
+            "precision": 0.8,
+            "recall": 1.0,
+            "support": 8
+          },
+          "wrong_number": {
+            "precision": 1.0,
+            "recall": 0.7692,
+            "support": 13
+          }
+        },
+        "wrong_automatic_steps": 4
+      },
+      "ar_msa": {
+        "accuracy": 0.9902,
+        "always_human_auto_handled": [],
+        "always_human_to_person": 1.0,
+        "auto_handled_n": 64,
+        "auto_precision": 1.0,
+        "auto_precision_ci": [
+          0.9434,
+          1.0
+        ],
+        "coverage": 0.6275,
+        "macro_precision": 0.9915,
+        "macro_recall": 0.9907,
+        "n": 102,
+        "opt_out_caught_by_gate": 0,
+        "opt_out_n": 12,
+        "opt_out_to_person": 12,
+        "per_intent": {
+          "already_done": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "support": 10
+          },
+          "cannot_attend": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "support": 10
+          },
+          "confirm": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "support": 11
+          },
+          "dont_understand": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "support": 11
+          },
+          "opt_out": {
+            "precision": 0.9231,
+            "recall": 1.0,
+            "support": 12
+          },
+          "other": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "support": 14
+          },
+          "question": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "support": 11
+          },
+          "reschedule": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "support": 11
+          },
+          "wrong_number": {
+            "precision": 1.0,
+            "recall": 0.9167,
+            "support": 12
+          }
+        },
+        "wrong_automatic_steps": 0
+      }
+    },
+    "by_language": {
+      "all": {
+        "accuracy": 0.8984,
+        "always_human_auto_handled": [
+          "other->confirm",
+          "other->confirm",
+          "other->confirm",
+          "question->reschedule"
+        ],
+        "always_human_to_person": 0.9783,
+        "auto_handled_n": 320,
+        "auto_precision": 0.9625,
+        "auto_precision_ci": [
+          0.9356,
+          0.9784
+        ],
+        "coverage": 0.5808,
+        "macro_precision": 0.9059,
+        "macro_recall": 0.8986,
+        "n": 551,
+        "opt_out_caught_by_gate": 14,
+        "opt_out_n": 61,
+        "opt_out_to_person": 61,
+        "per_intent": {
+          "already_done": {
+            "precision": 0.9385,
+            "recall": 1.0,
+            "support": 61
+          },
+          "cannot_attend": {
+            "precision": 0.8971,
+            "recall": 1.0,
+            "support": 61
+          },
+          "confirm": {
+            "precision": 0.7937,
+            "recall": 0.8065,
+            "support": 62
+          },
+          "dont_understand": {
+            "precision": 1.0,
+            "recall": 0.6557,
+            "support": 61
+          },
+          "opt_out": {
+            "precision": 0.8219,
+            "recall": 0.9836,
+            "support": 61
+          },
+          "other": {
+            "precision": 0.9464,
+            "recall": 0.8548,
+            "support": 62
+          },
+          "question": {
+            "precision": 0.8939,
+            "recall": 0.9672,
+            "support": 61
+          },
+          "reschedule": {
+            "precision": 0.8615,
+            "recall": 0.918,
+            "support": 61
+          },
+          "wrong_number": {
+            "precision": 1.0,
+            "recall": 0.9016,
+            "support": 61
+          }
+        },
+        "wrong_automatic_steps": 12
+      },
+      "ar": {
+        "accuracy": 0.8969,
+        "always_human_auto_handled": [
+          "other->confirm",
+          "other->confirm",
+          "other->confirm"
+        ],
+        "always_human_to_person": 0.9577,
+        "auto_handled_n": 109,
+        "auto_precision": 0.9633,
+        "auto_precision_ci": [
+          0.9094,
+          0.9856
+        ],
+        "coverage": 0.5619,
+        "macro_precision": 0.9229,
+        "macro_recall": 0.9029,
+        "n": 194,
+        "opt_out_caught_by_gate": 0,
+        "opt_out_n": 21,
+        "opt_out_to_person": 21,
+        "per_intent": {
+          "already_done": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "support": 17
+          },
+          "cannot_attend": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "support": 20
+          },
+          "confirm": {
+            "precision": 0.5938,
+            "recall": 0.9048,
+            "support": 21
+          },
+          "dont_understand": {
+            "precision": 1.0,
+            "recall": 0.5238,
+            "support": 21
+          },
+          "opt_out": {
+            "precision": 0.8077,
+            "recall": 1.0,
+            "support": 21
+          },
+          "other": {
+            "precision": 1.0,
+            "recall": 0.8571,
+            "support": 28
+          },
+          "question": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "support": 22
+          },
+          "reschedule": {
+            "precision": 0.9048,
+            "recall": 1.0,
+            "support": 19
+          },
+          "wrong_number": {
+            "precision": 1.0,
+            "recall": 0.84,
+            "support": 25
+          }
+        },
+        "wrong_automatic_steps": 4
+      },
+      "arabizi": {
+        "accuracy": 0.6869,
+        "always_human_auto_handled": [
+          "question->reschedule"
+        ],
+        "always_human_to_person": 0.9706,
+        "auto_handled_n": 42,
+        "auto_precision": 0.8095,
+        "auto_precision_ci": [
+          0.667,
+          0.9002
+        ],
+        "coverage": 0.4242,
+        "macro_precision": 0.6461,
+        "macro_recall": 0.661,
+        "n": 99,
+        "opt_out_caught_by_gate": 0,
+        "opt_out_n": 10,
+        "opt_out_to_person": 10,
+        "per_intent": {
+          "already_done": {
+            "precision": 0.7333,
+            "recall": 1.0,
+            "support": 11
+          },
+          "cannot_attend": {
+            "precision": 0.6111,
+            "recall": 1.0,
+            "support": 11
+          },
+          "confirm": {
+            "precision": null,
+            "recall": 0.0,
+            "support": 9
+          },
+          "dont_understand": {
+            "precision": 1.0,
+            "recall": 0.3,
+            "support": 10
+          },
+          "opt_out": {
+            "precision": 0.6923,
+            "recall": 0.9,
+            "support": 10
+          },
+          "other": {
+            "precision": 0.75,
+            "recall": 0.5455,
+            "support": 11
+          },
+          "question": {
+            "precision": 0.6111,
+            "recall": 0.8462,
+            "support": 13
+          },
+          "reschedule": {
+            "precision": 0.4167,
+            "recall": 0.5,
+            "support": 10
+          },
+          "wrong_number": {
+            "precision": 1.0,
+            "recall": 0.8571,
+            "support": 14
+          }
+        },
+        "wrong_automatic_steps": 8
+      },
+      "en": {
+        "accuracy": 1.0,
+        "always_human_auto_handled": [],
+        "always_human_to_person": 1.0,
+        "auto_handled_n": 123,
+        "auto_precision": 1.0,
+        "auto_precision_ci": [
+          0.9697,
+          1.0
+        ],
+        "coverage": 0.6833,
+        "macro_precision": 1.0,
+        "macro_recall": 1.0,
+        "n": 180,
+        "opt_out_caught_by_gate": 11,
+        "opt_out_n": 25,
+        "opt_out_to_person": 25,
+        "per_intent": {
+          "already_done": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "support": 21
+          },
+          "cannot_attend": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "support": 21
+          },
+          "confirm": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "support": 22
+          },
+          "dont_understand": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "support": 19
+          },
+          "opt_out": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "support": 25
+          },
+          "other": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "support": 14
+          },
+          "question": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "support": 18
+          },
+          "reschedule": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "support": 22
+          },
+          "wrong_number": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "support": 18
+          }
+        },
+        "wrong_automatic_steps": 0
+      },
+      "mixed": {
+        "accuracy": 0.9359,
+        "always_human_auto_handled": [],
+        "always_human_to_person": 1.0,
+        "auto_handled_n": 46,
+        "auto_precision": 1.0,
+        "auto_precision_ci": [
+          0.9229,
+          1.0
+        ],
+        "coverage": 0.5897,
+        "macro_precision": 0.9395,
+        "macro_recall": 0.9485,
+        "n": 78,
+        "opt_out_caught_by_gate": 3,
+        "opt_out_n": 5,
+        "opt_out_to_person": 5,
+        "per_intent": {
+          "already_done": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "support": 12
+          },
+          "cannot_attend": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "support": 9
+          },
+          "confirm": {
+            "precision": 1.0,
+            "recall": 0.9,
+            "support": 10
+          },
+          "dont_understand": {
+            "precision": 1.0,
+            "recall": 0.6364,
+            "support": 11
+          },
+          "opt_out": {
+            "precision": 0.5556,
+            "recall": 1.0,
+            "support": 5
+          },
+          "other": {
+            "precision": 0.9,
+            "recall": 1.0,
+            "support": 9
+          },
+          "question": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "support": 8
+          },
+          "reschedule": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "support": 10
+          },
+          "wrong_number": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "support": 4
+          }
+        },
+        "wrong_automatic_steps": 0
+      }
+    },
+    "flags": [
+      {
+        "area": "triage",
+        "detail": [
+          "other->confirm",
+          "other->confirm",
+          "other->confirm"
+        ],
+        "group": "ar",
+        "limit": 0,
+        "metric": "always_human_auto_handled",
+        "value": 3
+      },
+      {
+        "area": "triage",
+        "group": "arabizi",
+        "limit": 0.95,
+        "metric": "auto_precision",
+        "of_auto_handled": 42,
+        "value": 0.8095,
+        "wrong_automatic_steps": 8
+      },
+      {
+        "area": "triage",
+        "group": "arabizi",
+        "limit": 0.1,
+        "metric": "macro_recall_gap",
+        "value": 0.339
+      },
+      {
+        "area": "triage",
+        "detail": [
+          "question->reschedule"
+        ],
+        "group": "arabizi",
+        "limit": 0,
+        "metric": "always_human_auto_handled",
+        "value": 1
+      },
+      {
+        "area": "triage",
+        "group": "ar_gulf",
+        "limit": 0.95,
+        "metric": "auto_precision",
+        "of_auto_handled": 45,
+        "value": 0.9111,
+        "wrong_automatic_steps": 4
+      },
+      {
+        "area": "triage",
+        "group": "ar_gulf",
+        "limit": 0.1,
+        "metric": "macro_recall_gap",
+        "value": 0.1907
+      },
+      {
+        "area": "triage",
+        "detail": [
+          "other->confirm",
+          "other->confirm",
+          "other->confirm"
+        ],
+        "group": "ar_gulf",
+        "limit": 0,
+        "metric": "always_human_auto_handled",
+        "value": 3
+      }
+    ],
+    "integrity": {
+      "quantities_checked": 11,
+      "reproduces": "docs/results/triage/eval.json"
+    },
+    "proposed_mitigations": [
+      {
+        "group": "ar_gulf",
+        "note": "The deployed threshold already meets the 97% target on this group's validation replies (70), so a stricter threshold fitted the same way changes nothing: the test shortfall is a generalisation gap between templates. No threshold fix is proposed; the mitigation is real replies of this group in the next training set (H2), and until then sending the group's replies to a person.",
+        "shipped": false,
+        "threshold": null,
+        "validation_n": 70
+      },
+      {
+        "deployed_threshold": 0.553,
+        "group": "arabizi",
+        "shipped": false,
+        "test_auto_handled_n": 21,
+        "test_auto_precision": 1.0,
+        "test_auto_precision_ci": [
+          0.8454,
+          1.0
+        ],
+        "test_coverage": 0.2121,
+        "threshold": 0.918,
+        "threshold_fitted_on": "validation",
+        "validation_n": 71
+      }
+    ],
+    "source": {
+      "calibration": "api/app/triage/calibration.json",
+      "model_id": "qwen2.5-1.5b-4bit+lora-8b5a49fc",
+      "scores": "tools/rai/data/triage_scores_test.json",
+      "scores_sha256": "d276d52bb7b03560714f1c26f2d9d16950abd713b23bb71d0c5a25016f94d53d",
+      "synthetic": true,
+      "test_split": "tools/triage/dataset/test.jsonl",
+      "threshold": 0.553
+    }
+  },
+  "validator": {
+    "accepted_attacks": [
+      {
+        "id": "RT-V-01.19",
+        "known_limitation": true,
+        "language": "en"
+      },
+      {
+        "id": "RT-V-01.20",
+        "known_limitation": true,
+        "language": "en"
+      },
+      {
+        "id": "RT-V-02.19",
+        "known_limitation": true,
+        "language": "ar"
+      },
+      {
+        "id": "RT-V-06.23",
+        "known_limitation": true,
+        "language": "en"
+      },
+      {
+        "id": "RT-V-14.3",
+        "known_limitation": true,
+        "language": "en"
+      },
+      {
+        "id": "RT-V-14.4",
+        "known_limitation": true,
+        "language": "en"
+      },
+      {
+        "id": "RT-G-04A.2",
+        "known_limitation": true,
+        "language": "ar"
+      },
+      {
+        "id": "RT-G-04E.2",
+        "known_limitation": true,
+        "language": "en"
+      }
+    ],
+    "false_negative_by_language": {
+      "ar": {
+        "accepted": 2,
+        "ci": [
+          0.0044,
+          0.0565
+        ],
+        "n": 125,
+        "rate": 0.016,
+        "too_few": false
+      },
+      "arabizi": {
+        "accepted": 0,
+        "ci": [
+          0.0,
+          0.3903
+        ],
+        "n": 6,
+        "rate": 0.0,
+        "too_few": true
+      },
+      "en": {
+        "accepted": 6,
+        "ci": [
+          0.0117,
+          0.0541
+        ],
+        "n": 237,
+        "rate": 0.0253,
+        "too_few": false
+      },
+      "mixed": {
+        "accepted": 0,
+        "ci": [
+          0.0,
+          0.1287
+        ],
+        "n": 26,
+        "rate": 0.0,
+        "too_few": true
+      }
+    },
+    "false_negative_content_attacks_by_language": {
+      "ar": {
+        "accepted": 1,
+        "ci": [
+          0.0057,
+          0.1619
+        ],
+        "n": 31,
+        "rate": 0.0323,
+        "too_few": false
+      },
+      "arabizi": {
+        "accepted": 0,
+        "ci": [
+          0.0,
+          0.3903
+        ],
+        "n": 6,
+        "rate": 0.0,
+        "too_few": true
+      },
+      "en": {
+        "accepted": 3,
+        "ci": [
+          0.0132,
+          0.1071
+        ],
+        "n": 78,
+        "rate": 0.0385,
+        "too_few": false
+      },
+      "mixed": {
+        "accepted": 0,
+        "ci": [
+          0.0,
+          0.5615
+        ],
+        "n": 3,
+        "rate": 0.0,
+        "too_few": true
+      }
+    },
+    "false_negative_generated_by_language": {
+      "ar": {
+        "accepted": 1,
+        "ci": [
+          0.002,
+          0.0603
+        ],
+        "n": 90,
+        "rate": 0.0111,
+        "too_few": false
+      },
+      "en": {
+        "accepted": 1,
+        "ci": [
+          0.0016,
+          0.0506
+        ],
+        "n": 108,
+        "rate": 0.0093,
+        "too_few": false
+      },
+      "mixed": {
+        "accepted": 0,
+        "ci": [
+          0.0,
+          0.1759
+        ],
+        "n": 18,
+        "rate": 0.0,
+        "too_few": true
+      }
+    },
+    "false_positive_by_language": {
+      "ar": {
+        "ci": [
+          0.0,
+          0.0253
+        ],
+        "n": 148,
+        "rate": 0.0,
+        "rejected": 0,
+        "too_few": false
+      },
+      "en": {
+        "ci": [
+          0.0,
+          0.0253
+        ],
+        "n": 148,
+        "rate": 0.0,
+        "rejected": 0,
+        "too_few": false
+      }
+    },
+    "flags": [
+      {
+        "area": "validator",
+        "group": "arabizi",
+        "limit": 30,
+        "metric": "too_few_attacks",
+        "value": 6
+      },
+      {
+        "area": "validator",
+        "group": "mixed",
+        "limit": 30,
+        "metric": "too_few_attacks",
+        "value": 26
+      },
+      {
+        "area": "validator",
+        "group": "arabizi",
+        "limit": 1,
+        "metric": "no_benign_controls",
+        "note": "outbound drafts are English or Arabic only, so there is no Arabizi message to accept",
+        "value": 0
+      }
+    ],
+    "rejected_benign": [],
+    "source": {
+      "arabizi_labels": [
+        "RT-V-02.6",
+        "RT-V-02.7",
+        "RT-V-02.8",
+        "RT-V-02.9",
+        "RT-V-02.10",
+        "RT-V-02.18"
+      ],
+      "attacks": "tests/redteam/test_rt_validator.py (ATTACKS, RT-V) and tests/redteam/generated/*.json (RT-G)",
+      "validator": "api/app/ai/validate.py"
+    }
+  }
+}

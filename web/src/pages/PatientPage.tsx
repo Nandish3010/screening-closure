@@ -218,6 +218,14 @@ export function PatientView({ caseId }: { caseId: string }) {
         </p>
       </section>
 
+      <section aria-labelledby="p-ai" data-testid="ai-notice">
+        <h2 id="p-ai">{t.aiNoticeHeading}</h2>
+        <p>{t.aiNoticeSoftware}</p>
+        <p>{t.aiNoticeStaff}</p>
+        <p>{t.aiNoticePerson}</p>
+        <p>{t.aiNoticeStop}</p>
+      </section>
+
       <section className="actions" aria-label="Actions">
         {acknowledged ? (
           <p className="banner banner-ok" role="status" data-testid="ack-done">{t.understandDone}</p>

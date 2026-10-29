@@ -43,6 +43,25 @@ for (const scheme of ["light", "dark"] as const) {
       await audit(page, `case page, coordinator (${scheme})`);
     });
 
+    test("Why? panels expanded: worklist, case page (draft) and agency page", async ({ page }) => {
+      const open = async (id: string) => page.getByTestId(id).locator("summary").click();
+      await page.goto("/coordinator");
+      await page.getByTestId("worklist-row").first().waitFor();
+      await open("why-risk");
+      await audit(page, `worklist with Why? open (${scheme})`);
+      await page.goto(`/coordinator/${OVERDUE_CASE}`);
+      await page.getByTestId("request-draft").click();
+      const draft = page.getByTestId(/^draft-d-mock-/).first();
+      await draft.waitFor();
+      await draft.locator("details.why-panel summary").click();
+      await expect(draft.locator("details.why-panel")).toHaveAttribute("open", "");
+      await audit(page, `case page with a draft Why? open (${scheme})`);
+      await page.goto("/agency");
+      await page.getByTestId("run-detail").waitFor();
+      await open("why-planner");
+      await audit(page, `agency with planner Why? open (${scheme})`);
+    });
+
     test("coordinator app: case page as the owner (approve and reject controls enabled)", async ({ page }) => {
       await page.goto(`/coordinator/${OVERDUE_CASE}`);
       await page.getByLabel("Switch role").selectOption("owner");
