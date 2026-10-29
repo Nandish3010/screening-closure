@@ -344,13 +344,13 @@ The earlier assumed hosting input (AED 9,000 a month, AED 108,000 a year, used b
 | cost per actionable case | 66.9 | 69.6 |
 | one-off investment (integrations, pathway builds) | 720,000 | 1,170,000 |
 
-**9.4 Price points and operator margin** (illustrative fees: AED 6 per screened member, AED 90 per tracked case, AED 140 per case closed with evidence (simulated closed share 67.6%), and a programme licence of AED 2,000,000 a year for 4 pathways; margin = (revenue - cost to serve) / revenue)
+**9.4 Price points and operator margin** (illustrative fees: AED 6 per screened member, AED 90 per tracked case, AED 140 per case closed with evidence (simulated closed share 67.8%), and a programme licence of AED 2,000,000 a year for 4 pathways; margin = (revenue - cost to serve) / revenue)
 
 | price point | FIT only: revenue | margin | four pathways: revenue | margin |
 |---|---:|---:|---:|---:|
 | A: per screened member | 1,516,800 | +22% | 2,116,800 | +19% |
 | B1: per tracked case | 1,592,640 | +26% | 2,213,640 | +23% |
-| B2: per closed case | 1,674,873 | +29% | 2,327,938 | +26% |
+| B2: per closed case | 1,680,757 | +30% | 2,336,116 | +27% |
 | L: programme licence | not offered | - | 2,000,000 | +14% |
 
 **9.5 Operator break-even and payback** (programme, four pathways, central)
@@ -358,7 +358,7 @@ The earlier assumed hosting input (AED 9,000 a month, AED 108,000 a year, used b
 | measure | value |
 |---|---:|
 | break-even fee per tracked case | AED 69.6 |
-| break-even fee per closed case | AED 102.9 |
+| break-even fee per closed case | AED 102.6 |
 | break-even programme licence | AED 1,711,718 a year |
 | operator one-off investment | AED 1,170,000 |
 | licence less cash running cost (before amortisation) | AED 678,282 a year |
@@ -369,13 +369,13 @@ The earlier assumed hosting input (AED 9,000 a month, AED 108,000 a year, used b
 
 | item | AED or count a year |
 |---|---:|
-| avoided first-year treatment cost, 10-12 month ORs (cash, years later) | 1,366,359 |
-| avoided first-year treatment cost, beyond-12-month ORs | 3,089,640 |
-| coordinator capacity freed (3.0 FTE at AED 105,000) | 312,347 |
-| owner-clinician time consumed (0.7 FTE at 4 times) | -306,484 |
-| specialist time consumed (0.2 FTE at 10 times) | -247,168 |
-| **net labour, wage-weighted** | **-241,305** |
-| advanced-stage cancers avoided (count; 10-12 and beyond-12-month ORs) | 23.8 to 53.8 |
+| avoided first-year treatment cost, 10-12 month ORs (cash, years later) | 1,385,307 |
+| avoided first-year treatment cost, beyond-12-month ORs | 3,132,485 |
+| coordinator capacity freed (2.9 FTE at AED 105,000) | 306,123 |
+| owner-clinician time consumed (0.7 FTE at 4 times) | -305,818 |
+| specialist time consumed (0.2 FTE at 10 times) | -249,072 |
+| **net labour, wage-weighted** | **-248,767** |
+| advanced-stage cancers avoided (count; 10-12 and beyond-12-month ORs) | 24.1 to 54.6 |
 | positives no longer lost without anyone told (count; silent loss 45.3% to 20.6%) | 4,367 |
 | IFHAS 15-working-day referral and 31-working-day colonoscopy clocks, measured per case | not monetised |
 
@@ -383,38 +383,38 @@ The earlier assumed hosting input (AED 9,000 a month, AED 108,000 a year, used b
 
 | fee | avoided cost covers | net cost a year | net cost per advanced cancer avoided | net cost per positive no longer silently lost | payback of the AED 250,000 implementation fee |
 |---|---:|---:|---:|---:|---:|
-| B1 per tracked case, FIT only (AED 1,592,640) | 86% | 226,281 | 9,509 | 52 | none (no positive annual cash) |
-| same, beyond-12-month ORs | 194% | -1,497,000 | saves money | saves money | 2 months |
-| L programme licence, four pathways (AED 2,000,000), FIT value only | 68% | 633,641 | 26,627 | 145 | none (no positive annual cash) |
-| same, beyond-12-month ORs | 154% | -1,089,640 | saves money | saves money | 3 months |
+| B1 per tracked case, FIT only (AED 1,592,640) | 87% | 207,333 | 8,593 | 47 | none (no positive annual cash) |
+| same, beyond-12-month ORs | 197% | -1,539,845 | saves money | saves money | 2 months |
+| L programme licence, four pathways (AED 2,000,000), FIT value only | 69% | 614,693 | 25,477 | 141 | none (no positive annual cash) |
+| same, beyond-12-month ORs | 157% | -1,132,485 | saves money | saves money | 3 months |
 
 **9.8 Sensitivity** (one input at a time; programme licence, four pathways; buyer column uses the FIT value only, 10-12 month ORs unless the row says otherwise)
 
 | case | operator cost a year | licence margin | cost per actionable case | FIT avoided cost covers licence | buyer net cost per advanced cancer avoided |
 |---|---:|---:|---:|---:|---:|
-| **base case** | 1,711,718 | +14% | 69.6 | 68% | 26,627 |
-| volumes low (all pathways) | 1,456,626 | +27% | 134.1 | 32% | 123,599 |
-| volumes high (all pathways) | 2,122,289 | -6% | 27.4 | 231% | saves money |
-| licence price -25% | 1,711,718 | -14% | 69.6 | 91% | 5,616 |
-| licence price +25% | 1,711,718 | +32% | 69.6 | 55% | 47,637 |
-| hosting -50% | 1,649,878 | +18% | 67.1 | 68% | 26,627 |
-| hosting +100% | 1,835,398 | +8% | 74.6 | 68% | 26,627 |
-| support FTE per 50,000 screened halved | 1,447,118 | +28% | 58.8 | 68% | 26,627 |
-| support FTE per 50,000 screened doubled | 2,240,918 | -12% | 91.1 | 68% | 26,627 |
-| provider groups 3 | 1,591,718 | +20% | 64.7 | 68% | 26,627 |
-| provider groups 12 | 1,951,718 | +2% | 79.4 | 68% | 26,627 |
-| stage-pair factor low | 1,711,718 | +14% | 69.6 | 46% | 45,765 |
-| stage-pair factor high | 1,711,718 | +14% | 69.6 | 114% | saves money |
-| beyond-12-month ORs | 1,711,718 | +14% | 69.6 | 154% | saves money |
+| **base case** | 1,711,718 | +14% | 69.6 | 69% | 25,477 |
+| volumes low (all pathways) | 1,456,626 | +27% | 134.1 | 32% | 121,124 |
+| volumes high (all pathways) | 2,122,289 | -6% | 27.4 | 234% | saves money |
+| licence price -25% | 1,711,718 | -14% | 69.6 | 92% | 4,754 |
+| licence price +25% | 1,711,718 | +32% | 69.6 | 55% | 46,201 |
+| hosting -50% | 1,649,878 | +18% | 67.1 | 69% | 25,477 |
+| hosting +100% | 1,835,398 | +8% | 74.6 | 69% | 25,477 |
+| support FTE per 50,000 screened halved | 1,447,118 | +28% | 58.8 | 69% | 25,477 |
+| support FTE per 50,000 screened doubled | 2,240,918 | -12% | 91.1 | 69% | 25,477 |
+| provider groups 3 | 1,591,718 | +20% | 64.7 | 69% | 25,477 |
+| provider groups 12 | 1,951,718 | +2% | 79.4 | 69% | 25,477 |
+| stage-pair factor low | 1,711,718 | +14% | 69.6 | 46% | 44,616 |
+| stage-pair factor high | 1,711,718 | +14% | 69.6 | 115% | saves money |
+| beyond-12-month ORs | 1,711,718 | +14% | 69.6 | 157% | saves money |
 
-**9.9 Net cost per death avoided and per QALY** (FIT pathway, literature-anchored; deaths and QALYs from [outcomes.md](../results/outcomes.md), M7-3: colorectal cancer deaths within 5 years avoided and QALYs discounted at 3%, from Corley 2017's delay odds ratios, Saudi and SEER stage survival and WHO UAE life expectancy; for 17,696 positives a year that is 30.6 deaths (20.2 to 50.2) and 383 QALYs (242 to 665), 95% PSA intervals. Net cost is the fee less the avoided treatment cost of 9.7, 10-12 month ORs; the second pair of columns adds the extra colonoscopies the outcomes model counts (2,464 a year at an assumed AED 4,000 each), which this cost model otherwise leaves to the payer. Ranges divide by the PSA bounds. Illustrative.)
+**9.9 Net cost per death avoided and per QALY** (FIT pathway, literature-anchored; deaths and QALYs from [outcomes.md](../results/outcomes.md), M7-3: colorectal cancer deaths within 5 years avoided and QALYs discounted at 3%, from Corley 2017's delay odds ratios, Saudi and SEER stage survival and WHO UAE life expectancy; for 17,696 positives a year that is 31.1 deaths (20.5 to 51.3) and 389 QALYs (245 to 678), 95% PSA intervals. Net cost is the fee less the avoided treatment cost of 9.7, 10-12 month ORs; the second pair of columns adds the extra colonoscopies the outcomes model counts (2,507 a year at an assumed AED 4,000 each), which this cost model otherwise leaves to the payer. Ranges divide by the PSA bounds. Illustrative.)
 
 | fee | net cost a year | per death avoided | per QALY | per death avoided, with colonoscopies | per QALY, with colonoscopies |
 |---|---:|---:|---:|---:|---:|
-| B1 per tracked case, FIT only (AED 1,592,640) | 226,281 | 7,386 (4,504 to 11,176) | 591 (340 to 933) | 329,097 (200,706 to 497,977) | 26,319 (15,171 to 41,595) |
-| L programme licence, four pathways (AED 2,000,000), FIT value only | 633,641 | 20,681 (12,613 to 31,294) | 1,654 (953 to 2,614) | 342,393 (208,815 to 518,096) | 27,382 (15,784 to 43,275) |
+| B1 per tracked case, FIT only (AED 1,592,640) | 207,333 | 6,662 (4,044 to 10,122) | 533 (306 to 845) | 328,823 (199,632 to 499,600) | 26,297 (15,100 to 41,697) |
+| L programme licence, four pathways (AED 2,000,000), FIT value only | 614,693 | 19,751 (11,991 to 30,008) | 1,580 (907 to 2,505) | 341,912 (207,578 to 519,486) | 27,343 (15,701 to 43,357) |
 
-**Reading.** At the central inputs the programme licence costs the operator AED 1,711,718 a year to serve (69.6 per actionable case across 24,596 cases), so a licence of AED 2,000,000 carries a 14% margin. Avoided treatment cost from the FIT pathway alone covers 68% of the licence (154% at the beyond-12-month odds ratios), and wage-weighted labour is a net cost of AED 241,305 a year in the current routing, so neither pays the fee. The buyer pays for the remainder in safety and outcomes: about 4,367 positives a year no longer lost without anyone told and 24 to 54 advanced-stage cancers avoided (synthetic, assumption-based), plus a per-case record against the IFHAS timelines, and in health terms about 31 colorectal cancer deaths avoided within 5 years for each year of positives (20 to 50), at a net cost of about AED 1,654 per QALY on the licence before the extra colonoscopies and AED 27,382 with them (9.9). The other three pathways add volume and cost here but no modelled value, because none is built or simulated.
+**Reading.** At the central inputs the programme licence costs the operator AED 1,711,718 a year to serve (69.6 per actionable case across 24,596 cases), so a licence of AED 2,000,000 carries a 14% margin. Avoided treatment cost from the FIT pathway alone covers 69% of the licence (157% at the beyond-12-month odds ratios), and wage-weighted labour is a net cost of AED 248,767 a year in the current routing, so neither pays the fee. The buyer pays for the remainder in safety and outcomes: about 4,367 positives a year no longer lost without anyone told and 24 to 55 advanced-stage cancers avoided (synthetic, assumption-based), plus a per-case record against the IFHAS timelines, and in health terms about 31 colorectal cancer deaths avoided within 5 years for each year of positives (20 to 51), at a net cost of about AED 1,580 per QALY on the licence before the extra colonoscopies and AED 27,343 with them (9.9). The other three pathways add volume and cost here but no modelled value, because none is built or simulated.
 
 <!-- END GENERATED: pricing -->
 

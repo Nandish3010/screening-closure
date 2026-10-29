@@ -34,8 +34,8 @@
     }
   ],
   "params_hash": {
-    "literature_anchored": "c217fad9cfdcc37f",
-    "upper_range": "d6d848e8e191dba4"
+    "literature_anchored": "1db2ab9549834bfc",
+    "upper_range": "270f94a04540df8f"
   },
   "scenarios": {
     "literature_anchored": {
@@ -78,41 +78,41 @@
       },
       "gain": {
         "completion_180d": {
-          "ci_high": 0.100075,
-          "ci_low": 0.09525,
-          "mean": 0.0975
+          "ci_high": 0.100951,
+          "ci_low": 0.0961,
+          "mean": 0.098425
         },
         "completion_360d": {
-          "ci_high": 0.083626,
-          "ci_low": 0.078449,
-          "mean": 0.08095
+          "ci_high": 0.085001,
+          "ci_low": 0.079499,
+          "mean": 0.082225
         },
         "completion_90d": {
-          "ci_high": 0.130925,
-          "ci_low": 0.12555,
-          "mean": 0.128175
+          "ci_high": 0.130552,
+          "ci_low": 0.124624,
+          "mean": 0.127675
         }
       },
       "orchestrated": {
         "closed_share": {
-          "ci_high": 0.3865,
-          "ci_low": 0.378622,
-          "mean": 0.3822
+          "ci_high": 0.387676,
+          "ci_low": 0.379872,
+          "mean": 0.38345
         },
         "completion_180d": {
-          "ci_high": 0.375102,
-          "ci_low": 0.367299,
-          "mean": 0.371075
+          "ci_high": 0.376151,
+          "ci_low": 0.368249,
+          "mean": 0.372
         },
         "completion_360d": {
-          "ci_high": 0.391175,
-          "ci_low": 0.382899,
-          "mean": 0.3867
+          "ci_high": 0.392426,
+          "ci_low": 0.384274,
+          "mean": 0.387975
         },
         "completion_90d": {
-          "ci_high": 0.325175,
-          "ci_low": 0.319849,
-          "mean": 0.3224
+          "ci_high": 0.324626,
+          "ci_low": 0.319225,
+          "mean": 0.3219
         },
         "silent_loss_rate": {
           "ci_high": 0.318177,
@@ -125,15 +125,15 @@
           "mean": 0.0
         },
         "time_to_colonoscopy_median": {
-          "ci_high": 47.126106,
-          "ci_low": 45.821129,
-          "mean": 46.487764
+          "ci_high": 48.010897,
+          "ci_low": 46.803374,
+          "mean": 47.410692
         }
       },
       "ratio": {
-        "completion_180d": 1.3563922142008589,
-        "completion_360d": 1.2647587898609973,
-        "completion_90d": 1.65993049298494
+        "completion_180d": 1.3597733711048159,
+        "completion_360d": 1.2689288634505314,
+        "completion_90d": 1.6573561590938346
       }
     },
     "upper_range": {
@@ -176,41 +176,41 @@
       },
       "gain": {
         "completion_180d": {
-          "ci_high": 0.197851,
-          "ci_low": 0.190024,
-          "mean": 0.193825
+          "ci_high": 0.199625,
+          "ci_low": 0.19165,
+          "mean": 0.19565
         },
         "completion_360d": {
-          "ci_high": 0.166651,
-          "ci_low": 0.158724,
-          "mean": 0.16285
+          "ci_high": 0.169151,
+          "ci_low": 0.161324,
+          "mean": 0.165475
         },
         "completion_90d": {
-          "ci_high": 0.255826,
-          "ci_low": 0.245949,
-          "mean": 0.2506
+          "ci_high": 0.255276,
+          "ci_low": 0.245624,
+          "mean": 0.25025
         }
       },
       "orchestrated": {
         "closed_share": {
-          "ci_high": 0.473626,
-          "ci_low": 0.464274,
-          "mean": 0.468525
+          "ci_high": 0.476051,
+          "ci_low": 0.466949,
+          "mean": 0.471175
         },
         "completion_180d": {
-          "ci_high": 0.472451,
-          "ci_low": 0.462999,
-          "mean": 0.4674
+          "ci_high": 0.47415,
+          "ci_low": 0.464974,
+          "mean": 0.469225
         },
         "completion_360d": {
-          "ci_high": 0.473952,
-          "ci_low": 0.464124,
-          "mean": 0.4686
+          "ci_high": 0.476376,
+          "ci_low": 0.467199,
+          "mean": 0.471225
         },
         "completion_90d": {
-          "ci_high": 0.450051,
-          "ci_low": 0.44015,
-          "mean": 0.444825
+          "ci_high": 0.449551,
+          "ci_low": 0.439898,
+          "mean": 0.444475
         },
         "silent_loss_rate": {
           "ci_high": 0.0,
@@ -223,15 +223,15 @@
           "mean": 0.0
         },
         "time_to_colonoscopy_median": {
-          "ci_high": 39.95277,
-          "ci_low": 39.056629,
-          "mean": 39.505097
+          "ci_high": 40.854524,
+          "ci_low": 40.03807,
+          "mean": 40.446039
         }
       },
       "ratio": {
-        "completion_180d": 1.7084894453075024,
-        "completion_360d": 1.5326246933769418,
-        "completion_90d": 2.290256146222165
+        "completion_180d": 1.7151603764963903,
+        "completion_360d": 1.5412101390024529,
+        "completion_90d": 2.288454112498391
       }
     }
   },

@@ -79,23 +79,23 @@ Caveat: the detector's word lists were extended after reading replies of the tes
 
 ## 2. Risk score by subgroup
 
-From `docs/results/risk/risk.json` (scenario `literature_anchored`, 4000 held-out simulated cases; `make risk-check` proves the file equals a fresh retrain). Language is excluded as a feature and audited as an outcome group. Overall held-out AUC 0.906, ECE 0.026.
+From `docs/results/risk/risk.json` (scenario `literature_anchored`, 4012 held-out simulated cases; `make risk-check` proves the file equals a fresh retrain). Language is excluded as a feature and audited as an outcome group. Overall held-out AUC 0.905, ECE 0.027.
 
 | Subgroup | n | AUC | AUC gap to best | ECE | ECE noise p95 | Mean predicted | Observed | Gap | Gap margin (95%) | Flag |
 |---|---|---|---|---|---|---|---|---|---|---|
-| language=ar | 1846 | 0.916 | 0.000 | 0.035 | 0.027 | 0.506 | 0.498 | +0.008 | 0.023 | watch: ECE above noise |
-| language=en | 1351 | 0.891 | 0.025 | 0.033 | 0.033 | 0.466 | 0.457 | +0.009 | 0.027 | ok |
-| language=other | 803 | 0.906 | 0.010 | 0.037 | 0.042 | 0.520 | 0.518 | +0.001 | 0.035 | ok |
-| channel=sms | 1586 | 0.906 | 0.004 | 0.027 | 0.034 | 0.499 | 0.491 | +0.009 | 0.025 | ok |
-| channel=whatsapp | 1175 | 0.907 | 0.004 | 0.027 | 0.035 | 0.495 | 0.483 | +0.012 | 0.029 | ok |
-| channel=phone | 603 | 0.901 | 0.009 | 0.033 | 0.047 | 0.517 | 0.519 | -0.002 | 0.040 | ok |
-| channel=letter | 636 | 0.910 | 0.000 | 0.043 | 0.053 | 0.466 | 0.464 | +0.002 | 0.039 | ok |
-| age_band=40-49 | 1122 | 0.909 | 0.003 | 0.030 | 0.038 | 0.489 | 0.480 | +0.010 | 0.029 | ok |
-| age_band=50-59 | 1105 | 0.912 | 0.000 | 0.033 | 0.039 | 0.499 | 0.481 | +0.018 | 0.029 | ok |
-| age_band=60-69 | 1125 | 0.907 | 0.005 | 0.033 | 0.037 | 0.505 | 0.504 | +0.001 | 0.029 | ok |
-| age_band=70-75 | 648 | 0.893 | 0.019 | 0.031 | 0.047 | 0.485 | 0.491 | -0.006 | 0.038 | ok |
+| language=ar | 1847 | 0.915 | 0.000 | 0.038 | 0.027 | 0.499 | 0.493 | +0.006 | 0.023 | watch: ECE above noise |
+| language=en | 1358 | 0.891 | 0.024 | 0.036 | 0.035 | 0.458 | 0.449 | +0.009 | 0.026 | watch: ECE above noise |
+| language=other | 807 | 0.903 | 0.012 | 0.035 | 0.040 | 0.516 | 0.513 | +0.003 | 0.034 | ok |
+| channel=sms | 1599 | 0.907 | 0.000 | 0.031 | 0.031 | 0.489 | 0.480 | +0.009 | 0.024 | watch: ECE above noise |
+| channel=whatsapp | 1175 | 0.906 | 0.001 | 0.020 | 0.037 | 0.490 | 0.485 | +0.005 | 0.029 | ok |
+| channel=phone | 596 | 0.900 | 0.007 | 0.039 | 0.052 | 0.509 | 0.505 | +0.004 | 0.040 | ok |
+| channel=letter | 642 | 0.901 | 0.005 | 0.040 | 0.050 | 0.467 | 0.463 | +0.004 | 0.039 | ok |
+| age_band=40-49 | 1124 | 0.906 | 0.005 | 0.023 | 0.037 | 0.482 | 0.473 | +0.008 | 0.029 | ok |
+| age_band=50-59 | 1104 | 0.911 | 0.000 | 0.032 | 0.035 | 0.492 | 0.473 | +0.019 | 0.029 | ok |
+| age_band=60-69 | 1131 | 0.906 | 0.005 | 0.037 | 0.037 | 0.499 | 0.501 | -0.002 | 0.029 | ok |
+| age_band=70-75 | 653 | 0.892 | 0.019 | 0.033 | 0.047 | 0.476 | 0.481 | -0.005 | 0.038 | ok |
 
-Watch (not a flag): language=ar ECE 0.035 is above the p95 of its sampling noise (0.027) but within the 0.05 tolerance. Re-check on the first real data.
+Watch (not a flag): language=ar ECE 0.038 is above the p95 of its sampling noise (0.027) but within the 0.05 tolerance; language=en ECE 0.036 is above the p95 of its sampling noise (0.035) but within the 0.05 tolerance; channel=sms ECE 0.031 is above the p95 of its sampling noise (0.031) but within the 0.05 tolerance. Re-check on the first real data.
 
 Intersections (language by channel) are not reported: `risk.json` holds one-way groups only. Gap noted for the pilot.
 

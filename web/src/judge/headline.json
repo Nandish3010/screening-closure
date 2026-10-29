@@ -5,8 +5,8 @@
       "value": "52.8%"
     },
     "orchestrated": {
-      "mean": 0.67605,
-      "value": "67.6%"
+      "mean": 0.678425,
+      "value": "67.8%"
     }
   },
   "completion_180d": {
@@ -15,34 +15,34 @@
       "value": "51.0%"
     },
     "orchestrated": {
-      "mean": 0.666525,
-      "value": "66.7%"
+      "mean": 0.668275,
+      "value": "66.8%"
     },
     "ratio": {
-      "mean": 1.3066555577337777,
+      "mean": 1.3100862575965495,
       "value": "1.31"
     }
   },
   "labour_reduction": {
     "literature_all": {
-      "mean": 0.200781,
-      "value": "20.1%"
+      "mean": 0.196853,
+      "value": "19.7%"
     },
     "literature_in_reach": {
-      "mean": 0.366773,
-      "value": "36.7%"
+      "mean": 0.359847,
+      "value": "36.0%"
     },
     "upper_all": {
-      "mean": 0.408233,
-      "value": "40.8%"
+      "mean": 0.399857,
+      "value": "40.0%"
     },
     "upper_all_ci_high": {
-      "mean": 0.417153,
-      "value": "41.7%"
+      "mean": 0.409142,
+      "value": "40.9%"
     },
     "upper_all_ci_low": {
-      "mean": 0.39914,
-      "value": "39.9%"
+      "mean": 0.390471,
+      "value": "39.0%"
     }
   },
   "managed_gap_points": {
@@ -52,13 +52,13 @@
   "run": {
     "cases_per_replication": 2000,
     "follow_up_days": 360,
-    "git_commit": "80853c84951dbd56a1bf4968686ab2a7fd2dc358",
+    "git_commit": "d83c94b759ab02b06395a6d0c789ee79bb06bfd0",
     "replications": 20
   },
   "scenario": {
     "key": "literature_anchored",
     "label": "Literature anchored (orchestrated effects capped at published levels)",
-    "params_hash": "358508966c4326d5bbf9942003c54d29cf3e55c02bbdf5d3ccb27c13bc4a2c50"
+    "params_hash": "e44bff57f22e504333243a462c33d51da88368a9ba7c7e71acfeb09582b8025b"
   },
   "silent_loss": {
     "baseline": {
