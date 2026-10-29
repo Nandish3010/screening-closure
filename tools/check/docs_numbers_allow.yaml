@@ -7,6 +7,7 @@ allow:
   - {file: docs/submission/video.md, number: "187.8", reason: "Measured duration (s) of backup-demo.mp4 in the E19 recording run; a build artefact of make video."}
   - {file: docs/submission/video.md, number: "169.95", reason: "Measured duration (s) of submission-3min.mp4 in the 18 Oct proof run; a build artefact of make video."}
   - {file: docs/submission/video.md, number: "179.95", reason: "Measured duration (s) of backup-demo.mp4 in the 18 Oct proof run; a build artefact of make video."}
-  - {file: docs/submission/video.md, number: "162.9", reason: "Sum of narrated shot lengths (s) in the 18 Oct proof run; a build artefact of make video."}
   - {file: docs/submission/video.md, number: "22.18", reason: "Node.js version (22.18 or later) required by the recorder; a version string, not a result."}
   - {file: docs/submission/video.md, number: "17.2", reason: "Measured narration length (s) of shot 12 in the 18 Oct proof run; a build artefact of make video."}
+  - {file: README.md, number: "8.2 points", reason: "Abu Dhabi-shaped baseline, literature anchored, 360-day gain 8.2 points: abudhabi.json gain.completion_360d is 0.082225 (full precision, skipped by the checker) and results.md prints it as +8.2 in a points column without the unit."}
+  - {file: docs/submission/demo-script.md, number: "8.2 points", reason: "Abu Dhabi-shaped baseline, literature anchored, 360-day gain 8.2 points: abudhabi.json gain.completion_360d is 0.082225 (full precision, skipped by the checker) and results.md prints it as +8.2 in a points column without the unit."}

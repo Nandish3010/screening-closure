@@ -293,16 +293,16 @@ shots:
     submission: true
     route: "card:slide"
     duration: 10
-    caption: "Labour: 37% fewer staff minutes per case the system handles, 20% across the programme. The 40% target is not met in realistic scenarios; only the upper bound, a mechanism ceiling, crosses it."
-    narration: "Labour falls thirty-seven percent per handled case, twenty percent programme-wide. The forty percent target is not met in realistic scenarios; only the upper bound does."
+    caption: "Labour: 36% fewer staff minutes per case the system handles, 20% across the programme. The 40% target is not met in realistic scenarios; only the upper bound, a mechanism ceiling, reaches it."
+    narration: "Labour falls thirty-six percent per handled case, twenty percent programme-wide. The forty percent target is not met in realistic scenarios; only the upper bound does."
     actions:
       - card:
           kind: slide
           heading: "Labour, in the same simulation"
           bullets:
-            - "37% fewer staff minutes per case the system handles (in reach)"
+            - "36% fewer staff minutes per case the system handles (in reach)"
             - "20% fewer across the whole programme (0.55 reach assumption)"
-            - "The 40% target is not met in realistic scenarios; only the upper bound (a mechanism ceiling) crosses it"
+            - "The 40% target is not met in realistic scenarios; only the upper bound (a mechanism ceiling) reaches it, and only just"
             - "Minutes are published or assumed; synthetic"
       - hold: 8
 
@@ -312,7 +312,7 @@ shots:
     submission: true
     route: "card:slide"
     duration: 16
-    caption: "Pilot ask: one programme, two providers, 90 days, shadow mode first. Cases closed without evidence: must stay zero. Buyer hypothesis: a programme licence across pathways; about 24 to 54 advanced cancers avoided a year in Abu Dhabi (synthetic, assumption-based)."
+    caption: "Pilot ask: one programme, two providers, 90 days, shadow mode first. Cases closed without evidence: must stay zero. Buyer hypothesis: a programme licence across pathways; about 24 to 55 advanced cancers avoided a year in Abu Dhabi (synthetic, assumption-based)."
     narration: "The ask: one programme, two providers, ninety days, shadow mode first. Cases closed without evidence must stay zero. Who pays: a programme licence; Abu Dhabi's public health programme is the hypothesised buyer. Replay it with the Judge tour."
     actions:
       - card:
@@ -324,7 +324,7 @@ shots:
             - "Ninety days, shadow mode first: 30 days watching, nothing sent"
             - "Cases closed without evidence: must stay at zero. If it moves, we stop"
             - "Who pays (hypothesis, not a relationship): a programme licence across pathways, Abu Dhabi public health programme as buyer"
-            - "About 24 to 54 advanced cancers avoided a year in Abu Dhabi: synthetic, assumption-based"
+            - "About 24 to 55 advanced cancers avoided a year in Abu Dhabi: synthetic, assumption-based"
             - "Judges: the Judge tour button (header) replays this, read-only"
       - hold: 11
 
