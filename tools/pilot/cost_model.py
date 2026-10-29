@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Cost-per-case model for the 90-day pilot and for steady-state volumes.
 
-Usage:  python3 tools/pilot/cost_model.py [--commercial] [--inputs tools/pilot/inputs.yaml] [--results docs/results/results.json]
+Usage:  python3 tools/pilot/cost_model.py [--commercial | --pricing [--write]] [--inputs tools/pilot/inputs.yaml] [--results docs/results/results.json]
 
 Deterministic: no randomness, no clock, no network, standard library only. Every cost number it prints is
 arithmetic on tools/pilot/inputs.yaml, and every input there is an assumption (see that file). The output
@@ -22,6 +22,10 @@ DEFAULT_RESULTS = REPO_ROOT / "docs" / "results" / "results.json"
 ALLOWED_STATUS = ("assumed", "sourced-adjacent", "sourced")
 LEGACY_SECTIONS = ("inputs", "pilot", "shadow_pilot", "value")
 COMMERCIAL_SECTIONS = ("market", "outcome", "capacity", "benchmark")
+PRICING_SECTIONS = ("azure", "pathways", "pricing", "operator", "buyer")
+BUSINESS_CASE = REPO_ROOT / "docs" / "commercial" / "business-case.md"
+PRICING_BEGIN = "<!-- BEGIN GENERATED: python3 tools/pilot/cost_model.py --pricing --write (do not edit by hand) -->"
+PRICING_END = "<!-- END GENERATED: pricing -->"
 HOURS_PER_YEAR_FALLBACK = 1700
 WAGE_RATIO_INPUTS = ("wage_ratio_nurse", "wage_ratio_clinician", "wage_ratio_specialist")
 # Roles in results.json effort.scenarios.<scenario>.<all|in_reach>.arms.<arm> as "minutes_per_case.<role>".
@@ -71,7 +75,7 @@ def parse_yaml_subset(text):
 def load_inputs(path):
     data = parse_yaml_subset(Path(path).read_text(encoding="utf-8"))
     flat = {}
-    for section in LEGACY_SECTIONS + COMMERCIAL_SECTIONS:
+    for section in LEGACY_SECTIONS + COMMERCIAL_SECTIONS + PRICING_SECTIONS:
         for name, spec in data.get(section, {}).items():
             for field in ("value", "unit", "status", "basis"):
                 if field not in spec:
@@ -419,6 +423,360 @@ def print_commercial(spec, shares, effort_rows, results_name):
     print("already pays per navigated person, they are not a price list for this product.")
 
 
+# --- pricing and unit economics (ticket M7-4): Azure TCO, price points, break-even, payback, sensitivity ----------------
+
+def load_programme_shares(path):
+    """Closed share and silent-loss rate by arm (literature-anchored, programme level) from results.json (synthetic)."""
+    data = json.loads(Path(path).read_text(encoding="utf-8"))
+    arms = data["scenarios"]["literature_anchored"]["arms"]
+    return {arm: {"closed_share": arms[arm]["closed_share"]["mean"],
+                  "silent_loss_rate": arms[arm]["silent_loss_rate"]["mean"]} for arm in ("baseline", "orchestrated")}
+
+
+def azure_lines(v):
+    """Monthly production hosting on Azure UAE North at list price: [(item, sizing, USD a month)].
+
+    Unit prices are the sourced inputs in the azure section; quantities are the deploy/bicep defaults or assumptions.
+    """
+    sec = v["hours_per_month"] * 3600
+    vcpu, mem = v["aca_vcpu_usd_per_second"], v["aca_memory_usd_per_gib_second"]
+    pg_hour = v["pg_vcore_usd_per_hour"] * v["hours_per_month"]
+    ha = v["pg_ha_multiplier"]
+
+    def aca(cpu, gib):
+        return cpu * sec * vcpu + gib * sec * mem
+
+    return [
+        ("Container Apps: api, scheduler, watchdog",
+         f"{v['aca_always_on_vcpu']:g} vCPU, {v['aca_always_on_memory_gib']:g} GiB always on",
+         aca(v["aca_always_on_vcpu"], v["aca_always_on_memory_gib"])),
+        ("Container Apps: FHIR server (HAPI)", f"{v['fhir_vcpu']:g} vCPU, {v['fhir_memory_gib']:g} GiB",
+         aca(v["fhir_vcpu"], v["fhir_memory_gib"])),
+        ("Container Apps: collector, Prometheus, Grafana",
+         f"{v['observability_vcpu']:g} vCPU, {v['observability_memory_gib']:g} GiB",
+         aca(v["observability_vcpu"], v["observability_memory_gib"])),
+        ("Container Apps environment", f"{v['hours_per_month']:g} h", v["aca_environment_usd_per_hour"] * v["hours_per_month"]),
+        ("PostgreSQL: case database compute", f"{v['pg_vcores']:g} vCores x {ha:g} (zone-redundant HA)",
+         v["pg_vcores"] * pg_hour * ha),
+        ("PostgreSQL: case database storage", f"{v['pg_storage_gb']:g} GB x {ha:g}",
+         v["pg_storage_gb"] * v["pg_storage_usd_per_gb_month"] * ha),
+        ("PostgreSQL: backup above the included amount", f"{v['pg_backup_billable_gb']:g} GB, LRS, in country",
+         v["pg_backup_billable_gb"] * v["pg_backup_usd_per_gb_month"]),
+        ("PostgreSQL: FHIR database compute", f"{v['fhir_pg_vcores']:g} vCores x {ha:g}", v["fhir_pg_vcores"] * pg_hour * ha),
+        ("PostgreSQL: FHIR database storage", f"{v['fhir_pg_storage_gb']:g} GB x {ha:g}",
+         v["fhir_pg_storage_gb"] * v["pg_storage_usd_per_gb_month"] * ha),
+        ("Log Analytics: ingestion and retention",
+         f"{v['log_gb_per_month']:g} GB a month, {v['log_retention_billable_months']:g} months billed retention",
+         v["log_gb_per_month"] * (v["log_ingest_usd_per_gb"]
+                                  + v["log_retention_billable_months"] * v["log_retention_usd_per_gb_month"])),
+        ("Key Vault: operations", f"{v['kv_operations_per_month']:,.0f} a month",
+         v["kv_operations_per_month"] / 10000 * v["kv_operations_usd_per_10k"]),
+        ("Private endpoint and private DNS zones",
+         f"{v['private_endpoints']:g} endpoint, {v['private_dns_zones']:g} zones",
+         v["private_endpoints"] * v["private_endpoint_usd_per_hour"] * v["hours_per_month"]
+         + v["private_dns_zones"] * v["private_dns_zone_usd_per_month"]),
+        ("Container Registry, Standard", "1 registry", v["acr_standard_usd_per_day"] * v["hours_per_month"] / 24),
+        ("Application Gateway WAF v2 (TLS gateway)", f"1 gateway, {v['appgw_capacity_units']:g} capacity units",
+         v["hours_per_month"] * (v["appgw_waf_fixed_usd_per_hour"]
+                                 + v["appgw_capacity_units"] * v["appgw_waf_capacity_unit_usd_per_hour"])),
+    ]
+
+
+def azure_hosting(v):
+    """Hosting a year in AED: production at list price plus a test environment as an assumed share of it."""
+    prod_usd_month = sum(x for _, _, x in azure_lines(v))
+    prod = prod_usd_month * 12 * v["usd_aed_peg"]
+    nonprod = prod * v["nonprod_share_of_prod"]
+    return {"prod_usd_month": prod_usd_month, "prod_aed_year": prod, "nonprod_aed_year": nonprod,
+            "total_aed_year": prod + nonprod}
+
+
+def programme_volumes(spec, case="central"):
+    """Screened people and actionable cases a year in Abu Dhabi by pathway (low, central or high inputs)."""
+    idx = {"low": 0, "central": 1, "high": 2}[case]
+
+    def pick(name):
+        return range_of(spec, name)[idx]
+
+    fit_results = spec["abu_dhabi_population_40_to_75"]["value"] * pick("fit_participation_annual")
+    rows = [
+        ("FIT positives", fit_results, fit_results * pick("fit_positivity_market")),
+        ("Blood-based screening positives", pick("blood_tests_per_year"),
+         pick("blood_tests_per_year") * pick("blood_test_positive_share")),
+        ("Breast screening recalls", pick("mammograms_per_year"),
+         pick("mammograms_per_year") * pick("mammogram_recall_share")),
+        ("Cervical screening abnormal results", pick("cervical_screens_per_year"),
+         pick("cervical_screens_per_year") * pick("cervical_abnormal_share")),
+    ]
+    return [{"pathway": n, "screened": s, "cases": c} for n, s, c in rows]
+
+
+def operator_cost(v, screened, cases, pathways, hosting_aed_year, hosting_scale=1.0):
+    """Operator's cost to serve a year in AED at programme scale, with the one-off items it amortises."""
+    hosting = hosting_aed_year * hosting_scale + v["hosting_variable_aed_per_1000_cases_per_year"] * cases / 1000
+    support_fte = (v["support_fte_base"] + v["support_fte_per_50k_members"] * screened / 50000
+                   + v["support_fte_per_extra_pathway"] * (pathways - 1))
+    lines = {
+        "hosting (Azure UAE North list price, production and test)": hosting,
+        "third-party licences": v["third_party_licences_aed_per_year"],
+        "engineering and support": support_fte * v["support_fte_loaded_cost_aed_per_year"],
+        "clinical safety officer": v["clinical_safety_fte"] * v["clinical_safety_loaded_cost_aed_per_year"],
+        "ADHICS audit, penetration test, data protection review": v["compliance_aed_per_year"],
+        "integration, one feed per provider group (amortised)":
+            v["provider_groups"] * v["integration_one_off_aed_per_provider"] / v["amortisation_years"],
+        "pathway builds beyond FIT (amortised)":
+            (pathways - 1) * v["pathway_build_one_off_aed"] / v["amortisation_years"],
+    }
+    one_off = (v["provider_groups"] * v["integration_one_off_aed_per_provider"]
+               + (pathways - 1) * v["pathway_build_one_off_aed"])
+    total = sum(lines.values())
+    amortised = (lines["integration, one feed per provider group (amortised)"]
+                 + lines["pathway builds beyond FIT (amortised)"])
+    return {"lines": lines, "total": total, "cash_opex": total - amortised, "one_off": one_off,
+            "support_fte": support_fte}
+
+
+def revenue_options(v, screened, cases, closed_share):
+    """Annual revenue under each price point for a given scope."""
+    return {
+        "A: per screened member": screened * v["price_per_screened_member_per_year_aed"],
+        "B1: per tracked case": cases * v["price_per_actionable_case_aed"],
+        "B2: per closed case": cases * closed_share * v["price_per_closed_case_aed"],
+        "L: programme licence": v["programme_licence_aed_per_year"],
+    }
+
+
+def buyer_value(spec, v, fit_cases, delay_shares, effort_rows, prog, or_label="10-12 month ORs",
+                pair_factor=None, coordinator_cost=None):
+    """What the buyer gets a year from the FIT pathway (the only one simulated). Cash items in AED, the rest as counts."""
+    out = outcome_value(fit_cases, delay_shares, "literature_anchored", spec, or_label, "saudi", pair_factor)
+    fte = capacity_fte(fit_cases, effort_rows, spec)["literature anchored, programme level"]
+    coord = v["coordinator_loaded_cost_aed_per_fte_year"] if coordinator_cost is None else coordinator_cost
+    gross_capacity = fte["coordinator"] * coord
+    clinician_cost = -fte["owner_clinician"] * coord * v["wage_ratio_clinician"]
+    specialist_cost = -fte["specialist"] * coord * v["wage_ratio_specialist"]
+    silent = (prog["baseline"]["silent_loss_rate"] - prog["orchestrated"]["silent_loss_rate"]) * fit_cases
+    return {"avoided_cost": out["cost_avoided"], "advanced_avoided": out["late_stage_avoided"],
+            "coordinator_fte": fte["coordinator"], "clinician_fte": -fte["owner_clinician"],
+            "specialist_fte": -fte["specialist"], "gross_capacity": gross_capacity,
+            "clinician_cost": clinician_cost, "specialist_cost": specialist_cost,
+            "net_labour": gross_capacity - clinician_cost - specialist_cost, "silent_loss_prevented": silent}
+
+
+def pricing_model(spec, delay_shares, effort_rows, prog, overrides=None, case="central", or_label="10-12 month ORs",
+                  pair_factor=None, hosting_scale=1.0):
+    """Everything the pricing report needs, for one set of inputs. `overrides` replaces input values by name."""
+    sp = {k: dict(s) for k, s in spec.items()}
+    for name, value in (overrides or {}).items():
+        sp[name]["value"] = value
+    v = {k: s["value"] for k, s in sp.items()}
+    vols = programme_volumes(sp, case)
+    fit = vols[0]
+    host = azure_hosting(v)
+    closed = prog["orchestrated"]["closed_share"]
+    scopes = {
+        "FIT only": (fit["screened"], fit["cases"], 1),
+        "programme, four pathways": (sum(r["screened"] for r in vols), sum(r["cases"] for r in vols),
+                                     int(v["licence_pathways"])),
+    }
+    res = {"v": v, "volumes": vols, "hosting": host, "closed_share": closed, "scopes": {}}
+    for label, (screened, cases, n) in scopes.items():
+        cost = operator_cost(v, screened, cases, n, host["total_aed_year"], hosting_scale)
+        rev = revenue_options(v, screened, cases, closed)
+        if label == "FIT only":
+            rev["L: programme licence"] = None  # the licence is sold for the programme, not one pathway
+        res["scopes"][label] = {"screened": screened, "cases": cases, "pathways": n, "cost": cost, "revenue": rev}
+    res["buyer"] = buyer_value(sp, v, fit["cases"], delay_shares, effort_rows, prog, or_label, pair_factor)
+    return res
+
+
+def _md(headers, rows, right_from=1):
+    align = ["---" if i < right_from else "---:" for i in range(len(headers))]
+    lines = ["| " + " | ".join(headers) + " |", "|" + "|".join(align) + "|"]
+    lines += ["| " + " | ".join(str(c) for c in r) + " |" for r in rows]
+    return "\n".join(lines)
+
+
+def _payback(upfront, annual):
+    return f"{upfront / annual * 12:,.0f} months" if annual > 0 else "none (no positive annual cash)"
+
+
+def pricing_markdown(spec, delay_shares, effort_rows, prog, results_name):
+    """The generated block of business-case.md section 9 (markdown). Deterministic."""
+    m = pricing_model(spec, delay_shares, effort_rows, prog)
+    v, host, b = m["v"], m["hosting"], m["buyer"]
+    peg = v["usd_aed_peg"]
+    prog_s, fit_s = m["scopes"]["programme, four pathways"], m["scopes"]["FIT only"]
+    out = [PRICING_BEGIN, "",
+           f"Generated from `tools/pilot/inputs.yaml` (sections `azure`, `pathways`, `pricing`, `operator`, `buyer`, plus the "
+           f"earlier sections) and `{results_name}` (synthetic). AED unless stated; USD at the peg of {peg:g}. Illustrative: "
+           "not a quote, an offer or a forecast.", ""]
+
+    out += ["**9.1 Hosting on Azure UAE North at list price** (production, the `deploy/bicep` defaults; pay-as-you-go, "
+            "no reservation, no free grant)", ""]
+    rows = [[item, size, f"{usd:,.0f}", money(usd * 12 * peg)] for item, size, usd in azure_lines(v)]
+    rows.append(["**Production total**", "", f"**{host['prod_usd_month']:,.0f}**", f"**{money(host['prod_aed_year'])}**"])
+    rows.append([f"Test environment ({v['nonprod_share_of_prod']:.0%} of production, assumed)", "", "",
+                 money(host["nonprod_aed_year"])])
+    rows.append(["**Hosting a year**", "", "", f"**{money(host['total_aed_year'])}**"])
+    out += [_md(["item", "sizing", "USD a month", "AED a year"], rows, right_from=2), ""]
+    assumed = v["hosting_fixed_aed_per_month"] * 12
+    ratio = assumed / host["total_aed_year"]
+    verdict = ("so the pilot model's hosting is close to list price" if 0.8 <= ratio <= 1.25 else
+               "so the pilot model understates hosting" if ratio < 0.8 else "so the pilot model overstates hosting")
+    out += [f"The earlier assumed hosting input (AED {v['hosting_fixed_aed_per_month']:,.0f} a month, AED {assumed:,.0f} a "
+            f"year, used by the pilot model) is {ratio:.2f} times this list-price build-up, {verdict}. The pricing below "
+            "uses the build-up. Database compute with a standby is the largest line; a reservation would cut it (not "
+            "applied, no reservation price read).", ""]
+
+    out += ["**9.2 Volumes a year in Abu Dhabi** (FIT from section 1; the other pathways are assumed or a programme "
+            "target, and none is built or simulated)", ""]
+    vol = {c: programme_volumes(spec, c) for c in ("low", "central", "high")}
+    rows = []
+    for i, r in enumerate(vol["central"]):
+        rows.append([r["pathway"], money(r["screened"]), money(vol["low"][i]["cases"]), money(r["cases"]),
+                     money(vol["high"][i]["cases"])])
+    rows.append(["**All four**", f"**{money(prog_s['screened'])}**", money(sum(r['cases'] for r in vol['low'])),
+                 f"**{money(prog_s['cases'])}**", money(sum(r['cases'] for r in vol['high']))])
+    out += [_md(["pathway", "screened, central", "actionable cases, low", "central", "high"], rows), ""]
+
+    out += ["**9.3 Operator cost to serve a year** (central volumes; every input assumed except the Azure unit prices)", ""]
+    rows = [[k, money(fit_s["cost"]["lines"][k]), money(prog_s["cost"]["lines"][k])] for k in prog_s["cost"]["lines"]]
+    rows.append(["**Total cost to serve**", f"**{money(fit_s['cost']['total'])}**", f"**{money(prog_s['cost']['total'])}**"])
+    rows.append(["cost per actionable case", f"{fit_s['cost']['total'] / fit_s['cases']:,.1f}",
+                 f"{prog_s['cost']['total'] / prog_s['cases']:,.1f}"])
+    rows.append(["one-off investment (integrations, pathway builds)", money(fit_s["cost"]["one_off"]),
+                 money(prog_s["cost"]["one_off"])])
+    out += [_md(["line", "FIT only", "programme, four pathways"], rows), ""]
+
+    out += ["**9.4 Price points and operator margin** (illustrative fees: AED "
+            f"{v['price_per_screened_member_per_year_aed']:g} per screened member, AED {v['price_per_actionable_case_aed']:g} "
+            f"per tracked case, AED {v['price_per_closed_case_aed']:g} per case closed with evidence (simulated closed share "
+            f"{m['closed_share']:.1%}), and a programme licence of AED {money(v['programme_licence_aed_per_year'])} a year "
+            f"for {v['licence_pathways']:g} pathways; margin = (revenue - cost to serve) / revenue)", ""]
+    rows = []
+    for k in prog_s["revenue"]:
+        rf, rp = fit_s["revenue"][k], prog_s["revenue"][k]
+        rows.append([k, "not offered" if rf is None else money(rf),
+                     "-" if rf is None else f"{(rf - fit_s['cost']['total']) / rf:+.0%}", money(rp),
+                     f"{(rp - prog_s['cost']['total']) / rp:+.0%}"])
+    out += [_md(["price point", "FIT only: revenue", "margin", "four pathways: revenue", "margin"], rows), ""]
+
+    cost_p = prog_s["cost"]
+    be_case = cost_p["total"] / prog_s["cases"]
+    be_closed = cost_p["total"] / (prog_s["cases"] * m["closed_share"])
+    licence_margin = v["programme_licence_aed_per_year"] - cost_p["cash_opex"]
+    out += ["**9.5 Operator break-even and payback** (programme, four pathways, central)", ""]
+    out += [_md(["measure", "value"], [
+        ["break-even fee per tracked case", f"AED {be_case:,.1f}"],
+        ["break-even fee per closed case", f"AED {be_closed:,.1f}"],
+        ["break-even programme licence", f"AED {money(cost_p['total'])} a year"],
+        ["operator one-off investment", f"AED {money(cost_p['one_off'])}"],
+        ["licence less cash running cost (before amortisation)", f"AED {money(licence_margin)} a year"],
+        ["operator payback on the one-off investment, licence", _payback(cost_p["one_off"], licence_margin)],
+        ["operator payback with the buyer's implementation fee",
+         _payback(cost_p["one_off"] - v["implementation_fee_aed"], licence_margin)],
+    ]), ""]
+
+    lic, fit_fee = v["programme_licence_aed_per_year"], fit_s["revenue"]["B1: per tracked case"]
+    hi = buyer_value(spec, v, fit_s["cases"], delay_shares, effort_rows, prog, ">12 month ORs")
+    out += ["**9.6 What the buyer gets a year from the FIT pathway** (the only pathway simulated; synthetic shares, "
+            "observational odds ratios, assumed wages; literature-anchored, programme level)", ""]
+    rows = [
+        ["avoided first-year treatment cost, 10-12 month ORs (cash, years later)", money(b["avoided_cost"])],
+        ["avoided first-year treatment cost, beyond-12-month ORs", money(hi["avoided_cost"])],
+        [f"coordinator capacity freed ({b['coordinator_fte']:.1f} FTE at AED {money(v['coordinator_loaded_cost_aed_per_fte_year'])})",
+         money(b["gross_capacity"])],
+        [f"owner-clinician time consumed ({b['clinician_fte']:.1f} FTE at {v['wage_ratio_clinician']:g} times)",
+         money(-b["clinician_cost"])],
+        [f"specialist time consumed ({b['specialist_fte']:.1f} FTE at {v['wage_ratio_specialist']:g} times)",
+         money(-b["specialist_cost"])],
+        ["**net labour, wage-weighted**", f"**{money(b['net_labour'])}**"],
+        ["advanced-stage cancers avoided (count; 10-12 and beyond-12-month ORs)",
+         f"{b['advanced_avoided']:.1f} to {hi['advanced_avoided']:.1f}"],
+        [f"positives no longer lost without anyone told (count; silent loss {prog['baseline']['silent_loss_rate']:.1%} to "
+         f"{prog['orchestrated']['silent_loss_rate']:.1%})", money(b["silent_loss_prevented"])],
+        ["IFHAS 15-working-day referral and 31-working-day colonoscopy clocks, measured per case", "not monetised"],
+    ]
+    out += [_md(["item", "AED or count a year"], rows), ""]
+
+    out += ["**9.7 Buyer break-even and payback** (fee less avoided treatment cost, against what it buys; the cash return "
+            "accrues to the treating system years after the fee)", ""]
+    upfront = v["implementation_fee_aed"]
+    rows = []
+    for label, fee, ac, adv in (
+            (f"B1 per tracked case, FIT only (AED {money(fit_fee)})", fit_fee, b["avoided_cost"], b["advanced_avoided"]),
+            ("same, beyond-12-month ORs", fit_fee, hi["avoided_cost"], hi["advanced_avoided"]),
+            (f"L programme licence, four pathways (AED {money(lic)}), FIT value only", lic, b["avoided_cost"],
+             b["advanced_avoided"]),
+            ("same, beyond-12-month ORs", lic, hi["avoided_cost"], hi["advanced_avoided"])):
+        net = fee - ac
+        rows.append([label, f"{ac / fee:.0%}", money(net),
+                     money(net / adv) if net > 0 else "saves money",
+                     f"{net / b['silent_loss_prevented']:,.0f}" if net > 0 else "saves money",
+                     _payback(upfront, -net)])
+    out += [_md(["fee", "avoided cost covers", "net cost a year", "net cost per advanced cancer avoided",
+                 "net cost per positive no longer silently lost", f"payback of the AED {money(upfront)} implementation fee"],
+                rows), ""]
+
+    out += ["**9.8 Sensitivity** (one input at a time; programme licence, four pathways; buyer column uses the FIT value "
+            "only, 10-12 month ORs unless the row says otherwise)", ""]
+    base = pricing_model(spec, delay_shares, effort_rows, prog)
+
+    def cells(mm, label):
+        ps = mm["scopes"]["programme, four pathways"]
+        lic_ = mm["v"]["programme_licence_aed_per_year"]
+        net = lic_ - mm["buyer"]["avoided_cost"]
+        return [label, money(ps["cost"]["total"]), f"{(lic_ - ps['cost']['total']) / lic_:+.0%}",
+                f"{ps['cost']['total'] / ps['cases']:,.1f}", f"{mm['buyer']['avoided_cost'] / lic_:.0%}",
+                money(net / mm["buyer"]["advanced_avoided"]) if net > 0 else "saves money"]
+
+    rows = [cells(base, "**base case**")]
+    sens = [
+        ("volumes low (all pathways)", dict(case="low")),
+        ("volumes high (all pathways)", dict(case="high")),
+        ("licence price -25%", dict(overrides={"programme_licence_aed_per_year": lic * 0.75})),
+        ("licence price +25%", dict(overrides={"programme_licence_aed_per_year": lic * 1.25})),
+        ("hosting -50%", dict(hosting_scale=0.5)),
+        ("hosting +100%", dict(hosting_scale=2.0)),
+        ("support FTE per 50,000 screened halved",
+         dict(overrides={"support_fte_per_50k_members": v["support_fte_per_50k_members"] / 2})),
+        ("support FTE per 50,000 screened doubled",
+         dict(overrides={"support_fte_per_50k_members": v["support_fte_per_50k_members"] * 2})),
+        ("provider groups 3", dict(overrides={"provider_groups": 3})),
+        ("provider groups 12", dict(overrides={"provider_groups": 12})),
+        ("stage-pair factor low", dict(pair_factor=range_of(spec, "stage_pair_factor")[0])),
+        ("stage-pair factor high", dict(pair_factor=range_of(spec, "stage_pair_factor")[2])),
+        ("beyond-12-month ORs", dict(or_label=">12 month ORs")),
+    ]
+    for label, kw in sens:
+        rows.append(cells(pricing_model(spec, delay_shares, effort_rows, prog, **kw), label))
+    out += [_md(["case", "operator cost a year", "licence margin", "cost per actionable case",
+                 "FIT avoided cost covers licence", "buyer net cost per advanced cancer avoided"], rows), ""]
+
+    coverage = b["avoided_cost"] / lic
+    out += [f"**Reading.** At the central inputs the programme licence costs the operator AED {money(cost_p['total'])} a year "
+            f"to serve ({prog_s['cost']['total'] / prog_s['cases']:,.1f} per actionable case across "
+            f"{money(prog_s['cases'])} cases), so a licence of AED {money(lic)} carries a "
+            f"{(lic - cost_p['total']) / lic:.0%} margin. Avoided treatment cost from the FIT pathway alone covers "
+            f"{coverage:.0%} of the licence ({hi['avoided_cost'] / lic:.0%} at the beyond-12-month odds ratios), and "
+            f"wage-weighted labour is a net cost of AED {money(-b['net_labour'])} a year in the current routing, so neither pays "
+            "the fee. The buyer pays for the remainder in safety and outcomes: about "
+            f"{money(b['silent_loss_prevented'])} positives a year no longer lost without anyone told and "
+            f"{b['advanced_avoided']:.0f} to {hi['advanced_avoided']:.0f} advanced-stage cancers avoided (synthetic, "
+            "assumption-based), plus a per-case record against the IFHAS timelines. The other three pathways add volume "
+            "and cost here but no modelled value, because none is built or simulated.", "", PRICING_END]
+    return "\n".join(out) + "\n"
+
+
+def write_pricing_block(text, path=BUSINESS_CASE):
+    doc = Path(path).read_text(encoding="utf-8")
+    start, end = doc.index(PRICING_BEGIN), doc.index(PRICING_END) + len(PRICING_END)
+    new = doc[:start] + text.rstrip("\n") + doc[end:]
+    Path(path).write_text(new, encoding="utf-8")
+    return new != doc
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--inputs", default=str(DEFAULT_INPUTS), help="inputs file (default: tools/pilot/inputs.yaml)")
@@ -426,6 +784,9 @@ def main(argv=None):
                     help="simulator results (default: docs/results/results.json in the repo)")
     ap.add_argument("--commercial", action="store_true",
                     help="print the commercial-case extension (market, outcome value, capacity, benchmarks) instead of the pilot cost report")
+    ap.add_argument("--pricing", action="store_true",
+                    help="print the pricing and unit-economics block of docs/commercial/business-case.md section 9 (markdown)")
+    ap.add_argument("--write", action="store_true", help="with --pricing: rewrite that block in business-case.md")
     args = ap.parse_args(argv)
     try:
         data, spec = load_inputs(args.inputs)
@@ -435,6 +796,19 @@ def main(argv=None):
         return 2
     v = {k: s["value"] for k, s in spec.items()}
     cur = data.get("currency", "AED")
+    if args.pricing:
+        try:
+            text = pricing_markdown(spec, shares, load_effort_minutes(args.results), load_programme_shares(args.results),
+                                    Path(args.results).name)
+        except (KeyError, ValueError) as exc:
+            print(f"error: {exc}", file=sys.stderr)
+            return 2
+        if args.write:
+            changed = write_pricing_block(text)
+            print(f"{BUSINESS_CASE.relative_to(REPO_ROOT)}: {'updated' if changed else 'unchanged'}")
+        else:
+            sys.stdout.write(text)
+        return 0
     if args.commercial:
         try:
             print(f"Currency: {cur}. Inputs file: {Path(args.inputs).name}.")

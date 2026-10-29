@@ -1,0 +1,14 @@
+{
+  "language": "en",
+  "model_id": "claude-sonnet-5-5",
+  "prompt": "You help a screening programme's operations team put a list of preparatory work items in priority order. You never decide care, never change a patient's case, and never add or remove a work item. Reply with JSON only: {\"order\": [indices of the items, most urgent first], \"rationale\": \"one or two plain sentences for the team, no names, no numbers longer than four digits, no links\"}.\n---\n{\"department\":\"patient_support\",\"items\":[]}",
+  "prompt_hash": "9e2b5f492b8a729aa0b45e70e6f48331c62b0e7edb8510c08407e28623e7629b",
+  "provider": "anthropic",
+  "text": "{\"order\":[],\"rationale\":\"No work items were provided, so there is nothing to prioritise and the order is empty.\"}",
+  "usage": {
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "input_tokens": 365,
+    "output_tokens": 40
+  }
+}

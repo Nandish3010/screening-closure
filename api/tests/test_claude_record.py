@@ -50,9 +50,8 @@ class FakeAnthropic:
                 items = json.loads(user)["items"]
                 text = json.dumps({"order": list(reversed(range(len(items)))), "rationale": "Newest items first."})
         else:
-            owner = re.search(r"Care owner name to include: (.+)", user).group(1)
-            step = re.search(r"Next step to include: (.+)", user).group(1)
-            date = re.search(r"Appointment date to include: (.+)", user)
+            owner, step = "{owner_name}", "{next_step}"  # A35: the prompt asks for placeholders, the system fills them in
+            date = re.search(r"placeholder (\{appointment_date\})", user)
             if "Arabic" in user:
                 text = f"نتيجة فحصك جاهزة. سيتواصل معك فريق رعايتك لمناقشة {step}. المسؤول عن رعايتك: {owner}."
                 text += f" الموعد: {date.group(1)}." if date else ""
@@ -86,13 +85,15 @@ def env(monkeypatch, tmp_path):
 def test_record_then_replay_the_whole_demo_offline(env, monkeypatch, tmp_path):
     monkeypatch.setenv("LLM_NETWORK_ENABLED", "true")
     monkeypatch.setenv("LLM_CACHE_MODE", "record")
-    counts = record_demo.record_drafts(record_demo.PERSONAS[:2])
+    counts = record_demo.record_drafts(record_demo.PERSONAS[:2])  # two personas of one role: one prompt each, shared
     assert counts["drafts"] == 2 * 2 * 6 * 3  # personas x languages x purposes x channels
+    assert counts["prompts"] == 2 * 6 * 3 and len(env.calls) == counts["prompts"]
+    assert counts["abstained"] == 0 and counts["drafts:ar"] == counts["drafts:en"]
     agency = record_demo.record_agency()
     assert agency["status"] == "done" and agency["planned_by_claude"] >= 1
     recorded = len(list((tmp_path / "cache" / "anthropic").glob("*.json")))
     planned = len(list((tmp_path / "cache" / "agency" / "anthropic").glob("*.json")))
-    assert recorded >= counts["drafts"] - counts["abstained"] and planned >= 1
+    assert recorded == counts["prompts"] and planned >= 1
     spent = sum(r["input_tokens"] + r["output_tokens"] for r in claude.UsageLedger().rows())
     assert spent > 0
 

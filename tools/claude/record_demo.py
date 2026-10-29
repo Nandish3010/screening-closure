@@ -42,14 +42,22 @@ PERSONAS = (
 )
 
 
+RETRIES = 2  # extra model calls for a prompt whose recording the validator rejected for one of the personas
+
+
 def record_drafts(personas=PERSONAS) -> Counter:
-    from app.ai.provider import CHANNELS, LANGUAGES, PURPOSES, DraftRequest, get_provider
+    """Record each distinct prompt once (the prompt carries placeholders, so personas of one role share it), retry a
+    recording the validator rejects, then count what each persona would get on replay."""
+    from app.ai.cache import CachingProvider
+    from app.ai.claude import ClaudeProvider
+    from app.ai.provider import CHANNELS, LANGUAGES, PURPOSES, DraftRequest, get_provider, prompt_hash
     from app.ai.templates import DEFAULT_NEXT_STEP, SAMPLE_VALUES
     from app.ai.validate import AbstentionLog, draft_with_fallback
 
-    provider = get_provider("anthropic")
+    recorder = get_provider("anthropic")
+    replayer = CachingProvider(ClaudeProvider(), mode="replay")
     log = AbstentionLog()
-    out: Counter = Counter()
+    groups: dict[str, list[DraftRequest]] = {}
     for role, name in personas:
         for language in LANGUAGES:
             for purpose in PURPOSES:
@@ -57,11 +65,27 @@ def record_drafts(personas=PERSONAS) -> Counter:
                     date = SAMPLE_VALUES[language]["appointment_date"] if purpose == "appointment_confirmation" else None
                     req = DraftRequest(purpose, channel, language, name, role, DEFAULT_NEXT_STEP[language],
                                        "colorectal_fit", date)
-                    result = draft_with_fallback(req, provider, log)
-                    out["drafts"] += 1
-                    if result.fallback_used:
-                        out["abstained"] += 1
-                        out[f"abstained:{(result.abstention_reason or '').split(':')[0]}"] += 1
+                    groups.setdefault(prompt_hash(req), []).append(req)
+    out: Counter = Counter()
+    out["prompts"] = len(groups)
+    for reqs in groups.values():
+        if all(not draft_with_fallback(r, replayer, log).fallback_used for r in reqs):
+            continue  # already recorded and accepted for every persona: no call
+        for attempt in range(1 + RETRIES):
+            draft_with_fallback(reqs[0], recorder, log)  # the real call; writes the recording
+            if all(not draft_with_fallback(r, replayer, log).fallback_used for r in reqs):
+                break
+            out["retries"] += attempt < RETRIES
+    for reqs in groups.values():
+        for r in reqs:
+            result = draft_with_fallback(r, replayer, log)
+            out["drafts"] += 1
+            out[f"drafts:{r.language}"] += 1
+            if result.fallback_used:
+                out["abstained"] += 1
+                out[f"abstained:{r.language}"] += 1
+                out[f"abstained:{(result.abstention_reason or '').split(':')[0]}"] += 1
+                out[f"reason:{result.abstention_reason}"] += 1
     return out
 
 
@@ -89,6 +113,9 @@ def main() -> int:
     os.environ.update({"LLM_PROVIDER": "anthropic", "LLM_NETWORK_ENABLED": "true", "LLM_CACHE_MODE": "record",
                        "AGENCY_PLANNER": "claude"})
     os.environ.setdefault("LLM_DAILY_TOKEN_BUDGET", "600000")
+    # The run's wall-clock budget (20 s by default) is for the demo's instant replay; five live Sonnet calls take longer,
+    # and a run that ran out of budget is recorded as `budget_exhausted` with its executioners skipped.
+    os.environ.setdefault("AGENCY_RUN_BUDGET_SECONDS", "600")
     os.environ.setdefault("LLM_USAGE_DB", str(REPO / "data" / "llm_usage_record.sqlite"))
     from app.ai import cache, claude
 

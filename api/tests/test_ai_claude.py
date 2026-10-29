@@ -175,10 +175,10 @@ def test_budget_exhausted_reason_and_no_call(online, monkeypatch):
 
 def test_spend_accumulates_across_calls_and_provider_instances(online, monkeypatch):
     monkeypatch.setenv("LLM_MAX_TOKENS_PER_CALL", "300")
-    monkeypatch.setenv("LLM_DAILY_TOKEN_BUDGET", "1500")
+    monkeypatch.setenv("LLM_DAILY_TOKEN_BUDGET", "1700")
     fake = FakeClient(reply(inp=400, out=200))  # 600 per call
     results = [draft_with_fallback(make_req(), claude.ClaudeProvider(client=fake), AbstentionLog()) for _ in range(4)]
-    # two real calls fit (600 + 600 = 1200, the third needs ~300 + prompt estimate more than the 300 left)
+    # two real calls fit (600 + 600 = 1200, the third needs the prompt estimate + 300, more than the 500 left)
     assert [r.fallback_used for r in results] == [False, False, True, True]
     assert results[2].abstention_reason == "budget_exhausted"
     assert claude.UsageLedger().spent() == 1200
@@ -353,3 +353,74 @@ def test_agency_planner_setting(monkeypatch):
 
 def test_provider_response_error_is_the_adapters_class():
     assert issubclass(ProviderResponseError, Exception)
+
+
+# ---- placeholders: the model copies {owner_name}, {next_step} and {appointment_date}; the system fills them in (A35) ----
+
+AR_WITH_TOKENS = "نتيجة فحصك جاهزة. الخطوة التالية هي {next_step}. سيتواصل معك فريق رعايتك والمسؤول عنه هو {owner_name}."
+
+
+def test_the_prompt_carries_placeholders_not_values_and_steers_away_from_you_have():
+    req = make_req(appointment_date="Tuesday 3 November 2026", purpose="appointment_confirmation")
+    prompt = build_prompt(req)
+    for value in (req.owner_name, req.next_step, req.appointment_date):
+        assert value not in prompt and value not in SYSTEM_PROMPT
+    for token in ("{owner_name}", "{next_step}", "{appointment_date}"):
+        assert token in prompt
+    assert "you have" in (SYSTEM_PROMPT + prompt).lower()  # named as a phrase to avoid
+    assert "{appointment_date}" not in build_prompt(make_req())  # only when there is a date
+
+
+def test_two_owners_with_the_same_role_get_the_same_prompt_so_no_name_is_ever_sent():
+    a, b = make_req(owner_name="Dr Sara Khan"), make_req(owner_name="Dr. Layla Haddad")
+    assert prompt_hash(a) == prompt_hash(b)
+
+
+def test_placeholders_are_filled_after_the_model_answers_and_the_validator_still_checks_the_result(online):
+    req = make_req(language="ar", owner_name="Dr Sara Khan", next_step="فحص بالكاميرا")
+    result = draft_with_fallback(req, provider(FakeClient(reply(text=AR_WITH_TOKENS))), AbstentionLog())
+    assert result.fallback_used is False
+    assert "Dr Sara Khan" in result.text and "فحص بالكاميرا" in result.text and "{" not in result.text
+
+
+def test_a_model_that_drops_the_owner_placeholder_is_still_rejected(online):
+    req = make_req(language="ar", next_step="فحص بالكاميرا")
+    dropped = "نتيجة فحصك جاهزة. الخطوة التالية هي {next_step}. سيتواصل معك فريق رعايتك."
+    log = AbstentionLog()
+    result = draft_with_fallback(req, provider(FakeClient(reply(text=dropped))), log)
+    assert result.fallback_used is True and "missing_owner_name" in result.abstention_reason
+
+
+def test_an_unknown_placeholder_is_not_filled_and_is_rejected(online):
+    text = GOOD.replace("Dr Sara Khan", "{owner_name}") + " Ref {patient_name}."
+    result = draft_with_fallback(make_req(), provider(FakeClient(reply(text=text))), AbstentionLog())
+    assert result.fallback_used is True and "unfilled_placeholder" in result.abstention_reason
+
+
+def test_a_provider_that_does_not_use_placeholders_gets_no_substitution():
+    class Plain:
+        name, model_id = "plain", "m"
+
+        def draft(self, req):
+            from app.ai.provider import DraftResult
+            return DraftResult(GOOD.replace("Dr Sara Khan", "{owner_name}"), req.language, "plain", "m", False, None, "h")
+
+    result = draft_with_fallback(make_req(), Plain(), AbstentionLog())
+    assert result.fallback_used is True and "unfilled_placeholder" in result.abstention_reason
+
+
+def test_the_cache_provider_passes_the_flag_through_and_stores_the_raw_text(online, monkeypatch, tmp_path):
+    monkeypatch.setenv("LLM_CACHE_DIR", str(tmp_path))
+    req = make_req(language="ar", next_step="فحص بالكاميرا")
+    cp = CachingProvider(provider(FakeClient(reply(text=AR_WITH_TOKENS))), mode="record")
+    result = draft_with_fallback(req, cp, AbstentionLog())
+    assert result.fallback_used is False and "Dr Sara Khan" in result.text
+    assert read_entry("anthropic", prompt_hash(req)).text == AR_WITH_TOKENS  # the recording holds the tokens, no name
+    replayed = draft_with_fallback(req, CachingProvider(provider(FakeClient()), mode="replay"), AbstentionLog())
+    assert replayed.text == result.text
+
+
+def test_the_english_prompt_also_rules_out_if_you_have_questions_and_the_arabic_prompt_is_unchanged_by_it():
+    en, ar = build_prompt(make_req(language="en")), build_prompt(make_req(language="ar"))
+    assert "if you have questions" in en.lower() and "closing" in en.lower()
+    assert "if you have questions" not in ar.lower()

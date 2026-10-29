@@ -305,6 +305,7 @@ class ClaudeProvider(_ClaudeCaller):
     """Drafting provider (Haiku). Registered as `anthropic`, wrapped by the output cache."""
 
     name = PROVIDER_NAME
+    fills_placeholders = True  # the prompt asks for {owner_name}, {next_step}, {appointment_date}; draft_with_fallback fills them
 
     @property
     def model_id(self) -> str:

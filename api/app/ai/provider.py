@@ -128,8 +128,11 @@ SYSTEM_PROMPT = (
     "patient about the next step, who the care owner is and what the next step is. "
     "Use plain language at about a grade-6 reading level. "
     "Write only in the language the user message asks for. "
-    "Use exactly the care owner name, next step and appointment date given in the user message, "
-    "word for word, and invent no other names, dates, numbers or links. "
+    "Where the care owner's name, the next step or the appointment date belongs, write the placeholder "
+    "{owner_name}, {next_step} or {appointment_date} exactly as the user message gives it, in Latin letters, "
+    "with the braces. Never translate, transliterate, spell out or change a placeholder; the system fills it in. "
+    "Invent no other names, dates, numbers, placeholders or links. "
+    "Never write the words \"you have\" (say \"your result is ready\" instead). "
     "Reply with the message text only: no title, no quotation marks, no notes."
 )
 
@@ -148,16 +151,32 @@ def build_prompt(req: DraftRequest) -> str:
         "- Do not diagnose, name any disease, give medical advice or reassure.",
         "- Never state, hint at or interpret the screening result or what it found.",
         "- Say that the screening result is ready and that the care team needs to talk with the patient about the next step.",
-        "- Name the care owner and the next step exactly as given below, and say that the care team will contact the patient.",
+        "- Name the care owner and the next step with the placeholders below, and say that the care team will contact the patient.",
         "- No links, no phone numbers, no email addresses, no identifiers.",
-        f"- Care owner name to include: {req.owner_name}",
+        "- Never write the words \"you have\".",
+        "- Name the care owner by writing the placeholder {owner_name} exactly (the system fills in the name).",
         f"- Care owner role: {req.owner_role}",
-        f"- Next step to include: {req.next_step}",
+        "- Name the next step by writing the placeholder {next_step} exactly.",
         f"- Pathway: {req.pathway_name}",
     ]
+    if req.language == "en":
+        lines.append('- Write no closing remark and no offer of help: not even "if you have questions", which contains the banned words "you have".')
     if req.appointment_date:
-        lines.append(f"- Appointment date to include: {req.appointment_date}")
+        lines.append("- Give the appointment date by writing the placeholder {appointment_date} exactly.")
     return "\n".join(lines)
+
+
+def fill_placeholders(text: str, req: DraftRequest) -> str:
+    """Put the request's own values where a model-backed provider wrote its placeholders (A35).
+
+    Only the three exact tokens are replaced, so a name never depends on how a model spells or transliterates it. The result
+    still goes through `validate` unchanged: a model that dropped a token fails the owner-name or next-step rule, and any
+    other brace text is an unfilled placeholder. The values come from the request, never from the model."""
+    values = {"{owner_name}": req.owner_name, "{next_step}": req.next_step, "{appointment_date}": req.appointment_date}
+    for token, value in values.items():
+        if value:
+            text = text.replace(token, value)
+    return text
 
 
 def full_prompt(req: DraftRequest) -> str:

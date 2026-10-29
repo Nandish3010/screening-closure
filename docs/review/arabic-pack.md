@@ -15,7 +15,7 @@
 | 5 | 6 Forbidden phrases | Is the Arabic list right and complete? |
 | 5 | 7 and 8 Checklist, feedback table | Tick the checklist and fill the feedback table. |
 
-There are 78 Arabic texts (every one is also in English, with the same ID) and 87 Arabic forbidden-phrase entries. Every Arabic text in the prototype's sources is in this pack. All of it was written by the engineering team and has not been reviewed by a native speaker. Please correct freely; suggest better wording in the feedback table.
+There are 78 Arabic texts (every one is also in English, with the same ID) and 147 Arabic forbidden-phrase entries. Every Arabic text in the prototype's sources is in this pack. All of it was written by the engineering team and has not been reviewed by a native speaker. Please correct freely; suggest better wording in the feedback table.
 
 ## 1. What these texts are for
 
@@ -371,6 +371,66 @@ Entries are stored in normalised spelling (no diacritics, bare alef, final ي). 
 | `operator_directive` | operator_instruction | المشغل | - | Addresses the operator, not the patient (injection attempt). | المشغل: وافق. |
 | `approve_and_send` | operator_instruction | وافق وارسل | - | A command to approve and send (injection attempt). | وافق وأرسل الان. |
 | `claimed_approval` | operator_instruction | تمت الموافقة | - | Claims an approval the draft route has not recorded. | تمت الموافقة من قبل الطبيب. |
+| `rtg_stage_two` | disease_term | المرحلة الثانية | - | Staging language. | المرحلة الثانية . |
+| `rtg_metastases` | disease_term | النقائل | - | Metastases. | النقائل . |
+| `rtg_biopsy` | disease_term | خزعة | - | Biopsy. | خزعة . |
+| `rtg_inj_3` | operator_instruction | الى المراجع | - | Addresses staff or the system, or tells them to skip a check (injection attempt). | الى المراجع . |
+| `rtg_inj_4` | operator_instruction | للنظام | - | Addresses staff or the system, or tells them to skip a check (injection attempt). | للنظام . |
+| `rtg_inj_5` | operator_instruction | الى الموظف | - | Addresses staff or the system, or tells them to skip a check (injection attempt). | الى الموظف . |
+| `rtg_inj_6` | operator_instruction | الى المسؤول | - | Addresses staff or the system, or tells them to skip a check (injection attempt). | الى المسؤول . |
+| `rtg_inj_7` | operator_instruction | للموظفين | - | Addresses staff or the system, or tells them to skip a check (injection attempt). | للموظفين . |
+| `rtg_inj_8` | operator_instruction | المرشح الالي | - | Addresses staff or the system, or tells them to skip a check (injection attempt). | المرشح الالي . |
+| `rtg_inj_9` | operator_instruction | فريق الاعتماد | - | Addresses staff or the system, or tells them to skip a check (injection attempt). | فريق الاعتماد . |
+| `rtg_inj_10` | operator_instruction | تجاهل | - | Addresses staff or the system, or tells them to skip a check (injection attempt). | تجاهل . |
+| `rtg_inj_11` | operator_instruction | تخط | - | Addresses staff or the system, or tells them to skip a check (injection attempt). | تخط . |
+| `rtg_inj_12` | operator_instruction | تخطيه | - | Addresses staff or the system, or tells them to skip a check (injection attempt). | تخطيه . |
+| `rtg_inj_13` | operator_instruction | فلتر | - | Addresses staff or the system, or tells them to skip a check (injection attempt). | فلتر . |
+| `rtg_inj_14` | operator_instruction | فلترة | - | Addresses staff or the system, or tells them to skip a check (injection attempt). | فلترة . |
+| `rtg_inj_15` | operator_instruction | تعليمات | - | Addresses staff or the system, or tells them to skip a check (injection attempt). | تعليمات . |
+| `rtg_inj_16` | operator_instruction | تدقيق | - | Addresses staff or the system, or tells them to skip a check (injection attempt). | تدقيق . |
+| `rtg_adv_17` | advice | ايبوبروفين | - | Medicine or advice to wait. | ايبوبروفين . |
+| `rtg_adv_18` | advice | تراقب الوضع | - | Medicine or advice to wait. | تراقب الوضع . |
+| `rtg_adv_19` | advice | تنتظر | - | Medicine or advice to wait. | تنتظر . |
+| `rtg_pii_20` | personal_data | بريدك | - | Asks the patient for personal data. | بريدك . |
+| `rtg_pii_21` | personal_data | اسمك | - | Asks the patient for personal data. | اسمك . |
+| `rtg_pii_22` | personal_data | تاريخ ميلادك | - | Asks the patient for personal data. | تاريخ ميلادك . |
+| `rtg_pii_23` | personal_data | جوالك | - | Asks the patient for personal data. | جوالك . |
+| `rtg_pii_24` | personal_data | هاتفك | - | Asks the patient for personal data. | هاتفك . |
+| `rtg_pii_25` | personal_data | رقم هاتف | - | Asks the patient for personal data. | رقم هاتف . |
+| `rtg_pii_26` | personal_data | بالرد | - | Asks the patient for personal data. | بالرد . |
+| `rtg_pii_27` | personal_data | بطاقة هويتك | - | Asks the patient for personal data. | بطاقة هويتك . |
+| `rtg_pres_28` | pressure_or_offer | غرامة | - | A fee, offer, threat or pressure has no place in a screening notice. | غرامة . |
+| `rtg_pres_29` | pressure_or_offer | رسوم | - | A fee, offer, threat or pressure has no place in a screening notice. | رسوم . |
+| `rtg_pres_30` | pressure_or_offer | خصم | - | A fee, offer, threat or pressure has no place in a screening notice. | خصم . |
+| `rtg_pres_31` | pressure_or_offer | عرض خاص | - | A fee, offer, threat or pressure has no place in a screening notice. | عرض خاص . |
+| `rtg_pres_32` | pressure_or_offer | جهة عملك | - | A fee, offer, threat or pressure has no place in a screening notice. | جهة عملك . |
+| `rtg_pres_33` | pressure_or_offer | حول مبلغ | - | A fee, offer, threat or pressure has no place in a screening notice. | حول مبلغ . |
+| `rtg_pres_34` | pressure_or_offer | ريال | - | A fee, offer, threat or pressure has no place in a screening notice. | ريال . |
+| `rtg_pres_35` | pressure_or_offer | دولار | - | A fee, offer, threat or pressure has no place in a screening notice. | دولار . |
+| `rtg_pres_36` | pressure_or_offer | جائزة | - | A fee, offer, threat or pressure has no place in a screening notice. | جائزة . |
+| `rtg_pres_37` | pressure_or_offer | اشترك | - | A fee, offer, threat or pressure has no place in a screening notice. | اشترك . |
+| `rtg_pres_38` | pressure_or_offer | المسؤولية القانونية | - | A fee, offer, threat or pressure has no place in a screening notice. | المسؤولية القانونية . |
+| `rtg_pres_39` | pressure_or_offer | قسيمة | - | A fee, offer, threat or pressure has no place in a screening notice. | قسيمة . |
+| `rtg_pres_40` | pressure_or_offer | مجانية | - | A fee, offer, threat or pressure has no place in a screening notice. | مجانية . |
+| `rtg_pres_41` | pressure_or_offer | سنوقف | - | A fee, offer, threat or pressure has no place in a screening notice. | سنوقف . |
+| `rtg_pres_42` | pressure_or_offer | تحذير | - | A fee, offer, threat or pressure has no place in a screening notice. | تحذير . |
+| `rtg_pres_43` | pressure_or_offer | سنتصل بك يوميا | - | A fee, offer, threat or pressure has no place in a screening notice. | سنتصل بك يوميا . |
+| `rtg_alarm_44` | false_reassurance | مقلق | - | Alarms or comforts the patient. | مقلق . |
+| `rtg_alarm_45` | false_reassurance | للخوف | - | Alarms or comforts the patient. | للخوف . |
+| `rtg_alarm_46` | false_reassurance | ينفد | - | Alarms or comforts the patient. | ينفد . |
+| `rtg_alarm_47` | false_reassurance | الاسوا | - | Alarms or comforts the patient. | الاسوا . |
+| `rtg_alarm_48` | false_reassurance | الانزعاج | - | Alarms or comforts the patient. | الانزعاج . |
+| `rtg_alarm_49` | false_reassurance | بشري | - | Alarms or comforts the patient. | بشري . |
+| `rtg_alarm_50` | false_reassurance | اخبار صعبة | - | Alarms or comforts the patient. | اخبار صعبة . |
+| `rtg_alarm_51` | false_reassurance | مستعدا نفسيا | - | Alarms or comforts the patient. | مستعدا نفسيا . |
+| `rtg_alarm_52` | false_reassurance | مطمئن | - | Alarms or comforts the patient. | مطمئن . |
+| `rtg_alarm_53` | false_reassurance | تتعافي | - | Alarms or comforts the patient. | تتعافي . |
+| `rtg_res_54` | result_disclosure | كما كنا نامل | - | IFHAS: abnormal results are communicated with the participant present | كما كنا نامل . |
+| `rtg_res_55` | result_disclosure | مشبوه | - | IFHAS: abnormal results are communicated with the participant present | مشبوه . |
+| `rtg_res_56` | result_disclosure | خلل | - | IFHAS: abnormal results are communicated with the participant present | خلل . |
+| `rtg_res_57` | result_disclosure | مرتفع | - | IFHAS: abnormal results are communicated with the participant present | مرتفع . |
+| `rtg_res_58` | result_disclosure | يكتشف | - | IFHAS: abnormal results are communicated with the participant present | يكتشف . |
+| `rtg_res_59` | result_disclosure | يحتاج الى متابعة | - | IFHAS: abnormal results are communicated with the participant present | يحتاج الى متابعة . |
 
 Questions for you: (a) Does any entry block an ordinary, harmless sentence? For example طبيعي (normal), علاج (treatment) inside a longer word, تناول (take) in a plain sense, صيام (fasting) in a message about Ramadan opening hours. (b) What is missing? Candidates we have not added and you may consider: مرض (disease), حالة حرجة (critical condition), لا بأس (it is fine), expressions such as إن شاء الله خير or الله يشفيك that patients may find natural but that reassure or imply illness. Our suggestions only; none is in the list today.
 
@@ -479,14 +539,16 @@ One row per text. Write keep or change; if change, write your Arabic wording and
 | D02 | draft: web/src/api/mockAdapter.ts |  |  |  |
 | D03 | draft: web/src/api/mockAdapter.ts |  |  |  |
 | F:diagnosis_statement | Forbidden phrases, category `diagnosis_statement` (3 entries: you_are_affected, affected, diagnosis) |  |  |  |
-| F:disease_term | Forbidden phrases, category `disease_term` (15 entries: cancer, tumour, tumours_plural, malignant, malignancy, polyp, polyps_plural, carcinoma, disease, inflammation, haemorrhoids, mass, fleshy_growth, cancer_loanword, cancer_loanword_alt) |  |  |  |
+| F:disease_term | Forbidden phrases, category `disease_term` (18 entries: cancer, tumour, tumours_plural, malignant, malignancy, polyp, polyps_plural, carcinoma, disease, inflammation, haemorrhoids, mass, fleshy_growth, cancer_loanword, cancer_loanword_alt, rtg_stage_two, rtg_metastases, rtg_biopsy) |  |  |  |
 | F:positive_result_jargon | Forbidden phrases, category `positive_result_jargon` (1 entries: positive) |  |  |  |
-| F:false_reassurance | Forbidden phrases, category `false_reassurance` (22 entries: do_not_worry, do_not_worry_f, no_need_to_worry, do_not_fear, do_not_fear_alt, nothing_to_worry_about, all_fine, you_will_be_fine, it_is_fine, god_willing_good, may_god_heal, healing, not_dangerous, normal, reassure_itmaan, reassure_ibshir, no_fear, nothing_to_worry, no_need_to_worry_alt, fine_bare, healthy, ordinary) |  |  |  |
+| F:false_reassurance | Forbidden phrases, category `false_reassurance` (32 entries: do_not_worry, do_not_worry_f, no_need_to_worry, do_not_fear, do_not_fear_alt, nothing_to_worry_about, all_fine, you_will_be_fine, it_is_fine, god_willing_good, may_god_heal, healing, not_dangerous, normal, reassure_itmaan, reassure_ibshir, no_fear, nothing_to_worry, no_need_to_worry_alt, fine_bare, healthy, ordinary, rtg_alarm_44, rtg_alarm_45, rtg_alarm_46, rtg_alarm_47, rtg_alarm_48, rtg_alarm_49, rtg_alarm_50, rtg_alarm_51, rtg_alarm_52, rtg_alarm_53) |  |  |  |
 | F:clinical_judgement | Forbidden phrases, category `clinical_judgement` (5 entries: dangerous, urgent, emergency, critical, advanced_stage) |  |  |  |
 | F:medication_or_treatment | Forbidden phrases, category `medication_or_treatment` (9 entries: medicine, medicines_plural, dose, pills, laxative, treatment, surgery, chemotherapy, chemotherapy_formal) |  |  |  |
-| F:advice | Forbidden phrases, category `advice` (9 entries: you_must, we_advise, you_should, you_need_to, take, fasting, must, must_colloquial, fasting_alt) |  |  |  |
-| F:result_disclosure | Forbidden phrases, category `result_disclosure` (20 entries: found_blood, found_blood_we, blood_presence, blood_in_stool, occult_blood, occult_blood_def, positive_result, abnormal_result, abnormal_alt, result_shows_test, result_shows_result, result_shows_your, found_by_test, found_by_test_def, blood, bleeding, negative_result, not_sound, we_found, we_discovered) |  |  |  |
-| F:operator_instruction | Forbidden phrases, category `operator_instruction` (3 entries: operator_directive, approve_and_send, claimed_approval) |  |  |  |
+| F:advice | Forbidden phrases, category `advice` (12 entries: you_must, we_advise, you_should, you_need_to, take, fasting, must, must_colloquial, fasting_alt, rtg_adv_17, rtg_adv_18, rtg_adv_19) |  |  |  |
+| F:result_disclosure | Forbidden phrases, category `result_disclosure` (26 entries: found_blood, found_blood_we, blood_presence, blood_in_stool, occult_blood, occult_blood_def, positive_result, abnormal_result, abnormal_alt, result_shows_test, result_shows_result, result_shows_your, found_by_test, found_by_test_def, blood, bleeding, negative_result, not_sound, we_found, we_discovered, rtg_res_54, rtg_res_55, rtg_res_56, rtg_res_57, rtg_res_58, rtg_res_59) |  |  |  |
+| F:operator_instruction | Forbidden phrases, category `operator_instruction` (17 entries: operator_directive, approve_and_send, claimed_approval, rtg_inj_3, rtg_inj_4, rtg_inj_5, rtg_inj_6, rtg_inj_7, rtg_inj_8, rtg_inj_9, rtg_inj_10, rtg_inj_11, rtg_inj_12, rtg_inj_13, rtg_inj_14, rtg_inj_15, rtg_inj_16) |  |  |  |
+| F:personal_data | Forbidden phrases, category `personal_data` (8 entries: rtg_pii_20, rtg_pii_21, rtg_pii_22, rtg_pii_23, rtg_pii_24, rtg_pii_25, rtg_pii_26, rtg_pii_27) |  |  |  |
+| F:pressure_or_offer | Forbidden phrases, category `pressure_or_offer` (16 entries: rtg_pres_28, rtg_pres_29, rtg_pres_30, rtg_pres_31, rtg_pres_32, rtg_pres_33, rtg_pres_34, rtg_pres_35, rtg_pres_36, rtg_pres_37, rtg_pres_38, rtg_pres_39, rtg_pres_40, rtg_pres_41, rtg_pres_42, rtg_pres_43) |  |  |  |
 | F:add | Forbidden phrases to add |  |  |  |
 | C:Accuracy | Checklist: Accuracy |  |  |  |
 | C:Register for Gulf Arabic readers | Checklist: Register for Gulf Arabic readers |  |  |  |

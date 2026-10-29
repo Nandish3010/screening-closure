@@ -380,7 +380,7 @@ fresh-clone:
 # test its own api/ rather than the checkout the venv was installed from.
 # tests/redteam is excluded: its conftest.py would shadow tests/conftest.py (both import as "conftest"); it runs under test-redteam.
 test-tools:
-	PYTHONPATH=api $(PY) -m pytest tests --ignore=tests/redteam tools/demo/tests tools/video/tests tools/rai/tests -q -m "not live"
+	PYTHONPATH=api $(PY) -m pytest tests --ignore=tests/redteam tools/demo/tests tools/video/tests tools/pilot/tests tools/rai/tests -q -m "not live"
 
 # M7-5: Responsible AI evidence (docs/governance/responsible-ai.md). rai-fairness rewrites docs/results/fairness.{md,json}
 # (triage precision/recall by language and dialect, risk-score AUC and calibration by subgroup, validator FP/FN by language);

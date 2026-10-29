@@ -216,7 +216,7 @@ def test_the_prompt_is_stored_and_the_hash_is_reproducible():
     out = create(cid).json()
     prompt = drafts.store.get_prompt(out["prompt_hash"])
     assert prompt.system_prompt == SYSTEM_PROMPT
-    assert "Dr Sara Khan" in prompt.prompt_text and "a camera test" in prompt.prompt_text
+    assert "{owner_name}" in prompt.prompt_text and "{next_step}" in prompt.prompt_text  # A35: values are placeholders
     digest = hashlib.sha256((prompt.system_prompt + "\n---\n" + prompt.prompt_text).encode()).hexdigest()
     assert digest == out["prompt_hash"]
 

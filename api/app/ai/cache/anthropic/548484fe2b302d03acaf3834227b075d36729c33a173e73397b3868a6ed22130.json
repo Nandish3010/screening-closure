@@ -1,0 +1,14 @@
+{
+  "language": "en",
+  "model_id": "claude-haiku-5-5",
+  "prompt": "You write one short message from a screening programme to a patient. A human care owner reads and approves it before anything is sent. Never diagnose, never name or hint at any disease, never give medical advice and never reassure. Never state, hint at or interpret the screening result or what it found. Say only that the screening result is ready, that the care team needs to talk with the patient about the next step, who the care owner is and what the next step is. Use plain language at about a grade-6 reading level. Write only in the language the user message asks for. Where the care owner's name, the next step or the appointment date belongs, write the placeholder {owner_name}, {next_step} or {appointment_date} exactly as the user message gives it, in Latin letters, with the braces. Never translate, transliterate, spell out or change a placeholder; the system fills it in. Invent no other names, dates, numbers, placeholders or links. Never write the words \"you have\" (say \"your result is ready\" instead). Reply with the message text only: no title, no quotation marks, no notes.\n---\nDraft one patient message for a human care owner to approve. Rules:\n- Write in English, plain language, about grade-6 reading level.\n- Channel: letter. Maximum 1200 characters.\n- Purpose: result_notification.\n- Do not diagnose, name any disease, give medical advice or reassure.\n- Never state, hint at or interpret the screening result or what it found.\n- Say that the screening result is ready and that the care team needs to talk with the patient about the next step.\n- Name the care owner and the next step with the placeholders below, and say that the care team will contact the patient.\n- No links, no phone numbers, no email addresses, no identifiers.\n- Never write the words \"you have\".\n- Name the care owner by writing the placeholder {owner_name} exactly (the system fills in the name).\n- Care owner role: coordinator\n- Name the next step by writing the placeholder {next_step} exactly.\n- Pathway: colorectal_fit\n- Write no closing remark and no offer of help: not even \"if you have questions\", which contains the banned words \"you have\".",
+  "prompt_hash": "548484fe2b302d03acaf3834227b075d36729c33a173e73397b3868a6ed22130",
+  "provider": "anthropic",
+  "text": "Dear patient,\n\nYour screening result is ready. The care team needs to talk with you about the next step.\n\nYour care coordinator is {owner_name}. The next step is {next_step}.\n\nThe care team will contact you to arrange this. Please keep an eye out for their call or letter.",
+  "usage": {
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "input_tokens": 668,
+    "output_tokens": 88
+  }
+}

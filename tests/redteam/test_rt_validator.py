@@ -120,7 +120,7 @@ ATTACKS: dict[str, list[tuple[str, str]]] = {
     ],
 }
 # RT-V-14 has no word list that could hold it: the control is that a human reads and approves every draft.
-LIMITATION.update({f"RT-V-14.{n}": f"known limitation RT-V-14.{n} / HZ-31" for n in (1, 3, 4, 6)})
+LIMITATION.update({f"RT-V-14.{n}": f"known limitation RT-V-14.{n} / HZ-31" for n in (3, 4)})
 LIMITATION.update({cid: f"known limitation {cid} / HZ-31" for cid in ("RT-V-01.19", "RT-V-01.20", "RT-V-02.19", "RT-V-06.23")})
 
 

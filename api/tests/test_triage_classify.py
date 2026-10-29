@@ -8,6 +8,7 @@ import pytest
 
 from app import payloads
 from app.triage import classify as triage
+from app.triage import optout
 from app.triage.labels import ALWAYS_HUMAN, AUTO_HANDLED, INTENTS, build_prompt
 
 CAL = triage.Calibration(temperature=1.0, threshold=0.8, mass_floor=0.5, model_id="fake-model-1")
@@ -185,11 +186,13 @@ def test_the_real_model_loads_lazily_in_a_worker_and_keeps_the_safety_rules(monk
     try:
         stop = triage.classify("Please do not contact me again", "en")
         assert stop["intent"] == "opt_out" and stop["needs_human"] is True
-        assert stop["model_id"] == triage.Calibration.load().model_id
+        assert stop["model_id"] == optout.GATE_MODEL_ID  # the deterministic gate answers opt-outs before the model (D15)
         arabic = triage.classify("أرجو عدم التواصل معي مرة أخرى", "ar")
         assert arabic["intent"] == "opt_out" and arabic["needs_human"] is True
+        assert arabic["model_id"] in (optout.GATE_MODEL_ID, triage.Calibration.load().model_id)  # gate or, failing that, the model
         clear = triage.classify("wrong number", "en")
         assert clear["intent"] == "wrong_number" and clear["needs_human"] is False and 0.5 < clear["confidence"] <= 1.0
+        assert clear["model_id"] == triage.Calibration.load().model_id  # a non-opt-out reply is scored by the model
         assert triage.classify("where is the clinic?")["needs_human"] is True
     finally:
         scorer = triage._scorer
