@@ -56,6 +56,15 @@ def check_case_log(events: Sequence, pathway: Pathway) -> list[str]:
             state = ev.payload["resume_state"]
             closed_open = False
             continue
+        if "to_state" in ev.payload:
+            # a side-state move the API's machine makes (M7-1): a rejected or bounced referral (referral_rejected), its
+            # accepted re-route (owner_accepted), a missed appointment cancelled (patient_acknowledged). The machine log
+            # itself is replayed through the real store by tests/test_sweep_conformance.py.
+            target = ev.payload["to_state"]
+            if state == terminal or target == terminal or target not in (*pathway.states, *pathway.side_states):
+                problems.append(f"seq {ev.seq}: {ev.type} moves {state} -> {target}")
+            state = target
+            continue
         if ev.type in pathway_events:
             try:
                 new_state = step(CaseModel(state=state, refusal=refusal), as_machine_event(ev), pathway).state

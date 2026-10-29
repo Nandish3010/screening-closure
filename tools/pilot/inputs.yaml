@@ -79,16 +79,16 @@ inputs:
     basis: Period over which the one-off integration cost is spread.
 
   coordinator_minutes_per_case_manual:
-    value: 57.7
+    value: 57.1
     unit: staff minutes (all roles) per actionable case without the engine
     status: assumed
-    basis: "Source: docs/results/results.json effort, baseline arm, human minutes per case (57.7; coordinator 47.1, owner clinician 4.4, specialist 6.2), as in docs/results/results.md Human effort, make evaluate on the merged tree, 25 October 2026 (B21 regeneration, commit db1d13d4a482). Synthetic simulator output; the minutes come from published time studies (66 percent of baseline minutes, sourced-adjacent) and assumptions (34 percent), so the blend is graded assumed, the weaker of the two. All roles are valued at the coordinator rate below, which understates clinician and specialist time; the script's wage-weighted section applies the wage ratios. To be measured in the pilot shadow period (K9)."
+    basis: "Source: docs/results/results.json effort, baseline arm, human minutes per case (57.1; coordinator 46.6, owner clinician 4.5, specialist 6.1), as in docs/results/results.md Human effort, make evaluate on the merged tree, 29 October 2026 (M7-1 regeneration: the simulator runs the API's sweep). Synthetic simulator output; the minutes come from published time studies (66 percent of baseline minutes, sourced-adjacent) and assumptions (34 percent), so the blend is graded assumed, the weaker of the two. All roles are valued at the coordinator rate below, which understates clinician and specialist time; the script's wage-weighted section applies the wage ratios. To be measured in the pilot shadow period (K9)."
 
   coordinator_minutes_per_case_with_engine:
-    value: 46.1
+    value: 45.8
     unit: staff minutes (all roles) per actionable case with the engine
     status: assumed
-    basis: "Source: docs/results/results.json effort, literature-anchored orchestrated arm at programme level (46.1 minutes, 20.1 percent fewer than baseline, 0.55 reach); 36.5 among the cases the programme reaches (36.7 percent fewer); the upper range is 34.1 (40.8 percent fewer). Synthetic; blend graded assumed as above. Coordinator minutes fall (-36.4 percent) but owner-clinician (+95.1 percent) and specialist (+22.0 percent) minutes rise, so valuing all roles at the coordinator rate overstates the saving: at the sourced-adjacent wage ratios (clinician 4, specialist 10, below) weighted staff time per case is higher than at baseline, not lower (see the wage-weighted section of the script output). To be measured in the pilot (K9)."
+    basis: "Source: docs/results/results.json effort, literature-anchored orchestrated arm at programme level (45.8 minutes, 19.7 percent fewer than baseline, 0.55 reach); 36.5 among the cases the programme reaches (36.0 percent fewer); the upper range is 34.3 (40.0 percent fewer). Synthetic; blend graded assumed as above. Coordinator minutes fall (-36.1 percent) but owner-clinician (+94.1 percent) and specialist (+22.6 percent) minutes rise, so valuing all roles at the coordinator rate overstates the saving: at the sourced-adjacent wage ratios (clinician 4, specialist 10, below) weighted staff time per case is higher than at baseline, not lower (see the wage-weighted section of the script output). To be measured in the pilot (K9)."
 
   coordinator_cost_aed_per_hour:
     value: 120
@@ -421,3 +421,343 @@ benchmark:
     unit: USD per additional person screened (median and interquartile range), 2022 prices
     status: sourced-adjacent
     basis: "Same review: median USD 663 per additional person screened (interquartile 202 to 1,711), 17 studies, 2022 dollars."
+
+# ---------------------------------------------------------------------------------------------------------
+# Pricing and unit economics (ticket M7-4, docs/commercial/business-case.md section 9). Read only with --pricing.
+# Azure unit prices are pay-as-you-go list prices in USD, read from the public Azure Retail Prices API on 25 October 2026
+# (https://prices.azure.com/api/retail/prices with $filter armRegionName eq 'uaenorth' and the service name; the human
+# pages are https://azure.microsoft.com/pricing/details/container-apps/, .../postgresql/flexible-server/,
+# .../monitor/, .../key-vault/, .../dns/, .../container-registry/, .../application-gateway/). No discount, reservation or
+# free grant is applied. Quantities are the defaults of deploy/bicep/main.bicep and its modules, or an assumption where
+# the templates do not size a component (marked so). Volumes outside the FIT pathway and every price are assumed.
+# ---------------------------------------------------------------------------------------------------------
+
+# Azure UAE North list prices (sourced) and the quantities the templates imply (assumed).
+azure:
+  aca_vcpu_usd_per_second:
+    value: 0.000024
+    unit: USD per vCPU-second, Container Apps consumption, active
+    status: sourced
+    basis: "Retail Prices API, Azure Container Apps, Standard vCPU Active Usage, uaenorth, effective 2022-06-01. The idle rate (0.000003) is lower; charging every always-on replica at the active rate overstates the cost. The monthly free grant is not applied."
+
+  aca_memory_usd_per_gib_second:
+    value: 0.000003
+    unit: USD per GiB-second, Container Apps consumption, active
+    status: sourced
+    basis: "Retail Prices API, Azure Container Apps, Standard Memory Active Usage, uaenorth, effective 2022-06-01."
+
+  aca_environment_usd_per_hour:
+    value: 0.143
+    unit: USD per environment hour
+    status: sourced
+    basis: "Retail Prices API, Azure Container Apps, Environment Management Hour, uaenorth, effective 2026-09-01. Whether this meter applies to an internal consumption-only environment is to verify; it is charged here to stay on the high side."
+
+  pg_vcore_usd_per_hour:
+    value: 0.1085
+    unit: USD per vCore-hour, PostgreSQL Flexible Server General Purpose Ddsv5
+    status: sourced
+    basis: "Retail Prices API, Azure Database for PostgreSQL Flexible Server General Purpose Ddsv5 Series Compute, uaenorth (8 vCore at 0.868 an hour, so 0.1085 a vCore). The template default is Standard_D4ds_v5 (4 vCores)."
+
+  pg_storage_usd_per_gb_month:
+    value: 0.138
+    unit: USD per GB-month, PostgreSQL Flexible Server storage
+    status: sourced
+    basis: "Retail Prices API, Azure Database for PostgreSQL Flex Server Storage, Storage Data Stored, uaenorth, effective 2021-06-01."
+
+  pg_backup_usd_per_gb_month:
+    value: 0.105
+    unit: USD per GB-month, backup storage LRS
+    status: sourced
+    basis: "Retail Prices API, Azure Database for PostgreSQL Flexible Server Backup Storage LRS, uaenorth. Locally redundant only: the template disables geo-redundancy to keep data in the UAE."
+
+  log_ingest_usd_per_gb:
+    value: 3.29
+    unit: USD per GB ingested, Log Analytics analytics logs
+    status: sourced
+    basis: "Retail Prices API, Log Analytics, Analytics Logs Data Ingestion, uaenorth (the API also lists a zero-priced meter for the free allowance, not applied). Workspace SKU PerGB2018 in deploy/bicep/modules/monitoring.bicep."
+
+  log_retention_usd_per_gb_month:
+    value: 0.132
+    unit: USD per GB-month retained beyond the included period
+    status: sourced
+    basis: "Retail Prices API, Log Analytics, Analytics Logs Data Retention, uaenorth. The template keeps 90 days."
+
+  kv_operations_usd_per_10k:
+    value: 0.0396
+    unit: USD per 10,000 Key Vault operations, standard
+    status: sourced
+    basis: "Retail Prices API, Key Vault, Standard, Operations, uaenorth."
+
+  private_endpoint_usd_per_hour:
+    value: 0.01
+    unit: USD per private endpoint hour
+    status: assumed
+    basis: "The Retail Prices API returned no Private Link endpoint meter for uaenorth on 25 October 2026; 0.01 is the commonly listed global rate on https://azure.microsoft.com/pricing/details/private-link/ (to verify). One endpoint (Key Vault)."
+
+  private_dns_zone_usd_per_month:
+    value: 0.5
+    unit: USD per private DNS zone per month
+    status: sourced
+    basis: "Retail Prices API, Azure DNS, Private Zone (first 25 zones). The template creates two (PostgreSQL and Key Vault)."
+
+  acr_standard_usd_per_day:
+    value: 0.6666
+    unit: USD per day, Container Registry Standard
+    status: sourced
+    basis: "Retail Prices API, Container Registry, Standard Registry Unit, uaenorth. A prerequisite in deployment.md, not created by the template."
+
+  appgw_waf_fixed_usd_per_hour:
+    value: 0.475
+    unit: USD per gateway hour, Application Gateway WAF v2
+    status: sourced
+    basis: "Retail Prices API, Application Gateway WAF v2, Standard Fixed Cost, uaenorth. The TLS gateway is the host's choice in deployment.md; WAF v2 is priced as the likely one."
+
+  appgw_waf_capacity_unit_usd_per_hour:
+    value: 0.019
+    unit: USD per capacity-unit hour, Application Gateway WAF v2
+    status: sourced
+    basis: "Retail Prices API, Application Gateway WAF v2, Standard Capacity Units, uaenorth."
+
+  hours_per_month:
+    value: 730
+    unit: hours per month
+    status: assumed
+    basis: "Azure's own monthly billing convention (8,760 hours / 12)."
+
+  aca_always_on_vcpu:
+    value: 2.75
+    unit: vCPU always on (api, scheduler, watchdog)
+    status: assumed
+    basis: "deploy/bicep defaults: api 2 replicas x 1.0 vCPU (apiReplicasMin, apiCpu), scheduler 2 x 0.25, watchdog 1 x 0.25. Scale-out above 2 api replicas is not costed."
+
+  aca_always_on_memory_gib:
+    value: 5.5
+    unit: GiB always on (api, scheduler, watchdog)
+    status: assumed
+    basis: "deploy/bicep defaults: api 2 x 2 GiB, scheduler 2 x 0.5, watchdog 1 x 0.5."
+
+  fhir_vcpu:
+    value: 2.0
+    unit: vCPU for the FHIR server
+    status: assumed
+    basis: "Not in the templates (deployment.md: the host's choice). Azure Health Data Services returned no uaenorth price in the Retail Prices API, so a self-hosted HAPI FHIR server is costed: 2 replicas x 1 vCPU on the same Container Apps environment."
+
+  fhir_memory_gib:
+    value: 4.0
+    unit: GiB for the FHIR server
+    status: assumed
+    basis: "2 replicas x 2 GiB, as for the API."
+
+  observability_vcpu:
+    value: 0.5
+    unit: vCPU for the collector, Prometheus and Grafana
+    status: assumed
+    basis: "Not in the templates; the compose obs profile is three small containers."
+
+  observability_memory_gib:
+    value: 1.0
+    unit: GiB for the collector, Prometheus and Grafana
+    status: assumed
+    basis: "As above."
+
+  pg_vcores:
+    value: 4
+    unit: vCores, case database
+    status: assumed
+    basis: "deploy/bicep default postgresSkuName Standard_D4ds_v5."
+
+  pg_ha_multiplier:
+    value: 2
+    unit: copies of compute and storage billed with zone-redundant HA
+    status: assumed
+    basis: "deploy/bicep default postgresHighAvailability ZoneRedundant: a standby server is billed like the primary (compute and storage)."
+
+  pg_storage_gb:
+    value: 128
+    unit: GB, case database
+    status: assumed
+    basis: "deploy/bicep default postgresStorageGb."
+
+  fhir_pg_vcores:
+    value: 2
+    unit: vCores, FHIR server database
+    status: assumed
+    basis: "Not in the templates; technical-documentation L20 says a pilot would use separate servers. A D2ds_v5 with the same HA."
+
+  fhir_pg_storage_gb:
+    value: 64
+    unit: GB, FHIR server database
+    status: assumed
+    basis: "Not in the templates."
+
+  pg_backup_billable_gb:
+    value: 64
+    unit: GB-month of backup storage above the included amount
+    status: assumed
+    basis: "Backup up to the provisioned storage is included; 35-day retention (template default) with daily change is assumed to add 64 GB."
+
+  log_gb_per_month:
+    value: 20
+    unit: GB of logs ingested per month
+    status: assumed
+    basis: "JSON logs of five small services plus platform logs; to measure in the pilot."
+
+  log_retention_billable_months:
+    value: 2
+    unit: months of each month's logs billed for retention
+    status: assumed
+    basis: "90-day retention in the template against the included period (to verify per workspace)."
+
+  kv_operations_per_month:
+    value: 500000
+    unit: Key Vault operations per month
+    status: assumed
+    basis: "Secret reads by the managed identity at revision start and refresh; generous."
+
+  private_endpoints:
+    value: 1
+    unit: private endpoints
+    status: assumed
+    basis: "deploy/bicep/modules/keyvault.bicep creates one (the vault)."
+
+  private_dns_zones:
+    value: 2
+    unit: private DNS zones
+    status: assumed
+    basis: "deploy/bicep/modules/network.bicep creates two."
+
+  appgw_capacity_units:
+    value: 2
+    unit: average capacity units, Application Gateway
+    status: assumed
+    basis: "A low-traffic staff application; to measure."
+
+  nonprod_share_of_prod:
+    value: 0.4
+    unit: test environment cost as a share of production
+    status: assumed
+    basis: "One test environment (environmentName test, HA disabled in main.example.bicepparam, one API replica)."
+
+# Pathways in a programme licence. Only the FIT pathway is built and simulated; the others are volumes for pricing, not claims.
+pathways:
+  blood_tests_per_year:
+    value: 10000
+    low: 5000
+    high: 20000
+    unit: blood-based colorectal screening tests a year, Abu Dhabi
+    status: sourced-adjacent
+    basis: "First-year target of about 10,000 people in the Abu Dhabi blood-based programme (Guardant announcement, 30 January 2025, via business-case.md section 1.1; The National, 15 December 2024). A target, not a count of tests done; low and high assumed."
+
+  blood_test_positive_share:
+    value: 0.12
+    low: 0.10
+    high: 0.15
+    unit: share of blood-based tests that are positive and need a colonoscopy
+    status: assumed
+    basis: "Not read from a study. The test's published specificity for no advanced neoplasia is about 90 percent (ECLIPSE, NEJM 2024, to verify), so about a tenth of people without advanced neoplasia test positive; 12 percent allows for true positives."
+
+  mammograms_per_year:
+    value: 40000
+    low: 25000
+    high: 70000
+    unit: screening mammograms a year, Abu Dhabi
+    status: assumed
+    basis: "5,983 mammograms in October 2025 alone (Gulf News, 14 October 2026), an awareness month, so the year is well below 12 times that. No annual count found; to verify with ADPHC."
+
+  mammogram_recall_share:
+    value: 0.08
+    low: 0.05
+    high: 0.12
+    unit: share of screening mammograms recalled for assessment
+    status: assumed
+    basis: "Typical screening recall rates; no Abu Dhabi figure found. To verify against the DoH breast screening standard V2 (2025) KPIs."
+
+  cervical_screens_per_year:
+    value: 50000
+    low: 30000
+    high: 80000
+    unit: cervical screening tests a year, Abu Dhabi
+    status: assumed
+    basis: "No count found; the DoH cervical screening standard V2 (October 2025) applies to all licensed providers. To verify with ADPHC."
+
+  cervical_abnormal_share:
+    value: 0.05
+    low: 0.03
+    high: 0.08
+    unit: share of cervical screens needing colposcopy or repeat testing
+    status: assumed
+    basis: "Assumed; depends on HPV primary testing versus cytology. To verify."
+
+# Price points (illustrative; not an offer).
+pricing:
+  price_per_closed_case_aed:
+    value: 140
+    unit: AED per case closed with evidence and a clinician signature
+    status: assumed
+    basis: "Illustrative. Paid only on a documented closure, so the buyer pays for the outcome of the work, not for a list. Compared with the per-tracked-case fee of AED 90 through the simulated closed share."
+
+  programme_licence_aed_per_year:
+    value: 2000000
+    unit: AED per year, programme licence, four pathways, one emirate
+    status: assumed
+    basis: "Illustrative: FIT positives, blood-based positives, breast recall and cervical recall for one programme owner. Set near the operator's modelled cost plus a margin, not against any benchmark."
+
+  implementation_fee_aed:
+    value: 250000
+    unit: AED one-off, paid by the buyer at go-live
+    status: assumed
+    basis: "Illustrative; covers part of the integration and pathway work. Not an offer."
+
+  licence_pathways:
+    value: 4
+    unit: pathways covered by the licence
+    status: assumed
+    basis: "FIT, blood-based colorectal, breast recall, cervical recall."
+
+# Operator cost to serve at programme scale (all assumed).
+operator:
+  support_fte_per_extra_pathway:
+    value: 0.25
+    unit: FTE per pathway beyond FIT
+    status: assumed
+    basis: "Configuration upkeep, feed monitoring and reporting for each extra pathway."
+
+  clinical_safety_fte:
+    value: 0.2
+    unit: FTE, clinical safety officer
+    status: assumed
+    basis: "A named clinician who owns the hazard log and the safety case; the reviews ask for one."
+
+  clinical_safety_loaded_cost_aed_per_year:
+    value: 900000
+    unit: AED per FTE per year
+    status: assumed
+    basis: "Consultant-level pay of about AED 75,000 a month (docs/evidence-wages.md section 4) times 12; on-costs not added."
+
+  compliance_aed_per_year:
+    value: 80000
+    unit: AED per year
+    status: assumed
+    basis: "ADHICS audit support, penetration test and data protection review. Not a quote."
+
+  provider_groups:
+    value: 6
+    unit: provider groups integrated at programme scale
+    status: assumed
+    basis: "The IFHAS delivery networks named publicly (SEHA, M42, NMC, Mediclinic, Burjeel) plus one for the rest; one feed per group. Integration cost per group is integration_one_off_aed_per_provider."
+
+  pathway_build_one_off_aed:
+    value: 150000
+    unit: AED per new pathway, one-off
+    status: assumed
+    basis: "Pathway configuration, clinician review, Arabic review of templates, tests and the simulator run. Amortised over amortisation_years."
+
+# Buyer-side values (all assumed unless stated).
+buyer:
+  coordinator_loaded_cost_aed_per_fte_year:
+    value: 105000
+    low: 85000
+    high: 130000
+    unit: AED per coordinator FTE per year, loaded
+    status: assumed
+    basis: "About AED 6,500 a month (docs/evidence-wages.md, sourced-adjacent) x 12 x 1.35 assumed on-costs = 105,300, rounded. The clinician and specialist costs are this times the wage ratios."

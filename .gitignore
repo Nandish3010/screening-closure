@@ -20,6 +20,8 @@ dist-live/
 
 # Generated data (Synthea jar + output, simulator manifests)
 data/
+# M7-5's replayed triage scores are committed inputs, not generated data (tools/rai/fairness.py)
+!tools/rai/data/
 
 # E16 video outputs (recordings, audio, the web build, the two mp4s)
 tools/video/out/

@@ -13,12 +13,18 @@ the single-process `run_sweep`. Both give the same events: ids are deterministic
 goes through the transactional store, so a second sweep, or a sweep that overlaps another, emits
 nothing new. The workers write through their own plain stores, so when FHIR projection is on the
 events they appended are handed to the projector here (its retry queue, then one drain).
+
+Write-time fence (F10). A call that carries leader headers has its lease re-checked by the event store inside every write
+transaction (`leader.Fence`): the sweep (single-process and in each worker), the automation scan and the evidence scan. A
+leader deposed mid-call is refused at its next write, the call stops and answers 409. The outbox drain is checked at entry
+only: it writes outbox rows and sends messages, not events through the store.
 """
 
 import atexit
 import logging
 import re
 import threading
+from contextlib import contextmanager
 from typing import Literal
 from uuid import UUID
 
@@ -43,7 +49,11 @@ def require_current_leader(request: Request) -> None:
     """Fencing (A31, ADR-041): a periodic-work call that carries leader headers is honoured only while that holder's
     token is the current one. A scheduler that was deposed (paused, partitioned, its container stopped and started) and
     still sends its old token gets 409 and does nothing. With REQUIRE_LEADER_FENCE=true a call with no headers is refused
-    too; otherwise it is allowed (a manual run, a single-scheduler stack)."""
+    too; otherwise it is allowed (a manual run, a single-scheduler stack).
+
+    This is the entry check. The write-time fence (F10) is what stops a leader deposed AFTER this point: the validated lease
+    is stored on `request.state.leader_fence` and the sweep carries it into every write transaction, where the event store
+    re-checks it (`leader.Fence`, `leader.StaleLeader`)."""
     # Read from the request, not declared as header parameters: they are credentials of a service, not API inputs a person
     # supplies, and the PHI scan of the route table (rightly) reviews every declared header.
     x_leader_holder = request.headers.get("x-leader-holder")
@@ -59,6 +69,7 @@ def require_current_leader(request: Request) -> None:
         leader.SCHEDULER_LEASE, x_leader_holder, x_leader_token
     ):
         raise HTTPException(409, "stale leader: the lease is held by another instance or has expired")
+    request.state.leader_fence = leader.Fence(leader.SCHEDULER_LEASE, x_leader_holder, x_leader_token)
 
 
 router = APIRouter(prefix="/scheduler", tags=["scheduler"])
@@ -100,6 +111,20 @@ def _postgres_url(store) -> str | None:
     return None
 
 
+def _fenced(store, request: Request):
+    """`store` with the request's validated lease carried into every event write (F10); `store` itself without headers."""
+    fence = getattr(request.state, "leader_fence", None)
+    return store if fence is None else leader.FencedStore(store, fence)
+
+
+@contextmanager
+def _stale_is_409():
+    try:
+        yield
+    except leader.StaleLeader as exc:
+        raise HTTPException(409, "stale leader: the lease was lost during the call; it stopped") from exc
+
+
 def _project_emitted(store, refs) -> None:
     """Workers append without the API's projecting wrapper, so queue what they wrote for FHIR
     projection (durable) and drain it in the background, off the request."""
@@ -133,10 +158,14 @@ class LeaseRequest(BaseModel):
 
 
 @router.post("/sweep", dependencies=fenced)
-def sweep() -> dict:
+def sweep(request: Request) -> dict:
     now = clock.now()
     started = observability.stopwatch()  # F14: for the sweep-duration metric only
-    out = _sweep(now)
+    out = _sweep(now, getattr(request.state, "leader_fence", None))
+    if out.get("fenced"):
+        # F10: the lease moved during the sweep and a write was refused inside the store. Whatever was written before the
+        # takeover stays (it was valid then); nothing after it was.
+        raise HTTPException(409, "stale leader: the lease was lost during the sweep; the sweep stopped")
     observability.record_sweep(out, observability.stopwatch() - started)
     # A22: every AGENCY_EVERY_SWEEPS-th sweep starts an agency run in the background (labour, not authority: it
     # writes no case event as the agency). Counted after the sweep, so a sweep is never delayed or failed by it.
@@ -144,16 +173,16 @@ def sweep() -> dict:
     return out
 
 
-def _sweep(now) -> dict:
+def _sweep(now, fence=None) -> dict:
     calendar = default_calendar()
     pool = get_pool()
     url = _postgres_url(cases.store) if pool.workers > 1 else None
     if url is None:
-        out = run_sweep(cases.store, cases.pathway, calendar, now).to_json()
+        out = run_sweep(cases.store, cases.pathway, calendar, now, fence=fence).to_json()
         out["workers"] = 1
         return out
     record = getattr(cases.store, "projector", None) is not None
-    result = pool.run(url, cases.pathway, calendar, now, record=record)
+    result = pool.run(url, cases.pathway, calendar, now, record=record, fence=fence)
     _project_emitted(cases.store, result.emitted_refs)
     out = result.to_json()
     out["workers"] = pool.workers
@@ -173,18 +202,20 @@ def drain_outbox() -> dict:
 
 
 @router.post("/automation-scan", dependencies=fenced)
-def automation_scan() -> dict:
+def automation_scan(request: Request) -> dict:
     """One pass of the automation over the open cases (A21, ADR-032): acknowledge and assign anything still waiting,
     re-route rejected referrals, send the due pre-approved messages. Idempotent (deterministic event ids); counts only.
     A no-op, answering `{"enabled": false}`, unless AUTOMATION_ENABLED is true."""
-    return automation.run_automation_scan(cases.store, cases.pathway, clock.now(), default_calendar())
+    with _stale_is_409():
+        return automation.run_automation_scan(_fenced(cases.store, request), cases.pathway, clock.now(), default_calendar())
 
 
 @router.post("/evidence-scan", dependencies=fenced)
-def evidence_scan() -> dict:
+def evidence_scan(request: Request) -> dict:
     """Ask HAPI whether the colonoscopy exists for each booked or completed case; complete the confirmatory step and
     propose the closure when it does (A21). Closure itself stays a person's. Counts only; a no-op unless enabled."""
-    return automation.scan_evidence(cases.store, cases.pathway, clock.now())
+    with _stale_is_409():
+        return automation.scan_evidence(_fenced(cases.store, request), cases.pathway, clock.now())
 
 
 @router.post("/heartbeat")

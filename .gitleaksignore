@@ -1,0 +1,23 @@
+# gitleaks allowlist (by fingerprint). Every entry below was inspected: it is a metric-name identifier that trips the
+# generic-api-key rule because the variable or JSON field is called `key`. No credential. Added with the A35 check.
+
+# metric name "fit_positivity_rate_england_120ug", an identifier, not a credential
+3c9aadb3670180619a59258fbce11d27874e7065:docs/results/sensitivity.json:generic-api-key:142
+
+# metric name "fit_positivity_rate_england_120ug", an identifier, not a credential
+72a113da0b1ba9eee7e7a453caf8f450a769c183:docs/results/results.json:generic-api-key:4760
+
+# metric name "completion_180d" in a variable named key/c_key, not a credential
+d8c0ee0502b3d674772544626e3b0bef5205d064:simulator/sim/report.py:generic-api-key:124
+
+# metric name "completion_180d" in a variable named key/c_key, not a credential
+d8c0ee0502b3d674772544626e3b0bef5205d064:simulator/sim/report.py:generic-api-key:361
+
+# metric name "completion_180d" in a variable named key/c_key, not a credential
+d8c0ee0502b3d674772544626e3b0bef5205d064:simulator/sim/report.py:generic-api-key:362
+
+# metric name "completion_180d" in a variable named key/c_key, not a credential
+08d97c32322776ebe35a2b6878f7138345bf3a43:simulator/sim/report.py:generic-api-key:93
+
+# metric name "completion_180d" in a variable named key/c_key, not a credential
+08d97c32322776ebe35a2b6878f7138345bf3a43:simulator/sim/report.py:generic-api-key:94

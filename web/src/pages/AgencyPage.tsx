@@ -6,6 +6,7 @@ import type {
 } from "../api/contract";
 import { AGENCY_DEPARTMENTS, AGENCY_DEPARTMENT_LABEL, AGENCY_TASK_STATUSES, ApiError } from "../api/contract";
 import { fmtDateTime, shortId, titleCase } from "../lib/format";
+import { WhyPanel } from "../components/WhyPanel";
 
 /** Shown when the API sends no `principle`. */
 export const AGENCY_PRINCIPLE_FALLBACK =
@@ -214,6 +215,7 @@ function RunTimeline({ runs, runId, onSelect, tasks, tasksError }: {
           </dl>
           <h3>Planner</h3>
           <Provenance p={run.planner} testId="planner-provenance" />
+          <WhyPanel testId="why-planner" subject="planner" input={{ kind: "planner", provider: run.planner.provider, model_id: run.planner.model_id, fallback_used: run.planner.fallback_used }} />
           {tasksError && <p className="banner banner-bad" role="alert">Could not load the run's tasks: {tasksError}</p>}
           {!tasks && !tasksError && <p role="status">Loading tasks...</p>}
           {tasks && groups.map((g) => {

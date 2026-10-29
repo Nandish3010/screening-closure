@@ -274,7 +274,7 @@ shots:
     route: "card:results"
     duration: 21
     caption: "Simulation on synthetic data, literature-anchored, before capacity limits, against a US-calibrated usual-care baseline. Colonoscopy within 180 days 51% to 67%, a ratio of about 1.31, calibrated to published navigation trials: the model shows the mechanism, not new evidence of effect. Closed with evidence and a signature 53% to 68%. Lost without anyone told, programme-level 45% to 21%; 0% among the cases the programme reaches, true by construction. Rerun: make evaluate"
-    narration: "Synthetic simulation against a US-calibrated usual-care baseline. Colonoscopy within one hundred eighty days: fifty-one to sixty-seven percent, a ratio of one point three one, calibrated to published navigation trials. Closed with evidence: fifty-three to sixty-eight percent. Lost without anyone told: forty-five to twenty-one percent programme-wide; zero among the cases reached, by construction."
+    narration: "Synthetic simulation, US-calibrated baseline. Colonoscopy within one hundred eighty days: fifty-one to sixty-seven, a ratio of one point three one, calibrated to published trials. Closed with evidence: fifty-three to sixty-eight. Lost without anyone told: forty-five to twenty-one percent programme-wide; zero among cases reached, by construction."
     actions:
       - card:
           kind: results
@@ -293,16 +293,16 @@ shots:
     submission: true
     route: "card:slide"
     duration: 10
-    caption: "Labour: 37% fewer staff minutes per case the system handles, 20% across the programme. The 40% target is not met in realistic scenarios; only the upper bound, a mechanism ceiling, crosses it."
-    narration: "Labour falls thirty-seven percent per handled case, twenty percent programme-wide. The forty percent target is not met in realistic scenarios; only the upper bound crosses it."
+    caption: "Labour: 36% fewer staff minutes per case the system handles, 20% across the programme. The 40% target is not met in realistic scenarios; only the upper bound, a mechanism ceiling, comes close."
+    narration: "Labour falls thirty-six percent per handled case, twenty percent programme-wide. The forty percent target is not met in realistic scenarios; only the upper bound does."
     actions:
       - card:
           kind: slide
           heading: "Labour, in the same simulation"
           bullets:
-            - "37% fewer staff minutes per case the system handles (in reach)"
+            - "36% fewer staff minutes per case the system handles (in reach)"
             - "20% fewer across the whole programme (0.55 reach assumption)"
-            - "The 40% target is not met in realistic scenarios; only the upper bound (a mechanism ceiling) crosses it"
+            - "The 40% target is not met in realistic scenarios; only the upper bound (a mechanism ceiling) comes close"
             - "Minutes are published or assumed; synthetic"
       - hold: 8
 
@@ -312,8 +312,8 @@ shots:
     submission: true
     route: "card:slide"
     duration: 16
-    caption: "Pilot ask: one programme, two providers, 90 days, shadow mode first. Cases closed without evidence: must stay zero. Buyer hypothesis: a programme licence across pathways; about 24 to 54 advanced cancers avoided a year in Abu Dhabi (synthetic, assumption-based)."
-    narration: "The ask: one programme, two providers, ninety days, shadow mode first. Cases closed without evidence must stay at zero. Who pays: a programme licence, with Abu Dhabi's public health programme the hypothesised buyer. Judges can replay it with the Judge tour."
+    caption: "Pilot ask: one programme, two providers, 90 days, shadow mode first. Cases closed without evidence: must stay zero. Buyer hypothesis: a programme licence across pathways; about 24 to 55 advanced cancers avoided a year in Abu Dhabi (synthetic, assumption-based)."
+    narration: "The ask: one programme, two providers, ninety days, shadow mode first. Cases closed without evidence must stay zero. Who pays: a programme licence; Abu Dhabi's public health programme is the hypothesised buyer. Replay it with the Judge tour."
     actions:
       - card:
           kind: slide
@@ -324,7 +324,7 @@ shots:
             - "Ninety days, shadow mode first: 30 days watching, nothing sent"
             - "Cases closed without evidence: must stay at zero. If it moves, we stop"
             - "Who pays (hypothesis, not a relationship): a programme licence across pathways, Abu Dhabi public health programme as buyer"
-            - "About 24 to 54 advanced cancers avoided a year in Abu Dhabi: synthetic, assumption-based"
+            - "About 24 to 55 advanced cancers avoided a year in Abu Dhabi: synthetic, assumption-based"
             - "Judges: the Judge tour button (header) replays this, read-only"
       - hold: 11
 
@@ -335,12 +335,15 @@ shots:
     optional: true
     submission: false
     route: "/coordinator/{case2}"
-    requires: {route: "/coordinator/{case2}", testid: effort-counter}
+    # The counter is on the staff case page only (a patient's redacted case JSON carries no effort), and the role from shot 11
+    # (patient) persists in localStorage, so the route is probed here and the role is set in the actions before waiting for it.
+    requires: {route: "/coordinator/{case2}"}
     duration: 10
     caption: "Human actions against automated actions on every case. Minutes saved are assumed, not measured."
     narration: "Every case shows its human actions against its automated actions, with the minutes saved. The minutes are assumed, not measured."
     actions:
       - goto: "/coordinator/{case2}"
+      - role: coordinator
       - wait_for: {testid: effort-counter, timeout: 8000}
       - scroll: {testid: effort-counter}
       - hold: 8

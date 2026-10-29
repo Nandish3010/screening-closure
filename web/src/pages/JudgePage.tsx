@@ -30,7 +30,7 @@ const HEADLINE: { value: string; label: string; note: string }[] = [
   {
     value: H.labour_reduction.literature_all.value,
     label: `Reduction in human time per case, all cases (${H.labour_reduction.literature_in_reach.value} among cases reached)`,
-    note: `The 40% target is not met in realistic scenarios; only the upper bound, a mechanism ceiling, crosses it (${H.labour_reduction.upper_all.value}). The minutes per action are assumed, not measured.`,
+    note: `The 40% target is not met in realistic scenarios; only the upper bound, a mechanism ceiling, comes close (${H.labour_reduction.upper_all.value}). The minutes per action are assumed, not measured.`,
   },
 ];
 

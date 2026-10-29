@@ -8,8 +8,8 @@ import time
 import run_check as rc
 
 FAST = {"test", "verify", "test-db", "web-test", "web-build", "web-e2e", "docs-check", "tracker-lint", "test-security", "test-tools",
-        "test-redteam", "load-check", "review-packs-check", "test-review-packs", "effort-check", "evaluate-smoke"}
-HEAVY = {"sensitivity-check", "evaluate-check", "risk-check", "calibrate-check", "validate-check", "evaluate-capacity-check"}
+        "test-redteam", "load-check", "review-packs-check", "test-review-packs", "effort-check", "rai-check", "evaluate-smoke"}
+HEAVY = {"sensitivity-check", "evaluate-check", "risk-check", "calibrate-check", "validate-check", "evaluate-capacity-check", "evaluate-outcomes-check"}
 
 
 def names(stages):

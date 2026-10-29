@@ -258,9 +258,10 @@ def test_escalation_queue_conservation(runs):
     st = r.capacity.staff
     states = [j.state for j in st.jobs]
     assert len(st.jobs) == states.count("acted") + states.count("stale") + states.count("pending")
-    # every ladder escalation that was worked is exactly one `escalated` event; coalesced rungs never became jobs
+    # every escalation the sweep sent (one `escalated` event, at the instant it was planned) is one job for the person it
+    # notifies, worked or gone stale while it waited; coalesced rungs never became jobs
     esc_events = sum(1 for c in r.cases for e in c.log if e.type == "escalated")
-    assert esc_events == sum(1 for j in st.jobs if j.kind == "rung" and j.state == "acted")
+    assert esc_events == sum(1 for j in st.jobs if j.kind == "rung")
     # nothing is served before it is requested; first come first served within a role
     for role in C.ROLES:
         js = [j for j in st.jobs if j.role == role]

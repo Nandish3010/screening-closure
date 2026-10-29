@@ -663,20 +663,20 @@ class ProjectingStore:
             raise
         self.projector.project(case_id, genesis_event)
 
-    def append(self, event, pathway, *, within=None, guard=None):
+    def append(self, event, pathway, *, within=None, guard=None, fence=None):
         try:
-            state = self._inner.append(event, pathway, within=within, guard=guard)
+            state = self._inner.append(event, pathway, within=within, guard=guard, fence=fence)
         except BaseException:
             self._queue_if_committed(event.case_id, [event])
             raise
         self.projector.project(event.case_id, event)
         return state
 
-    def _append_many(self, events, pathway, *, within=None, guard=None):
+    def _append_many(self, events, pathway, *, within=None, guard=None, fence=None):
         """The sweep's batched append (F6), offered only when the inner store has one. Projects
         every event of the batch after the commit (idempotent by event id, so a retry is harmless)."""
         try:
-            state = self._inner.append_many(events, pathway, within=within, guard=guard)
+            state = self._inner.append_many(events, pathway, within=within, guard=guard, fence=fence)
         except BaseException:
             for event in events:
                 self._queue_if_committed(event.case_id, [event])
@@ -685,12 +685,12 @@ class ProjectingStore:
             self.projector.project(event.case_id, event)
         return state
 
-    def _append_batches(self, batches, pathway):
+    def _append_batches(self, batches, pathway, *, fence=None):
         """The sweep's append of many cases in one transaction (A20). Projects the events of every case that was
         written, after the commit; a refused case wrote nothing and projects nothing. If the whole batch raised,
         each case's events are checked and queued like a failed single append."""
         try:
-            outcomes = self._inner.append_batches(batches, pathway)
+            outcomes = self._inner.append_batches(batches, pathway, fence=fence)
         except BaseException:
             for events in batches:
                 self._queue_if_committed(events[0].case_id, list(events))

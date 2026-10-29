@@ -81,6 +81,10 @@ class CaseFacts(BaseModel):
     last_message_sent_at: Iso | None
     auto_messages: list[AutoMessage]
     language: Literal["en", "ar"] | None
+    # M7-1: how reachable the patient is, for the fairness watch: `wrong` (an open wrong-number hold, or a reply read as
+    # `wrong_number` that no person has answered by confirming the contact), `missing` (no channel the patient can be
+    # reached on), else `ok`
+    contact_quality: Literal["ok", "wrong", "missing"] = "ok"
     appointment_at: Iso | None
     result_ref: str | None
     callback_requested_at: Iso | None
@@ -94,6 +98,14 @@ class CaseFacts(BaseModel):
     history: list[HistoryItem]  # the state-changing steps in order: type, time, role
     events: int
     last_event_seq: int
+
+
+def contact_quality(model, channels_allowed: list[str], reply_labels: list[dict]) -> str:
+    """`wrong`, `missing` or `ok` (see CaseFacts.contact_quality). Pure."""
+    if "wrong_number" in (model.outreach_holds or ()) or (
+            model.contact_confirmed_at is None and any(x.get("intent") == "wrong_number" for x in reply_labels)):
+        return "wrong"
+    return "missing" if not channels_allowed else "ok"
 
 
 def _iso(dt: datetime | None) -> str | None:
@@ -185,6 +197,7 @@ def case_facts(lc: LoadedCase, pathway: Pathway) -> CaseFacts | None:
         last_message_sent_at=_iso(last_sent),
         auto_messages=autos[-20:],
         language=language,
+        contact_quality=contact_quality(m, channels, labels),
         appointment_at=appointment if isinstance(appointment, str) else None,
         result_ref=result_ref,
         callback_requested_at=_iso(callback_at),

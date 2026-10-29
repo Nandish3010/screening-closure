@@ -1,6 +1,6 @@
 # Business case without a named buyer
 
-Status: draft, 22 October 2026 (ticket E17, milestone M6). This is the strongest case we can make honestly **before any buyer has seen it**. Nothing here has been discussed with any buyer, payer, regulator or provider, and none is a prospect list. The prototype runs on synthetic data only. Every number is tagged with its grade: **sourced** (read from the cited page), **sourced-adjacent** (a published figure for a related setting, year or population), **derived** (our arithmetic on cited figures) or **assumed** (our choice). Anything we could not confirm is marked **to verify**. All model numbers come from `python3 tools/pilot/cost_model.py --commercial`, whose full output is pasted in section 8; the inputs and their grades are in `tools/pilot/inputs.yaml` (sections `market`, `outcome`, `capacity`, `benchmark`). Currency is AED; US dollars convert at the dirham peg of 3.6725 (to verify against the Central Bank of the UAE).
+Status: draft, 22 October 2026 (ticket E17, milestone M6); pricing, hosting cost and payback added 25 October 2026 (ticket M7-4, section 9), with the buyer map, go-to-market and outreach kit moved to their own files ([buyer-map.md](buyer-map.md), [go-to-market.md](go-to-market.md), [outreach/](outreach/README.md)). This is the strongest case we can make honestly **before any buyer has seen it**. Nothing here has been discussed with any buyer, payer, regulator or provider, and none is a prospect list. The prototype runs on synthetic data only. Every number is tagged with its grade: **sourced** (read from the cited page), **sourced-adjacent** (a published figure for a related setting, year or population), **derived** (our arithmetic on cited figures) or **assumed** (our choice). Anything we could not confirm is marked **to verify**. All model numbers come from `python3 tools/pilot/cost_model.py --commercial`, whose full output is pasted in section 8; the inputs and their grades are in `tools/pilot/inputs.yaml` (sections `market`, `outcome`, `capacity`, `benchmark`). Currency is AED; US dollars convert at the dirham peg of 3.6725 (to verify against the Central Bank of the UAE).
 
 ## 0. Executive summary (one page)
 
@@ -11,10 +11,12 @@ Status: draft, 22 October 2026 (ticket E17, milestone M6). This is the strongest
 **The three numbers a buyer cares about.**
 
 1. **Size: about 17,700 FIT-positive cases a year in Abu Dhabi** (range 8,200 to 59,700); about 44,800 in the UAE (20,800 to 151,200). Derived from 1.26 million residents aged 40 to 75 (Statistics Centre Abu Dhabi, 2024, [citypopulation.de reproduction](https://www.citypopulation.de/en/uae/abudhabi/admin/)), times 20 percent with a FIT result in a year (assumed; evidence: 23.5 percent of eligible Emiratis screened in 2015-2016, [BMC Cancer 2021](https://pmc.ncbi.nlm.nih.gov/articles/PMC8343888/); under 20 percent, [The National, 2024](https://www.thenationalnews.com/news/uae/2024/12/15/abu-dhabi-colorectal-cancer-test/)), times 7 percent positive (Gulf programmes 6.5 to 6.8 percent, section 1). The gap it addresses is measured locally: only **30.5 percent** of 1,429 positive results in Abu Dhabi ambulatory clinics had a follow-up colonoscopy (same BMC Cancer paper, 2021; 2015-2016 data).
-2. **Return: AED 77 to 175 of first-year treatment cost avoided per positive case** in the literature-anchored simulation (AED 156 to 352 in the upper-range scenario), against an illustrative per-case price of AED 90. In cancers, that is **about 24 to 54 advanced-stage cancers avoided per year in Abu Dhabi** on the literature-anchored rows (section 4.4: 17,696 / 1,000 x 1.34 = 23.7 and 17,696 / 1,000 x 3.04 = 53.8). This is a synthetic simulation with observational odds ratios and an unvalidated 270-day timing; it is assumption-based and not a forecast. Method: simulated drop in cases with no colonoscopy by day 270 (46.5 to 32.1 percent, [results.md headline](../results/results.md)), times the excess advanced-stage risk of late colonoscopy ([Corley, JAMA 2017](https://jamanetwork.com/journals/jama/fullarticle/2620087), odds ratios 1.97 and 3.22), times a stage cost gap from the only Gulf study found ([Saudi Arabia, 2020 prices, stage I USD 45,317 to stage IV above USD 71,374](https://pmc.ncbi.nlm.nih.gov/articles/PMC10630777/)), with an assumed 0.6 stage-pair factor. The 270-day shares rest on the simulator's timing between 180 and 360 days, which is not validated (after the B21 timing fix only two timing claims pass held-out validation, and neither covers days 180 to 360; [validation.md](../results/validation.md)), so treat this return as indicative. **Honest reading: outcomes alone roughly cover a price of AED 90 only if the delay harm is at the higher odds ratios or the upper-range reach; at the lower case they fall short (0.86 times the price).** Avoided treatment cost alone does not cover the fee. The case for paying rests on outcomes (cancers found earlier) and on programme operations (every positive has an owner and a clock), not on cost savings. Do not sell on avoided cost alone.
-3. **Capacity: 1.7 coordinator FTE freed per 10,000 positives a year** (literature-anchored, programme level; 3.1 in reach; 3.3 upper range), from 47.1 to 29.9 coordinator minutes per case (`effort.scenarios.literature_anchored.all.arms.{baseline,orchestrated}.minutes_per_case.coordinator.mean`). The same run consumes **0.4 owner-clinician and 0.1 specialist FTE more**, so all-roles FTE freed is 1.1. This is capacity, not cash: wage-weighted staff time per case rises 10.5 percent ([pilot-plan.md section 8](../pilot-plan.md)).
+2. **Return: AED 78 to 177 of first-year treatment cost avoided per positive case** in the literature-anchored simulation (AED 158 to 357 in the upper-range scenario), against an illustrative per-case price of AED 90. In cancers, that is **about 24 to 55 advanced-stage cancers avoided per year in Abu Dhabi** on the literature-anchored rows (section 4.4: 17,696 / 1,000 x 1.36 = 24.1 and 17,696 / 1,000 x 3.08 = 54.5). This is a synthetic simulation with observational odds ratios and an unvalidated 270-day timing; it is assumption-based and not a forecast. Method: simulated drop in cases with no colonoscopy by day 270 (46.5 to 31.9 percent, [results.md headline](../results/results.md)), times the excess advanced-stage risk of late colonoscopy ([Corley, JAMA 2017](https://jamanetwork.com/journals/jama/fullarticle/2620087), odds ratios 1.97 and 3.22), times a stage cost gap from the only Gulf study found ([Saudi Arabia, 2020 prices, stage I USD 45,317 to stage IV above USD 71,374](https://pmc.ncbi.nlm.nih.gov/articles/PMC10630777/)), with an assumed 0.6 stage-pair factor. The 270-day shares rest on the simulator's timing between 180 and 360 days, which is not validated (after the B21 timing fix only two timing claims pass held-out validation, and neither covers days 180 to 360; [validation.md](../results/validation.md)), so treat this return as indicative. **Honest reading: outcomes alone roughly cover a price of AED 90 only if the delay harm is at the higher odds ratios or the upper-range reach; at the lower case they fall short (0.87 times the price).** Avoided treatment cost alone does not cover the fee. The case for paying rests on outcomes (cancers found earlier) and on programme operations (every positive has an owner and a clock), not on cost savings. Do not sell on avoided cost alone.
+3. **Capacity: 1.7 coordinator FTE freed per 10,000 positives a year** (literature-anchored, programme level; 3.0 in reach; 3.2 upper range), from 46.6 to 29.8 coordinator minutes per case (`effort.scenarios.literature_anchored.all.arms.{baseline,orchestrated}.minutes_per_case.coordinator.mean`). The same run consumes **0.4 owner-clinician and 0.1 specialist FTE more**, so all-roles FTE freed is 1.1. This is capacity, not cash: wage-weighted staff time per case rises 10.9 percent ([pilot-plan.md section 8](../pilot-plan.md)).
 
-**What a buyer can do on Monday.** A shadow run at 2 to 3 providers costs about **AED 106,000** to serve (155 cases in 90 days; every cost input assumed, none quoted) and needs only a periodic export. It answers flag agreement and untracked cases; it cannot answer closure KPIs, which need active mode.
+4. **Price and cost: a programme licence of about AED 2.0 million a year for four pathways, against an operator cost to serve of about AED 1.71 million** (24,596 actionable cases a year at central volumes, AED 69.6 per case; hosting at Azure UAE North list prices, every other input assumed; section 9). That is a 14 percent margin and a 21-month operator payback on AED 1.17 million of integration and pathway work. Avoided treatment cost from the FIT pathway covers 69 percent of the licence (157 percent at the beyond-12-month odds ratios), and the net cost to the buyer is about AED 25,500 per advanced-stage cancer avoided at the base case. The buyer pays for safety and outcomes, not cash: about 4,367 positives a year that the simulation says would otherwise be lost without anyone told.
+
+**What a buyer can do on Monday.** A shadow run at 2 to 3 providers costs about **AED 106,000** to serve (155 cases in 90 days; every cost input assumed, none quoted) and needs only a periodic export. It answers flag agreement and untracked cases, and measures the provider's own baseline against the IFHAS timelines; it cannot answer closure KPIs, which need active mode. The proposal, KPIs, exit criterion, approval path and risk register are in [go-to-market.md](go-to-market.md).
 
 **What we do not claim.** No buyer exists. No price has been tested. The simulator is synthetic, the minutes are not measured in Abu Dhabi, and the odds ratios are observational. No Jawda indicator we could read currently measures colorectal follow-up (section 2), so a regulatory pull is to verify, not assumed.
 
@@ -64,20 +66,11 @@ For the four smaller states no age table was read, so the eligible population is
 
 ### 1.3 Obtainable market
 
-At the illustrative fees, **the revenue pool is small**: option B (AED 90 per positive case) gives AED 1.6 million a year in Abu Dhabi and AED 4.0 million in the UAE at the central volume; option A (AED 6 per member screened) gives AED 1.5 million and AED 3.8 million. The cost-to-serve model puts Abu Dhabi central (252,800 FIT results, 17,696 cases) at about AED 1.19 million a year, or AED 67 per case (all inputs assumed, `cost_model.py` default output), so a fee of AED 90 leaves a margin of roughly AED 0.4 million. That is a viable reference-programme business and a thin standalone one; the argument for building it is the pathway and audit trail it makes reusable for other screening programmes (a mammography and a cervical pathway have DoH standards), not the single pool.
+At the illustrative fees, **the revenue pool is small**: option B (AED 90 per positive case) gives AED 1.6 million a year in Abu Dhabi and AED 4.0 million in the UAE at the central volume; option A (AED 6 per member screened) gives AED 1.5 million and AED 3.8 million. The cost-to-serve model puts Abu Dhabi central (252,800 FIT results, 17,696 cases) at about AED 1.19 million a year, or AED 67 per case (all inputs assumed, `cost_model.py` default output), so a fee of AED 90 leaves a margin of roughly AED 0.4 million. That is a viable reference-programme business and a thin standalone one; the argument for building it is the pathway and audit trail it makes reusable for other screening programmes (a mammography and a cervical pathway have DoH standards), not the single pool. Section 9 prices the multi-pathway programme licence that answers this, with hosting at list price.
 
 ## 2. Buyer map
 
-Nothing in this table has been tested with the named organisations. "Needs to see" is our inference from their published roles.
-
-| Buyer | Role and scale (source) | Incentive we can evidence | What they need to see | Route |
-|---|---|---|---|---|
-| Department of Health Abu Dhabi (DoH) | Regulator and policy owner; issues screening standards and the Jawda quality framework | Late diagnosis: 67 percent of new cases in 2023 and a stated aim to lift early detection from 33 to 50 percent in two years ([The National](https://www.thenationalnews.com/news/uae/2024/12/15/abu-dhabi-colorectal-cancer-test/)). **Jawda: the primary care guidance, version 1 of February 2026, effective Q3 2026, has no cancer-screening indicator in its table of contents** (read from the [DoH PDF](https://www.doh.gov.ae/-/media/Feature/Muashir/Jawda/2026/Primary-Care-and-Medical-Center-Services-Jawda-Guidance_V1_2026_Effective-From-Q3-2026.ashx)); other Jawda sets and any screening-follow-up indicator are **to verify** | Safety case, data residency, clinician-reviewed pathway, no closure without evidence, KPI definitions aligned with the DoH screening standards ([pilot-plan.md](../pilot-plan.md) K1-K9, [regulatory-mapping.md](../governance/regulatory-mapping.md)) | Standards and approvals; a pilot with real patients needs the gates in the pilot plan |
-| Abu Dhabi Public Health Centre (ADPHC) | Runs IFHAS, the comprehensive screening programme for Thiqa holders aged 18-75, delivered by more than 150 facilities across SEHA, M42, NMC, Mediclinic and Burjeel (WAM, February 2024, as summarised by a search; page text not retrieved; to verify), and expanded in August 2025 ([Abu Dhabi Media Office, 1 August 2025](https://www.mediaoffice.abudhabi/en/health/abu-dhabi-public-health-centre-expands-comprehensive-screening-programme-ifhas-to-advance-community-health-and-preventive-care/), which mentions non-invasive colorectal tests only in a quotation); runs the blood-test programme with an agreement to screen about 10,000 people in year one ([Guardant, January 2025](https://www.businesswire.com/news/home/20250130054040/en/Guardant-Healths-Shield-Test-Selected-by-Abu-Dhabi-Department-of-Health-for-Blood-Based-Colorectal-Cancer-Screening-Program)) | Every positive screen, FIT or blood test, needs a colonoscopy to confirm ("confirmation through colonoscopy is still required", The National). IFHAS says a follow-up appointment or call reviews results but not how abnormal results are tracked ([ADPHC IFHAS page](https://www.adphc.gov.ae/en/Public-Health-Programs/IFHAS)) | A programme-level view of positives with owner, clock and closure; no patient messaging without a pre-approved template | Programme owner; funding route **to verify** |
-| Payers: Daman (Thiqa and commercial) | Daman membership about 3 million in 2024 and about 3.24 million at the end of 2025 (WAM reports as summarised by a search; page text not retrieved; to verify, [WAM](https://www.wam.ae/en/article/b65q5nf-%E2%80%98daman%E2%80%99-named-uae%E2%80%99s-best-perceived-health)); Thiqa covers nationals, 676,000 cardholders in an undated report ([The National](https://thenational-the-national-prod.cdn.arcpublishing.com/uae/health/98-of-abu-dhabi-population-covered-by-health-insurance-1.344525)); IFHAS participation is described as a requirement to keep full insurance benefits (WAM, February 2024, as summarised by a search; page text not retrieved; to verify) | A DoH and Daman recall and reminder pilot for cancer screening ran in 2019 by phone and SMS ([DoH news](https://www.doh.gov.ae/en/news/department-of-health-abu-dhabi-and-daman-develop-rst-recall-reminder-scheme-for-local)); a payer pays for late-stage treatment, which is the avoided cost in section 4. No payment incentive linked to screening follow-up was found; **to verify** in provider contracts | Cost per avoided late-stage case, and a member-level list of positives without a colonoscopy (needs a lawful data-sharing basis) | Payer innovation or care-management budget; **to verify** |
-| Provider groups, public: PureHealth (SEHA and Ambulatory Healthcare Services), M42 | Largest operators of screening and endoscopy capacity in the emirate; the SEHA clinics network is adding 22 new and upgraded clinics and units in 2026 ([Abu Dhabi Media Office](https://www.mediaoffice.abudhabi/en/health/purehealth-expands-seha-clinics-network-across-abu-dhabi-to-strengthen-healthcare-across-communities/)) | Coordinator capacity and lost referrals (the dominant loss in the Abu Dhabi audit is "referred but did not attend", 36.3 percent of those without colonoscopy); Jawda not evidenced (above) | Minutes per case by role (K9), flags that agree with their coordinators (shadow run), integration effort | Direct; shadow run needs a data-sharing agreement and a security assessment |
-| Provider groups, private: Mediclinic, NMC, Burjeel, Cleveland Clinic Abu Dhabi and others | Listed as IFHAS providers ([ADPHC](https://www.adphc.gov.ae/en/Public-Health-Programs/IFHAS)) | Retention of insured patients; fewer unmanaged results; payer quality conversations | Same as above, plus per-case price and contract flexibility | Direct |
-| Ecosystem route | DoH and Hub71 partnership: HealthTech Challenge, Plug and Play MENA, and Hub71+ Life Sciences (2025) with regulatory support and pilot projects ([DoH news](https://www.doh.gov.ae/en/news/DoH-AND-HUB71-TO-FOSTER-INNOVATION-ECOSYSTEM-IN-HEALTHCARE); [Hub71](https://www.hub71.com/latest-news/press-release/abu-dhabi-launches-hub71-plus-life-sciences-to-accelerate-innovation-in-biotech-medtech-and-digital-health)) | A named **innovation sandbox was not found**; the closest published mechanisms are the programmes listed. Procurement route for government pilots **to verify** | A sponsor inside a provider or DoH programme | Application to the programmes above, with a provider as pilot partner |
+The full map, with each buyer's role, payment flows, procurement route, Malaffi position and what it values, all sourced and with every unverified item marked, is in [buyer-map.md](buyer-map.md) (M7-4; it replaces the table that was here). In short: DoH regulates and sets the standards (IFHAS V10, the breast and cervical standards V2, and Circular 2025/42, which gives a positive blood-based test a 7-day GI consultation and a 30-day colonoscopy); ADPHC runs IFHAS through more than 150 facilities and is the hypothesised licence buyer; Daman administers Thiqa and carries the avoided treatment cost; PureHealth's SEHA network and M42 deliver the screening and are the first shadow-pilot buyers; private groups follow. No organisation has been contacted.
 
 Order of approach, by what we can evidence: a provider group with a coordinator capacity problem (shadow run), then ADPHC as programme owner, then a payer. We have no evidence yet that any of the three would pay.
 
@@ -122,22 +115,22 @@ The model uses the **Saudi gap** (stage I to IV, AED 95,694) as the central case
 
 ### 4.2 Stage shift from timely colonoscopy
 
-[Corley et al., JAMA 2017](https://jamanetwork.com/journals/jama/fullarticle/2620087) (70,124 completers, Kaiser, 2010-2014; [evidence.md section 9](../evidence.md)): relative to colonoscopy at 8 to 30 days, no significant excess to 9 months; at **10 to 12 months** any cancer odds ratio 1.48 and advanced stage 1.97; **beyond 12 months** 2.25 and 3.22. The absolute advanced-stage risk is not in evidence.md. A JAMA commentary reports 19 per 1,000 at 10 months and 31 per 1,000 beyond 12 months; inverting the odds ratios gives an on-time risk of 0.0097 to 0.0098, which the model uses (0.0098; derived; **to verify** against the paper's table). The simulator's `delay_harm_threshold_days` is 270 and its shares of cases with no colonoscopy by then are 46.5 percent at baseline, 32.1 percent literature-anchored and 17.4 percent upper range ([results.md headline](../results/results.md)).
+[Corley et al., JAMA 2017](https://jamanetwork.com/journals/jama/fullarticle/2620087) (70,124 completers, Kaiser, 2010-2014; [evidence.md section 9](../evidence.md)): relative to colonoscopy at 8 to 30 days, no significant excess to 9 months; at **10 to 12 months** any cancer odds ratio 1.48 and advanced stage 1.97; **beyond 12 months** 2.25 and 3.22. The absolute advanced-stage risk is not in evidence.md. A JAMA commentary reports 19 per 1,000 at 10 months and 31 per 1,000 beyond 12 months; inverting the odds ratios gives an on-time risk of 0.0097 to 0.0098, which the model uses (0.0098; derived; **to verify** against the paper's table). The simulator's `delay_harm_threshold_days` is 270 and its shares of cases with no colonoscopy by then are 46.5 percent at baseline, 31.9 percent literature-anchored and 17.1 percent upper range ([results.md headline](../results/results.md)).
 
 ### 4.3 Result per 1,000 positive FITs
 
 | Scenario and odds ratio | Cases moved to colonoscopy by day 270 | Advanced-stage cases avoided | AED avoided, Malaysian gap | AED avoided, Saudi gap | AED per case, Saudi gap | Against AED 90 |
 |---|---|---|---|---|---|---|
-| Literature-anchored, 10-12 month ORs | 144.2 | 1.34 | 13,847 | 77,213 | 77 | 0.86 times |
-| Literature-anchored, beyond-12-month ORs | 144.2 | 3.04 | 31,311 | 174,595 | 175 | 1.94 times |
-| Upper range, 10-12 month ORs | 291.0 | 2.71 | 27,944 | 155,818 | 156 | 1.73 times |
-| Upper range, beyond-12-month ORs | 291.0 | 6.14 | 63,187 | 352,338 | 352 | 3.91 times |
+| Literature-anchored, 10-12 month ORs | 146.2 | 1.36 | 14,039 | 78,284 | 78 | 0.87 times |
+| Literature-anchored, beyond-12-month ORs | 146.2 | 3.08 | 31,745 | 177,017 | 177 | 1.97 times |
+| Upper range, 10-12 month ORs | 294.7 | 2.75 | 28,299 | 157,799 | 158 | 1.75 times |
+| Upper range, beyond-12-month ORs | 294.7 | 6.21 | 63,990 | 356,817 | 357 | 3.96 times |
 
-Range for the headline row (literature-anchored, 10 to 12 month ORs, Saudi gap) over the pair factor: **AED 51,475 to 128,688 per 1,000**, AED 77,213 central. The fee at which the avoided cost equals the price is AED 77 per case on the headline row. At Abu Dhabi's central volume of 17,696 positives, avoided first-year treatment cost is AED 1.4 to 3.1 million a year on the two literature-anchored rows, against our assumed cost to serve of AED 1.19 million.
+Range for the headline row (literature-anchored, 10 to 12 month ORs, Saudi gap) over the pair factor: **AED 52,189 to 130,473 per 1,000**, AED 78,284 central. The fee at which the avoided cost equals the price is AED 78 per case on the headline row. At Abu Dhabi's central volume of 17,696 positives, avoided first-year treatment cost is AED 1.4 to 3.1 million a year on the two literature-anchored rows, against our assumed cost to serve of AED 1.19 million.
 
 **Labelled assumptions.** (1) The shares are synthetic simulator output, not observed; (2) Corley's odds ratios are observational and subject to confounding by indication, and apply to a different population; (3) cases that never complete are treated as if they completed late, which is the harm model's simplification; (4) only first-year direct treatment cost is counted, not survival, deaths, productivity or later years, so the figure understates the societal value and says nothing about lives; (5) the stage-pair factor and the use of one Saudi hospital as the central cost are our choices; (6) no discounting or inflation; (7) the 270-day shares rest on the simulator's timing between 180 and 360 days, which is not validated (after the B21 timing fix only two timing claims pass held-out validation, and neither covers days 180 to 360; [validation.md](../results/validation.md)), so the table is indicative; the completion ratio at 180 days passed. Read the table as an order of magnitude whose sign is robust and whose size is not.
 
-**Reading against price.** Avoided cost accrues to the payer or the treating system years after the fee is paid, and the simulator shows a 14-point drop in no-colonoscopy by day 270 only under the literature-anchored assumptions. It supports a per-case price of tens of dirhams, not hundreds, at the lower case; it supports AED 90 only if the odds ratios are at the higher end or the upper-range reach holds. The case a buyer will actually buy on is in section 5.
+**Reading against price.** Avoided cost accrues to the payer or the treating system years after the fee is paid, and the simulator shows a 15-point drop in no-colonoscopy by day 270 only under the literature-anchored assumptions. It supports a per-case price of tens of dirhams, not hundreds, at the lower case; it supports AED 90 only if the odds ratios are at the higher end or the upper-range reach holds. The case a buyer will actually buy on is in section 5.
 
 ### 4.4 Advanced cancers avoided per year in Abu Dhabi
 
@@ -145,24 +138,24 @@ This turns section 4.3 into a count of cancers. It uses only figures already in 
 
 | Row (literature-anchored) | Per 1,000 positives | Arithmetic for 17,696 positives | Advanced-stage cancers avoided a year |
 |---|---|---|---|
-| 10 to 12 month odds ratios | 1.34 | 17,696 / 1,000 x 1.34 = 17.696 x 1.34 | about 23.7 |
-| Beyond-12-month odds ratios | 3.04 | 17,696 / 1,000 x 3.04 = 17.696 x 3.04 | about 53.8 |
+| 10 to 12 month odds ratios | 1.36 | 17,696 / 1,000 x 1.36 = 17.696 x 1.36 | about 24.1 |
+| Beyond-12-month odds ratios | 3.08 | 17,696 / 1,000 x 3.08 = 17.696 x 3.08 | about 54.5 |
 
-So the literature-anchored range is about 24 to 54 advanced-stage cancers avoided a year in Abu Dhabi. The upper-range scenario would give 48 to 109 (2.71 and 6.14 per 1,000), a mechanism ceiling and not a forecast. Across the low and high positive counts (8,216 and 59,724) the literature-anchored range widens to about 11 to 182.
+So the literature-anchored range is about 24 to 55 advanced-stage cancers avoided a year in Abu Dhabi. The upper-range scenario would give 49 to 110 (2.75 and 6.21 per 1,000), a mechanism ceiling and not a forecast. Across the low and high positive counts (8,216 and 59,724) the literature-anchored range widens to about 11 to 184.
 
 **Caveats.** This is a synthetic simulation, not an observation. The odds ratios are observational (Corley, Kaiser, 2010 to 2014) and apply to a different population. The 270-day timing is not validated (section 0). The positive count is itself an assumption-based estimate. The result is an illustration of scale, not a forecast, and no one should quote it as a number of lives or cancers saved.
 
 ## 5. Capacity value
 
-Minutes per case by role are in `docs/results/results.json` under `effort.scenarios.<scenario>.<all|in_reach>.arms.<arm>.minutes_per_case.<role>.mean` ([results.md, Human effort](../results/results.md)). Literature-anchored, programme level: coordinator 47.1 to 29.9 minutes (-36.4 percent); owner clinician 4.4 to 8.6 (+95 percent); specialist 6.2 to 7.5 (+22.0 percent). With 1,700 productive hours per FTE (assumed; 1,500 to 1,900):
+Minutes per case by role are in `docs/results/results.json` under `effort.scenarios.<scenario>.<all|in_reach>.arms.<arm>.minutes_per_case.<role>.mean` ([results.md, Human effort](../results/results.md)). Literature-anchored, programme level: coordinator 46.6 to 29.8 minutes (-36.1 percent); owner clinician 4.5 to 8.7 (+94 percent); specialist 6.1 to 7.4 (+22.6 percent). With 1,700 productive hours per FTE (assumed; 1,500 to 1,900):
 
 | Per 10,000 positive FITs a year | Coordinator FTE | Owner-clinician FTE | Specialist FTE | All roles |
 |---|---|---|---|---|
-| Literature-anchored, programme level | +1.68 (1.50 to 1.91) | -0.41 | -0.13 | +1.14 |
-| Literature-anchored, cases in reach | +3.07 (2.75 to 3.48) | -0.75 | -0.24 | +2.08 |
-| Upper range | +3.27 (2.93 to 3.71) | -0.71 | -0.26 | +2.31 |
+| Literature-anchored, programme level | +1.65 (1.47 to 1.87) | -0.41 | -0.13 | +1.10 |
+| Literature-anchored, cases in reach | +3.01 (2.69 to 3.41) | -0.75 | -0.25 | +2.01 |
+| Upper range | +3.21 (2.87 to 3.63) | -0.71 | -0.26 | +2.24 |
 
-At Abu Dhabi's central 17,696 positives the literature-anchored row scales to about 3.0 coordinator FTE freed and 0.7 owner-clinician plus 0.2 specialist FTE consumed. **This is capacity, not cash.** The baseline workload is 4.6 coordinator FTE per 10,000 positives, so the freed share is real against a coordinator team. But clinician and specialist time rises, wage-weighted staff time per case goes up 10.5 percent at the sourced-adjacent wage ratios of 4 and 10 ([pilot-plan.md section 8](../pilot-plan.md); [evidence-wages.md](../evidence-wages.md)), and the base simulation has no queue. Capacity is modelled separately (B19, [results.md, Under finite capacity](../results/results.md)): at base capacity the 180-day gain survives (+15.5 points), the 90-day gain is about zero (+0.9 points), and median time to colonoscopy among completers rises by 14.9 days; at 70 percent of base slot supply the 180-day gain is +5.4 points. More people complete, but the queue is endoscopy supply, which is a buyer decision. Staff shifts are not modelled beyond a daily minutes budget. The honest pitch is "grow screening without growing coordinators, and watch clinician minutes (K9)", not "save labour cost". The simulator's 40 percent labour-reduction target is **not met in realistic scenarios; the upper bound crosses it**: 36.7 percent in reach and 20.1 percent at programme level (literature-anchored), and 40.8 percent only in the upper range, a mechanism ceiling and not a forecast (95% interval 39.9 to 41.7).
+At Abu Dhabi's central 17,696 positives the literature-anchored row scales to about 2.9 coordinator FTE freed and 0.7 owner-clinician plus 0.2 specialist FTE consumed. **This is capacity, not cash.** The baseline workload is 4.6 coordinator FTE per 10,000 positives, so the freed share is real against a coordinator team. But clinician and specialist time rises, wage-weighted staff time per case goes up 10.9 percent at the sourced-adjacent wage ratios of 4 and 10 ([pilot-plan.md section 8](../pilot-plan.md); [evidence-wages.md](../evidence-wages.md)), and the base simulation has no queue. Capacity is modelled separately (B19, [results.md, Under finite capacity](../results/results.md)): at base capacity the 180-day gain survives (+15.7 points), the 90-day gain is about zero (+0.7 points), and median time to colonoscopy among completers rises by 15.0 days; at 70 percent of base slot supply the 180-day gain is +5.2 points. More people complete, but the queue is endoscopy supply, which is a buyer decision. Staff shifts are not modelled beyond a daily minutes budget. The honest pitch is "grow screening without growing coordinators, and watch clinician minutes (K9)", not "save labour cost". The simulator's 40 percent labour-reduction target is **not met in realistic scenarios; the upper bound comes close**: 36.0 percent in reach and 19.7 percent at programme level (literature-anchored), and 40.0 percent only in the upper range, a mechanism ceiling and not a forecast (95% interval 39.0 to 40.9).
 
 ## 6. Go-to-market
 
@@ -185,24 +178,9 @@ At Abu Dhabi's central 17,696 positives the literature-anchored row scales to ab
 | Small revenue pool | Not a standalone business | Position as a reusable pathway platform; avoid fixed-cost growth before a second programme |
 | Data sharing and residency | Blocks the shadow run | In-country hosting; data-sharing agreement; security assessment; Malaffi optional ([malaffi-adapter-plan.md](../governance/malaffi-adapter-plan.md)) |
 
-### Letter of intent template (non-binding, one page)
+### Letter of intent
 
-> **Letter of intent: shadow pilot of positive-FIT follow-up tracking**
->
-> From: [Provider legal name], [address] ("the Provider"). To: [Operator name] ("the Operator"). Date: [date].
->
-> 1. **Purpose.** The parties intend to run a read-only shadow pilot to test whether giving every positive faecal immunochemical test (FIT) result a named owner, a clock and an audit trail finds cases that are not being tracked. This letter records intent and is not a contract.
-> 2. **Scope.** Colorectal cancer screening only; [number] sites of the Provider; a periodic export (CSV or HL7 v2) of FIT results, referrals and colonoscopy records from [start date] for 90 days. The Operator's system sends no messages and assigns no tasks. No diagnosis or clinical advice is produced.
-> 3. **Data.** The Provider will share [list of fields] under a data-sharing agreement to be signed before any real data is exchanged, with in-country hosting, role-based access and an audit log. The Provider's data protection and security reviews apply. No data leaves the UAE.
-> 4. **Provider commitments.** A named sponsor ([name, role]); a coordinator for a weekly 30-minute review of flags; the baseline volumes and the export format by [date]; recording of staff minutes per case for [number] weeks.
-> 5. **Operator commitments.** Set-up and run costs as agreed in section 7; weekly flag report; a readout at day 90 with the measures below; deletion or return of data at the end.
-> 6. **Success measures (agreed before start).** Share of positives with an identifiable owner and clock; positives with no colonoscopy and no activity for [30] days that coordinators confirm were untracked; agreement between the Operator's overdue flags and the coordinators' own judgement ([target]); staff minutes per case by role.
-> 7. **Fees.** A flat fee of AED [amount] at cost recovery for the shadow pilot, payable [terms]. If the parties proceed to an active pilot, pricing will be agreed separately and will not exceed [cap] per positive case tracked without a further written agreement.
-> 8. **Not binding.** Except for confidentiality (clause 9) and this clause, neither party is obliged to proceed. Either may withdraw by written notice. No exclusivity.
-> 9. **Confidentiality.** Each party keeps the other's non-public information confidential for [two] years.
-> 10. **Conditions.** Start is conditional on the Provider's approvals, any regulator notification the Provider requires, and a clinician review of the pathway.
->
-> Signed for the Provider: [name, title, date]. Signed for the Operator: [name, title, date].
+The letter-of-intent template is now [outreach/letter-of-intent.md](outreach/letter-of-intent.md): non-binding, shadow mode only (read-only, no patient contact, no write-back), with the success measures S1 to S8 of [go-to-market.md](go-to-market.md). It replaces the broader draft that was here. The risk register is in [go-to-market.md](go-to-market.md) section 8.
 
 ## 7. Open points and what stayed unverifiable
 
@@ -270,18 +248,18 @@ Qatar+Kuwait+Oman+Bahrain: FIT-positive cases      5,848     15,744     72,871
 Revenue pool at the illustrative fees, central case: option B (AED 90 per positive case) Abu Dhabi 1,592,640, UAE 4,032,000; option A (AED 6 per member screened) Abu Dhabi 1,516,800, UAE 3,840,000.
 
 OUTCOME VALUE: treatment cost avoided per 1,000 positive FITs (ILLUSTRATIVE, SYNTHETIC SHARES x PUBLISHED ORs x COST GAP)
-Shares with no colonoscopy by day 270 (synthetic): baseline 46.5%, literature-anchored 32.1%, upper-range 17.4%.
+Shares with no colonoscopy by day 270 (synthetic): baseline 46.5%, literature-anchored 31.9%, upper-range 17.1%.
 On-time advanced-stage risk 0.0098 (derived from Corley 2017 absolute risks). Stage I to IV cost gap per patient, first year:
   Saudi study (USD, 2020 prices x 3.6725): AED 95,694; Malaysian study (MYR, 2012, not inflated): AED 17,161.
 Pair factor (share of that gap that one advanced-to-early shift saves; assumed): 0.6, sensitivity 0.4 to 1.
 per 1,000 positive FITs               moved to colonoscopy  late-stage avoided  AED avoided, Malaysian gap  AED avoided, Saudi gap  AED per case, Saudi gap  avoided / option B AED 90
 ------------------------------------  --------------------  ------------------  --------------------------  ----------------------  -----------------------  -------------------------
-literature-anchored, 10-12 month ORs                 144.2                1.34                      13,847                  77,213                       77                      0.86x
-literature-anchored, >12 month ORs                   144.2                3.04                      31,311                 174,595                      175                      1.94x
-upper-range, 10-12 month ORs                         291.0                2.71                      27,944                 155,818                      156                      1.73x
-upper-range, >12 month ORs                           291.0                6.14                      63,187                 352,338                      352                      3.91x
-Sensitivity of the headline row (literature-anchored, 10-12 month ORs, Saudi gap) to the pair factor, AED avoided per 1,000: 0.4: 51,475, 0.6: 77,213, 1: 128,688.
-Break-even for the headline row: the option B fee equals the cost avoided when it is AED 77 per case (the illustrative fee is 1.17 times that).
+literature-anchored, 10-12 month ORs                 146.2                1.36                      14,039                  78,284                       78                      0.87x
+literature-anchored, >12 month ORs                   146.2                3.08                      31,745                 177,017                      177                      1.97x
+upper-range, 10-12 month ORs                         294.7                2.75                      28,299                 157,799                      158                      1.75x
+upper-range, >12 month ORs                           294.7                6.21                      63,990                 356,817                      357                      3.96x
+Sensitivity of the headline row (literature-anchored, 10-12 month ORs, Saudi gap) to the pair factor, AED avoided per 1,000: 0.4: 52,189, 0.6: 78,284, 1: 130,473.
+Break-even for the headline row: the option B fee equals the cost avoided when it is AED 78 per case (the illustrative fee is 1.15 times that).
 Direct treatment cost in the first year only; excludes survival, deaths, productivity and later years. Cases that never
 complete are treated as if they completed late. Observational ORs, confounding by indication.
 
@@ -290,9 +268,9 @@ Minutes by role from results.json effort (keys effort.scenarios.<scenario>.<all|
 FTE = cases x minutes saved / 60 / productive hours (1700 per FTE a year, assumed; range 1500 to 1900). Positive = freed.
 scenario (vs baseline of same cases)  coordinator FTE  owner clinician FTE  specialist FTE  all roles FTE  coordinator FTE range (hours)
 ------------------------------------  ---------------  -------------------  --------------  -------------  -----------------------------
-literature anchored, programme level            +1.68                -0.41           -0.13          +1.14                 +1.50 to +1.91
-literature anchored, in reach                   +3.07                -0.75           -0.24          +2.08                 +2.75 to +3.48
-upper range (every case reached)                +3.27                -0.71           -0.26          +2.31                 +2.93 to +3.71
+literature anchored, programme level            +1.65                -0.41           -0.13          +1.10                 +1.47 to +1.87
+literature anchored, in reach                   +3.01                -0.75           -0.25          +2.01                 +2.69 to +3.41
+upper range (every case reached)                +3.21                -0.71           -0.26          +2.24                 +2.87 to +3.63
 Baseline workload for scale: 4.6 coordinator FTE, 0.4 owner-clinician FTE and 0.6 specialist FTE for 10,000 positives.
 Coordinator time is freed; owner-clinician and specialist time rises, so the all-roles figure is much smaller than the
 coordinator figure and clinician time is the scarcer resource. No queueing or shift pattern is modelled.
@@ -306,3 +284,140 @@ option B fee AED 90 as a share of the median per person navigated    -   16.3%  
 These are US-led human-navigator programmes for screening, not positive-FIT software contracts; they bound what a buyer
 already pays per navigated person, they are not a price list for this product.
 ```
+
+## 9. Pricing, total cost of ownership and payback (ticket M7-4)
+
+This section prices the programme licence of section 0 and puts the hosting on public list prices. The method: Azure UAE North pay-as-you-go prices read from the public [Azure Retail Prices API](https://prices.azure.com/api/retail/prices) on 25 October 2026 (filter `armRegionName eq 'uaenorth'`; human pages for [Container Apps](https://azure.microsoft.com/pricing/details/container-apps/), [PostgreSQL Flexible Server](https://azure.microsoft.com/pricing/details/postgresql/flexible-server/), [Azure Monitor](https://azure.microsoft.com/pricing/details/monitor/), [Key Vault](https://azure.microsoft.com/pricing/details/key-vault/), [Azure DNS](https://azure.microsoft.com/pricing/details/dns/), [Container Registry](https://azure.microsoft.com/pricing/details/container-registry/), [Application Gateway](https://azure.microsoft.com/pricing/details/application-gateway/) and [Private Link](https://azure.microsoft.com/pricing/details/private-link/)), times the sizes in `deploy/bicep` ([deployment.md](../governance/deployment.md)); every other input is assumed and graded in `tools/pilot/inputs.yaml`. Two things the API showed matter for the plan: Azure Health Data Services (the managed FHIR service) returned no UAE North price, so a self-hosted FHIR server is costed, and no Private Link endpoint meter came back for UAE North, so that one price is the global rate and to verify. Hosting on Azure is still subject to DoH authorisation (ADHICS CM 4.2, [deployment.md](../governance/deployment.md)); in a provider's own data centre the hosting line would be the provider's cost instead.
+
+Everything between the markers below is generated by `python3 tools/pilot/cost_model.py --pricing --write`, and a test (`tools/pilot/tests/test_cost_model.py`, part of `make check`) fails if it is stale.
+
+<!-- BEGIN GENERATED: python3 tools/pilot/cost_model.py --pricing --write (do not edit by hand) -->
+
+Generated from `tools/pilot/inputs.yaml` (sections `azure`, `pathways`, `pricing`, `operator`, `buyer`, plus the earlier sections) and `results.json` (synthetic). AED unless stated; USD at the peg of 3.6725. Illustrative: not a quote, an offer or a forecast.
+
+**9.1 Hosting on Azure UAE North at list price** (production, the `deploy/bicep` defaults; pay-as-you-go, no reservation, no free grant)
+
+| item | sizing | USD a month | AED a year |
+|---|---|---:|---:|
+| Container Apps: api, scheduler, watchdog | 2.75 vCPU, 5.5 GiB always on | 217 | 9,555 |
+| Container Apps: FHIR server (HAPI) | 2 vCPU, 4 GiB | 158 | 6,949 |
+| Container Apps: collector, Prometheus, Grafana | 0.5 vCPU, 1 GiB | 39 | 1,737 |
+| Container Apps environment | 730 h | 104 | 4,600 |
+| PostgreSQL: case database compute | 4 vCores x 2 (zone-redundant HA) | 634 | 27,925 |
+| PostgreSQL: case database storage | 128 GB x 2 | 35 | 1,557 |
+| PostgreSQL: backup above the included amount | 64 GB, LRS, in country | 7 | 296 |
+| PostgreSQL: FHIR database compute | 2 vCores x 2 | 317 | 13,962 |
+| PostgreSQL: FHIR database storage | 64 GB x 2 | 18 | 778 |
+| Log Analytics: ingestion and retention | 20 GB a month, 2 months billed retention | 71 | 3,132 |
+| Key Vault: operations | 500,000 a month | 2 | 87 |
+| Private endpoint and private DNS zones | 1 endpoint, 2 zones | 8 | 366 |
+| Container Registry, Standard | 1 registry | 20 | 894 |
+| Application Gateway WAF v2 (TLS gateway) | 1 gateway, 2 capacity units | 374 | 16,504 |
+| **Production total** |  | **2,005** | **88,343** |
+| Test environment (40% of production, assumed) |  |  | 35,337 |
+| **Hosting a year** |  |  | **123,680** |
+
+The earlier assumed hosting input (AED 9,000 a month, AED 108,000 a year, used by the pilot model) is 0.87 times this list-price build-up, so the pilot model's hosting is close to list price. The pricing below uses the build-up. Database compute with a standby is the largest line; a reservation would cut it (not applied, no reservation price read).
+
+**9.2 Volumes a year in Abu Dhabi** (FIT from section 1; the other pathways are assumed or a programme target, and none is built or simulated)
+
+| pathway | screened, central | actionable cases, low | central | high |
+|---|---:|---:|---:|---:|
+| FIT positives | 252,800 | 8,216 | 17,696 | 59,724 |
+| Blood-based screening positives | 10,000 | 500 | 1,200 | 3,000 |
+| Breast screening recalls | 40,000 | 1,250 | 3,200 | 8,400 |
+| Cervical screening abnormal results | 50,000 | 900 | 2,500 | 6,400 |
+| **All four** | **352,800** | 10,866 | **24,596** | 77,524 |
+
+**9.3 Operator cost to serve a year** (central volumes; every input assumed except the Azure unit prices)
+
+| line | FIT only | programme, four pathways |
+|---|---:|---:|
+| hosting (Azure UAE North list price, production and test) | 130,758 | 133,518 |
+| third-party licences | 24,000 | 24,000 |
+| engineering and support | 529,200 | 904,200 |
+| clinical safety officer | 180,000 | 180,000 |
+| ADHICS audit, penetration test, data protection review | 80,000 | 80,000 |
+| integration, one feed per provider group (amortised) | 240,000 | 240,000 |
+| pathway builds beyond FIT (amortised) | 0 | 150,000 |
+| **Total cost to serve** | **1,183,958** | **1,711,718** |
+| cost per actionable case | 66.9 | 69.6 |
+| one-off investment (integrations, pathway builds) | 720,000 | 1,170,000 |
+
+**9.4 Price points and operator margin** (illustrative fees: AED 6 per screened member, AED 90 per tracked case, AED 140 per case closed with evidence (simulated closed share 67.8%), and a programme licence of AED 2,000,000 a year for 4 pathways; margin = (revenue - cost to serve) / revenue)
+
+| price point | FIT only: revenue | margin | four pathways: revenue | margin |
+|---|---:|---:|---:|---:|
+| A: per screened member | 1,516,800 | +22% | 2,116,800 | +19% |
+| B1: per tracked case | 1,592,640 | +26% | 2,213,640 | +23% |
+| B2: per closed case | 1,680,757 | +30% | 2,336,116 | +27% |
+| L: programme licence | not offered | - | 2,000,000 | +14% |
+
+**9.5 Operator break-even and payback** (programme, four pathways, central)
+
+| measure | value |
+|---|---:|
+| break-even fee per tracked case | AED 69.6 |
+| break-even fee per closed case | AED 102.6 |
+| break-even programme licence | AED 1,711,718 a year |
+| operator one-off investment | AED 1,170,000 |
+| licence less cash running cost (before amortisation) | AED 678,282 a year |
+| operator payback on the one-off investment, licence | 21 months |
+| operator payback with the buyer's implementation fee | 16 months |
+
+**9.6 What the buyer gets a year from the FIT pathway** (the only pathway simulated; synthetic shares, observational odds ratios, assumed wages; literature-anchored, programme level)
+
+| item | AED or count a year |
+|---|---:|
+| avoided first-year treatment cost, 10-12 month ORs (cash, years later) | 1,385,307 |
+| avoided first-year treatment cost, beyond-12-month ORs | 3,132,485 |
+| coordinator capacity freed (2.9 FTE at AED 105,000) | 306,123 |
+| owner-clinician time consumed (0.7 FTE at 4 times) | -305,818 |
+| specialist time consumed (0.2 FTE at 10 times) | -249,072 |
+| **net labour, wage-weighted** | **-248,767** |
+| advanced-stage cancers avoided (count; 10-12 and beyond-12-month ORs) | 24.1 to 54.6 |
+| positives no longer lost without anyone told (count; silent loss 45.3% to 20.6%) | 4,367 |
+| IFHAS 15-working-day referral and 31-working-day colonoscopy clocks, measured per case | not monetised |
+
+**9.7 Buyer break-even and payback** (fee less avoided treatment cost, against what it buys; the cash return accrues to the treating system years after the fee)
+
+| fee | avoided cost covers | net cost a year | net cost per advanced cancer avoided | net cost per positive no longer silently lost | payback of the AED 250,000 implementation fee |
+|---|---:|---:|---:|---:|---:|
+| B1 per tracked case, FIT only (AED 1,592,640) | 87% | 207,333 | 8,593 | 47 | none (no positive annual cash) |
+| same, beyond-12-month ORs | 197% | -1,539,845 | saves money | saves money | 2 months |
+| L programme licence, four pathways (AED 2,000,000), FIT value only | 69% | 614,693 | 25,477 | 141 | none (no positive annual cash) |
+| same, beyond-12-month ORs | 157% | -1,132,485 | saves money | saves money | 3 months |
+
+**9.8 Sensitivity** (one input at a time; programme licence, four pathways; buyer column uses the FIT value only, 10-12 month ORs unless the row says otherwise)
+
+| case | operator cost a year | licence margin | cost per actionable case | FIT avoided cost covers licence | buyer net cost per advanced cancer avoided |
+|---|---:|---:|---:|---:|---:|
+| **base case** | 1,711,718 | +14% | 69.6 | 69% | 25,477 |
+| volumes low (all pathways) | 1,456,626 | +27% | 134.1 | 32% | 121,124 |
+| volumes high (all pathways) | 2,122,289 | -6% | 27.4 | 234% | saves money |
+| licence price -25% | 1,711,718 | -14% | 69.6 | 92% | 4,754 |
+| licence price +25% | 1,711,718 | +32% | 69.6 | 55% | 46,201 |
+| hosting -50% | 1,649,878 | +18% | 67.1 | 69% | 25,477 |
+| hosting +100% | 1,835,398 | +8% | 74.6 | 69% | 25,477 |
+| support FTE per 50,000 screened halved | 1,447,118 | +28% | 58.8 | 69% | 25,477 |
+| support FTE per 50,000 screened doubled | 2,240,918 | -12% | 91.1 | 69% | 25,477 |
+| provider groups 3 | 1,591,718 | +20% | 64.7 | 69% | 25,477 |
+| provider groups 12 | 1,951,718 | +2% | 79.4 | 69% | 25,477 |
+| stage-pair factor low | 1,711,718 | +14% | 69.6 | 46% | 44,616 |
+| stage-pair factor high | 1,711,718 | +14% | 69.6 | 115% | saves money |
+| beyond-12-month ORs | 1,711,718 | +14% | 69.6 | 157% | saves money |
+
+**9.9 Net cost per death avoided and per QALY** (FIT pathway, literature-anchored; deaths and QALYs from [outcomes.md](../results/outcomes.md), M7-3: colorectal cancer deaths within 5 years avoided and QALYs discounted at 3%, from Corley 2017's delay odds ratios, Saudi and SEER stage survival and WHO UAE life expectancy; for 17,696 positives a year that is 31.1 deaths (20.5 to 51.3) and 389 QALYs (245 to 678), 95% PSA intervals. Net cost is the fee less the avoided treatment cost of 9.7, 10-12 month ORs; the second pair of columns adds the extra colonoscopies the outcomes model counts (2,507 a year at an assumed AED 4,000 each), which this cost model otherwise leaves to the payer. Ranges divide by the PSA bounds. Illustrative.)
+
+| fee | net cost a year | per death avoided | per QALY | per death avoided, with colonoscopies | per QALY, with colonoscopies |
+|---|---:|---:|---:|---:|---:|
+| B1 per tracked case, FIT only (AED 1,592,640) | 207,333 | 6,662 (4,044 to 10,122) | 533 (306 to 845) | 328,823 (199,632 to 499,600) | 26,297 (15,100 to 41,697) |
+| L programme licence, four pathways (AED 2,000,000), FIT value only | 614,693 | 19,751 (11,991 to 30,008) | 1,580 (907 to 2,505) | 341,912 (207,578 to 519,486) | 27,343 (15,701 to 43,357) |
+
+**Reading.** At the central inputs the programme licence costs the operator AED 1,711,718 a year to serve (69.6 per actionable case across 24,596 cases), so a licence of AED 2,000,000 carries a 14% margin. Avoided treatment cost from the FIT pathway alone covers 69% of the licence (157% at the beyond-12-month odds ratios), and wage-weighted labour is a net cost of AED 248,767 a year in the current routing, so neither pays the fee. The buyer pays for the remainder in safety and outcomes: about 4,367 positives a year no longer lost without anyone told and 24 to 55 advanced-stage cancers avoided (synthetic, assumption-based), plus a per-case record against the IFHAS timelines, and in health terms about 31 colorectal cancer deaths avoided within 5 years for each year of positives (20 to 51), at a net cost of about AED 1,580 per QALY on the licence before the extra colonoscopies and AED 27,343 with them (9.9). The other three pathways add volume and cost here but no modelled value, because none is built or simulated.
+
+<!-- END GENERATED: pricing -->
+
+**How to say it.** The operator can serve a four-pathway programme in Abu Dhabi for roughly AED 1.7 million a year at list-price hosting and assumed staffing, so a licence around AED 2 million is a viable business, and it is larger than the FIT-only pool of section 1.3. The buyer does not get that money back in cash: avoided first-year treatment cost covers about two thirds of it at the lower odds ratios, and the labour line is a cost until escalations are routed to nurse navigators. What the buyer pays for is a programme where every positive has an owner and a clock: about 4,400 positives a year that the simulation says would otherwise be lost without anyone told, an advanced cancer avoided for roughly AED 25,000 of net cost at the base case, and a per-case record against the IFHAS timelines. In health terms the FIT pathway alone is about 31 colorectal cancer deaths within 5 years avoided for each year of positives (20 to 51) and 389 discounted QALYs, which puts the licence at roughly AED 1,600 net per QALY before the extra colonoscopies and about AED 27,000 with them (9.9; synthetic, observational odds ratios, survival not from the UAE, no clinician review).
+
+**Note on QALYs and deaths avoided.** Dated 29 October 2026 (M7-4), filled in by M7-3 the same day: the deaths and QALYs now come from [`docs/results/outcomes.md`](../results/outcomes.md) (`make evaluate-outcomes`), and section 9.9 divides the same net cost as 9.7 (fee less avoided first-year treatment cost) by them, with and without the extra colonoscopies the outcomes model counts. The outcomes model's own cost per QALY (AED 23,626 for AED 90 per case, colonoscopies included) uses its own avoided-cost estimate, which counts more advanced cancers avoided than section 4.3 (it applies the beyond-12-month odds ratios to cases with no colonoscopy within a year); 9.9 keeps this document's 10-12 month figure, so it is the more conservative of the two.

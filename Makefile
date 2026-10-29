@@ -1,4 +1,4 @@
-.PHONY: k8s-up k8s-down claude-smoke claude-record redteam-generate triage-serve up-obs check-full evaluate-smoke test-redteam validate validate-check validate-targets evaluate-refusal evaluate-abudhabi oidc-up oidc-down test-oidc up-scale agency-run test-demo test-e2e-live demo-scenario demo-stage demo-snapshot demo-restore demo-reset demo-kill-scheduler check docs-check docs-numbers tracker-lint test-security test-tools test-load load-check up down logs test test-db test-db-create test-db-reset test-chaos synthea demo-seed demo-seed-clean evaluate evaluate-capacity evaluate-capacity-check simulate evaluate-check sensitivity sensitivity-check reset web-install web-dev web-build web-test web-e2e test-e2e review-packs review-packs-check test-review-packs test-phi-logs rbac-matrix test-offline fresh-clone risk-report risk-check calibrate-fetch calibrate-fit calibrate-check effort effort-check video video-check video-deps verify hl7-demo hl7-samples judge-headline judge-headline-check
+.PHONY: k8s-up k8s-down evaluate-outcomes evaluate-outcomes-check rai-fairness rai-fairness-check rai-oversight rai-oversight-check rai-check claude-smoke claude-record redteam-generate triage-serve up-obs check-full evaluate-smoke test-redteam validate validate-check validate-targets evaluate-refusal evaluate-abudhabi oidc-up oidc-down test-oidc up-scale agency-run test-demo test-e2e-live demo-scenario demo-stage demo-snapshot demo-restore demo-reset demo-kill-scheduler check docs-check docs-numbers tracker-lint test-security test-tools test-load load-check up down logs test test-db test-db-create test-db-reset test-chaos synthea demo-seed demo-seed-clean evaluate evaluate-capacity evaluate-capacity-check simulate evaluate-check sensitivity sensitivity-check reset web-install web-dev web-build web-test web-e2e test-e2e review-packs review-packs-check test-review-packs test-phi-logs rbac-matrix test-offline fresh-clone risk-report risk-check calibrate-fetch calibrate-fit calibrate-check effort effort-check video video-check video-deps verify hl7-demo hl7-samples judge-headline judge-headline-check api-types api-types-check
 
 up:
 	docker compose up -d --build
@@ -197,6 +197,19 @@ evaluate-abudhabi:
 	$(SIMENV) $(PY) -m simulator.sim.cli evaluate --reps $(REPS) --cases $(CASES) --days $(EVAL_DAYS) --seed $(SEED) $(PARAM_FLAGS) --params simulator/params.abudhabi.yaml --out-dir $(ABUDHABI_OUT)
 	$(SIMENV) $(PY) -m simulator.sim.abudhabi_report $(ABUDHABI_OUT)/results.json docs/results
 
+# Health outcomes (ticket M7-3; simulator/sim/outcomes.py, simulator/params.outcomes.yaml): a post-processor that reads the simulator's per-case
+# records (days to colonoscopy, language, channel, contact, reach) for the same replications as `make evaluate`, for the literature-anchored
+# headline, the Abu Dhabi-shaped overlay, the upper range and the headline at base capacity, and turns them into cancers, stage, deaths, life-years
+# and QALYs (3% discount) with a probabilistic sensitivity analysis and an illustrative cost per QALY. Writes docs/results/outcomes.{json,md}.
+# A few minutes with 8 workers (four scenarios, one of them through the capacity calendar). `evaluate-outcomes-check` reruns it and fails unless
+# both committed files are byte-identical to the fresh run; simulator/tests/test_outcomes.py checks that --jobs never changes a byte.
+OUTCOMES_JOBS ?= 8
+evaluate-outcomes:
+	$(SIMENV) $(PY) -m simulator.sim.outcomes --reps $(REPS) --cases $(CASES) --days $(EVAL_DAYS) --seed $(SEED) --jobs $(OUTCOMES_JOBS) --out-dir docs/results
+
+evaluate-outcomes-check:
+	$(SIMENV) $(PY) -m simulator.sim.outcomes --reps $(REPS) --cases $(CASES) --days $(EVAL_DAYS) --seed $(SEED) --jobs $(OUTCOMES_JOBS) --out-dir docs/results --check
+
 # Human effort per case (ticket B17): the Human effort section of docs/results/results.md is written by `make evaluate` (it is computed from the same
 # event logs, no extra run). `make effort` prints it from the committed results.json; `make effort-check` fails if results.json predates the effort
 # model in simulator/sim/effort.py or docs/evidence.md section 11 lacks a source, and runs the effort tests (hand-computed arithmetic on the five-case scenario).
@@ -247,7 +260,15 @@ web-build:
 	cd web && npm run build
 
 web-test:
-	cd web && npm test
+	cd web && npm run typecheck && npm test
+
+# C1 (T-C1): regenerate web/src/api/openapi.json and generated.ts from the API's OpenAPI schema (commit the result), or
+# check that the committed files are current (also run by tests/test_api_types_sync.py in `make test-tools`).
+api-types:
+	PYTHONPATH=api $(PY) tools/codegen/openapi_ts.py
+
+api-types-check:
+	PYTHONPATH=api $(PY) tools/codegen/openapi_ts.py --check
 
 # Playwright e2e against a mock-adapter `vite preview` (needs `npx playwright install chromium` once).
 web-e2e:
@@ -322,7 +343,7 @@ check:
 	$(PY) tools/check/run_check.py --tier fast $(if $(CHECK_KEEP_GOING),--keep-going) $(if $(CHECK_SERIAL),--serial)
 
 # Everything: the fast tier plus the simulator-heavy checks (sensitivity-check, full evaluate-check, risk-check, calibrate-check,
-# validate-check, evaluate-capacity-check). `make check` adds those by itself when the diff against main touches simulator/,
+# validate-check, evaluate-capacity-check, evaluate-outcomes-check). `make check` adds those by itself when the diff against main touches simulator/,
 # config/pathways/, simulator params or the other paths in tools/check/run_check.py (HEAVY_PATH_PREFIXES); CHECK_HEAVY=1/0 forces.
 check-full:
 	$(PY) tools/check/run_check.py --tier full $(if $(CHECK_KEEP_GOING),--keep-going) $(if $(CHECK_SERIAL),--serial)
@@ -388,7 +409,27 @@ fresh-clone:
 # test its own api/ rather than the checkout the venv was installed from.
 # tests/redteam is excluded: its conftest.py would shadow tests/conftest.py (both import as "conftest"); it runs under test-redteam.
 test-tools:
-	PYTHONPATH=api $(PY) -m pytest tests --ignore=tests/redteam tools/demo/tests tools/video/tests -q -m "not live"
+	PYTHONPATH=api $(PY) -m pytest tests --ignore=tests/redteam tools/demo/tests tools/video/tests tools/pilot/tests tools/rai/tests -q -m "not live"
+
+# M7-5: Responsible AI evidence (docs/governance/responsible-ai.md). rai-fairness rewrites docs/results/fairness.{md,json}
+# (triage precision/recall by language and dialect, risk-score AUC and calibration by subgroup, validator FP/FN by language);
+# rai-oversight rewrites docs/results/oversight.{md,json} from a seeded in-process demo run (human decisions, fallback and
+# abstention, and the no-AI-state-change guarantee). The -check targets regenerate in memory and fail on any byte of drift;
+# rai-check runs both and is a `make check` stage. Pure Python, no database, no network.
+RAIENV := PYTHONPATH=$(CURDIR)/api:$(CURDIR)
+rai-fairness:
+	$(RAIENV) $(PY) tools/rai/fairness.py
+
+rai-fairness-check:
+	$(RAIENV) $(PY) tools/rai/fairness.py --check
+
+rai-oversight:
+	$(RAIENV) $(PY) tools/rai/oversight.py
+
+rai-oversight-check:
+	$(RAIENV) $(PY) tools/rai/oversight.py --check
+
+rai-check: rai-fairness-check rai-oversight-check
 
 # D14: the adversarial red-team suite (tests/redteam/, docs/governance/red-team.md). No database, no network. It rewrites
 # tests/redteam/results.json and results.md (deterministic; commit them when the suite changes).
