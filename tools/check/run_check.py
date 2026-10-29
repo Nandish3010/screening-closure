@@ -4,10 +4,11 @@
 Two tiers (F15). `make check` is the FAST tier, the gate before every merge; `make check-full` is everything:
 
   fast   test, verify, test-db, web-test, web-build, web-e2e, docs-check, tracker-lint, test-security, test-tools,
-         test-redteam, load-check, review-packs-check, test-review-packs, effort-check, and `evaluate-smoke` (the
+         test-redteam, load-check, review-packs-check, test-review-packs, effort-check, rai-check, and `evaluate-smoke` (the
          evaluate determinism check at 1 replication instead of 20)
   heavy  the simulator-heavy checks: sensitivity-check, evaluate-check (full size; replaces evaluate-smoke), risk-check,
-         calibrate-check, validate-check, evaluate-capacity-check
+         calibrate-check, validate-check, evaluate-capacity-check,
+         evaluate-outcomes-check
   full   fast + heavy
 
 PATH RULE: `make check` adds the heavy stages by itself when the working tree differs from main in a path that can move
@@ -88,12 +89,14 @@ STAGES = [
     Stage("review-packs-check", weight=1),
     Stage("test-review-packs", weight=2),
     Stage("effort-check", weight=6),
+    Stage("rai-check", weight=8),  # M7-5: fairness audit and oversight report regenerated and compared byte for byte
     Stage("web-e2e", web=True, weight=25),
     # --- the simulator-heavy tier: regeneration checks that move only when the simulator, the pathways or their parameters do
     Stage("sensitivity-check", tier="heavy", weight=330),
     Stage("evaluate-check", tier="heavy", weight=130, replaces="evaluate-smoke"),
     Stage("validate-check", tier="heavy", weight=150),  # B20: held-out validation regenerated twice and compared byte for byte
     Stage("evaluate-capacity-check", tier="heavy", weight=120),
+    Stage("evaluate-outcomes-check", tier="heavy", weight=240),  # M7-3: health outcomes regenerated and compared byte for byte
     Stage("risk-check", tier="heavy", weight=15),
     Stage("calibrate-check", tier="heavy", needs_path="data/external/MANIFEST.json", weight=60),
 ]

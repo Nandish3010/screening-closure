@@ -15,7 +15,7 @@
 | 5 | 6 Forbidden phrases | Is the Arabic list right and complete? |
 | 5 | 7 and 8 Checklist, feedback table | Tick the checklist and fill the feedback table. |
 
-There are 73 Arabic texts (every one is also in English, with the same ID) and 87 Arabic forbidden-phrase entries. Every Arabic text in the prototype's sources is in this pack. All of it was written by the engineering team and has not been reviewed by a native speaker. Please correct freely; suggest better wording in the feedback table.
+There are 78 Arabic texts (every one is also in English, with the same ID) and 147 Arabic forbidden-phrase entries. Every Arabic text in the prototype's sources is in this pack. All of it was written by the engineering team and has not been reviewed by a native speaker. Please correct freely; suggest better wording in the feedback table.
 
 ## 1. What these texts are for
 
@@ -32,7 +32,7 @@ Hard rules the Arabic must keep:
 
 | Source | Where | Reading level | Length limit |
 |---|---|---|---|
-| Patient page (IDs W01 to W49) | Web app at `/patient`, Arabic with right-to-left layout | About grade 6: short sentences, everyday words. | None on the page; short lines for a phone screen |
+| Patient page (IDs W01 to W54) | Web app at `/patient`, Arabic with right-to-left layout | About grade 6: short sentences, everyday words. | None on the page; short lines for a phone screen |
 | Messages (IDs T01 to T21) | SMS, WhatsApp or letter, chosen from the patient's preferred channel | About grade 6: short sentences, everyday words. | SMS 320, WhatsApp 600, letter 1200 characters |
 | Demo drafts (IDs D01 to D03) | Coordinator app, demo data only | About grade 6: short sentences, everyday words. | None |
 
@@ -46,20 +46,20 @@ Placeholders in braces are filled in by the system: `{owner_name}` (the care own
 
 **Dates and names.** The sample date uses Gregorian month and weekday names in the Gulf style (نوفمبر, الثلاثاء), not the Levantine month names. Titles such as "الدكتورة" are part of the owner's name, supplied by the clinic.
 
-**Orthography we noticed.** The patient page and demo drafts write tanween as ـًا (for example تشخيصًا): 0 cases there against 4 of the other form. The templates write ـاً (for example دماً): 16 cases against 0 of the other form. The Arabic comma ، appears 39 times (letter greetings and closings); sentences end with a Latin full stop. Choose one convention.
+**Orthography we noticed.** The patient page and demo drafts write tanween as ـًا (for example تشخيصًا): 0 cases there against 4 of the other form. The templates write ـاً (for example دماً): 16 cases against 0 of the other form. The Arabic comma ، appears 40 times (letter greetings and closings); sentences end with a Latin full stop. Choose one convention.
 
 **Terminology we use today.** Counts are generated from the texts below. Where one idea has several wordings, please choose one.
 
 | Concept | Arabic wording in use, with the strings that contain it |
 |---|---|
 | colonoscopy | تنظير القولون : 2 strings (W16, D01) |
-| camera test (friendly term) | فحص بالكاميرا : 4 strings (W12, W16, W40, D01)<br>الفحص بالكاميرا : 2 strings (W12, W40)<br>فحص متابعة بالكاميرا : not used |
+| camera test (friendly term) | فحص بالكاميرا : 4 strings (W12, W16, W45, D01)<br>الفحص بالكاميرا : 2 strings (W12, W45)<br>فحص متابعة بالكاميرا : not used |
 | screening test | فحص الكشف المبكر : 12 strings (W01, W04, W07, T01, T02, T03, T04, T06 and 4 more) |
-| test (generic) | فحصك : 3 strings (T03, D01, D02)<br>الفحص : 2 strings (W12, W40) |
-| care team | فريق الرعاية : not used<br>فريق رعايتك : 37 strings (W05, W07, W08, W11, W15, W24, W25, W29 and 29 more)<br>فريق رعايتي : 1 string (W40) |
+| test (generic) | فحصك : 3 strings (T03, D01, D02)<br>الفحص : 2 strings (W12, W45) |
+| care team | فريق الرعاية : not used<br>فريق رعايتك : 38 strings (W05, W07, W08, W11, W15, W24, W25, W29 and 30 more)<br>فريق رعايتي : 1 string (W45) |
 | care coordinator | منسق الرعاية : 2 strings (W23, W27)<br>منسق رعاية : 1 string (W20) |
 | care owner (the responsible person) | المسؤول عن رعايتك : 13 strings (W19, T05, T07, T09, T10, T11, T12, T16 and 5 more)<br>المسؤول عن متابعة حالتك : not used<br>من يتابع حالتك : not used |
-| result | نتيجة : 15 strings (W01, W04, W07, W10, T01, T02, T03, T04 and 7 more)<br>نتيجتك : 6 strings (W05, W06, W08, W15, T02, T03)<br>نتيجتي : 1 string (W40) |
+| result | نتيجة : 15 strings (W01, W04, W07, W10, T01, T02, T03, T04 and 7 more)<br>نتيجتك : 6 strings (W05, W06, W08, W15, T02, T03)<br>نتيجتي : 1 string (W45) |
 | appointment | موعد : 20 strings (W16, W17, T01, T02, T03, T04, T05, T06 and 12 more) |
 
 ## 4. Patient page strings, by screen section
@@ -147,19 +147,24 @@ Channel, sharing and their save status.
 
 | ID | English | Arabic | Where it appears |
 |---|---|---|---|
-| W34 | Your choices | اختياراتك | Heading of the choices section. |
-| W35 | How may we contact you? | كيف يمكننا التواصل معك؟ | Legend of the group of contact-channel check boxes. Each box is on unless the patient turned it off (an opt-out default); changing one saves at once. |
-| W36 | Phone call | مكالمة هاتفية | Label of the check box for phone calls. |
-| W37 | Text message | رسالة نصية | Label of the check box for text messages. |
-| W38 | WhatsApp | واتساب | Label of the check box for WhatsApp messages. |
-| W39 | Letter | رسالة مكتوبة | Label of the check box for letters. |
-| W40 | My care team may share my result with the specialist who will do my test. | أسمح لفريق رعايتي بمشاركة نتيجتي مع الطبيب الأخصائي الذي سيجري لي الفحص بالكاميرا. | Label of the check box that lets the care team share the result with the specialist. |
-| W41 | Stop all contact | أوقفوا كل تواصل معي | Button under the choices. Withdraws all consent to contact at once: the case is frozen for outreach and a person is asked to review it. Hidden after withdrawal. |
-| W42 | If you stop contact, your care team will not message or call you. A person will check your case. You can still call your care team. | إذا أوقفت التواصل، فلن يرسل لك فريق رعايتك رسائل ولن يتصل بك. سيراجع أحد أفراد فريق رعايتك ملفك. | Small grey text above that button. It says what stopping contact means and that a person will check the case. |
-| W43 | You asked us to stop contact. We will not message or call you. A person on your care team will check your case. You can still call your care team. | طلبت إيقاف التواصل. لن نرسل لك رسائل ولن نتصل بك. سيراجع أحد أفراد فريق رعايتك ملفك. | Yellow banner at the top of the choices section after the patient has stopped all contact. |
-| W44 | You may contact me again | يمكنكم التواصل معي مرة أخرى | Replaces the stop button after withdrawal. Pressing it records that the patient may be contacted again. |
-| W45 | Saved | تم الحفظ | Status line under the choices after a successful save. |
-| W46 | We could not save this. Please try again. | لم نتمكن من الحفظ. يرجى المحاولة مرة أخرى. | Status line if saving the choices fails. |
+| W34 | How we prepare messages | كيف نُعِدّ الرسائل | Heading of a short notice between the buttons and the choices: how messages are prepared (software helps, a member of staff approves each one). |
+| W35 | We use software to help prepare our messages to you. | نستعين ببرنامج حاسوبي في إعداد رسائلنا إليك. | First line of that notice. Says software helps prepare the messages. Says nothing about results. |
+| W36 | A member of staff checks and approves each message before we send it. | يراجع أحد أفراد فريقنا كل رسالة ويوافق عليها قبل إرسالها. | Second line of that notice. A member of staff checks and approves each message before it is sent. |
+| W37 | To speak to a person, press "I don't understand this" or call your care team. | للتحدث مع شخص، يرجى الضغط على «لا أفهم هذا» أو الاتصال بفريق رعايتك. | Third line of that notice. Names the button "I don't understand this" exactly as translated for the key dontUnderstand, and the care team phone. |
+| W38 | You can stop messages at any time. Use "Stop all contact" in "Your choices" below. | يمكنك إيقاف الرسائل في أي وقت. يمكنك ذلك من خلال «أوقفوا كل تواصل معي» في قسم «اختياراتك» أدناه. | Fourth line of that notice. Points to the "Stop all contact" button (key withdrawButton) in the choices section just below; the quoted names must match those two keys and the heading consentHeading. |
+| W39 | Your choices | اختياراتك | Heading of the choices section. |
+| W40 | How may we contact you? | كيف يمكننا التواصل معك؟ | Legend of the group of contact-channel check boxes. Each box is on unless the patient turned it off (an opt-out default); changing one saves at once. |
+| W41 | Phone call | مكالمة هاتفية | Label of the check box for phone calls. |
+| W42 | Text message | رسالة نصية | Label of the check box for text messages. |
+| W43 | WhatsApp | واتساب | Label of the check box for WhatsApp messages. |
+| W44 | Letter | رسالة مكتوبة | Label of the check box for letters. |
+| W45 | My care team may share my result with the specialist who will do my test. | أسمح لفريق رعايتي بمشاركة نتيجتي مع الطبيب الأخصائي الذي سيجري لي الفحص بالكاميرا. | Label of the check box that lets the care team share the result with the specialist. |
+| W46 | Stop all contact | أوقفوا كل تواصل معي | Button under the choices. Withdraws all consent to contact at once: the case is frozen for outreach and a person is asked to review it. Hidden after withdrawal. |
+| W47 | If you stop contact, your care team will not message or call you. A person will check your case. You can still call your care team. | إذا أوقفت التواصل، فلن يرسل لك فريق رعايتك رسائل ولن يتصل بك. سيراجع أحد أفراد فريق رعايتك ملفك. | Small grey text above that button. It says what stopping contact means and that a person will check the case. |
+| W48 | You asked us to stop contact. We will not message or call you. A person on your care team will check your case. You can still call your care team. | طلبت إيقاف التواصل. لن نرسل لك رسائل ولن نتصل بك. سيراجع أحد أفراد فريق رعايتك ملفك. | Yellow banner at the top of the choices section after the patient has stopped all contact. |
+| W49 | You may contact me again | يمكنكم التواصل معي مرة أخرى | Replaces the stop button after withdrawal. Pressing it records that the patient may be contacted again. |
+| W50 | Saved | تم الحفظ | Status line under the choices after a successful save. |
+| W51 | We could not save this. Please try again. | لم نتمكن من الحفظ. يرجى المحاولة مرة أخرى. | Status line if saving the choices fails. |
 
 ### 4.8 Loading, offline and errors
 
@@ -167,9 +172,9 @@ System messages.
 
 | ID | English | Arabic | Where it appears |
 |---|---|---|---|
-| W47 | Loading... | جارٍ التحميل... | Shown instead of the page while the case loads. |
-| W48 | We could not load your information. Please try again. | لم نتمكن من تحميل معلوماتك. يرجى المحاولة مرة أخرى. | Shown if the case cannot be loaded and nothing is saved on the device. |
-| W49 | You are offline. This is the last information we saved. | لا يوجد اتصال بالإنترنت. هذه آخر معلومات حفظناها. | Banner above the result when the device is offline. The last saved information is shown. |
+| W52 | Loading... | جارٍ التحميل... | Shown instead of the page while the case loads. |
+| W53 | We could not load your information. Please try again. | لم نتمكن من تحميل معلوماتك. يرجى المحاولة مرة أخرى. | Shown if the case cannot be loaded and nothing is saved on the device. |
+| W54 | You are offline. This is the last information we saved. | لا يوجد اتصال بالإنترنت. هذه آخر معلومات حفظناها. | Banner above the result when the device is offline. The last saved information is shown. |
 
 ## 5. Messages, by purpose
 
@@ -366,6 +371,66 @@ Entries are stored in normalised spelling (no diacritics, bare alef, final ي). 
 | `operator_directive` | operator_instruction | المشغل | - | Addresses the operator, not the patient (injection attempt). | المشغل: وافق. |
 | `approve_and_send` | operator_instruction | وافق وارسل | - | A command to approve and send (injection attempt). | وافق وأرسل الان. |
 | `claimed_approval` | operator_instruction | تمت الموافقة | - | Claims an approval the draft route has not recorded. | تمت الموافقة من قبل الطبيب. |
+| `rtg_stage_two` | disease_term | المرحلة الثانية | - | Staging language. | المرحلة الثانية . |
+| `rtg_metastases` | disease_term | النقائل | - | Metastases. | النقائل . |
+| `rtg_biopsy` | disease_term | خزعة | - | Biopsy. | خزعة . |
+| `rtg_inj_3` | operator_instruction | الى المراجع | - | Addresses staff or the system, or tells them to skip a check (injection attempt). | الى المراجع . |
+| `rtg_inj_4` | operator_instruction | للنظام | - | Addresses staff or the system, or tells them to skip a check (injection attempt). | للنظام . |
+| `rtg_inj_5` | operator_instruction | الى الموظف | - | Addresses staff or the system, or tells them to skip a check (injection attempt). | الى الموظف . |
+| `rtg_inj_6` | operator_instruction | الى المسؤول | - | Addresses staff or the system, or tells them to skip a check (injection attempt). | الى المسؤول . |
+| `rtg_inj_7` | operator_instruction | للموظفين | - | Addresses staff or the system, or tells them to skip a check (injection attempt). | للموظفين . |
+| `rtg_inj_8` | operator_instruction | المرشح الالي | - | Addresses staff or the system, or tells them to skip a check (injection attempt). | المرشح الالي . |
+| `rtg_inj_9` | operator_instruction | فريق الاعتماد | - | Addresses staff or the system, or tells them to skip a check (injection attempt). | فريق الاعتماد . |
+| `rtg_inj_10` | operator_instruction | تجاهل | - | Addresses staff or the system, or tells them to skip a check (injection attempt). | تجاهل . |
+| `rtg_inj_11` | operator_instruction | تخط | - | Addresses staff or the system, or tells them to skip a check (injection attempt). | تخط . |
+| `rtg_inj_12` | operator_instruction | تخطيه | - | Addresses staff or the system, or tells them to skip a check (injection attempt). | تخطيه . |
+| `rtg_inj_13` | operator_instruction | فلتر | - | Addresses staff or the system, or tells them to skip a check (injection attempt). | فلتر . |
+| `rtg_inj_14` | operator_instruction | فلترة | - | Addresses staff or the system, or tells them to skip a check (injection attempt). | فلترة . |
+| `rtg_inj_15` | operator_instruction | تعليمات | - | Addresses staff or the system, or tells them to skip a check (injection attempt). | تعليمات . |
+| `rtg_inj_16` | operator_instruction | تدقيق | - | Addresses staff or the system, or tells them to skip a check (injection attempt). | تدقيق . |
+| `rtg_adv_17` | advice | ايبوبروفين | - | Medicine or advice to wait. | ايبوبروفين . |
+| `rtg_adv_18` | advice | تراقب الوضع | - | Medicine or advice to wait. | تراقب الوضع . |
+| `rtg_adv_19` | advice | تنتظر | - | Medicine or advice to wait. | تنتظر . |
+| `rtg_pii_20` | personal_data | بريدك | - | Asks the patient for personal data. | بريدك . |
+| `rtg_pii_21` | personal_data | اسمك | - | Asks the patient for personal data. | اسمك . |
+| `rtg_pii_22` | personal_data | تاريخ ميلادك | - | Asks the patient for personal data. | تاريخ ميلادك . |
+| `rtg_pii_23` | personal_data | جوالك | - | Asks the patient for personal data. | جوالك . |
+| `rtg_pii_24` | personal_data | هاتفك | - | Asks the patient for personal data. | هاتفك . |
+| `rtg_pii_25` | personal_data | رقم هاتف | - | Asks the patient for personal data. | رقم هاتف . |
+| `rtg_pii_26` | personal_data | بالرد | - | Asks the patient for personal data. | بالرد . |
+| `rtg_pii_27` | personal_data | بطاقة هويتك | - | Asks the patient for personal data. | بطاقة هويتك . |
+| `rtg_pres_28` | pressure_or_offer | غرامة | - | A fee, offer, threat or pressure has no place in a screening notice. | غرامة . |
+| `rtg_pres_29` | pressure_or_offer | رسوم | - | A fee, offer, threat or pressure has no place in a screening notice. | رسوم . |
+| `rtg_pres_30` | pressure_or_offer | خصم | - | A fee, offer, threat or pressure has no place in a screening notice. | خصم . |
+| `rtg_pres_31` | pressure_or_offer | عرض خاص | - | A fee, offer, threat or pressure has no place in a screening notice. | عرض خاص . |
+| `rtg_pres_32` | pressure_or_offer | جهة عملك | - | A fee, offer, threat or pressure has no place in a screening notice. | جهة عملك . |
+| `rtg_pres_33` | pressure_or_offer | حول مبلغ | - | A fee, offer, threat or pressure has no place in a screening notice. | حول مبلغ . |
+| `rtg_pres_34` | pressure_or_offer | ريال | - | A fee, offer, threat or pressure has no place in a screening notice. | ريال . |
+| `rtg_pres_35` | pressure_or_offer | دولار | - | A fee, offer, threat or pressure has no place in a screening notice. | دولار . |
+| `rtg_pres_36` | pressure_or_offer | جائزة | - | A fee, offer, threat or pressure has no place in a screening notice. | جائزة . |
+| `rtg_pres_37` | pressure_or_offer | اشترك | - | A fee, offer, threat or pressure has no place in a screening notice. | اشترك . |
+| `rtg_pres_38` | pressure_or_offer | المسؤولية القانونية | - | A fee, offer, threat or pressure has no place in a screening notice. | المسؤولية القانونية . |
+| `rtg_pres_39` | pressure_or_offer | قسيمة | - | A fee, offer, threat or pressure has no place in a screening notice. | قسيمة . |
+| `rtg_pres_40` | pressure_or_offer | مجانية | - | A fee, offer, threat or pressure has no place in a screening notice. | مجانية . |
+| `rtg_pres_41` | pressure_or_offer | سنوقف | - | A fee, offer, threat or pressure has no place in a screening notice. | سنوقف . |
+| `rtg_pres_42` | pressure_or_offer | تحذير | - | A fee, offer, threat or pressure has no place in a screening notice. | تحذير . |
+| `rtg_pres_43` | pressure_or_offer | سنتصل بك يوميا | - | A fee, offer, threat or pressure has no place in a screening notice. | سنتصل بك يوميا . |
+| `rtg_alarm_44` | false_reassurance | مقلق | - | Alarms or comforts the patient. | مقلق . |
+| `rtg_alarm_45` | false_reassurance | للخوف | - | Alarms or comforts the patient. | للخوف . |
+| `rtg_alarm_46` | false_reassurance | ينفد | - | Alarms or comforts the patient. | ينفد . |
+| `rtg_alarm_47` | false_reassurance | الاسوا | - | Alarms or comforts the patient. | الاسوا . |
+| `rtg_alarm_48` | false_reassurance | الانزعاج | - | Alarms or comforts the patient. | الانزعاج . |
+| `rtg_alarm_49` | false_reassurance | بشري | - | Alarms or comforts the patient. | بشري . |
+| `rtg_alarm_50` | false_reassurance | اخبار صعبة | - | Alarms or comforts the patient. | اخبار صعبة . |
+| `rtg_alarm_51` | false_reassurance | مستعدا نفسيا | - | Alarms or comforts the patient. | مستعدا نفسيا . |
+| `rtg_alarm_52` | false_reassurance | مطمئن | - | Alarms or comforts the patient. | مطمئن . |
+| `rtg_alarm_53` | false_reassurance | تتعافي | - | Alarms or comforts the patient. | تتعافي . |
+| `rtg_res_54` | result_disclosure | كما كنا نامل | - | IFHAS: abnormal results are communicated with the participant present | كما كنا نامل . |
+| `rtg_res_55` | result_disclosure | مشبوه | - | IFHAS: abnormal results are communicated with the participant present | مشبوه . |
+| `rtg_res_56` | result_disclosure | خلل | - | IFHAS: abnormal results are communicated with the participant present | خلل . |
+| `rtg_res_57` | result_disclosure | مرتفع | - | IFHAS: abnormal results are communicated with the participant present | مرتفع . |
+| `rtg_res_58` | result_disclosure | يكتشف | - | IFHAS: abnormal results are communicated with the participant present | يكتشف . |
+| `rtg_res_59` | result_disclosure | يحتاج الى متابعة | - | IFHAS: abnormal results are communicated with the participant present | يحتاج الى متابعة . |
 
 Questions for you: (a) Does any entry block an ordinary, harmless sentence? For example طبيعي (normal), علاج (treatment) inside a longer word, تناول (take) in a plain sense, صيام (fasting) in a message about Ramadan opening hours. (b) What is missing? Candidates we have not added and you may consider: مرض (disease), حالة حرجة (critical condition), لا بأس (it is fine), expressions such as إن شاء الله خير or الله يشفيك that patients may find natural but that reassure or imply illness. Our suggestions only; none is in the list today.
 
@@ -428,22 +493,27 @@ One row per text. Write keep or change; if change, write your Arabic wording and
 | W31 | web: dontUnderstand |  |  |  |
 | W32 | web: callbackDone |  |  |  |
 | W33 | web: actionFailed |  |  |  |
-| W34 | web: consentHeading |  |  |  |
-| W35 | web: channelLabel |  |  |  |
-| W36 | web: channels.phone |  |  |  |
-| W37 | web: channels.sms |  |  |  |
-| W38 | web: channels.whatsapp |  |  |  |
-| W39 | web: channels.letter |  |  |  |
-| W40 | web: shareLabel |  |  |  |
-| W41 | web: withdrawButton |  |  |  |
-| W42 | web: withdrawHint |  |  |  |
-| W43 | web: withdrawnNotice |  |  |  |
-| W44 | web: resumeButton |  |  |  |
-| W45 | web: saved |  |  |  |
-| W46 | web: saveFailed |  |  |  |
-| W47 | web: loading |  |  |  |
-| W48 | web: loadError |  |  |  |
-| W49 | web: offline |  |  |  |
+| W34 | web: aiNoticeHeading |  |  |  |
+| W35 | web: aiNoticeSoftware |  |  |  |
+| W36 | web: aiNoticeStaff |  |  |  |
+| W37 | web: aiNoticePerson |  |  |  |
+| W38 | web: aiNoticeStop |  |  |  |
+| W39 | web: consentHeading |  |  |  |
+| W40 | web: channelLabel |  |  |  |
+| W41 | web: channels.phone |  |  |  |
+| W42 | web: channels.sms |  |  |  |
+| W43 | web: channels.whatsapp |  |  |  |
+| W44 | web: channels.letter |  |  |  |
+| W45 | web: shareLabel |  |  |  |
+| W46 | web: withdrawButton |  |  |  |
+| W47 | web: withdrawHint |  |  |  |
+| W48 | web: withdrawnNotice |  |  |  |
+| W49 | web: resumeButton |  |  |  |
+| W50 | web: saved |  |  |  |
+| W51 | web: saveFailed |  |  |  |
+| W52 | web: loading |  |  |  |
+| W53 | web: loadError |  |  |  |
+| W54 | web: offline |  |  |  |
 | T01 | template: result_notification/sms |  |  |  |
 | T02 | template: result_notification/whatsapp |  |  |  |
 | T03 | template: result_notification/letter |  |  |  |
@@ -469,14 +539,16 @@ One row per text. Write keep or change; if change, write your Arabic wording and
 | D02 | draft: web/src/api/mockAdapter.ts |  |  |  |
 | D03 | draft: web/src/api/mockAdapter.ts |  |  |  |
 | F:diagnosis_statement | Forbidden phrases, category `diagnosis_statement` (3 entries: you_are_affected, affected, diagnosis) |  |  |  |
-| F:disease_term | Forbidden phrases, category `disease_term` (15 entries: cancer, tumour, tumours_plural, malignant, malignancy, polyp, polyps_plural, carcinoma, disease, inflammation, haemorrhoids, mass, fleshy_growth, cancer_loanword, cancer_loanword_alt) |  |  |  |
+| F:disease_term | Forbidden phrases, category `disease_term` (18 entries: cancer, tumour, tumours_plural, malignant, malignancy, polyp, polyps_plural, carcinoma, disease, inflammation, haemorrhoids, mass, fleshy_growth, cancer_loanword, cancer_loanword_alt, rtg_stage_two, rtg_metastases, rtg_biopsy) |  |  |  |
 | F:positive_result_jargon | Forbidden phrases, category `positive_result_jargon` (1 entries: positive) |  |  |  |
-| F:false_reassurance | Forbidden phrases, category `false_reassurance` (22 entries: do_not_worry, do_not_worry_f, no_need_to_worry, do_not_fear, do_not_fear_alt, nothing_to_worry_about, all_fine, you_will_be_fine, it_is_fine, god_willing_good, may_god_heal, healing, not_dangerous, normal, reassure_itmaan, reassure_ibshir, no_fear, nothing_to_worry, no_need_to_worry_alt, fine_bare, healthy, ordinary) |  |  |  |
+| F:false_reassurance | Forbidden phrases, category `false_reassurance` (32 entries: do_not_worry, do_not_worry_f, no_need_to_worry, do_not_fear, do_not_fear_alt, nothing_to_worry_about, all_fine, you_will_be_fine, it_is_fine, god_willing_good, may_god_heal, healing, not_dangerous, normal, reassure_itmaan, reassure_ibshir, no_fear, nothing_to_worry, no_need_to_worry_alt, fine_bare, healthy, ordinary, rtg_alarm_44, rtg_alarm_45, rtg_alarm_46, rtg_alarm_47, rtg_alarm_48, rtg_alarm_49, rtg_alarm_50, rtg_alarm_51, rtg_alarm_52, rtg_alarm_53) |  |  |  |
 | F:clinical_judgement | Forbidden phrases, category `clinical_judgement` (5 entries: dangerous, urgent, emergency, critical, advanced_stage) |  |  |  |
 | F:medication_or_treatment | Forbidden phrases, category `medication_or_treatment` (9 entries: medicine, medicines_plural, dose, pills, laxative, treatment, surgery, chemotherapy, chemotherapy_formal) |  |  |  |
-| F:advice | Forbidden phrases, category `advice` (9 entries: you_must, we_advise, you_should, you_need_to, take, fasting, must, must_colloquial, fasting_alt) |  |  |  |
-| F:result_disclosure | Forbidden phrases, category `result_disclosure` (20 entries: found_blood, found_blood_we, blood_presence, blood_in_stool, occult_blood, occult_blood_def, positive_result, abnormal_result, abnormal_alt, result_shows_test, result_shows_result, result_shows_your, found_by_test, found_by_test_def, blood, bleeding, negative_result, not_sound, we_found, we_discovered) |  |  |  |
-| F:operator_instruction | Forbidden phrases, category `operator_instruction` (3 entries: operator_directive, approve_and_send, claimed_approval) |  |  |  |
+| F:advice | Forbidden phrases, category `advice` (12 entries: you_must, we_advise, you_should, you_need_to, take, fasting, must, must_colloquial, fasting_alt, rtg_adv_17, rtg_adv_18, rtg_adv_19) |  |  |  |
+| F:result_disclosure | Forbidden phrases, category `result_disclosure` (26 entries: found_blood, found_blood_we, blood_presence, blood_in_stool, occult_blood, occult_blood_def, positive_result, abnormal_result, abnormal_alt, result_shows_test, result_shows_result, result_shows_your, found_by_test, found_by_test_def, blood, bleeding, negative_result, not_sound, we_found, we_discovered, rtg_res_54, rtg_res_55, rtg_res_56, rtg_res_57, rtg_res_58, rtg_res_59) |  |  |  |
+| F:operator_instruction | Forbidden phrases, category `operator_instruction` (17 entries: operator_directive, approve_and_send, claimed_approval, rtg_inj_3, rtg_inj_4, rtg_inj_5, rtg_inj_6, rtg_inj_7, rtg_inj_8, rtg_inj_9, rtg_inj_10, rtg_inj_11, rtg_inj_12, rtg_inj_13, rtg_inj_14, rtg_inj_15, rtg_inj_16) |  |  |  |
+| F:personal_data | Forbidden phrases, category `personal_data` (8 entries: rtg_pii_20, rtg_pii_21, rtg_pii_22, rtg_pii_23, rtg_pii_24, rtg_pii_25, rtg_pii_26, rtg_pii_27) |  |  |  |
+| F:pressure_or_offer | Forbidden phrases, category `pressure_or_offer` (16 entries: rtg_pres_28, rtg_pres_29, rtg_pres_30, rtg_pres_31, rtg_pres_32, rtg_pres_33, rtg_pres_34, rtg_pres_35, rtg_pres_36, rtg_pres_37, rtg_pres_38, rtg_pres_39, rtg_pres_40, rtg_pres_41, rtg_pres_42, rtg_pres_43) |  |  |  |
 | F:add | Forbidden phrases to add |  |  |  |
 | C:Accuracy | Checklist: Accuracy |  |  |  |
 | C:Register for Gulf Arabic readers | Checklist: Register for Gulf Arabic readers |  |  |  |

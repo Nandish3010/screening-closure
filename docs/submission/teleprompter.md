@@ -1,6 +1,6 @@
 # Teleprompter
 
-The words to say in the live demo, and nothing else. A timestamp marks every 15 seconds; the click cues are in square brackets and are not spoken. The full script, with the exact labels on screen, the numbers' sources and the recovery table, is [demo-script.md](demo-script.md). All data shown is synthetic. Pace: 2.3 words a second, so a 15-second block holds at most 35 words and every block is written to fit it (the last block runs five words over and finishes at about 6:18). The 751 spoken words are about 5 minutes 30 seconds of speech; the last block starts at 6:00, which leaves the clicks and the clock waits inside the 6:30 limit. Read it calmly: the pauses the clicks need are in the slack. The Abu Dhabi line (5:15) is the sensitivity run in results.md, "Sensitivity: an Abu Dhabi-shaped baseline": 30.6% to 38.7% at 360 days, literature anchored.
+The words to say in the live demo, and nothing else. A timestamp marks every 15 seconds; the click cues are in square brackets and are not spoken. The full script, with the exact labels on screen, the numbers' sources and the recovery table, is [demo-script.md](demo-script.md). All data shown is synthetic. Pace: 2.3 words a second, so a 15-second block holds at most 35 words and every block is written to fit it (the last block, 31 words, finishes at about 6:28). The 781 spoken words are about 5 minutes 40 seconds of speech; the last block starts at 6:15, which leaves the clicks and the clock waits inside the 6:30 limit. Read it calmly: the pauses the clicks need are in the slack. The Abu Dhabi line (5:15) is the sensitivity run in results.md, "Sensitivity: an Abu Dhabi-shaped baseline": 30.6% to 38.7% at 360 days, literature anchored. The health-outcome line (6:15) is docs/results/outcomes.md, headline scenario: about 31 colorectal cancer deaths within 5 years avoided for each year of Abu Dhabi positives (95% PSA interval 20 to 50), modelled from published delay, stage and survival studies.
 
 **0:00** [Title slide: 30.5%.]
 In Abu Dhabi, an audit of positive bowel screening tests found that only thirty point five percent of patients ever had the follow-up colonoscopy. Nobody decided to lose them. Everyone assumed someone else had it.
@@ -74,5 +74,8 @@ Labour: thirty-seven percent fewer staff minutes per handled case, twenty percen
 **5:45** [Slide: the pilot ask.]
 The ask: one programme, two providers, ninety days, shadow mode first, thirty days sending nothing. One number must stay at zero: cases closed without evidence. A clinician and a native Arabic speaker review the wording first.
 
-**6:00** [Same slide.]
-Who pays: a programme licence across screening pathways, with Abu Dhabi's public health programme as the hypothesised buyer, not a relationship. Synthetic, assumption-based: about twenty-four to fifty-four advanced cancers avoided a year. The Judge tour replays this alone. Thank you.
+**6:00** [Slide: who pays.]
+Who pays: a programme licence, four screening pathways, about two million dirhams a year; hypothesised buyer, Abu Dhabi's public health programme. Avoided cost does not cover it; safety does. The Judge tour replays this.
+
+**6:15** [Slide: health outcomes, docs/results/outcomes.md.]
+Over four thousand positives a year no longer lost silently; modelled from published studies, about thirty bowel cancer deaths avoided per year of positives, twenty to fifty. Not measured. Thank you.

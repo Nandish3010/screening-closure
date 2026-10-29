@@ -163,11 +163,13 @@ def test_jais_request_shape(monkeypatch):
 
 def test_the_prompt_forbids_diagnosis_and_advice_and_names_the_three_values():
     for needle in ("Never diagnose", "never give medical advice", "grade-6", "language the user message asks for",
-                   "care owner name, next step and appointment date"):
+                   "{owner_name}, {next_step} or {appointment_date}"):
         assert needle in SYSTEM_PROMPT
     user = build_prompt(make_req(appointment_date="Tuesday 3 November 2026"))
-    for value in ("Dr Sara Khan", "a colonoscopy", "Tuesday 3 November 2026", "Do not diagnose", "grade-6"):
+    for value in ("{owner_name}", "{next_step}", "{appointment_date}", "Do not diagnose", "grade-6"):
         assert value in user
+    for value in ("Dr Sara Khan", "a colonoscopy", "Tuesday 3 November 2026"):
+        assert value not in user
 
 
 def test_no_patient_data_is_in_the_request(monkeypatch):
