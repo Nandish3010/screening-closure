@@ -67,7 +67,7 @@ From [fairness.md](../../results/fairness.md) (`make rai-fairness`; the replay o
 | en | 180 | 100.0% | 100.0% | 123 | 100.0% (97.0% to 100.0%) | 25 of 25 |
 | mixed | 78 | 94.0% | 94.8% | 46 | 100.0% (92.3% to 100.0%) | 5 of 5 |
 
-Arabizi and Gulf-dialect Arabic are below the 95% target; English and MSA are near-perfect because the test templates resemble the training templates. Four replies a person should always see (Arabic `other` read as `confirm` three times, Arabizi `question` read as `reschedule` once) were auto-handled. Proposed, not shipped: an Arabizi threshold of 0.918 (100% precision on test at 21% coverage); for Gulf dialect no threshold fitted on validation helps, so the fix is real dialect data (H2).
+Arabizi and Gulf-dialect Arabic are below the 95% target; English and MSA are near-perfect because the test templates resemble the training templates. Four replies a person should always see (Arabic `other` read as `confirm` three times, Arabizi `question` read as `reschedule` once) were auto-handled. These are the model's figures under the global threshold. Shipped since (M7-1, `api/app/triage/dialect.py`): Arabizi and Gulf-dialect replies are detected at run time; an Arabizi reply is auto-handled only at confidence 0.918 or above (fitted on validation), and every Gulf-dialect reply goes to a person, since no threshold fitted on validation helps there. With the rule every group is at 100% auto-handled precision on the test split, at 43.6% coverage against 58.1% ([fairness.md](../../results/fairness.md), Dialect rule; the detector's word lists were written with the test split in view, so read it as optimistic). The lasting fix is real dialect data (H2).
 
 ## Human oversight
 
