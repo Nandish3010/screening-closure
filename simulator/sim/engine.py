@@ -5,9 +5,10 @@ same patients, the same pre-drawn random numbers (see behaviour.py) and the same
 
   baseline      result issued, letter/SMS sent once, no named owner, no timers, no escalation, no
                 bounce-back, no consent ledger; patients may or may not act; referrals may be lost.
-  orchestrated  named owner, working-day SLA timers from the pathway YAML, the escalation ladder,
-                handoff accept/reject/bounce, consent-aware outreach, an idle-case watchdog, and
-                human-gated closure.
+  orchestrated  named owner, the API's own sweep (working-day SLA and milestone breaches, the escalation
+                ladder with its coalescing, the bounce of an unanswered referral) on the API's own read model,
+                handoff accept/reject with the re-route through `referral_rejected`, consent-aware outreach,
+                an idle-case watchdog, and human-gated closure.
 
 Programme reach (`orchestration.programme_reach`, 1.0 in params.yaml): in the orchestrated arm only this share of
 cases (a per-patient latent, so the same patients in every scenario) gets the orchestrated process; the others follow
@@ -15,11 +16,20 @@ the baseline rules inside the same engine. The literature-anchored scenario lowe
 published navigation risk ratio. At 1.0 every case is reached and the event log is identical to the engine without it.
 
 Pathway events are validated through `app.state_machine.apply` against the `app.pathway.Pathway`
-loaded from the YAML (the same code the API uses). Side events (overdue, escalated, handoff_*,
-consent_updated, watchdog_flagged, lost_contact, reopened and the other bookkeeping events) are
-logged as typed overlay events and do not change the pathway state, because the pathway YAML
-defines no transitions for them. `reopened` is the one exception: it moves a closed case back to
-`reopen.resume_state` and is the only way out of `closed`.
+loaded from the YAML (the same code the API uses). For a case the orchestrated process reaches, the engine also keeps the
+API's full read model and runs the API's sweep on it (`sim.machine`, M7-1): the simulator has no timers, ladder or bounce
+of its own, and tests/test_sweep_conformance.py replays every such case through a real event store and the real
+`app.sweep.run_sweep` and finds the same log, event for event. The overlay events the metrics read (`overdue`,
+`escalated`, `reminder_sent`) are logged at the instant the sweep plans the breach or the rung.
+
+The referral follows the API's path: a provider's rejection or the sweep's bounce of an unanswered request moves the case
+to `referral_rejected` (its 2-working-day re-route SLA and ladder), a re-request accepted by a provider returns it to
+`owner_accepted`, and the case then goes through contact, acknowledgement and booking again, as in the API. A missed
+appointment that is rebooked is `appointment_cancelled` (back to `patient_acknowledged`). A reopen moves a closed case to
+`reopened`, where it waits for a clinician's review and a fresh close: the pathway's only way out of `closed`.
+
+Time: the clock counts days from 00:00 local time of the start date in the API's calendar zone (Asia/Dubai), and every
+working-day count is the API's calendar (`sim.calendar`).
 """
 
 from __future__ import annotations
@@ -29,20 +39,25 @@ import json
 import math
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
+from datetime import timedelta
 from heapq import heappop, heappush
+
+from dataclasses import replace as _replace
+from uuid import UUID
 
 from app.events import CASE_CREATED, Event
 from app.pathway import Pathway
 from app.state_machine import CaseModel, InvalidTransition, apply, step
+from app.sweep import next_due_at, plan_case
 
-from .actors import as_machine_event
+from .actors import as_machine_event, machine_actor
 from .behaviour import (
     A_POOL, H_POOL, HUMAN_KINDS, M_POOL, N_RUNGS, STAFF_STEPS, T_POOL, W_POOL, Behaviour, Latents, draw_latents,
     lognormal,
 )
 from .calendar import WorkingCalendar
 from .capacity import COORDINATOR, CapacityRun, SlotBook, StaffQueue
+from .machine import MachineCase, machine_event
 from .messy import MessyPlan, draw_messy
 from .metrics import CaseRecord, build_record
 from .params import ModelParams, ParamError
@@ -71,6 +86,13 @@ STEP_KIND = {
     "close": "staff",
 }
 STAFF_INDEX = {s: i for i, s in enumerate(STAFF_STEPS)}
+# `referral_rejected` (M7-1): the engine's step there is "reroute", the owner re-routing the rejected or bounced referral (a
+# new request): a staff step with the booking step's draws. The pathway's awaited event there is `reassign` (its SLA).
+REROUTE = "reroute"
+STEP_KINDS = {**STEP_KIND, REROUTE: "staff"}
+STAFF_INDEX[REROUTE] = STAFF_INDEX["book_confirmatory"]
+REROUTE_STATE = "referral_rejected"
+SWEEP_EPS = 1.0 / 86400  # the sweep checks a case one second after the instant `next_due_at` names (it needs now > due)
 # B21 timing mixture: the staff steps between the result review and the referral that a fast-lane case does without delay.
 FAST_LANE_STEPS = frozenset(("accept_ownership", "contact_patient", "book_confirmatory"))
 # How each escalation-ladder role reaches a patient who has not responded.
@@ -91,8 +113,8 @@ class Case:
         "consent_ok", "withdrawn", "declined_care", "dropped_out", "lapses", "resp_idx", "rec_idx", "h_idx",
         "h_cur", "hstate", "appt_idx", "appt_t", "pending_appt", "reminders", "awaiting_patient", "sub",
         "timer_n", "watch_n", "watch_armed", "last_act", "extra_delay", "abandoned", "reopened", "round",
-        "bchannel", "lost_reasons", "booked_once", "last_flag", "orch", "ms_met", "ms_timer_n", "ms_requested", "last_rung",
-        "slot_prov", "refuses", "refusal", "fast",
+        "bchannel", "lost_reasons", "booked_once", "last_flag", "orch", "ms_timer_n",
+        "slot_prov", "refuses", "refusal", "fast", "mach", "accepted_h",
     )
 
     def __init__(self, p: Patient, lat: Latents, msy: MessyPlan, end: float, initial_state: str, bchannel: str,
@@ -138,11 +160,9 @@ class Case:
         self.lost_reasons: list[str] = []
         self.booked_once = False
         self.last_flag = -1.0
-        self.ms_met: set[str] = set()  # milestones whose until-event has happened (A18)
         self.ms_timer_n = 0
-        self.ms_requested = False  # the first handoff_requested armed the request-started milestones (A25)
-        # notify role -> (working day, step token, the rung event, ladder source) of the last rung emitted to it (A19)
-        self.last_rung: dict[str, tuple] = {}
+        self.mach: MachineCase | None = None  # the API's read model and sweep, for a case the orchestrated process reaches
+        self.accepted_h: int | None = None  # the referral attempt a provider accepted (a re-route then books on it)
         self.slot_prov: int | None = None  # the colonoscopy provider this case is booked with (capacity model only)
         self.fast = False  # B21: fast booking lane (set by the engine from the lane latent and programme management)
 
@@ -158,16 +178,6 @@ class RunResult:
     end_day: float
     counters: dict = field(default_factory=dict)
     capacity: CapacityRun | None = None  # set only when the parameters define `capacity` (B19)
-
-
-class _Pending:
-    """Stands in for the `escalated` event of a rung that is waiting for a person, so a later rung of another ladder to the
-    same role on the same day can still coalesce into it (A19)."""
-    __slots__ = ("payload", "seq")
-
-    def __init__(self):
-        self.payload: dict = {}
-        self.seq = 0
 
 
 DEADLINE_ORDER = 1 << 60  # heap tie-break offset of a deadline check: after every ordinary event of the same instant
@@ -194,63 +204,57 @@ class Engine:
             raise ValueError(f"arm must be one of {ARMS}")
         self.arm = arm
         self.orch = arm == ORCHESTRATED  # arm default; a case follows it only if it is within the programme reach (see Case.orch)
+        # The sweep reads the bounce window from the pathway; the simulator's parameter for it (`handoff.response_sla_working_days`,
+        # moved by the sensitivity sweep) is written there, so the real planner runs with it. Equal by default.
+        if mp.handoff_sla_working_days != pathway.handoff_response_working_days:
+            pathway = _replace(pathway, handoff_response_working_days=mp.handoff_sla_working_days)
         self.mp, self.pw, self.cal = mp, pathway, cal
+        self.acal = cal.api  # the API's calendar (app.calendar), which the sweep counts on
         self.beh = Behaviour(mp)
         self.days = float(follow_up_days)
         self.seed = seed
-        self.start_dt = datetime(cal.start.year, cal.start.month, cal.start.day, tzinfo=timezone.utc)
+        self.start_dt = cal.start_dt  # 00:00 local (Asia/Dubai) on the start date
         self.terminal = pathway.terminal_state
         self.states = pathway.states
         self.idx_booked = self.states.index("confirmatory_booked")
         self.next_event: dict[str, str] = {}
-        # The forward chain only: side-state transitions (referral_rejected, consent_withdrawn,
-        # lost_contact, reopened) are modelled by the engine's own sub-flows, not as awaited steps.
+        # The forward chain, plus the one way back from a reopen (`reopened` waits for a clinician's review). Other side
+        # states (referral_rejected, consent_withdrawn, declined_pending_signoff) are the engine's own sub-flows.
         for t in pathway.main_transitions:
             self.next_event.setdefault(t.from_state, t.event)
+        reopen = [t for t in pathway.transitions if t.event == "reopen"]
+        if len(reopen) != 1:
+            raise ParamError("engine expects exactly one `reopen` transition in the pathway")
+        self.reopen_state = reopen[0].to_state
+        if mp.reopen_resume_state != self.reopen_state:
+            raise ParamError(f"reopen.resume_state is {mp.reopen_resume_state!r}; the pathway reopens a case to "
+                             f"{self.reopen_state!r}, its only way out of `closed`")
+        after_reopen = [t for t in pathway.transitions if t.from_state == self.reopen_state and t.to_state in self.states]
+        if len(after_reopen) != 1:
+            raise ParamError(f"engine expects one forward step out of {self.reopen_state!r}")
+        self.next_event[self.reopen_state] = after_reopen[0].event
         unknown = [e for e in self.next_event.values() if e not in STEP_KIND]
         if unknown:
             raise ParamError(f"engine has no actor model for pathway events {unknown}")
         self.slas = dict(pathway.slas_working_days)
         self.slas.setdefault("close", mp.signoff_sla_working_days)
-        # Milestones (A18, ADR-028, A25) come from the YAML, like the SLAs. The engine models two kinds of start, both
-        # armed once and never restarted, both independent of the step the case is in, both met by the `until_event`;
-        # a breach raises the ladder for whatever step the case is in:
-        #  * `case_created`: armed when the case starts (the referral request within 15 working days of the result).
-        #  * `handoff_requested`: armed at the FIRST referral request the case logs (the colonoscopy within 31 working
-        #    days of the referral request, A25). Later requests (a bounce, a re-route) do not restart it, which is the
-        #    point of A25: before it the clock started at the accepted referral, and a case bounced between providers
-        #    got a fresh 31 days each time.
-        self.start_milestones: list = []
-        self.request_milestones: list = []
-        self.until_milestones: dict[str, list[str]] = {}
-        for m in pathway.milestones.values():
-            if m.from_event == CASE_CREATED:
-                self.start_milestones.append(m)
-            elif m.from_event == "handoff_requested":
-                self.request_milestones.append(m)
-            else:
-                raise ParamError(f"engine cannot model milestone {m.name!r} starting at {m.from_event!r}")
-            self.until_milestones.setdefault(m.until_event, []).append(m.name)
-        if len(self.start_milestones) + len(self.request_milestones) > M_POOL:
-            raise ParamError(f"engine draws {M_POOL} milestone timers per case, the pathway has "
-                             f"{len(self.start_milestones) + len(self.request_milestones)}")
+        if len(pathway.milestones) > M_POOL:
+            raise ParamError(f"engine draws {M_POOL} milestone timers per case, the pathway has {len(pathway.milestones)}")
         self.ladder = pathway.escalation_ladder
         for r in self.ladder:
             for table, name in ((mp.escalation_effect_prob, "orchestration.escalation_effect_prob"),
                                 (mp.contact_recovery_prob, "orchestration.contact_recovery_prob")):
                 if r.notify not in table:
                     raise ParamError(f"{name} has no entry for escalation role {r.notify!r}")
-        if mp.reopen_resume_state not in self.states or mp.reopen_resume_state == self.terminal:
-            raise ParamError(f"reopen.resume_state {mp.reopen_resume_state!r} is not a non-terminal pathway state")
         self.heap: list = []
         self.counter = 0
         self.hash = hashlib.sha256()
         self.n_events = 0
         self.handlers = {
             "start": self.on_start, "act": self.on_act, "p_ack": self.on_p_ack, "self_present": self.on_self_present,
-            "appt": self.on_appt, "appt_reminder": self.on_appt_reminder, "sla_due": self.on_sla_due, "ms_due": self.on_ms_due,
-            "rung": self.on_rung, "ladder_end": self.on_ladder_end, "h_resp": self.on_h_resp,
-            "h_timeout": self.on_h_timeout, "h_retry": self.on_h_retry, "deliv_fail": self.on_deliv_fail,
+            "appt": self.on_appt, "appt_reminder": self.on_appt_reminder, "sweep": self.on_sweep,
+            "ladder_end": self.on_ladder_end, "h_resp": self.on_h_resp,
+            "h_retry": self.on_h_retry, "deliv_fail": self.on_deliv_fail,
             "recover": self.on_recover, "watch": self.on_watch, "force": self.on_force, "dup": self.on_dup,
             "switch": self.on_switch, "switch_done": self.on_switch_done, "consent": self.on_consent,
             "consent_review": self.on_consent_review, "reopen": self.on_reopen, "self_rebook": self.on_self_rebook,
@@ -305,9 +309,8 @@ class Engine:
         heappush(self.heap, (t, self.counter, kind, c, token, data))
 
     def schedule_deadline(self, t: float, kind: str, c: Case, token: int | None = None, data=None) -> None:
-        """A deadline check (an SLA, a milestone, an unanswered referral) at `t`, run AFTER everything else due at the same
-        instant. The API's sweep breaches only when `now > due` (app.sweep), so a step done exactly at its due time is on
-        time; ordered first, the simulator used to mark it overdue (E20a F6, the conformance test)."""
+        """A sweep check at `t`, run AFTER everything else due at the same instant: the API's sweep plans from the log as it
+        stands, so whatever happens at the same instant is in it."""
         self.counter += 1
         heappush(self.heap, (t, DEADLINE_ORDER + self.counter, kind, c, token, data))
 
@@ -319,7 +322,7 @@ class Engine:
         return Event(
             case_id=c.p.case_id,
             type=etype,
-            at=self.start_dt + timedelta(days=t),
+            at=self.cal.at(t),
             actor=actor,
             payload=payload if payload is not None else {},
             event_id=uuid.UUID(int=(c.p.case_id.int & _MASK) | c.seq),
@@ -329,13 +332,6 @@ class Engine:
     def _log(self, c: Case, ev: Event, t: float) -> None:
         c.log.append(ev)
         self.n_events += 1
-        for name in self.until_milestones.get(ev.type, ()):
-            c.ms_met.add(name)
-        if ev.type == "handoff_requested" and not c.ms_requested:
-            c.ms_requested = True  # the first request only; a bounce or re-route logs another and arms nothing
-            if c.orch:
-                for m in self.request_milestones:
-                    self.arm_milestone(c, t, m)
         self.hash.update(
             f"{c.p.idx}|{ev.seq}|{ev.type}|{t:.6f}|{ev.actor}|{json.dumps(ev.payload, sort_keys=True, separators=(',', ':'))}\n".encode()
         )
@@ -345,9 +341,18 @@ class Engine:
                 c.watch_armed = True
                 self.schedule(t + self.mp.watchdog_idle_days, "watch", c)
 
-    def emit(self, c: Case, t: float, etype: str, actor: str, payload: dict | None = None) -> Event:
+    def emit(self, c: Case, t: float, etype: str, actor: str, payload: dict | None = None,
+             m: tuple | None = None, to_state: str | None = None) -> Event:
+        """Log an event. `m` = (type, payload[, actor]): its machine form, folded into the API's read model of a reached
+        case; `to_state`: the simulator's state after it (a side-state move the machine makes too)."""
+        if to_state is not None:  # the log says so, so a replay of the log alone follows the move (sim.invariants)
+            payload = {**(payload or {}), "to_state": to_state}
         ev = self._mk(c, t, etype, actor, payload)
         self._log(c, ev, t)
+        if to_state is not None:
+            c.state = to_state
+        if m is not None and c.mach is not None:
+            self._fold(c, t, machine_event(ev, *m))
         return ev
 
     def advance(self, c: Case, t: float, etype: str, actor: str, payload: dict | None = None) -> None:
@@ -355,6 +360,7 @@ class Engine:
         ev = self._mk(c, t, etype, actor, payload)
         c.state = apply(c.state, as_machine_event(ev), self.pw)  # raises InvalidTransition on a bug in the engine
         self._log(c, ev, t)
+        self._fold_pathway(c, t, ev)
         if c.state == self.terminal:
             c.step = None
             c.token += 1
@@ -363,6 +369,203 @@ class Engine:
                 self.schedule(t + lag, "reopen", c)
         else:
             self.enter_step(c, t)
+
+    # ------------------------------------------------------------------------------------------
+    # the API's read model and sweep (M7-1)
+    # ------------------------------------------------------------------------------------------
+    def _machine_payload(self, c: Case, ev: Event) -> dict:
+        """The payload of a pathway event as the API's strict schema has it (app.payloads)."""
+        p, i = ev.payload, c.p.idx
+        signer = machine_actor(ev.actor)
+        if ev.type == "book_confirmatory":
+            return {"appointment_date": p["appointment_on"]}
+        if ev.type == "complete_confirmatory":
+            return {"result_ref": f"Procedure/sim-{i}-{p['appointment']}"}
+        if ev.type == "close" and p.get("outcome") == "declined":
+            return {"outcome": "declined", "evidence_ref": self._counselling_ref(c), "signed_by": signer}
+        if ev.type == "close":
+            return {"evidence_ref": f"DiagnosticReport/sim-{i}-colonoscopy", "signed_by": signer}
+        if ev.type == "record_informed_refusal":
+            return {"counselling_ref": self._counselling_ref(c), "counselled_by": machine_actor(p["counselled_by"]),
+                    "reason": p["reason"]}
+        return {}  # acknowledge, accept_ownership, contact_patient, patient_acknowledge, clinician_review
+
+    @staticmethod
+    def _counselling_ref(c: Case) -> str:
+        return f"DocumentReference/counsel-sim-{c.p.idx}"
+
+    def _fold(self, c: Case, t: float, mev: Event, resched: bool = True) -> None:
+        """Fold a machine event into the case's API read model (held while consent is withdrawn), then re-plan the sweep."""
+        c.mach.apply(mev, self.pw)  # raises InvalidTransition on an engine bug
+        self._draw_timers(c)
+        if resched:
+            self._resched(c, t)
+
+    def _draw_timers(self, c: Case) -> None:
+        """The scheduler silently misses an obligation with probability `timer_miss_prob`: drawn once per state SLA clock
+        and once per milestone, when it starts (the simulator's only fault model of the sweep; `MachineCase.view`)."""
+        mc, m = c.mach, c.mach.model
+        if m.state in self.pw.open_states and m.clock_started_event_id not in mc.seen_clocks:
+            mc.seen_clocks.add(m.clock_started_event_id)
+            if self.pw.sla_for_state(m.state) is not None:
+                k = c.timer_n
+                c.timer_n += 1
+                if k < T_POOL and c.lat.u_timer[k] < self.mp.timer_miss_prob:
+                    self.counters["timers_missed"] += 1
+                    mc.missed.add(("state", m.clock_started_event_id))
+        for name, ms in m.milestones.items():
+            if ms.started_at is not None and name not in mc.seen_ms:
+                mc.seen_ms.add(name)
+                k = c.ms_timer_n
+                c.ms_timer_n += 1
+                if k < M_POOL and c.lat.u_mtimer[k] < self.mp.timer_miss_prob:
+                    self.counters["timers_missed"] += 1
+                    mc.missed.add(("ms", name))
+
+    def _resched(self, c: Case, t: float) -> None:
+        """Schedule the sweep's next look at the case: one second after `app.sweep.next_due_at` (the planner needs
+        now > due), never before now. Whatever event changes the model re-plans it."""
+        mc = c.mach
+        if not mc.frozen and not mc.queue and c.state != mc.model.state:
+            raise AssertionError(f"case {c.p.idx}: simulator state {c.state!r} but the API's model is {mc.model.state!r}")
+        due = next_due_at(mc.view(), self.pw, self.acal)
+        if due is None:
+            if mc.sweep_at is not None:
+                mc.sweep_v += 1
+                mc.sweep_at = None
+            return
+        at = max(self.cal.t_of(due), t) + SWEEP_EPS
+        if mc.sweep_at is not None and abs(mc.sweep_at - at) < 1e-12:
+            return
+        mc.sweep_v += 1
+        mc.sweep_at = at
+        self.schedule_deadline(at, "sweep", c, mc.sweep_v)
+
+    def on_sweep(self, c: Case, t: float, version, data) -> None:
+        """The API's sweep looks at the case: `app.sweep.plan_case` at this instant, its events folded in and acted on. A
+        bounce is planned alone and the case re-planned straight after, as `app.sweep.run_sweep` does."""
+        mc = c.mach
+        if mc is None or version != mc.sweep_v:
+            return
+        mc.sweep_at = None
+        now = self.cal.at(t)
+        mc.checks.append((now, len(mc.log)))
+        for attempt in range(2):
+            plan = plan_case(c.p.case_id, mc.view(), self.pw, self.acal, now)
+            if not plan:
+                if attempt == 0:
+                    raise AssertionError(f"case {c.p.idx}: the sweep had nothing to plan at the instant next_due_at named")
+                break
+            bounced = False
+            for ev in plan:
+                self._fold(c, t, ev, resched=False)
+                if ev.type == "mark_overdue":
+                    self._on_breach(c, t, ev)
+                elif ev.type == "escalate":
+                    self._on_escalate(c, t, ev)
+                else:
+                    self._on_bounce(c, t, ev)
+                    bounced = True
+            if not bounced:
+                break
+        self._resched(c, t)
+
+    def _on_breach(self, c: Case, t: float, ev: Event) -> None:
+        payload = {"step": c.step, "sla_working_days": ev.payload["sla_working_days"]}
+        if "milestone" in ev.payload:
+            payload["milestone"] = ev.payload["milestone"]
+        self.emit(c, t, "overdue", "scheduler", payload)
+
+    def _ladder_entry(self, c: Case, x: dict) -> dict:
+        return {"milestone": x["milestone"]} if "milestone" in x else {"step": c.step}
+
+    def _on_escalate(self, c: Case, t: float, ev: Event) -> None:
+        """A rung the sweep planned. It is logged as `escalated` / `reminder_sent` with the ladders it also stands for
+        (`also_for`, A19). A rung `attached_to` an escalation of the same working day notifies nobody: it is recorded on
+        that escalation's logged event. Then the person notified reacts (behaviour)."""
+        mc, p = c.mach, ev.payload
+        levels = [p["level"], *(x["level"] for x in p.get("also_for", ()))]
+        if max(levels) == len(self.ladder):
+            last = self.cal.add_working_days_t(t, self.mp.ladder_exhausted_wait_working_days)
+            self.schedule(last, "ladder_end", c, c.token)
+        if "attached_to" in p:
+            holder = mc.esc.get(UUID(p["attached_to"]))
+            mc.esc[ev.event_id] = holder
+            if holder is not None:
+                entry = self._ladder_entry(c, p)
+                holder.payload.setdefault("also_for", []).append(entry)
+                self.hash.update(f"{c.p.idx}|{holder.seq}|also_for|{t:.6f}|"
+                                 f"{json.dumps(entry, sort_keys=True, separators=(',', ':'))}\n".encode())
+            self.counters["escalations_coalesced"] += 1
+            return
+        i = p["level"] - 1
+        rung = self.ladder[i]
+        payload = {"rung": i, "notify": rung.notify, "step": c.step}
+        if "milestone" in p:
+            payload["milestone"] = p["milestone"]
+        also = [self._ladder_entry(c, x) for x in p.get("also_for", ())]
+        if also:
+            payload["also_for"] = also
+            self.counters["escalations_coalesced"] += len(also)
+        logged = self.emit(c, t, "escalated" if rung.action == "escalate" else "reminder_sent", "scheduler", payload)
+        mc.esc[ev.event_id] = logged
+        if self.staff is not None and rung.action == "escalate":
+            job = self.staff.request(rung.notify, t, self.staff.job_minutes(c.awaiting_patient))
+            if job.start_t > t + 1e-9:  # finite capacity: the person who must work it is busy; it waits for them
+                self.schedule(job.start_t, "rung_q", c, c.token, (i, job))
+                return
+            job.state = "acted"
+        self._rung_effects(c, t, i)
+
+    def on_rung_q(self, c: Case, t: float, token, data) -> None:
+        """A rung that waited for a person is served."""
+        i, job = data
+        if token != c.token or c.abandoned:
+            job.state = "stale"  # the case moved on while it waited; the person still spent the minutes
+            return
+        job.state = "acted"
+        self._rung_effects(c, t, i)
+
+    def _rung_effects(self, c: Case, t: float, i: int) -> None:
+        """What the person a rung notifies does: contact the patient the case is waiting for, or (with the probability the
+        role's escalation is acted on) do the overdue staff step. A request waiting for a provider is left to the sweep's
+        bounce."""
+        rung = self.ladder[i]
+        if c.awaiting_patient:
+            kind = ROLE_KIND.get(rung.notify, "reminder" if i == 0 else "human_call")
+            self.send_outreach(c, t, kind, rung.notify)
+        elif c.hstate == "pending":
+            return
+        elif c.step is not None and STEP_KINDS[c.step] == "staff":
+            sd = c.lat.staff[c.round][STAFF_INDEX[c.step]]
+            j = min(i, N_RUNGS - 1)
+            if sd.u_eff[j] < self.mp.escalation_effect_prob[rung.notify]:
+                self.schedule(self.cal.next_working_t(t + self.beh.react_delay(sd.z_react[j])), "act", c, c.token)
+
+    def _on_bounce(self, c: Case, t: float, ev: Event) -> None:
+        """The sweep bounced an unanswered referral request (A5). In the booking step the API moves the case to
+        `referral_rejected`; a re-request in `referral_rejected` that goes unanswered bounces and stays there."""
+        c.hstate = "bounced"
+        moved = c.mach.model.state == REROUTE_STATE and c.state != REROUTE_STATE
+        self.emit(c, t, "overdue", "scheduler", {"reason": "handoff_unanswered", "attempt": c.h_cur, "via": "timeout"},
+                  to_state=REROUTE_STATE if moved else None)
+        if moved:
+            self._enter_reroute(c, t, "timeout")
+        else:
+            h = max(c.h_cur, 0)
+            self.schedule(self.cal.next_working_t(t + self.beh.reroute_delay(c.lat.z_reroute[h])), "h_retry", c, c.token)
+
+    def _enter_reroute(self, c: Case, t: float, reason: str | None) -> None:
+        """The case is in `referral_rejected` (a provider's rejection, or the sweep's bounce): the owner re-routes it with a
+        new request after the re-route delay; a patient who declined is re-engaged or lost."""
+        c.token += 1
+        c.step, c.awaiting_patient, c.sub, c.hstate = "reroute", False, None, "bounced"
+        h = max(c.h_cur, 0)
+        lat = c.lat
+        if reason == "patient_declined" and not (lat.u_declined[h] < self.mp.declined_reengage_prob and c.consent_ok):
+            self.flag_lost(c, t, "patient_declined")
+            return
+        self.schedule(self.cal.next_working_t(t + self.beh.reroute_delay(lat.z_reroute[h])), "h_retry", c, c.token)
 
     # ------------------------------------------------------------------------------------------
     # steps
@@ -376,8 +579,6 @@ class Engine:
         c.sub = None
         if ev is None:
             return
-        if c.orch:
-            self.arm_sla(c, t, ev)
         kind = STEP_KIND[ev]
         if kind == "staff":
             self.sched_staff(c, t, ev)
@@ -385,27 +586,6 @@ class Engine:
             c.awaiting_patient = True  # the outreach was sent by the contact_patient action
         else:
             self.book_appointment(c, t)
-
-    def arm_sla(self, c: Case, t: float, ev: str) -> None:
-        sla = self.slas.get(ev)
-        if sla is None:
-            return
-        k = c.timer_n
-        c.timer_n += 1
-        if k < T_POOL and c.lat.u_timer[k] < self.mp.timer_miss_prob:
-            self.counters["timers_missed"] += 1  # the scheduler silently failed to arm this timer
-            return
-        self.schedule_deadline(self.cal.add_working_days_t(t, sla), "sla_due", c, c.token, sla)
-
-    def arm_milestone(self, c: Case, t: float, m) -> None:
-        """A milestone timer (A18): not bound to the case's step token, so it survives state changes until the
-        `until_event` happens. Subject to the same scheduler-misses-a-timer rate as the SLA timers."""
-        k = c.ms_timer_n
-        c.ms_timer_n += 1
-        if c.lat.u_mtimer[k] < self.mp.timer_miss_prob:
-            self.counters["timers_missed"] += 1
-            return
-        self.schedule_deadline(self.cal.add_working_days_t(t, m.working_days), "ms_due", c, None, m.name)
 
     def sched_staff(self, c: Case, t: float, step: str) -> None:
         sd = c.lat.staff[c.round][STAFF_INDEX[step]]
@@ -421,7 +601,7 @@ class Engine:
     # staff actions
     # ------------------------------------------------------------------------------------------
     def on_start(self, c: Case, t: float, token, data) -> None:
-        self.emit(c, t, CASE_CREATED, "system:intake", {"pathway": self.pw.name})
+        created = self.emit(c, t, CASE_CREATED, "system:intake", {"pathway": self.pw.name})
         m = c.msy
         if m.duplicate_day is not None:
             self.schedule(t + m.duplicate_day, "dup", c)
@@ -430,8 +610,9 @@ class Engine:
         if c.lat.u_consent < self.mp.consent_withdrawal_prob:
             self.schedule(t + c.lat.u_consent_when * self.mp.consent_withdrawal_window_days, "consent", c, None, "generic")
         if c.orch:
-            for m in self.start_milestones:
-                self.arm_milestone(c, t, m)
+            c.mach = MachineCase(self.pw, created)
+            self._draw_timers(c)
+            self._resched(c, t)
         self.enter_step(c, t)
 
     def on_act(self, c: Case, t: float, token, data) -> None:
@@ -450,6 +631,13 @@ class Engine:
             if d is not None:
                 self.schedule(t + d, "self_present", c, c.token)
         elif step == "book_confirmatory":
+            if c.sub == "rebook":
+                return  # waiting for the patient to agree a new date
+            if c.accepted_h is not None:
+                self._book(c, t, c.accepted_h)  # a provider already accepted the referral (a re-route): book on it
+            else:
+                self.start_handoff(c, t)
+        elif step == "reroute":
             self.start_handoff(c, t)
         elif step == "clinician_review":
             self.advance(c, t, "clinician_review", f"clinician:cl-{i % 5}")
@@ -483,94 +671,8 @@ class Engine:
                 self.emit(c, t, "conflicting_ack_unresolved", f"staff:intake-{i % 4}", {"claimants": 2})
 
     # ------------------------------------------------------------------------------------------
-    # timers, ladder, watchdog (orchestrated)
+    # ladder end, refusal, watchdog (orchestrated)
     # ------------------------------------------------------------------------------------------
-    def on_sla_due(self, c: Case, t: float, token, sla) -> None:
-        if token != c.token or c.abandoned:
-            return
-        self.emit(c, t, "overdue", "scheduler", {"step": c.step, "sla_working_days": sla})
-        self.start_ladder(c, t, "state")
-
-    def on_ms_due(self, c: Case, t: float, token, name: str) -> None:
-        """A milestone breach (A18): once, if the `until_event` has not happened. The ladder runs for the step the
-        case is in now, like any breach; it is dropped if the case moves on (a new obligation)."""
-        if name in c.ms_met or c.abandoned or c.state == self.terminal or c.step is None:
-            return
-        m = self.pw.milestones[name]
-        self.emit(c, t, "overdue", "scheduler", {"step": c.step, "sla_working_days": m.working_days, "milestone": name})
-        self.start_ladder(c, t, name)
-
-    def start_ladder(self, c: Case, t: float, source: str = "state") -> None:
-        """Arm the rungs of one ladder. `source` is "state" (the step's SLA) or the milestone's name: the rung event
-        carries it so that rungs of concurrent ladders to the same role can be coalesced (A19)."""
-        last = t
-        for i, rung in enumerate(self.ladder):
-            last = self.cal.add_working_days_t(t, rung.after_breach_days)
-            self.schedule(last, "rung", c, c.token, (i, source))
-        self.schedule(self.cal.add_working_days_t(last, self.mp.ladder_exhausted_wait_working_days), "ladder_end", c, c.token)
-
-    def on_rung(self, c: Case, t: float, token, data) -> None:
-        if token != c.token or c.abandoned:
-            return
-        i, source = data
-        rung = self.ladder[i]
-        # Coalescing (A19, ADR-031): a case can have the step's ladder and a milestone's running at once. A rung to a
-        # role that another ladder already went to on this working day, while the step has not moved (same token),
-        # is not a second message: nothing is emitted and nothing else happens (no outreach, no staff reaction);
-        # the earlier event records the ladder it also stands for.
-        day = math.floor(t)
-        prev = c.last_rung.get(rung.notify)
-        if prev is not None and prev[0] == day and prev[1] == c.token and prev[3] != source:
-            entry = {"step": c.step} if source == "state" else {"milestone": source}
-            prev[2].payload.setdefault("also_for", []).append(entry)
-            self.counters["escalations_coalesced"] += 1
-            self.hash.update(
-                f"{c.p.idx}|{prev[2].seq}|also_for|{t:.6f}|{json.dumps(entry, sort_keys=True, separators=(',', ':'))}\n".encode()
-            )
-            return
-        if self.staff is not None and c.orch and rung.action == "escalate":
-            job = self.staff.request(rung.notify, t, self.staff.job_minutes(c.awaiting_patient))
-            if job.start_t > t + 1e-9:  # finite capacity: the person who must work it is busy; it waits for them
-                pend = _Pending()
-                c.last_rung[rung.notify] = (day, c.token, pend, source)
-                self.schedule(job.start_t, "rung_q", c, c.token, (i, source, pend, job))
-                return
-            job.state = "acted"
-        self._rung_effects(c, t, i, source, day, None, 0.0)
-
-    def on_rung_q(self, c: Case, t: float, token, data) -> None:
-        """A rung that waited for a person is served."""
-        i, source, pend, job = data
-        if token != c.token or c.abandoned:
-            job.state = "stale"  # the case moved on while it waited; the person still spent the minutes
-            return
-        job.state = "acted"
-        self._rung_effects(c, t, i, source, math.floor(t), pend, t - job.request_t)
-
-    def _rung_effects(self, c: Case, t: float, i: int, source: str, day: int, pend, waited: float) -> None:
-        rung = self.ladder[i]
-        payload = {"rung": i, "notify": rung.notify, "step": c.step}
-        if pend is not None:
-            payload["waited_days"] = round(waited, 4)
-            if "also_for" in pend.payload:
-                payload["also_for"] = pend.payload["also_for"]
-        if rung.action == "escalate":
-            ev = self.emit(c, t, "escalated", "scheduler", payload)
-        else:
-            ev = self.emit(c, t, "reminder_sent", "scheduler", payload)
-        c.last_rung[rung.notify] = (day, c.token, ev, source)
-        if c.awaiting_patient:
-            kind = ROLE_KIND.get(rung.notify, "reminder" if i == 0 else "human_call")
-            self.send_outreach(c, t, kind, rung.notify)
-        elif c.step == "book_confirmatory" and c.hstate != "staff":
-            if c.hstate == "pending" and i >= 1:
-                self.handoff_bounce(c, t, "escalation")
-        elif c.step is not None and STEP_KIND[c.step] == "staff":
-            sd = c.lat.staff[c.round][STAFF_INDEX[c.step]]
-            j = min(i, N_RUNGS - 1)
-            if sd.u_eff[j] < self.mp.escalation_effect_prob[rung.notify]:
-                self.schedule(self.cal.next_working_t(t + self.beh.react_delay(sd.z_react[j])), "act", c, c.token)
-
     def on_ladder_end(self, c: Case, t: float, token, data) -> None:
         if token != c.token or c.abandoned:
             return
@@ -597,8 +699,9 @@ class Engine:
         if c.abandoned or c.state == self.terminal:
             return
         if c.state == "patient_contacted":  # the counselling conversation is also the patient's acknowledgement
-            c.state = apply(c.state, as_machine_event(self._log_ev(c, t, "patient_acknowledge", f"staff:outreach-{c.p.idx % 4}",
-                                                                   {"via": "counselling"})), self.pw)
+            ack = self._log_ev(c, t, "patient_acknowledge", f"staff:outreach-{c.p.idx % 4}", {"via": "counselling"})
+            c.state = apply(c.state, as_machine_event(ack), self.pw)
+            self._fold_pathway(c, t, ack)
         if c.state not in REFUSAL_STATES:
             c.lost_reasons.remove("refusal_scheduled")
             self.flag_lost(c, t, "declined_care")  # cannot be recorded from here: lost, as before
@@ -609,8 +712,9 @@ class Engine:
         ev = self._log_ev(c, t, "record_informed_refusal", counsellor, payload)
         c.state = apply(c.state, as_machine_event(ev), self.pw)
         c.refusal = {"counselling_ref": payload["counselling_ref"], "counselled_by": counsellor}
-        c.token += 1  # nothing else is awaited: pending step events and timers lapse
-        c.step, c.awaiting_patient = None, False
+        c.token += 1  # nothing else is awaited: pending step events lapse
+        c.step, c.awaiting_patient, c.hstate = None, False, "staff"
+        self._fold_pathway(c, t, ev)
         self.schedule(self.cal.add_working_days_t(t, self.slas["close"]), "signoff", c)
 
     def on_signoff(self, c: Case, t: float, token, data) -> None:
@@ -623,6 +727,11 @@ class Engine:
         c.state = step(CaseModel(state=c.state, refusal=c.refusal), as_machine_event(ev), self.pw).state
         c.step = None
         c.token += 1
+        self._fold_pathway(c, t, ev)
+
+    def _fold_pathway(self, c: Case, t: float, ev: Event) -> None:
+        if c.mach is not None:
+            self._fold(c, t, machine_event(ev, ev.type, self._machine_payload(c, ev)))
 
     def _log_ev(self, c: Case, t: float, etype: str, actor: str, payload: dict) -> Event:
         """Build and log a pathway event whose state change the caller applies (the machine runs on the caller's model)."""
@@ -676,10 +785,9 @@ class Engine:
     def _force_effects(self, c: Case, t: float) -> None:
         if c.awaiting_patient:
             self.send_outreach(c, t, "coordinator_route", "programme_coordinator")
-        elif c.step == "book_confirmatory" and c.hstate != "staff":
-            if c.hstate == "pending":
-                self.handoff_bounce(c, t, "watchdog")
-        elif STEP_KIND[c.step] == "staff":
+        elif c.hstate == "pending":
+            return  # a request is with a provider: the sweep bounces it if it stays unanswered
+        elif STEP_KINDS[c.step] == "staff":
             self.schedule(t, "act", c, c.token)
 
     # ------------------------------------------------------------------------------------------
@@ -749,7 +857,7 @@ class Engine:
             return
         if c.step == "patient_acknowledge":
             self.advance(c, t, "patient_acknowledge", f"patient:{c.p.key}", {"via": "reply"})
-        elif c.step == "complete_confirmatory" and c.sub == "rebook":
+        elif c.sub == "rebook":
             self.rebook(c, t, "outreach")
 
     def on_self_present(self, c: Case, t: float, token, data) -> None:
@@ -761,6 +869,8 @@ class Engine:
     # referral handoff
     # ------------------------------------------------------------------------------------------
     def start_handoff(self, c: Case, t: float) -> None:
+        if c.hstate == "pending":
+            return  # a request is already with a provider (an escalation prompted the owner while it waits)
         h = c.h_idx
         if h >= min(H_POOL, self.mp.handoff_max_attempts):
             c.hstate = "bounced"
@@ -770,38 +880,42 @@ class Engine:
         c.h_cur = h
         c.hstate = "pending"
         who = f"owner:pcp-{c.p.idx % 7}" if c.orch else f"staff:referrals-{c.p.idx % 3}"
-        self.emit(c, t, "handoff_requested", who, {"attempt": h, "to": f"endoscopy-{h}"})
+        to = f"endoscopy-{h}"
+        self.emit(c, t, "handoff_requested", who, {"attempt": h, "to": to}, m=("handoff_requested", {"to_provider": to}))
         outcome = self.beh.handoff_outcome(c.lat.u_h[h])
         if outcome != "none":
             reason = self.beh.rejection_reason(c.lat.u_reason[h]) if outcome == "reject" else None
             at = self.cal.next_working_t(t + self.beh.handoff_delay(c.lat.z_h[h]))
             self.schedule(at, "h_resp", c, c.token, (h, outcome, reason))
-        if c.orch:
-            self.schedule_deadline(self.cal.add_working_days_t(t, self.mp.handoff_sla_working_days), "h_timeout", c, c.token, h)
+        # an orchestrated request that stays unanswered is bounced by the API's sweep (`_on_bounce`)
 
     def on_h_resp(self, c: Case, t: float, token, data) -> None:
         h, outcome, reason = data
         if token != c.token or c.hstate != "pending" or c.h_cur != h or c.abandoned:
             return
         if outcome == "accept":
-            self.emit(c, t, "handoff_accepted", f"endoscopy:unit-{h}", {"attempt": h})
-            lead = self.beh.lead_days(c.lat, c.appt_idx, False, c.fast)
-            c.pending_appt = self._reserve(c, t, self.cal.next_working_t(t + lead), h)
-            who = f"owner:pcp-{c.p.idx % 7}" if c.orch else f"staff:referrals-{c.p.idx % 3}"
-            self.advance(c, t, "book_confirmatory", who, {"appointment_on": self.cal.date_of(c.pending_appt).isoformat()})
-            if c.msy.consent_after_booking_lag is not None and not c.booked_once:
-                self.schedule(t + c.msy.consent_after_booking_lag, "consent", c, None, "after_booking")
-            c.booked_once = True
+            c.hstate = "staff"
+            c.accepted_h = h
+            if c.mach is not None and c.state == REROUTE_STATE:
+                # the API's path: an accepted re-route returns the case to owner_accepted, and the owner contacts the
+                # patient, the patient acknowledges and the booking is made on the accepted referral
+                self.emit(c, t, "handoff_accepted", f"endoscopy:unit-{h}", {"attempt": h}, m=("handoff_accepted", {}),
+                          to_state="owner_accepted")
+                self.enter_step(c, t)
+                return
+            self.emit(c, t, "handoff_accepted", f"endoscopy:unit-{h}", {"attempt": h}, m=("handoff_accepted", {}))
+            self._book(c, t, h)
             return
         c.hstate = "bounced"
-        self.emit(c, t, "handoff_rejected", f"endoscopy:unit-{h}", {"attempt": h, "reason": reason})
+        rejects = c.mach is not None and c.state in ("patient_acknowledged", "confirmatory_booked")
+        self.emit(c, t, "handoff_rejected", f"endoscopy:unit-{h}", {"attempt": h, "reason": reason},
+                  m=("handoff_rejected", {"reason": reason}), to_state=REROUTE_STATE if rejects else None)
         lat = c.lat
         if c.orch:
-            if reason == "patient_declined":
-                if lat.u_declined[h] < self.mp.declined_reengage_prob and c.consent_ok:
-                    self.schedule(self.cal.next_working_t(t + self.beh.reroute_delay(lat.z_reroute[h])), "h_retry", c, c.token)
-                else:
-                    self.flag_lost(c, t, "patient_declined")
+            if c.state == REROUTE_STATE and c.step != "reroute":
+                self._enter_reroute(c, t, reason)
+            elif reason == "patient_declined" and not (lat.u_declined[h] < self.mp.declined_reengage_prob and c.consent_ok):
+                self.flag_lost(c, t, "patient_declined")
             else:  # capacity / wrong_service: re-route to another service; missing_info: complete and resubmit
                 self.schedule(self.cal.next_working_t(t + self.beh.reroute_delay(lat.z_reroute[h])), "h_retry", c, c.token)
         elif lat.u_notice[h] < self.mp.baseline_rejection_noticed_prob:
@@ -809,19 +923,18 @@ class Engine:
             self.schedule(t + d, "h_retry", c, c.token)
         # else: the rejection is never noticed and the referral is silently lost
 
-    def on_h_timeout(self, c: Case, t: float, token, h) -> None:
-        if token != c.token or c.hstate != "pending" or c.h_cur != h or c.abandoned:
-            return
-        self.handoff_bounce(c, t, "timeout")
-
-    def handoff_bounce(self, c: Case, t: float, via: str) -> None:
-        c.hstate = "bounced"
-        self.emit(c, t, "overdue", "scheduler", {"reason": "handoff_unanswered", "attempt": c.h_cur, "via": via})
-        h = max(c.h_cur, 0)
-        self.schedule(self.cal.next_working_t(t + self.beh.reroute_delay(c.lat.z_reroute[h])), "h_retry", c, c.token)
+    def _book(self, c: Case, t: float, h: int) -> None:
+        """Book the colonoscopy on the referral that provider `h` accepted."""
+        lead = self.beh.lead_days(c.lat, c.appt_idx, False, c.fast)
+        c.pending_appt = self._reserve(c, t, self.cal.next_working_t(t + lead), h)
+        who = f"owner:pcp-{c.p.idx % 7}" if c.orch else f"staff:referrals-{c.p.idx % 3}"
+        self.advance(c, t, "book_confirmatory", who, {"appointment_on": self.cal.date_of(c.pending_appt).isoformat()})
+        if c.msy.consent_after_booking_lag is not None and not c.booked_once:
+            self.schedule(t + c.msy.consent_after_booking_lag, "consent", c, None, "after_booking")
+        c.booked_once = True
 
     def on_h_retry(self, c: Case, t: float, token, data) -> None:
-        if token != c.token or c.abandoned or c.step != "book_confirmatory":
+        if token != c.token or c.abandoned or c.step not in ("book_confirmatory", "reroute"):
             return
         self.start_handoff(c, t)
 
@@ -884,16 +997,23 @@ class Engine:
             self.advance(c, t, "complete_confirmatory", "endoscopy:unit",
                          {"appointment": a, "evidence_ref": f"procedure-{c.p.key}-{a}"})
             return
-        self.emit(c, t, "appointment_missed", "endoscopy:unit", {"appointment": a})
-        self.lapse(c)
         more = (a + 1) < min(A_POOL, self.mp.appointment_max_attempts) and not c.declined_care
+        if c.orch and more:
+            # the API's path (A34): the missed appointment is cancelled, the case goes back to patient_acknowledged, and
+            # its booking SLA (book_confirmatory) and ladder run while the owner agrees a new date with the patient
+            self.emit(c, t, "appointment_missed", "endoscopy:unit", {"appointment": a},
+                      m=("appointment_cancelled", {"reason": "other", "by_patient": True}), to_state="patient_acknowledged")
+        else:
+            self.emit(c, t, "appointment_missed", "endoscopy:unit", {"appointment": a})
+        self.lapse(c)
         if c.orch:
             self.emit(c, t, "overdue", "scheduler", {"reason": "missed_appointment", "step": c.step})
             if more:
-                c.token += 1  # a new sub-flow: the old SLA timer and rungs no longer apply
+                c.token += 1  # a new sub-flow: waiting for the patient to agree a new date
+                c.step, c.hstate = "book_confirmatory", "staff"
                 c.awaiting_patient = True
                 c.sub = "rebook"
-                self.start_ladder(c, t)
+                self.send_outreach(c, t, "reminder", "owner")  # the owner follows the missed appointment up at once
             else:
                 self.flag_lost(c, t, "declined_care" if c.declined_care else "repeated_no_show")
         elif more and c.lat.u_selfrebook[a] < self.mp.noshow_self_rebook_prob:
@@ -915,6 +1035,9 @@ class Engine:
         c.awaiting_patient = False
         c.sub = None
         c.pending_appt = self._reserve(c, t, self.cal.next_working_t(t + self.beh.lead_days(c.lat, a, True, c.fast)))
+        if c.mach is not None:  # back in patient_acknowledged (appointment_cancelled): the new date is a booking
+            self.advance(c, t, "book_confirmatory", who, {"appointment_on": self.cal.date_of(c.pending_appt).isoformat()})
+            return
         self.book_appointment(c, t)
 
     # ------------------------------------------------------------------------------------------
@@ -934,7 +1057,8 @@ class Engine:
         return self.states.index(c.state) < self.idx_booked
 
     def _reenter_staff_step(self, c: Case) -> bool:
-        return c.step is not None and STEP_KIND[c.step] == "staff" and (c.step != "book_confirmatory" or c.hstate == "staff")
+        return (c.step is not None and c.step != REROUTE and STEP_KIND[c.step] == "staff" and c.sub is None
+                and (c.step != "book_confirmatory" or c.hstate == "staff"))
 
     def on_switch(self, c: Case, t: float, token, data) -> None:
         if c.abandoned or c.state == self.terminal:
@@ -990,7 +1114,8 @@ class Engine:
         if c.orch:
             c.consent_ok = False
             self.emit(c, t, "consent_updated", f"patient:{c.p.key}",
-                      {"status": "withdrawn", "scope": "outreach", "flagged_for_review": True, "source": source})
+                      {"status": "withdrawn", "scope": "outreach", "flagged_for_review": True, "source": source},
+                      m=("consent_updated", {"withdrawn": True}))
             d = lognormal(self.mp.consent_review_delay_median_days, self.mp.reaction_delay_sigma, c.lat.z_consent_review)
             self.schedule(self.cal.next_working_t(t + d), "consent_review", c)
         else:
@@ -1001,16 +1126,19 @@ class Engine:
         if c.abandoned:
             return
         outcome = "declined_care" if c.declined_care else "continues_without_outreach"
-        self.emit(c, t, "consent_review_completed", f"owner:pcp-{c.p.idx % 7}", {"outcome": outcome})
+        # a review that lets the case continue restores consent in the API (outreach stays off in the simulator); one that
+        # finds the patient declines care leaves the case in consent_withdrawn, frozen, as the API would
+        restore = ("consent_updated", {"withdrawn": False}) if not c.declined_care and c.withdrawn else None
+        self.emit(c, t, "consent_review_completed", f"owner:pcp-{c.p.idx % 7}", {"outcome": outcome}, m=restore)
         if c.declined_care and c.state != self.terminal:
             self.flag_lost(c, t, "declined_care")
 
     def on_reopen(self, c: Case, t: float, token, data) -> None:
         if c.abandoned or c.state != self.terminal:
             return
-        resume = self.mp.reopen_resume_state
-        self.emit(c, t, "reopened", "clinician:late-finding", {"resume_state": resume})
-        c.state = resume
+        resume = self.reopen_state  # `reopened`: a clinician reviews again and a fresh close is needed
+        self.emit(c, t, "reopened", "clinician:late-finding", {"resume_state": resume}, m=("reopen", {"reason": "new_finding"}),
+                  to_state=resume)
         c.reopened = True
         c.round = 1
         c.lost_reasons = []

@@ -34,14 +34,14 @@
     },
     "by_status": {
       "done": 9,
-      "needs_human": 80
+      "needs_human": 74
     },
     "department_head_plans": {
       "template fallback=True": 5
     },
     "planner_configured": "anthropic",
     "status": "done",
-    "tasks": 89
+    "tasks": 83
   },
   "cases": 60,
   "drafts": {
@@ -71,11 +71,11 @@
   "guarantee": {
     "ai_events": 302,
     "ai_events_by_type": {
-      "callback_requested": 20,
+      "callback_requested": 14,
       "message_drafted": 126,
       "reply_classified": 60,
       "reply_received": 60,
-      "review_requested": 36
+      "review_requested": 42
     },
     "ai_events_that_changed_state": [],
     "holds": true,
@@ -101,17 +101,17 @@
   },
   "ticket": "M7-5",
   "triage": {
-    "auto_handled": 36,
+    "auto_handled": 29,
     "effects": {
-      "callback_requested:cannot_attend": 9,
+      "callback_requested:cannot_attend": 7,
       "callback_requested:patient_does_not_understand": 3,
-      "callback_requested:reschedule": 8,
-      "review_requested:already_done": 5,
+      "callback_requested:reschedule": 4,
+      "review_requested:already_done": 4,
       "review_requested:opt_out": 11,
-      "review_requested:triage_uncertain": 13,
+      "review_requested:triage_uncertain": 20,
       "review_requested:wrong_number": 7
     },
-    "needs_human": 24,
+    "needs_human": 31,
     "opt_out_gate": 1,
     "replies": 60
   }

@@ -1,0 +1,2580 @@
+{
+  "components": {
+    "schemas": {
+      "Advance": {
+        "additionalProperties": false,
+        "properties": {
+          "days": {
+            "anyOf": [
+              {
+                "maximum": 3650.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Days"
+          },
+          "hours": {
+            "anyOf": [
+              {
+                "maximum": 87600.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hours"
+          }
+        },
+        "title": "Advance",
+        "type": "object"
+      },
+      "CreateCase": {
+        "properties": {
+          "case_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Case Id"
+          },
+          "contact_valid": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "additionalProperties": {
+                  "type": "boolean"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contact Valid"
+          },
+          "patient_ref": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Patient Ref"
+          },
+          "registered_provider": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Registered Provider"
+          },
+          "result_ref": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Result Ref"
+          }
+        },
+        "title": "CreateCase",
+        "type": "object"
+      },
+      "CreateDraft": {
+        "additionalProperties": false,
+        "properties": {
+          "channel": {
+            "enum": [
+              "sms",
+              "whatsapp",
+              "letter"
+            ],
+            "title": "Channel",
+            "type": "string"
+          },
+          "language": {
+            "enum": [
+              "ar",
+              "en"
+            ],
+            "title": "Language",
+            "type": "string"
+          },
+          "purpose": {
+            "enum": [
+              "result_notification",
+              "reminder",
+              "appointment_confirmation",
+              "escalation_notice",
+              "callback_ack",
+              "refusal_acknowledgement"
+            ],
+            "title": "Purpose",
+            "type": "string"
+          }
+        },
+        "required": [
+          "purpose",
+          "channel",
+          "language"
+        ],
+        "title": "CreateDraft",
+        "type": "object"
+      },
+      "DevLogin": {
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "patient_ref": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Patient Ref"
+          },
+          "provider": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider"
+          },
+          "role": {
+            "title": "Role",
+            "type": "string"
+          }
+        },
+        "required": [
+          "role",
+          "name"
+        ],
+        "title": "DevLogin",
+        "type": "object"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "Heartbeat": {
+        "additionalProperties": false,
+        "description": "What the scheduler says about itself. No timestamps: the API stamps the arrival.",
+        "properties": {
+          "consecutive_failures": {
+            "default": 0,
+            "maximum": 100000.0,
+            "minimum": 0.0,
+            "title": "Consecutive Failures",
+            "type": "integer"
+          },
+          "fencing_token": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fencing Token"
+          },
+          "holder": {
+            "anyOf": [
+              {
+                "pattern": "^[A-Za-z0-9._-]{1,64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Holder"
+          },
+          "interval_seconds": {
+            "default": 10,
+            "exclusiveMinimum": 0.0,
+            "maximum": 3600.0,
+            "title": "Interval Seconds",
+            "type": "number"
+          },
+          "role": {
+            "default": "leader",
+            "enum": [
+              "leader",
+              "follower"
+            ],
+            "title": "Role",
+            "type": "string"
+          },
+          "sim_time": {
+            "anyOf": [
+              {
+                "maxLength": 40,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sim Time"
+          },
+          "sweep_ok": {
+            "title": "Sweep Ok",
+            "type": "boolean"
+          },
+          "sweeping": {
+            "default": false,
+            "title": "Sweeping",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "sweep_ok"
+        ],
+        "title": "Heartbeat",
+        "type": "object"
+      },
+      "LeaseRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "holder": {
+            "pattern": "^[A-Za-z0-9._-]{1,64}$",
+            "title": "Holder",
+            "type": "string"
+          }
+        },
+        "required": [
+          "holder"
+        ],
+        "title": "LeaseRequest",
+        "type": "object"
+      },
+      "PostEvent": {
+        "additionalProperties": false,
+        "properties": {
+          "at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "At"
+          },
+          "event_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Event Id"
+          },
+          "payload": {
+            "additionalProperties": true,
+            "title": "Payload",
+            "type": "object"
+          },
+          "type": {
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type"
+        ],
+        "title": "PostEvent",
+        "type": "object"
+      },
+      "PostReply": {
+        "additionalProperties": false,
+        "properties": {
+          "channel": {
+            "enum": [
+              "sms",
+              "whatsapp",
+              "phone",
+              "letter"
+            ],
+            "title": "Channel",
+            "type": "string"
+          },
+          "language_hint": {
+            "anyOf": [
+              {
+                "enum": [
+                  "en",
+                  "ar"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Language Hint"
+          },
+          "reply_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reply Id"
+          },
+          "text": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "channel",
+          "text"
+        ],
+        "title": "PostReply",
+        "type": "object"
+      },
+      "RejectDraft": {
+        "additionalProperties": false,
+        "description": "A16: the reason is one of the fixed taxonomy (it goes into the log as `message_rejected`).\n`other_with_note` needs a note, any other reason takes none; the note is kept on the draft row\n(erasable), never in the event.",
+        "properties": {
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "reason": {
+            "enum": [
+              "inaccurate",
+              "tone",
+              "wrong_language",
+              "not_needed",
+              "other_with_note"
+            ],
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "reason"
+        ],
+        "title": "RejectDraft",
+        "type": "object"
+      },
+      "RequestErasure": {
+        "additionalProperties": false,
+        "properties": {
+          "patient_ref": {
+            "title": "Patient Ref",
+            "type": "string"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "patient_ref",
+          "reason"
+        ],
+        "title": "RequestErasure",
+        "type": "object"
+      },
+      "Scan": {
+        "additionalProperties": false,
+        "properties": {
+          "idle_days": {
+            "anyOf": [
+              {
+                "maximum": 3650.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Idle Days"
+          },
+          "uptime_seconds": {
+            "default": 0,
+            "minimum": 0.0,
+            "title": "Uptime Seconds",
+            "type": "number"
+          }
+        },
+        "title": "Scan",
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
+      }
+    },
+    "securitySchemes": {
+      "HTTPBearer": {
+        "scheme": "bearer",
+        "type": "http"
+      }
+    }
+  },
+  "info": {
+    "title": "Screening Closure Engine",
+    "version": "0.1.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/agency/inbox": {
+      "get": {
+        "description": "Tasks that need a person, newest first, with what the agent prepared. Owners see items on cases they own.",
+        "operationId": "inbox_agency_inbox_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "title": "Response Inbox Agency Inbox Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Inbox",
+        "tags": [
+          "agency"
+        ]
+      }
+    },
+    "/agency/org": {
+      "get": {
+        "operationId": "org_agency_org_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Org Agency Org Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Org",
+        "tags": [
+          "agency"
+        ]
+      }
+    },
+    "/agency/run": {
+      "post": {
+        "description": "One run at the current sim time; a second call at the same sim time returns the same run (`created: false`).",
+        "operationId": "run_agency_run_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Run Agency Run Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Run",
+        "tags": [
+          "agency"
+        ]
+      }
+    },
+    "/agency/runs": {
+      "get": {
+        "operationId": "runs_agency_runs_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "title": "Response Runs Agency Runs Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Runs",
+        "tags": [
+          "agency"
+        ]
+      }
+    },
+    "/agency/tasks": {
+      "get": {
+        "operationId": "tasks_agency_tasks_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "queued",
+                    "running",
+                    "done",
+                    "failed",
+                    "needs_human"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "in": "query",
+            "name": "department",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "supervisor",
+                    "outreach",
+                    "referral_scheduling",
+                    "evidence_closure",
+                    "patient_support",
+                    "quality_ops"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Department"
+            }
+          },
+          {
+            "in": "query",
+            "name": "case_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Case Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "run_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Run Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 500,
+              "maximum": 5000,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "title": "Response Tasks Agency Tasks Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Tasks",
+        "tags": [
+          "agency"
+        ]
+      }
+    },
+    "/alerts": {
+      "get": {
+        "description": "System alerts, newest first: `{id, kind, since, cleared_at, detail}`. `cleared_at` is null\nwhile the alert is open. `watchdog_down` is derived here from the watchdog's own heartbeat (no\nprocess is left to open it); the others are opened and cleared by the watchdog scan.",
+        "operationId": "alerts_alerts_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "active",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Active",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "title": "Response Alerts Alerts Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Alerts",
+        "tags": [
+          "watchdog"
+        ]
+      }
+    },
+    "/auth/dev-login": {
+      "post": {
+        "description": "Development login: no password. Returns a signed bearer token for `role:name`.",
+        "operationId": "dev_login_auth_dev_login_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DevLogin"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Dev Login Auth Dev Login Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Dev Login",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/cases": {
+      "get": {
+        "description": "The worklist (A9): one row per case with the fields the web needs, in a stable order\n(genesis time, then case id). Filters: `state`, `owner` (the opaque actor `role:user_id` or its\nbare user id, never a display name: F8-1), `overdue`, `provider`, `flagged` (open watchdog flag). A patient sees only their own\ncases; everyone else sees all. `risk_score` (D9) is the modelled probability of loss to follow-up,\nfor ordering only: the rows come back in the same order with or without it, and a patient's rows\ncarry null.",
+        "operationId": "list_cases_cases_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "state",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "State"
+            }
+          },
+          {
+            "in": "query",
+            "name": "owner",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Owner"
+            }
+          },
+          {
+            "in": "query",
+            "name": "overdue",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Overdue"
+            }
+          },
+          {
+            "in": "query",
+            "name": "provider",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Provider"
+            }
+          },
+          {
+            "in": "query",
+            "name": "flagged",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Flagged"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "title": "Response List Cases Cases Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Cases",
+        "tags": [
+          "cases"
+        ]
+      },
+      "post": {
+        "operationId": "create_case_cases_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCase"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Create Case Cases Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Create Case",
+        "tags": [
+          "cases"
+        ]
+      }
+    },
+    "/cases/{case_id}": {
+      "get": {
+        "operationId": "get_case_cases__case_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "case_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Case Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Case Cases  Case Id  Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Case",
+        "tags": [
+          "cases"
+        ]
+      }
+    },
+    "/cases/{case_id}/agency": {
+      "get": {
+        "operationId": "case_agency_cases__case_id__agency_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "case_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Case Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Case Agency Cases  Case Id  Agency Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Case Agency",
+        "tags": [
+          "agency"
+        ]
+      }
+    },
+    "/cases/{case_id}/confirmatory-result": {
+      "post": {
+        "description": "Record the confirmatory colonoscopy (demo, E8): creates a synthetic `Procedure` and\n`DiagnosticReport` in HAPI for the case's patient and returns their references. The case owner\nonly (a primary_care_owner or specialist_owner who owns it). It appends no event: the owner\nthen posts `complete_confirmatory {result_ref}` and `close {evidence_ref}` with the reference.\n\n`?completeness=` (A24, ADR-036) says how the colonoscopy ended: `complete` (default), `incomplete` or\n`ct_colonography`. The report states it, and `close` accepts only a complete colonoscopy or a CT colonography.",
+        "operationId": "record_confirmatory_result_cases__case_id__confirmatory_result_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "case_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Case Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "completeness",
+            "required": false,
+            "schema": {
+              "default": "complete",
+              "enum": [
+                "complete",
+                "incomplete",
+                "ct_colonography"
+              ],
+              "title": "Completeness",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Record Confirmatory Result Cases  Case Id  Confirmatory Result Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Record Confirmatory Result",
+        "tags": [
+          "cases"
+        ]
+      }
+    },
+    "/cases/{case_id}/drafts": {
+      "get": {
+        "description": "The case's drafts, text included. Owner-scoped like every other owner action (SEC-2): a clinician\nreads the drafts of cases they own; a coordinator or supervisor reads any.",
+        "operationId": "list_drafts_cases__case_id__drafts_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "case_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Case Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "title": "Response List Drafts Cases  Case Id  Drafts Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Drafts",
+        "tags": [
+          "drafts"
+        ]
+      },
+      "post": {
+        "operationId": "create_draft_cases__case_id__drafts_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "case_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Case Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateDraft"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Create Draft Cases  Case Id  Drafts Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Create Draft",
+        "tags": [
+          "drafts"
+        ]
+      }
+    },
+    "/cases/{case_id}/events": {
+      "post": {
+        "operationId": "post_event_cases__case_id__events_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "case_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Case Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PostEvent"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Post Event Cases  Case Id  Events Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Post Event",
+        "tags": [
+          "cases"
+        ]
+      }
+    },
+    "/cases/{case_id}/fhir": {
+      "get": {
+        "description": "The FHIR resources the projection writes for this case (A12): their ids, computed from the\nlog, plus how many events are still waiting in the retry queue. Owners see only their own case.",
+        "operationId": "case_fhir_cases__case_id__fhir_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "case_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Case Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Case Fhir Cases  Case Id  Fhir Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Case Fhir",
+        "tags": [
+          "cases"
+        ]
+      }
+    },
+    "/cases/{case_id}/notifications": {
+      "get": {
+        "description": "The case's notification log (A7), oldest first. Owners see only their own cases.",
+        "operationId": "case_notifications_cases__case_id__notifications_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "case_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Case Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "title": "Response Case Notifications Cases  Case Id  Notifications Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Case Notifications",
+        "tags": [
+          "cases"
+        ]
+      }
+    },
+    "/cases/{case_id}/replies": {
+      "get": {
+        "description": "The case's stored replies, oldest first, with the text: for the person who has to read a flagged one.",
+        "operationId": "list_replies_cases__case_id__replies_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "case_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Case Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "title": "Response List Replies Cases  Case Id  Replies Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Replies",
+        "tags": [
+          "replies"
+        ]
+      },
+      "post": {
+        "operationId": "post_reply_cases__case_id__replies_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "case_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Case Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PostReply"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Post Reply Cases  Case Id  Replies Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Post Reply",
+        "tags": [
+          "replies"
+        ]
+      }
+    },
+    "/cases/{case_id}/timeline": {
+      "get": {
+        "description": "The case's audit view (A9): every event in sequence plus the derived items (SLA clocks,\nbreaches, ladder rungs, handoff bounces, watchdog flags) in one list ordered by `at`.\nRead-only: this path has no write route.",
+        "operationId": "case_timeline_cases__case_id__timeline_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "case_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Case Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Case Timeline Cases  Case Id  Timeline Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Case Timeline",
+        "tags": [
+          "cases"
+        ]
+      }
+    },
+    "/clock/advance": {
+      "post": {
+        "description": "Move the sim clock forward by `days` and/or `hours`. It never moves backwards.",
+        "operationId": "advance_clock_advance_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Advance"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Advance Clock Advance Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Advance",
+        "tags": [
+          "clock"
+        ]
+      }
+    },
+    "/clock/reset": {
+      "post": {
+        "description": "Return the clock to its configured start (the demo reset).\n\nRefused (409) once any event is dated after that start: rewinding past recorded events would\nleave a log whose events lie in the clock's future, and every timer computed from it wrong.\nTo undo a demo, restore the database snapshot (`make demo-reset`) instead.",
+        "operationId": "reset_clock_reset_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Reset Clock Reset Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Reset",
+        "tags": [
+          "clock"
+        ]
+      }
+    },
+    "/drafts/{draft_id}/approve": {
+      "post": {
+        "description": "Approve a draft and hand it to the notification mock.\n\nOne transaction (Postgres) or one critical section (in-memory) records the approval on the\ndraft, appends `message_approved` as the approver and writes the outbox row, so none of the three\ncan exist without the others (ADR-030). Only then is the outbox drained: the notification mock\nwrites `message_sent` as `system:notifier` and the notification row (one transaction), or reports\nwhy it did not (consent / contact / the case moved on): the approval stands and the response says\n`sent: false`. If the drain itself fails the row stays pending, the response says so\n(`blocked_reason: \"pending\"`) and the scheduler's next drain sends it, once.",
+        "operationId": "approve_draft_drafts__draft_id__approve_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "draft_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Draft Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Approve Draft Drafts  Draft Id  Approve Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Approve Draft",
+        "tags": [
+          "drafts"
+        ]
+      }
+    },
+    "/drafts/{draft_id}/reject": {
+      "post": {
+        "description": "Reject a draft with a reason from the taxonomy (A16).\n\nOne transaction (Postgres) or one critical section (in-memory) records the rejection on the\ndraft and appends `message_rejected {draft_id, reason}` as the rejecting human, so neither\nexists without the other and the rejection shows on the case timeline. Allowed on a frozen\ncase (it can only stop outreach); a closed case takes no annotation, so it answers 409.",
+        "operationId": "reject_draft_drafts__draft_id__reject_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "draft_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Draft Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RejectDraft"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Reject Draft Drafts  Draft Id  Reject Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Reject Draft",
+        "tags": [
+          "drafts"
+        ]
+      }
+    },
+    "/erasures": {
+      "post": {
+        "operationId": "request_erasure_erasures_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RequestErasure"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Request Erasure Erasures Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Request Erasure",
+        "tags": [
+          "erasure"
+        ]
+      }
+    },
+    "/erasures/{erasure_id}": {
+      "get": {
+        "operationId": "get_erasure_erasures__erasure_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "erasure_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Erasure Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Erasure Erasures  Erasure Id  Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Erasure",
+        "tags": [
+          "erasure"
+        ]
+      }
+    },
+    "/erasures/{erasure_id}/approve": {
+      "post": {
+        "operationId": "approve_erasure_erasures__erasure_id__approve_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "erasure_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Erasure Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Approve Erasure Erasures  Erasure Id  Approve Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Approve Erasure",
+        "tags": [
+          "erasure"
+        ]
+      }
+    },
+    "/health": {
+      "get": {
+        "description": "Public, no patient data. `outreach` (A26, ADR-037) says whether automatic patient messages are signed off:\n`demo_approval` is true while they run only on the demo placeholder, and the web shows an amber banner with\n`approved_by`.",
+        "operationId": "health_health_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Health Health Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Health"
+      }
+    },
+    "/heartbeats": {
+      "get": {
+        "description": "The age of the latest heartbeat of each service (None until it has beaten once).",
+        "operationId": "heartbeats_heartbeats_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Heartbeats Heartbeats Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Heartbeats",
+        "tags": [
+          "watchdog"
+        ]
+      }
+    },
+    "/hl7": {
+      "post": {
+        "operationId": "receive_hl7_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Receive",
+        "tags": [
+          "hl7"
+        ]
+      }
+    },
+    "/me": {
+      "get": {
+        "operationId": "me_me_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Me Me Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Me",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/metrics/abstention": {
+      "get": {
+        "operationId": "abstention_metric_metrics_abstention_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Abstention Metric Metrics Abstention Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Abstention Metric",
+        "tags": [
+          "drafts"
+        ]
+      }
+    },
+    "/metrics/closure": {
+      "get": {
+        "operationId": "closure_metrics_closure_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Closure Metrics Closure Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Closure",
+        "tags": [
+          "metrics"
+        ]
+      }
+    },
+    "/metrics/effort": {
+      "get": {
+        "description": "Human effort versus automation (A21, ADR-032): per case, the actions people took and the actions the automation\ntook, the automation share, and the minutes (all ASSUMED, see app.effort) a person spent against what the same case\nwould have cost with no automation. `totals.reduction_pct` is compared with the 40% target. `per_case` is capped at\n`limit` rows (the totals cover every case that replays).",
+        "operationId": "effort_metrics_metrics_effort_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 500,
+              "maximum": 5000,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Effort Metrics Metrics Effort Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Effort Metrics",
+        "tags": [
+          "metrics"
+        ]
+      }
+    },
+    "/pathways": {
+      "get": {
+        "description": "Return the loaded pathway config as parsed from YAML.",
+        "operationId": "pathways_pathways_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Pathways Pathways Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Pathways"
+      }
+    },
+    "/scheduler/automation-scan": {
+      "post": {
+        "description": "One pass of the automation over the open cases (A21, ADR-032): acknowledge and assign anything still waiting,\nre-route rejected referrals, send the due pre-approved messages. Idempotent (deterministic event ids); counts only.\nA no-op, answering `{\"enabled\": false}`, unless AUTOMATION_ENABLED is true.",
+        "operationId": "automation_scan_scheduler_automation_scan_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Automation Scan Scheduler Automation Scan Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Automation Scan",
+        "tags": [
+          "scheduler"
+        ]
+      }
+    },
+    "/scheduler/evidence-scan": {
+      "post": {
+        "description": "Ask HAPI whether the colonoscopy exists for each booked or completed case; complete the confirmatory step and\npropose the closure when it does (A21). Closure itself stays a person's. Counts only; a no-op unless enabled.",
+        "operationId": "evidence_scan_scheduler_evidence_scan_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Evidence Scan Scheduler Evidence Scan Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Evidence Scan",
+        "tags": [
+          "scheduler"
+        ]
+      }
+    },
+    "/scheduler/heartbeat": {
+      "post": {
+        "description": "Written on every scheduler loop, including after a failed sweep (alive but useless is\ndistinguishable from dead). Not a case event.",
+        "operationId": "heartbeat_scheduler_heartbeat_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Heartbeat"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Heartbeat Scheduler Heartbeat Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Heartbeat",
+        "tags": [
+          "scheduler"
+        ]
+      }
+    },
+    "/scheduler/lease": {
+      "post": {
+        "description": "Acquire or renew the scheduler lease for `holder` (A31). The scheduler calls it at the top of every loop: `leader: true`\nwith the fencing token means do the work, sending the token on each call; `leader: false` means idle and beat as a\nfollower. The expiry is the database's, `LEADER_LEASE_TTL_SECONDS` (default 30) after the last renewal.",
+        "operationId": "lease_scheduler_lease_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LeaseRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Lease Scheduler Lease Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Lease",
+        "tags": [
+          "scheduler"
+        ]
+      }
+    },
+    "/scheduler/lease/release": {
+      "post": {
+        "description": "Give the lease up on a clean shutdown so a follower takes over at its next loop instead of after the TTL.",
+        "operationId": "release_lease_scheduler_lease_release_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LeaseRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Release Lease Scheduler Lease Release Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Release Lease",
+        "tags": [
+          "scheduler"
+        ]
+      }
+    },
+    "/scheduler/outbox/drain": {
+      "post": {
+        "description": "Send every approved draft that has not gone out yet (ADR-030). The approve route drains its own\nrow at the end of the request; this is the safety net for an approval whose drain never ran (the\nprocess died after the approval committed) or failed. Idempotent: a row is sent once. Counts only.",
+        "operationId": "drain_outbox_scheduler_outbox_drain_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Drain Outbox Scheduler Outbox Drain Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Drain Outbox",
+        "tags": [
+          "scheduler"
+        ]
+      }
+    },
+    "/scheduler/sweep": {
+      "post": {
+        "operationId": "sweep_scheduler_sweep_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Sweep Scheduler Sweep Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Sweep",
+        "tags": [
+          "scheduler"
+        ]
+      }
+    },
+    "/watchdog/scan": {
+      "post": {
+        "operationId": "scan_watchdog_scan_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/Scan"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Scan Watchdog Scan Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Scan",
+        "tags": [
+          "watchdog"
+        ]
+      }
+    }
+  }
+}

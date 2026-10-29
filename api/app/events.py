@@ -124,7 +124,7 @@ class EventStore(Protocol):
         """Create a case and write its genesis event (seq 1) atomically."""
         ...
 
-    def append(self, event: Event, pathway: Pathway, *, within=None, guard=None) -> str:
+    def append(self, event: Event, pathway: Pathway, *, within=None, guard=None, fence=None) -> str:
         """Validate the event against the state machine and append it atomically.
 
         `within`, if given, is called inside the same atomic step once the event is accepted;
@@ -220,10 +220,15 @@ class InMemoryEventStore:
                 [dataclasses.replace(genesis_event, seq=1)],
             )
 
-    def append(self, event: Event, pathway: Pathway, *, within=None, guard=None) -> str:
+    def append(self, event: Event, pathway: Pathway, *, within=None, guard=None, fence=None) -> str:
         # `within(None)`, if given, runs after the event is accepted and before anything is
         # stored, under the store lock: if it raises, nothing is written (see the Postgres store).
+        # `fence` (F10): a `leader.Fence`, re-checked under the store lock before anything is read or written.
         with self._lock:
+            if fence is not None:
+                from app import leader
+
+                leader.check_fence_memory(fence)
             case = self._cases.get(event.case_id)
             if case is None:
                 raise CaseNotFound(str(event.case_id))

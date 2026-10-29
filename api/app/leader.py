@@ -6,9 +6,16 @@ a leader that was paused (GC, a stopped container, a partition) and wakes up aft
 token, and `is_current` says no. Time is the database's `now()`; in memory (unit tests, no-database runs) it is an injectable
 monotonic clock.
 
-Who checks the token: the scheduler routes (`require_current_leader`) before they do any work, and the in-API background
-loops (`LeaderLoop`) before each pass. The lease prevents wasted work and racing drains; it is not what keeps the log correct.
-Event ids are deterministic and every append is transactional, so even a stale leader that slips through writes nothing twice.
+Who checks the token, and where. The scheduler routes (`require_current_leader`) check it at request entry and the in-API
+background loops (`LeaderLoop`) before each pass, which only avoids wasted work. The check that makes the lease a fence is in
+the storage layer (F10): a route builds a `Fence(name, holder, token)` from the headers it validated and hands it down to the
+sweep, and the event store re-checks it INSIDE the write transaction, on the same connection as the INSERT. In Postgres that
+is `SELECT ... FROM leader_lease WHERE name = %s FOR SHARE`, so a takeover (an UPDATE of that row) waits for the in-flight
+write to commit, and a write that starts after the takeover sees the new holder or token and is refused with `StaleLeader`,
+writing nothing. A leader deposed mid-sweep therefore stops at its next write instead of at the end of its request, and the
+sweep (including each parallel worker) treats the refusal as fatal for the rest of that sweep. A write with no fence (direct
+in-process calls, the automation, tests, a call with no leader headers while REQUIRE_LEADER_FENCE is off) is not checked.
+Event ids are still deterministic and every append transactional, so even an unfenced stale writer writes nothing twice.
 """
 
 from __future__ import annotations
@@ -36,6 +43,69 @@ class Lease:
 
     def to_json(self) -> dict:
         return {"name": self.name, "holder": self.holder, "token": self.token, "expires_in": round(self.expires_in, 3)}
+
+
+@dataclass(frozen=True)
+class Fence:
+    """The lease a write was started under: carried into the write transaction and re-checked there (F10)."""
+
+    name: str
+    holder: str
+    token: int
+
+
+class StaleLeader(Exception):
+    """A fenced write was refused because its lease is no longer current (another holder, a newer token, or expired).
+    Nothing was written. Fatal for the sweep that raised it: the caller stops, it does not retry or fall back."""
+
+    def __init__(self, fence: Fence) -> None:
+        super().__init__(f"stale leader: {fence.holder!r} (token {fence.token}) no longer holds lease {fence.name!r}")
+        self.fence = fence
+
+
+# Run inside a write transaction. FOR SHARE keeps a takeover (UPDATE of the row) from committing until this write has;
+# clock_timestamp() rather than now() so the expiry is judged at the moment of the check, not at the transaction's start.
+_FENCE_SQL = (
+    "SELECT holder, token, expires_at >= clock_timestamp() FROM leader_lease WHERE name = %s FOR SHARE"
+)
+
+
+def check_fence_pg(cur, fence: Fence) -> None:
+    """Raise StaleLeader unless `fence` is the current, unexpired lease. `cur` is the write transaction's cursor."""
+    row = cur.execute(_FENCE_SQL, (fence.name,)).fetchone()
+    if row is None or row[0] != fence.holder or int(row[1]) != fence.token or not row[2]:
+        raise StaleLeader(fence)
+
+
+def check_fence_memory(fence: Fence, lease_store: "LeaseStore | None" = None) -> None:
+    """The in-memory store's counterpart: asks the in-memory (or any) lease store whether `fence` is current."""
+    if not (lease_store or store).is_current(fence.name, fence.holder, fence.token):
+        raise StaleLeader(fence)
+
+
+class FencedStore:
+    """Wraps an event store so every append / append_many / append_batches carries `fence` (F10). For callers that take a
+    store and call `store.append(...)` themselves (the automation and evidence scans): they need no change, and a refused
+    write raises `StaleLeader` from inside the store's transaction. Everything else is delegated untouched."""
+
+    def __init__(self, inner, fence: Fence) -> None:
+        self._inner, self.fence = inner, fence
+        if hasattr(inner, "append_many"):
+            self.append_many = self._append_many
+        if hasattr(inner, "append_batches"):
+            self.append_batches = self._append_batches
+
+    def append(self, event, pathway, **kw):
+        return self._inner.append(event, pathway, fence=self.fence, **kw)
+
+    def _append_many(self, events, pathway, **kw):
+        return self._inner.append_many(events, pathway, fence=self.fence, **kw)
+
+    def _append_batches(self, batches, pathway, **kw):
+        return self._inner.append_batches(batches, pathway, fence=self.fence, **kw)
+
+    def __getattr__(self, name):
+        return getattr(self._inner, name)
 
 
 class LeaseStore(Protocol):

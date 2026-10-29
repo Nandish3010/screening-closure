@@ -69,12 +69,9 @@ class WorkingCalendar:
         return d
 
     def _step(self, d: date, n: int) -> date:
-        """The date n working days after the working day `d` (n >= 0)."""
-        for _ in range(n):
-            d += timedelta(days=1)
-            while not self.is_working_day(d):
-                d += timedelta(days=1)
-        return d
+        """The date n working days after the working day `d` (n >= 0). Memoised (pure in the weekend and holidays): the
+        sweep and the simulator ask the same few (day, n) pairs again and again."""
+        return _step_days(self.weekend, self.holidays, d, n)
 
     # -- instant level ------------------------------------------------------------------
 
@@ -109,6 +106,15 @@ class WorkingCalendar:
             if self.is_working_day(d):
                 count += 1
         return sign * count
+
+
+@lru_cache(maxsize=1 << 16)
+def _step_days(weekend: frozenset[int], holidays: frozenset[date], d: date, n: int) -> date:
+    for _ in range(n):
+        d += timedelta(days=1)
+        while d.weekday() in weekend or d in holidays:
+            d += timedelta(days=1)
+    return d
 
 
 def calendar_from_dict(raw: dict) -> WorkingCalendar:

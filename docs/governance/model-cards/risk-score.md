@@ -25,7 +25,7 @@ Closing, escalating, changing an SLA, starting any automated action, any care de
 
 ## Data
 
-Synthetic only, from the behaviour simulator: the orchestrated arm of the literature-anchored scenario, 20,000 cases, seed 20261017, 13,511 snapshot rows, 9,511 train and 4,000 held-out (assigned by a hash of the case key), label "no colonoscopy within 180 days" (`risk.json` `meta`). Most simulator parameters are placeholders (88 of 132 `assumed` per the risk card), so the relationships are the simulator's own assumptions. The age band is a null feature by construction.
+Synthetic only, from the behaviour simulator: the orchestrated arm of the literature-anchored scenario, 20,000 cases, seed 20261017, 13,548 snapshot rows, 9,536 train and 4,012 held-out (assigned by a hash of the case key), label "no colonoscopy within 180 days" (`risk.json` `meta`). Most simulator parameters are placeholders (88 of 132 `assumed` per the risk card), so the relationships are the simulator's own assumptions. The age band is a null feature by construction.
 
 ## Evaluation
 
@@ -33,11 +33,11 @@ Held-out split, from `docs/results/risk/risk.json` (report: [training.md](../../
 
 | Measure | Value | Field |
 |---|---|---|
-| AUC | 0.9065 | `heldout.auc` |
-| Brier / base-rate Brier / skill | 0.1208 / 0.2499 / 0.5165 | `heldout.brier*` |
-| ECE (tolerance at most 0.05) | 0.0264, tolerance met | `heldout.ece`, `tolerance.met` |
-| As served today (channel and age unknown): AUC / Brier / ECE | 0.9058 / 0.1212 / 0.0271 | `heldout_attributes_unknown` |
-| Chance-level ECE at this sample size (mean, 95th percentile) | 0.0142, 0.0206 | `noise_floor` |
+| AUC | 0.9051 | `heldout.auc` |
+| Brier / base-rate Brier / skill | 0.1216 / 0.2497 / 0.5128 | `heldout.brier*` |
+| ECE (tolerance at most 0.05) | 0.0274, tolerance met | `heldout.ece`, `tolerance.met` |
+| As served today (channel and age unknown): AUC / Brier / ECE | 0.9044 / 0.1220 / 0.0287 | `heldout_attributes_unknown` |
+| Chance-level ECE at this sample size (mean, 95th percentile) | 0.0140, 0.0203 | `noise_floor` |
 
 Gate: `make risk-check` fails if a fresh retrain differs from the committed files (T-D12); the ECE tolerance of 0.05 is in `tolerance.ece_max`.
 
@@ -54,13 +54,13 @@ From [fairness.md](../../results/fairness.md), which reads `docs/results/risk/ri
 
 | Subgroup | Held-out n | AUC | ECE | Predicted minus observed | Flag |
 |---|---|---|---|---|---|
-| language=ar | 1846 | 0.916 | 0.035 | +0.008 | watch: ECE above its noise p95 (0.027) |
-| language=en | 1351 | 0.891 | 0.033 | +0.009 | ok |
-| language=other | 803 | 0.906 | 0.037 | +0.001 | ok |
-| channel (4 groups) | 603 to 1586 | 0.901 to 0.910 | 0.027 to 0.043 | -0.002 to +0.012 | ok |
-| age band (4 groups) | 648 to 1125 | 0.893 to 0.912 | 0.030 to 0.033 | -0.006 to +0.018 | ok |
+| language=ar | 1847 | 0.915 | 0.038 | +0.006 | watch: ECE above its noise p95 (0.027) |
+| language=en | 1358 | 0.891 | 0.036 | +0.009 | watch: ECE above its noise p95 (0.035) |
+| language=other | 807 | 0.903 | 0.035 | +0.003 | ok |
+| channel (4 groups) | 596 to 1599 | 0.900 to 0.907 | 0.020 to 0.040 | +0.004 to +0.009 | watch (sms): ECE 0.031 above its noise p95 (0.031) |
+| age band (4 groups) | 653 to 1131 | 0.892 to 0.911 | 0.023 to 0.037 | -0.005 to +0.019 | ok |
 
-Largest AUC gap 0.025 (English below Arabic), under the 0.05 flag line; no calibration-in-the-large flag. Intersections (language by channel) are not reported.
+Largest AUC gap 0.024 (English below Arabic), under the 0.05 flag line; no calibration-in-the-large flag. Intersections (language by channel) are not reported.
 
 ## Human oversight
 

@@ -47,6 +47,7 @@ from uuid import UUID
 from app import payloads
 from app.calendar import WorkingCalendar
 from app.events import CaseNotFound, Event, EventContentConflict, EventIdConflict, EventStore
+from app.leader import StaleLeader
 from app.pathway import Pathway
 from app.state_machine import CONSENT_WITHDRAWN, CaseModel, InvalidTransition, MilestoneState, referral_hold, step
 
@@ -505,12 +506,21 @@ class SweepResult:
     handoff_bounced: int = 0
     rejected: int = 0  # planned events the state machine refused (a race with another writer)
     errors: list[str] = field(default_factory=list)
+    # F10: a write was refused because the leader lease is no longer this sweep's (`leader.StaleLeader`). The sweep stopped
+    # at that point and wrote nothing more; the route answers 409.
+    fenced: bool = False
     # (event_id, case_id) of every event a shard worker appended, filled only when the caller asked
     # for it (`record=True`): the parent process projects them to FHIR (A12) because the workers
     # write through their own plain stores, not the API's projecting wrapper. Not part of to_json.
     emitted_refs: list[tuple[str, str]] = field(default_factory=list, repr=False)
 
     def to_json(self) -> dict:
+        out = self._base_json()
+        if self.fenced:
+            out["fenced"] = True
+        return out
+
+    def _base_json(self) -> dict:
         return {
             "sim_time": self.sim_time,
             "cases_evaluated": self.cases_evaluated,
@@ -565,10 +575,14 @@ def _count(result: SweepResult, planned: list[Event]) -> None:
 
 def _emit_case(
     store, pathway: Pathway, calendar: WorkingCalendar, now: datetime, result: SweepResult,
-    case_id: UUID, model: CaseModel, planned: list[Event],
+    case_id: UUID, model: CaseModel, planned: list[Event], fence=None,
 ) -> None:
     """Append what was planned for one case, on its own: the original per-case path. `planned` is the first plan; a
-    bounce can move the case to another state, so the case is re-planned once from the new model."""
+    bounce can move the case to another state, so the case is re-planned once from the new model.
+
+    `fence` (F10) rides on every append. A `leader.StaleLeader` is deliberately not caught here: it is not a per-case
+    refusal, it propagates to `run_sweep`, which stops the sweep."""
+    fkw = {"fence": fence} if fence is not None else {}
     for attempt in range(2):
         bounced = False
         # Fast path: several events for one case (a breach and its first rung) go in one
@@ -581,7 +595,7 @@ def _emit_case(
             and _valid_payloads(planned)
         ):
             try:
-                store.append_many(planned, pathway)
+                store.append_many(planned, pathway, **fkw)
             except (InvalidTransition, CaseNotFound, EventIdConflict):
                 pass
             else:
@@ -598,7 +612,7 @@ def _emit_case(
                 log.error("case %s: planned %s refused by the payload schema: %s", case_id, event.type, exc)
                 break
             try:
-                store.append(event, pathway)
+                store.append(event, pathway, **fkw)
             except InvalidTransition as exc:
                 # Another writer moved the case between our read and our write; the next
                 # sweep re-plans from the new state.
@@ -639,6 +653,7 @@ def run_sweep(
     shard: tuple[int, int] | None = None,
     full_scan: bool | None = None,
     batch_cases: int | None = None,
+    fence=None,
 ) -> SweepResult:
     """Evaluate the open cases (or only those in `only`, or only slice `shard=(k, n)`) at sim
     time `now` and append the planned events. Safe to run repeatedly and concurrently.
@@ -650,7 +665,11 @@ def run_sweep(
 
     The events of up to `batch_cases` cases (default 100, `SWEEP_BATCH_CASES`) are appended in one transaction when the
     store offers `append_batches`; a case the store refuses is handled on its own, exactly as an unbatched sweep would,
-    and never loses the other cases' events."""
+    and never loses the other cases' events.
+
+    `fence` (F10), a `leader.Fence`, is carried into every write transaction and checked there against the lease. The
+    first `leader.StaleLeader` ends the sweep: no further case is planned or written, a batch that was refused is NOT
+    retried case by case, `SweepResult.fenced` is set and the reason is added to `errors`."""
     batch_cases = DEFAULT_BATCH_CASES if batch_cases is None else batch_cases
     if batch_cases == DEFAULT_BATCH_CASES:
         batch_cases = _env_int("SWEEP_BATCH_CASES", DEFAULT_BATCH_CASES)
@@ -671,13 +690,16 @@ def run_sweep(
     # offer it) or with `batch_cases` < 2 every case is appended on its own, as before.
     batching = batch_cases > 1 and hasattr(store, "append_batches")
     pending: list[tuple[UUID, CaseModel, list[Event]]] = []
+    fkw = {"fence": fence} if fence is not None else {}
 
     def flush() -> None:
         batch, pending[:] = list(pending), []
         if not batch:
             return
         try:
-            outcomes = store.append_batches([planned for _, _, planned in batch], pathway)
+            outcomes = store.append_batches([planned for _, _, planned in batch], pathway, **fkw)
+        except StaleLeader:
+            raise  # fatal for the sweep: never turned into the per-case retries below
         except Exception as exc:  # noqa: BLE001 - nothing of the batch was written; do each case on its own
             log.warning("batched append of %d cases failed (%s: %s); appending them one by one", len(batch),
                         type(exc).__name__, exc)
@@ -686,25 +708,31 @@ def run_sweep(
             if isinstance(outcome, str):
                 _count(result, planned)
             else:  # refused in the batch (or the batch failed): the per-case path classifies and reports it
-                _emit_case(store, pathway, calendar, now, result, case_id, model, planned)
+                _emit_case(store, pathway, calendar, now, result, case_id, model, planned, fence)
 
-    for case_id, model, error in cases:
-        result.cases_evaluated += 1
-        if model is None:
-            result.errors.append(f"{case_id}: {error}")
-            log.error("case %s does not replay: %s", case_id, error)
-            continue
-        planned = plan_case(case_id, model, pathway, calendar, now)
-        if not planned:
-            continue
-        _check_planned(planned, pathway)
-        if batching and not any(e.type == "handoff_rejected" for e in planned) and _valid_payloads(planned):
-            pending.append((case_id, model, planned))
-            if len(pending) >= batch_cases:
-                flush()
-            continue
-        _emit_case(store, pathway, calendar, now, result, case_id, model, planned)
-    flush()
+    try:
+        for case_id, model, error in cases:
+            result.cases_evaluated += 1
+            if model is None:
+                result.errors.append(f"{case_id}: {error}")
+                log.error("case %s does not replay: %s", case_id, error)
+                continue
+            planned = plan_case(case_id, model, pathway, calendar, now)
+            if not planned:
+                continue
+            _check_planned(planned, pathway)
+            if batching and not any(e.type == "handoff_rejected" for e in planned) and _valid_payloads(planned):
+                pending.append((case_id, model, planned))
+                if len(pending) >= batch_cases:
+                    flush()
+                continue
+            _emit_case(store, pathway, calendar, now, result, case_id, model, planned, fence)
+        flush()
+    except StaleLeader as exc:  # F10: deposed. Whatever is still pending is dropped unwritten; the next leader re-plans it.
+        pending.clear()
+        result.fenced = True
+        result.errors.append(str(exc))
+        log.warning("sweep stopped: %s", exc)
     if skipped_base:
         result.cases_skipped = max(skipped_base - result.cases_evaluated, 0)
     return result
@@ -721,18 +749,18 @@ class _RecordingStore:
         if hasattr(inner, "append_batches"):
             self.append_batches = self._append_batches
 
-    def append(self, event, pathway, *, within=None, guard=None):
-        state = self._inner.append(event, pathway, within=within, guard=guard)
+    def append(self, event, pathway, *, within=None, guard=None, fence=None):
+        state = self._inner.append(event, pathway, within=within, guard=guard, fence=fence)
         self.refs.append((str(event.event_id), str(event.case_id)))
         return state
 
-    def _append_many(self, events, pathway, *, within=None, guard=None):
-        state = self._inner.append_many(events, pathway, within=within, guard=guard)
+    def _append_many(self, events, pathway, *, within=None, guard=None, fence=None):
+        state = self._inner.append_many(events, pathway, within=within, guard=guard, fence=fence)
         self.refs.extend((str(e.event_id), str(e.case_id)) for e in events)
         return state
 
-    def _append_batches(self, batches, pathway):
-        outcomes = self._inner.append_batches(batches, pathway)
+    def _append_batches(self, batches, pathway, *, fence=None):
+        outcomes = self._inner.append_batches(batches, pathway, fence=fence)
         for events, outcome in zip(batches, outcomes):
             if isinstance(outcome, str):  # committed; a refused case wrote nothing
                 self.refs.extend((str(e.event_id), str(e.case_id)) for e in events)
@@ -744,7 +772,7 @@ class _RecordingStore:
 
 def _sweep_shard(args: tuple) -> dict:
     """Worker entry point (top level so it can be pickled): sweep one slice with its own pool."""
-    database_url, pathway, calendar, now, index, count, record = args
+    database_url, pathway, calendar, now, index, count, record, fence = args
     from psycopg_pool import ConnectionPool
 
     from app.store_pg import PostgresEventStore
@@ -755,7 +783,9 @@ def _sweep_shard(args: tuple) -> dict:
         store = PostgresEventStore(pool, calendar=calendar)
         if record:
             store = _RecordingStore(store)
-        out = run_sweep(store, pathway, calendar, now, shard=(index, count)).to_json()
+        result = run_sweep(store, pathway, calendar, now, shard=(index, count), fence=fence)
+        out = result.to_json()
+        out["fenced"] = result.fenced  # F10: each worker checks the lease in its own write transactions
         if record:
             out["emitted_refs"] = store.refs
         return out
@@ -787,6 +817,7 @@ def run_sweep_parallel(
     workers: int = 4,
     executor=None,
     record: bool = False,
+    fence=None,
 ) -> SweepResult:
     """The same sweep, split into `workers` disjoint slices of the cases swept by separate
     processes (each with its own connection pool). Replaying every open case is CPU-bound
@@ -799,10 +830,14 @@ def run_sweep_parallel(
     server process. Pass an `executor` from `make_sweep_executor` to reuse warm workers;
     otherwise a pool is created and shut down for this one sweep. `record=True` also collects
     `SweepResult.emitted_refs` (what the workers appended).
+
+    `fence` (F10), a `leader.Fence`, goes to every worker (it is a small frozen dataclass, so it pickles) and is checked in
+    each worker's own write transactions; a worker whose write is refused stops its slice, and `SweepResult.fenced` is set
+    when any did. Workers deposed together write nothing after the takeover.
     """
     if workers < 1:
         raise ValueError("workers must be >= 1")
-    jobs = [(database_url, pathway, calendar, now, k, workers, record) for k in range(workers)]
+    jobs = [(database_url, pathway, calendar, now, k, workers, record, fence) for k in range(workers)]
     total = SweepResult(sim_time=_utc(now).isoformat())
     own = executor is None
     if own:
@@ -819,6 +854,7 @@ def run_sweep_parallel(
             total.handoff_bounced += part["handoff_bounced"]
             total.rejected += part["rejected"]
             total.errors += part["errors"]
+            total.fenced = total.fenced or bool(part.get("fenced"))
             total.emitted_refs += [tuple(r) for r in part.get("emitted_refs", ())]
     finally:
         if own:
@@ -877,7 +913,7 @@ class SweepPool:
                 self._executor = make_sweep_executor(self.workers)
 
     def run(self, database_url: str, pathway: Pathway, calendar: WorkingCalendar, now: datetime,
-            record: bool = False) -> SweepResult:
+            record: bool = False, fence=None) -> SweepResult:
         from concurrent.futures.process import BrokenProcessPool
 
         with self._lock:
@@ -886,7 +922,7 @@ class SweepPool:
                     self._executor = make_sweep_executor(self.workers)
                 try:
                     return run_sweep_parallel(database_url, pathway, calendar, now, workers=self.workers,
-                                              executor=self._executor, record=record)
+                                              executor=self._executor, record=record, fence=fence)
                 except BrokenProcessPool:
                     log.error("sweep worker pool broke (attempt %d); replacing it", attempt)
                     self._discard()

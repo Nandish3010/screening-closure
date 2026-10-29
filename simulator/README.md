@@ -42,9 +42,10 @@ Variables for `make`: `SEED`, `CASES`, `REPS`, `ARM`, `SIM_DAYS`, `EVAL_DAYS`, `
 
 ## The model
 
-**Time** is a float number of days since `simulation.start_date` (a Monday). Staff act only on working days
-(`working_week` in the parameters; Saturday-Sunday off by default; an optional holiday list). Pathway SLAs and the
-escalation ladder are counted in **working days** (`simulator/sim/calendar.py`). Each case is followed for `--days`
+**Time** is a float number of days since 00:00 local time (Asia/Dubai) of `simulation.start_date` (a Monday). The calendar
+is the API's, `config/calendar.yaml` (weekend, holidays, time zone; `simulator/sim/calendar.py` wraps `app.calendar`), and
+the parameters' `working_week` and `calendar.holidays` must agree with it. Staff act only on working days. Pathway SLAs, milestones and the
+escalation ladder are counted in **working days** on the API's calendar days. Each case is followed for `--days`
 days from the day its result arrives; results arrive over `simulation.intake_window_days`.
 
 **Patients** (`patients.py`) have a language (ar/en/other), a preferred channel (sms/whatsapp/phone/letter), a
@@ -68,14 +69,14 @@ outcomes, so changing a parameter never re-draws anything and differences betwee
 |---|---|---|
 | Owner | none (`accept_ownership` is implicit, `owner: null`) | named owner on `accept_ownership`; changes on a provider transfer |
 | First outreach | one letter or SMS in a default language | patient's preferred channel and language |
-| Timers | none | working-day SLA per pathway step from the YAML (`close` uses `orchestration.signoff_sla_working_days`; `complete_confirmatory` is 31 working days in the YAML, the DoH KPI) |
-| Overdue / escalation | none | `overdue` at breach, then the YAML ladder: reminder (owner), escalate (supervisor, human phone call), escalate (coordinator, alternate contact route). A step's ladder and a milestone's can run at once; a rung to a role that another ladder already went to on the same working day, in the same step, is not emitted again (no second message, outreach or staff reaction): the earlier event lists it in `also_for` and the run counts `escalations_coalesced` (A19, ADR-031) |
+| Timers | none | **the API's sweep** (`app.sweep.plan_case` and `next_due_at`) on the API's read model of the case (`sim/machine.py`): the state SLAs and milestones of the YAML, on the API's calendar |
+| Overdue / escalation | none | `overdue` at each breach the sweep plans, then the YAML ladder as the sweep plans it: reminder (owner), escalate (supervisor, human phone call), escalate (coordinator, alternate contact route), with the API's coalescing of concurrent ladders (A19, ADR-031): a rung that rides on another ladder's escalation is listed in that event's `also_for` and the run counts `escalations_coalesced`. `tests/test_sweep_conformance.py` replays every orchestrated case through a real event store and `app.sweep.run_sweep` and gets the same log |
 | Unreachable patient | silent loss | delivery failure detected, contact recovery attempted; ladder exhausted -> `lost_contact` flagged to a human |
-| Referral | rejection or silence may never be noticed | `handoff_requested/accepted/rejected`; rejections bounce to the owner with their reason; unanswered referrals bounce on a timer |
-| Appointment | no reminders; a no-show is not noticed | reminders before the appointment; a no-show raises `overdue` and a rebooking ladder |
+| Referral | rejection or silence may never be noticed | `handoff_requested/accepted/rejected`; a rejection, or the sweep's bounce of a request unanswered for 3 working days, moves the case to `referral_rejected` (2-working-day re-route SLA and its ladder); an accepted re-request returns it to `owner_accepted`, and contact, acknowledgement and booking follow again, as in the API |
+| Appointment | no reminders; a no-show is not noticed | reminders before the appointment; a no-show that can be rebooked is `appointment_cancelled` (back to `patient_acknowledged`, whose booking SLA and ladder then run), an immediate follow-up message and a rebooking when the patient answers |
 | Consent | no ledger; outreach continues | consent-aware: withdrawal freezes all outreach and flags a human review |
 | Idle cases | nobody notices | watchdog flags any open case with no events for N days (ignores a confirmed future appointment) and the coordinator acts |
-| Scheduler faults | n/a | `orchestration.timer_miss_prob`: the scheduler silently fails to arm a timer; only the watchdog catches it |
+| Scheduler faults | n/a | `orchestration.timer_miss_prob`: the scheduler silently misses an obligation (a state's SLA clock or a milestone), masked out of the planner's view; only the watchdog catches it |
 | Closure | clinician closes if and when someone remembers | same rule, enforced: `close` needs `evidence_ref`, `signed_by` and a human actor; the scheduler/watchdog can never close; sign-off has an SLA and a ladder |
 
 In the literature-anchored scenario only a share of orchestrated-arm cases (`orchestration.programme_reach`) get the right-hand column; the rest follow the left-hand column.
@@ -84,9 +85,10 @@ Pathway events (`acknowledge`, `accept_ownership`, `contact_patient`, `patient_a
 `complete_confirmatory`, `clinician_review`, `close`) go through `app.state_machine.apply`. Side events (`overdue`,
 `escalated`, `handoff_requested/accepted/rejected`, `consent_updated`, `watchdog_flagged`, `lost_contact`, `reopened`, plus
 bookkeeping events such as `message_sent`, `delivery_failed`, `contact_recovered`, `appointment_missed`, `appointment_rebooked`,
-`provider_switched`, `duplicate_result_merged`, `conflicting_ack_rejected`) are typed overlay events: the pathway YAML defines no
-transitions for them, so they do not change the pathway state. `reopened` is the only way out of `closed` and moves the case
-back to `reopen.resume_state`. A second, conflicting ownership claim in the orchestrated arm is offered to the state machine and
+`provider_switched`, `duplicate_result_merged`, `conflicting_ack_rejected`) are typed overlay events in the simulator's log.
+For a reached case their machine form (where the API has one) is also folded into the API's read model, which the sweep reads
+(`sim/machine.py` lists what is and is not a machine event). `reopened` is the only way out of `closed`: it moves the case to
+`reopened` (`reopen.resume_state`), where a clinician reviews it again and a fresh close is needed, as in the pathway. A second, conflicting ownership claim in the orchestrated arm is offered to the state machine and
 rejected by it (`InvalidTransition`), which is what produces `conflicting_ack_rejected`.
 
 ### Messy cases (`messy.py`)

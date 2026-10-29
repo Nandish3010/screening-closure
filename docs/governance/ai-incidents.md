@@ -101,7 +101,7 @@ These are thresholds to adopt in the pilot, then tune on real volume. They are p
 | Opt-out safety | Any patient contacted after an `opt_out` reply or a human-found opt-out the triage labelled otherwise | 0 leaked of 61 in the test set | Any case (S1 if contacted, S2 if caught) | Section 2; `TRIAGE_ENABLED=0` pending review |
 | Planner fallback rate | share of dispatch rows with `fallback_used=true` | first four weeks | Above 0.50 for 7 days (S3) | Check cache and provider; `AGENCY_PLANNER=template` |
 | Token spend | `closure_llm_tokens_total` per day against `LLM_DAILY_TOKEN_BUDGET` | 200,000 default | Above 80% of budget on 3 days (S3) | Review traffic; budget refusal is itself fail-safe |
-| Risk score distribution and calibration (needs real labelled outcomes) | Mean predicted vs observed loss, per language | `risk.json` `heldout.ece` 0.0264 | ECE above 0.05 or any language gap above 0.02 on shadow data (S2) | Do not retrain on the fly; follow section 6 |
+| Risk score distribution and calibration (needs real labelled outcomes) | Mean predicted vs observed loss, per language | `risk.json` `heldout.ece` 0.0274 | ECE above 0.05 or any language gap above 0.02 on shadow data (S2) | Do not retrain on the fly; follow section 6 |
 
 A weekly report with these figures goes to the clinical safety officer and the programme lead; the report is part of the audit trail (DoH Responsible AI Standard 3.1.3.1.5).
 

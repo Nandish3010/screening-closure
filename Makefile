@@ -1,4 +1,4 @@
-.PHONY: evaluate-outcomes evaluate-outcomes-check rai-fairness rai-fairness-check rai-oversight rai-oversight-check rai-check claude-smoke claude-record redteam-generate triage-serve up-obs check-full evaluate-smoke test-redteam validate validate-check validate-targets evaluate-refusal evaluate-abudhabi oidc-up oidc-down test-oidc up-scale agency-run test-demo test-e2e-live demo-scenario demo-stage demo-snapshot demo-restore demo-reset demo-kill-scheduler check docs-check docs-numbers tracker-lint test-security test-tools test-load load-check up down logs test test-db test-db-create test-db-reset test-chaos synthea demo-seed demo-seed-clean evaluate evaluate-capacity evaluate-capacity-check simulate evaluate-check sensitivity sensitivity-check reset web-install web-dev web-build web-test web-e2e test-e2e review-packs review-packs-check test-review-packs test-phi-logs rbac-matrix test-offline fresh-clone risk-report risk-check calibrate-fetch calibrate-fit calibrate-check effort effort-check video video-check video-deps verify hl7-demo hl7-samples judge-headline judge-headline-check
+.PHONY: evaluate-outcomes evaluate-outcomes-check rai-fairness rai-fairness-check rai-oversight rai-oversight-check rai-check claude-smoke claude-record redteam-generate triage-serve up-obs check-full evaluate-smoke test-redteam validate validate-check validate-targets evaluate-refusal evaluate-abudhabi oidc-up oidc-down test-oidc up-scale agency-run test-demo test-e2e-live demo-scenario demo-stage demo-snapshot demo-restore demo-reset demo-kill-scheduler check docs-check docs-numbers tracker-lint test-security test-tools test-load load-check up down logs test test-db test-db-create test-db-reset test-chaos synthea demo-seed demo-seed-clean evaluate evaluate-capacity evaluate-capacity-check simulate evaluate-check sensitivity sensitivity-check reset web-install web-dev web-build web-test web-e2e test-e2e review-packs review-packs-check test-review-packs test-phi-logs rbac-matrix test-offline fresh-clone risk-report risk-check calibrate-fetch calibrate-fit calibrate-check effort effort-check video video-check video-deps verify hl7-demo hl7-samples judge-headline judge-headline-check api-types api-types-check
 
 up:
 	docker compose up -d --build
@@ -252,7 +252,15 @@ web-build:
 	cd web && npm run build
 
 web-test:
-	cd web && npm test
+	cd web && npm run typecheck && npm test
+
+# C1 (T-C1): regenerate web/src/api/openapi.json and generated.ts from the API's OpenAPI schema (commit the result), or
+# check that the committed files are current (also run by tests/test_api_types_sync.py in `make test-tools`).
+api-types:
+	PYTHONPATH=api $(PY) tools/codegen/openapi_ts.py
+
+api-types-check:
+	PYTHONPATH=api $(PY) tools/codegen/openapi_ts.py --check
 
 # Playwright e2e against a mock-adapter `vite preview` (needs `npx playwright install chromium` once).
 web-e2e:

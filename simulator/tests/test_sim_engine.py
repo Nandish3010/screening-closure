@@ -9,6 +9,7 @@ from app.state_machine import CaseModel, InvalidTransition, apply, step
 from simulator.sim.actors import as_machine_event
 from simulator.sim.calendar import WorkingCalendar
 from simulator.sim.engine import ARMS, BASELINE, ORCHESTRATED
+from app.state_machine import replay_model
 from simulator.sim.invariants import check_case_log, check_consent, stateful_events
 from simulator.sim.patients import make_cohort, make_patient
 from simulator.sim.runner import make_patients, metrics_of, run_arm
@@ -110,11 +111,16 @@ def test_every_case_is_in_a_state_consistent_with_its_log(ctx):
         for ev in c.log:
             if ev.type == "reopened":
                 state = ev.payload["resume_state"]
+            elif "to_state" in ev.payload:  # a side-state move of the API's machine (M7-1)
+                state = ev.payload["to_state"]
             elif ev.type in stateful_events(pw):
                 state = step(CaseModel(state=state, refusal=refusal), as_machine_event(ev), pw).state
                 if ev.type == "record_informed_refusal":
                     refusal = {"counselling_ref": ev.payload["counselling_ref"], "counselled_by": ev.payload["counselled_by"]}
         assert state == c.state
+        # and the API's own read model of the case (its machine log replayed from scratch) agrees, unless consent is withdrawn
+        if c.mach is not None and not c.mach.frozen:
+            assert replay_model(c.mach.log, pw).state == c.state, c.p.idx
 
 
 # ---- behaviour of the arms -------------------------------------------------------------------------
@@ -198,13 +204,13 @@ def test_the_orchestrated_arm_raises_the_referral_breach_and_the_baseline_ignore
         created = next(e for e in c.log if e.type == "case_created").at
         assert ev.at >= ctx.cal.add_working_days(created, days)  # never before the due date
         # the breach is only raised for a case that had not requested the referral by then
-        assert not [e for e in c.log if e.type == "handoff_requested" and e.at < ev.at]
+        assert not [e for e in c.log if e.type == "handoff_requested" and e.payload.get("kind") != "transfer" and e.at < ev.at]
 
 
 def test_a_requested_referral_cancels_the_milestone_timer(ctx):
     orch = _run(ctx, ORCHESTRATED, cases=300, days=200)
     for c in orch.cases:
-        requested = [e.at for e in c.log if e.type == "handoff_requested"]
+        requested = [e.at for e in c.log if e.type == "handoff_requested" and e.payload.get("kind") != "transfer"]
         for ev in _milestone_overdue(c, "referral_requested"):
             assert not requested or min(requested) >= ev.at
 
@@ -215,11 +221,10 @@ def test_the_colonoscopy_breach_is_the_confirmatory_milestone_and_keeps_its_31_w
     assert col
     for c, e in col:
         assert e.payload["sla_working_days"] == ctx.pathway.milestones["confirmatory_completed"].working_days == 31
-        # the clock runs from the FIRST handoff_requested (A25), whatever step the case is in when it breaches: a case still
-        # waiting for a provider to accept, or re-routed, is at book_confirmatory; the engine's owner transfers are
-        # handoff_requested events too (as in the state machine), so an early transfer starts it earlier
+        # the clock runs from the FIRST referral request (A25), whatever step the case is in when it breaches. A change of
+        # primary-care owner (a transfer) is not a referral request in the API's model the simulator keeps (sim.machine)
         assert e.payload["step"]
-        first = min(x.at for x in c.log if x.type == "handoff_requested")
+        first = min(x.at for x in c.log if x.type == "handoff_requested" and x.payload.get("kind") != "transfer")
         due = ctx.cal.add_working_days(first, 31)
         assert abs((e.at - due).total_seconds()) < 60  # the breach is at that due date, whatever happened after the first request
     assert "complete_confirmatory" not in ctx.pathway.slas_working_days
@@ -228,33 +233,37 @@ def test_the_colonoscopy_breach_is_the_confirmatory_milestone_and_keeps_its_31_w
 def test_a_bounced_referral_does_not_restart_the_colonoscopy_clock_in_the_engine(ctx):
     """A25: a case that was rejected or bounced and asked again still breaches 31 working days after its FIRST request."""
     orch = _run(ctx, ORCHESTRATED, cases=600, days=300)
-    rerequested = [c for c in orch.cases if len([x for x in c.log if x.type == "handoff_requested"]) >= 2]
+    def requests(c):
+        return sorted(x.at for x in c.log if x.type == "handoff_requested" and x.payload.get("kind") != "transfer")
+
+    rerequested = [c for c in orch.cases if len(requests(c)) >= 2]
     assert rerequested, "no case asked a second provider in 600 cases"
     breached = [c for c in rerequested if _milestone_overdue(c, "confirmatory_completed")]
     assert breached
     for c in breached:
-        reqs = sorted(x.at for x in c.log if x.type == "handoff_requested")
+        reqs = requests(c)
         [e] = _milestone_overdue(c, "confirmatory_completed")  # once
         assert abs((e.at - ctx.cal.add_working_days(reqs[0], 31)).total_seconds()) < 60  # from the first request
-    later = [c for c in breached if (lambda r: r[1] - r[0] >= timedelta(days=5))(sorted(x.at for x in c.log if x.type == "handoff_requested"))]
+    later = [c for c in breached if (lambda r: r[1] - r[0] >= timedelta(days=5))(requests(c))]
     assert later, "no breached case was re-requested more than five days after its first request"
     for c in later:
-        reqs = sorted(x.at for x in c.log if x.type == "handoff_requested")
+        reqs = requests(c)
         [e] = _milestone_overdue(c, "confirmatory_completed")
         assert e.at < ctx.cal.add_working_days(reqs[1], 31)  # a restart at the second request would be later
 
 
-def test_the_engine_refuses_a_milestone_it_cannot_model(ctx):
+def test_any_milestone_of_the_pathway_runs_because_the_apis_sweep_runs_it(ctx):
+    """M7-1: the engine no longer models milestones itself, so a milestone from any event works (it used to be refused)."""
     import dataclasses
 
     from simulator.sim.engine import make_engine
-    from simulator.sim.params import ParamError
+    from simulator.sim.runner import make_patients
 
-    bad = dataclasses.replace(
-        ctx.pathway.milestones["referral_requested"], name="odd", from_event="acknowledge")
-    pw = dataclasses.replace(ctx.pathway, milestones={**ctx.pathway.milestones, "odd": bad})
-    with pytest.raises(ParamError, match="cannot model milestone"):
-        make_engine(ORCHESTRATED, ctx.mp, pw, ctx.cal, 100, SEED)
+    odd = dataclasses.replace(ctx.pathway.milestones["referral_requested"], name="odd", from_event="acknowledge",
+                              working_days=2)
+    pw = dataclasses.replace(ctx.pathway, milestones={**ctx.pathway.milestones, "odd": odd})
+    res = make_engine(ORCHESTRATED, ctx.mp, pw, ctx.cal, 120, SEED).run(make_patients(ctx, 150, SEED))
+    assert any(_milestone_overdue(c, "odd") for c in res.cases)
 
 
 def test_the_simulators_actor_names_meet_the_state_machines_table_without_changing_what_is_logged():

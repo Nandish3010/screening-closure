@@ -252,6 +252,15 @@ def evaluate(
             }
         },
     }
+    if params_paths:
+        # T-B13: say which parameters the user's layered files changed against the shipped defaults. Absent on a default run, so
+        # the committed results files keep their bytes.
+        user_overrides = [
+            {"key": o["key"], "value": o["value"], "default_value": o["upper_range_value"], "source": o["source"], "status": o["status"]}
+            for o in _overrides(load_context(None, pathway_path, warn=False), ctx)
+        ]
+        if user_overrides:
+            result["meta"]["parameter_overrides"] = user_overrides
     if len(scen) > 1:
         lit_ctx = load_context(scen[1][1], pathway_path, warn=False)
         meta_lit = _meta_for(lit_ctx, scen[1][1])

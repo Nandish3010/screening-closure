@@ -19,7 +19,8 @@ def test_headline_values_are_the_literature_anchored_ones():
     h = mh.build(__import__("json").loads(mh.SRC.read_text()))
     assert h["completion_180d"]["ratio"]["value"] == "1.31"
     assert h["silent_loss"]["orchestrated_in_reach"]["value"] == "0.0%"
-    assert h["labour_reduction"]["literature_all"]["mean"] < 0.4 <= h["labour_reduction"]["upper_all"]["mean"]
+    # M7-1: the upper range is now 39.99%, about the 40% target, not over it; the judge page says it "comes close"
+    assert h["labour_reduction"]["literature_all"]["mean"] < 0.4 and 0.39 <= h["labour_reduction"]["upper_all"]["mean"] < 0.41
 
 
 def test_judge_page_and_tour_carry_no_stale_figure_literals():

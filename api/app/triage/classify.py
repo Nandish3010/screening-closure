@@ -14,7 +14,9 @@ calibrated score, not a guarantee (docs/governance/reply-triage-card.md).
 * the intent is `question`, `other` or `opt_out` (never handled without a person, whatever the confidence),
 * the confidence is below the threshold chosen for >= 0.95 precision on the auto-handled intents,
 * the model puts too little probability on any intent label at all (the reply is off its distribution),
-* the text is empty, or longer than the model reads (it is cut for the model, but a person reads all of it).
+* the text is empty, or longer than the model reads (it is cut for the model, but a person reads all of it),
+* the reply is Arabizi and the confidence is below the Arabizi threshold, or it is Gulf-dialect Arabic, whatever the
+  confidence (dialect.py: the groups the M7-5 fairness audit found the model reads worst, detected at run time).
 
 The model is loaded lazily on the first reply. Where this interpreter has mlx it is loaded in process; the API's own
 virtualenv does not, so it is started in a worker process using the interpreter of tools/triage/.venv. If neither
@@ -39,7 +41,7 @@ import urllib.request
 from pathlib import Path
 from typing import Protocol
 
-from . import optout
+from . import dialect, optout
 from .labels import ALWAYS_HUMAN, INTENTS, MAX_TEXT_CHARS
 
 log = logging.getLogger("app.triage")
@@ -236,7 +238,7 @@ def classify_local(text: str, language_hint: str | None = None) -> dict:
         return unavailable()
     scorer, cal = ready
     try:
-        return decide(scorer.score(text[:MAX_TEXT_CHARS]), cal, text)
+        return dialect.apply_group_rule(decide(scorer.score(text[:MAX_TEXT_CHARS]), cal, text), text)
     except Exception:  # noqa: BLE001
         log.warning("reply triage failed on one reply; sent to a person", exc_info=True)
         return unavailable() | {"model_id": cal.model_id}
@@ -264,7 +266,8 @@ def classify_remote(base_url: str, text: str, language_hint: str | None, timeout
         except Exception:  # noqa: BLE001 - no calibration to check the confidence against: a person reads it
             below = True
         needs_human = needs_human or intent in ALWAYS_HUMAN or len(text) > MAX_TEXT_CHARS or below
-        return {"intent": intent, "confidence": round(float(conf), 4), "model_id": model_id, "needs_human": needs_human}
+        return dialect.apply_group_rule(
+            {"intent": intent, "confidence": round(float(conf), 4), "model_id": model_id, "needs_human": needs_human}, text)
     except Exception as exc:  # noqa: BLE001 - unreachable, slow, malformed: a person reads it
         log.warning("remote reply triage failed (%s); sent to a person", type(exc).__name__)
         return unavailable()
