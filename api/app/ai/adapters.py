@@ -90,6 +90,7 @@ class _ChatProvider:
     """Shared flow: gate, build the request, post it, extract and return the text."""
 
     name = ""
+    fills_placeholders = True  # build_prompt asks for {owner_name} etc.; draft_with_fallback fills them in (A35)
 
     def __init__(self, transport=None) -> None:
         # `transport` is an httpx transport; tests pass httpx.MockTransport. None = real network.

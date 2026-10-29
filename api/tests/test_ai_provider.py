@@ -110,7 +110,8 @@ def test_prompt_hash_is_deterministic_and_input_sensitive():
     assert prompt_hash(a) == prompt_hash(b)
     assert len(prompt_hash(a)) == 64
     assert prompt_hash(a) != prompt_hash(make_req(language="ar"))
-    assert prompt_hash(a) != prompt_hash(make_req(owner_name="Dr Omar"))
+    assert prompt_hash(a) == prompt_hash(make_req(owner_name="Dr Omar"))  # A35: the name is a placeholder, never sent
+    assert prompt_hash(a) != prompt_hash(make_req(owner_role="specialist_owner"))
 
 
 def test_prompt_states_the_boundary():
@@ -119,7 +120,7 @@ def test_prompt_states_the_boundary():
     assert "Never state, hint at or interpret the screening result" in text
     assert "screening result is ready" in text
     assert "Do not diagnose" in text
-    assert "Dr Sara Khan" in text and "a colonoscopy" in text
+    assert "{owner_name}" in text and "{next_step}" in text and "Dr Sara Khan" not in text
 
 
 def _result_disclosure_phrases():
