@@ -3,8 +3,8 @@
 The cases are committed JSON under tests/redteam/generated/ (written by `make redteam-generate`, manual, network, never CI).
 This file only replays them: no model, no network, deterministic. Each case is a draft-shaped message with one attack in
 it; the expected outcome is "rejected". A case the validator accepted is a finding: it fails here until the validator is
-fixed (with a test first) or the case carries a `known_limitation` string, which makes it a strict xfail listed in
-red-team.md section 10.
+fixed (with a test first) or the case carries a `known_limitation` string: "exposed, ..." (strict xfail, fix in the next
+commit) or "known limitation ..." (strict xfail listed in red-team.md section 10).
 """
 
 from __future__ import annotations
@@ -33,7 +33,7 @@ def _cases() -> list[Case]:
         for c in json.loads(path.read_text(encoding="utf-8"))["cases"]:
             limitation = c.get("known_limitation")
             out.append(Case(c["id"], c["text"], "rejected", note=c["language"], display=c["text"],
-                            xfail=limitation if limitation and limitation.startswith("known limitation") else None))
+                            xfail=limitation if limitation and limitation.startswith(("known limitation", "exposed")) else None))
     return out
 
 

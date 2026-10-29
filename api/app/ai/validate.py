@@ -29,6 +29,7 @@ from app.ai.provider import (
     ProviderUnavailable,
     Provider,
     TemplateProvider,
+    fill_placeholders,
 )
 
 FORBIDDEN_PHRASES_PATH = Path(__file__).parent / "forbidden_phrases.yaml"
@@ -122,7 +123,7 @@ _CONFUSABLES = {
     # Latin look-alikes outside plain ASCII
     "ı": "i", "ȷ": "j", "ł": "l", "ø": "o", "đ": "d", "ƒ": "f", "ʀ": "r", "ɴ": "n", "ɢ": "g", "ʜ": "h", "ᴀ": "a",
     "ᴄ": "c", "ᴇ": "e", "ʟ": "l", "ᴍ": "m", "ᴏ": "o", "ᴘ": "p", "ᴛ": "t", "ᴜ": "u", "ᴠ": "v", "ᴡ": "w", "ᴢ": "z",
-    "ǀ": "l", "|": "l",
+    "ǀ": "l", "|": "l", "¢": "c",
 }
 _CONFUSABLE_TABLE = str.maketrans(_CONFUSABLES)
 
@@ -208,7 +209,8 @@ def load_forbidden_phrases() -> tuple[ForbiddenPhrase, ...]:
 # as "can certainly", which costs one template message (RT-V-05).
 _LEET = str.maketrans({"4": "a", "3": "e", "0": "o", "1": "i", "5": "s", "7": "t", "@": "a", "$": "s", "!": "i"})
 _SQUEEZED_EN = (
-    ("cancer", "cancer"), ("tumou?r", "tumour"), ("malignan", "malignant"), ("carcinoma|neoplas", "carcinoma_neoplasm"),
+    ("cancer", "cancer"), ("tumou?r", "tumour"), ("malignan", "malignant"), ("[ck]arsinoma|carcinoma|neoplas", "carcinoma_neoplasm"),
+    ("polyp", "polyp_lesion"),
     ("diagnos", "diagnos"), ("saratan|sartan", "arabizi_cancer"),
 )
 _SQUEEZED_AR = (("سرطان", "cancer"), ("خبيث", "malignant"), ("تشخيص", "diagnosis"), ("كارسينوما", "carcinoma"))
@@ -248,7 +250,7 @@ def forbidden_hits(text: str) -> list[ForbiddenPhrase]:
 # Also markup a model might emit: a backtick (code span or fence) and a call such as `close_case(...)` (RT-P-03).
 _PLACEHOLDER = re.compile(r"[{}]|\[[^\]]{0,40}\]|<[^>]{0,40}>|\$[A-Za-z_]|%\(\w+\)[sdif]|%[sdif]\b|`|\b\w+_\w+\s*\(")
 # Seven digits, however they are punctuated: space, dash, dot, brackets, and `/` and `,` (050/123/4567, 050,123,4567).
-_LONG_DIGITS = re.compile(r"(?<![\w])\+?\d(?:[\s\-.()/,]*\d){6,}")
+_LONG_DIGITS = re.compile(r"(?<![\w])\+?\d(?:[\s\-.()/,،]*\d){6,}")
 # `@`; "[at]" and "(at)"; "bob at example dot com"; "at gmail" (a well-known mail host after "at") (RT-V-09).
 _EMAIL = re.compile(
     r"@|\b[\w.+-]+\s*(?:\[at\]|\(at\))\s*[\w-]+|\bat\s+[\w-]+(?:\s*[\[(]?\s*dot\s*[\])]?\s*[\w-]+)+"
@@ -258,7 +260,7 @@ _EMAIL = re.compile(
 _ID_WORDS = re.compile(
     r"\b(?:mrn|emirates\s*id|eid|passport|nhs\s*number|id\s*(?:no|number|card)|file\s*(?:no|number)|"
     r"member\s*id|policy\s*(?:no|number)|medical\s*record)\b"
-    r"|رقم\s+(?:ال)?(?:هوية|هويه|ملف|جواز|بطاقة|بطاقه|سجل)|الهوية\s+الاماراتية|الهويه\s+الاماراتيه",
+    r"|رقم\s+(?:ال)?(?:هوي\w*|ملف|جواز|بطاق[ةه]\w*|سجل)|بطاق[ةه]\s+هوي\w*|الهوية\s+الاماراتية|الهويه\s+الاماراتيه",
     re.IGNORECASE,
 )
 _MIXED_TOKEN = re.compile(r"\b(?=[A-Za-z0-9-]*\d)(?=[A-Za-z0-9-]*[A-Za-z])[A-Za-z0-9-]{6,}\b")
@@ -302,14 +304,17 @@ _DIGIT_WORDS = {
     "zero": "0", "one": "1", "two": "2", "three": "3", "four": "4", "five": "5", "six": "6", "seven": "7", "eight": "8",
     "nine": "9", "صفر": "0", "واحد": "1", "اثنان": "2", "اثنين": "2", "ثلاثة": "3", "ثلاثه": "3", "اربعة": "4", "اربعه": "4",
     "خمسة": "5", "خمسه": "5", "ستة": "6", "سته": "6", "سبعة": "7", "سبعه": "7", "ثمانية": "8", "ثمانيه": "8",
-    "تسعة": "9", "تسعه": "9",
+    "تسعة": "9", "تسعه": "9", "ثلاث": "3", "اربع": "4", "خمس": "5", "ست": "6", "سبع": "7", "ثماني": "8", "تسع": "9",
 }
 _DIGIT_WORD = re.compile(r"(?<![\w])(" + "|".join(_DIGIT_WORDS) + r")(?![\w])", re.IGNORECASE)
 
 
 def _words_to_digits(text: str) -> str:
     """Number words, English and Arabic, as digits, so "nine seven one five ..." is a phone number like 9715...."""
-    return _DIGIT_WORD.sub(lambda m: _DIGIT_WORDS[m.group(1).lower()], normalise_arabic(text))
+    text = _DIGIT_WORD.sub(lambda m: _DIGIT_WORDS[m.group(1).lower()], normalise_arabic(text))
+    # "double 0" and "triple 5" (spoken telephone numbers) stand for two and three of the digit (RT-G-05E.6).
+    return re.sub(r"\b(double|triple)[\s-]+(\d)", lambda m: m.group(2) * (2 if m.group(1).lower() == "double" else 3), text,
+                  flags=re.IGNORECASE)
 
 
 def _ascii_digits(text: str) -> str:
@@ -472,6 +477,8 @@ def draft_with_fallback(
         if not isinstance(result, DraftResult) or result.language != req.language:
             reason = INVALID_RESULT
         else:
+            if getattr(provider, "fills_placeholders", False):  # a model told to write {owner_name} etc. (A35)
+                result = dataclasses.replace(result, text=fill_placeholders(result.text, req))
             verdict = validate(result.text, req)
             if not verdict.ok:
                 reason = f"{VALIDATION_FAILED}:{','.join(verdict.reasons)}"
