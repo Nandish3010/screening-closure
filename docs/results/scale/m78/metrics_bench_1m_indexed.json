@@ -1,0 +1,86 @@
+{
+  "tool": "tools/load/metrics_bench.py",
+  "label": "cluster-1m-indexed-medians",
+  "git": {
+    "commit": "df9d786ffd6a8bfadca26d1f97b5b84d4c2d5ad1",
+    "branch": "m78-cadence",
+    "dirty_files": [
+      "M api/app/agency/ledger.py",
+      " M api/app/agency/runner.py",
+      " M api/app/config.py",
+      " M api/app/effort.py",
+      " M api/app/main.py",
+      " M api/app/observability.py",
+      " M api/app/policy.py",
+      " M api/app/routers/metrics.py",
+      " M api/app/routers/scheduler.py",
+      " M api/tests/test_automation_hardening.py",
+      " M api/tests/test_scheduler_loop.py",
+      " M api/tests/test_sweep.py",
+      " M deploy/helm/screening-closure/templates/_helpers.tpl",
+      " M deploy/helm/screening-closure/templates/api.yaml",
+      " M deploy/helm/screening-closure/templates/workers.yaml",
+      " M deploy/helm/screening-closure/values.yaml",
+      " M docs/governance/rbac-matrix.md",
+      " M project/DECISIONS.md",
+      " M scheduler/main.py",
+      " M tools/k8s/api_load.py",
+      " M tools/k8s/soak.py",
+      " M web/src/api/generated.ts",
+      " M web/src/api/openapi.json",
+      "?? api/app/loadshed.py",
+      "?? api/app/metrics_index.py",
+      "?? api/migrations/018_metrics_index.sql",
+      "?? api/migrations/019_metrics_dwell_indexes.sql",
+      "?? api/tests/test_loadshed.py",
+      "?? api/tests/test_metrics_index_pg.py",
+      "?? api/tests/test_scheduler_agency_run.py"
+    ]
+  },
+  "started_at": "2026-10-30T11:52:54.670594+00:00",
+  "host": {
+    "platform": "macOS-26.6.2-arm64-arm-64bit-Mach-O",
+    "python": "3.14.7",
+    "machine": "arm64"
+  },
+  "cases_in_database": 1000300,
+  "now": "2026-10-31T11:52:49.930171+00:00",
+  "legacy_max": 100000,
+  "legacy_replay": {
+    "skipped": "1,000,300 cases is over --legacy-max 100,000"
+  },
+  "equality_at_legacy_size": {
+    "skipped": "1,000,300 cases is over --legacy-max 100,000"
+  },
+  "steady": {
+    "closure_aggregate": {
+      "calls": 5,
+      "median_s": 1.517,
+      "max_s": 2.149,
+      "min_s": 1.407
+    },
+    "effort_aggregate": {
+      "calls": 5,
+      "median_s": 0.068,
+      "max_s": 0.081,
+      "min_s": 0.065
+    },
+    "refresh_when_current": {
+      "calls": 5,
+      "median_s": 0.006,
+      "max_s": 0.95,
+      "min_s": 0.004
+    },
+    "cases_total": 1000300,
+    "peak_rss_mib": 59.6
+  },
+  "incremental": {
+    "touched": 200,
+    "append_seconds": 0.7,
+    "refresh_seconds": 0.48,
+    "replayed": 200,
+    "caught_up": true,
+    "peak_rss_mib": 64.0
+  },
+  "finished_at": "2026-10-30T11:53:08.175805+00:00"
+}

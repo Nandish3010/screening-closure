@@ -185,7 +185,44 @@ def _finished(task: Task, status: str, at: datetime, output: dict, prompt_hash, 
                    provider=provider, model_id=model_id, fallback_used=fallback_used)
 
 
+class _FencedMemoryLedger:
+    """The in-memory ledger with a fence (M7-8): every write asks the lease store first."""
+
+    def __init__(self, inner, fence) -> None:
+        self._inner, self._fence = inner, fence
+
+    def _check(self) -> None:
+        from app.leader import check_fence_memory
+
+        check_fence_memory(self._fence)
+
+    def add(self, task):
+        self._check()
+        return self._inner.add(task)
+
+    def start(self, task_id, at):
+        self._check()
+        return self._inner.start(task_id, at)
+
+    def finish(self, task_id, status, at, output, **kw):
+        self._check()
+        return self._inner.finish(task_id, status, at, output, **kw)
+
+    def resolve(self, task_id, status, at, by, resolution):
+        self._check()
+        return self._inner.resolve(task_id, status, at, by, resolution)
+
+    def fenced(self, fence):
+        return _FencedMemoryLedger(self._inner, fence)
+
+    def __getattr__(self, name):
+        return getattr(self._inner, name)
+
+
 class InMemoryTaskLedger:
+    def fenced(self, fence):
+        return _FencedMemoryLedger(self, fence)
+
     def __init__(self) -> None:
         self._lock = threading.Lock()
         self._rows: dict[UUID, Task] = {}
@@ -261,12 +298,24 @@ class PostgresTaskLedger:
     """Migration 014. The trigger is the authority on the update rules; the same checks run here first so a
     caller gets the same `LedgerError` from both ledgers."""
 
-    def __init__(self, pool) -> None:
+    def __init__(self, pool, fence=None) -> None:
         self.pool = pool
+        self._fence = fence  # M7-8: a leader.Fence; every write transaction re-checks it first
+
+    def fenced(self, fence):
+        return PostgresTaskLedger(self.pool, fence)
+
+    def _check_fence(self, conn) -> None:
+        if self._fence is not None:
+            from app.leader import check_fence_pg
+
+            with conn.cursor() as cur:
+                check_fence_pg(cur, self._fence)
 
     def add(self, task: Task) -> bool:
         check_new(task)
         with self.pool.connection() as conn:
+            self._check_fence(conn)
             cur = conn.execute(
                 f"INSERT INTO agency_tasks ({_COLS.rsplit(', seq', 1)[0]}) VALUES ({', '.join(['%s'] * 20)})"
                 " ON CONFLICT (id) DO NOTHING",
@@ -287,6 +336,7 @@ class PostgresTaskLedger:
         import psycopg
 
         with self.pool.connection() as conn, conn.transaction():
+            self._check_fence(conn)
             r = conn.execute(f"SELECT {_COLS} FROM agency_tasks WHERE id = %s FOR UPDATE", (task_id,)).fetchone()
             if r is None:
                 raise LedgerError(f"unknown agency task {task_id}")

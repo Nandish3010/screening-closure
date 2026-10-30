@@ -64,6 +64,7 @@ MIX = [("create_case", 12), ("post_event", 28), ("get_case_seeded", 20), ("get_c
 ENDPOINT = {"create_case": "POST /cases", "post_event": "POST /cases/{id}/events", "get_case_seeded": "GET /cases/{id}",
             "get_case_own": "GET /cases/{id}", "timeline": "GET /cases/{id}/timeline",
             "notifications": "GET /cases/{id}/notifications", "worklist": "GET /cases?state="}
+SHED = "shed_503"  # M7-8 (ADR-048): 503 with Retry-After and X-Shed from the load-shedding middleware: refused at once, not an error
 EVENT_STEPS = [("accept_ownership", "pco"), ("contact_patient", "pco"), ("patient_acknowledge", "coord")]
 SCHED_INTERVAL = 10.0
 
@@ -76,8 +77,9 @@ METHOD = (
     "is an error. The generator, the kind cluster (3 nodes in the Docker Desktop VM) and Postgres share one host: the generator's "
     "CPU use competes with the cluster. Per-pod CPU/memory come from the pods' cgroup files read with `kubectl exec` (no "
     "metrics-server), node CPU/memory from `docker stats`; per-pod request counts from the API pods' access logs; scheduler "
-    "timings from the gaps between the scheduler's POSTs in the API access logs (outbox drain -> sweep -> automation scan -> "
-    "evidence scan are sequential in one loop)."
+    "cadence of each scheduler task from the scheduler's own `tick` log lines (M7-8: the sweep, the two scans and the agency are "
+    "separate timed tasks, ADR-047). A request the pod refuses with 503 + Retry-After + X-Shed (ADR-048) is counted apart from errors and "
+    "from the latency of answered requests, and is never retried by the generator."
 )
 
 
@@ -264,6 +266,8 @@ class Gen:
             self.rr += 1
             r = await self.clients[self.rr % len(self.clients)].request(method, path, json=body, headers=self.auth(role))
             status = r.status_code
+            if status == 503 and r.headers.get("x-shed") == "1" and r.headers.get("retry-after"):
+                status = SHED  # reported separately: handled gracefully, and never retried here
         except Exception as exc:  # noqa: BLE001 - timeouts, resets: counted as errors by type
             status = type(exc).__name__
         done = time.perf_counter()
@@ -347,7 +351,12 @@ class Gen:
 
 
 def summarise(gen: Gen, rate: float, warmup: float, duration: float) -> dict:
-    rec = [r for r in gen.records if r[4] >= warmup]
+    """M7-8: a request the pod REFUSED (503 + Retry-After + X-Shed, `SHED`) is neither an error nor part of the latency of served
+    requests: it is counted and timed on its own. Errors are everything else that is not 2xx (timeouts, resets, 5xx, 4xx). The
+    latency of the requests the system actually answered (2xx and errors, not the refusals) is what the p99 criterion judges."""
+    all_rec = [r for r in gen.records if r[4] >= warmup]
+    shed_rec = [r for r in all_rec if r[1] == SHED]
+    rec = [r for r in all_rec if r[1] != SHED]
     ok = lambda r: isinstance(r[1], int) and 200 <= r[1] < 300  # noqa: E731
     per_ep: dict[str, list] = collections.defaultdict(list)
     for r in rec:
@@ -355,6 +364,7 @@ def summarise(gen: Gen, rate: float, warmup: float, duration: float) -> dict:
     errors = collections.Counter(str(r[1]) for r in rec if not ok(r))
     n_err = sum(errors.values())
     n = len(rec)
+    n_all = len(all_rec)
     per_ep_out = {}
     for ep, rs in sorted(per_ep.items()):
         per_ep_out[ep] = {"requests": len(rs), "errors": sum(1 for r in rs if not ok(r)),
@@ -362,7 +372,7 @@ def summarise(gen: Gen, rate: float, warmup: float, duration: float) -> dict:
     per_op = {op: {"requests": len(rs), "latency": dist([r[2] for r in rs if ok(r)])}
               for op in MIX_OPS for rs in [[r for r in rec if r[0] == op]] if rs}
     overall = dist([r[2] for r in rec if ok(r)])
-    # An erroring request is part of the experience: p99 over ALL requests, failures counted at their latency.
+    # An erroring request is part of the experience: p99 over every request the system ANSWERED, failures counted at their latency.
     overall_all = dist([r[2] for r in rec])
     lags = sorted(gen.lags)
     ratio = n_err / n if n else 1.0
@@ -370,16 +380,29 @@ def summarise(gen: Gen, rate: float, warmup: float, duration: float) -> dict:
     point = [r for r in rec if r[0] != "worklist"]
     point_all = dist([r[2] for r in point])
     p99_point = point_all["p99_ms"]
+    shed = len(shed_rec)
+    graceful = bool(p99 is not None and p99 < P99_LIMIT_S * 1000 and ratio < ERROR_LIMIT and gen.unfinished == 0)
+    graceful_point = bool(p99_point is not None and p99_point < P99_LIMIT_S * 1000 and ratio < ERROR_LIMIT and gen.unfinished == 0)
     return {
         "target_rate_per_s": rate, "warmup_s": warmup, "duration_s": duration, "issued_total": gen.issued, "unfinished_after_45s": gen.unfinished,
-        "measured_requests": n, "achieved_rate_per_s": n / duration, "errors": n_err, "error_rate": ratio,
-        "errors_by_status": dict(errors), "latency_2xx": overall, "latency_all_requests": overall_all,
+        "measured_requests": n_all, "answered_requests": n, "achieved_rate_per_s": n_all / duration,
+        "served_2xx": n - n_err, "served_rate_per_s": (n - n_err) / duration,
+        "errors": n_err, "error_rate": ratio, "errors_by_status": dict(errors),
+        "shed": shed, "shed_rate": shed / n_all if n_all else 0.0, "shed_latency": dist([r[2] for r in shed_rec]),
+        "shed_by_operation": dict(collections.Counter(r[0] for r in shed_rec)),
+        "status_counts": dict(collections.Counter(str(r[1]) for r in all_rec)),
+        "latency_2xx": overall, "latency_all_requests": overall_all,
         "per_endpoint": per_ep_out, "per_operation": per_op,
         "generator_lag_ms": {"p50": round(pct(lags, 0.5) * 1000, 2), "p99": round(pct(lags, 0.99) * 1000, 2), "max": round(gen.max_lag * 1000, 2)},
         "latency_all_requests_excluding_worklist": point_all,
-        "pass": bool(p99 is not None and p99 < P99_LIMIT_S * 1000 and ratio < ERROR_LIMIT and gen.unfinished == 0),
-        "pass_excluding_worklist": bool(p99_point is not None and p99_point < P99_LIMIT_S * 1000 and ratio < ERROR_LIMIT and gen.unfinished == 0),
-        "criteria": f"p99 (all requests, from intended start) < {P99_LIMIT_S * 1000:.0f} ms and error rate < {ERROR_LIMIT * 100:.1f}%",
+        # pass = nothing failed: no errors, p99 of the answered requests under the limit, none unfinished (refusals allowed: they are the design)
+        "pass": graceful,
+        "pass_excluding_worklist": graceful_point,
+        # pass_without_shedding = the same, and not one request was refused: the pod served everything offered
+        "pass_without_shedding": bool(graceful and shed == 0),
+        "pass_excluding_worklist_without_shedding": bool(graceful_point and shed == 0),
+        "criteria": f"p99 (answered requests, from intended start) < {P99_LIMIT_S * 1000:.0f} ms and error rate (not counting refusals) < {ERROR_LIMIT * 100:.1f}%; "
+                    "refusals (503 + Retry-After) are reported apart; without_shedding additionally needs zero refusals",
     }
 
 
@@ -427,6 +450,38 @@ def request_distribution(logs: dict, t_from: float, t_to: float) -> dict:
     for v in res.values():
         v["share"] = v["total"] / tot
     return res
+
+
+TICK = re.compile(r"tick task=(?P<task>\S+) n=(?P<n>\d+) start=(?P<start>[\d.]+) duration=(?P<dur>[\d.]+) skipped_so_far=(?P<sk>\d+)")
+
+
+def scheduler_ticks(sched_pods: list[str], since: datetime, t_from: float, t_to: float) -> dict:
+    """M7-8 (ADR-047): the achieved cadence of every scheduler task, from the `tick task=... start=... duration=...` lines the
+    scheduler logs for each tick it ran (the start is the wall-clock instant the task started). Per task: starts in the window,
+    the starts expected at its nominal interval, the gaps between consecutive starts, the work duration."""
+    ticks: dict[str, list[tuple[float, float]]] = collections.defaultdict(list)
+    for pod in sched_pods:
+        text = kubectl("logs", pod, f"--since-time={since.strftime('%Y-%m-%dT%H:%M:%SZ')}", timeout=120, check=False)
+        for ln in text.splitlines():
+            m = TICK.search(ln)
+            if m and t_from <= float(m["start"]) <= t_to:
+                ticks[m["task"]].append((float(m["start"]), float(m["dur"])))
+    out = {}
+    nominal = {"sweep": SCHED_INTERVAL, "automation-scan": SCHED_INTERVAL, "evidence-scan": SCHED_INTERVAL, "agency": 60.0}
+    for task, rows in sorted(ticks.items()):
+        rows.sort()
+        starts = [t for t, _ in rows]
+        gaps = sorted(b - a for a, b in zip(starts, starts[1:]))
+        durs = sorted(d for _, d in rows)
+        interval = nominal.get(task, SCHED_INTERVAL)
+        expected = (t_to - t_from) / interval
+        out[task] = {"nominal_interval_s": interval, "starts": len(starts), "expected_starts": round(expected, 1),
+                     "achieved_fraction_of_nominal": round(len(starts) / expected, 4) if expected else None,
+                     "gap_s": ({"mean": round(statistics.fmean(gaps), 3), "p50": round(pct(gaps, 0.5), 3), "p95": round(pct(gaps, 0.95), 3),
+                                "max": round(gaps[-1], 3)} if gaps else None),
+                     "duration_s": ({"mean": round(statistics.fmean(durs), 3), "p50": round(pct(durs, 0.5), 3), "p95": round(pct(durs, 0.95), 3),
+                                     "max": round(durs[-1], 3)} if durs else None)}
+    return out
 
 
 def scheduler_timings(logs: dict, t_from: float, t_to: float) -> dict:
@@ -494,6 +549,8 @@ async def run_stage(rate: float, args, tokens: dict, seeded: list[str], api_pods
     logs = await asyncio.to_thread(api_logs, api_pods, since)
     out["request_distribution_per_pod"] = request_distribution(logs, measured_from, t_wall0 + args.warmup + args.duration)
     out["scheduler_during_stage"] = scheduler_timings(logs, measured_from, t_wall0 + args.warmup + args.duration)
+    out["scheduler_cadence_during_stage"] = await asyncio.to_thread(scheduler_ticks, sched_pods, since, measured_from,
+                                                                    t_wall0 + args.warmup + args.duration)
     out["cases_created_by_run"] = gen.n
     return out
 
@@ -571,7 +628,8 @@ async def amain(args) -> int:
     doc.update(schema_version=1, tool="tools/k8s/api_load.py", method=METHOD, git=git_info(), generated_at=datetime.now(UTC).isoformat(),
                machine_spec=json.loads(subprocess.run(["bash", str(ROOT / "tools/k8s/machine_spec.sh")], capture_output=True, text=True, check=True).stdout),
                chart_values=chart_values(), cluster_overrides=cluster_overrides(), mix_weights=dict(MIX), list_state=LIST_STATE, note_same_host="the load generator runs on the same host as the cluster",
-               population_before=await asyncio.to_thread(population, dsn), pass_criteria=f"p99 < {P99_LIMIT_S * 1000:.0f} ms (all requests, from intended start) and error rate < {ERROR_LIMIT * 100:.1f}%")
+               population_before=await asyncio.to_thread(population, dsn), pass_criteria=f"p99 < {P99_LIMIT_S * 1000:.0f} ms (answered requests, from intended start) and error rate < {ERROR_LIMIT * 100:.1f}%; "
+               "requests refused with 503 + Retry-After (load shedding) are counted apart and are not errors")
     doc.setdefault("stages", [])
     doc["started_at"] = doc.get("started_at") or datetime.now(UTC).isoformat()
     rates = [float(r) for r in args.rates.split(",") if r]
@@ -588,7 +646,7 @@ async def amain(args) -> int:
         save(out_path, doc)
         la = st["latency_all_requests"]
         print(f"   achieved {st['achieved_rate_per_s']:.1f}/s, p50 {la['p50_ms']} p95 {la['p95_ms']} p99 {la['p99_ms']} max {la['max_ms']} ms, "
-              f"errors {st['errors']} {st['errors_by_status']}, lag max {st['generator_lag_ms']['max']} ms -> {'PASS' if st['pass'] else 'FAIL'} "
+              f"errors {st['errors']} {st['errors_by_status']}, shed {st['shed']} ({st['shed_rate'] * 100:.1f}%), lag max {st['generator_lag_ms']['max']} ms -> {'PASS' if st['pass'] else 'FAIL'} "
               f"(p99 excl. worklist {st['latency_all_requests_excluding_worklist']['p99_ms']} ms: {'PASS' if st['pass_excluding_worklist'] else 'FAIL'}); "
               f"sched sweep {st['scheduler_during_stage']['sweep_duration']}", flush=True)
         return st
@@ -605,7 +663,7 @@ async def amain(args) -> int:
             rate += args.search_step
     stages = [s for s in doc["stages"] if s.get("label") == args.label]
     summ = {}
-    for key in ("pass", "pass_excluding_worklist"):
+    for key in ("pass", "pass_excluding_worklist", "pass_without_shedding", "pass_excluding_worklist_without_shedding"):
         passing = [s["target_rate_per_s"] for s in stages if s[key]]
         failing = [s["target_rate_per_s"] for s in stages if not s[key]]
         summ[key] = {"max_passing_rate_per_s": max(passing) if passing else None, "lowest_failing_rate_per_s": min(failing) if failing else None}

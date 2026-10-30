@@ -841,6 +841,60 @@ The ledger is the agency's memory (`api/app/agency/ledger.py`, migration `014_ag
 - Still unbounded: `load_cases` (the closure metrics route `GET /metrics/closure`, `GET /metrics/effort` and the dashboards replay every case in one call). They are not on the path measured here and are named as not met in the scale report.
 - **To reverse**: `SWEEP_MAX_CASES=0 SWEEP_BUDGET_SECONDS=0` restores the unbounded sweep; `AGENCY_MAX_CASES_READ` and `AGENCY_METRICS_MAX_CASES` raise the agency's window; there is no switch for the paging of `GET /cases` (a client that wants everything follows the cursor).
 
+## ADR-047: The scheduler's jobs are timed tasks of their own, each starting on a fixed rate
+
+**Context.** The scheduler ran one loop: drain the outbox, sweep, automation scan, evidence scan, then sleep 10 s. The period was therefore 10 s plus all the work in the pass. In the M7-7 soak that was 12.88 s on average and 77.6% of the nominal sweeps started (`docs/results/scale.md`): the sweep itself took 0.43 s, the automation scan 2.97 s. The agency was a different kind of coupling: the sweep route counted sweeps and started a run in the background on every 6th, inside whichever API pod served that sweep.
+
+**Decision.**
+- **Four timed tasks, one thread each, in the scheduler process**: the sweep (with the outbox drain it always had in front of it), the automation scan, the evidence scan and the agency run. Each has its own interval (`SCHEDULER_INTERVAL_SECONDS`, `SCHEDULER_AUTOMATION_INTERVAL_SECONDS`, `SCHEDULER_EVIDENCE_INTERVAL_SECONDS`, `SCHEDULER_AGENCY_INTERVAL_SECONDS`; chart `scheduler.*IntervalSeconds`). The defaults keep the old frequencies: 10 s, 10 s, 10 s, and 60 s for the agency (what "every 6th sweep" was).
+- **Fixed rate, start to start.** Tick k of a task is due at `first + k * interval` on the monotonic clock. The task starts then, whatever the previous tick took, so the sweep starts every 10 s, not 10 s after the last pass ended.
+- **No overlap with itself, no burst.** A task is one thread, so a tick that is still running when the next is due is not started a second time. When a tick ends late, the grid points that passed meanwhile are skipped and counted (`skipped`), not run back to back; the next start is the first grid point after now, so the phase is kept.
+- **Leader-gated and fenced as before.** Every task does nothing unless this instance holds the lease (a follower's tick is not a start and is not counted) and every call carries the fencing token. The API side is unchanged for the three existing routes: entry check (`require_current_leader`, 409 if stale) and the write-time re-check inside every write transaction (`leader.FencedStore`, `StaleLeader`, 409). A deposed leader's late tick is refused exactly as its late sweep was.
+- **The agency gets its own route, `POST /scheduler/agency-run`** (scheduler token only, fenced at entry). It runs synchronously, once per simulated instant (the run id is deterministic), and answers `{"enabled": false}` when the agency is switched off (`AGENCY_EVERY_SWEEPS=0`, which stays the on/off switch). The run's ledger writes re-check the lease inside their transaction (`PostgresTaskLedger.fenced`). One write is not fenced at write time: a draft the agency asks for goes through the drafting route's own code, as a person's request would; it is an approval-gated draft, not a decision. `AGENCY_OWN_CADENCE=true` (the chart sets it) stops the sweep route from counting sweeps for the agency, so it runs once, on the timer; compose keeps the in-sweep hook.
+- **The heartbeat is unchanged in meaning.** The sweep tick beats at its start, while it runs and at its end with whether the sweep worked; a scan or agency tick beats while it runs, so a long scan does not make the scheduler look dead (`scheduler_down`). The liveness file is written by the sweep tick (leader) and the lease loop (follower).
+- **Measured.** Each tick that did work logs `tick task=... start=... duration=...`, and the scheduler logs each task's achieved cadence every 5 minutes. The soak and the ladder read these lines: starts against the starts expected at the nominal interval, gaps between starts, and the work duration (`docs/results/scale.md`).
+
+**Consequences.**
+- **Engine semantics are unchanged**: the same routes do the same work and write the same events. What moves is when: a rejected referral the sweep bounces is re-routed by the next automation tick (up to one interval later), no longer in the same pass, and the evidence scan no longer follows the automation scan within the pass. Both scans are idempotent (deterministic event ids), so two overlapping ticks of different tasks cannot write an event twice.
+- The three tasks can now run at the same time against one API pod (separate requests). The sweep no longer waits behind a slow scan; a slow scan costs the pod CPU while it runs.
+- A pass of the old loop no longer exists as a unit. `loop_once` remains for a manual, synchronous pass and for tests that step a scheduler.
+- The wall-clock guard (`test_sweep.py`) allows one more marked line in the scheduler, the label of the cadence log; the timer itself reads the monotonic clock, which is elapsed real time by definition and decides nothing about a case.
+- **To reverse**: set the scan intervals to a multiple of the sweep's and `AGENCY_OWN_CADENCE=false` with `SCHEDULER_AGENCY_INTERVAL_SECONDS=0`; the old single-loop order is `loop_once`.
+
+## ADR-048: A bounded number of requests in flight per API process; the rest get 503 with Retry-After
+
+**Context.** At 300 requests/s the M7-7 API timed out and reset connections (`docs/results/scale.md`). An overloaded pod accepted everything, queued it behind a 40-thread pool and a 10-connection database pool, and the caller found out after 30 s.
+
+**Decision.**
+- **A pure ASGI middleware** (`app.loadshed.LoadShedMiddleware`) counts the requests in flight in the process. A request that arrives while `MAX_INFLIGHT_REQUESTS` are in flight is answered at once with `503 Service Unavailable`, `Retry-After: SHED_RETRY_AFTER_SECONDS` (default 1) and `X-Shed: 1`; requests already running are not touched.
+- **Never shed**: `/health` (the probe), `/scheduler/*` and `/watchdog/*` (the lease renewal and heartbeat must reach a busy API, or a busy API looks like a dead scheduler and the leader is lost), `/metrics` (the scrape). Shedding is per process, so per pod with one uvicorn process.
+- **Configurable in the chart** (`api.maxInflightRequests`, default 40, `api.shedRetryAfterSeconds`); 0 switches it off, and 0 is the code default (the tests and the compose stack are unaffected). A counter `closure_requests_shed` goes to the metrics endpoint and a warning is logged at most every 10 s.
+- **No retry hides it.** The load generator counts a shed request apart from errors and from the latency of answered requests and does not retry it.
+
+**Consequences.**
+- A client must treat 503 with `Retry-After` as "try again later": the web client and any integration must honour it. A shed `POST` was not executed (the middleware runs before the route), so a retry is safe; the event endpoints are idempotent on the client-chosen event id as well.
+- The limit is a guess about capacity until measured: too low sheds at a rate the pod could serve, too high queues again. The ladder in `docs/results/scale.md` shows where this one sheds.
+- Engine semantics are unchanged: a shed request changes nothing.
+- **To reverse**: `api.maxInflightRequests: 0`.
+
+## ADR-049: The closure and effort metrics read a table of per-case facts, not a replay of every case
+
+**Context.** `GET /metrics/closure` and `GET /metrics/effort` called `load_cases`, which replays every case of the pathway in one request: minutes of CPU and the whole table in memory at 1,000,000 cases (ADR-046 listed them as still unbounded). The agency avoided them above 20,000 cases for that reason.
+
+**Decision.**
+- **A derived table, `case_metrics` (migration 018), one row per case**, holds the small set of facts the two reports fold out of a log: the closure record (`metrics.CaseRecord`), the effort accounting (`effort.case_effort`), the working-day counts, and the completed state visits (`case_metric_dwells`). It is derived, never authoritative; `events` stays the only source of truth.
+- **`metrics_index.refresh` keeps it current** by replaying only the cases whose `cases.updated_at` is newer than their row (or whose signature differs), in keyset batches of 200 after a durable cursor, one transaction per batch, inside a time budget (`METRICS_REFRESH_BUDGET_SECONDS`, 3 s per call). The replay is the same code as before (`build_record`, `case_effort`, the calendar). It starts a little before its cursor, to catch a transaction that committed late. A signature (fold version, pathway, calendar, assumed minutes) makes rows computed for another calendar or pathway stale, so a changed holiday list cannot leave old working days.
+- **The reports are SQL aggregates over the table**, with the same formulas. Everything that depends on `now` (age buckets, lost to follow-up) is computed in SQL from stored instants, so it is exact at every call. Percentiles and medians are computed with the old arithmetic (`xs[lo] + (pos - lo) * (xs[hi] - xs[lo])`, `(a + b) / 2`) from the values the database sorts and hands over, so the numbers are identical bit for bit; an earlier version with `percentile_cont` differed in the last digit and reordered two tied transitions.
+- **A call that cannot finish the refresh in its budget answers from the table as it stands and says so** in the header `X-Metrics-Index-Lag` (the cases still ahead of the cursor); the body is unchanged. The first call over a table that was never indexed catches up over several calls. This is the one place a report can lag, and it is the replay that is paged with keyset batches and a time budget, as required.
+- **The old replay stays** as `metrics_index.legacy_closure` / `legacy_effort`: it answers for stores that have no such table (the in-memory store of the unit tests) and is the reference the tests compare against. The agency's narrowing from ADR-046 is unchanged.
+
+**Consequences.**
+- **The numbers do not change.** `api/tests/test_metrics_index_pg.py` compares the old and the new answer exactly on seeded populations: the hand-computed fixture, the agency cohort (the simulator's demo case ids), the engine's own load mixture, random walks through the state machine (closes, declined closures, refusals, lost contact, breaches, flags) and a case that does not replay, plus the routes, the refresh's incrementality, budget, resumption, late commits, calendar change and a second refresher.
+- The aggregate is still a scan of the table inside Postgres (one row per case, no replay, constant memory in the API); its time grows with the number of cases, measured in `docs/results/scale.md`. The query is cut off after `METRICS_QUERY_TIMEOUT_MS`.
+- A case whose row is stale is seen by a report only after the next refresh (the same call does it, within budget). A transaction open for more than the 120 s lookback while a refresh passes it would be missed until its case changes again; the append transactions last milliseconds.
+- One more index and about 0.3 KiB per case of derived data. The migration adds `cases_updated_id_idx (updated_at, id)`.
+- **To reverse**: route the two functions back to `legacy_closure` / `legacy_effort`; the tables can be dropped without losing a fact.
+
 ## Open questions for the owner (M6 week 1)
 
 These are not decisions. Each is a question the M6 work surfaced that needs an owner's answer before anyone changes code. Nothing here has been changed. When one is answered, record the answer as a new ADR that names this entry.

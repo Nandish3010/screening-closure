@@ -169,7 +169,10 @@ def sweep(request: Request) -> dict:
     observability.record_sweep(out, observability.stopwatch() - started)
     # A22: every AGENCY_EVERY_SWEEPS-th sweep starts an agency run in the background (labour, not authority: it
     # writes no case event as the agency). Counted after the sweep, so a sweep is never delayed or failed by it.
-    out["agency"] = agency_runner.after_sweep(now)
+    # M7-8 (ADR-047): with AGENCY_OWN_CADENCE the scheduler runs the agency on its own timer instead (`/scheduler/agency-run`),
+    # so the sweep neither counts for it nor starts it.
+    if not settings.agency_own_cadence:
+        out["agency"] = agency_runner.after_sweep(now)
     return out
 
 
@@ -218,6 +221,25 @@ def evidence_scan(request: Request) -> dict:
     propose the closure when it does (A21). Closure itself stays a person's. Counts only; a no-op unless enabled."""
     with _stale_is_409():
         return automation.scan_evidence(_fenced(cases.store, request), cases.pathway, clock.now())
+
+
+@router.post("/agency-run", dependencies=fenced)
+def agency_run(request: Request) -> dict:
+    """One agency run at the current simulation time, on the scheduler's own timer (M7-8, ADR-047). Synchronous, so the scheduler
+    measures it and never starts a second while it runs; this process's run lock makes a second concurrent request answer
+    `busy` instead of queueing. Fenced at entry, and every ledger write re-checks the lease inside its transaction (the agency
+    writes no case event of its own; a draft it asks for is the drafting route's, unchanged). `{"enabled": false}` while the
+    agency is switched off (`AGENCY_EVERY_SWEEPS=0`). Counts only."""
+    from app.agency import config as agency_config
+
+    if agency_config.every_sweeps() <= 0:
+        return {"enabled": False}
+    with _stale_is_409():
+        out = agency_runner.run_agency(clock.now(), trigger="scheduler", wait=False,
+                                       fence=getattr(request.state, "leader_fence", None))
+    counts = (out.get("counts") or {}).get("by_status") or {}
+    return {"enabled": True, "run_id": out.get("run_id"), "status": out.get("status"), "created": out.get("created"),
+            "tasks": (out.get("counts") or {}).get("total", 0), **{f"tasks_{k}": v for k, v in counts.items()}}
 
 
 @router.post("/heartbeat")

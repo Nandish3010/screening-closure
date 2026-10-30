@@ -335,7 +335,9 @@ def test_no_wall_clock_reads_in_the_api_or_scheduler_code():
 def test_the_only_allowed_wall_clock_reads_are_the_scheduler_heartbeat():
     text = (Path(__file__).resolve().parents[2] / "scheduler" / "main.py").read_text()
     marked = [ln for ln in text.splitlines() if "wall-clock-ok" in ln]
-    assert len(marked) == 2 and all("heartbeat" in ln for ln in marked)
+    # two liveness-heartbeat reads, and (M7-8, ADR-047) the one wall-clock label of the cadence measurement (a log line, never a decision)
+    assert len([ln for ln in marked if "heartbeat" in ln]) == 2
+    assert len(marked) == 3 and all("heartbeat" in ln or "cadence" in ln for ln in marked)
 
 
 # ---- routes ----------------------------------------------------------------------------------------

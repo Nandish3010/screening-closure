@@ -1,0 +1,157 @@
+{
+  "cells": [],
+  "seeding": {},
+  "closure_population": [
+    {
+      "cases": 1000000,
+      "events": 6304732,
+      "pre_swept": 1156589,
+      "mark_overdue": 78833,
+      "escalate": 141395,
+      "by_state": {
+        "consent_withdrawn": 149822,
+        "patient_acknowledged": 850178
+      },
+      "size": 1000000,
+      "scenario": "daily",
+      "processes": 4,
+      "base_seed": 7600001,
+      "database": "closure",
+      "migrate_seconds": 1.6693957149982452e-07,
+      "insert_seconds": 181.14588054199703,
+      "vacuum_analyze_seconds": 3.0156883330782875,
+      "total_seconds": 184.1615690420149,
+      "cases_per_second": 5520.412592370043,
+      "now": "2026-10-30T10:58:00+00:00",
+      "expected_emitted": 220228,
+      "state_weights": {
+        "patient_acknowledged": 0.85,
+        "consent_withdrawn": 0.15
+      },
+      "worklist_seed": {
+        "cases": 300,
+        "events": 1860,
+        "by_state": {
+          "lost_contact": 300
+        },
+        "total_seconds": 3.422804250032641
+      },
+      "count_before": {
+        "cases": 0,
+        "events": 0
+      },
+      "count_after": {
+        "cases": 1000300,
+        "events": 6462487
+      },
+      "sizes": {
+        "database": "closure",
+        "database_bytes": 2397625367,
+        "tables": {
+          "cases": {
+            "rows": 1000300,
+            "heap_bytes": 142802944,
+            "total_bytes": 392658944,
+            "index_bytes": 249757696,
+            "heap_bytes_per_row": 142.76011596521045,
+            "total_bytes_per_row": 392.54118164550636
+          },
+          "events": {
+            "rows": 6462534,
+            "heap_bytes": 1176305664,
+            "total_bytes": 1994219520,
+            "index_bytes": 817553408,
+            "heap_bytes_per_row": 182.01926117526037,
+            "total_bytes_per_row": 308.58166781018093
+          }
+        },
+        "relations": [
+          {
+            "name": "cases_idle_since_idx",
+            "kind": "index",
+            "relation_bytes": 53542912,
+            "total_bytes_incl_indexes_toast": 53542912,
+            "on_table": "cases"
+          },
+          {
+            "name": "cases_idle_uncomputed_idx",
+            "kind": "index",
+            "relation_bytes": 8192,
+            "total_bytes_incl_indexes_toast": 8192,
+            "on_table": "cases"
+          },
+          {
+            "name": "cases_next_due_idx",
+            "kind": "index",
+            "relation_bytes": 24608768,
+            "total_bytes_incl_indexes_toast": 24608768,
+            "on_table": "cases"
+          },
+          {
+            "name": "cases_pkey",
+            "kind": "index",
+            "relation_bytes": 40476672,
+            "total_bytes_incl_indexes_toast": 40476672,
+            "on_table": "cases"
+          },
+          {
+            "name": "cases_state_id_idx",
+            "kind": "index",
+            "relation_bytes": 77602816,
+            "total_bytes_incl_indexes_toast": 77602816,
+            "on_table": "cases"
+          },
+          {
+            "name": "cases_updated_id_idx",
+            "kind": "index",
+            "relation_bytes": 53518336,
+            "total_bytes_incl_indexes_toast": 53542912,
+            "on_table": "cases"
+          },
+          {
+            "name": "events_case_id_seq_key",
+            "kind": "index",
+            "relation_bytes": 342286336,
+            "total_bytes_incl_indexes_toast": 342286336,
+            "on_table": "events"
+          },
+          {
+            "name": "events_event_id_key",
+            "kind": "index",
+            "relation_bytes": 274186240,
+            "total_bytes_incl_indexes_toast": 274186240,
+            "on_table": "events"
+          },
+          {
+            "name": "events_genesis_patient_ref_idx",
+            "kind": "index",
+            "relation_bytes": 10084352,
+            "total_bytes_incl_indexes_toast": 10084352,
+            "on_table": "events"
+          },
+          {
+            "name": "events_pkey",
+            "kind": "index",
+            "relation_bytes": 190996480,
+            "total_bytes_incl_indexes_toast": 190996480,
+            "on_table": "events"
+          },
+          {
+            "name": "cases",
+            "kind": "table",
+            "relation_bytes": 142802944,
+            "total_bytes_incl_indexes_toast": 392658944,
+            "on_table": ""
+          },
+          {
+            "name": "events",
+            "kind": "table",
+            "relation_bytes": 1176305664,
+            "total_bytes_incl_indexes_toast": 1994219520,
+            "on_table": ""
+          }
+        ]
+      }
+    }
+  ]
+}

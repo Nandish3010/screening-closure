@@ -78,6 +78,9 @@ ROUTE_POLICY: dict[tuple[str, str], object] = {
     # They are how the automation acts: the events are appended inside the API process, never posted by a token.
     ("POST", "/scheduler/automation-scan"): SCHEDULER | AUTOMATION,
     ("POST", "/scheduler/evidence-scan"): SCHEDULER | AUTOMATION,
+    # The agency run on the scheduler's own timer (M7-8, ADR-047): the scheduler only. An agency run starts nothing the
+    # supervisor's `POST /agency/run` could not; this route is fenced to the current leader.
+    ("POST", "/scheduler/agency-run"): SCHEDULER,
     # The watchdog service's scan (idle cases, scheduler liveness); its own token, nobody else.
     ("POST", "/watchdog/scan"): WATCHDOG,
     # Liveness for the dashboard (A11): coordinator and supervisor; the watchdog may read it too.
