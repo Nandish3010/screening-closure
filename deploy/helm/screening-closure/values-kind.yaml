@@ -37,8 +37,13 @@ api:
 scheduler:
   replicas: 2
 
+# The watchdog (POST /watchdog/scan, api/app/watchdog.py) replays EVERY open case: there is no due-index, so a scan is O(open cases).
+# Measured at ~1.04M cases: 224-230 s per scan. At the production interval of 10 s scans pile up on the API pods, so here the
+# watchdog runs every 15 min (900 s) instead. Same reason for the agency layer: its pass reads the whole case table every 6th sweep
+# and OOM-kills an API pod at this population, so app.agencyEverySweeps is "0" (off) for the benchmark.
 watchdog:
   replicas: 1
+  intervalSeconds: 900
 
 app:
   env: production
@@ -47,6 +52,7 @@ app:
   fhirBaseUrl: http://fhir.invalid/fhir
   fhirVerifyEvidence: "true"
   fhirProjection: "false"
+  agencyEverySweeps: "0"     # agency pass off at this population (full-table read OOMs an API pod), see the watchdog note above
 
 networkPolicy:
   enabled: true

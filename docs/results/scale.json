@@ -1,0 +1,975 @@
+{
+  "assumptions_file": "tools/k8s/capacity_inputs.yaml",
+  "capacity_plan": {
+    "inputs": {
+      "api_pods_measured": 3,
+      "bytes_per_case_lifetime": 4335.673344,
+      "database_bytes_per_1m_cases": 2274180119,
+      "db_bytes_per_case_seeded": 2274.180119,
+      "events_per_case_seeded": 5.804246,
+      "full_replay_points": [
+        [
+          100000,
+          9.883060834021308
+        ],
+        [
+          500000,
+          74.18241779098753
+        ],
+        [
+          1000000,
+          230.44405887497123
+        ]
+      ],
+      "lifetime_events_per_case": 11.608492,
+      "max_passing_rate": 175.0,
+      "mean_open_days": 167.043375,
+      "open_curve": {
+        "follow_up_days": 360,
+        "points": [
+          [
+            0,
+            1.0
+          ],
+          [
+            30,
+            0.9289
+          ],
+          [
+            60,
+            0.57475
+          ],
+          [
+            90,
+            0.423475
+          ],
+          [
+            360,
+            0.32157500000000006
+          ]
+        ]
+      },
+      "peg": 3.6725,
+      "per_pod_rate_derated": 29.166666666666668,
+      "per_pod_rate_measured": 58.333333333333336,
+      "safety_factor": 2.0,
+      "sweep_points": {
+        "1": [
+          [
+            100000,
+            2.907919583027251
+          ],
+          [
+            500000,
+            20.27712733403314
+          ],
+          [
+            1000000,
+            64.17784237500746
+          ]
+        ],
+        "4": [
+          [
+            100000,
+            1.0623746250057593
+          ],
+          [
+            500000,
+            8.376650291029364
+          ],
+          [
+            1000000,
+            38.14084595791064
+          ]
+        ]
+      }
+    },
+    "scenarios": {
+      "base": {
+        "aks_free_tier_alternative_usd_month": 1457.7,
+        "aks_free_tier_unverified_meter_usd_month": 36.5,
+        "aks_lines": [
+          [
+            "AKS Standard tier (Uptime SLA)",
+            73.0
+          ],
+          [
+            "Node VMs (node pool above)",
+            258.42
+          ],
+          [
+            "Node OS disks, Premium SSD P10 LRS",
+            64.51
+          ],
+          [
+            "Standard Load Balancer",
+            18.25
+          ],
+          [
+            "Application Gateway WAF v2 (capacity units: small 2, base 2, high 4)",
+            374.49
+          ],
+          [
+            "PostgreSQL compute, zone-redundant HA (primary + standby)",
+            633.64
+          ],
+          [
+            "PostgreSQL storage (primary + standby)",
+            35.33
+          ],
+          [
+            "PostgreSQL backup above the allowance",
+            0.0
+          ],
+          [
+            "Log Analytics ingestion + billed retention",
+            71.08
+          ],
+          [
+            "Key Vault operations",
+            1.98
+          ],
+          [
+            "Egress, Microsoft network",
+            0.0
+          ]
+        ],
+        "aks_total_aed_year": 67458,
+        "aks_total_usd_month": 1530.7,
+        "aks_total_usd_year": 18368.4,
+        "amd_node_alternative_saving_usd_month": 26.28,
+        "annual_new_cases": 24596,
+        "api_cpu_limit": 1.0,
+        "api_replicas": 3,
+        "api_replicas_for_load": 1,
+        "ca_api_replicas": 3,
+        "ca_gib": 7.5,
+        "ca_lines": [
+          [
+            "Container Apps vCPU, always on, active rate (vCPU: see row below)",
+            236.52
+          ],
+          [
+            "Container Apps memory, always on (GiB: see row below)",
+            59.13
+          ],
+          [
+            "Container Apps requests",
+            0.0
+          ],
+          [
+            "Container Apps monthly free grant (per subscription, if unused elsewhere)",
+            -5.4
+          ],
+          [
+            "Container Apps environment hour (applicability unverified)",
+            104.39
+          ],
+          [
+            "Application Gateway WAF v2 (capacity units: small 2, base 2, high 4)",
+            374.49
+          ],
+          [
+            "PostgreSQL compute, zone-redundant HA (primary + standby)",
+            633.64
+          ],
+          [
+            "PostgreSQL storage (primary + standby)",
+            35.33
+          ],
+          [
+            "PostgreSQL backup above the allowance",
+            0.0
+          ],
+          [
+            "Log Analytics ingestion + billed retention",
+            71.08
+          ],
+          [
+            "Key Vault operations",
+            1.98
+          ],
+          [
+            "Egress, Microsoft network",
+            0.0
+          ]
+        ],
+        "ca_total_aed_year": 66597,
+        "ca_total_usd_month": 1511.16,
+        "ca_total_usd_year": 18133.9,
+        "ca_vcpu": 3.75,
+        "database_gb_retained": 0.49658222854614253,
+        "db_storage_gb": 128,
+        "db_storage_gb_minimum": 32,
+        "db_vcores": 4,
+        "db_vcores_minimum": 2,
+        "events_per_day": 782.2533403616438,
+        "headroom_vs_measured_envelope": 386.5755304543632,
+        "internet_routing_egress_saving_usd_month": 0.0,
+        "label": "base",
+        "lifetime_events_per_case": 11.608492,
+        "node_memory_limits_gib": 4.875,
+        "node_requests_cpu": 1.6500000000000001,
+        "node_sku": "Standard_D2s_v5",
+        "nodes": 3,
+        "open_basis": "simulated_duration",
+        "open_cases_central": 11256,
+        "open_cases_for_sizing": 11256,
+        "open_cases_upper_bound": 73788,
+        "pathways": "all",
+        "requests_per_s_average": 0.045269290530187724,
+        "requests_per_s_peak": 0.4526929053018772,
+        "retained_cases": 122980,
+        "scheduler_replicas": 2,
+        "standard_gateway_instead_of_waf_saving_usd_month": 166.29,
+        "sweep_seconds_chosen": 0.6546561676208287,
+        "sweep_seconds_derated_1_worker": 0.6546561676208287,
+        "sweep_seconds_derated_4_workers": 0.23917102269377566,
+        "sweep_workers": 1,
+        "volume": "central",
+        "watchdog_replicas": 1,
+        "watchdog_scan_seconds_derated": 2.2249606790117578,
+        "watchdog_scan_seconds_derated_at_upper_bound": 14.585025856415285
+      },
+      "high": {
+        "aks_free_tier_alternative_usd_month": 2570.9,
+        "aks_free_tier_unverified_meter_usd_month": 36.5,
+        "aks_lines": [
+          [
+            "AKS Standard tier (Uptime SLA)",
+            73.0
+          ],
+          [
+            "Node VMs (node pool above)",
+            514.65
+          ],
+          [
+            "Node OS disks, Premium SSD P10 LRS",
+            64.51
+          ],
+          [
+            "Standard Load Balancer",
+            18.25
+          ],
+          [
+            "Application Gateway WAF v2 (capacity units: small 2, base 2, high 4)",
+            402.23
+          ],
+          [
+            "PostgreSQL compute, zone-redundant HA (primary + standby)",
+            1267.28
+          ],
+          [
+            "PostgreSQL storage (primary + standby)",
+            70.66
+          ],
+          [
+            "PostgreSQL backup above the allowance",
+            0.0
+          ],
+          [
+            "Log Analytics ingestion + billed retention",
+            213.24
+          ],
+          [
+            "Key Vault operations",
+            1.98
+          ],
+          [
+            "Egress, Microsoft network",
+            18.1
+          ]
+        ],
+        "aks_total_aed_year": 116517,
+        "aks_total_usd_month": 2643.9,
+        "aks_total_usd_year": 31726.78,
+        "amd_node_alternative_saving_usd_month": 50.37,
+        "annual_new_cases": 77524,
+        "api_cpu_limit": 4.0,
+        "api_replicas": 3,
+        "api_replicas_for_load": 1,
+        "ca_api_replicas": 3,
+        "ca_gib": 25.5,
+        "ca_lines": [
+          [
+            "Container Apps vCPU, always on, active rate (vCPU: see row below)",
+            804.17
+          ],
+          [
+            "Container Apps memory, always on (GiB: see row below)",
+            201.04
+          ],
+          [
+            "Container Apps requests",
+            0.0
+          ],
+          [
+            "Container Apps monthly free grant (per subscription, if unused elsewhere)",
+            -5.4
+          ],
+          [
+            "Container Apps environment hour (applicability unverified)",
+            104.39
+          ],
+          [
+            "Application Gateway WAF v2 (capacity units: small 2, base 2, high 4)",
+            402.23
+          ],
+          [
+            "PostgreSQL compute, zone-redundant HA (primary + standby)",
+            1267.28
+          ],
+          [
+            "PostgreSQL storage (primary + standby)",
+            70.66
+          ],
+          [
+            "PostgreSQL backup above the allowance",
+            0.0
+          ],
+          [
+            "Log Analytics ingestion + billed retention",
+            213.24
+          ],
+          [
+            "Key Vault operations",
+            1.98
+          ],
+          [
+            "Egress, Microsoft network",
+            18.1
+          ]
+        ],
+        "ca_total_aed_year": 135634,
+        "ca_total_usd_month": 3077.69,
+        "ca_total_usd_year": 36932.23,
+        "ca_vcpu": 12.75,
+        "database_gb_retained": 1.5651748530578613,
+        "db_storage_gb": 256,
+        "db_storage_gb_minimum": 32,
+        "db_vcores": 8,
+        "db_vcores_minimum": 2,
+        "events_per_day": 2465.5800926246575,
+        "headroom_vs_measured_envelope": 122.6486216791641,
+        "internet_routing_egress_saving_usd_month": 6.1,
+        "label": "high",
+        "lifetime_events_per_case": 11.608492,
+        "node_memory_limits_gib": 4.875,
+        "node_requests_cpu": 1.6500000000000001,
+        "node_sku": "Standard_D4s_v5",
+        "nodes": 3,
+        "open_basis": "retained_upper_bound",
+        "open_cases_central": 35479,
+        "open_cases_for_sizing": 232572,
+        "open_cases_upper_bound": 232572,
+        "pathways": "all",
+        "requests_per_s_average": 0.14268403313800102,
+        "requests_per_s_peak": 1.4268403313800102,
+        "retained_cases": 387620,
+        "scheduler_replicas": 2,
+        "standard_gateway_instead_of_waf_saving_usd_month": 178.56,
+        "sweep_seconds_chosen": 6.973090017991925,
+        "sweep_seconds_derated_1_worker": 17.329192215886266,
+        "sweep_seconds_derated_4_workers": 6.973090017991925,
+        "sweep_workers": 4,
+        "volume": "high",
+        "watchdog_replicas": 1,
+        "watchdog_scan_seconds_derated": 62.38759342053724,
+        "watchdog_scan_seconds_derated_at_upper_bound": 62.38759342053724
+      },
+      "small": {
+        "aks_free_tier_alternative_usd_month": 1087.68,
+        "aks_free_tier_unverified_meter_usd_month": 36.5,
+        "aks_lines": [
+          [
+            "AKS Standard tier (Uptime SLA)",
+            73.0
+          ],
+          [
+            "Node VMs (node pool above)",
+            258.42
+          ],
+          [
+            "Node OS disks, Premium SSD P10 LRS",
+            64.51
+          ],
+          [
+            "Standard Load Balancer",
+            18.25
+          ],
+          [
+            "Application Gateway WAF v2 (capacity units: small 2, base 2, high 4)",
+            374.49
+          ],
+          [
+            "PostgreSQL compute, zone-redundant HA (primary + standby)",
+            316.82
+          ],
+          [
+            "PostgreSQL storage (primary + standby)",
+            17.66
+          ],
+          [
+            "PostgreSQL backup above the allowance",
+            0.0
+          ],
+          [
+            "Log Analytics ingestion + billed retention",
+            35.54
+          ],
+          [
+            "Key Vault operations",
+            1.98
+          ],
+          [
+            "Egress, Microsoft network",
+            0.0
+          ]
+        ],
+        "aks_total_aed_year": 51151,
+        "aks_total_usd_month": 1160.68,
+        "aks_total_usd_year": 13928.11,
+        "amd_node_alternative_saving_usd_month": 26.28,
+        "annual_new_cases": 17696,
+        "api_cpu_limit": 1.0,
+        "api_replicas": 3,
+        "api_replicas_for_load": 1,
+        "ca_api_replicas": 3,
+        "ca_gib": 7.5,
+        "ca_lines": [
+          [
+            "Container Apps vCPU, always on, active rate (vCPU: see row below)",
+            236.52
+          ],
+          [
+            "Container Apps memory, always on (GiB: see row below)",
+            59.13
+          ],
+          [
+            "Container Apps requests",
+            0.0
+          ],
+          [
+            "Container Apps monthly free grant (per subscription, if unused elsewhere)",
+            -5.4
+          ],
+          [
+            "Container Apps environment hour (applicability unverified)",
+            104.39
+          ],
+          [
+            "Application Gateway WAF v2 (capacity units: small 2, base 2, high 4)",
+            374.49
+          ],
+          [
+            "PostgreSQL compute, zone-redundant HA (primary + standby)",
+            316.82
+          ],
+          [
+            "PostgreSQL storage (primary + standby)",
+            17.66
+          ],
+          [
+            "PostgreSQL backup above the allowance",
+            0.0
+          ],
+          [
+            "Log Analytics ingestion + billed retention",
+            35.54
+          ],
+          [
+            "Key Vault operations",
+            1.98
+          ],
+          [
+            "Egress, Microsoft network",
+            0.0
+          ]
+        ],
+        "ca_total_aed_year": 50290,
+        "ca_total_usd_month": 1141.13,
+        "ca_total_usd_year": 13693.61,
+        "ca_vcpu": 3.75,
+        "database_gb_retained": 0.3572743176269531,
+        "db_storage_gb": 64,
+        "db_storage_gb_minimum": 32,
+        "db_vcores": 2,
+        "db_vcores_minimum": 2,
+        "events_per_day": 562.805135430137,
+        "headroom_vs_measured_envelope": 537.3085300099185,
+        "internet_routing_egress_saving_usd_month": 0.0,
+        "label": "small",
+        "lifetime_events_per_case": 11.608492,
+        "node_memory_limits_gib": 4.875,
+        "node_requests_cpu": 1.6500000000000001,
+        "node_sku": "Standard_D2s_v5",
+        "nodes": 3,
+        "open_basis": "simulated_duration",
+        "open_cases_central": 8099,
+        "open_cases_for_sizing": 8099,
+        "open_cases_upper_bound": 53088,
+        "pathways": [
+          "FIT positives"
+        ],
+        "requests_per_s_average": 0.03256974163368848,
+        "requests_per_s_peak": 0.3256974163368848,
+        "retained_cases": 88480,
+        "scheduler_replicas": 2,
+        "standard_gateway_instead_of_waf_saving_usd_month": 166.29,
+        "sweep_seconds_chosen": 0.4710032339493488,
+        "sweep_seconds_derated_1_worker": 0.4710032339493488,
+        "sweep_seconds_derated_4_workers": 0.17207555771625685,
+        "sweep_workers": 1,
+        "volume": "central",
+        "watchdog_replicas": 1,
+        "watchdog_scan_seconds_derated": 1.6007848502110937,
+        "watchdog_scan_seconds_derated_at_upper_bound": 10.493438671130464
+      }
+    }
+  },
+  "generated_by": "tools/k8s/render_scale.py",
+  "machine_spec": {
+    "docker": {
+      "cpus": 10,
+      "memory_bytes": 8319504384,
+      "os": "Docker Desktop",
+      "version": "29.8.2"
+    },
+    "helm": "v4.3.1+gc0d08d0",
+    "host": {
+      "cpu_model": "Apple M4",
+      "logical_cores": 10,
+      "macos": "26.6.2",
+      "physical_cores": 10,
+      "ram_bytes": 17179869184
+    },
+    "kind": {
+      "node_image": "kindest/node:v1.37.0@sha256:a1ed56cfb0e7b93589bdf97c8cd566405a265939e3620fc4f5de89adff580ae5",
+      "nodes": "sc-m76-control-plane sc-m76-worker sc-m76-worker2",
+      "version": "kind v0.33.0 go1.27.0 darwin/arm64"
+    },
+    "kubernetes_version": "v1.37.0",
+    "postgres_version": "16.15 (Debian 16.15-1.pgdg13+2)"
+  },
+  "measured": {
+    "api": {
+      "max_passing_rate_per_s_watchdog_off": {
+        "lowest_failing_rate_per_s": 200.0,
+        "max_passing_rate_per_s": 175.0
+      },
+      "watchdog_on_as_deployed": {
+        "lowest_failing_rate_per_s": 20.0,
+        "max_passing_rate_per_s": null
+      }
+    },
+    "database_bytes_per_1m_cases": 2274180119,
+    "failover": {
+      "force": {
+        "acknowledged_writes_missing": {
+          "max": 0,
+          "median": 0,
+          "min": 0,
+          "p95": 0,
+          "values": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        "duplicates_total": {
+          "max": 0,
+          "median": 0,
+          "min": 0,
+          "p95": 0,
+          "values": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        "missed_sweeps": {
+          "max": 2,
+          "median": 2,
+          "min": 0,
+          "p95": 2,
+          "values": [
+            2,
+            2,
+            2,
+            2,
+            0
+          ]
+        },
+        "scheduler_events_lost": {
+          "max": 0,
+          "median": 0,
+          "min": 0,
+          "p95": 0,
+          "values": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        "scheduler_time_to_new_leader_s": {
+          "max": 29.217056274414062,
+          "median": 28.59878897666931,
+          "min": 0.9121203422546387,
+          "p95": 29.217056274414062,
+          "values": [
+            29.217056274414062,
+            28.614258766174316,
+            28.38473343849182,
+            28.59878897666931,
+            0.9121203422546387
+          ]
+        },
+        "stale_fence_write_rows_written": {
+          "max": 0,
+          "median": 0,
+          "min": 0,
+          "p95": 0,
+          "values": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        }
+      },
+      "graceful": {
+        "acknowledged_writes_missing": {
+          "max": 0,
+          "median": 0,
+          "min": 0,
+          "p95": 0,
+          "values": [
+            0,
+            0,
+            0
+          ]
+        },
+        "duplicates_total": {
+          "max": 0,
+          "median": 0,
+          "min": 0,
+          "p95": 0,
+          "values": [
+            0,
+            0,
+            0
+          ]
+        },
+        "missed_sweeps": {
+          "max": 0,
+          "median": 0,
+          "min": 0,
+          "p95": 0,
+          "values": [
+            0,
+            0,
+            0
+          ]
+        },
+        "scheduler_events_lost": {
+          "max": 0,
+          "median": 0,
+          "min": 0,
+          "p95": 0,
+          "values": [
+            0,
+            0,
+            0
+          ]
+        },
+        "scheduler_time_to_new_leader_s": {
+          "max": 1.3586995601654053,
+          "median": 0.4427814483642578,
+          "min": 0.4414937496185303,
+          "p95": 1.3586995601654053,
+          "values": [
+            1.3586995601654053,
+            0.4427814483642578,
+            0.4414937496185303
+          ]
+        },
+        "stale_fence_write_rows_written": {
+          "max": 0,
+          "median": 0,
+          "min": 0,
+          "p95": 0,
+          "values": [
+            0,
+            0,
+            0
+          ]
+        }
+      },
+      "hard": {
+        "acknowledged_writes_missing": {
+          "max": 0,
+          "median": 0,
+          "min": 0,
+          "p95": 0,
+          "values": [
+            0,
+            0,
+            0
+          ]
+        },
+        "duplicates_total": {
+          "max": 0,
+          "median": 0,
+          "min": 0,
+          "p95": 0,
+          "values": [
+            0,
+            0,
+            0
+          ]
+        },
+        "missed_sweeps": {
+          "max": 2,
+          "median": 2,
+          "min": 2,
+          "p95": 2,
+          "values": [
+            2,
+            2,
+            2
+          ]
+        },
+        "scheduler_events_lost": {
+          "max": 0,
+          "median": 0,
+          "min": 0,
+          "p95": 0,
+          "values": [
+            0,
+            0,
+            0
+          ]
+        },
+        "scheduler_time_to_new_leader_s": {
+          "max": 29.646657705307007,
+          "median": 24.723423719406128,
+          "min": 23.433446407318115,
+          "p95": 29.646657705307007,
+          "values": [
+            23.433446407318115,
+            24.723423719406128,
+            29.646657705307007
+          ]
+        },
+        "stale_fence_write_rows_written": {
+          "max": 0,
+          "median": 0,
+          "min": 0,
+          "p95": 0,
+          "values": [
+            0,
+            0,
+            0
+          ]
+        }
+      }
+    },
+    "soak": {
+      "errors": 0,
+      "p99_ms": 155.58,
+      "pass": true,
+      "requests": 375000,
+      "sweeps_completed_fraction": 0.8267
+    },
+    "sweep_seconds": [
+      {
+        "full_replay_s": 9.883060834021308,
+        "label": "baseline",
+        "open_cases": 100000,
+        "resweep_s": 0.03175395797006786,
+        "sweep_s": 2.774397457949817,
+        "workers": 1
+      },
+      {
+        "full_replay_s": null,
+        "label": "tuned",
+        "open_cases": 100000,
+        "resweep_s": 0.020459082908928394,
+        "sweep_s": 2.907919583027251,
+        "workers": 1
+      },
+      {
+        "full_replay_s": 10.752184667042457,
+        "label": "baseline",
+        "open_cases": 100000,
+        "resweep_s": 0.057474249973893166,
+        "sweep_s": 1.1531876670196652,
+        "workers": 4
+      },
+      {
+        "full_replay_s": null,
+        "label": "tuned",
+        "open_cases": 100000,
+        "resweep_s": 0.04599916597362608,
+        "sweep_s": 1.0623746250057593,
+        "workers": 4
+      },
+      {
+        "full_replay_s": 74.18241779098753,
+        "label": "baseline",
+        "open_cases": 500000,
+        "resweep_s": 0.08442941692192107,
+        "sweep_s": 31.022750666947104,
+        "workers": 1
+      },
+      {
+        "full_replay_s": null,
+        "label": "tuned",
+        "open_cases": 500000,
+        "resweep_s": 0.058477874961681664,
+        "sweep_s": 20.27712733403314,
+        "workers": 1
+      },
+      {
+        "full_replay_s": 94.06459970900323,
+        "label": "baseline",
+        "open_cases": 500000,
+        "resweep_s": 0.19230991695076227,
+        "sweep_s": 14.654197458992712,
+        "workers": 4
+      },
+      {
+        "full_replay_s": null,
+        "label": "tuned",
+        "open_cases": 500000,
+        "resweep_s": 0.14929420803673565,
+        "sweep_s": 8.376650291029364,
+        "workers": 4
+      },
+      {
+        "full_replay_s": 230.44405887497123,
+        "label": "baseline",
+        "open_cases": 1000000,
+        "resweep_s": 0.786032082978636,
+        "sweep_s": 87.29903875000309,
+        "workers": 1
+      },
+      {
+        "full_replay_s": null,
+        "label": "tuned",
+        "open_cases": 1000000,
+        "resweep_s": 0.19728720805142075,
+        "sweep_s": 64.17784237500746,
+        "workers": 1
+      },
+      {
+        "full_replay_s": null,
+        "label": "tuned+drop_duplicate_index",
+        "open_cases": 1000000,
+        "resweep_s": 0.10205491702072322,
+        "sweep_s": 52.76911124994513,
+        "workers": 1
+      },
+      {
+        "full_replay_s": null,
+        "label": "tuned-repeat2",
+        "open_cases": 1000000,
+        "resweep_s": 0.3000473330030218,
+        "sweep_s": 60.05475741694681,
+        "workers": 1
+      },
+      {
+        "full_replay_s": null,
+        "label": "tuned-repeat3",
+        "open_cases": 1000000,
+        "resweep_s": 0.28391491691581905,
+        "sweep_s": 79.42826616705861,
+        "workers": 1
+      },
+      {
+        "full_replay_s": null,
+        "label": "tuned-steady",
+        "open_cases": 1000000,
+        "resweep_s": 0.20814775000326335,
+        "sweep_s": 65.9841766669415,
+        "workers": 1
+      },
+      {
+        "full_replay_s": 223.99195341707673,
+        "label": "baseline",
+        "open_cases": 1000000,
+        "resweep_s": 0.6827539999503642,
+        "sweep_s": 33.63774879206903,
+        "workers": 4
+      },
+      {
+        "full_replay_s": null,
+        "label": "tuned",
+        "open_cases": 1000000,
+        "resweep_s": 0.27302029205020517,
+        "sweep_s": 38.14084595791064,
+        "workers": 4
+      },
+      {
+        "full_replay_s": null,
+        "label": "tuned+drop_duplicate_index",
+        "open_cases": 1000000,
+        "resweep_s": 0.2926619170466438,
+        "sweep_s": 28.49247858300805,
+        "workers": 4
+      },
+      {
+        "full_replay_s": null,
+        "label": "tuned-repeat2",
+        "open_cases": 1000000,
+        "resweep_s": 0.9405732499435544,
+        "sweep_s": 39.62511462497059,
+        "workers": 4
+      },
+      {
+        "full_replay_s": null,
+        "label": "tuned-repeat3",
+        "open_cases": 1000000,
+        "resweep_s": 1.1284142499789596,
+        "sweep_s": 58.99982779205311,
+        "workers": 4
+      },
+      {
+        "full_replay_s": null,
+        "label": "tuned-repeat2",
+        "open_cases": 1000000,
+        "resweep_s": 0.9626789171015844,
+        "sweep_s": 43.28130141692236,
+        "workers": 8
+      }
+    ]
+  },
+  "pricing": {
+    "filter": "armRegionName eq 'uaenorth'",
+    "label": "ESTIMATE from public list prices, excluding tax, support plans, reservations and DoH-specific hosting requirements",
+    "retrieved": "2026-10-29",
+    "source_url": "https://prices.azure.com/api/retail/prices"
+  },
+  "run_commits": {
+    "failover": "9bce12490b499289312ebb95270b390023fa241e",
+    "latency": "9f2c25d4f0611b00b2e7335963f68d0ccb508cd7",
+    "soak": "a0a0f4fdce1de59b9af66a56b41ed3c8efb426d6",
+    "sweep": "9f2c25d4f0611b00b2e7335963f68d0ccb508cd7"
+  },
+  "schema_version": 1,
+  "sources": {
+    "failover": "docs/results/scale/failover.json",
+    "inputs": "tools/k8s/capacity_inputs.yaml",
+    "latency": "docs/results/scale/latency.json",
+    "simulator": "docs/results/results.json",
+    "soak": "docs/results/scale/soak.json",
+    "sweep": "docs/results/scale/sweep.json"
+  }
+}

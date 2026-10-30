@@ -57,6 +57,9 @@ tolerations: {{ toYaml . | nindent 2 }}
 - { name: LEADER_LEASE_TTL_SECONDS, value: {{ .Values.app.leaderLeaseTtlSeconds | quote }} }
 - { name: REQUIRE_LEADER_FENCE, value: {{ .Values.app.requireLeaderFence | quote }} }
 - { name: SWEEP_WORKERS, value: {{ .Values.api.sweepWorkers | quote }} }
+{{- if ne (toString .Values.app.agencyEverySweeps) "" }}
+- { name: AGENCY_EVERY_SWEEPS, value: {{ .Values.app.agencyEverySweeps | quote }} }
+{{- end }}
 - { name: CORS_ALLOW_ORIGINS, value: {{ .Values.app.corsAllowOrigins | quote }} }
 - { name: LLM_PROVIDER, value: {{ .Values.app.llmProvider | quote }} }
 - { name: LOG_FORMAT, value: {{ .Values.app.logFormat | quote }} }

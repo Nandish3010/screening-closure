@@ -78,6 +78,10 @@ app:
   fhirProjection: "true"
   automationEnabled: "true"
   leaderLeaseTtlSeconds: "30"
+  # Run the agency layer (supervisor -> heads -> executioners) after every N-th scheduler sweep; "0" = never. Empty = not rendered,
+  # the API's code default applies (6). The agency pass reads the whole case table, so on a very large population it can exhaust
+  # an API pod's memory (M7-6: OOM at ~1M cases in a 768Mi pod).
+  agencyEverySweeps: ""
   requireLeaderFence: "true"    # scheduler calls without a current leader token are refused
   logFormat: json
   corsAllowOrigins: ""          # the web app's origin(s), comma separated

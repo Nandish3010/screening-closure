@@ -83,7 +83,7 @@ METHOD = (
     "timeout or HTTP 5xx it retries the same request (same id) after 0.25 s, up to 90 s. (4) t0 = the instant the "
     "`kubectl delete pod <scheduler leader> <api-background leader>` command is issued (force: --grace-period=0 --force "
     "--wait=false, i.e. no graceful lease release; graceful: ordinary delete with the 30 s grace period, the processes release "
-    "their leases on SIGTERM). Leader identity comes from the leader_lease table (scheduler holder = pod name; the "
+    "their leases on SIGTERM; hard: both containers are SIGKILLed through the node's runtime (crictl stop --timeout 0) and then the pods are force-deleted, t0 = the instant the SIGKILL commands were issued, so no process can release a lease; note that a plain --grace-period=0 delete still gives a container ~2 s between SIGTERM and SIGKILL, in which a process may release its lease: every run records lease_released_by_killed_holder). Leader identity comes from the leader_lease table (scheduler holder = pod name; the "
     "api-background holder is a random id mapped to its pod through the 'is now the leader' log line). (5) A poller reads "
     "leader_lease and the scheduler row of heartbeats every ~150 ms with the DATABASE clock (clock_timestamp()); t0 is "
     "converted to the database clock with the median host-minus-database offset of the run. time_to_new_leader_s = first poll "
@@ -107,9 +107,14 @@ METHOD = (
     "seeded and client case; every acknowledged client request exists exactly once; every request that needed a retry produced "
     "exactly one event; every case replays (contiguous seq, replay_model succeeds, replay() state equals cases.current_state). "
     "(9) Fencing: every (holder, token) the poller saw for each lease; tokens must increase strictly; 409s are counted from the "
-    "scheduler logs and the api access logs; a stale-token probe (killed holder, killed token) is sent to POST /scheduler/sweep "
-    "and /scheduler/heartbeat after recovery and must get 409. The event log does NOT record the holder or token of the "
-    "scheduler that wrote an event, so 'no write from a deposed leader' is shown by timing: every scheduler event's database "
+    "scheduler logs and the api access logs (organic = before the drill's own probes; 'sweep stopped: stale leader' log lines are "
+    "sweeps the in-transaction fence stopped mid-way); a stale-token probe (killed holder, killed token) is sent to POST "
+    "/scheduler/sweep and /scheduler/heartbeat after recovery and must get 409. The write-time fence (M7-1/F10: the store "
+    "re-checks the lease with SELECT ... FOR SHARE inside the write transaction) is exercised directly: a due scheduler event "
+    "is appended to a probe case through the real PostgresEventStore with three stale fences (killed holder+token, current holder "
+    "+ old token, killed holder + current token), each must raise StaleLeader and write zero rows, and a control append with the "
+    "current fence must succeed. The event log does NOT record the holder or token of the "
+    "scheduler that wrote an event, so 'no write from a deposed leader' is also shown by timing: every scheduler event's database "
     "created_at is placed inside the validity window of one observed lease token (acquired-at to last observed expiry) and the "
     "events outside every window are counted (strict, and with a tolerance of the longest observed loop, because the fence is "
     "checked when a sweep request ENTERS the API, not when it commits). (10) Client impact: attempts, error attempts "
@@ -182,6 +187,7 @@ def list_pods(label: str) -> list[dict]:
             "phase": it["status"].get("phase"),
             "restarts": sum(c.get("restartCount", 0) for c in it["status"].get("containerStatuses", [])),
             "created": it["metadata"]["creationTimestamp"],
+            "node": it["spec"].get("nodeName"),
         })
     return out
 
@@ -293,7 +299,8 @@ class Poller(threading.Thread):
         self.stop_event = threading.Event()
         self.latest: dict | None = None
         self.lease_events: list[dict] = []
-        self.lease_last_exp: dict[tuple[str, int], float] = {}
+        self.lease_last_exp: dict[tuple[str, int], float] = {}   # greatest expires_at seen for a (lease, token)
+        self.lease_final_exp: dict[tuple[str, int], float] = {}  # latest expires_at seen (lower than the greatest = released early)
         self.beats: list[dict] = []
         self.offsets: list[float] = []
         self.samples = 0
@@ -328,6 +335,7 @@ class Poller(threading.Thread):
                 cur[row["name"]] = (row["holder"], int(row["token"]), float(row["exp"]))
                 key = (row["name"], int(row["token"]))
                 self.lease_last_exp[key] = max(self.lease_last_exp.get(key, 0.0), float(row["exp"]))
+                self.lease_final_exp[key] = float(row["exp"])
                 prev = self._last_lease.get(row["name"])
                 if prev is None or (prev[0], prev[1]) != (row["holder"], int(row["token"])):
                     self.lease_events.append({"db_t": db_now, "name": row["name"], "holder": row["holder"],
@@ -765,6 +773,67 @@ def verify_database(dsn: str, pathway, calendar, seeds: list[dict], client_cases
 
 
 # ---------------------------------------------------------------------------------------------------------------------
+# the write-time fence, exercised directly (F10: api/app/leader.py check_fence_pg, called inside the event store's transaction)
+# ---------------------------------------------------------------------------------------------------------------------
+
+def stale_fence_probe(dsn: str, pathway, calendar, run_ns: uuid.UUID, old_holder: str, old_token: int) -> dict:
+    """Appends a due scheduler event to a fresh probe case through the REAL event store (`PostgresEventStore.append_many`) with
+    (1) the killed leader's fence, (2) the current holder with the killed token, (3) the killed holder with the current token:
+    each must raise `StaleLeader` and leave the event log unchanged. Then (4) with the current fence, as a control: it must
+    succeed, so the three refusals are not an artefact of the probe (a missing case, a bad event). The probe case is not part
+    of the checked seeded / client cases."""
+    from psycopg_pool import ConnectionPool
+
+    from app.leader import Fence, StaleLeader
+    from app.store_pg import PostgresEventStore
+
+    now = datetime.now(UTC)
+    rng = random.Random(7)
+    seeds, rows_cases, rows_events = build_seed(pathway, calendar, uuid.uuid5(run_ns, "probe"), 1, now - timedelta(seconds=600), 6.0, rng)
+    case = seeds[0]
+    rows_cases = [rc[:5] + (NEVER,) + rc[6:] for rc in rows_cases]  # the live sweep skips it (next_due_at says nothing is due)
+    insert_seed(dsn, rows_cases, rows_events)
+    model = replay_model(case["seed_events"], pathway)
+    planned = plan_case(case["case_id"], model, pathway, calendar, now)
+    out: dict = {"probe_case": str(case["case_id"]), "events_planned": len(planned), "attempts": []}
+    with psycopg.connect(dsn, autocommit=True) as conn:
+        cur_lease = conn.execute("SELECT holder, token FROM leader_lease WHERE name = 'scheduler'").fetchone()
+        count = lambda: conn.execute("SELECT count(*) FROM events WHERE case_id = %s", (case["case_id"],)).fetchone()[0]  # noqa: E731
+        cur_holder, current_fence_no = cur_lease[0], int(cur_lease[1])
+        pool = ConnectionPool(dsn, min_size=1, max_size=2, open=True)
+        try:
+            pool.wait(timeout=30)
+            store = PostgresEventStore(pool, calendar=calendar)
+            variants = [("killed holder, killed token", Fence("scheduler", old_holder, old_token), True),
+                        ("current holder, killed (old) token", Fence("scheduler", cur_holder, old_token), True),
+                        ("killed holder, current token", Fence("scheduler", old_holder, current_fence_no), True),
+                        ("control: current holder, current token", Fence("scheduler", cur_holder, current_fence_no), False)]
+            for label, fence, must_refuse in variants:
+                before = count()
+                try:
+                    store.append_many(planned, pathway, fence=fence)
+                    outcome = "accepted"
+                except StaleLeader:
+                    outcome = "StaleLeader"
+                except Exception as exc:  # noqa: BLE001
+                    outcome = f"{type(exc).__name__}: {exc}"[:120]
+                out["attempts"].append({"fence": label, "holder": fence.holder, "token": fence.token, "outcome": outcome,
+                                        "events_before": before, "events_after": count(), "expected_refusal": must_refuse})
+        finally:
+            pool.close()
+    stale = [a for a in out["attempts"] if a["expected_refusal"]]
+    ctrl = [a for a in out["attempts"] if not a["expected_refusal"]]
+    out["stale_fence_attempts"] = len(stale)
+    out["stale_fence_refused"] = sum(a["outcome"] == "StaleLeader" for a in stale)
+    out["stale_fence_rows_written"] = sum(a["events_after"] - a["events_before"] for a in stale)
+    out["control_accepted"] = all(a["outcome"] == "accepted" and a["events_after"] - a["events_before"] == len(planned) for a in ctrl)
+    out["ok"] = out["stale_fence_refused"] == len(stale) and out["stale_fence_rows_written"] == 0 and out["control_accepted"] and len(planned) > 0
+    out["summary"] = (f"{out['stale_fence_refused']}/{len(stale)} stale fences refused with StaleLeader, {out['stale_fence_rows_written']} rows "
+                      f"written by them, control write accepted={out['control_accepted']}")
+    return out
+
+
+# ---------------------------------------------------------------------------------------------------------------------
 # one iteration
 # ---------------------------------------------------------------------------------------------------------------------
 
@@ -793,7 +862,7 @@ def wait_healthy(dsn: str, settle: float = 30.0, timeout: float = 420.0) -> dict
                 api_map = api_holder_pods(api)
                 if L["api-background"][1] in api_map:
                     return {"scheduler_holder": L["scheduler"][1], "scheduler_token": L["scheduler"][2],
-                            "api_background_holder": L["api-background"][1], "api_background_token": L["api-background"][2],
+                            "background_lease_pod": L["api-background"][1], "api_background_token": L["api-background"][2],
                             "api_background_pod": api_map[L["api-background"][1]],
                             "scheduler_restarts": sum(p["restarts"] for p in sch), "api_restarts": sum(p["restarts"] for p in api)}
         except Exception as exc:  # noqa: BLE001
@@ -802,9 +871,11 @@ def wait_healthy(dsn: str, settle: float = 30.0, timeout: float = 420.0) -> dict
     raise SystemExit("cluster did not become healthy in time")
 
 
-def parse_scheduler_logs(streams: LogStreams) -> dict:
+def parse_scheduler_logs(streams: LogStreams, t_from: float) -> dict:
     sweeps, refusals, leader_lines, failures = [], [], [], []
     for pod, ts, msg in streams.lines("scheduler"):
+        if ts < t_from:  # the streams ask for 180 s of history so that a pod's first lines are not missed
+            continue
         m = re.search(r"scheduler (\w+) (.*)", msg)
         if not m:
             continue
@@ -813,7 +884,7 @@ def parse_scheduler_logs(streams: LogStreams) -> dict:
             kv = dict(re.findall(r"(\w+)=(\S+)", text))
             sweeps.append({"t": ts, "pod": pod, "evaluated": int(kv.get("evaluated", 0)), "mark_overdue": int(kv.get("mark_overdue", 0)),
                            "escalate": int(kv.get("escalate", 0)), "errors": int(kv.get("errors", 0)), "rejected": int(kv.get("rejected", 0))})
-        elif "HTTP 409" in text or "stale leader" in text:
+        elif re.search(r"HTTP(?: Error)? 409", text) or "stale leader" in text:
             refusals.append({"t": ts, "pod": pod, "line": text[:160]})
         elif "is the leader, fencing token" in text or "no longer the leader" in text:
             leader_lines.append({"t": ts, "pod": pod, "line": text[:160]})
@@ -822,29 +893,40 @@ def parse_scheduler_logs(streams: LogStreams) -> dict:
     return {"sweeps": sweeps, "refusals_409": refusals, "leader_changes": leader_lines, "failures": failures}
 
 
-def parse_api_logs(streams: LogStreams) -> dict:
-    refused = collections.Counter()
+def parse_api_logs(streams: LogStreams, probe_t: float, t_from: float) -> dict:
+    """409s on /scheduler/* routes and mid-sweep fence refusals (`sweep stopped: stale leader`, F10) in the api pods' logs. Lines
+    from `probe_t` on include the drill's own stale-token probes and are counted apart ("organic" = before the probes)."""
+    refused, organic = collections.Counter(), collections.Counter()
     samples, leaders = [], {}
+    mid_sweep = []
     for pod, ts, msg in streams.lines("api"):
+        if ts < t_from:
+            continue
         m = re.search(r"lease api-background: (api-[0-9a-f]+) is now the leader \(token (\d+)\)", msg)
         if m:
             leaders[m.group(1)] = {"pod": pod, "token": int(m.group(2)), "t": ts}
-        if "POST /scheduler/" in msg and '409' in msg and "uvicorn.access" in msg:
+        if "sweep stopped: stale leader" in msg:
+            mid_sweep.append({"t": ts, "pod": pod, "line": msg[:200]})
+        if "POST /scheduler/" in msg and re.search(r'HTTP/1\.[01]\\?" 409\b', msg):
             route = re.search(r"POST (/scheduler/[a-z/-]+)", msg)
-            refused[route.group(1) if route else "?"] += 1
+            name = route.group(1) if route else "?"
+            refused[name] += 1
+            if ts < probe_t:
+                organic[name] += 1
             if len(samples) < 20:
-                samples.append({"t": ts, "pod": pod, "route": route.group(1) if route else "?"})
-    return {"scheduler_calls_refused_409": dict(refused), "samples": samples, "api_background_leaders": leaders}
+                samples.append({"t": ts, "pod": pod, "route": name, "organic": ts < probe_t})
+    return {"scheduler_calls_refused_409": dict(refused), "scheduler_calls_refused_409_organic": dict(organic), "samples": samples,
+            "api_background_leaders": leaders, "sweeps_stopped_mid_sweep_by_fence": mid_sweep}
 
 
 async def run_iteration(idx: int, mode: str, args, tokens: dict, dsn: str, pathway, calendar, ttl: float, interval: float) -> dict:
     run_label = f"{mode}-{idx}"
     run_ns = uuid.uuid5(DRILL_NS, f"{run_label}|{uuid.uuid4()}")
-    print(f"\n=== iteration {run_label} ({mode} delete) ===", flush=True)
+    print(f"\n=== iteration {run_label} ({mode} kill) ===", flush=True)
     env_start = await asyncio.to_thread(vm_pressure)
     health = await asyncio.to_thread(wait_healthy, dsn)
     print(f"  healthy: scheduler lease {health['scheduler_holder']} token {health['scheduler_token']}, api-background "
-          f"{health['api_background_holder']} ({health['api_background_pod']}) token {health['api_background_token']}", flush=True)
+          f"{health['background_lease_pod']} ({health['api_background_pod']}) token {health['api_background_token']}", flush=True)
     outdir = Path(tempfile.mkdtemp(prefix="failover-logs-"))
     poller = Poller(dsn)
     poller.start()
@@ -893,13 +975,39 @@ async def run_iteration(idx: int, mode: str, args, tokens: dict, dsn: str, pathw
     if a_pod is None:
         a_pod = next(p["name"] for p in pods_api if p["ready"])
         notes.append(f"api-background holder {a_holder} could not be mapped to a pod; deleted {a_pod} instead")
-    opts = {"kind": "DeleteOptions", "apiVersion": "v1"} | ({"gracePeriodSeconds": 0} if mode == "force" else {})
-    async with httpx.AsyncClient(base_url=PROXY["base"], timeout=30) as kc:
+    opts = {"kind": "DeleteOptions", "apiVersion": "v1"} | ({"gracePeriodSeconds": 0} if mode in ("force", "hard") else {})
+    hard_info: dict = {}
+    if mode == "hard":
+        # SIGKILL both containers through the node's container runtime (crictl stop --timeout 0: no SIGTERM, so nothing can
+        # release a lease), then force-delete the pods. Container ids are resolved BEFORE t0.
+        node_of = {p["name"]: p["node"] for p in pods_api + pods_sch}
+
+        def container_id(pod: str) -> str:
+            out = subprocess.run(["docker", "exec", node_of[pod], "crictl", "ps", "-q", "--label", f"io.kubernetes.pod.name={pod}"],
+                                 capture_output=True, text=True, timeout=30).stdout.split()
+            if not out:
+                raise SystemExit(f"no running container found for pod {pod}")
+            return out[0]
+
+        cids = {s_pod: await asyncio.to_thread(container_id, s_pod), a_pod: await asyncio.to_thread(container_id, a_pod)}
+
+        def kill9(pod: str) -> float:
+            m = time.time()
+            subprocess.run(["docker", "exec", node_of[pod], "crictl", "stop", "--timeout", "0", cids[pod]],
+                           capture_output=True, text=True, timeout=30, check=True)
+            return time.time() - m
+
         t0 = time.time()
+        durs = await asyncio.gather(asyncio.to_thread(kill9, s_pod), asyncio.to_thread(kill9, a_pod))
+        hard_info = {"sigkill_command_s": {"scheduler": durs[0], "api": durs[1]}}
+    async with httpx.AsyncClient(base_url=PROXY["base"], timeout=30) as kc:
+        if mode != "hard":
+            t0 = time.time()
         resp = await asyncio.gather(*(kc.request("DELETE", f"/api/v1/namespaces/{NS}/pods/{n}", json=opts) for n in (s_pod, a_pod)))
         t_cmd_done = time.time()
-    cmd = [f"DELETE pods/{s_pod} and pods/{a_pod}, gracePeriodSeconds="
-           + ("0 (= kubectl delete --grace-period=0 --force)" if mode == "force" else "default (pod's terminationGracePeriodSeconds)")]
+    cmd = [f"DELETE the scheduler leader pod and the api-background holder pod (names in the run record), gracePeriodSeconds="
+           + {"force": "0 (= kubectl delete --grace-period=0 --force)", "graceful": "default (pod's terminationGracePeriodSeconds)",
+              "hard": "0 after SIGKILL of both containers with crictl stop --timeout 0 (t0 = instant the SIGKILL commands were issued)"}[mode]]
     print(f"  t0: deleted scheduler leader {s_pod} (token {s_token}) and api pod {a_pod} (api-background {a_holder}, token {a_token}); "
           f"API server answered {[r.status_code for r in resp]} after {t_cmd_done - t0:.2f}s", flush=True)
 
@@ -930,6 +1038,7 @@ async def run_iteration(idx: int, mode: str, args, tokens: dict, dsn: str, pathw
     await asyncio.sleep(2)
 
     # stale-token probes ----------------------------------------------------------------------------------------------
+    probe_t = time.time()
     token = await asyncio.to_thread(secret_value, "screening-closure-secrets", "SCHEDULER_SERVICE_TOKEN")
     async with httpx.AsyncClient(base_url=API_BASE, timeout=15) as c:
         auth = {"Authorization": f"Bearer {token}"}
@@ -939,6 +1048,8 @@ async def run_iteration(idx: int, mode: str, args, tokens: dict, dsn: str, pathw
         probes = {"stale_sweep_status": r1.status_code, "stale_leader_heartbeat_status": r2.status_code,
                   "probe_holder": s_holder, "probe_token": s_token}
     del token
+    tx_probe = await asyncio.to_thread(stale_fence_probe, dsn, pathway, calendar, run_ns, s_holder, s_token)
+    print(f"  in-transaction fence probe: {tx_probe['summary']}", flush=True)
     await asyncio.sleep(1.5)
     poller.stop()
     streams.stop()
@@ -946,8 +1057,8 @@ async def run_iteration(idx: int, mode: str, args, tokens: dict, dsn: str, pathw
     # analysis ---------------------------------------------------------------------------------------------------------
     off = poller.offset()
     t0_db = t0 + off
-    logs = parse_scheduler_logs(streams)
-    apilogs = parse_api_logs(streams)
+    logs = parse_scheduler_logs(streams, started_at.timestamp())
+    apilogs = parse_api_logs(streams, probe_t, started_at.timestamp())
     sched_names = {p["name"] for p in pods_sch}
 
     def handover(name: str, old_holder: str, old_token: int) -> dict:
@@ -963,6 +1074,7 @@ async def run_iteration(idx: int, mode: str, args, tokens: dict, dsn: str, pathw
                      time_to_new_leader_s=ev["db_t"] - t0_db,
                      seconds_since_killed_holders_last_renewal=None if last_exp is None else ev["db_t"] - (last_exp - ttl),
                      seconds_after_old_lease_expiry=None if last_exp is None else ev["db_t"] - last_exp,
+                     lease_released_by_killed_holder=None if last_exp is None else ev["db_t"] < last_exp - 1.0,
                      new_holder_pod_existed_before_t0=(new_pod in sched_names) if name == "scheduler" else (new_pod in {p["name"] for p in pods_api}))
         return d
 
@@ -1019,6 +1131,10 @@ async def run_iteration(idx: int, mode: str, args, tokens: dict, dsn: str, pathw
 
     win = [a for a in atts if t0 <= a["t"] <= win_end]
     base_lat = [a["latency_s"] for a in atts if a["t"] < t0 and not failed(a)]
+    fails = [a for a in atts if failed(a)]
+    outage = (max(a["t"] + a["latency_s"] for a in fails) - min(a["t"] for a in fails)) if fails else 0.0
+    done_t = sorted(a["t"] + a["latency_s"] for a in atts if not failed(a) and t0 - 5 <= a["t"] <= t0 + 90)
+    longest_gap = max((b2 - b1 for b1, b2 in zip(done_t, done_t[1:])), default=None)
     err_by = collections.Counter((a["error"] or f"HTTP {a['status']}") for a in atts if failed(a))
     ops = list(wl.ops.values())
     client = {
@@ -1029,6 +1145,7 @@ async def run_iteration(idx: int, mode: str, args, tokens: dict, dsn: str, pathw
         "retries_total": sum(max(0, o["attempts"] - 1) for o in ops), "ops_that_needed_a_retry": sum(o["attempts"] > 1 for o in ops),
         "ops_never_succeeded": sum(not o["acked"] for o in ops), "creates_acknowledged_via_409_after_retry": sum(o["acked_via_409"] for o in ops),
         "ops_refused_with_4xx": sum(1 for o in ops if "gave_up_status" in o),
+        "client_observed_outage_s": outage, "longest_gap_between_successful_requests_s": longest_gap,
         "disruption_window_s": api_ready, "attempts_in_disruption_window": len(win),
         "max_latency_in_window_s": max((a["latency_s"] for a in win), default=None),
         "max_latency_overall_s": max((a["latency_s"] for a in atts), default=None),
@@ -1060,7 +1177,14 @@ async def run_iteration(idx: int, mode: str, args, tokens: dict, dsn: str, pathw
     fencing = {
         "scheduler_lease_history": hist("scheduler", "scheduler"), "api_background_lease_history": hist("api", "api-background"),
         "refusals_409_in_scheduler_logs": len(refusals), "refusals_409_samples": refusals[:5],
-        "refusals_409_in_api_access_logs": apilogs["scheduler_calls_refused_409"],
+        "refusals_409_in_api_access_logs_incl_probes": apilogs["scheduler_calls_refused_409"],
+        "refusals_409_in_api_access_logs_organic": apilogs["scheduler_calls_refused_409_organic"],
+        "refusals_409_samples_api": apilogs["samples"][:10],
+        "sweeps_stopped_mid_sweep_by_fence": apilogs["sweeps_stopped_mid_sweep_by_fence"][:10],
+        "sweeps_stopped_mid_sweep_by_fence_count": len(apilogs["sweeps_stopped_mid_sweep_by_fence"]),
+        "stale_leader_409_organic_total": sum(apilogs["scheduler_calls_refused_409_organic"].values()),
+        "stale_leader_refusals_seen_by_scheduler_pods_organic": len([r for r in refusals if r["t"] < probe_t]),
+        "in_transaction_probe": tx_probe,
         "stale_token_probe_after_recovery": probes,
         "scheduler_leader_log_lines": logs["leader_changes"][:10],
         **ver.pop("fencing_windows"),
@@ -1070,17 +1194,18 @@ async def run_iteration(idx: int, mode: str, args, tokens: dict, dsn: str, pathw
         fencing[f"{name}_tokens_strictly_increasing"] = all(b > a for a, b in zip(toks, toks[1:]))
     fencing["write_from_deposed_leader_evidence"] = (
         "The event log has no holder/token column. Evidence: (1) the fence is checked when each scheduler request enters the "
-        f"API (require_current_leader); the stale-token probe after recovery got HTTP {probes['stale_sweep_status']} (sweep) and "
-        f"{probes['stale_leader_heartbeat_status']} (heartbeat); (2) every scheduler event's insert time lies inside a lease "
+        f"API (require_current_leader) and again inside every write transaction (leader.check_fence_pg); the stale-token probe "
+        f"after recovery got HTTP {probes['stale_sweep_status']} (sweep) and {probes['stale_leader_heartbeat_status']} (heartbeat), "
+        f"and the direct in-transaction probe: {tx_probe['summary']}; (2) every scheduler event's insert time lies inside a lease "
         f"validity window (outside strict: {fencing['outside_every_lease_window_strict']}, outside with "
         f"{max_loop_s:.1f}s tolerance: {fencing['outside_every_lease_window_with_tolerance']}); (3) event ids are deterministic, "
         "so a stale write could only be a no-op repeat.")
     result = {
         "run": run_label, "mode": mode, "started_at": started_at.isoformat(), "ended_at": datetime.now(UTC).isoformat(),
         "t0_utc": datetime.fromtimestamp(t0, UTC).isoformat(), "t0_db_epoch": t0_db, "database_clock_minus_host_clock_s": off,
-        "delete_request": cmd[0], "delete_api_answered_after_s": t_cmd_done - t0, "delete_api_status": [r.status_code for r in resp],
+        "delete_request": cmd[0], **({"hard_kill": hard_info} if hard_info else {}), "delete_api_answered_after_s": t_cmd_done - t0, "delete_api_status": [r.status_code for r in resp],
         "killed": {"scheduler_pod": s_pod, "scheduler_holder": s_holder, "scheduler_token": s_token, "api_pod": a_pod,
-                   "api_background_holder": a_holder, "api_background_token": a_token},
+                   "background_lease_pod": a_holder, "api_background_token": a_token},
         "pods_before": {"scheduler": sorted(sched_names), "api": sorted(p["name"] for p in pods_api)}, "notes": notes,
         "scheduler_handover": sched_h, "api_background_handover": api_h, "sweep": sweep,
         "workload": {"seeded_cases": len(seeds), "seeded_events": len(rows_events), "window_s": args.window, "kill_at_s_after_window_start": args.kill_at,
@@ -1117,11 +1242,15 @@ SUMMARY_METRICS = {
     "api_background_time_to_new_leader_s": "api_background_handover.time_to_new_leader_s",
     "scheduler_seconds_since_killed_holders_last_renewal": "scheduler_handover.seconds_since_killed_holders_last_renewal",
     "api_background_seconds_since_killed_holders_last_renewal": "api_background_handover.seconds_since_killed_holders_last_renewal",
+    "time_to_first_successor_sweep_s": "sweep.seconds_from_t0_to_first_successor_sweep",
     "sweep_gap_s": "sweep.sweep_gap_s",
     "missed_sweeps": "sweep.missed_sweeps",
     "missed_sweeps_vs_baseline": "sweep.missed_sweeps_vs_baseline",
     "client_error_attempts": "client_impact.error_attempts_total",
     "client_retries": "client_impact.retries_total",
+    "client_observed_outage_s": "client_impact.client_observed_outage_s",
+    "client_longest_gap_between_successes_s": "client_impact.longest_gap_between_successful_requests_s",
+    "stale_leader_409_organic": "fencing.stale_leader_409_organic_total",
     "client_ops_never_succeeded": "client_impact.ops_never_succeeded",
     "client_max_latency_in_window_s": "client_impact.max_latency_in_window_s",
     "api_pods_ready_again_s": "client_impact.api_pods_ready_again_s",
@@ -1131,13 +1260,14 @@ SUMMARY_METRICS = {
     "outstanding_cases_on_replan": "integrity.late_not_lost.cases_with_outstanding_work_on_replan",
     "max_event_lateness_s": "integrity.late_not_lost.max_lateness_s",
     "replay_failures": "integrity.replay.replay_failures",
+    "stale_fence_write_rows_written": "fencing.in_transaction_probe.stale_fence_rows_written",
     "scheduler_events_outside_lease_windows": "fencing.outside_every_lease_window_with_tolerance",
 }
 
 
 def summarize(runs: list[dict]) -> dict:
     out = {}
-    for mode in ("force", "graceful"):
+    for mode in ("force", "graceful", "hard"):
         rs = [r for r in runs if r["mode"] == mode]
         if not rs:
             continue
@@ -1146,7 +1276,8 @@ def summarize(runs: list[dict]) -> dict:
             vals = [get_path(r, path) for r in rs]
             clean = [v for v in vals if isinstance(v, (int, float))]
             block[name] = {"values": vals, "min": min(clean) if clean else None,
-                           "median": statistics.median(clean) if clean else None, "max": max(clean) if clean else None}
+                           "median": statistics.median(clean) if clean else None, "p95": pct(clean, 0.95),
+                           "max": max(clean) if clean else None}
         out[mode] = block
     return out
 
@@ -1193,7 +1324,8 @@ async def amain(args) -> int:
         dsn = await asyncio.to_thread(owner_dsn)
         tokens = {"lab": mint("lab", "drill-lab"), "coord": mint("coordinator", "drill-coordinator"),
                   "pco": mint("primary_care_owner", "Dr. Layla Haddad", sub="Dr. Layla Haddad")}  # the actor is role + sub: this is the seeded default owner
-        plan = [("force", i + 1) for i in range(args.runs)] + [("graceful", i + 1) for i in range(args.graceful_runs)]
+        plan = ([("force", i + 1) for i in range(args.runs)] + [("graceful", i + 1) for i in range(args.graceful_runs)]
+                + [("hard", i + 1) for i in range(args.hard_runs)])
         started = datetime.now(UTC)
         for mode, idx in plan:
             runs.append(await run_iteration(idx, mode, args, tokens, dsn, pathway, calendar, ttl, interval))
@@ -1201,7 +1333,7 @@ async def amain(args) -> int:
                    "drill_started_at": started.isoformat(), "complete": len(runs) == len(plan), "git": git_info(), "machine_spec": spec,
                    "chart_values": cv, "calendar": cal_info,
                    "parameters": {"seeded_cases_per_run": args.cases, "window_s": args.window, "kill_at_s": args.kill_at,
-                                  "client_new_case_flows_per_s": args.client_rate, "force_runs": args.runs, "graceful_runs": args.graceful_runs,
+                                  "client_new_case_flows_per_s": args.client_rate, "force_runs": args.runs, "graceful_runs": args.graceful_runs, "hard_runs": args.hard_runs,
                                   "poll_interval_s": 0.15},
                    "summary": summarize(runs), "runs": runs}
             out_path.write_text(json.dumps(doc, indent=2, default=str))
@@ -1218,6 +1350,8 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--runs", type=int, default=5, help="force-delete iterations (--grace-period=0 --force)")
     ap.add_argument("--graceful-runs", type=int, default=0, help="additional iterations with an ordinary (graceful) delete")
+    ap.add_argument("--hard-runs", type=int, default=0, help="additional iterations that SIGKILL both containers (crictl stop --timeout 0) "
+                    "before the force delete, so no process can release its lease")
     ap.add_argument("--cases", type=int, default=3000, help="seeded open cases per iteration")
     ap.add_argument("--window", type=float, default=240.0, help="seconds over which the seeded triggers fall due")
     ap.add_argument("--kill-at", type=float, default=60.0, help="kill this many seconds after the trigger window opens")
