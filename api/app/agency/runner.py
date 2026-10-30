@@ -229,12 +229,16 @@ _lock = threading.Lock()
 
 def run_agency(now: datetime | None = None, *, trigger: str = "manual", created_by: str = SUPERVISOR_ACTOR,
                budget_seconds: float | None = None, max_tasks: int | None = None, planner=None,
-               monotonic=time.monotonic, wait: bool = True) -> dict:
-    """Run the agency once at sim time `now`. Idempotent per (trigger, now). Returns the run's summary."""
+               monotonic=time.monotonic, wait: bool = True, fence=None) -> dict:
+    """Run the agency once at sim time `now`. Idempotent per (trigger, now). Returns the run's summary. `fence` (a
+    `leader.Fence`, M7-8): every write to the task ledger re-checks that lease inside its transaction and raises
+    `leader.StaleLeader` once it is no longer the current one."""
     from app.clock import clock
 
     now = now or clock.now()
     L = ledger()
+    if fence is not None:
+        L = L.fenced(fence)
     run_id = run_id_for(trigger, now)
     existing = L.get(run_id)
     if existing is not None:

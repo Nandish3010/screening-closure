@@ -37,6 +37,10 @@ spec:
         - name: api
           image: "{{ .Values.images.api.repository }}:{{ .Values.images.api.tag }}"
           imagePullPolicy: {{ .Values.images.api.pullPolicy }}
+          {{- if or (gt (int .Values.api.server.workers) 1) (gt (int .Values.api.server.limitMaxRequests) 0) }}
+          # M7-8: a non-default uvicorn process (more workers, or workers recycled after N requests); the image's own CMD otherwise.
+          command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "{{ .Values.api.port }}", "--workers", "{{ int .Values.api.server.workers }}"{{ if gt (int .Values.api.server.limitMaxRequests) 0 }}, "--limit-max-requests", "{{ int .Values.api.server.limitMaxRequests }}"{{ end }}]
+          {{- end }}
           ports:
             - { name: http, containerPort: {{ .Values.api.port }} }
           env:

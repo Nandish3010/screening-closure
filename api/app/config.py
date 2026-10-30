@@ -115,6 +115,20 @@ class Settings(BaseSettings):
     # --- the agency (A22, ADR-033): agents are labour, not authority -----------------------------
     # The scheduler hook runs supervisor -> department heads -> executioners after every N-th sweep (0 = never).
     agency_every_sweeps: int = 6
+    # M7-8 (ADR-048): load shedding. At most this many requests are in flight in ONE API process; the next gets 503 with
+    # Retry-After instead of queueing until it times out. 0 = off (the code default; the chart turns it on). The scheduler's,
+    # the watchdog's and the probes' paths are never shed.
+    max_inflight_requests: int = 0
+    shed_retry_after_seconds: int = 1
+    # M7-8: the closure and effort metrics routes read the `case_metrics` table (migration 018) and first bring it up to date by
+    # replaying changed cases, at most this many seconds per call (the rest is left for the next call, and the response says so in
+    # the X-Metrics-Index-Lag header). The aggregate queries themselves are cut off after `metrics_query_timeout_ms`.
+    metrics_refresh_budget_seconds: float = 3.0
+    metrics_query_timeout_ms: int = 60000
+    # M7-8 (ADR-047): true when the scheduler service runs the agency on its own timer (`POST /scheduler/agency-run`, interval
+    # SCHEDULER_AGENCY_INTERVAL_SECONDS). The sweep route then no longer counts sweeps for the agency; `agency_every_sweeps`
+    # stays the on/off switch (0 = off) for both ways. The chart sets it; compose and the tests keep the in-sweep hook.
+    agency_own_cadence: bool = False
     # Per-run limits: wall-clock seconds and executioner tasks; past either, the rest of the run is not started.
     agency_run_budget_seconds: float = 20.0
     agency_max_tasks: int = 300

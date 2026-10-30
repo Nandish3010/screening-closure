@@ -71,10 +71,26 @@ def test_the_automation_scans_run_after_the_sweep_and_never_decide_whether_the_l
     assert state.sweep_ok is True and state.failures == 0  # the scans returned None (failed) and changed nothing
 
 
+def wait_for(predicate, timeout=30.0):
+    """Block until `predicate()` is true. Conditions, not sleeps: a loaded machine slows the test down, it cannot fail it."""
+    deadline = time.monotonic() + timeout
+    while not predicate():
+        assert time.monotonic() < deadline, "timed out waiting for the condition"
+        time.sleep(0.005)
+
+
+def beat_threads():
+    return [t for t in threading.enumerate() if t.name == "scheduler-heartbeat" and t.is_alive()]
+
+
 def test_heartbeats_keep_coming_while_a_long_sweep_runs_and_stop_after_it(sched, monkeypatch):
+    def beats_while_running():
+        return len([c for c in sched.calls if c[0] == "beat" and c[2] == {"sweeping": True}])
+
     def long_sweep():
         sched.calls.append(("sweep-start", (), {}))
-        time.sleep(0.4)  # several beat periods
+        before = beats_while_running()
+        wait_for(lambda: beats_while_running() >= before + 3)  # held open until the heartbeat thread has beaten 3 times
         sched.calls.append(("sweep-end", (), {}))
         return {"sim_time": "2026-01-05T08:00:00+00:00", "cases_evaluated": 5000, "mark_overdue": 0, "escalate": 0,
                 "rejected": 0, "errors": []}
@@ -84,11 +100,9 @@ def test_heartbeats_keep_coming_while_a_long_sweep_runs_and_stop_after_it(sched,
     start, end = names(sched).index("sweep-start"), names(sched).index("sweep-end")
     during = [c for c in sched.calls[start:end] if c[0] == "beat"]
     assert len(during) >= 3 and all(c[2] == {"sweeping": True} for c in during)
-    after = len(sched.calls)
-    time.sleep(0.2)
-    assert len(sched.calls) == after  # the thread is stopped with the sweep
-    final = sched.calls[-1]
-    assert final[0] == "beat" and final[1][:2] == (True, 0) and final[2] == {}  # the closing beat says it worked
+    assert beat_threads() == []  # the heartbeat thread was joined with the sweep: nothing keeps beating after it
+    final = [c for c in sched.calls if c[0] == "beat"][-1]
+    assert final[1][:2] == (True, 0) and final[2] == {}  # the closing beat says it worked
 
 
 def test_a_failed_sweep_is_still_reported_and_counted(sched, monkeypatch):

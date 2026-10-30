@@ -275,15 +275,52 @@ class Collector(threading.Thread):
         atomic_write(self.out, doc)
 
 
-def window_stats(w: int, rs: list, t_start: float) -> dict:
+def window_stats(w: int, rs_all: list, t_start: float) -> dict:
     ok = lambda r: isinstance(r[1], int) and 200 <= r[1] < 300  # noqa: E731
+    shed = sum(1 for r in rs_all if r[1] == AL.SHED)  # refused with 503 + Retry-After (ADR-048): counted apart, not an error
+    rs = [r for r in rs_all if r[1] != AL.SHED]
     errs = collections.Counter(str(r[1]) for r in rs if not ok(r))
     point = [r for r in rs if r[0] != "worklist"]
-    return {"window": w, "start": iso(t_start), "requests": len(rs), "errors": sum(errs.values()), "errors_by_status": dict(errs),
+    return {"window": w, "start": iso(t_start), "requests": len(rs_all), "answered": len(rs), "shed": shed, "errors": sum(errs.values()), "errors_by_status": dict(errs),
             "latency_all": AL.dist([r[2] for r in rs]), "latency_excluding_worklist": AL.dist([r[2] for r in point])}
 
 
 # ------------------------------------------------------------------------------------------------------------ summary
+
+def derive_cadence(col: Collector, t_from: float, t_to: float) -> dict:
+    """M7-8 (ADR-047): the achieved start cadence of every scheduler task, from the `tick task=... start=...` lines. A start is counted when
+    the task began work (the scheduler writes the line when the tick ends, with the start instant it recorded). Per task: starts in the
+    window against the starts expected at the nominal interval, the gaps between consecutive starts, the work duration and the
+    ticks the scheduler itself reports skipping."""
+    nominal = {"sweep": SCHED_INTERVAL_S, "automation-scan": SCHED_INTERVAL_S, "evidence-scan": SCHED_INTERVAL_S, "agency": 60.0}
+    rows: dict[str, list[tuple[float, float, int]]] = collections.defaultdict(list)
+    for t, pod, msg in col.sched_lines:
+        m = AL.TICK.search(msg)
+        if m and t_from <= float(m["start"]) <= t_to:
+            rows[m["task"]].append((float(m["start"]), float(m["dur"]), int(m["sk"])))
+    out = {}
+    for task, rs in sorted(rows.items()):
+        rs.sort()
+        starts = [r[0] for r in rs]
+        gaps = sorted(b - a for a, b in zip(starts, starts[1:]))
+        durs = sorted(r[1] for r in rs)
+        interval = nominal.get(task, SCHED_INTERVAL_S)
+        expected = (t_to - t_from) / interval
+        # a gap of about two intervals or more means a tick was skipped (or a leader change): count the grid points inside the gaps
+        missed = sum(max(0, round(g / interval) - 1) for g in gaps)
+        out[task] = {
+            "nominal_interval_s": interval, "starts": len(starts), "expected_starts": round(expected, 1),
+            "achieved_fraction_of_nominal": round(len(starts) / expected, 4) if expected else None,
+            "gap_s": ({"mean": round(statistics.fmean(gaps), 3), "p50": round(AL.pct(gaps, 0.5), 3), "p95": round(AL.pct(gaps, 0.95), 3),
+                       "p99": round(AL.pct(gaps, 0.99), 3), "max": round(gaps[-1], 3)} if gaps else None),
+            "gaps_over_1_5_intervals": sum(1 for g in gaps if g > 1.5 * interval), "grid_points_missed_in_gaps": missed,
+            "duration_s": ({"mean": round(statistics.fmean(durs), 3), "p50": round(AL.pct(durs, 0.5), 3), "p95": round(AL.pct(durs, 0.95), 3),
+                            "max": round(durs[-1], 3)} if durs else None),
+            "skipped_ticks_reported_by_scheduler": max((r[2] for r in rs), default=0),
+            "meets_95_percent_of_nominal": bool(expected and len(starts) / expected >= 0.95),
+        }
+    return out
+
 
 def derive_sweeps(col: Collector, t_from: float, t_to: float) -> dict:
     api = {pod: sorted(ev) for pod, ev in col.api_events.items()}
@@ -314,7 +351,7 @@ def derive_sweeps(col: Collector, t_from: float, t_to: float) -> dict:
             "sweep_errors_reported_in_summaries": err_total, "sweep_http_status_counts": dict(statuses),
             "scheduler_warning_or_error_lines": [{"t": iso(x[0]), "pod": x[1], "line": x[2][:300]} for x in failures[:50]],
             "scheduler_warning_or_error_count": len(failures), "leadership_log_lines": [{"t": iso(x[0]), "pod": x[1], "line": x[2][-200:]} for x in leaders],
-            "scan_log_lines": scans, "durations_from_api_access_log": timings,
+            "scan_log_lines": scans, "durations_from_api_access_log": timings, "cadence": derive_cadence(col, t_from, t_to),
             "max_sweep_duration_s": max((d for _, d in series), default=None), "sweep_duration_series": series}
 
 
@@ -449,7 +486,7 @@ def build_summary(col: Collector, gen: AL.Gen, args, t_wall0: float, t_wall_end:
         "measured_seconds": args.duration, "wall_seconds_total": round(t_wall_end - t_wall0, 1), "target_rate_per_s": args.rate,
         "requests_total": n, "requests_2xx": sum(1 for r in rec if ok(r)), "achieved_rate_per_s": round(n / args.duration, 2),
         "cases_created_by_run": gen.n, "issued_total_including_warmup": stage["issued_total"], "unfinished_after_45s": stage["unfinished_after_45s"],
-        "errors": n - sum(1 for r in rec if ok(r)), "error_rate": stage["error_rate"], "status_counts": dict(status_counts),
+        "errors": stage["errors"], "shed": stage["shed"], "error_rate": stage["error_rate"], "status_counts": dict(status_counts),
         "errors_by_status": stage["errors_by_status"],
         "latency_all_requests": stage["latency_all_requests"], "latency_2xx": stage["latency_2xx"],
         "latency_all_requests_excluding_worklist": stage["latency_all_requests_excluding_worklist"],

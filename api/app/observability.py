@@ -46,7 +46,7 @@ _tracer_provider = None
 _pool = None  # the Postgres pool, when there is one (set by configure())
 
 # instruments, created in setup()
-_escalations = _overdue_marked = _sweeps = _sweep_duration = _llm_tokens = None
+_escalations = _overdue_marked = _sweeps = _sweep_duration = _llm_tokens = _shed = None
 
 
 # ---------------------------------------------------------------------------------------------------- JSON logs
@@ -210,7 +210,7 @@ def _resource():
 def setup() -> None:
     """Idempotent. Builds the meter provider (Prometheus reader always, OTLP reader and tracer when an endpoint is set)."""
     global _ready, _meter, _registry_reader, _tracer_provider
-    global _escalations, _overdue_marked, _sweeps, _sweep_duration, _llm_tokens
+    global _escalations, _overdue_marked, _sweeps, _sweep_duration, _llm_tokens, _shed
     with _lock:
         if _ready:
             return
@@ -278,7 +278,8 @@ def setup() -> None:
             "closure_sweep_duration", unit="s", description="Wall time of one POST /scheduler/sweep",
             explicit_bucket_boundaries_advisory=[0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10, 30, 60, 120])
         _llm_tokens = _meter.create_counter("closure_llm_tokens", description="LLM tokens used, by provider and kind")
-        for counter in (_escalations, _overdue_marked):
+        _shed = _meter.create_counter("closure_requests_shed", description="Requests answered 503 (Retry-After) because the pod was at its concurrency limit")
+        for counter in (_escalations, _overdue_marked, _shed):
             counter.add(0)  # the series exists from the start, so rate() and increase() have a zero to begin from
         log.info("observability: metrics on; OTLP export %s", f"to {endpoint}" if endpoint else "off")
         _provider_holder.append(provider)
@@ -340,6 +341,12 @@ def record_sweep(result: dict, seconds: float) -> None:
         _escalations.add(int(result["escalate"]))
     if result.get("mark_overdue"):
         _overdue_marked.add(int(result["mark_overdue"]))
+
+
+def record_shed() -> None:
+    """Called by the load-shedding middleware (app.loadshed) for each request it refuses."""
+    if _shed is not None:
+        _shed.add(1)
 
 
 def record_llm_usage(provider: str, usage: object) -> None:

@@ -5,7 +5,7 @@ from contextlib import asynccontextmanager
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app import auth, automation, confirmatory, evidence, fhir_projection, leader, notify, observability, ops, outreach_policy, policy, users
+from app import auth, automation, confirmatory, evidence, fhir_projection, leader, loadshed, notify, observability, ops, outreach_policy, policy, users
 from app.clock import clock
 from app.config import settings
 from app.events import InMemoryEventStore
@@ -121,6 +121,11 @@ app = FastAPI(
     lifespan=lifespan,
     dependencies=[Depends(policy.enforce_route_policy)],
 )
+# M7-8 (ADR-048): a bounded number of requests in flight per process; the rest get 503 + Retry-After. Added first, so it sits inside
+# the CORS and metrics middleware (a shed answer still carries the CORS headers, and the request metrics count it).
+if settings.max_inflight_requests > 0:
+    app.add_middleware(loadshed.LoadShedMiddleware, max_inflight=settings.max_inflight_requests,
+                       retry_after=settings.shed_retry_after_seconds)
 # The web app is served from another local port; it sends `Authorization: Bearer ...`, so the browser
 # preflights every call. Only the configured local origins are allowed (settings.cors_allow_origins).
 app.add_middleware(
