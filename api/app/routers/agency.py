@@ -109,7 +109,7 @@ def _owns(identity: Identity, case_id: UUID | None) -> bool:
         return True
     if case_id is None:
         return False
-    model = cases.store.read_model(case_id, cases.pathway)
+    model = cases.store.read_model(case_id, cases.pathway_of(case_id))
     return model is not None and model.owner == identity.actor
 
 
@@ -122,7 +122,7 @@ def inbox(identity: Identity = Depends(require_identity)) -> list[dict]:
 
 @router.get("/cases/{case_id}/agency")
 def case_agency(case_id: UUID, identity: Identity = Depends(require_identity)) -> dict:
-    model = cases.store.read_model(case_id, cases.pathway)
+    model = cases.store.read_model(case_id, cases.pathway_of(case_id))
     if model is None:
         raise HTTPException(404, "case not found")
     policy.authorize_owner_scope(identity, "view_agency", model)

@@ -98,7 +98,7 @@ def test_t_a37_only_a_diagnosticreport_or_procedure_reference_is_accepted(ref):
 
 def test_t_a37_when_the_fhir_server_cannot_answer_the_closure_is_refused_not_assumed():
     class Down:
-        def exists(self, ref, *, case_id=None, patient_ref=None):
+        def exists(self, ref, *, case_id=None, patient_ref=None, procedure=None):
             raise evidence.EvidenceUnavailable("connection refused")
 
         assess = exists

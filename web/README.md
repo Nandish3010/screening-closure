@@ -32,6 +32,10 @@ make test-e2e-live      # Playwright against the REAL stack (http adapter on :41
   `VITE_API_ADAPTER=http VITE_API_URL=http://localhost:8000 npm run dev`.
   Endpoints that the backend has not shipped yet degrade: `/me` 404 -> coordinator, `/cases/{id}/timeline` 404 -> events from `GET /cases/{id}`, `GET /alerts` 404 -> no alerts, `POST /auth/dev-login` 404 -> no token. Read-model fields a row lacks (`owner`, `due_at`, `overdue`, `escalation_level`, `consent_frozen`, `last_event_at`, `provider`, `pending_handoff`, `last_handoff`, `consent`) get safe defaults, or are derived from the event log on `GET /cases/{id}`; the real `GET /cases/{id}` nests them under `read_model`, which the adapter lifts. The owner may be a string (actor or name) or the A14 object `{actor, display_name, role}`. The metrics endpoint is still pending. The API allows the local web origins (5173, 4173, 4175) with CORS, including the `Authorization` header (`CORS_ALLOW_ORIGINS`, E8).
 
+### Two pathways (A37)
+
+The API puts `pathway` on every case. The worklist shows a pathway badge on every row (`PathwayBadge`) and, when more than one pathway is on the list, a Pathway filter; the case page shows the badge, words the confirmatory clock and action for the pathway's procedure (colonoscopy for `colorectal_fit`, colposcopy for `cervical_hpv`, `src/lib/pathway.ts` `PATHWAYS`), and marks the cervical colposcopy clock "(placeholder, H1)". An unknown pathway name is shown as-is. The API scores no cervical case (the risk model is the bowel pathway's), so a cervical row has no risk bar. The mock adds four synthetic cervical cases (ids 30 to 33) only when asked: `?pathways=2` (remembered for the tab; `?pathways=1` turns it off) or `VITE_MOCK_SECOND_PATHWAY=on`; the default mock, and every test and recording that counts cases, are unchanged. Tests: `tests/pathways.test.tsx` (T-C19).
+
 ### Against the real stack (E8)
 
 The http adapter is exercised end to end by `make test-e2e-live` (see Tests). What that walk changed on the web side, all in the files named:

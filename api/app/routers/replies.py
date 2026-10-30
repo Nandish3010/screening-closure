@@ -98,7 +98,7 @@ def effect_for(result: dict) -> tuple[str, dict] | None:
 
 def _append(case_id: UUID, kind: str, payload: dict, eid: UUID, at) -> None:
     payloads.validate(kind, payload)  # a bug here must not put free text in the log either
-    cases.store.append(Event(case_id, kind, at, TRIAGE_ACTOR, payload, eid), cases.pathway)
+    cases.store.append(Event(case_id, kind, at, TRIAGE_ACTOR, payload, eid), cases.pathway_of(case_id))
 
 
 @router.post("/cases/{case_id}/replies", status_code=201)
@@ -113,7 +113,7 @@ def post_reply(case_id: UUID, body: PostReply, identity: Identity = Depends(requ
         raise HTTPException(409, "reply_id already used by another case")
     if record is None:
         result = triage.classify(body.text, body.language_hint)
-        closed = state == cases.pathway.terminal_state
+        closed = state == cases.pathway_of(case_id).terminal_state
         record = replies.add(ReplyRecord(
             reply_id, case_id, body.channel, body.text, body.language_hint, result["intent"], result["confidence"],
             result["model_id"], result["needs_human"], not closed, clock.now(), identity.actor,

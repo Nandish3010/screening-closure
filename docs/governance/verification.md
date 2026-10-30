@@ -156,7 +156,7 @@ Both observations below were answered by ADR-044 (A36), as owner-delegated defau
 - **Closure evidence completeness in HAPI** (ADR-036: final report, complete colonoscopy). This needs the FHIR server. Covered by T-A67 (`api/tests/test_closure_completeness.py`). The checker covers the shape of the reference and the signer.
 - **Time.** Working days, SLA due dates, the weekly cap on automatic messages and the same-working-day coalescing rule are computed by the sweep and the append-time guard from a calendar. The checker decides "due" by the payload. Covered by the sweep, calendar, coalescing and automation tests.
 - **Channels other than SMS**, and more than two drafts. The machine treats channels and draft ids alike (lookups in the consent ledger and in the approved set). The checker uses one channel and two draft ids, plus an unknown channel and an unapproved id.
-- **Other pathways.** Only the shipped YAML is checked. A changed pathway is checked by rerunning `make verify`, which is part of `make check`.
+- **Other pathways.** Every pack in `config/pathways/` is checked, each on its own (`make verify` runs `--all-pathways`; `--pathway NAME` runs one). A changed or new pathway is checked by rerunning `make verify`, which is part of `make check`. A pack that extends another is explored in full: nothing is assumed from its parent's result. Per-pathway state counts: see "The second pathway" below.
 
 ## How to rerun
 

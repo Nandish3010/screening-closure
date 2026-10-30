@@ -664,7 +664,7 @@ def pricing_markdown(spec, delay_shares, effort_rows, prog, results_name, outcom
             "applied, no reservation price read).", ""]
 
     out += ["**9.2 Volumes a year in Abu Dhabi** (FIT from section 1; the other pathways are assumed or a programme "
-            "target, and none is built or simulated)", ""]
+            "target, and none is simulated; only cervical screening is implemented on the engine)", ""]
     vol = {c: programme_volumes(spec, c) for c in ("low", "central", "high")}
     rows = []
     for i, r in enumerate(vol["central"]):
@@ -841,8 +841,8 @@ def pricing_markdown(spec, delay_shares, effort_rows, prog, results_name, outcom
                f"positives ({oc['deaths_lo']:.0f} to {oc['deaths_hi']:.0f}), at a net cost of about AED "
                f"{money(oc['rows'][1]['net'] / oc['qalys'])} per QALY on the licence before the extra colonoscopies and "
                f"AED {money(oc['rows'][1]['net_with_col'] / oc['qalys'])} with them (9.9)" if outcomes is not None else "")
-            + ". The other three pathways add volume and cost here but no modelled value, because none is built or "
-            "simulated.", "", PRICING_END]
+            + ". The other three pathways add volume and cost here but no modelled value, because none is simulated "
+            "(cervical screening is implemented on the engine; blood-based and breast recall are designed only).", "", PRICING_END]
     return "\n".join(out) + "\n"
 
 

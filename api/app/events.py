@@ -146,6 +146,10 @@ class EventStore(Protocol):
 
     def current_state(self, case_id: UUID) -> str | None: ...
 
+    def pathway_name_of(self, case_id: UUID) -> str | None:
+        """The name of the pathway the case was created under (None for an unknown case)."""
+        ...
+
     def read_model(self, case_id: UUID, pathway: Pathway) -> CaseModel | None:
         """The read model (state, overdue, escalation_level, owner...) derived by replay."""
         ...
@@ -347,6 +351,11 @@ class InMemoryEventStore:
         if after is not None:
             keys = [k for k in keys if (k[0], k[1].int) > (aware(after[0]), after[1].int)]
         return keys[:limit], len(keys) > limit
+
+    def pathway_name_of(self, case_id):
+        with self._lock:
+            case = self._cases.get(case_id)
+            return case.pathway if case else None
 
     def state_counts(self, pathway):
         with self._lock:

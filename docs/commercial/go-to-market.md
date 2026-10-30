@@ -17,7 +17,7 @@ Status: proposal, 25 October 2026 (ticket M7-4). Nothing here has been discussed
 
 | | In | Out |
 |---|---|---|
-| Pathways | Positive FIT; positive blood-based colorectal test | Breast and cervical recall (not built); invitation and recall to screen |
+| Pathways | Positive FIT; cervical screening results (implemented and tested on the engine, not clinically reviewed, not simulated); positive blood-based colorectal test | Breast recall (designed only); invitation and recall to screen |
 | Data | Results, referrals, appointments, attendance and colonoscopy completion for positives in the window, plus 12 months before for a baseline; staff roster for owner names | Free-text clinical notes; any data about people with a negative result; contact details (not needed when nothing is sent) |
 | Actions | Weekly flag report to named coordinators; a readout at day 90 | Any message to a patient; any write-back; any task assignment; any clinical advice |
 | Integration | Periodic file drop (daily or weekly) of HL7 v2 messages or CSV, inside the network's environment | Live interface; Malaffi connection |
@@ -96,5 +96,5 @@ Likelihood and impact are our judgement on a 1 (low) to 3 (high) scale. The owne
 ## 9. After the shadow run
 
 1. **Active pilot** at the same clinics ([pilot-plan.md](../pilot-plan.md)): owners work from the worklist, messages after owner approval, clinician-signed closures; priced at cost.
-2. **Programme conversation** with ADPHC: FIT and blood-based positives across two networks, then the breast and cervical recall pathways once built and reviewed.
-3. **Programme licence** ([business-case.md](business-case.md) section 9): about AED 2 million a year for four pathways (illustrative), against an operator cost to serve of about AED 1.7 million at list-price hosting.
+2. **Programme conversation** with ADPHC: FIT and blood-based positives across two networks, then cervical screening (implemented on the engine, to be reviewed) and breast recall (designed only) once reviewed.
+3. **Programme licence** ([business-case.md](business-case.md) section 9): about AED 2 million a year for a four-pathway scope (two implemented, two designed only; illustrative), against an operator cost to serve of about AED 1.7 million at list-price hosting.

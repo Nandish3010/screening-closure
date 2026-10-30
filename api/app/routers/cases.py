@@ -24,7 +24,7 @@ from app.events import (
     LoadedCase,
     replay_model,
 )
-from app.pathway import Pathway
+from app.pathway import Pathway, PathwayRegistry
 from app.risk import score as risk
 from app.state_machine import InvalidTransition, PayloadError, validate_payload
 
@@ -33,8 +33,42 @@ router = APIRouter(prefix="/cases", tags=["cases"])
 
 # Both set by app.main at startup (avoids a circular import). The in-memory store is the
 # default so unit tests and no-docker runs work without a database.
-pathway: Pathway | None = None
+pathway: Pathway | None = None  # the DEFAULT pathway (bowel screening): what a request that names none means
+registry: PathwayRegistry | None = None  # every pathway this engine runs (app.main); `pathway` is its default
 store: EventStore = InMemoryEventStore()
+
+
+def pathway_by_name(name: str) -> Pathway | None:
+    """The loaded pathway called `name`, or None. The module's `pathway` wins for its own name, so a caller that swaps it
+    (a test, a tool) is obeyed."""
+    if pathway is not None and name == pathway.name:
+        return pathway
+    return registry.get(name) if registry is not None else None
+
+
+def pathway_of(case_id: UUID) -> Pathway:
+    """The pathway the case was created under, from its own row. 404 for an unknown case; 503 if the case belongs to a pack
+    this deployment does not load (it cannot be stepped without its pack)."""
+    name = store.pathway_name_of(case_id)
+    if name is None:
+        raise HTTPException(404, "case not found")
+    pw = pathway_by_name(name)
+    if pw is None:
+        raise HTTPException(503, f"the case belongs to pathway {name!r}, which this deployment does not load")
+    return pw
+
+
+def pathway_or_default(case_id: UUID | None) -> Pathway:
+    """`pathway_of`, but the default pathway for an unknown case or one whose pack is not loaded (callers that only read, and
+    must not fail on a case they cannot place: the agency)."""
+    name = store.pathway_name_of(case_id) if case_id is not None else None
+    return (pathway_by_name(name) if name else None) or pathway
+
+
+def all_pathways() -> tuple[Pathway, ...]:
+    """Every loaded pathway, the default first."""
+    others = tuple(p for p in (registry or ()) if pathway is None or p.name != pathway.name)
+    return ((pathway,) if pathway is not None else ()) + others
 
 
 class CreateCase(BaseModel):
@@ -48,6 +82,9 @@ class CreateCase(BaseModel):
     contact_valid: bool | dict[str, bool] | None = None
     # A21: the primary-care provider the patient is registered with (config/providers.yaml maps it to a default owner).
     registered_provider: str | None = None
+    # Which pathway the case runs on. Omitted: the default pathway (bowel screening). It is the case's row, not an event
+    # payload: the log is the same shape for every pathway.
+    pathway: str | None = None
 
 
 class PostEvent(BaseModel):
@@ -84,6 +121,8 @@ def _sees_risk(identity: Identity | None) -> bool:
 
 
 def _risk_score(lc: LoadedCase, now: datetime) -> float | None:
+    if lc.pathway != risk.TRAINED_ON_PATHWAY:  # the model is the bowel pathway's: no other pathway is scored
+        return None
     try:
         return risk.score_case(lc.model, lc.events, lc.created_at, now)
     except Exception:  # noqa: BLE001 - an ordering aid must never take the worklist down
@@ -91,7 +130,9 @@ def _risk_score(lc: LoadedCase, now: datetime) -> float | None:
         return None
 
 
-def _risk_explained(model, events, now: datetime) -> dict | None:
+def _risk_explained(model, events, now: datetime, pathway_name: str = risk.TRAINED_ON_PATHWAY) -> dict | None:
+    if pathway_name != risk.TRAINED_ON_PATHWAY:
+        return None
     try:
         return risk.explain_case(model, events, events[0].at, now)
     except Exception:  # noqa: BLE001
@@ -106,7 +147,8 @@ def factors_for_agency(case_id: UUID) -> dict | None:
     events = store.events_for(case_id)
     if not events:
         return None
-    return _risk_explained(replay_model(events, pathway), events, clock.now())
+    pw = pathway_of(case_id)
+    return _risk_explained(replay_model(events, pw), events, clock.now(), pw.name)
 
 
 def _case_json(case_id: UUID, identity: Identity | None = None) -> dict:
@@ -115,16 +157,17 @@ def _case_json(case_id: UUID, identity: Identity | None = None) -> dict:
     state = store.current_state(case_id)
     if state is None:
         raise CaseNotFound(str(case_id))
+    pw = pathway_of(case_id)
     events = store.events_for(case_id)
-    model = replay_model(events, pathway)
+    model = replay_model(events, pw)
     row = readmodel.case_row(
-        LoadedCase(case_id, pathway.name, events[0].at, events, model), pathway, default_calendar()
+        LoadedCase(case_id, pw.name, events[0].at, events, model), pw, default_calendar()
     )
     if identity is not None and identity.role == "patient":
         # SEC-2: a patient's case page is the redacted one (no staff notes or reasons, no escalation
         # internals, no staff names: roles only).
         return readmodel.patient_case_json(row, model, events)
-    explained = _risk_explained(model, events, clock.now()) if _sees_risk(identity) else None
+    explained = _risk_explained(model, events, clock.now(), pw.name) if _sees_risk(identity) else None
     row["risk_score"] = explained["score"] if explained else None
     return {
         # The worklist fields (owner as {actor, display_name, role}, due_at, ...) so a case page
@@ -137,7 +180,7 @@ def _case_json(case_id: UUID, identity: Identity | None = None) -> dict:
         "read_model": model.to_json(),
         # A18: {referral_requested: {due_at, met_at, overdue, ...}, confirmatory_completed: {...}}; the clocks that
         # span states, with their due dates (read_model.milestones holds the raw replayed state, without due dates).
-        "milestones": readmodel.milestones_json(model, pathway, default_calendar()),
+        "milestones": readmodel.milestones_json(model, pw, default_calendar()),
         "actors": _actors_json(events, model),
         "events": [_event_json(e) for e in events],
         # A21: who did the work of this case, people or the automation, and the (assumed) minutes either way.
@@ -150,7 +193,10 @@ def _case_json(case_id: UUID, identity: Identity | None = None) -> dict:
 @router.post("", status_code=201)
 def create_case(body: CreateCase) -> dict:
     case_id = body.case_id or uuid4()
-    payload = body.model_dump(exclude={"case_id"})
+    pw = pathway if body.pathway is None else pathway_by_name(body.pathway)
+    if pw is None:
+        raise HTTPException(422, f"unknown pathway {body.pathway!r}; loaded: {[p.name for p in all_pathways()]}")
+    payload = body.model_dump(exclude={"case_id", "pathway"})
     for key in ("patient_ref", "result_ref", "contact_valid", "registered_provider"):
         if payload.get(key) is None:
             payload.pop(key, None)
@@ -160,12 +206,12 @@ def create_case(body: CreateCase) -> dict:
         raise HTTPException(422, str(exc))
     genesis = Event(case_id, CASE_CREATED, clock.now(), "system:intake", payload)
     try:
-        store.create_case(case_id, pathway.name, genesis, pathway.initial_state)
+        store.create_case(case_id, pw.name, genesis, pw.initial_state)
     except CaseAlreadyExists:
         raise HTTPException(409, "CaseAlreadyExists")
     # A21 (ADR-032): the result is acknowledged and its owner named at once, by the automation, not by a person. A no-op
     # unless AUTOMATION_ENABLED; it never fails the ingest (a failure is healed by the scheduler's automation scan).
-    automation.on_ingest(store, pathway, case_id, payload, clock.now())
+    automation.on_ingest(store, pw, case_id, payload, clock.now())
     return _case_json(case_id)
 
 
@@ -187,6 +233,31 @@ def _decode_cursor(cursor: str | None) -> UUID | None:
 
 def _encode_cursor(case_id: UUID) -> str:
     return base64.urlsafe_b64encode(case_id.bytes).rstrip(b"=").decode()
+
+
+def _worklist_page(state, after, size, only) -> tuple[list[LoadedCase], UUID | None]:
+    """One worklist page over every loaded pathway, in case-id order (the keyset each pathway's query pages by). With one
+    pathway loaded this is exactly `store.load_cases_page`. With several, each is asked for `size` cases after `after`; the
+    merge keeps the first `size` in id order, and the cursor is the last kept id unless nothing is left behind, so no case is
+    skipped or repeated (a pathway that had more than it returned bounds the merge at its own last id)."""
+    pws = all_pathways()
+    if len(pws) == 1:
+        return store.load_cases_page(pws[0], state, after, size, only)
+    items: list[LoadedCase] = []
+    continue_from: list[UUID] = []
+    for pw in pws:
+        page, nxt = store.load_cases_page(pw, state, after, size, only)
+        items += page
+        if nxt is not None:
+            continue_from.append(nxt)
+    items.sort(key=lambda lc: lc.case_id.int)
+    bound = min(continue_from, key=lambda i: i.int) if continue_from else None
+    if bound is not None:
+        items = [lc for lc in items if lc.case_id.int <= bound.int]
+    truncated = len(items) > size
+    items = items[:size]
+    more = truncated or bound is not None
+    return items, (items[-1].case_id if more and items else None)
 
 
 @router.get("")
@@ -224,12 +295,12 @@ def list_cases(
     next_after: UUID | None = None
     while True:
         size = min(limit - len(rows), MAX_SCAN_PER_REQUEST - scanned)  # never more rows than `limit`, never more reads than the cap
-        page, next_after = store.load_cases_page(pathway, state, after, size, only)
+        page, next_after = _worklist_page(state, after, size, only)
         scanned += len(page)
         for lc in page:
             if identity.role == "patient" and (identity.patient_ref is None or lc.patient_ref != identity.patient_ref):
                 continue
-            row = readmodel.case_row(lc, pathway, calendar)
+            row = readmodel.case_row(lc, pathway_by_name(lc.pathway) or pathway, calendar)
             if row is not None and readmodel.matches(row, owner=owner, overdue=overdue, provider=provider, flagged=flagged):
                 if with_risk:  # D9: filled last, so no filter or order above depends on it
                     row["risk_score"] = _risk_score(lc, now)
@@ -248,7 +319,8 @@ def _patient_ref(case_id: UUID) -> str | None:
     return events[0].payload.get("patient_ref") if events else None
 
 
-def _check_signature_and_evidence(identity: Identity, event_type: str, payload: dict, case_id: UUID) -> None:
+def _check_signature_and_evidence(identity: Identity, event_type: str, payload: dict, case_id: UUID,
+                                  pw: Pathway | None = None) -> None:
     """A15 (ADR-021): a signature is the signer's own, and closure evidence must resolve AND be this
     case's own (SEC-2: the resource must be the one named, and belong to this case or its patient).
     Since A36 (ADR-044) the state machine refuses a foreign signer too; this is the second layer, which runs first so a
@@ -271,13 +343,15 @@ def _check_signature_and_evidence(identity: Identity, event_type: str, payload: 
             # the state machine requires it to be exactly the counselling_ref recorded with the refusal.
             return
         try:
-            verdict = evidence.verifier.assess(ref, case_id=case_id, patient_ref=_patient_ref(case_id))
+            verdict = evidence.verifier.assess(ref, case_id=case_id, patient_ref=_patient_ref(case_id),
+                                               procedure=(pw or pathway).evidence.procedure)
         except evidence.EvidenceUnavailable as exc:
             raise HTTPException(503, f"cannot verify closure evidence: {exc}")
         if not verdict.resolves:
             raise HTTPException(422, f"evidence_ref {ref!r} does not resolve to a resource of this case")
-        if not verdict.acceptable:  # A24: it is the case's own record, but not a complete colonoscopy
-            raise HTTPException(422, f"evidence_ref {ref!r} is not closure evidence: {verdict.reason}")
+        reason = evidence.refusal_reason(verdict, (pw or pathway).evidence)
+        if reason is not None:  # A24: it is the case's own record, but not a complete confirmatory procedure of this pathway
+            raise HTTPException(422, f"evidence_ref {ref!r} is not closure evidence: {reason}")
 
 
 def _refuse_backdated(model, at: datetime) -> None:
@@ -325,9 +399,10 @@ def post_event(
     if store.current_state(case_id) is None:
         raise HTTPException(404, "case not found")
     policy.authorize_case_access(identity, _patient_ref(case_id))
+    pw = pathway_of(case_id)
     if identity.role in policy.OWNER_SCOPED:
         # An early answer without the lock; the authoritative check is the guard handed to the store.
-        model = store.read_model(case_id, pathway)
+        model = store.read_model(case_id, pw)
         if model is None:
             raise HTTPException(404, "case not found")
         policy.authorize_owner_scope(identity, body.type, model)
@@ -340,9 +415,9 @@ def post_event(
     event = Event(case_id, body.type, at, identity.actor, body.payload, **extra)
     try:
         payloads.validate(body.type, body.payload)  # free text cannot enter the log (A14)
-        validate_payload(event, pathway)  # malformed payload: 422 before anything is written
-        _check_signature_and_evidence(identity, body.type, body.payload, case_id)
-        store.append(event, pathway, guard=_event_guard(identity, body.type, at))
+        validate_payload(event, pw)  # malformed payload: 422 before anything is written
+        _check_signature_and_evidence(identity, body.type, body.payload, case_id, pw)
+        store.append(event, pw, guard=_event_guard(identity, body.type, at))
     except CaseNotFound:
         raise HTTPException(404, "case not found")
     except (PayloadError, payloads.PayloadSchemaError) as exc:
@@ -356,7 +431,7 @@ def post_event(
         raise HTTPException(409, "event_id already used by another case")
     if body.type == "consent_updated":
         # Withdrawal freezes outreach and flags the case for human review (system:consent).
-        consent.ensure_review_requested(store, pathway, case_id, event.event_id, at)
+        consent.ensure_review_requested(store, pw, case_id, event.event_id, at)
     return _case_json(case_id, identity)
 
 
@@ -385,10 +460,11 @@ def case_timeline(case_id: UUID, identity: Identity = Depends(require_identity))
         # SEC-2: the patient's own timeline, redacted: visible steps only, roles instead of names.
         return {"case_id": str(case_id), **readmodel.patient_timeline(events, clock.now()),
                 "actors": readmodel.patient_actors(events)}
-    model = replay_model(events, pathway)
+    pw = pathway_of(case_id)
+    model = replay_model(events, pw)
     return {
         "case_id": str(case_id),
-        **readmodel.timeline(events, pathway, default_calendar(), clock.now()),
+        **readmodel.timeline(events, pw, default_calendar(), clock.now()),
         "actors": _actors_json(events, model),
     }
 
@@ -397,7 +473,8 @@ def case_timeline(case_id: UUID, identity: Identity = Depends(require_identity))
 def case_fhir(case_id: UUID, identity: Identity = Depends(require_identity)) -> dict:
     """The FHIR resources the projection writes for this case (A12): their ids, computed from the
     log, plus how many events are still waiting in the retry queue. Owners see only their own case."""
-    model = store.read_model(case_id, pathway)
+    pw = pathway_of(case_id)
+    model = store.read_model(case_id, pw)
     if model is None:
         raise HTTPException(404, "case not found")
     policy.authorize_owner_scope(identity, "view_fhir", model)
@@ -407,14 +484,14 @@ def case_fhir(case_id: UUID, identity: Identity = Depends(require_identity)) -> 
         "projection_enabled": projector is not None,
         "fhir_base_url": app_settings.fhir_base_url,
         "events_waiting": projector.queue.count(case_id) if projector is not None else 0,
-        **fhir_projection.case_resource_ids(pathway, default_calendar(), case_id, store.events_for(case_id)),
+        **fhir_projection.case_resource_ids(pw, default_calendar(), case_id, store.events_for(case_id)),
     }
 
 
 @router.get("/{case_id}/notifications")
 def case_notifications(case_id: UUID, identity: Identity = Depends(require_identity)) -> list[dict]:
     """The case's notification log (A7), oldest first. Owners see only their own cases."""
-    model = store.read_model(case_id, pathway)
+    model = store.read_model(case_id, pathway_of(case_id))
     if model is None:
         raise HTTPException(404, "case not found")
     policy.authorize_owner_scope(identity, "view_notifications", model)
@@ -440,14 +517,18 @@ def record_confirmatory_result(
 
     `?completeness=` (A24, ADR-036) says how the colonoscopy ended: `complete` (default), `incomplete` or
     `ct_colonography`. The report states it, and `close` accepts only a complete colonoscopy or a CT colonography."""
-    model = store.read_model(case_id, pathway)
+    pw = pathway_of(case_id)
+    model = store.read_model(case_id, pw)
     if model is None:
         raise HTTPException(404, "case not found")
     policy.authorize_owner_scope(identity, "record_confirmatory_result", model)
+    rule = pw.evidence
     if model.state not in RESULT_STATES:
-        raise HTTPException(409, f"no colonoscopy to record in state {model.state!r}")
+        raise HTTPException(409, f"no {rule.procedure} to record in state {model.state!r}")
+    if completeness == "ct_colonography" and "ct_colonography" not in rule.closable_completeness:
+        raise HTTPException(422, f"a {rule.procedure} has no CT-colonography alternative on this pathway")
     try:
-        refs = confirmatory.recorder.record(case_id, _patient_ref(case_id), clock.now(), completeness)
+        refs = confirmatory.recorder.record(case_id, _patient_ref(case_id), clock.now(), completeness, rule.procedure)
     except confirmatory.RecorderUnavailable as exc:
-        raise HTTPException(503, f"cannot record the colonoscopy result: {exc}")
+        raise HTTPException(503, f"cannot record the {rule.procedure} result: {exc}")
     return {"case_id": str(case_id), "evidence_ref": refs["procedure_ref"], **refs, "recorded_at": clock.now().isoformat()}

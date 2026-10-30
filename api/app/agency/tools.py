@@ -76,10 +76,10 @@ def read_worklist(ctx) -> Worklist:
     unbounded read built the facts of every case and exhausted an API pod's memory at 873,000 open cases."""
     c = _cases()
     cap = agency_config.max_cases_read()
-    page, after = c.store.load_cases_page(c.pathway, None, None, cap)
+    page, after = c._worklist_page(None, None, cap, None)  # every loaded pathway, in case-id order
     out = Worklist()
     for lc in page:
-        f = case_facts(lc, c.pathway)
+        f = case_facts(lc, c.pathway_by_name(lc.pathway) or c.pathway)
         if f is not None:
             out.append(f)
     out.truncated = after is not None
@@ -108,14 +108,14 @@ def read_active_cases(ctx, since: datetime | None, after: tuple | None = None) -
         # that size it is not done; the changed set above is the read. The cap applies to the two together.
         if sum(c.store.state_counts(c.pathway).values()) <= agency_config.metrics_max_cases():
             have = set(wanted)
-            extra = sorted((cid for cid, model, _ in c.store.iter_open_case_models(c.pathway)
+            extra = sorted((cid for pw in c.all_pathways() for cid, model, _ in c.store.iter_open_case_models(pw)
                             if model is not None and (model.any_overdue or model.watchdog_flag is not None) and cid not in have),
                            key=lambda i: i.int)
             wanted += extra[: max(cap - len(wanted), 0)]
             truncated = len(extra) > max(cap - len(keys), 0)
     out = Worklist()
     for case_id in wanted:
-        f = facts_for(case_id, c.store, c.pathway)
+        f = facts_for(case_id, c.store, c.pathway_or_default(case_id))
         if f is not None:
             out.append(f)
     out[:] = sorted(out, key=lambda f: (f.history[0].at if f.history else "", f.case_id))  # worklist order, as before
@@ -132,7 +132,7 @@ def _aware(dt: datetime) -> datetime:
 
 def read_case(ctx, case_id: UUID) -> CaseFacts:
     c = _cases()
-    f = facts_for(case_id, c.store, c.pathway)
+    f = facts_for(case_id, c.store, c.pathway_or_default(case_id))
     if f is None:
         raise ToolFailed("case not found or does not replay")
     return f

@@ -246,6 +246,48 @@ add(21, 0.36, 5, [
   ["review_requested", 1, TRIAGE, { reason: "wrong_number", source_event_id: "seed-reply-21" }],
 ], autoDefs);
 
+/**
+ * The second pathway's demo cases (cervical screening, `cervical_hpv`): the same engine, so the same events and states. They exist
+ * only in a mock that asks for them (`secondPathway`), so the other seeds, and every test and recording that counts cases, are
+ * unchanged. Synthetic. None is a result of any evaluation: the pathway has no simulated impact number.
+ *  30  just arrived, acknowledged and assigned by the automation;  31  patient contacted, nobody has answered, overdue;
+ *  32  patient acknowledged, waiting for a booking;  33  booked.
+ */
+export const CERVICAL_PATHWAY = "cervical_hpv";
+const cervicalDefs: { id: string; risk: number; events: CaseEvent[] }[] = [];
+const OWNER_SARA = { ...SARA };
+add(30, 0, 2, [
+  ["acknowledge", 1.9, AUTO, { auto: true }],
+  ["assign_ownership", 1.9, AUTO, { owner: LAYLA_ACTOR, provider: "Riverside Primary Care", auto: true }],
+], cervicalDefs);
+add(31, 0, 24, [
+  ["acknowledge", 23.9, AUTO, { auto: true }],
+  ["assign_ownership", 23.9, AUTO, { owner: SARA_ACTOR, provider: "Riverside Primary Care", auto: true }],
+  ["accept_ownership", 23, SARA_ACTOR, OWNER_SARA],
+  ["message_sent", 23, AUTO, { ...TEMPLATE_SMS, notification_id: "n-auto-31-1" }],
+  ["contact_patient", 20, SARA_ACTOR, { channel: "phone" }],
+], cervicalDefs);
+add(32, 0, 9, [
+  ["acknowledge", 8.9, AUTO, { auto: true }],
+  ["assign_ownership", 8.9, AUTO, { owner: HUDA_ACTOR, provider: "Marina Digestive Health", auto: true }],
+  ["accept_ownership", 8, HUDA_ACTOR, HUDA],
+  ["contact_patient", 6, HUDA_ACTOR, { channel: "phone" }],
+  ["patient_acknowledge", 4, "patient:c0000032", { lang: "ar" }],
+], cervicalDefs);
+add(33, 0, 14, [
+  ["acknowledge", 13.9, AUTO, { auto: true }],
+  ["assign_ownership", 13.9, AUTO, { owner: HUDA_ACTOR, provider: "Marina Digestive Health", auto: true }],
+  ["accept_ownership", 13, HUDA_ACTOR, HUDA],
+  ["contact_patient", 11, HUDA_ACTOR, { channel: "phone" }],
+  ["patient_acknowledge", 9, "patient:c0000033", { lang: "en" }],
+  ["handoff_requested", 7, HUDA_ACTOR, { to_provider: "Corniche Women's Health Unit" }],
+  ["handoff_accepted", 6, "specialist_owner:Dr. Karim Nasser", {}],
+  ["book_confirmatory", 5, "specialist_owner:Dr. Karim Nasser", { appointment_ref: "APPT-2026-0033", appointment_date: "2026-11-12" }],
+], cervicalDefs);
+const CERVICAL_IDS = new Set(cervicalDefs.map((d) => d.id));
+/** The pathway a seeded case runs on (a case the mock files itself is a bowel case, like the API's default). */
+export const pathwayOfCase = (id: string): string => (CERVICAL_IDS.has(id) ? CERVICAL_PATHWAY : "colorectal_fit");
+
 /** The scheduler's `mark_overdue` for every seeded case whose SLA clock has already passed. */
 function withOverdueMarkers(events: CaseEvent[]): CaseEvent[] {
   const clock = slaClock(events, replayState(events), SIM_NOW);
@@ -259,8 +301,8 @@ function withOverdueMarkers(events: CaseEvent[]): CaseEvent[] {
 }
 
 /** The seeded cases; with `automation` the demo also gets the cases the automation actor has already worked on (A21). */
-export function seedEvents(automation = false): Record<string, CaseEvent[]> {
-  const all = automation ? [...defs, ...autoDefs] : defs;
+export function seedEvents(automation = false, secondPathway = false): Record<string, CaseEvent[]> {
+  const all = [...(automation ? [...defs, ...autoDefs] : defs), ...(secondPathway ? cervicalDefs : [])];
   return structuredClone(Object.fromEntries(all.map((d) => [d.id, withOverdueMarkers(d.events)])));
 }
 

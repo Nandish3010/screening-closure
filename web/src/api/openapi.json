@@ -65,6 +65,17 @@
             ],
             "title": "Contact Valid"
           },
+          "pathway": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pathway"
+          },
           "patient_ref": {
             "anyOf": [
               {
@@ -2267,8 +2278,26 @@
     },
     "/pathways": {
       "get": {
-        "description": "Return the loaded pathway config as parsed from YAML.",
+        "description": "Return a loaded pathway config as parsed from YAML: the default pathway's, or the one named by `?name=`.",
         "operationId": "pathways_pathways_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "name",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Name"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -2281,6 +2310,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
         "security": [

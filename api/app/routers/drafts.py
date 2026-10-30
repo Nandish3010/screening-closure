@@ -214,7 +214,8 @@ def owner_identity(owner: str | None) -> tuple[str, str] | None:
 
 
 def build_request(case_id: UUID, body: CreateDraft, identity: Identity) -> DraftRequest:
-    model = cases.store.read_model(case_id, cases.pathway)
+    pw = cases.pathway_of(case_id)
+    model = cases.store.read_model(case_id, pw)
     if model is None:
         raise HTTPException(404, "case not found")
     # G-1: like every other owner action, a clinician drafts only on a case they own (coordinator and
@@ -222,7 +223,7 @@ def build_request(case_id: UUID, body: CreateDraft, identity: Identity) -> Draft
     policy.authorize_owner_scope(identity, "create_draft", model)
     if model.consent_frozen:
         raise HTTPException(409, "outreach is frozen: the patient has withdrawn consent")
-    if model.state == cases.pathway.terminal_state:
+    if model.state == pw.terminal_state:
         raise HTTPException(409, "the case is closed: no new drafts")
 
     # The patient hears from the case owner. A case without an owner yet is drafted in the
@@ -238,8 +239,8 @@ def build_request(case_id: UUID, body: CreateDraft, identity: Identity) -> Draft
             language=body.language,
             owner_name=owner_name,
             owner_role=owner_role,
-            next_step=DEFAULT_NEXT_STEP[body.language],
-            pathway_name=cases.pathway.name,
+            next_step=pw.next_step(body.language, DEFAULT_NEXT_STEP),
+            pathway_name=pw.name,
             appointment_date=date,
         )
     except ValueError as exc:
@@ -339,7 +340,7 @@ def create_draft(
         # under the case lock, on the replayed model (build_request's check was made on an earlier read; the
         # case may have changed hands since).
         cases.store.append(
-            event, cases.pathway,
+            event, cases.pathway_of(case_id),
             within=lambda cur: drafts_db.add(record, prompt, cur=cur),
             guard=policy.owner_guard(identity, "create_draft"),
         )
@@ -370,7 +371,7 @@ def create_draft(
 def list_drafts(case_id: UUID, identity: Identity = Depends(require_identity)) -> list[dict]:
     """The case's drafts, text included. Owner-scoped like every other owner action (SEC-2): a clinician
     reads the drafts of cases they own; a coordinator or supervisor reads any."""
-    model = cases.store.read_model(case_id, cases.pathway)
+    model = cases.store.read_model(case_id, cases.pathway_of(case_id))
     if model is None:
         raise HTTPException(404, "case not found")
     policy.authorize_owner_scope(identity, "view_drafts", model)
@@ -400,7 +401,7 @@ def _decidable(draft_id: UUID, identity: Identity) -> tuple[DraftRecord, object]
     draft = draft_store().get(draft_id)
     if draft is None:
         raise HTTPException(404, "draft not found")
-    model = cases.store.read_model(draft.case_id, cases.pathway)
+    model = cases.store.read_model(draft.case_id, cases.pathway_of(draft.case_id))
     if model is None:
         raise HTTPException(404, "case not found")
     policy.authorize_owner_scope(identity, "decide_draft", model)
@@ -426,7 +427,8 @@ def approve_draft(draft_id: UUID, identity: Identity = Depends(require_identity)
     draft, model = _decidable(draft_id, identity)
     if model.consent_frozen:
         raise HTTPException(409, "outreach is frozen: the patient has withdrawn consent")
-    if model.state not in cases.pathway.open_states:
+    pw = cases.pathway_of(draft.case_id)
+    if model.state not in pw.open_states:
         raise HTTPException(409, "the case is closed: nothing to approve")
 
     now = clock.now()
@@ -439,7 +441,7 @@ def approve_draft(draft_id: UUID, identity: Identity = Depends(require_identity)
                                             approved.purpose, now), cur=cur)
 
     try:
-        cases.store.append(event, cases.pathway, within=decide, guard=policy.owner_guard(identity, "decide_draft"))
+        cases.store.append(event, pw, within=decide, guard=policy.owner_guard(identity, "decide_draft"))
     except CaseNotFound:
         raise HTTPException(404, "case not found") from None
     except DraftNotFound:
@@ -477,7 +479,7 @@ def reject_draft(
     case (it can only stop outreach); a closed case takes no annotation, so it answers 409.
     """
     draft, model = _decidable(draft_id, identity)
-    if model.state not in cases.pathway.open_states:
+    if model.state not in cases.pathway_of(draft.case_id).open_states:
         raise HTTPException(409, "the case is closed: nothing to reject")
     now = clock.now()
     stored_reason = body.reason if body.note is None else f"{body.reason}: {body.note}"
@@ -487,7 +489,7 @@ def reject_draft(
     try:
         payloads.validate(event.type, event.payload)
         cases.store.append(
-            event, cases.pathway,
+            event, cases.pathway_of(draft.case_id),
             within=lambda cur: drafts_db.reject(draft_id, identity.actor, now, stored_reason, cur=cur),
             guard=policy.owner_guard(identity, "decide_draft"),
         )
