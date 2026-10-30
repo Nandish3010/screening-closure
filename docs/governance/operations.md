@@ -71,6 +71,34 @@ make down
 
 The handover is the TTL plus up to one poll, never less than the TTL: a follower cannot take the lease before it has expired. With the default TTL of 30 s a dead leader leaves the work undone for about 32 s.
 
+### Measured on Kubernetes (M7-6)
+
+The same handover measured on the Helm chart on a local kind cluster (3 API pods, 2 schedulers, lease TTL 30 s, fencing on), with 1,500 open cases falling due during each run and a client writing about 2 new-case flows a second ([scale.md](../results/scale.md), raw data in `docs/results/scale/failover.json`):
+
+| Kill | Runs | Scheduler: new leader after | Sweeps missed (10 s interval) | Lost / duplicated / acknowledged-but-missing |
+|---|---|---|---|---|
+| Hard kill (SIGKILL of the leader scheduler and the API pod holding `api-background`) | 3 | 23.4 to 29.6 s (median 24.7 s) | 2 in every run | 0 / 0 / 0 |
+| Force delete (`--grace-period=0 --force`) | 5 | 28.4 to 29.2 s in four runs, 0.9 s in one (median 28.6 s) | 2 in four runs, 0 in one | 0 / 0 / 0 |
+| Graceful delete (the process releases its lease on SIGTERM) | 3 | 0.4 to 1.4 s | 0 | 0 / 0 / 0 |
+
+In words: after a hard kill or a force delete the schedule is late by about the TTL (roughly 24 to 30 s, two sweeps), and every trigger that fell due in the gap fires late, not never (the largest lateness seen was 39 s). A graceful delete (a rolling update, a drain) hands the lease over in about a second. Across all 11 runs no event was duplicated, no acknowledged client write was missing, no scheduler event was lost, and no stale-fence write reached the database (the in-transaction probe refused all 33 attempts); clients saw no outage beyond one retried request in one hard-kill run. The API background lease (the FHIR projection drain) moved within 0.4 to 1.5 s on force and graceful deletes and within 21 to 31 s on hard kills. The killed API pod was replaced and Ready in about 6 to 7 s.
+
+**Watchdog interval caveat.** The watchdog replays every open case on each scan (`POST /watchdog/scan`, O(open cases)): about 224 to 230 s for a full replay at 1,000,000 cases on the benchmark host, and a scan of that size outlived its client's 120 s timeout in every soak scan. The chart default interval is 10 s; the kind cluster ran it every 900 s (and the agency layer off) for the soak, and with the default interval the API could not hold even 20 requests/s inside p99 500 ms. Until the scan is made incremental (open item in the scale report), set `watchdog.intervalSeconds` from the scan time at your population, not from the default, and do not read the `scheduler_down` alert as proof the scheduler is down while a scan is running on the same pod.
+
+### Runbook: drills and load on the kind cluster
+
+All of these need `make k8s-up` first, touch only the cluster `sc-m76` (and, for the sweep tool, the throw-away databases `closure_load*`), and write their results next to the other raw files in `docs/results/scale/`. After any of them, `make scale-report` regenerates [scale.md](../results/scale.md) and `make scale-report-check` fails if it is out of date.
+
+| What | Command | Notes |
+|---|---|---|
+| Failover drill (kill the scheduler leader and the API background leader) | `.venv/bin/python tools/k8s/failover_drill.py --runs 5 --graceful-runs 3 --out docs/results/scale/failover.json` | Several minutes per run; seeds cases into the `closure` database; the report lists time to the new leader, missed sweeps and the integrity checks (duplicates, acknowledged writes, replay, fencing) |
+| Sweep at scale | `.venv/bin/python tools/load/scale_sweep.py sweep --sizes 100000,500000,1000000 --workers 1,4` | Seeds templates into the in-cluster Postgres first (the 1,000,000-case seed took about 200 s); `seed-closure --size 1000000` builds the population for the API test; `drop` removes the `closure_load*` databases |
+| API latency at a sustained rate | `.venv/bin/python tools/k8s/api_load.py --rates 50,100 --duration 300 [--search-start 150 --search-step 50] [--probe-worklist]` | Open-loop; pass criteria p99 under 500 ms and under 0.1% errors; `--probe-worklist` issues one unbounded worklist read and can OOM an API pod at 1,000,000 cases |
+| Soak | `.venv/bin/python tools/k8s/soak.py --duration 7500 --rate 50 --out docs/results/scale/soak.json` | 2 hours; samples pod memory and CPU, restarts, leases and the heartbeats table every 60 s; keep the machine awake |
+| Token for manual calls | `.venv/bin/python tools/k8s/mint_token.py --role coordinator --name me` | See [deployment.md](deployment.md) |
+
+Run the watchdog-heavy tests with the watchdog scaled to 0 (`kubectl --context kind-sc-m76 -n closure scale deploy/closure-watchdog --replicas 0`) if the question is the API alone, and say so in the label of the result: the report separates `watchdog_off` from `watchdog_on_as_deployed`. The numbers apply to a laptop-class shared host and are not a cloud capacity claim.
+
 ## Failure modes
 
 | Failure | What happens | What to look at |

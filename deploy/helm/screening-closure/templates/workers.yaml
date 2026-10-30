@@ -33,12 +33,15 @@ spec:
             {{- include "sc.secretEnv" (dict "key" "SCHEDULER_SERVICE_TOKEN" "secret" $secret) | nindent 12 }}
           securityContext: {{ toYaml .Values.containerSecurityContext | nindent 12 }}
           resources: {{ toYaml .Values.scheduler.resources | nindent 12 }}
-          # Alive = the heartbeat file was written in the last two minutes (the loop writes it every interval, leader or follower).
+          # Alive = the heartbeat file was written in the last two minutes. Leader and follower both write it
+          # (scheduler/main.py, `role` in the file), so a missing or stale file always means a stuck loop. timeoutSeconds:
+          # python start-up under the 250m cpu limit takes more than the 1 s default.
           livenessProbe:
             exec:
-              command: ["python", "-c", "import json,time,sys; d=json.load(open('/tmp/scheduler.json')); sys.exit(0 if time.time()-d['wall_ts']<120 else 1)"]
+              command: ["python", "-c", "import json,os,sys,time; p='/tmp/scheduler.json'; sys.exit(0 if os.path.exists(p) and time.time()-json.load(open(p))['wall_ts']<120 else 1)"]
             initialDelaySeconds: 60
             periodSeconds: 30
+            timeoutSeconds: 10
             failureThreshold: 3
           volumeMounts:
             - { name: tmp, mountPath: /tmp }

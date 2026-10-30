@@ -91,6 +91,7 @@ Why more workers do not scale linearly: replaying every case and appending each 
 - `tools/load/time_sweep.py` times the sweep with a fixed sweep time (2026-03-10 08:00 UTC, a Tuesday), the real `PostgresEventStore` and the UAE working-day calendar; with Workers 1 by calling `run_sweep`, with more workers by calling `POST /scheduler/sweep` on the FastAPI app (`RouteSweep`, `SWEEP_WORKERS=N`, pool started before the clock). Seed 20261017, so the data and the emitted-event counts are reproducible; wall times vary with the machine. Postgres runs in Docker on the same machine, so every statement pays a local network hop.
 - After each sweep it asserts: emitted events equal the pure planner's expectation; no errors or rejected events; a second sweep emits nothing; no `close` event exists; case logs are gap-free; the event row count grew by exactly the events emitted.
 - `make check` runs the 1,000-case size only (no file written); `make test-load` runs all sizes and rewrites this file. The database is dropped at the end unless `KEEP_LOAD_DB=1`.
+- Beyond 100,000 cases (500,000 and 1,000,000, in-cluster Postgres, 1 and 4 workers), the leader fail-over drill, the API latency runs and the soak, on a local kind cluster: [scale.md](scale.md).
 
 ## Machine
 

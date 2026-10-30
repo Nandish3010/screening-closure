@@ -59,11 +59,14 @@ spec:
               app.kubernetes.io/name: watchdog
       ports:
         - { protocol: TCP, port: {{ .Values.api.port }} }
-    {{- if or $np.ingressFrom $np.metricsFrom }}
+    {{- if or $np.ingressFrom $np.metricsFrom $np.ingressCidrs }}
     - from:
         {{- range concat $np.ingressFrom $np.metricsFrom }}
         - namespaceSelector:
             matchLabels: {{ toYaml .namespaceLabels | nindent 14 }}
+        {{- end }}
+        {{- range $np.ingressCidrs }}
+        - ipBlock: { cidr: {{ . | quote }} }
         {{- end }}
       ports:
         - { protocol: TCP, port: {{ .Values.api.port }} }
@@ -71,10 +74,14 @@ spec:
   egress:
     - to: [{ ipBlock: { cidr: {{ $np.egress.database.cidr | quote }} } }]
       ports: [{ protocol: TCP, port: {{ $np.egress.database.port }} }]
+    {{- if $np.egress.fhir.cidr }}
     - to: [{ ipBlock: { cidr: {{ $np.egress.fhir.cidr | quote }} } }]
       ports: [{ protocol: TCP, port: {{ $np.egress.fhir.port }} }]
+    {{- end }}
+    {{- if $np.egress.oidc.cidr }}
     - to: [{ ipBlock: { cidr: {{ $np.egress.oidc.cidr | quote }} } }]
       ports: [{ protocol: TCP, port: {{ $np.egress.oidc.port }} }]
+    {{- end }}
     {{- if $np.egress.otlp.cidr }}
     - to: [{ ipBlock: { cidr: {{ $np.egress.otlp.cidr | quote }} } }]
       ports: [{ protocol: TCP, port: {{ $np.egress.otlp.port }} }]

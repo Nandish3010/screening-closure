@@ -212,11 +212,13 @@ class BeatWhile:
         self._thread.join(timeout=15)
 
 
-def write_heartbeat(summary: dict | None, last_ok_wall_ts: float | None) -> None:
+def write_heartbeat(summary: dict | None, last_ok_wall_ts: float | None, role: str = "leader") -> None:
     HEARTBEAT_PATH.parent.mkdir(parents=True, exist_ok=True)
     tmp = HEARTBEAT_PATH.with_suffix(".tmp")
     beat = {
         "wall_ts": time.time(),  # wall-clock-ok: liveness heartbeat only, never a decision
+        "role": role,
+        "holder": HOLDER,
         "sim_time": summary.get("sim_time") if summary else None,
         "sweep_ok": summary is not None,
         "last_ok_wall_ts": last_ok_wall_ts,
@@ -246,6 +248,9 @@ def loop_once(state: LoopState) -> dict | None:
         if state.was_leader:
             log.info("no longer the leader (lease held by %s)", (lease or {}).get("leader_holder"))
         state.was_leader = False
+        # The follower writes the liveness file too (role=follower), so the pod's probe can require a fresh file from every
+        # instance; a leader that is demoted keeps a fresh file and is not restarted.
+        write_heartbeat(None, state.last_ok, role="follower")
         post_heartbeat(True, 0, role="follower")
         return None
     if not state.was_leader:

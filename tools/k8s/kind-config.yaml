@@ -1,0 +1,18 @@
+# kind cluster for M7-6 (scalability evidence). One control plane + two workers, so the API's topology spread and the
+# scheduler's leader election run across real (container) nodes. Host ports are bound to loopback only.
+#   127.0.0.1:18376 -> NodePort 30076 -> the API Service        (curl http://127.0.0.1:18376/health)
+#   127.0.0.1:15476 -> NodePort 30077 -> the in-cluster Postgres (psql -h 127.0.0.1 -p 15476)
+# NodePorts are served by kube-proxy on every node, so mapping them on the control-plane container is enough.
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: sc-m76
+networking:
+  podSubnet: "10.244.0.0/16"      # explicit: values-kind.yaml's NetworkPolicy database CIDR is this range
+  serviceSubnet: "10.96.0.0/16"
+nodes:
+  - role: control-plane
+    extraPortMappings:
+      - { containerPort: 30076, hostPort: 18376, listenAddress: "127.0.0.1", protocol: TCP }
+      - { containerPort: 30077, hostPort: 15476, listenAddress: "127.0.0.1", protocol: TCP }
+  - role: worker
+  - role: worker
