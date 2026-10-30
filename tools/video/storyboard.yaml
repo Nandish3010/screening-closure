@@ -1,7 +1,8 @@
 # E16: the shot list for the 3-minute submission video and the backup demo video.
 #
-# Derived from the "Backup video storyboard (3 minutes)" table in docs/submission/demo-script.md (shots 1 to 14, same
-# two beats, same captions: the catch (shots 3 to 6), then the reveal (shots 7 to 11), then the numbers (12, 13) and the ask (14)) and
+# Derived from the "Backup video storyboard (3 minutes)" table in docs/submission/demo-script.md (shots 1 to 10, same
+# two beats, same captions: the catch (shots 2, 3), then the reveal (shots 4 to 6), then the numbers (7 to 9) and the ask (10);
+# cut from 14 shots to 10 in the M7 presentation fixes, and the triage cameo re-scripted to match api/app/triage/dialect.py) and
 # driven against the LIVE stack (http adapter) after `make demo-reset` and `make demo-scenario UNTIL=owner_accepted`.
 # Read by tools/video/storyboard.py (validation, `make video-check`), tools/video/record.ts (Playwright) and
 # tools/video/narrate.py (text to speech). tests/test_demo_docs.py keeps this file and the demo script in step.
@@ -10,8 +11,8 @@
 # target in seconds), and optionally submission: true (in the 3-minute video; every shot is in the backup video) and
 # optional: true (skipped, not failed, when its route is absent or its guard element never shows up).
 #
-# Targets: the 14 shots add up to 170 s, which with the 3 s title card and the 4 s end card is 177 s, inside the 180 s
-# cap (3 s under it, so check the real length; narration is estimated at about 2.8 words a second plus 0.8 s a shot, and no shot's narration is longer than its target). The final length of a shot is max(narration length, target); `make video-check` checks the targets, `assemble.sh`
+# Targets: the 10 shots add up to 167 s, which with the 3 s title card and the 4 s end card is 174 s, inside the 180 s
+# cap (check the real length: the previous 14-shot cut was 177 s of targets and measured 179.75 s; narration is estimated at about 2.8 words a second plus 0.8 s a shot, and no shot's narration is longer than its target). The final length of a shot is max(narration length, target); `make video-check` checks the targets, `assemble.sh`
 # checks the real lengths.
 #
 # Actions (one key per step):
@@ -22,7 +23,8 @@
 #   fill: {label: "Field label", value: "text"}
 #   scroll: {testid: id} | {text: "visible text"} | {heading: "Heading"}      scrolls the element into the middle of the screen
 #   wait_for: {testid|text|heading: ..., contains: "text", absent: true, timeout: ms, reload_every: ms}
-#   (shot 10 needs `make triage-serve` running on the host: it waits for "Read as confirm", so it fails loudly without it)
+#   (shot 5 wants `make triage-serve` running on the host so the banner names what the model read; it waits for the amber
+#   "A person must look at this reply" banner, which a Gulf-dialect reply always gets and which any reply gets if the model is down)
 #   hold: seconds                    let the viewer read
 #   caption: "text"                  change the on-screen caption from here on
 #   cut: start | end                 the video between the two markers is removed (dead waiting); the shot keeps its caption
@@ -53,57 +55,37 @@ cards:
 
 shots:
   - id: 1
-    title: The problem
+    title: The problem, and what this is
     beat: Problem
     submission: true
-    route: "card:stat"
-    duration: 8
-    caption: "Abu Dhabi audit: 30.5% of positive screening tests ever reached a colonoscopy (BMC Cancer 2021)"
-    narration: "An Abu Dhabi audit found that only thirty point five percent of positive bowel screening tests ever reached a colonoscopy."
+    route: "card:stat, /coordinator"
+    duration: 14
+    caption: "Abu Dhabi audit: 30.5% of positive screening tests ever reached a colonoscopy (BMC Cancer 2021). An accountability and closure engine: a named owner, a clock, an audit trail, a clinician-signed closure. Nothing is diagnosed. All data synthetic."
+    narration: "An Abu Dhabi audit found that only thirty point five percent of positive bowel screening tests ever reached a colonoscopy. This is an accountability and closure engine: a named owner, a clock, an audit trail and a clinician's signature. Nothing is diagnosed."
     actions:
       - card: {kind: stat, value: "30.5%", text: "of positive screening tests in an Abu Dhabi audit ever had the follow-up colonoscopy", source: "Almansoori et al., BMC Cancer 2021"}
       - hold: 6
-
-  - id: 2
-    title: What this is
-    beat: What this is
-    submission: true
-    route: /coordinator
-    duration: 9
-    caption: "A named owner, a clock, an audit trail, a clinician-signed closure. Nothing is diagnosed. All data synthetic."
-    narration: "An accountability and closure engine: a named owner, a clock, an audit trail and a clinician's signature on every closure. Nothing is diagnosed."
-    actions:
       - goto: /coordinator
       - wait_for: {testid: worklist-row, timeout: 20000}
-      - hold: 5
+      - hold: 3
 
-  - id: 3
-    title: An owned case, an honest banner, the scheduler stopped
-    beat: "Catch 1, 2. Owned case, banner, kill the scheduler"
+  - id: 2
+    title: An owned case, the scheduler stopped, silence
+    beat: "Catch 1 to 4. Owned case, banner, kill the scheduler, patient contacted, clock jump"
     submission: true
     route: "/coordinator/{case}"
-    duration: 14
-    caption: "The system named the owner and sent the first message by itself (mock only: nothing reaches a phone). Amber: no clinician has signed those messages off, so the demo runs on a placeholder. We stop the scheduler on purpose."
-    narration: "A positive result has a named owner, assigned by the system. Its first message is mock-only: nothing reaches a phone. The amber banner says no clinician has signed the messages off. Now we stop the scheduler on purpose."
+    duration: 20
+    caption: "The system named the owner and sent the first message by itself (mock only: nothing reaches a phone). Amber: no clinician has signed those messages off, so the demo runs on a placeholder. We stop the scheduler on purpose. No answer from the patient; eleven working days pass; nothing is flagged: this is silence."
+    narration: "A positive result has a named owner. Its first message is mock-only, and the amber banner says no clinician has signed it off. Now we stop the scheduler on purpose. The patient does not answer; eleven working days pass; nothing is flagged, because the clock that flags it is dead."
     actions:
       - goto: "/coordinator/{case}"
       - wait_for: {heading: "Owner accepted", timeout: 20000}
       - wait_for: {testid: outreach-demo-banner, timeout: 20000}
       - hold: 2
       - scroll: {heading: "Timeline"}
-      - hold: 2
+      - hold: 1
       - terminal: {command: "docker compose stop scheduler", run: true, timeout: 60}
       - hold: 1
-
-  - id: 4
-    title: Patient contacted, clock jump
-    beat: "Catch 3, 4. Patient contacted, clock jump"
-    submission: true
-    route: "/coordinator/{case}"
-    duration: 10
-    caption: "No answer from the patient. Eleven working days pass. Nothing is flagged: this is silence."
-    narration: "The owner phones the patient, who does not answer. Eleven working days pass. Nothing is flagged, because the clock that flags it is dead."
-    actions:
       - goto: "/coordinator/{case}"
       - role: clinician
       - wait_for: {testid: contact-patient, timeout: 20000}
@@ -117,45 +99,35 @@ shots:
       - scroll: {testid: sla-clock}
       - hold: 3
 
-  - id: 5
-    title: Watchdog catches the dead scheduler
-    beat: "Catch 5, 6. Watchdog, restart"
+  - id: 3
+    title: Watchdog catches the dead scheduler, a person accepts
+    beat: "Catch 5 to 7. Watchdog, restart, escalation accepted"
     submission: true
     route: "terminal, /dashboard, /coordinator/{case}"
-    duration: 16
-    caption: "The watchdog caught the dead scheduler. Restarted: the overdue flag, the reminder and the supervisor escalation appear, once each, in order. The reminder to the patient is mock-only."
-    narration: "A property test fills the wait: two thousand random sequences, none closes without evidence. Then the banner: the scheduler is down. Restart it, and the overdue flag, the reminder and the escalation appear once each, in order. Reminders are mock-only."
+    duration: 18
+    caption: "The watchdog caught the dead scheduler. Restarted: the overdue flag, the reminder and the supervisor escalation appear, once each, in order. The reminder to the patient is mock-only. Every escalation needs a human to accept it."
+    narration: "A property test fills the wait: two thousand random sequences, none closes without evidence. The watchdog catches the dead scheduler. Restarted, the overdue flag, the reminder and the escalation appear once each, in order. A person must accept every escalation."
     actions:
-      # The alert is due 60 to 80 s after the stop in shot 3; the test fills part of the wait.
+      # The alert is due 60 to 80 s after the stop in shot 2; the test fills part of the wait.
       - terminal: {command: ".venv/bin/pytest -q \"api/tests/test_state_machine.py::test_never_closed_without_evidence_and_human_signoff\"", run: true, timeout: 180, reuse: property-test, lines: 14}
-      - hold: 3
+      - hold: 2
       - goto: /dashboard
       - cut: start
       - wait_for: {testid: scheduler-banner, timeout: 150000}
       - cut: end
-      - hold: 3
+      - hold: 2
       - shell: "docker compose start scheduler"
       - cut: start
       - wait_for: {testid: scheduler-banner, absent: true, timeout: 120000}
       - cut: end
       - wait_for: {testid: scheduler-recovered, timeout: 20000}
-      - hold: 2
+      - hold: 1
       - goto: "/coordinator/{case}"
       - cut: start
       - wait_for: {testid: escalation-level, contains: "Level", timeout: 90000, reload_every: 5000}
       - cut: end
       - scroll: {testid: escalation-level}
-      - hold: 3
-
-  - id: 6
-    title: Escalation accepted
-    beat: "Catch 7. Escalation accepted"
-    submission: true
-    route: "/coordinator/{case}"
-    duration: 5
-    caption: "Every escalation needs a human to accept it"
-    narration: "Every escalation needs a human to accept it."
-    actions:
+      - hold: 2
       - goto: "/coordinator/{case}"
       - role: supervisor
       - wait_for: {testid: pending-escalation, timeout: 20000}
@@ -163,80 +135,67 @@ shots:
       - hold: 1
       - click: {testid: accept-escalation}
       - wait_for: {testid: flash, contains: "Escalation accepted", timeout: 20000}
-      - hold: 2
+      - hold: 1
 
-  - id: 7
-    title: The prepared second case, a bad reference refused
-    beat: "Reveal 1. Second case, bad evidence refused"
+  - id: 4
+    title: Bad reference refused, agency inbox, signed and closed
+    beat: "Reveal 1 to 3. Bad evidence refused, agency, real evidence and signature"
     submission: true
-    route: "/coordinator/{case2}"
-    duration: 9
-    caption: "A reference that does not exist is refused. Closure needs evidence that exists."
-    narration: "A second case, prepared earlier, already has its colonoscopy. Closure needs evidence that exists, so a made-up reference is refused."
+    route: "/coordinator/{case2}, /agency"
+    duration: 22
+    caption: "A reference that does not exist is refused. Closure needs evidence that exists. Agents do the labour, never the authority: one run reads all 22 open cases and the inbox holds only the human decision. The real Procedure and the clinician's own signature: closed. A record that says the colonoscopy was incomplete is refused."
+    narration: "A second case already has its colonoscopy, but a made-up reference is refused: closure needs evidence that exists. Agents prepare the morning's work for all twenty-two open cases, and the inbox holds only the human decision. The clinician records the real procedure, signs as themselves, and the case closes."
     actions:
       - goto: "/coordinator/{case2}"
       - role: specialist
       - wait_for: {heading: "Confirmatory completed", timeout: 20000}
-      - hold: 2
+      - hold: 1
       - scroll: {text: "Clinician sign-off and closure"}
       - fill: {label: "Evidence reference", value: "Procedure/colonoscopy-0001"}
       - click: {testid: signoff}
       - wait_for: {text: "refused", timeout: 20000}
-      - hold: 3
-
-  - id: 8
-    title: "The agency: the morning's work, one decision in the inbox"
-    beat: "Reveal 2. Agency, run, inbox"
-    submission: true
-    route: /agency
-    duration: 12
-    caption: "Agents do the labour, never the authority. One run reads all 22 open cases; the inbox holds only the human decision."
-    narration: "Behind the worklist, agents prepare the work for every open case: overdue cases explained, evidence found, the closure pack assembled. The inbox holds only the human decision."
-    actions:
-      # The run is started from a terminal (the supervisor's dev-login is inside the script), so the video needs no extra role switch.
+      - hold: 2
+      # The agency run is started from a terminal (the supervisor's dev-login is inside the script), so no extra role switch.
       - terminal: {command: "make agency-run", run: true, timeout: 120, lines: 14}
-      - hold: 3
+      - hold: 2
       - goto: /agency
       - role: specialist
       - wait_for: {testid: inbox-item, timeout: 30000}
       - scroll: {heading: "Sign the closure"}
-      - hold: 3
-
-  - id: 9
-    title: Signed and closed
-    beat: "Reveal 3. Real evidence, the clinician's own signature, closed"
-    submission: true
-    route: "/coordinator/{case2}"
-    duration: 12
-    caption: "The real Procedure and the clinician's own signature: closed. A record that says the colonoscopy was incomplete is refused."
-    narration: "The clinician opens it from the inbox, records the real procedure, signs as themselves, and the case closes. A record that says the colonoscopy was incomplete would be refused."
-    actions:
-      # Each shot is its own browser context: open the agency page again (the role, specialist, is kept from shot 8)
-      - goto: /agency
-      - role: specialist
-      - wait_for: {testid: inbox-item, timeout: 30000}
+      - hold: 1
       - click: {link: "Open case"}
       - wait_for: {heading: "Clinician reviewed", timeout: 20000}
       - scroll: {text: "Clinician sign-off and closure"}
       - click: {testid: record-colonoscopy}
-      - hold: 2
+      - hold: 1
       - click: {testid: signoff}
       - wait_for: {heading: "Closed", timeout: 30000}
       - wait_for: {text: "Case closed (signed)", timeout: 10000}
       - scroll: {text: "Case closed (signed)"}
-      - hold: 2
+      - hold: 1
       - scroll: {testid: reopen-panel}
       - hold: 2
 
-  - id: 10
-    title: Triage cameo
-    beat: "Reveal 5. A Gulf-Arabic reply, read live"
+  - id: 5
+    title: "Triage cameo: a Gulf-Arabic reply goes to a person"
+    beat: "Reveal 5. A Gulf-Arabic reply, read live, routed to a person"
     submission: true
     route: "/coordinator/{case}"
-    duration: 17
-    caption: "A reply in Gulf Arabic, read live by an offline model: a clear confirmation needs no person. An opt-out is caught by a keyword rule first and always goes to a person. It can flag, never close, send or change consent. No appointment is booked: the FHIR Appointment is a stub."
-    narration: "A patient replies in Gulf Arabic that she will come on Sunday. An offline model on this laptop reads a confirmation; no person is needed. An opt-out goes to a keyword rule, then a person. No appointment is booked: that record is a stub."
+    duration: 19
+    # Every reply typed in this shot, and the outcome the words claim for it, is checked against the code by
+    # tests/test_storyboard_triage.py (dialect.detect and triage.classify with a stand-in scorer that is as sure as can be).
+    # `person`: the code sends it to a person whatever the model says. `handled`: no rule forces a person (the model decides).
+    # `shown: false`: said in the caption or narration, not typed in the video.
+    reply_claims:
+      - {text: "ان شاء الله بجي يوم الأحد", outcome: person, group: ar_gulf, shown: true, says: "Gulf reply always goes to a person"}
+      - {text: "سأحضر يوم الأحد إن شاء الله، شكراً لكم", outcome: handled, group: null, shown: false, says: "standard Arabic"}
+      - {text: "Yes, I will come on Sunday, thank you.", outcome: handled, group: null, shown: false, says: "English"}
+      - {text: "STOP", outcome: person, group: null, shown: false, says: "opt-out"}
+    caption: "A reply in Gulf Arabic, read by an offline model: a Gulf reply always goes to a person (the fairness audit found 91% of the Gulf replies it handled alone were right, below the 95% target). The Why panel shows the reply waiting for a person. A clear confirmation in English or standard Arabic can be handled without one. An opt-out is caught by a keyword rule first and always goes to a person. It can flag, never close, send or change consent. No appointment is booked: the FHIR Appointment is a stub."
+    narration: "A patient replies in Gulf Arabic that she will come on Sunday. Our fairness audit found the Gulf replies it handled alone were right only ninety-one percent of the time, short of our ninety-five percent target. So a Gulf reply always goes to a person. So does an opt-out."
     actions:
+      # Needs `make triage-serve` on the host so the banner names what the model read. The first wait is for the amber banner, which a
+      # Gulf reply gets whatever the model says; the second makes sure the live model (not the fail-safe) answered.
       - goto: "/coordinator/{case}"
       - role: coordinator
       - scroll: {testid: reply-panel}
@@ -244,37 +203,40 @@ shots:
       - fill: {label: "Patient's reply", value: "ان شاء الله بجي يوم الأحد"}
       - hold: 1
       - click: {testid: record-reply}
-      - wait_for: {testid: reply-result, contains: "Read as confirm", timeout: 30000}
+      - wait_for: {testid: reply-result, contains: "A person must look at this reply", timeout: 30000}
+      - wait_for: {testid: reply-result, contains: "model: qwen", timeout: 5000}   # the live model answered; with the server down it says "unavailable" and this fails loudly
       - scroll: {testid: reply-result}
-      - hold: 5
+      - hold: 3
+      - scroll: {testid: why-triage-reply}
+      - hold: 3
 
-  - id: 11
+  - id: 6
     title: The patient's own screen, in Arabic
     beat: "Reveal 6. The patient's view, right to left"
     submission: true
     route: "/patient/{case}"
-    duration: 11
+    duration: 10
     caption: "The patient's own screen, in Arabic and right to left: the result in plain words, who owns the case, one button to say she understood."
-    narration: "This is what the patient sees, in Arabic, right to left: the result in plain words, who owns her case, and one button to say she understood."
+    narration: "The patient's own screen, in Arabic, right to left: the result in plain words, who owns her case, one button to say she understood."
     actions:
       # The page opens in English; the language button (its name contains the word for Arabic) flips it to Arabic, right to left.
       - goto: "/patient/{case}"
       - role: patient
       - wait_for: {testid: patient-owner, timeout: 20000}
-      - hold: 2
+      - hold: 1
       - click: {name: "العربية"}
       - hold: 1
       - scroll: {testid: patient-owner}
-      - hold: 4
+      - hold: 3
 
-  - id: 12
+  - id: 7
     title: Numbers
     beat: Numbers
     submission: true
     route: "card:results"
-    duration: 21
+    duration: 18
     caption: "Simulation on synthetic data, literature-anchored, before capacity limits, against a US-calibrated usual-care baseline. Colonoscopy within 180 days 51% to 67%, a ratio of about 1.31, calibrated to published navigation trials: the model shows the mechanism, not new evidence of effect. Closed with evidence and a signature 53% to 68%. Lost without anyone told, programme-level 45% to 21%; 0% among the cases the programme reaches, true by construction. Rerun: make evaluate"
-    narration: "Synthetic simulation, US-calibrated baseline. Colonoscopy within one hundred eighty days: fifty-one to sixty-seven, a ratio of one point three one, calibrated to published trials. Closed with evidence: fifty-three to sixty-eight. Lost without anyone told: forty-five to twenty-one percent programme-wide; zero among cases reached, by construction."
+    narration: "Synthetic simulation, US-calibrated baseline, before capacity limits. Colonoscopy within one hundred eighty days: fifty-one to sixty-seven percent, a ratio of one point three one, calibrated to published trials, not new evidence. Lost without anyone told: forty-five to twenty-one percent programme-wide; zero among cases reached, by construction."
     actions:
       - card:
           kind: results
@@ -285,51 +247,70 @@ shots:
             - "Cases closed (evidence and human sign-off)"
             - "Lost AND never surfaced to a human: programme level"
             - "Lost AND never surfaced to a human: in reach"
-      - hold: 18
+      - hold: 15
 
-  - id: 13
-    title: Labour
+  - id: 8
+    title: The honest range
     beat: Numbers
     submission: true
     route: "card:slide"
-    duration: 10
-    caption: "Labour: 36% fewer staff minutes per case the system handles, 20% across the programme. The 40% target is not met in realistic scenarios; only the upper bound, a mechanism ceiling, comes close."
-    narration: "Labour falls thirty-six percent per handled case, twenty percent programme-wide. The forty percent target is not met in realistic scenarios; only the upper bound does."
+    duration: 14
+    caption: "The range, synthetic. Before capacity limits, US-calibrated baseline: colonoscopy within 180 days 51% to 67%. Abu Dhabi-shaped baseline (sensitivity run): 30.6% to 38.8% at 360 days, +8.2 points. At base colonoscopy capacity the median wait among completers is 15.0 days longer (65.9 to 80.9). Base capacity is a scale device, not a real unit."
+    narration: "Now the range. With a baseline shaped like the Abu Dhabi audit, the gain is eight point two points at three hundred sixty days. At base colonoscopy capacity, patients who complete wait fifteen days longer."
+    actions:
+      - card:
+          kind: slide
+          heading: "The honest range (synthetic)"
+          bullets:
+            - "Headline, before capacity limits, US-calibrated baseline: colonoscopy within 180 days 51% to 67%"
+            - "Abu Dhabi-shaped baseline (sensitivity run): 30.6% to 38.8% at 360 days, +8.2 points"
+            - "At base colonoscopy capacity: median wait among completers 65.9 to 80.9 days, 15.0 days longer; the 90-day gain is +0.7 points"
+            - "Base capacity is a scale device, not a real endoscopy unit"
+      - hold: 11
+
+  - id: 9
+    title: Labour, by role
+    beat: Numbers
+    submission: true
+    route: "card:slide"
+    duration: 14
+    caption: "Labour: 36% fewer staff minutes per case the system handles, 20% across the programme. The 40% target is not met in realistic scenarios; only the upper bound, a mechanism ceiling, comes close. By role: coordinator minutes fall 36%, owner-clinician minutes rise 94% and specialist minutes rise 23%."
+    narration: "Labour falls thirty-six percent per handled case, twenty percent programme-wide. The forty percent target is not met. And the time moves: coordinator minutes fall thirty-six percent, owner-clinician minutes rise ninety-four, specialist twenty-three."
     actions:
       - card:
           kind: slide
           heading: "Labour, in the same simulation"
           bullets:
-            - "36% fewer staff minutes per case the system handles (in reach)"
-            - "20% fewer across the whole programme (0.55 reach assumption)"
+            - "36% fewer staff minutes per case the system handles (in reach); 20% fewer across the whole programme (0.55 reach assumption)"
             - "The 40% target is not met in realistic scenarios; only the upper bound (a mechanism ceiling) comes close"
+            - "By role, programme level: coordinator 46.6 to 29.8 minutes per case (36% fewer)"
+            - "Owner clinician 4.5 to 8.7 minutes (94% more); specialist 6.1 to 7.4 minutes (23% more)"
             - "Minutes are published or assumed; synthetic"
-      - hold: 8
+      - hold: 11
 
-  - id: 14
-    title: The ask
+  - id: 10
+    title: The ask, and why a buyer would act
     beat: Ask
     submission: true
     route: "card:slide"
-    duration: 16
-    caption: "Pilot ask: one programme, two providers, 90 days, shadow mode first. Cases closed without evidence: must stay zero. Buyer hypothesis: a programme licence across pathways; about 42 advanced cancers avoided a year in Abu Dhabi (synthetic, assumption-based)."
-    narration: "The ask: one programme, two providers, ninety days, shadow mode first. Cases closed without evidence must stay zero. Who pays: a programme licence; Abu Dhabi's public health programme is the hypothesised buyer. Replay it with the Judge tour."
+    duration: 18
+    caption: "Pilot ask: one programme, two providers, 90 days, shadow mode first. Cases closed without evidence: must stay zero. The pull is regulatory: the IFHAS V10 referral clock of 15 working days. Shadow run: about AED 106,000 to serve 155 cases in 90 days (model, assumed inputs). Buyer hypothesis: Abu Dhabi's public health programme. Synthetic, assumption-based."
+    narration: "The ask: one programme, two providers, ninety days, shadow mode first; cases closed without evidence must stay zero. The pull is regulatory: Abu Dhabi's screening standard sets a fifteen working day referral clock. A shadow run costs about one hundred six thousand dirhams for one hundred fifty-five cases."
     actions:
       - card:
           kind: slide
-          heading: "Pilot ask"
+          heading: "Pilot ask, and why a buyer would act"
           bullets:
-            - "One programme: colorectal screening"
-            - "Two providers"
-            - "Ninety days, shadow mode first: 30 days watching, nothing sent"
+            - "One programme: colorectal screening. Two providers. Ninety days, shadow mode first: 30 days watching, nothing sent"
             - "Cases closed without evidence: must stay at zero. If it moves, we stop"
-            - "Who pays (hypothesis, not a relationship): a programme licence across pathways, Abu Dhabi public health programme as buyer"
-            - "About 42 advanced cancers avoided a year in Abu Dhabi: synthetic, assumption-based"
+            - "The pull: IFHAS V10 requires referral within 15 working days of releasing a result; nothing today tells a network, case by case, which positives are about to miss it"
+            - "Shadow run: about AED 106,000 to serve 155 cases in 90 days (model, every input assumed, not a quote)"
+            - "Who pays (hypothesis, not a relationship): a programme licence, Abu Dhabi public health programme as buyer"
             - "Judges: the Judge tour button (header) replays this, read-only"
-      - hold: 11
+      - hold: 14
 
   # ---- Backup-only extra: not in the 3-minute cut. Skipped, not failed, if the element is absent. ------------------------
-  - id: 15
+  - id: 11
     title: The effort counter on a case
     beat: Effort counter (A21)
     optional: true
