@@ -61,7 +61,7 @@ shots:
     route: "card:stat, /coordinator"
     duration: 14
     caption: "Abu Dhabi audit: 30.5% of positive screening tests ever reached a colonoscopy (BMC Cancer 2021). An accountability and closure engine: a named owner, a clock, an audit trail, a clinician-signed closure. Nothing is diagnosed. All data synthetic."
-    narration: "An Abu Dhabi audit found that only thirty point five percent of positive bowel screening tests ever reached a colonoscopy. This is an accountability and closure engine: a named owner, a clock, an audit trail and a clinician's signature. Nothing is diagnosed."
+    narration: "An Abu Dhabi audit found only thirty point five percent of positive bowel screening tests ever reached a colonoscopy. This is an accountability and closure engine: a named owner, a clock, an audit trail and a clinician's signature. Nothing is diagnosed."
     actions:
       - card: {kind: stat, value: "30.5%", text: "of positive screening tests in an Abu Dhabi audit ever had the follow-up colonoscopy", source: "Almansoori et al., BMC Cancer 2021"}
       - hold: 6
@@ -238,7 +238,7 @@ shots:
     route: "card:results"
     duration: 18
     caption: "Simulation on synthetic data, literature-anchored, before capacity limits, against a US-calibrated usual-care baseline. Colonoscopy within 180 days 51% to 67%, a ratio of about 1.31, calibrated to published navigation trials: the model shows the mechanism, not new evidence of effect. Closed with evidence and a signature 53% to 68%. Lost without anyone told, programme-level 45% to 21%; 0% among the cases the programme reaches, true by construction. Rerun: make evaluate"
-    narration: "Synthetic simulation, US-calibrated baseline, before capacity limits. Colonoscopy within one hundred eighty days: fifty-one to sixty-seven percent, a ratio of one point three one, calibrated to published trials, not new evidence. Lost without anyone told: forty-five to twenty-one percent programme-wide; zero among cases reached, by construction."
+    narration: "Synthetic simulation, before capacity limits. Colonoscopy within one hundred eighty days: fifty-one to sixty-seven percent, calibrated to published trials, not new evidence. Lost without anyone told: forty-five to twenty-one percent programme-wide; zero among cases reached, by construction."
     actions:
       - card:
           kind: results
@@ -277,7 +277,7 @@ shots:
     route: "card:slide"
     duration: 14
     caption: "Labour: 36% fewer staff minutes per case the system handles, 20% across the programme. The 40% target is not met in realistic scenarios; only the upper bound, a mechanism ceiling, comes close. By role: coordinator minutes fall 36%, owner-clinician minutes rise 94% and specialist minutes rise 23%."
-    narration: "Labour falls thirty-six percent per handled case, twenty percent programme-wide. The forty percent target is not met. And the time moves: coordinator minutes fall thirty-six percent, owner-clinician minutes rise ninety-four, specialist twenty-three."
+    narration: "Labour falls thirty-six percent per handled case, twenty percent programme-wide. The forty percent target is not met. Coordinator minutes fall thirty-six percent, owner-clinician minutes rise ninety-four, specialist twenty-three."
     actions:
       - card:
           kind: slide
@@ -297,7 +297,7 @@ shots:
     route: "card:slide"
     duration: 18
     caption: "Pilot ask: one programme, two providers, 90 days, shadow mode first. Cases closed without evidence: must stay zero. The pull is regulatory: the IFHAS V10 referral clock of 15 working days. Shadow run: about AED 106,000 to serve 155 cases in 90 days (model, assumed inputs). Buyer hypothesis: Abu Dhabi's public health programme. Synthetic, assumption-based."
-    narration: "The ask: one programme, two providers, ninety days, shadow mode first; cases closed without evidence must stay zero. The pull is regulatory: Abu Dhabi's screening standard sets a fifteen working day referral clock. A shadow run costs about one hundred six thousand dirhams for one hundred fifty-five cases."
+    narration: "The ask: one programme, two providers, ninety days, shadow mode first; closures without evidence must stay zero. The pull is regulatory: the screening standard sets a fifteen working day referral clock. A shadow run costs about one hundred six thousand dirhams for one hundred fifty-five cases."
     actions:
       - card:
           kind: slide
