@@ -1,0 +1,44 @@
+scan 0: evaluated=20000 flagged=7836 traced=0.3MiB peak=7.3MiB rss=87MiB
+scan 1: evaluated=20000 flagged=0 traced=0.3MiB peak=7.8MiB rss=94MiB
+scan 2: evaluated=20000 flagged=0 traced=0.3MiB peak=7.8MiB rss=94MiB
+scan 3: evaluated=20000 flagged=0 traced=0.3MiB peak=7.8MiB rss=95MiB
+scan 4: evaluated=20000 flagged=0 traced=0.3MiB peak=7.8MiB rss=96MiB
+scan 5: evaluated=20000 flagged=0 traced=0.3MiB peak=7.8MiB rss=97MiB
+scan 6: evaluated=20000 flagged=0 traced=0.3MiB peak=7.8MiB rss=98MiB
+--- growth between scan 2 and scan 6 (top by size diff) ---
+/Users/NS/gitex/sc-m77/api/app/state_machine.py:782: size=8750 B (-1600 B), count=175 (-32), average=50 B
+/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/lib/python3.14/tracemalloc.py:560: size=1848 B (+1200 B), count=6 (+4), average=308 B
+/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/lib/python3.14/tracemalloc.py:423: size=1848 B (+1200 B), count=6 (+4), average=308 B
+/Users/NS/gitex/screening-closure/.venv/lib/python3.14/site-packages/psycopg/cursor.py:282: size=21.0 KiB (+1100 B), count=430 (+22), average=50 B
+/Users/NS/gitex/sc-m77/api/app/state_machine.py:1260: size=3150 B (+1000 B), count=63 (+20), average=50 B
+/Users/NS/gitex/sc-m77/api/app/state_machine.py:1251: size=3000 B (-600 B), count=60 (-12), average=50 B
+/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/lib/python3.14/contextlib.py:481: size=1008 B (+576 B), count=14 (+8), average=72 B
+<string>:1: size=2952 B (+544 B), count=39 (+8), average=76 B
+/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/lib/python3.14/selectors.py:398: size=952 B (+512 B), count=15 (+8), average=63 B
+/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/lib/python3.14/selectors.py:408: size=896 B (+512 B), count=14 (+8), average=64 B
+/Users/NS/gitex/sc-m77/api/app/watchdog.py:40: size=3450 B (-400 B), count=69 (-8), average=50 B
+/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/lib/python3.14/subprocess.py:1781: size=672 B (+384 B), count=7 (+4), average=96 B
+--- by traceback of the biggest grower ---
+/tmp/claude-502/m77/mem_repro.py:21: size=8750 B (-1600 B), count=175 (-32), average=50 B
+  File "/tmp/claude-502/m77/mem_repro.py", line 21
+    r = run_idle_scan(store, P, now, 7)
+  File "/Users/NS/gitex/sc-m77/api/app/watchdog.py", line 129
+    for case_id, model, error in store.iter_open_case_models(pathway, only=only):
+  File "/Users/NS/gitex/sc-m77/api/app/store_pg.py", line 438
+    yield case_id, replay_model(by_case.get(case_id, []), pathway), None
+  File "/Users/NS/gitex/sc-m77/api/app/state_machine.py", line 482
+    model = genesis(model, ev, pathway) if ev.type == CASE_CREATED else step(model, ev, pathway)
+  File "/Users/NS/gitex/sc-m77/api/app/state_machine.py", line 517
+    done = _finish(_annotate(model, event, pathway), event, model, pathway)
+  File "/Users/NS/gitex/sc-m77/api/app/state_machine.py", line 697
+    return rule(model, event, pathway) if rule else model
+  File "/Users/NS/gitex/sc-m77/api/app/state_machine.py", line 782
+    if _aware(event.at) <= due:
+Exception ignored while calling deallocator <function ConnectionPool.__del__ at 0x108726b90>:
+Traceback (most recent call last):
+  File "/Users/NS/gitex/screening-closure/.venv/lib/python3.14/site-packages/psycopg_pool/pool.py", line 126, in __del__
+  File "/Users/NS/gitex/screening-closure/.venv/lib/python3.14/site-packages/psycopg_pool/_acompat.py", line 160, in gather
+  File "/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/lib/python3.14/threading.py", line 1133, in join
+PythonFinalizationError: cannot join thread at interpreter shutdown
+
+
