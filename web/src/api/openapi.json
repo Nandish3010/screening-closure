@@ -2291,6 +2291,35 @@
         "summary": "Pathways"
       }
     },
+    "/scheduler/agency-run": {
+      "post": {
+        "description": "One agency run at the current simulation time, on the scheduler's own timer (M7-8, ADR-047). Synchronous, so the scheduler\nmeasures it and never starts a second while it runs; this process's run lock makes a second concurrent request answer\n`busy` instead of queueing. Fenced at entry, and every ledger write re-checks the lease inside its transaction (the agency\nwrites no case event of its own; a draft it asks for is the drafting route's, unchanged). `{\"enabled\": false}` while the\nagency is switched off (`AGENCY_EVERY_SWEEPS=0`). Counts only.",
+        "operationId": "agency_run_scheduler_agency_run_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Agency Run Scheduler Agency Run Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Agency Run",
+        "tags": [
+          "scheduler"
+        ]
+      }
+    },
     "/scheduler/automation-scan": {
       "post": {
         "description": "One pass of the automation over the open cases (A21, ADR-032): acknowledge and assign anything still waiting,\nre-route rejected referrals, send the due pre-approved messages. Idempotent (deterministic event ids); counts only.\nA no-op, answering `{\"enabled\": false}`, unless AUTOMATION_ENABLED is true.",

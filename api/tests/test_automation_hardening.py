@@ -498,6 +498,7 @@ def test_the_in_memory_store_filters_by_state_like_the_database(fresh):
 # -- the scheduler's heartbeat covers the scans -----------------------------------------------------------------------
 
 import importlib.util
+import threading
 import time
 from pathlib import Path
 
@@ -529,23 +530,53 @@ def sched(monkeypatch):
 
 
 def test_heartbeats_keep_coming_while_a_long_automation_scan_runs(sched, monkeypatch):
-    """A scan over a large cohort, or a slow HAPI, can outlast the watchdog's 60 s: a busy scheduler must not look dead."""
+    """A scan over a large cohort, or a slow HAPI, can outlast the watchdog's 60 s: a busy scheduler must not look dead.
+
+    Deterministic (M7-8): each scan is held open until the heartbeat thread has beaten a fixed number of times, so the test
+    depends on beats happening, not on how many fit into a sleep on a loaded machine."""
+    def scan_beats():
+        return len([c for c in sched.calls if c[0] == "beat" and c[2] == {"sweeping": True}])
+
     def slow_scan(path):
         sched.calls.append((f"scan-start:{path}", (), {}))
-        time.sleep(0.4)  # several beat periods
+        before = scan_beats()
+        deadline = time.monotonic() + 30
+        while scan_beats() < before + 2 and time.monotonic() < deadline:  # held open until 2 beats arrived during THIS scan
+            time.sleep(0.005)
+        assert scan_beats() >= before + 2, "the heartbeat thread did not beat while the scan ran"
         sched.calls.append((f"scan-end:{path}", (), {}))
         return {"enabled": True, "asked": 1, "errors": []}
 
     monkeypatch.setattr(sched, "run_automation", slow_scan)
-    sched.loop_once(sched.LoopState())
+    state = sched.LoopState()
+    sched.loop_once(state)
     names = [c[0] for c in sched.calls]
     start, end = names.index("scan-start:automation-scan"), names.index("scan-end:evidence-scan")
     inside = [c for c in sched.calls[start:end] if c[0] == "beat"]
-    assert len(inside) >= 4, names  # beats during two 0.4 s scans, 0.05 s apart
+    assert len(inside) >= 4, names  # at least 2 beats during each of the two scans
     assert all(c[2] == {"sweeping": True} for c in inside)
-    # and the thread is stopped when the scans are over: the next call after `scan-end` is the loop's own final beat
-    after = sched.calls[end + 1:]
-    assert [c[0] for c in after if c[0] == "beat"].__len__() == 1 and after[-1][2].get("sweeping") is not True
+    # and the thread is stopped when the scans are over: BeatWhile joined it, so no heartbeat thread is left
+    assert [t for t in threading.enumerate() if t.name == "scheduler-heartbeat" and t.is_alive()] == []
+
+
+def test_a_scan_tick_beats_on_its_own_while_the_sweep_is_idle(sched, monkeypatch):
+    """ADR-047: the scans are timed tasks of their own. A scan tick alone (no sweep running) still keeps the heartbeat alive."""
+    def scan_beats():
+        return len([c for c in sched.calls if c[0] == "beat"])
+
+    def slow_scan(path):
+        before = scan_beats()
+        deadline = time.monotonic() + 30
+        while scan_beats() < before + 3 and time.monotonic() < deadline:
+            time.sleep(0.005)
+        return {"enabled": True, "errors": []}
+
+    monkeypatch.setattr(sched, "run_automation", slow_scan)
+    state = sched.LoopState()
+    state.was_leader = True
+    sched.scan_tick(state, "automation-scan")
+    assert scan_beats() >= 3 and all(c[2] == {"sweeping": True} for c in sched.calls if c[0] == "beat")
+    assert [t for t in threading.enumerate() if t.name == "scheduler-heartbeat" and t.is_alive()] == []
 
 
 def test_a_failing_scan_still_stops_the_heartbeat_thread_and_the_loop_goes_on(sched, monkeypatch):
@@ -555,7 +586,5 @@ def test_a_failing_scan_still_stops_the_heartbeat_thread_and_the_loop_goes_on(sc
     monkeypatch.setattr(sched, "run_automation", broken)
     with pytest.raises(RuntimeError):  # run_automation catches its own HTTP errors; anything else is a bug that surfaces
         sched.loop_once(sched.LoopState())
-    time.sleep(0.2)
-    n = len([c for c in sched.calls if c[0] == "beat"])
-    time.sleep(0.2)
-    assert len([c for c in sched.calls if c[0] == "beat"]) == n  # BeatWhile's __exit__ ran: no beat thread left behind
+    # BeatWhile's __exit__ ran (it joins the thread): no beat thread is left behind
+    assert [t for t in threading.enumerate() if t.name == "scheduler-heartbeat" and t.is_alive()] == []

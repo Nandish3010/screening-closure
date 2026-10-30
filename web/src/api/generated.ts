@@ -123,6 +123,7 @@ export interface Routes {
   "GET /metrics/closure": { response: Record<string, unknown>; };
   "GET /metrics/effort": { query: { "limit"?: number; }; response: Record<string, unknown>; };
   "GET /pathways": { response: Record<string, unknown>; };
+  "POST /scheduler/agency-run": { response: Record<string, unknown>; };
   "POST /scheduler/automation-scan": { response: Record<string, unknown>; };
   "POST /scheduler/evidence-scan": { response: Record<string, unknown>; };
   "POST /scheduler/heartbeat": { body: Heartbeat; response: Record<string, unknown>; };
@@ -170,6 +171,7 @@ export const ROUTES: readonly RouteKey[] = [
   "GET /metrics/closure",
   "GET /metrics/effort",
   "GET /pathways",
+  "POST /scheduler/agency-run",
   "POST /scheduler/automation-scan",
   "POST /scheduler/evidence-scan",
   "POST /scheduler/heartbeat",

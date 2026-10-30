@@ -213,15 +213,17 @@ def human_minutes_per_case(events) -> float:
     return case_effort(events)["human_minutes"]
 
 
-def effort_report(per_case: dict) -> dict:
-    """Totals over `{case_id: events}`: the sums of each case's accounting, the automation share and the reduction
-    against the target. `meets_target` is True only when the reduction is above `TARGET_REDUCTION_PCT`."""
-    rows = {cid: case_effort(events) for cid, events in per_case.items()}
-    keys = ("human_actions", "automated_actions", "patient_actions", "model_actions", "service_actions",
-            "human_minutes", "baseline_minutes", "minutes_saved", "unpriced_human_actions")
-    total = {k: round(sum(r[k] for r in rows.values()), 2) for k in keys}
-    for k in ("human_actions", "automated_actions", "patient_actions", "model_actions", "service_actions",
-              "unpriced_human_actions"):
+TOTAL_KEYS = ("human_actions", "automated_actions", "patient_actions", "model_actions", "service_actions",
+              "human_minutes", "baseline_minutes", "minutes_saved", "unpriced_human_actions")
+COUNT_KEYS = ("human_actions", "automated_actions", "patient_actions", "model_actions", "service_actions",
+              "unpriced_human_actions")
+
+
+def totals_from_sums(sums: dict) -> dict:
+    """The `totals` of an effort report from the SUM of each accounting key over the cases (rounded as the report rounds them).
+    `effort_report` and the metrics index (`app.metrics_index`, which sums in SQL) both end here, so the derived figures cannot differ."""
+    total = {k: round(sums[k], 2) for k in TOTAL_KEYS}
+    for k in COUNT_KEYS:
         total[k] = int(total[k])
     acted = total["automated_actions"] + total["human_actions"]
     total["automation_share"] = round(total["automated_actions"] / acted, 4) if acted else None
@@ -229,7 +231,14 @@ def effort_report(per_case: dict) -> dict:
                               if total["baseline_minutes"] else None)
     total["target_pct"] = TARGET_REDUCTION_PCT
     total["meets_target"] = bool(total["reduction_pct"] is not None and total["reduction_pct"] > TARGET_REDUCTION_PCT)
-    return {"rows": rows, "totals": total}
+    return total
+
+
+def effort_report(per_case: dict) -> dict:
+    """Totals over `{case_id: events}`: the sums of each case's accounting, the automation share and the reduction
+    against the target. `meets_target` is True only when the reduction is above `TARGET_REDUCTION_PCT`."""
+    rows = {cid: case_effort(events) for cid, events in per_case.items()}
+    return {"rows": rows, "totals": totals_from_sums({k: sum(r[k] for r in rows.values()) for k in TOTAL_KEYS})}
 
 
 def assumptions() -> dict:

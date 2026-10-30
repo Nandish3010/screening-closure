@@ -66,3 +66,7 @@ networkPolicy:
       - to:
           - podSelector: { matchLabels: { app: sc-jwks } }
         ports: [{ protocol: TCP, port: 8080 }]
+
+# M7-8: the cluster runs the chart's defaults for the new settings too (no override above): the scheduler's four timed tasks (10/10/10/60 s),
+# api.maxInflightRequests 40 per pod (503 + Retry-After above it), app.agencyOwnCadence "true", metricsRefreshBudgetSeconds 3, one uvicorn worker.
+# The mitigation A/B of docs/results/scale.md sets api.server.workers=2 and limitMaxRequests on the command line (helm --set), not here.

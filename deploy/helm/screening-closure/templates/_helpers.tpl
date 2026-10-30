@@ -60,6 +60,10 @@ tolerations: {{ toYaml . | nindent 2 }}
 {{- if ne (toString .Values.app.agencyEverySweeps) "" }}
 - { name: AGENCY_EVERY_SWEEPS, value: {{ .Values.app.agencyEverySweeps | quote }} }
 {{- end }}
+- { name: AGENCY_OWN_CADENCE, value: {{ .Values.app.agencyOwnCadence | quote }} }
+- { name: METRICS_REFRESH_BUDGET_SECONDS, value: {{ .Values.app.metricsRefreshBudgetSeconds | quote }} }
+- { name: MAX_INFLIGHT_REQUESTS, value: {{ .Values.api.maxInflightRequests | quote }} }
+- { name: SHED_RETRY_AFTER_SECONDS, value: {{ .Values.api.shedRetryAfterSeconds | quote }} }
 - { name: CORS_ALLOW_ORIGINS, value: {{ .Values.app.corsAllowOrigins | quote }} }
 - { name: LLM_PROVIDER, value: {{ .Values.app.llmProvider | quote }} }
 - { name: LOG_FORMAT, value: {{ .Values.app.logFormat | quote }} }

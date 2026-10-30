@@ -28,6 +28,10 @@ spec:
             - { name: PYTHONDONTWRITEBYTECODE, value: "1" }
             - { name: API_URL, value: "http://{{ .Release.Name }}-api:{{ .Values.api.service.port }}" }
             - { name: SCHEDULER_INTERVAL_SECONDS, value: {{ .Values.scheduler.intervalSeconds | quote }} }
+            - { name: SCHEDULER_AUTOMATION_INTERVAL_SECONDS, value: {{ .Values.scheduler.automationIntervalSeconds | quote }} }
+            - { name: SCHEDULER_EVIDENCE_INTERVAL_SECONDS, value: {{ .Values.scheduler.evidenceIntervalSeconds | quote }} }
+            - { name: SCHEDULER_AGENCY_INTERVAL_SECONDS, value: {{ .Values.scheduler.agencyIntervalSeconds | quote }} }
+            - { name: SCHEDULER_CADENCE_LOG_SECONDS, value: {{ .Values.scheduler.cadenceLogSeconds | quote }} }
             - { name: SCHEDULER_HOLDER, valueFrom: { fieldRef: { fieldPath: metadata.name } } }
             - { name: HEARTBEAT_PATH, value: /tmp/scheduler.json }
             {{- include "sc.secretEnv" (dict "key" "SCHEDULER_SERVICE_TOKEN" "secret" $secret) | nindent 12 }}

@@ -28,6 +28,16 @@ api:
     requests: { cpu: 500m, memory: 512Mi }
     limits:   { cpu: "2",  memory: 1Gi }
   sweepWorkers: ""               # SWEEP_WORKERS; empty = min(4, cpus). Keep it at or below the cpu limit.
+  # M7-8 (ADR-048) load shedding: at most this many requests in flight in ONE API process (= one pod); the next one gets 503 with
+  # Retry-After at once instead of queueing until it times out. 0 switches it off. /health, /scheduler/*, /watchdog/* and /metrics are
+  # never shed (a busy API must still take the lease renewal and the probe). 40 = the thread pool the sync routes run on; the database
+  # pool (10) is the real limit, so a request over 40 would only wait for it. Measured on the kind cluster: docs/results/scale.md.
+  maxInflightRequests: 40
+  shedRetryAfterSeconds: 1
+  # The uvicorn process. workers 1 = one process per pod (the measured configuration). limitMaxRequests > 0 recycles a worker after
+  # that many requests (a MITIGATION for slow memory growth, not a fix; it needs workers >= 2 so a supervisor restarts the worker
+  # while the other serves; with workers 1 the whole container would exit and restart). 0 = never recycle. See docs/results/scale.md.
+  server: { workers: 1, limitMaxRequests: 0 }
   podDisruptionBudget: { minAvailable: 1 }
   probes:
     startup:   { initialDelaySeconds: 5, periodSeconds: 5, failureThreshold: 36 }   # migrations run in the lifespan: allow 3 min
@@ -44,7 +54,13 @@ api:
 
 scheduler:
   replicas: 2                    # A31: one leads, the other idles as a follower and takes over within the lease TTL
-  intervalSeconds: 10
+  # M7-8 (ADR-047): every periodic job is a fixed-rate timed task of its own, gated on the lease and fenced with its token. A task STARTS
+  # every `...IntervalSeconds` (start to start, not end to start); a tick that overruns is skipped, never run twice in parallel or made up in a burst.
+  intervalSeconds: 10            # the sweep (SCHEDULER_INTERVAL_SECONDS)
+  automationIntervalSeconds: 10  # POST /scheduler/automation-scan
+  evidenceIntervalSeconds: 10    # POST /scheduler/evidence-scan
+  agencyIntervalSeconds: 60      # POST /scheduler/agency-run; 0 = no agency task. 60 = what "every 6th sweep" was. The agency is also off when app.agencyEverySweeps is "0".
+  cadenceLogSeconds: 300         # how often each task logs its achieved cadence
   resources:
     requests: { cpu: 50m,  memory: 64Mi }
     limits:   { cpu: 250m, memory: 128Mi }
@@ -84,6 +100,11 @@ app:
   # the API's code default applies (6). M7-7: a run reads at most AGENCY_MAX_CASES_READ (400) cases and resumes where it stopped, so it
   # is safe at a very large population (M7-6: the unbounded read OOM-killed a 768Mi pod at ~1M cases).
   agencyEverySweeps: ""
+  # M7-8 (ADR-047): the agency runs on the scheduler's own timer (scheduler.agencyIntervalSeconds), not by counting sweeps. With "true" the sweep
+  # route no longer counts for it; app.agencyEverySweeps stays the on/off switch ("0" = off).
+  agencyOwnCadence: "true"
+  # M7-8: GET /metrics/closure and /metrics/effort read the case_metrics table and first replay changed cases for at most this many seconds.
+  metricsRefreshBudgetSeconds: "3"
   requireLeaderFence: "true"    # scheduler calls without a current leader token are refused
   logFormat: json
   corsAllowOrigins: ""          # the web app's origin(s), comma separated
