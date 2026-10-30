@@ -651,7 +651,7 @@ export function CaseDetailPage() {
               <p className={`banner ${replyResult.needs_human ? "banner-warn" : "banner-ok"}`} role="status" data-testid="reply-result" data-intent={replyResult.intent} data-needs-human={String(replyResult.needs_human)}>
                 {replyQuote && (
                   <span className="reply-quote" data-testid="reply-quote" dir="auto" style={{ display: "block", marginBottom: 4 }}>
-                    {STAFF.replyForm.quote} «<bdi>{replyQuote}</bdi>»
+                    {STAFF.replyForm.quote} “<bdi>{replyQuote}</bdi>”
                   </span>
                 )}
                 <strong>{STAFF.replyForm.readAs} {String(replyResult.intent).replace(/_/g, " ")}</strong>

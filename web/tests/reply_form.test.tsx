@@ -47,7 +47,7 @@ describe("Record patient reply", () => {
     expect(res.textContent).toMatch(/A person must look at this reply/);
     const quote = within(res).getByTestId("reply-quote");
     expect(quote).toHaveAttribute("dir", "auto");
-    expect(quote).toHaveTextContent("Reply: «ان شاء الله بجي يوم الأحد»");
+    expect(quote).toHaveTextContent("Reply: “ان شاء الله بجي يوم الأحد”");
     expect(screen.getByTestId("reply-text")).toHaveValue("");
     expect(screen.getByTestId("why-triage-reply-rule")).toHaveTextContent("Gulf dialect: a person always checks these replies (safety rule HZ-43)");
     const events = (await api.getCase(id)).events.map((e) => e.type);

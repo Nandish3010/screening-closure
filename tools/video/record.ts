@@ -333,13 +333,12 @@ async function runAction(page: any, act: Action, ctx: { cases: Record<string, st
         await page.goto(pathToFileURL(file).href);
       };
       if (!res || v.run) {
-        await show("", null);
-        await sleep(1200);
-        // The run itself is dead time on screen: it is cut from the video (the first second of it stays).
+        // The run itself is dead time on screen and is cut from the video; no empty terminal is shown before it (a viewer
+        // would see only the command line). The page that was up stays, then the terminal appears with the real output.
         const started = (Date.now() - ctx.t0) / 1000;
         const r = await shAsync(v.command, v.timeout ?? 120);
         const ended = (Date.now() - ctx.t0) / 1000;
-        if (ended - started > 2) ctx.marks.cuts.push([started, ended - 0.5]);
+        if (ended - started > 0.5) ctx.marks.cuts.push([started + 0.3, ended]);
         const out = stripAnsi(r.out).trimEnd().split("\n");
         res = { output: out.slice(-lines).join("\n"), ok: r.code === 0 };
         terminalCache.set(key, res);

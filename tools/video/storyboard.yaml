@@ -85,7 +85,7 @@ shots:
       - scroll: {heading: "Timeline"}
       - hold: 1
       - terminal: {command: "docker compose stop scheduler", run: true, timeout: 60}
-      - hold: 1
+      - hold: 2
       - goto: "/coordinator/{case}"
       - role: clinician
       - wait_for: {testid: contact-patient, timeout: 20000}
@@ -110,11 +110,16 @@ shots:
     actions:
       # The alert is due 60 to 80 s after the stop in shot 2; the test fills part of the wait.
       - terminal: {command: ".venv/bin/pytest -q \"api/tests/test_state_machine.py::test_never_closed_without_evidence_and_human_signoff\"", run: true, timeout: 180, reuse: property-test, lines: 14}
-      - hold: 2
-      - goto: /dashboard
+      - hold: 3
       - cut: start
+      - goto: /dashboard
+      # the visible window starts on a loaded page: the clock, the metrics and the flagged cases, then the banner
+      - wait_for: {testid: sim-badge, contains: "2026", timeout: 30000}
+      - wait_for: {text: "Loading metrics", absent: true, timeout: 30000}
+      - wait_for: {text: "Loading flagged cases", absent: true, timeout: 30000}
       - wait_for: {testid: scheduler-banner, timeout: 150000}
       - cut: end
+      - hold: 2
       - hold: 2
       - shell: "docker compose start scheduler"
       - cut: start
@@ -239,7 +244,7 @@ shots:
     route: "card:results"
     duration: 18
     caption: "Simulation on synthetic data, literature-anchored, before capacity limits, against a US-calibrated usual-care baseline. Colonoscopy within 180 days 51% to 67%, a ratio of about 1.31, calibrated to published navigation trials: the model shows the mechanism, not new evidence of effect. Closed with evidence and a signature 53% to 68%. Lost without anyone told, programme-level 45% to 21%; 0% among the cases the programme reaches, true by construction. Rerun: make evaluate"
-    narration: "Synthetic, before capacity limits. Colonoscopy within one hundred eighty days: fifty-one to sixty-seven percent, a ratio of about one point three one, calibrated to published trials, not new evidence. Lost without anyone told: forty-five to twenty-one percent programme-wide; zero among cases reached, by construction."
+    narration: "Synthetic, US-calibrated, before capacity limits. Colonoscopy within one hundred eighty days: fifty-one to sixty-seven percent, a ratio of about one point three one, calibrated to published trials, not new evidence. Lost without anyone told: forty-five to twenty-one percent programme-wide; zero among cases reached, by construction."
     actions:
       - card:
           kind: results
@@ -326,8 +331,11 @@ shots:
     caption: "Human actions against automated actions on every case. Minutes saved are assumed, not measured."
     narration: "Every case shows its human actions against its automated actions, with the minutes saved. The minutes are assumed, not measured."
     actions:
-      - goto: "/coordinator/{case2}"
+      # Switch the role on a neutral page first: the previous shot left the patient role, and a case page opened as the patient
+      # answers 404 once before the role change reloads it, which leaves a stale red "Case not found." banner.
+      - goto: /coordinator
       - role: coordinator
+      - goto: "/coordinator/{case2}"
       - wait_for: {testid: effort-counter, timeout: 8000}
       - scroll: {testid: effort-counter}
       - hold: 8
