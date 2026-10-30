@@ -34,5 +34,13 @@ def budget_seconds() -> float:
     return max(0.0, float(settings.agency_run_budget_seconds))
 
 
+def max_cases_read() -> int:
+    return max(1, int(settings.agency_max_cases_read))
+
+
+def metrics_max_cases() -> int:
+    return max(0, int(settings.agency_metrics_max_cases))
+
+
 def max_tasks() -> int:
     return max(0, int(settings.agency_max_tasks))

@@ -120,6 +120,7 @@ class DailySummaryOut(_Out):
     closed: int
     alerts_open: int
     agency_needs_human: int
+    window_cases: int | None = None  # M7-7: overdue/escalated/flagged were counted over this many cases (the bounded read)
 
 
 class FlagsOut(_HumanOut):
@@ -482,20 +483,26 @@ class DailySummary(Executioner):
 
     def run(self, box, order, now):
         cases = box.call("read_worklist")
-        box.call("read_metrics")
+        metrics = box.call("read_metrics")
         alerts = box.call("read_alerts")
         waiting = box.call("read_ledger", status="needs_human")
         by_state: dict[str, int] = {}
         for c in cases:
             by_state[c.state] = by_state.get(c.state, 0) + 1
         open_ = [c for c in cases if c.open]
+        n_open, n_closed, window = len(open_), sum(not c.open for c in cases), None
+        if getattr(cases, "truncated", False):
+            # M7-7: the worklist read is a bounded window. The totals come from the SQL aggregate (exact); the overdue,
+            # escalated and flagged counts are of the window only, and say so.
+            n_open, n_closed, window = metrics.get("cases_open", n_open), metrics.get("cases_closed", n_closed), len(cases)
+        scope = f" (of the first {window} cases read)" if window is not None else ""
         out = DailySummaryOut(
-            summary=(f"{len(open_)} open case(s), {sum(c.overdue for c in open_)} overdue, "
-                     f"{sum(c.escalation_level > 0 for c in open_)} escalated, {len(alerts)} open alert(s), "
+            summary=(f"{n_open} open case(s), {sum(c.overdue for c in open_)} overdue{scope}, "
+                     f"{sum(c.escalation_level > 0 for c in open_)} escalated{scope}, {len(alerts)} open alert(s), "
                      f"{len(waiting)} agency item(s) waiting for a person."),
-            day=order.inputs["day"], by_state=by_state, open_cases=len(open_), overdue=sum(c.overdue for c in open_),
+            day=order.inputs["day"], by_state=by_state, open_cases=n_open, overdue=sum(c.overdue for c in open_),
             escalated=sum(c.escalation_level > 0 for c in open_), flagged=sum(c.watchdog_flagged for c in open_),
-            closed=sum(not c.open for c in cases), alerts_open=len(alerts), agency_needs_human=len(waiting))
+            closed=n_closed, alerts_open=len(alerts), agency_needs_human=len(waiting), window_cases=window)
         return Outcome("done", out)
 
 

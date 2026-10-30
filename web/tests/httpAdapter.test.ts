@@ -17,11 +17,31 @@ function fakeFetch(routes: Record<string, { status?: number; body: unknown }>) {
 
 describe("http adapter", () => {
   it("passes list filters as query params (omits empty ones) and trims the base url slash", async () => {
-    const { fn, calls } = fakeFetch({ "GET /cases?state=closed&owner=Sara&overdue=true": { body: [] }, "GET /cases": { body: [] } });
+    const { fn, calls } = fakeFetch({ "GET /cases?state=closed&owner=Sara&overdue=true&limit=500": { body: [] }, "GET /cases?limit=500": { body: [] } });
     const api = createHttpAdapter("http://api.test/", fn);
     await api.listCases({ state: "closed", owner: "Sara", overdue: true });
     await api.listCases({});
-    expect(calls.map((c) => c.url)).toEqual(["http://api.test/cases?state=closed&owner=Sara&overdue=true", "http://api.test/cases"]);
+    expect(calls.map((c) => c.url)).toEqual(["http://api.test/cases?state=closed&owner=Sara&overdue=true&limit=500", "http://api.test/cases?limit=500"]);
+  });
+  it("follows X-Next-Cursor until it is absent, and stops at maxRows (M7-7: GET /cases is a page)", async () => {
+    const pages: Record<string, { rows: unknown[]; next?: string }> = {
+      "/cases?limit=2": { rows: [{ case_id: "a" }, { case_id: "b" }], next: "c1" },
+      "/cases?limit=2&cursor=c1": { rows: [{ case_id: "c" }, { case_id: "d" }], next: "c2" },
+      "/cases?limit=2&cursor=c2": { rows: [{ case_id: "e" }] },
+    };
+    const mk = () => vi.fn(async (url: string | URL | Request) => {
+      const p = pages[String(url).replace("http://api.test", "")];
+      if (!p) return new Response(JSON.stringify({ detail: "no route " + String(url) }), { status: 404 });
+      return new Response(JSON.stringify(p.rows), { status: 200, headers: p.next ? { "X-Next-Cursor": p.next } : {} });
+    });
+    const fn = mk();
+    const api = createHttpAdapter("http://api.test", fn as unknown as typeof fetch);
+    expect((await api.listCases({ limit: 2 })).map((c) => c.case_id)).toEqual(["a", "b", "c", "d", "e"]);
+    expect(fn).toHaveBeenCalledTimes(3);
+    const fn2 = mk();
+    const api2 = createHttpAdapter("http://api.test", fn2 as unknown as typeof fetch);
+    expect((await api2.listCases({ limit: 2, maxRows: 3 })).length).toBe(4); // stops after the page that reaches maxRows
+    expect(fn2).toHaveBeenCalledTimes(2);
   });
   it("posts events with a generated event_id and JSON body, and never sends an actor (the token is the identity)", async () => {
     const detail = { case_id: "c1", state: "acknowledged", events: [], due_at: null };
@@ -70,7 +90,7 @@ describe("http adapter", () => {
     expect(await api.getCase("c2")).toMatchObject({ owner: "Amal", due_at: null, overdue: true, escalation_level: 0, consent_frozen: false, last_event_at: "2026-10-04T00:00:00Z" });
   });
   it("listCases fills defaults on rows that lack the new fields", async () => {
-    const { fn } = fakeFetch({ "GET /cases": { body: [{ case_id: "c1", state: "acknowledged", created_at: "a", updated_at: "b" }] } });
+    const { fn } = fakeFetch({ "GET /cases?limit=500": { body: [{ case_id: "c1", state: "acknowledged", created_at: "a", updated_at: "b" }] } });
     const [row] = await createHttpAdapter("http://api.test", fn).listCases();
     expect(row).toMatchObject({ owner: null, due_at: null, overdue: false, escalation_level: 0, consent_frozen: false, last_event_at: "b" });
   });
@@ -115,10 +135,10 @@ describe("http adapter", () => {
     expect(JSON.parse(String(calls[4].init?.body))).toEqual({ reason: "other_with_note", note: "wrong clinic" });
   });
   it("sends flagged=true, and degrades GET /alerts 404 to no alerts", async () => {
-    const { fn, calls } = fakeFetch({ "GET /cases?flagged=true": { body: [] }, "GET /alerts": { body: [{ kind: "scheduler_down", since: "t", cleared_at: null }] } });
+    const { fn, calls } = fakeFetch({ "GET /cases?flagged=true&limit=500": { body: [] }, "GET /alerts": { body: [{ kind: "scheduler_down", since: "t", cleared_at: null }] } });
     const api = createHttpAdapter("http://api.test", fn);
     await api.listCases({ flagged: true });
-    expect(calls[0].url).toBe("http://api.test/cases?flagged=true");
+    expect(calls[0].url).toBe("http://api.test/cases?flagged=true&limit=500");
     expect(await api.listAlerts()).toEqual([{ kind: "scheduler_down", since: "t", cleared_at: null }]);
     const none = createHttpAdapter("http://api.test", fakeFetch({}).fn);
     expect(await none.listAlerts()).toEqual([]);
@@ -168,7 +188,7 @@ describe("http adapter: auth", () => {
     await api.listCases();
     expect(calls[0]).toMatchObject({ url: "/auth/dev-login", method: "POST", auth: null });
     expect(JSON.parse(calls[0].body!)).toEqual({ role: "coordinator", name: "amal" });
-    expect(calls[1]).toMatchObject({ url: "/cases", auth: "Bearer tok-coord" });
+    expect(calls[1]).toMatchObject({ url: "/cases?limit=500", auth: "Bearer tok-coord" });
   });
   it("swaps the token on a role switch, and a request issued during the switch waits for the new token", async () => {
     const { fn, calls } = authedFetch();
@@ -176,7 +196,7 @@ describe("http adapter: auth", () => {
     await api.login("coordinator", "amal");
     void api.login("clinician", "dr_ali", "Marina Digestive Health"); // not awaited on purpose
     await api.listCases();
-    expect(calls.at(-1)).toMatchObject({ url: "/cases", auth: "Bearer tok-pco" });
+    expect(calls.at(-1)).toMatchObject({ url: "/cases?limit=500", auth: "Bearer tok-pco" });
     expect(calls.filter((c) => c.url === "/auth/dev-login")).toHaveLength(2);
   });
   it("logs in with the BACKEND role and sends the provider for clinician roles only (A5, A8)", async () => {
@@ -217,7 +237,7 @@ describe("http adapter: auth", () => {
     const api = createHttpAdapter("http://api.test", fn);
     await api.login("coordinator", "amal");
     await expect(api.listCases()).resolves.toEqual([]);
-    expect(calls.map((c) => c.url)).toEqual(["/auth/dev-login", "/cases", "/auth/dev-login", "/cases"]);
+    expect(calls.map((c) => c.url)).toEqual(["/auth/dev-login", "/cases?limit=500", "/auth/dev-login", "/cases?limit=500"]);
     expect(calls[3].auth).toBe("Bearer tok-coord");
   });
   it("surfaces a persistent 401 instead of looping", async () => {

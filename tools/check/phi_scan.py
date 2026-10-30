@@ -123,6 +123,8 @@ QUERY_REVIEW: dict[tuple[str, str, str], tuple[str, str]] = {
         "opaque",
         "the owner's actor (`role:user_id`) or bare user id; a display name never matches (F8-1, fixed in api/app/readmodel.py `matches`)",
     ),
+    ("GET", "/cases", "limit"): ("int", "a page size from 1 to 500 (M7-7)"),
+    ("GET", "/cases", "cursor"): ("opaque", "the url-safe base64 of a case UUID, returned by the API in X-Next-Cursor; anything else is a 422 (M7-7)"),
     ("GET", "/alerts", "active"): ("bool", "true or false"),
     ("GET", "/metrics/effort", "limit"): ("int", "a row cap from 1 to 5000 (A21)"),
     # A22: the agency's ledger and runs. Enums, UUIDs and a count only (FastAPI refuses anything else with 422).

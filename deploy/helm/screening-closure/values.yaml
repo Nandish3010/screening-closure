@@ -52,6 +52,8 @@ scheduler:
 watchdog:
   replicas: 1
   idleDays: 7
+  # M7-7: 10 s is measured safe. The scan reads an index (ADR-045): at 1,000,000 open cases a steady-state scan took 0.28 s and the longest catch-up scan
+  # 6.3 s (time budget 5 s), the API held 250 requests/s with the watchdog at this interval. Before M7-7 a scan took 224-230 s and 10 s was unsafe.
   intervalSeconds: 10
   resources:
     requests: { cpu: 50m,  memory: 64Mi }
@@ -79,8 +81,8 @@ app:
   automationEnabled: "true"
   leaderLeaseTtlSeconds: "30"
   # Run the agency layer (supervisor -> heads -> executioners) after every N-th scheduler sweep; "0" = never. Empty = not rendered,
-  # the API's code default applies (6). The agency pass reads the whole case table, so on a very large population it can exhaust
-  # an API pod's memory (M7-6: OOM at ~1M cases in a 768Mi pod).
+  # the API's code default applies (6). M7-7: a run reads at most AGENCY_MAX_CASES_READ (400) cases and resumes where it stopped, so it
+  # is safe at a very large population (M7-6: the unbounded read OOM-killed a 768Mi pod at ~1M cases).
   agencyEverySweeps: ""
   requireLeaderFence: "true"    # scheduler calls without a current leader token are refused
   logFormat: json

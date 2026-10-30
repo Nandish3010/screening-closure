@@ -128,6 +128,24 @@ METHOD = (
 # kubectl / secrets
 # ---------------------------------------------------------------------------------------------------------------------
 
+def container_pid(node: str, pod: str) -> int:
+    """The host (node-container) pid of the first running container of `pod`, through the node's runtime. SIGSTOP / SIGCONT go to it."""
+    cid = subprocess.run(["docker", "exec", node, "crictl", "ps", "-q", "--label", f"io.kubernetes.pod.name={pod}"],
+                         capture_output=True, text=True, timeout=30).stdout.split()
+    if not cid:
+        raise SystemExit(f"no running container found for pod {pod}")
+    pid = subprocess.run(["docker", "exec", node, "crictl", "inspect", "-o", "go-template", "--template", "{{.info.pid}}", cid[0]],
+                         capture_output=True, text=True, timeout=30, check=True).stdout.strip()
+    return int(pid)
+
+
+def signal_pid(node: str, pid: int, sig: str) -> float:
+    """`kill -STOP|-CONT pid` inside the node container; returns how long the command took."""
+    t = time.time()
+    subprocess.run(["docker", "exec", node, "kill", f"-{sig}", str(pid)], capture_output=True, text=True, timeout=30, check=True)
+    return time.time() - t
+
+
 def kubectl(*args: str, check: bool = True, timeout: float = 90, namespace: bool = True) -> subprocess.CompletedProcess:
     cmd = ["kubectl", "--context", CTX] + (["-n", NS] if namespace else []) + list(args)
     return subprocess.run(cmd, capture_output=True, text=True, check=check, timeout=timeout)
@@ -922,7 +940,7 @@ def parse_api_logs(streams: LogStreams, probe_t: float, t_from: float) -> dict:
 async def run_iteration(idx: int, mode: str, args, tokens: dict, dsn: str, pathway, calendar, ttl: float, interval: float) -> dict:
     run_label = f"{mode}-{idx}"
     run_ns = uuid.uuid5(DRILL_NS, f"{run_label}|{uuid.uuid4()}")
-    print(f"\n=== iteration {run_label} ({mode} kill) ===", flush=True)
+    print(f"\n=== iteration {run_label} ({mode} {'pause' if mode == 'sigstop' else 'kill'}) ===", flush=True)
     env_start = await asyncio.to_thread(vm_pressure)
     health = await asyncio.to_thread(wait_healthy, dsn)
     print(f"  healthy: scheduler lease {health['scheduler_holder']} token {health['scheduler_token']}, api-background "
@@ -1000,16 +1018,63 @@ async def run_iteration(idx: int, mode: str, args, tokens: dict, dsn: str, pathw
         t0 = time.time()
         durs = await asyncio.gather(asyncio.to_thread(kill9, s_pod), asyncio.to_thread(kill9, a_pod))
         hard_info = {"sigkill_command_s": {"scheduler": durs[0], "api": durs[1]}}
-    async with httpx.AsyncClient(base_url=PROXY["base"], timeout=30) as kc:
-        if mode != "hard":
-            t0 = time.time()
-        resp = await asyncio.gather(*(kc.request("DELETE", f"/api/v1/namespaces/{NS}/pods/{n}", json=opts) for n in (s_pod, a_pod)))
-        t_cmd_done = time.time()
+    sigstop_info: dict = {}
+    restarts_before = None
+    if mode == "sigstop":
+        restarts_before = await asyncio.to_thread(
+            lambda: kubectl("get", "pod", s_pod, "-o", "jsonpath={.status.containerStatuses[0].restartCount}").stdout.strip())
+        # M7-7 (h): the ZOMBIE LEADER. The scheduler leader is frozen (SIGSTOP to its container's process) while it is MID-LOOP (its
+        # heartbeat says sweeping=true: the sweep call is in flight and the rest of the loop is still ahead of it), held frozen past
+        # the lease TTL until a new leader has taken over and swept, then resumed (SIGCONT). It wakes up in the middle of its old loop
+        # still holding the OLD fencing token: every call it makes from there must be refused (HTTP 409) and write nothing.
+        # Nothing is deleted or restarted: the pod stays Running the whole time.
+        node = next(p["node"] for p in pods_sch if p["name"] == s_pod)
+        pid = await asyncio.to_thread(container_pid, node, s_pod)
+        deadline = time.time() + 120
+        caught = False
+        while time.time() < deadline:
+            b = poller.beats[-1] if poller.beats else None
+            if b and b["sweeping"] is True and b["role"] == "leader" and b["holder"] == s_holder:
+                caught = True
+                break
+            await asyncio.sleep(0.01)
+        t0 = time.time()
+        stop_cmd_s = await asyncio.to_thread(signal_pid, node, pid, "STOP")
+        sigstop_info = {"node": node, "pid_in_node": pid, "paused_mid_loop": caught, "sigstop_command_s": stop_cmd_s}
+        # hold until a successor leads and has completed a sweep, and at least ttl + 10 s have passed
+        t_new = None
+        hold_deadline = t0 + ttl * 4 + 60
+        while time.time() < hold_deadline:
+            ev = next((e for e in poller.lease_events_for("scheduler") if e["token"] > s_token and e["holder"] != s_holder), None)
+            if ev is not None and t_new is None:
+                t_new = time.time()
+            ok_sweep = any(b["beat_at"] > (ev["db_t"] if ev else 1e18) and b["holder"] != s_holder and b["sweeping"] is False
+                           for b in poller.beats)
+            if ev is not None and ok_sweep and time.time() - t0 >= ttl + 10:
+                break
+            await asyncio.sleep(0.25)
+        t_resume = time.time()
+        cont_cmd_s = await asyncio.to_thread(signal_pid, node, pid, "CONT")
+        sigstop_info.update({"paused_s": t_resume - t0, "new_leader_seen_after_s": None if t_new is None else t_new - t0,
+                             "sigcont_command_s": cont_cmd_s, "t_resume_utc": datetime.fromtimestamp(t_resume, UTC).isoformat(),
+                             "t_resume_epoch": t_resume})
+        resp, t_cmd_done = [], t0
+    else:
+        async with httpx.AsyncClient(base_url=PROXY["base"], timeout=30) as kc:
+            if mode != "hard":
+                t0 = time.time()
+            resp = await asyncio.gather(*(kc.request("DELETE", f"/api/v1/namespaces/{NS}/pods/{n}", json=opts) for n in (s_pod, a_pod)))
+            t_cmd_done = time.time()
     cmd = [f"DELETE the scheduler leader pod and the api-background holder pod (names in the run record), gracePeriodSeconds="
            + {"force": "0 (= kubectl delete --grace-period=0 --force)", "graceful": "default (pod's terminationGracePeriodSeconds)",
-              "hard": "0 after SIGKILL of both containers with crictl stop --timeout 0 (t0 = instant the SIGKILL commands were issued)"}[mode]]
-    print(f"  t0: deleted scheduler leader {s_pod} (token {s_token}) and api pod {a_pod} (api-background {a_holder}, token {a_token}); "
-          f"API server answered {[r.status_code for r in resp]} after {t_cmd_done - t0:.2f}s", flush=True)
+              "hard": "0 after SIGKILL of both containers with crictl stop --timeout 0 (t0 = instant the SIGKILL commands were issued)",
+              "sigstop": "none: the scheduler leader's process is frozen with SIGSTOP (t0 = instant the command was issued) and resumed with SIGCONT after a successor took over"}[mode]]
+    if mode == "sigstop":
+        print(f"  t0: froze scheduler leader {s_pod} (token {s_token}) mid-loop={sigstop_info['paused_mid_loop']}; resumed after "
+              f"{sigstop_info['paused_s']:.1f}s (new leader seen after {sigstop_info['new_leader_seen_after_s']}s)", flush=True)
+    else:
+        print(f"  t0: deleted scheduler leader {s_pod} (token {s_token}) and api pod {a_pod} (api-background {a_holder}, token {a_token}); "
+              f"API server answered {[r.status_code for r in resp]} after {t_cmd_done - t0:.2f}s", flush=True)
 
     # recovery watcher -----------------------------------------------------------------------------------------------
     ready = {"api_all_ready_s": None, "scheduler_all_ready_s": None, "timeline": []}
@@ -1200,10 +1265,42 @@ async def run_iteration(idx: int, mode: str, args, tokens: dict, dsn: str, pathw
         f"validity window (outside strict: {fencing['outside_every_lease_window_strict']}, outside with "
         f"{max_loop_s:.1f}s tolerance: {fencing['outside_every_lease_window_with_tolerance']}); (3) event ids are deterministic, "
         "so a stale write could only be a no-op repeat.")
+    zombie: dict = {}
+    if mode == "sigstop":
+        t_res = sigstop_info["t_resume_epoch"]
+        takeover_db = sched_h.get("new_leader_first_seen_db")
+        old_after = [b for b in poller.beats if b["holder"] == s_holder and b["token"] == s_token and takeover_db is not None
+                     and b["beat_at"] > takeover_db]
+        old_lines_after = [r for r in refusals if r["pod"] == s_pod and r["t"] >= t_res]
+        restarts_after = await asyncio.to_thread(
+            lambda: kubectl("get", "pod", s_pod, "-o", "jsonpath={.status.containerStatuses[0].restartCount}").stdout.strip())
+        zombie = {
+            **sigstop_info, "old_leader_pod": s_pod, "old_leader_holder": s_holder, "old_leader_token": s_token,
+            "successor_holder": sched_h.get("new_holder"), "successor_token": sched_h.get("new_token"),
+            "time_to_new_leader_s": sched_h.get("time_to_new_leader_s"),
+            "old_leader_pod_restarts_before_after": [restarts_before, restarts_after],
+            "old_leader_calls_refused_409_after_resume": len(old_lines_after),
+            "old_leader_refusal_log_lines": [r["line"] for r in old_lines_after[:6]],
+            "old_leader_beats_with_old_fence_after_takeover": len(old_after),
+            "old_leader_lines_no_longer_leader_after_resume": [r["line"] for r in logs["leader_changes"] if r["pod"] == s_pod and r["t"] >= t_res][:3],
+            "old_leader_sweeps_logged_after_resume": len([x for x in logs["sweeps"] if x["pod"] == s_pod and x["t"] >= t_res]),
+            "old_leader_rows_written_after_takeover": tx_probe["stale_fence_rows_written"],
+            "old_leader_stale_leader_errors": tx_probe["stale_fence_refused"],
+            "old_leader_stale_attempts": tx_probe["stale_fence_attempts"],
+            "stale_token_http_probe": probes,
+            "meaning": ("The frozen leader wakes up mid-loop holding its old fencing token. Its later calls are refused with HTTP 409 "
+                        "(old_leader_calls_refused_409_after_resume, from its own log); the stale-token probes after recovery get 409 "
+                        "(sweep, heartbeat); and three attempts to append a due scheduler event through the real event store with a "
+                        "stale fence each raise StaleLeader and write 0 rows (old_leader_rows_written_after_takeover), while the control "
+                        "append with the current fence succeeds. old_leader_rows_written_after_takeover counts the rows those probe "
+                        "attempts wrote. The event log has no holder or token column, so rows written by the resumed process itself are "
+                        "shown by absence instead: scheduler events inserted outside every lease validity window are in "
+                        "fencing.outside_every_lease_window_*."),
+        }
     result = {
         "run": run_label, "mode": mode, "started_at": started_at.isoformat(), "ended_at": datetime.now(UTC).isoformat(),
         "t0_utc": datetime.fromtimestamp(t0, UTC).isoformat(), "t0_db_epoch": t0_db, "database_clock_minus_host_clock_s": off,
-        "delete_request": cmd[0], **({"hard_kill": hard_info} if hard_info else {}), "delete_api_answered_after_s": t_cmd_done - t0, "delete_api_status": [r.status_code for r in resp],
+        "delete_request": cmd[0], **({"hard_kill": hard_info} if hard_info else {}), **({"sigstop": zombie} if mode == "sigstop" else {}), "delete_api_answered_after_s": t_cmd_done - t0, "delete_api_status": [r.status_code for r in resp],
         "killed": {"scheduler_pod": s_pod, "scheduler_holder": s_holder, "scheduler_token": s_token, "api_pod": a_pod,
                    "background_lease_pod": a_holder, "api_background_token": a_token},
         "pods_before": {"scheduler": sorted(sched_names), "api": sorted(p["name"] for p in pods_api)}, "notes": notes,
@@ -1262,12 +1359,17 @@ SUMMARY_METRICS = {
     "replay_failures": "integrity.replay.replay_failures",
     "stale_fence_write_rows_written": "fencing.in_transaction_probe.stale_fence_rows_written",
     "scheduler_events_outside_lease_windows": "fencing.outside_every_lease_window_with_tolerance",
+    "zombie_paused_s": "sigstop.paused_s",
+    "zombie_calls_refused_409_after_resume": "sigstop.old_leader_calls_refused_409_after_resume",
+    "zombie_rows_written_after_takeover": "sigstop.old_leader_rows_written_after_takeover",
+    "zombie_stale_leader_errors": "sigstop.old_leader_stale_leader_errors",
+    "zombie_leader_beats_with_old_fence_after_takeover": "sigstop.old_leader_beats_with_old_fence_after_takeover",
 }
 
 
 def summarize(runs: list[dict]) -> dict:
     out = {}
-    for mode in ("force", "graceful", "hard"):
+    for mode in ("force", "graceful", "hard", "sigstop"):
         rs = [r for r in runs if r["mode"] == mode]
         if not rs:
             continue
@@ -1325,7 +1427,7 @@ async def amain(args) -> int:
         tokens = {"lab": mint("lab", "drill-lab"), "coord": mint("coordinator", "drill-coordinator"),
                   "pco": mint("primary_care_owner", "Dr. Layla Haddad", sub="Dr. Layla Haddad")}  # the actor is role + sub: this is the seeded default owner
         plan = ([("force", i + 1) for i in range(args.runs)] + [("graceful", i + 1) for i in range(args.graceful_runs)]
-                + [("hard", i + 1) for i in range(args.hard_runs)])
+                + [("hard", i + 1) for i in range(args.hard_runs)] + [("sigstop", i + 1) for i in range(args.sigstop_runs)])
         started = datetime.now(UTC)
         for mode, idx in plan:
             runs.append(await run_iteration(idx, mode, args, tokens, dsn, pathway, calendar, ttl, interval))
@@ -1333,7 +1435,7 @@ async def amain(args) -> int:
                    "drill_started_at": started.isoformat(), "complete": len(runs) == len(plan), "git": git_info(), "machine_spec": spec,
                    "chart_values": cv, "calendar": cal_info,
                    "parameters": {"seeded_cases_per_run": args.cases, "window_s": args.window, "kill_at_s": args.kill_at,
-                                  "client_new_case_flows_per_s": args.client_rate, "force_runs": args.runs, "graceful_runs": args.graceful_runs, "hard_runs": args.hard_runs,
+                                  "client_new_case_flows_per_s": args.client_rate, "force_runs": args.runs, "graceful_runs": args.graceful_runs, "hard_runs": args.hard_runs, "sigstop_runs": args.sigstop_runs,
                                   "poll_interval_s": 0.15},
                    "summary": summarize(runs), "runs": runs}
             out_path.write_text(json.dumps(doc, indent=2, default=str))
@@ -1352,6 +1454,8 @@ def main() -> int:
     ap.add_argument("--graceful-runs", type=int, default=0, help="additional iterations with an ordinary (graceful) delete")
     ap.add_argument("--hard-runs", type=int, default=0, help="additional iterations that SIGKILL both containers (crictl stop --timeout 0) "
                     "before the force delete, so no process can release its lease")
+    ap.add_argument("--sigstop-runs", type=int, default=0, help="additional iterations that freeze (SIGSTOP) the scheduler leader mid-loop, "
+                    "hold it past the lease TTL until a new leader has taken over, then resume it (SIGCONT): the zombie leader")
     ap.add_argument("--cases", type=int, default=3000, help="seeded open cases per iteration")
     ap.add_argument("--window", type=float, default=240.0, help="seconds over which the seeded triggers fall due")
     ap.add_argument("--kill-at", type=float, default=60.0, help="kill this many seconds after the trigger window opens")

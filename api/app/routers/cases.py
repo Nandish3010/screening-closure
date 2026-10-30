@@ -1,9 +1,10 @@
+import base64
 import logging
 from datetime import UTC, datetime
 from typing import Literal
 from uuid import UUID, uuid4
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from pydantic import BaseModel, ConfigDict, Field
 
 from app import automation, confirmatory, consent, effort, evidence, fhir_projection, notify, payloads, policy, readmodel, users
@@ -168,33 +169,76 @@ def create_case(body: CreateCase) -> dict:
     return _case_json(case_id)
 
 
+DEFAULT_LIST_LIMIT = 100  # rows in a worklist page when `limit` is not given
+MAX_LIST_LIMIT = 500  # the largest page a caller can ask for
+MAX_SCAN_PER_REQUEST = 2000  # cases read for ONE request when the model-derived filters (owner, overdue, ...) drop most of them
+NEXT_CURSOR_HEADER = "X-Next-Cursor"
+
+
+def _decode_cursor(cursor: str | None) -> UUID | None:
+    """The cursor is opaque to callers: the url-safe base64 of the last case id the previous page read."""
+    if not cursor:
+        return None
+    try:
+        return UUID(bytes=base64.urlsafe_b64decode(cursor + "=" * (-len(cursor) % 4)))
+    except Exception:  # noqa: BLE001 - any malformed value is a client error
+        raise HTTPException(422, "cursor is not one returned by this endpoint")
+
+
+def _encode_cursor(case_id: UUID) -> str:
+    return base64.urlsafe_b64encode(case_id.bytes).rstrip(b"=").decode()
+
+
 @router.get("")
 def list_cases(
+    response: Response,
     state: str | None = None,
     owner: str | None = None,
     overdue: bool | None = None,
     provider: str | None = None,
     flagged: bool | None = None,
+    limit: int = Query(DEFAULT_LIST_LIMIT, ge=1, le=MAX_LIST_LIMIT, description="rows per page (default 100, at most 500)"),
+    cursor: str | None = Query(None, description="the `X-Next-Cursor` of the previous page"),
     identity: Identity = Depends(require_identity),
 ) -> list[dict]:
-    """The worklist (A9): one row per case with the fields the web needs, in a stable order
-    (genesis time, then case id). Filters: `state`, `owner` (the opaque actor `role:user_id` or its
-    bare user id, never a display name: F8-1), `overdue`, `provider`, `flagged` (open watchdog flag). A patient sees only their own
-    cases; everyone else sees all. `risk_score` (D9) is the modelled probability of loss to follow-up,
-    for ordering only: the rows come back in the same order with or without it, and a patient's rows
-    carry null."""
+    """The worklist (A9): one row per case with the fields the web needs, in a stable order (case id). Filters: `state` (a SQL
+    filter), `owner` (the opaque actor `role:user_id` or its bare user id, never a display name: F8-1), `overdue`,
+    `provider`, `flagged` (open watchdog flag). A patient sees only their own cases; everyone else sees all.
+    `risk_score` (D9) is the modelled probability of loss to follow-up, for ordering only: a patient's rows carry null.
+
+    The answer is one PAGE of at most `limit` rows (default 100, hard maximum 500; M7-7: an unbounded answer exhausted an API
+    pod's memory at 873,000 cases). The body is still a plain list, as before. When more rows may follow, the response
+    header `X-Next-Cursor` holds the cursor to send as `?cursor=` for the next page; it is absent on the last page. A page can
+    hold fewer than `limit` rows while a cursor is still given (the model-derived filters dropped some of the cases read,
+    and one request reads at most 2,000): keep following the cursor until it is absent."""
     calendar = default_calendar()
     now = clock.now()
     with_risk = _sees_risk(identity)
-    rows = []
-    for lc in store.load_cases(pathway, state):
-        if identity.role == "patient" and (identity.patient_ref is None or lc.patient_ref != identity.patient_ref):
-            continue
-        row = readmodel.case_row(lc, pathway, calendar)
-        if row is not None and readmodel.matches(row, owner=owner, overdue=overdue, provider=provider, flagged=flagged):
-            if with_risk:  # D9: filled last, so no filter or order above depends on it
-                row["risk_score"] = _risk_score(lc, now)
-            rows.append(readmodel.patient_case_row(row) if identity.role == "patient" else row)  # SEC-2: redacted for a patient
+    after = _decode_cursor(cursor)
+    only = None
+    if identity.role == "patient":
+        # A patient's own cases come from the genesis index, not from reading every case and dropping the rest.
+        only = store.case_ids_for_patient(identity.patient_ref) if identity.patient_ref else []
+    rows: list[dict] = []
+    scanned = 0
+    next_after: UUID | None = None
+    while True:
+        size = min(limit - len(rows), MAX_SCAN_PER_REQUEST - scanned)  # never more rows than `limit`, never more reads than the cap
+        page, next_after = store.load_cases_page(pathway, state, after, size, only)
+        scanned += len(page)
+        for lc in page:
+            if identity.role == "patient" and (identity.patient_ref is None or lc.patient_ref != identity.patient_ref):
+                continue
+            row = readmodel.case_row(lc, pathway, calendar)
+            if row is not None and readmodel.matches(row, owner=owner, overdue=overdue, provider=provider, flagged=flagged):
+                if with_risk:  # D9: filled last, so no filter or order above depends on it
+                    row["risk_score"] = _risk_score(lc, now)
+                rows.append(readmodel.patient_case_row(row) if identity.role == "patient" else row)  # SEC-2: redacted for a patient
+        after = next_after
+        if next_after is None or len(rows) >= limit or scanned >= MAX_SCAN_PER_REQUEST:
+            break
+    if next_after is not None:
+        response.headers[NEXT_CURSOR_HEADER] = _encode_cursor(next_after)
     return rows
 
 

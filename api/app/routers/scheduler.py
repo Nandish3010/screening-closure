@@ -178,11 +178,13 @@ def _sweep(now, fence=None) -> dict:
     pool = get_pool()
     url = _postgres_url(cases.store) if pool.workers > 1 else None
     if url is None:
-        out = run_sweep(cases.store, cases.pathway, calendar, now, fence=fence).to_json()
+        out = run_sweep(cases.store, cases.pathway, calendar, now, fence=fence, max_cases=settings.sweep_max_cases,
+                        budget_seconds=settings.sweep_budget_seconds).to_json()
         out["workers"] = 1
         return out
     record = getattr(cases.store, "projector", None) is not None
-    result = pool.run(url, cases.pathway, calendar, now, record=record, fence=fence)
+    result = pool.run(url, cases.pathway, calendar, now, record=record, fence=fence, max_cases=settings.sweep_max_cases,
+                      budget_seconds=settings.sweep_budget_seconds)
     _project_emitted(cases.store, result.emitted_refs)
     out = result.to_json()
     out["workers"] = pool.workers

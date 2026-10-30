@@ -509,6 +509,10 @@ class SweepResult:
     # F10: a write was refused because the leader lease is no longer this sweep's (`leader.StaleLeader`). The sweep stopped
     # at that point and wrote nothing more; the route answers 409.
     fenced: bool = False
+    # M7-7: the sweep stopped at its per-loop bound (`max_cases` or `budget_seconds`) with due cases left. They keep their
+    # `next_due_at`, so the next loop picks them up: a backlog drains across loops instead of stretching one.
+    budget_exhausted: bool = False
+    due_remaining: int = 0  # due cases not evaluated when it stopped (only set with budget_exhausted)
     # (event_id, case_id) of every event a shard worker appended, filled only when the caller asked
     # for it (`record=True`): the parent process projects them to FHIR (A12) because the workers
     # write through their own plain stores, not the API's projecting wrapper. Not part of to_json.
@@ -518,6 +522,9 @@ class SweepResult:
         out = self._base_json()
         if self.fenced:
             out["fenced"] = True
+        if self.budget_exhausted:
+            out["budget_exhausted"] = True
+            out["due_remaining"] = self.due_remaining
         return out
 
     def _base_json(self) -> dict:
@@ -654,6 +661,9 @@ def run_sweep(
     full_scan: bool | None = None,
     batch_cases: int | None = None,
     fence=None,
+    max_cases: int | None = None,
+    budget_seconds: float | None = None,
+    timer=None,
 ) -> SweepResult:
     """Evaluate the open cases (or only those in `only`, or only slice `shard=(k, n)`) at sim
     time `now` and append the planned events. Safe to run repeatedly and concurrently.
@@ -669,7 +679,14 @@ def run_sweep(
 
     `fence` (F10), a `leader.Fence`, is carried into every write transaction and checked there against the lease. The
     first `leader.StaleLeader` ends the sweep: no further case is planned or written, a batch that was refused is NOT
-    retried case by case, `SweepResult.fenced` is set and the reason is added to `errors`."""
+    retried case by case, `SweepResult.fenced` is set and the reason is added to `errors`.
+
+    Bounded work per call (M7-7). `max_cases` (default: `SWEEP_MAX_CASES`, 0 = no bound) caps the due cases evaluated, and
+    `budget_seconds` (default: `SWEEP_BUDGET_SECONDS`, 0 = no bound) caps the wall time spent evaluating them; whichever is hit
+    first ends the call after the pending batch is written, with `budget_exhausted` and the number of due cases left. A case
+    not reached keeps its `next_due_at` and is read first-come by the next call, so a daily catch-up of 1,000,000 open cases
+    drains over several loops and every loop stays short. Nothing is skipped or dropped, only deferred. Bounds apply to the
+    index path (the Postgres store); a full scan or `only=` is never cut short."""
     batch_cases = DEFAULT_BATCH_CASES if batch_cases is None else batch_cases
     if batch_cases == DEFAULT_BATCH_CASES:
         batch_cases = _env_int("SWEEP_BATCH_CASES", DEFAULT_BATCH_CASES)
@@ -678,8 +695,13 @@ def run_sweep(
     kwargs = {"shard": shard} if shard is not None else {}
     if full_scan is None:
         full_scan = os.environ.get("SWEEP_FULL_SCAN", "").strip() == "1"
+    max_cases = _env_int("SWEEP_MAX_CASES", 0) if max_cases is None else max(max_cases, 0)
+    if budget_seconds is None:
+        budget_seconds = float(_env_int("SWEEP_BUDGET_SECONDS", 0))
+    bounded = False
     if only is None and not full_scan and hasattr(store, "iter_due_case_models"):
-        cases = store.iter_due_case_models(pathway, calendar, now, **kwargs)
+        bounded = True
+        cases = store.iter_due_case_models(pathway, calendar, now, **({"limit": max_cases + 1} if max_cases else {}), **kwargs)
         if hasattr(store, "count_open_cases"):
             result.cases_skipped = store.count_open_cases(pathway, **kwargs)  # the evaluated ones are taken off below
     else:
@@ -710,8 +732,17 @@ def run_sweep(
             else:  # refused in the batch (or the batch failed): the per-case path classifies and reports it
                 _emit_case(store, pathway, calendar, now, result, case_id, model, planned, fence)
 
+    import time
+
+    timer = timer or time.perf_counter  # a bound on the work done, never a decision about a case
+    t0 = timer()
     try:
         for case_id, model, error in cases:
+            if bounded and result.cases_evaluated and (
+                (max_cases and result.cases_evaluated >= max_cases) or (budget_seconds and timer() - t0 >= budget_seconds)
+            ):
+                result.budget_exhausted = True
+                break
             result.cases_evaluated += 1
             if model is None:
                 result.errors.append(f"{case_id}: {error}")
@@ -728,6 +759,8 @@ def run_sweep(
                 continue
             _emit_case(store, pathway, calendar, now, result, case_id, model, planned, fence)
         flush()
+        if result.budget_exhausted and hasattr(store, "count_due_cases"):
+            result.due_remaining = max(store.count_due_cases(pathway, calendar, now, **kwargs), 0)
     except StaleLeader as exc:  # F10: deposed. Whatever is still pending is dropped unwritten; the next leader re-plans it.
         pending.clear()
         result.fenced = True
@@ -772,7 +805,7 @@ class _RecordingStore:
 
 def _sweep_shard(args: tuple) -> dict:
     """Worker entry point (top level so it can be pickled): sweep one slice with its own pool."""
-    database_url, pathway, calendar, now, index, count, record, fence = args
+    database_url, pathway, calendar, now, index, count, record, fence, max_cases, budget_seconds = args
     from psycopg_pool import ConnectionPool
 
     from app.store_pg import PostgresEventStore
@@ -783,7 +816,8 @@ def _sweep_shard(args: tuple) -> dict:
         store = PostgresEventStore(pool, calendar=calendar)
         if record:
             store = _RecordingStore(store)
-        result = run_sweep(store, pathway, calendar, now, shard=(index, count), fence=fence)
+        result = run_sweep(store, pathway, calendar, now, shard=(index, count), fence=fence,
+                           max_cases=max_cases, budget_seconds=budget_seconds)
         out = result.to_json()
         out["fenced"] = result.fenced  # F10: each worker checks the lease in its own write transactions
         if record:
@@ -818,6 +852,8 @@ def run_sweep_parallel(
     executor=None,
     record: bool = False,
     fence=None,
+    max_cases: int | None = None,
+    budget_seconds: float | None = None,
 ) -> SweepResult:
     """The same sweep, split into `workers` disjoint slices of the cases swept by separate
     processes (each with its own connection pool). Replaying every open case is CPU-bound
@@ -837,7 +873,13 @@ def run_sweep_parallel(
     """
     if workers < 1:
         raise ValueError("workers must be >= 1")
-    jobs = [(database_url, pathway, calendar, now, k, workers, record, fence) for k in range(workers)]
+    if max_cases is None:
+        max_cases = _env_int("SWEEP_MAX_CASES", 0)
+    per_shard = -(-max_cases // workers) if max_cases else 0  # each worker's share of the per-loop bound (ceiling)
+    if budget_seconds is None:
+        budget_seconds = float(_env_int("SWEEP_BUDGET_SECONDS", 0))
+    jobs = [(database_url, pathway, calendar, now, k, workers, record, fence, per_shard, budget_seconds)
+            for k in range(workers)]
     total = SweepResult(sim_time=_utc(now).isoformat())
     own = executor is None
     if own:
@@ -855,6 +897,8 @@ def run_sweep_parallel(
             total.rejected += part["rejected"]
             total.errors += part["errors"]
             total.fenced = total.fenced or bool(part.get("fenced"))
+            total.budget_exhausted = total.budget_exhausted or bool(part.get("budget_exhausted"))
+            total.due_remaining += part.get("due_remaining", 0)
             total.emitted_refs += [tuple(r) for r in part.get("emitted_refs", ())]
     finally:
         if own:
@@ -913,7 +957,8 @@ class SweepPool:
                 self._executor = make_sweep_executor(self.workers)
 
     def run(self, database_url: str, pathway: Pathway, calendar: WorkingCalendar, now: datetime,
-            record: bool = False, fence=None) -> SweepResult:
+            record: bool = False, fence=None, max_cases: int | None = None,
+            budget_seconds: float | None = None) -> SweepResult:
         from concurrent.futures.process import BrokenProcessPool
 
         with self._lock:
@@ -922,7 +967,8 @@ class SweepPool:
                     self._executor = make_sweep_executor(self.workers)
                 try:
                     return run_sweep_parallel(database_url, pathway, calendar, now, workers=self.workers,
-                                              executor=self._executor, record=record, fence=fence)
+                                              executor=self._executor, record=record, fence=fence,
+                                              max_cases=max_cases, budget_seconds=budget_seconds)
                 except BrokenProcessPool:
                     log.error("sweep worker pool broke (attempt %d); replacing it", attempt)
                     self._discard()

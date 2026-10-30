@@ -54,7 +54,7 @@ from psycopg.types.json import Jsonb  # noqa: E402
 from app.db import create_pool, run_migrations  # noqa: E402
 from app.events import Event  # noqa: E402
 from app.state_machine import replay_model  # noqa: E402
-from app.store_pg import PostgresEventStore  # noqa: E402
+from app.store_pg import PostgresEventStore, idle_anchor  # noqa: E402
 from app.sweep import NEVER, next_due_at, plan_case, run_sweep, timing_fingerprint  # noqa: E402
 
 ROOT = sc.REPO_ROOT
@@ -93,6 +93,8 @@ def pg_password() -> str:
 
 def configure_admin_url() -> None:
     """Point seed_cases (and the spawned seeding processes, through the environment) at the in-cluster Postgres."""
+    if os.environ.get("SCALE_LOCAL_PG"):  # a development check against the compose Postgres (LOAD_PG_ADMIN_URL as seed_cases reads it)
+        return
     os.environ["LOAD_PG_ADMIN_URL"] = f"postgresql://closure_owner:{pg_password()}@{PG_HOSTPORT}/postgres?sslmode=disable"
 
 
@@ -164,7 +166,7 @@ def _seed_chunk(args: tuple) -> dict:
             if not cases_rows:
                 return
             with conn.cursor() as cur:
-                with cur.copy("COPY cases (id, pathway, current_state, created_at, updated_at, next_due_at, next_due_basis) FROM STDIN") as cp:
+                with cur.copy("COPY cases (id, pathway, current_state, created_at, updated_at, next_due_at, next_due_basis, idle_since_at) FROM STDIN") as cp:
                     for row in cases_rows:
                         cp.write_row(row)
                 with cur.copy("COPY events (event_id, case_id, seq, type, at, actor, payload) FROM STDIN") as cp:
@@ -186,7 +188,8 @@ def _seed_chunk(args: tuple) -> dict:
             if wall_safe and events[-1].at > now:
                 raise AssertionError(f"seeded event dated after now: {events[-1].at} > {now}")
             due = next_due_at(model, pathway, calendar)
-            cases_rows.append((case_id, pathway.name, model.state, events[0].at, events[-1].at, NEVER if due is None else due, basis))
+            cases_rows.append((case_id, pathway.name, model.state, events[0].at, events[-1].at, NEVER if due is None else due, basis,
+                               idle_anchor(model, pathway)))
             for seq, ev in enumerate(events, start=1):
                 event_rows.append((ev.event_id, case_id, seq, ev.type, ev.at, ev.actor, Jsonb(ev.payload)))
             out["by_state"][model.state] = out["by_state"].get(model.state, 0) + 1
@@ -454,6 +457,148 @@ def run_cell(size: int, workers: int, tpl_stats: dict, label: str, profile: bool
         pool.close()
 
 
+# ------------------------------------------------------------------------------------------------------------ M7-7 cells
+
+
+def _maxrss_mib() -> float:
+    import resource
+
+    rss = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+    return rss / (1 << 20) if sys.platform == "darwin" else rss / 1024  # bytes on macOS, KiB on Linux
+
+
+def run_drain_cell(size: int, tpl_stats: dict, label: str, max_cases: int, budget_seconds: float, interval: float = TARGET_LOOP_SECONDS,
+                   log=print) -> dict:
+    """M7-7 (g): the 1M catch-up burst as the 10-second loop sees it. Clone the template, then run the scheduler's loop body
+    (`run_sweep` with the per-loop bounds, ONE worker as in the cluster) at the fixed sweep time until a loop reports no backlog,
+    recording every loop's wall time, cases evaluated, events emitted and the due cases left. The scheduler sleeps `interval`
+    between loops, so the elapsed time to drain is sum(loop wall) + loops x interval; both are reported. The correctness checks of
+    `run_cell` apply to the total: emitted == the planner's expectation, a full-scan sweep afterwards finds nothing."""
+    now = datetime.fromisoformat(tpl_stats["now"])
+    pathway, calendar = sc.load_engine()
+    clone_seconds = make_load_from_template(size)
+    url = sc.load_url()
+    admin("CHECKPOINT")
+    pool = create_pool(url, max_size=4)
+    problems: list[str] = []
+    loops: list[dict] = []
+    try:
+        events_before = one(url, "SELECT count(*) FROM events")
+        store = PostgresEventStore(pool)
+        t_start = time.perf_counter()
+        emitted = 0
+        while True:
+            t0 = time.perf_counter()
+            r = run_sweep(store, pathway, calendar, now, max_cases=max_cases, budget_seconds=budget_seconds)
+            wall = time.perf_counter() - t0
+            emitted += r.mark_overdue + r.escalate + r.handoff_bounced
+            loops.append({"loop": len(loops) + 1, "wall_seconds": round(wall, 3), "cases_evaluated": r.cases_evaluated,
+                          "emitted": r.mark_overdue + r.escalate + r.handoff_bounced, "due_remaining": r.due_remaining,
+                          "budget_exhausted": r.budget_exhausted, "errors": len(r.errors)})
+            if r.errors or r.rejected:
+                problems.append(f"loop {len(loops)}: {len(r.errors)} errors, {r.rejected} rejected")
+            if not r.budget_exhausted:
+                break
+            if len(loops) > 2000:
+                problems.append("did not drain in 2000 loops")
+                break
+        drain_wall = time.perf_counter() - t_start
+        idle_t0 = time.perf_counter()
+        idle = run_sweep(store, pathway, calendar, now, max_cases=max_cases, budget_seconds=budget_seconds)
+        idle_wall = time.perf_counter() - idle_t0
+        full = run_sweep(PostgresEventStore(pool), pathway, calendar, now, full_scan=True)
+        events_after = one(url, "SELECT count(*) FROM events")
+        if emitted != tpl_stats["expected_emitted"]:
+            problems.append(f"emitted {emitted}, planner expected {tpl_stats['expected_emitted']}")
+        if full.mark_overdue + full.escalate + full.handoff_bounced or full.errors:
+            problems.append("a full scan after the bounded loops still found work")
+        if events_after != events_before + emitted:
+            problems.append(f"event rows {events_before} -> {events_after}, expected +{emitted}")
+        if idle.cases_evaluated or idle.mark_overdue + idle.escalate:
+            problems.append("a loop after the drain still evaluated or emitted")
+        walls = [l["wall_seconds"] for l in loops]
+        busy = [l for l in loops if l["cases_evaluated"]]
+        return {"kind": "drain", "size": size, "workers": 1, "label": label, "max_cases_per_loop": max_cases, "budget_seconds_per_loop": budget_seconds,
+                "interval_seconds": interval, "clone_from_template_seconds": clone_seconds, "loops": loops, "loop_count": len(loops),
+                "drain_compute_seconds": sum(walls), "drain_wall_seconds": drain_wall,
+                "time_to_drain_seconds_with_interval_sleeps": sum(walls) + len(loops) * interval,
+                "loop_wall_seconds": {"min": min(walls), "median": sorted(walls)[len(walls) // 2], "p95": sorted(walls)[int(len(walls) * 0.95) - 1] if len(walls) > 1 else walls[0], "max": max(walls)},
+                "loops_over_interval": sum(w > interval for w in walls), "busy_loops": len(busy),
+                "emitted": emitted, "expected_emitted": tpl_stats["expected_emitted"], "events_before": events_before, "events_after": events_after,
+                "idle_loop_after_drain_seconds": idle_wall, "full_scan_after_drain_cases_read": full.cases_evaluated,
+                "postgres_settings": settings(sc.admin_url()), "problems": problems, "finished_at": datetime.now(UTC).isoformat()}
+    finally:
+        pool.close()
+
+
+def run_watchdog_cell(size: int, tpl_stats: dict, label: str, budget_seconds: float, reconcile_slice: int, reference_full_scan: bool,
+                      idle_days: int = 7, steady_scans: int = 6, log=print) -> dict:
+    """M7-7 (a): the incremental watchdog scan (`app.watchdog.run_incremental_scan`) on the cloned template, at the sweep time of the
+    seed. Scans repeat until the cases that were idle at that time are all flagged (the first scans do the catch-up, bounded by the
+    time budget), then `steady_scans` more run with nothing due. Each scan's duration and counts are recorded, with the process's
+    peak RSS. Finally the FULL replay scan (`run_idle_scan`, the old watchdog) runs once: it must flag nothing more (the incremental
+    scan missed no case) and its duration is the 'before' figure on this very database."""
+    from app.watchdog import run_idle_scan, run_incremental_scan
+
+    now = datetime.fromisoformat(tpl_stats["now"])
+    pathway, _ = sc.load_engine()
+    clone_seconds = make_load_from_template(size)
+    url = sc.load_url()
+    admin("CHECKPOINT")
+    pool = create_pool(url, max_size=4)
+    problems: list[str] = []
+    try:
+        store = PostgresEventStore(pool)
+        rss_before = _maxrss_mib()
+        scans: list[dict] = []
+        t_start = time.perf_counter()
+        for i in range(1, 5000):
+            r = run_incremental_scan(store, pathway, now, idle_days, budget_seconds=budget_seconds, reconcile_slice=reconcile_slice)
+            scans.append({"scan": i, "seconds": round(r.seconds, 3), "flagged": r.flagged, "incremental_evaluated": r.incremental_evaluated,
+                          "uncomputed_evaluated": r.uncomputed_evaluated, "reconcile_evaluated": r.reconcile_evaluated,
+                          "index_complete": r.index_complete, "index_healed": r.index_healed, "index_drift": r.index_drift,
+                          "reconcile_cycles_completed": r.reconcile_cycles_completed, "errors": len(r.errors), "rejected": r.rejected,
+                          "peak_rss_mib": round(_maxrss_mib(), 1)})
+            if r.errors:
+                problems.append(f"scan {i}: {len(r.errors)} errors: {r.errors[:2]}")
+            if r.index_complete and not r.flagged and not r.incremental_evaluated and not r.uncomputed_evaluated:
+                break
+        catchup_wall = time.perf_counter() - t_start
+        catchup_scans = len(scans)
+        steady = []
+        for j in range(steady_scans):
+            r = run_incremental_scan(store, pathway, now, idle_days, budget_seconds=budget_seconds, reconcile_slice=reconcile_slice)
+            steady.append({"seconds": round(r.seconds, 3), "flagged": r.flagged, "evaluated": r.cases_evaluated,
+                           "reconcile_evaluated": r.reconcile_evaluated, "peak_rss_mib": round(_maxrss_mib(), 1)})
+        index_only = []
+        for j in range(3):
+            r = run_incremental_scan(store, pathway, now, idle_days, budget_seconds=budget_seconds, reconcile_slice=0)
+            index_only.append({"seconds": round(r.seconds, 3), "evaluated": r.cases_evaluated, "flagged": r.flagged})
+        flagged_total = one(url, "SELECT count(*) FROM events WHERE type = 'watchdog_flagged'")
+        full = None
+        if reference_full_scan:
+            tf = time.perf_counter()
+            res = run_idle_scan(store, pathway, now, idle_days)
+            full = {"seconds": time.perf_counter() - tf, "cases_evaluated": res.cases_evaluated, "flagged_additionally": res.flagged,
+                    "errors": len(res.errors), "peak_rss_mib": round(_maxrss_mib(), 1)}
+            if res.flagged:
+                problems.append(f"the full scan flagged {res.flagged} cases the incremental scan had not (incremental missed them)")
+        state = store.watchdog_state()
+        secs = [s["seconds"] for s in scans]
+        ssecs = [s["seconds"] for s in steady]
+        return {"kind": "watchdog", "size": size, "label": label, "idle_days": idle_days, "scan_budget_seconds": budget_seconds,
+                "reconcile_slice": reconcile_slice, "clone_from_template_seconds": clone_seconds, "sim_time": now.isoformat(),
+                "catchup_scans": catchup_scans, "catchup_wall_seconds": catchup_wall, "catchup_flagged": sum(s["flagged"] for s in scans),
+                "catchup_scan_seconds": {"max": max(secs), "median": sorted(secs)[len(secs) // 2], "first": secs[0]},
+                "catchup_first_scans": scans[:6], "catchup_last_scans": scans[-3:],
+                "steady_scans": steady, "steady_scan_seconds": {"max": max(ssecs), "median": sorted(ssecs)[len(ssecs) // 2], "min": min(ssecs)},
+                "index_only_scans": index_only, "watchdog_flagged_events": flagged_total, "full_replay_reference": full,
+                "reconcile_cycles_completed": state.get("reconcile_cycles", 0), "peak_rss_mib_before": round(rss_before, 1),
+                "peak_rss_mib_after": round(_maxrss_mib(), 1), "problems": problems, "finished_at": datetime.now(UTC).isoformat()}
+    finally:
+        pool.close()
+
+
 # ------------------------------------------------------------------------------------------------------------ driver
 
 
@@ -542,6 +687,22 @@ def cmd_sweep(args) -> int:
             for p in cell["problems"]:
                 print("   PROBLEM:", p)
                 rc = 1
+        if args.drain:
+            print(f"== {size:,} open cases, bounded loops (max {args.drain_max_cases} cases, {args.drain_budget}s per loop), label={args.label} ==", flush=True)
+            cell = run_drain_cell(size, meta, args.label, args.drain_max_cases, args.drain_budget)
+            doc["drain_cells"] = [c for c in doc.get("drain_cells", []) if (c["size"], c["label"]) != (size, args.label)] + [cell]
+            save_doc(out, doc)
+            print(f"   drained in {cell['loop_count']} loops: compute {cell['drain_compute_seconds']:.1f}s, with {cell['interval_seconds']:.0f}s sleeps "
+                  f"{cell['time_to_drain_seconds_with_interval_sleeps']:.0f}s; loop wall max {cell['loop_wall_seconds']['max']:.2f}s; problems {cell['problems']}", flush=True)
+            rc = rc or (1 if cell["problems"] else 0)
+        if args.watchdog:
+            print(f"== {size:,} open cases, incremental watchdog scans, label={args.label} ==", flush=True)
+            cell = run_watchdog_cell(size, meta, args.label, args.wd_budget, args.wd_reconcile_slice, not args.no_wd_reference)
+            doc["watchdog_cells"] = [c for c in doc.get("watchdog_cells", []) if (c["size"], c["label"]) != (size, args.label)] + [cell]
+            save_doc(out, doc)
+            print(f"   catch-up {cell['catchup_scans']} scans ({cell['catchup_flagged']:,} flagged), max scan {cell['catchup_scan_seconds']['max']:.2f}s; "
+                  f"steady median {cell['steady_scan_seconds']['median']:.2f}s; full replay {cell['full_replay_reference']}; problems {cell['problems']}", flush=True)
+            rc = rc or (1 if cell["problems"] else 0)
         if args.profile and size == sizes[-1]:
             print(f"== {size:,} open cases, workers=1, cProfile ==", flush=True)
             cell = run_cell(size, 1, meta, args.label, profile=True, full_check=False)
@@ -600,6 +761,13 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--keep-load-db", action="store_true")
     p.add_argument("--no-evidence", action="store_true", help="skip EXPLAIN and size queries")
     p.add_argument("--no-full-scan", action="store_true")
+    p.add_argument("--drain", action="store_true", help="M7-7: also drain the backlog with bounded loops (one worker) and record every loop")
+    p.add_argument("--drain-max-cases", type=int, default=20000)
+    p.add_argument("--drain-budget", type=float, default=6.0)
+    p.add_argument("--watchdog", action="store_true", help="M7-7: also run the incremental watchdog scans on the cloned template")
+    p.add_argument("--wd-budget", type=float, default=5.0)
+    p.add_argument("--wd-reconcile-slice", type=int, default=1000)
+    p.add_argument("--no-wd-reference", action="store_true", help="skip the final full-replay reference scan of the watchdog cell")
     p.add_argument("--steady", type=int, default=0, help="after the checks, run this many 10-second-increment sweeps (the loop's steady state)")
     p.add_argument("--drop-dup-index", action="store_true", help="experiment: drop the duplicate events_case_id_seq_idx in the cloned load database")
     p.add_argument("--out", default=str(DEFAULT_OUT))

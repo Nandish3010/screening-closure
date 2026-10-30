@@ -1,0 +1,13 @@
+traced now MiB 0.26447105407714844
+/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/lib/python3.14/json/decoder.py:361: size=180 KiB (+180 KiB), count=2400 (+2400), average=77 B
+/Users/NS/gitex/sc-m77/tools/load/memory_repro_requests.py:18: size=22.5 KiB (+22.5 KiB), count=1 (+1), average=22.5 KiB
+/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/lib/python3.14/re/__init__.py:285: size=20.6 KiB (+20.6 KiB), count=449 (+449), average=47 B
+/Users/NS/gitex/screening-closure/.venv/lib/python3.14/site-packages/psycopg/cursor.py:282: size=11.1 KiB (+11.1 KiB), count=228 (+228), average=50 B
+/Users/NS/gitex/sc-m77/api/app/readmodel.py:22: size=7100 B (+7100 B), count=142 (+142), average=50 B
+/Users/NS/gitex/sc-m77/api/app/sweep.py:64: size=3500 B (+3500 B), count=70 (+70), average=50 B
+/Users/NS/gitex/sc-m77/api/app/state_machine.py:386: size=3350 B (+3350 B), count=67 (+67), average=50 B
+/Users/NS/gitex/sc-m77/api/app/risk/features.py:205: size=2300 B (+2300 B), count=46 (+46), average=50 B
+/Users/NS/gitex/sc-m77/api/app/readmodel.py:30: size=2050 B (+2050 B), count=41 (+41), average=50 B
+/Users/NS/gitex/sc-m77/api/app/readmodel.py:281: size=1550 B (+1550 B), count=31 (+31), average=50 B
+/Users/NS/gitex/sc-m77/api/app/calendar.py:82: size=1250 B (+1250 B), count=25 (+25), average=50 B
+/Users/NS/gitex/sc-m77/api/app/routers/cases.py:287: size=1200 B (+1200 B), count=24 (+24), average=50 B

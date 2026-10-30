@@ -123,14 +123,14 @@ export function createHttpAdapter(baseUrl: string, fetchImpl: typeof fetch = (..
   /** actor strings (`role:user_id`) learnt by logging in, keyed by the login. */
   const actorCache = new Map<string, string>();
 
-  async function request<T>(path: string, init?: RequestInit, retried = false): Promise<T> {
+  async function requestFull<T>(path: string, init?: RequestInit, retried = false): Promise<{ data: T; headers: Headers }> {
     // Requests wait for a login in flight so a role switch never races a request.
     if (pendingLogin) await pendingLogin.catch(() => undefined);
     const used = oidc ? await oidc.accessToken() : token;
     const res = await send(path, init, used);
     if (res.status === 401 && oidc) {
       // Expired or revoked at the provider: refresh once (accessToken renews it); if that fails the app is signed out.
-      if (!retried && used && (await oidc.accessToken({ force: true }))) return request<T>(path, init, true);
+      if (!retried && used && (await oidc.accessToken({ force: true }))) return requestFull<T>(path, init, true);
       oidc.signOut();
     } else if (res.status === 401 && identity && !retried) {
       // Token expired or rejected: log in again once and retry.
@@ -139,10 +139,14 @@ export function createHttpAdapter(baseUrl: string, fetchImpl: typeof fetch = (..
         identity = null;
         await login(who.role, who.name, who.provider);
       } else if (pendingLogin) await pendingLogin.catch(() => undefined);
-      return request<T>(path, init, true);
+      return requestFull<T>(path, init, true);
     }
     if (!res.ok) throw await failure(res);
-    return (await res.json()) as T;
+    return { data: (await res.json()) as T, headers: res.headers };
+  }
+
+  async function request<T>(path: string, init?: RequestInit): Promise<T> {
+    return (await requestFull<T>(path, init)).data;
   }
 
   function qs(params: Record<string, string | undefined>): string {
@@ -152,15 +156,29 @@ export function createHttpAdapter(baseUrl: string, fetchImpl: typeof fetch = (..
     return s ? `?${s}` : "";
   }
 
-  const listCases = async (params: CaseListParams = {}) =>
-    (
-      await request<CaseSummary[]>(
+  /**
+   * GET /cases is a page (M7-7): the API answers at most `limit` rows (default 100, maximum 500) and, when more may follow, the
+   * response header `X-Next-Cursor`. This follows the cursor until it is absent, so callers still get the whole worklist, but
+   * never more than `maxRows` (default 10,000; the page loop is the client's bound, the page size the server's).
+   */
+  const listCases = async (params: CaseListParams = {}) => {
+    const limit = Math.min(Math.max(params.limit ?? 500, 1), 500);
+    const maxRows = params.maxRows ?? 10_000;
+    const out: CaseSummary[] = [];
+    let cursor: string | undefined;
+    do {
+      const { data, headers } = await requestFull<CaseSummary[]>(
         `/cases${qs({
           state: params.state, owner: params.owner,
           overdue: params.overdue ? "true" : undefined, flagged: params.flagged ? "true" : undefined,
+          limit: String(limit), cursor,
         })}`,
-      )
-    ).map(completeSummary);
+      );
+      out.push(...data);
+      cursor = headers.get("X-Next-Cursor") ?? undefined;
+    } while (cursor && out.length < maxRows);
+    return out.map(completeSummary);
+  };
 
   return {
     adapter: "http",

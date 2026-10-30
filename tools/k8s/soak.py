@@ -56,7 +56,7 @@ METHOD = (
     "One uninterrupted open-loop stage of tools/k8s/api_load.py's generator at a constant arrival rate (request i is due at t0 + i/rate "
     "whatever the outstanding requests; latency = intended start to end of the response, failures counted at their latency), against the "
     "NodePort 127.0.0.1:18376 across the 3 API pods, on a database of ~1.04M cases / 7.2M events, while the 2 scheduler pods "
-    "(one leads) sweep every 10 s with the automation and evidence scans, and the watchdog runs its O(open cases) scan at the chart's "
+    "(one leads) sweep every 10 s with the automation and evidence scans, and the watchdog runs its scan (M7-7: the incremental scan plus a slice of the full reconciliation pass) at the chart's "
     "interval (watchdog.intervalSeconds). The mix is api_load.py's (bounded worklist only: GET /cases?state=lost_contact). Every "
     "60 s a sampler records per-pod cgroup memory (memory.current and anon from memory.stat) and CPU (kubectl exec; no metrics-server), "
     "container restart counts and last-termination reasons (kubectl get pods), the database size, the scheduler leader lease and the "
@@ -472,6 +472,26 @@ def build_summary(col: Collector, gen: AL.Gen, args, t_wall0: float, t_wall_end:
 
 # ------------------------------------------------------------------------------------------------------------ driver
 
+def agency_summary(dsn: str, since_epoch: float) -> dict:
+    """What the agency did during the soak (M7-7 (b)), from the ledger: runs started since `since_epoch` (root tasks), their final status
+    (`done`, `capped` = the bounded read or the order cap left work for the next run, `budget_exhausted`), the cases each run read (the cap
+    is AGENCY_MAX_CASES_READ), the tasks they created, and how long each took."""
+    with psycopg.connect(dsn) as conn:
+        rows = conn.execute(
+            "SELECT status, output, extract(epoch FROM (finished_at - started_at)), created_at FROM agency_tasks"
+            " WHERE parent_id IS NULL AND created_at >= to_timestamp(%s) ORDER BY created_at", (since_epoch,)).fetchall()
+        tasks = conn.execute("SELECT count(*) FROM agency_tasks WHERE parent_id IS NOT NULL AND created_at >= to_timestamp(%s)", (since_epoch,)).fetchone()[0]
+    outs = [r[1] or {} for r in rows]
+    by_status = collections.Counter((o.get("status") or r[0]) for o, r in zip(outs, rows))
+    read = [o.get("cases_read") for o in outs if isinstance(o.get("cases_read"), int)]
+    secs = sorted(float(r[2]) for r in rows if r[2] is not None)
+    return {"runs": len(rows), "runs_by_status": dict(by_status), "tasks_created_total": tasks,
+            "cases_read_per_run": {"max": max(read) if read else None, "median": statistics.median(read) if read else None, "sum": sum(read)},
+            "runs_with_truncated_read": sum(1 for o in outs if o.get("read_truncated")), "runs_with_order_cap": sum(1 for o in outs if o.get("orders_capped")),
+            "run_seconds": {"median": round(statistics.median(secs), 2), "p95": round(AL.pct(secs, 0.95), 2), "max": round(secs[-1], 2)} if secs else None,
+            "first_run": rows[0][3].isoformat() if rows else None, "last_run": rows[-1][3].isoformat() if rows else None}
+
+
 async def amain(args) -> int:
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
@@ -505,6 +525,7 @@ async def amain(args) -> int:
     col.finish_windows(float("inf"), final=True)
     doc["finished_at"] = iso(t_wall_end)
     doc["population_after"] = await asyncio.to_thread(AL.population, dsn)
+    doc["agency"] = await asyncio.to_thread(agency_summary, dsn, t_wall0)
     doc["summary"] = build_summary(col, gen, args, t_wall0, t_wall_end, wd_interval)
     doc.update(status="finished", samples=col.samples, sample_errors=col.sample_errors, windows=[col.windows_done[k] for k in sorted(col.windows_done)])
     atomic_write(out, doc)

@@ -29,7 +29,7 @@ describe("http adapter against the real API's identity rules", () => {
     const { fn, calls } = recorder({
       "POST /auth/dev-login": (b: any) => ({ token: b.role === "patient" ? "patient-token" : "staff-token", user_id: "u1", role: b.role }),
       "GET /cases/c1": { case_id: "c1", state: "patient_contacted", patient_ref: "Patient/42", events: [] },
-      "GET /cases": [],
+      "GET /cases?limit=500": [],
     });
     const api = createHttpAdapter("http://api.test", fn);
     await api.loginPatientFor!("c1");
@@ -38,11 +38,11 @@ describe("http adapter against the real API's identity rules", () => {
     expect(logins[0]).toEqual({ role: "coordinator", name: "Maryam Al Suwaidi" }); // the lookup login: no patient_ref
     expect(logins[1]).toEqual({ role: "patient", name: "Patient", patient_ref: "Patient/42" });
     expect(calls.find((c) => c.key === "GET /cases/c1")!.auth).toBe("Bearer staff-token");
-    expect(calls.find((c) => c.key === "GET /cases")!.auth).toBe("Bearer patient-token"); // the session is the patient now
+    expect(calls.find((c) => c.key === "GET /cases?limit=500")!.auth).toBe("Bearer patient-token"); // the session is the patient now
   });
 
   it("a patient login without a patient_ref is skipped instead of failing (the page supplies it)", async () => {
-    const { fn, calls } = recorder({ "GET /cases": [] });
+    const { fn, calls } = recorder({ "GET /cases?limit=500": [] });
     const api = createHttpAdapter("http://api.test", fn);
     await api.login("patient", "Patient");
     expect(calls).toHaveLength(0);
@@ -51,7 +51,7 @@ describe("http adapter against the real API's identity rules", () => {
   it("actorFor learns the opaque user id by logging in, without changing the session", async () => {
     const { fn, calls } = recorder({
       "POST /auth/dev-login": (b: any) => ({ token: `t-${b.name}`, user_id: "a1b2c3d4e5f6", role: b.role }),
-      "GET /cases": [],
+      "GET /cases?limit=500": [],
     });
     const api = createHttpAdapter("http://api.test", fn);
     await api.login("coordinator", "Maryam Al Suwaidi");

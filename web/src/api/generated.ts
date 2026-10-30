@@ -95,7 +95,7 @@ export interface Routes {
   "GET /agency/tasks": { query: { "case_id"?: string | null; "department"?: "supervisor" | "outreach" | "referral_scheduling" | "evidence_closure" | "patient_support" | "quality_ops" | null; "limit"?: number; "run_id"?: string | null; "status"?: "queued" | "running" | "done" | "failed" | "needs_human" | null; }; response: Record<string, unknown>[]; };
   "GET /alerts": { query: { "active"?: boolean; }; response: Record<string, unknown>[]; };
   "POST /auth/dev-login": { body: DevLogin; response: Record<string, unknown>; };
-  "GET /cases": { query: { "flagged"?: boolean | null; "overdue"?: boolean | null; "owner"?: string | null; "provider"?: string | null; "state"?: string | null; }; response: Record<string, unknown>[]; };
+  "GET /cases": { query: { "cursor"?: string | null; "flagged"?: boolean | null; "limit"?: number; "overdue"?: boolean | null; "owner"?: string | null; "provider"?: string | null; "state"?: string | null; }; response: Record<string, unknown>[]; };
   "POST /cases": { body: CreateCase; response: Record<string, unknown>; };
   "GET /cases/{case_id}": { path: { "case_id": string; }; response: Record<string, unknown>; };
   "GET /cases/{case_id}/agency": { path: { "case_id": string; }; response: Record<string, unknown>; };

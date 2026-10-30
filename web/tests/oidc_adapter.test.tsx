@@ -42,7 +42,7 @@ describe("http adapter in oidc mode", () => {
     await api.login("coordinator", "Maryam Al Suwaidi");
     await api.loginPatientFor?.("c1");
     await api.listCases({});
-    expect(seen).toEqual([{ url: "http://api.test/cases", auth: "Bearer AT1" }]);
+    expect(seen).toEqual([{ url: "http://api.test/cases?limit=500", auth: "Bearer AT1" }]);
   });
 
   it("on a 401 refreshes once and retries with the new token", async () => {

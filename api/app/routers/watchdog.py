@@ -15,7 +15,7 @@ from app.clock import clock
 from app.config import settings
 from app.routers import cases
 from app.routers.scheduler import FOLLOWER_PREFIX
-from app.watchdog import run_idle_scan
+from app.watchdog import run_idle_scan, run_incremental_scan, supports_incremental
 
 router = APIRouter(tags=["watchdog"])
 FOLLOWER_MAX_AGE_SECONDS = 120  # a follower that has not beaten for this long is gone, not idle
@@ -46,7 +46,15 @@ def scan(body: Scan | None = None) -> dict:
     body = body or Scan()
     ops.store.beat("watchdog", {"uptime_seconds": round(body.uptime_seconds, 1)})
     idle_days = body.idle_days or settings.watchdog_idle_days
-    idle = run_idle_scan(cases.store, cases.pathway, clock.now(), idle_days)
+    if supports_incremental(cases.store) and not settings.watchdog_full_scan:
+        # M7-7 (ADR-045): the idle index + a slice of the full reconciliation pass, inside a time budget
+        idle = run_incremental_scan(cases.store, cases.pathway, clock.now(), idle_days,
+                                    budget_seconds=settings.watchdog_scan_budget_seconds,
+                                    reconcile_slice=settings.watchdog_reconcile_slice)
+    else:  # the in-memory store, or WATCHDOG_FULL_SCAN=true: replay every open case
+        idle = run_idle_scan(cases.store, cases.pathway, clock.now(), idle_days)
+    # A scheduler pod that is gone leaves its `scheduler-follower-<pod>` row behind; remove the stale ones.
+    ops.store.prune_followers(FOLLOWER_PREFIX, settings.follower_heartbeat_retention_seconds)
     status, detail = ops.scheduler_status(ops.store.heartbeats().get("scheduler"), body.uptime_seconds)
     _apply_scheduler_verdict(status, detail)
     return {
