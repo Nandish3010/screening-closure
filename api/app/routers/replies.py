@@ -40,6 +40,7 @@ from app.events import CaseNotFound, Event, EventContentConflict, EventIdConflic
 from app.routers import cases
 from app.state_machine import TRIAGE_ACTOR, InvalidTransition
 from app.triage import classify as triage
+from app.triage import dialect
 from app.triage.reply_store import InMemoryReplyStore, PostgresReplyStore, ReplyRecord, ReplyStore
 
 log = logging.getLogger("app.replies")
@@ -145,6 +146,8 @@ def post_reply(case_id: UUID, body: PostReply, identity: Identity = Depends(requ
     return {
         "reply_id": str(reply_id), "case_id": str(case_id), "channel": record.channel, **result,
         "logged": bool(applied), "applied": applied,
+        # additive, display only: the language group whose rule (dialect.py, HZ-43) is why a person reads this reply, else null
+        "forced_reason": dialect.group_reason(result, record.text),
         "note": None if applied else "the case is closed: the reply is stored for a person to read, nothing was logged",
     }
 

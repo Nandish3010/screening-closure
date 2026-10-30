@@ -345,7 +345,7 @@ def what_is_not_met(la, so, sk, sr, mb100, mb1, mb1i) -> list[str]:
     if la:
         over = [f"{s_['target_rate_per_s']:g}/s" for s_ in la["stages"] if not s_["pass"]]
         L.append("- Overload is refused, not served: at " + (", ".join(over) if over else "no tested rate") + " the p99 of the requests the pods answered is over 500 ms and a share is refused with 503 (table above). Shedding turns timeouts and resets into an answer a client can act on; it adds no capacity. "
-                 "The web client does not yet show a message for 503 (HZ-45).")
+                 "The web client shows a plain busy message with the Retry-After seconds for a 503 (HZ-45, T-F25).")
     L.append("- **The metrics routes are bounded in memory and replay, not in time.** The aggregate is a scan of a table inside Postgres, so it grows with the number of cases (seconds at 1,000,000); the first catch-up of an unindexed table takes tens of minutes of budgeted calls (the benchmark's figures above); nothing keeps the table warm between calls; the agency still avoids the route above 20,000 cases (ADR-046, unchanged).")
     L.append("- The fail-over drill (`failover.json`) and the offline sweep and watchdog cells (`sweep.json`) were not repeated for M7-8. The scheduler's fencing and heartbeat behaviour is covered by tests (ADR-047) but a real kill, freeze and resume of the task-based scheduler on the cluster was not run.")
     L.append("- The target of cutting human labour by 40% is not shown to be met by anything in this report; it is a simulator result with its own caveats (docs/results).")

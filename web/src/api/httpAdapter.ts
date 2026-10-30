@@ -57,6 +57,12 @@ export function createHttpAdapter(baseUrl: string, fetchImpl: typeof fetch = (..
   }
 
   async function failure(res: Response): Promise<ApiError> {
+    if (res.status === 503 && (res.headers.get("Retry-After") !== null || res.headers.get("X-Shed") !== null)) {
+      // HZ-45: the API refused the request under overload before running it; say so plainly and say when to retry.
+      const n = Number.parseInt(res.headers.get("Retry-After") ?? "", 10);
+      const secs = Number.isFinite(n) && n > 0 ? n : 1;
+      return new ApiError(503, `The system is busy. Please try again in ${secs} second${secs === 1 ? "" : "s"}. Nothing was changed.`, secs);
+    }
     let msg = res.statusText;
     try {
       const j = await res.json();

@@ -102,3 +102,24 @@ def test_the_detector_rarely_flags_english_or_standard_arabic_and_finds_most_of_
     assert not [r["text"] for r in by("en") + by("ar_msa") if dialect.detect(r["text"])]
     assert sum(dialect.detect(r["text"]) == "arabizi" for r in by("arabizi")) >= 0.9 * len(by("arabizi"))
     assert sum(dialect.detect(r["text"]) == "ar_gulf" for r in by("ar_gulf")) >= 0.6 * len(by("ar_gulf"))
+
+
+# ---- forced_reason: display only, never changes who reads a reply ----
+
+def test_group_reason_names_the_group_that_sends_a_reply_to_a_person():
+    triage.set_backend(Fake("confirm", 0.9999), CAL)
+    text = "ان شاء الله بجي يوم الأحد"
+    result = triage.classify(text, None)
+    assert result["needs_human"] is True and dialect.group_reason(result, text) == "ar_gulf"
+    # not Gulf, not forced; an opt-out or question has its own reason; a sure Arabizi reply is not forced
+    ok = triage.classify("Yes, I will come on Sunday, thank you.", None)
+    assert dialect.group_reason(ok, "Yes, I will come on Sunday, thank you.") is None
+    assert dialect.group_reason({"intent": "question", "confidence": 0.99, "needs_human": True}, text) is None
+    assert dialect.group_reason({"intent": "confirm", "confidence": 0.99, "needs_human": False}, text) is None
+    assert dialect.group_reason({"intent": "confirm", "confidence": 0.95, "needs_human": False}, "ok ma3 el salama, akeed ajee") is None
+    assert dialect.group_reason({"intent": "confirm", "confidence": 0.9, "needs_human": True}, "ok ma3 el salama, akeed ajee") == "arabizi"
+
+
+def test_group_reason_changes_nothing_in_the_classifier_result():
+    triage.set_backend(Fake("confirm", 0.9999), CAL)
+    assert set(triage.classify("ان شاء الله بجي يوم الأحد", None)) == {"intent", "confidence", "model_id", "needs_human"}

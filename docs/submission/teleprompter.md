@@ -1,6 +1,6 @@
 # Teleprompter
 
-The words to say in the live demo, and nothing else. A timestamp marks every 15 seconds; the click cues are in square brackets and are not spoken. The full script, with the exact labels on screen, the numbers' sources and the recovery table, is [demo-script.md](demo-script.md). All data shown is synthetic. Pace: 2.3 words a second, so a 15-second block holds at most 35 words and every block is written to fit it (the last block, 31 words, finishes at about 6:28). The 781 spoken words are about 5 minutes 40 seconds of speech; the last block starts at 6:15, which leaves the clicks and the clock waits inside the 6:30 limit. Read it calmly: the pauses the clicks need are in the slack. The Abu Dhabi line (5:15) is the sensitivity run in results.md, "Sensitivity: an Abu Dhabi-shaped baseline": 30.6% to 38.8% at 360 days, literature anchored. The health-outcome line (6:15) is docs/results/outcomes.md, headline scenario: about 31 colorectal cancer deaths within 5 years avoided for each year of Abu Dhabi positives (95% PSA interval 20 to 50), modelled from published delay, stage and survival studies.
+The words to say in the live demo, and nothing else. A timestamp marks every 15 seconds; the click cues are in square brackets and are not spoken. The full script, with the exact labels on screen, the numbers' sources and the recovery table, is [demo-script.md](demo-script.md). All data shown is synthetic. Pace: 2.3 words a second, so a 15-second block holds at most 35 words and every block is written to fit it (the last block, 31 words, finishes at about 6:28). The 782 spoken words are about 5 minutes 40 seconds of speech; the last block starts at 6:15, which leaves the clicks and the clock waits inside the 6:30 limit. Read it calmly: the pauses the clicks need are in the slack. The Abu Dhabi line (5:15) is the sensitivity run in results.md, "Sensitivity: an Abu Dhabi-shaped baseline": 30.6% to 38.8% at 360 days (+8.2 points), literature anchored. The fifteen days (4:45) are results.md, "Under finite capacity": the median days to colonoscopy among completers at base capacity, 65.9 baseline against 80.9 orchestrated (+15.0). The labour roles (5:30) are results.md, "Human minutes per case by role": coordinator -36%, owner clinician +94%, specialist +23%. The Gulf line (3:45) is the M7-5 fairness audit before the M7-1 rule (fairness.md: 91.1% auto-handled precision); since the rule every Gulf reply goes to a person (api/app/triage/dialect.py), and tests/test_storyboard_triage.py keeps the words and the code in step. The regulatory pull (6:00) is the IFHAS V10 15-working-day referral clock (evidence.md section 8a); the shadow-run cost is business-case.md (AED 106,000, 155 cases, assumed inputs). The health-outcome line (6:15) is docs/results/outcomes.md, headline scenario: about 31 colorectal cancer deaths within 5 years avoided for each year of Abu Dhabi positives (95% PSA interval 20 to 50), modelled from published delay, stage and survival studies.
 
 **0:00** [Title slide: 30.5%.]
 In Abu Dhabi, an audit of positive bowel screening tests found that only thirty point five percent of patients ever had the follow-up colonoscopy. Nobody decided to lose them. Everyone assumed someone else had it.
@@ -48,10 +48,10 @@ Behind the worklist, agents prepare the work for all twenty-two open cases. I st
 I open it from the inbox, record the real procedure and sign as myself. Closed. Even a real record that says the colonoscopy was incomplete is refused: closure needs a complete one.
 
 **3:45** [Case page. Role coordinator. Record patient reply: WhatsApp, the Arabic text. Record reply.]
-A patient writes back in Gulf Arabic: God willing, I will come on Sunday. A small offline model, running on this laptop, reads it as a confirmation, and no person is needed.
+A patient writes back in Gulf Arabic: God willing, I will come on Sunday. Our fairness audit found the Gulf replies the model handled alone were right only ninety-one percent of the time.
 
-**4:00** [Point at Read as confirm. Optional: record STOP, point at the amber banner.]
-An opt-out like STOP is caught first by a plain keyword rule, before any model, and goes to a person. The model can only flag. No appointment is booked: the FHIR Appointment is a stub.
+**4:00** [Point at the amber banner, A person must look at this reply, then open the Why panel and read its first line. Optional: record STOP; or the English reply, Yes I will come on Sunday, thank you, which may be handled alone.]
+So a Gulf reply always goes to a person, whatever the model says. So does STOP, caught first by a keyword rule. No appointment is booked: that record is a stub.
 
 **4:15** [Role patient. Open /patient/ and the case id. Click the language button, العربية. Point at the owner line.]
 This is the patient's own screen, in Arabic, right to left: the result in plain words, who owns her case, and one button to say she understood.
@@ -60,22 +60,22 @@ This is the patient's own screen, in Arabic, right to left: the result in plain 
 Synthetic simulation, before capacity limits, in a US-calibrated usual-care baseline. Colonoscopy within one hundred eighty days: fifty-one percent today, sixty-seven with the system, a ratio about one point three one.
 
 **4:45** [Same slide.]
-That ratio is calibrated to published navigation trials. The model shows the mechanism and what drives it, not new evidence of effect. On speed, we claim none.
+That ratio is calibrated to published trials: the mechanism, not new evidence. On speed we claim none, and at base colonoscopy capacity those who complete wait fifteen days longer.
 
 **5:00** [Same slide.]
 Cases closed with evidence and a signature: fifty-three percent today, sixty-eight with the system. Lost without anyone told: forty-five percent today, twenty-one programme-wide. Zero among the cases it reaches, which is true by construction.
 
 **5:15** [Same slide, the Abu Dhabi line.]
-If Abu Dhabi today looks like the thirty point five percent audit, the same mechanism moves it to about thirty-nine percent within a year. Simulated: a sensitivity run, not a forecast.
+Shape the baseline like the thirty point five percent audit instead, and the gain is eight point two points at three hundred sixty days, thirty-one to thirty-nine percent. Simulated: a sensitivity run, not a forecast.
 
 **5:30** [Slide: labour.]
-Labour: thirty-six percent fewer staff minutes per handled case, twenty percent across the programme. Our target was forty percent. It is not met in realistic scenarios; only the upper bound, a mechanism ceiling, comes close.
+Labour: thirty-six percent fewer staff minutes per handled case, twenty percent across the programme. Our forty percent target is not met. Coordinator time falls thirty-six percent; clinician time rises ninety-four, specialist twenty-three.
 
 **5:45** [Slide: the pilot ask.]
 The ask: one programme, two providers, ninety days, shadow mode first, thirty days sending nothing. One number must stay at zero: cases closed without evidence. A clinician and a native Arabic speaker review the wording first.
 
 **6:00** [Slide: who pays.]
-Who pays: a programme licence, four screening pathways, about two million dirhams a year; hypothesised buyer, Abu Dhabi's public health programme. Avoided cost does not cover it; safety does. The Judge tour replays this.
+Who pays: a programme licence; hypothesised buyer, Abu Dhabi's public health programme. The pull is regulatory: a fifteen working day referral clock. A shadow run: about one hundred six thousand dirhams, one hundred fifty-five cases.
 
 **6:15** [Slide: health outcomes, docs/results/outcomes.md.]
 Over four thousand positives a year no longer lost silently; modelled from published studies, about thirty bowel cancer deaths avoided per year of positives, twenty to fifty-one. Not measured. Thank you.

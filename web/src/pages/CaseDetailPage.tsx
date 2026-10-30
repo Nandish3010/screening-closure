@@ -653,7 +653,7 @@ export function CaseDetailPage() {
               </p>
             )}
             {replyResult && (
-              <WhyPanel testId="why-triage-reply" subject="reply label" input={{ kind: "triage", model_id: replyResult.model_id, confidence: replyResult.confidence, needs_human: replyResult.needs_human }} />
+              <WhyPanel testId="why-triage-reply" subject="reply label" input={{ kind: "triage", model_id: replyResult.model_id, confidence: replyResult.confidence, needs_human: replyResult.needs_human, forced_reason: replyResult.forced_reason }} />
             )}
           </section>
 

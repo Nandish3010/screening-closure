@@ -65,7 +65,7 @@ def test_the_demo_script_storyboard_table_is_the_yaml_storyboard():
     for row, shot in zip(rows, submission, strict=True):
         assert row[1] == shot["title"], (row[1], shot["title"])
         assert row[3].strip('"') == shot["caption"], f"shot {shot['id']}: caption differs between the script and the YAML"
-    assert [s["id"] for s in sb["shots"] if not s.get("submission")] == [15]  # the backup-only extra named under the table
+    assert [s["id"] for s in sb["shots"] if not s.get("submission")] == [11]  # the backup-only extra named under the table
 
 
 def test_the_spoken_figures_match_the_committed_results():
