@@ -24,6 +24,7 @@ from uuid import UUID
 from fastapi import HTTPException
 
 from app import policy
+from app.agency import config as agency_config
 from app.agency.facts import CaseFacts, case_facts, facts_for
 from app.auth import Identity
 
@@ -61,31 +62,66 @@ def _cases():
     return cases
 
 
-def read_worklist(ctx) -> list[CaseFacts]:
-    """Every case's facts, open and closed, in worklist order (genesis time, case id): `GET /cases`."""
+class Worklist(list):
+    """The facts a bounded read returned, plus where it stopped: `through` is the `(updated_at, case_id)` keyset position
+    of the last case read and `truncated` says more cases follow (the cap was hit)."""
+
+    through: tuple | None = None
+    truncated: bool = False
+
+
+def read_worklist(ctx) -> Worklist:
+    """Case facts in worklist order (case id): `GET /cases`, BOUNDED (M7-7). At most `AGENCY_MAX_CASES_READ` cases, however big
+    the table is (a SQL-side LIMIT, not a read of every case): `truncated` says the window did not cover all of them. The old
+    unbounded read built the facts of every case and exhausted an API pod's memory at 873,000 open cases."""
     c = _cases()
-    out = []
-    for lc in c.store.load_cases(c.pathway):
+    cap = agency_config.max_cases_read()
+    page, after = c.store.load_cases_page(c.pathway, None, None, cap)
+    out = Worklist()
+    for lc in page:
         f = case_facts(lc, c.pathway)
         if f is not None:
             out.append(f)
+    out.truncated = after is not None
     return out
 
 
-def read_active_cases(ctx, since: datetime | None) -> list[CaseFacts]:
-    """The supervisor's bounded read: facts only for cases changed at or after `since` (the previous run's sim time)
-    plus every open case that is overdue or watchdog-flagged; every case when there was no previous run. Which cases
-    those are is decided from the store's summaries and the sweep's own open-case models, so the full fact-building
-    (each case's log) is done only for that subset, in worklist order."""
+def read_active_cases(ctx, since: datetime | None, after: tuple | None = None) -> Worklist:
+    """The supervisor's bounded read: facts only for cases changed at or after `since` (the previous run's sim time; every case
+    when there was no previous run), oldest change first, AT MOST `AGENCY_MAX_CASES_READ` of them per run (M7-7). The set is a
+    SQL query on `cases.updated_at` with a LIMIT and a keyset position (`after`), so memory and time are bounded by the cap,
+    not by the table. When the changed set is bigger than the cap the result says so (`truncated`) and where it stopped
+    (`through`); the runner then resumes from that position on its next run instead of skipping the rest.
+
+    Before M7-7 this also replayed EVERY open case to add the ones that are overdue or watchdog-flagged. A case becomes overdue or
+    flagged by an event (`mark_overdue`, `watchdog_flagged`) which moves its `updated_at`, so a newly overdue or flagged case is
+    in the changed set; an unchanged one was routed when it changed, and its tasks are deduplicated against the log
+    (`runner._recent`)."""
     c = _cases()
-    if since is None:
-        return read_worklist(ctx)
-    wanted = {s.case_id for s in c.store.list_cases() if _aware(s.updated_at) >= _aware(since)}
-    for case_id, model, _ in c.store.iter_open_case_models(c.pathway):
-        if model is not None and (model.any_overdue or model.watchdog_flag is not None):
-            wanted.add(case_id)
-    out = [f for case_id in wanted if (f := facts_for(case_id, c.store, c.pathway)) is not None]
-    return sorted(out, key=lambda f: (f.history[0].at if f.history else "", f.case_id))
+    cap = agency_config.max_cases_read()
+    keys, more = c.store.cases_changed_page(since, after, cap)
+    wanted = [case_id for _, case_id in keys]
+    truncated = more
+    if after is None and not more and since is not None:
+        # Small tables only (at most AGENCY_METRICS_MAX_CASES cases): also the open cases that are overdue or watchdog-flagged
+        # but did not change since `since`, found by replaying every open case as before. That replay is O(open cases), so past
+        # that size it is not done; the changed set above is the read. The cap applies to the two together.
+        if sum(c.store.state_counts(c.pathway).values()) <= agency_config.metrics_max_cases():
+            have = set(wanted)
+            extra = sorted((cid for cid, model, _ in c.store.iter_open_case_models(c.pathway)
+                            if model is not None and (model.any_overdue or model.watchdog_flag is not None) and cid not in have),
+                           key=lambda i: i.int)
+            wanted += extra[: max(cap - len(wanted), 0)]
+            truncated = len(extra) > max(cap - len(keys), 0)
+    out = Worklist()
+    for case_id in wanted:
+        f = facts_for(case_id, c.store, c.pathway)
+        if f is not None:
+            out.append(f)
+    out[:] = sorted(out, key=lambda f: (f.history[0].at if f.history else "", f.case_id))  # worklist order, as before
+    out.truncated = truncated
+    out.through = keys[-1] if (more and keys) else None
+    return out
 
 
 def _aware(dt: datetime) -> datetime:
@@ -127,6 +163,14 @@ def read_metrics(ctx) -> dict:
     """The closure metrics the dashboard reads (`GET /metrics/closure`), as counts."""
     from app.routers import metrics as metrics_router
 
+    # The closure metrics replay every case (p50/p90 need them all). Past a size the agency does not ask: it would hold the
+    # whole table in memory. The runner only echoes two counts of it, and gets them from the SQL aggregate instead.
+    c = _cases()
+    counts = c.store.state_counts(c.pathway)
+    total = sum(counts.values())
+    if total > agency_config.metrics_max_cases():
+        closed = counts.get(c.pathway.terminal_state, 0)
+        return {"cases_total": total, "cases_open": total - closed, "cases_closed": closed, "truncated": True}
     body = metrics_router.closure()
     keep = ("sim_time", "cases_total", "cases_open", "cases_closed", "unsafe_closures", "p50_days", "p90_days",
             "open_by_age_bucket", "cases_flagged", "lost_to_follow_up", "lost_never_surfaced", "replay_failures")

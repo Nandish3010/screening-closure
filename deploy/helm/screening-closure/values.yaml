@@ -79,8 +79,8 @@ app:
   automationEnabled: "true"
   leaderLeaseTtlSeconds: "30"
   # Run the agency layer (supervisor -> heads -> executioners) after every N-th scheduler sweep; "0" = never. Empty = not rendered,
-  # the API's code default applies (6). The agency pass reads the whole case table, so on a very large population it can exhaust
-  # an API pod's memory (M7-6: OOM at ~1M cases in a 768Mi pod).
+  # the API's code default applies (6). M7-7: a run reads at most AGENCY_MAX_CASES_READ (400) cases and resumes where it stopped, so it
+  # is safe at a very large population (M7-6: the unbounded read OOM-killed a 768Mi pod at ~1M cases).
   agencyEverySweeps: ""
   requireLeaderFence: "true"    # scheduler calls without a current leader token are refused
   logFormat: json

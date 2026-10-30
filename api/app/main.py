@@ -128,6 +128,7 @@ app.add_middleware(
     allow_origins=[o.strip() for o in settings.cors_allow_origins.split(",") if o.strip()],
     allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type"],
+    expose_headers=["X-Next-Cursor"],  # GET /cases pages: the browser may only read this response header if it is exposed
 )
 # F14: OpenTelemetry request metrics and spans, and the protected GET /metrics (answered by middleware, outside the route table).
 observability.instrument_app(app)

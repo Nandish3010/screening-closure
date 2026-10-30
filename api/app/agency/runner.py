@@ -35,6 +35,7 @@ from pydantic import ValidationError
 from app.agency import config as agency_config
 from app.agency.agents import EXECUTIONERS, HEADS, SUPERVISOR_TOOLS, Outcome, WorkItem, route_case
 from app.agency.facts import facts_for
+from app.agency.planner import MAX_ORDERS
 from app.agency.ledger import (
     DEPARTMENTS,
     DONE,
@@ -270,10 +271,13 @@ def _run(L, run_id, now, trigger, created_by, budget_seconds, max_tasks, planner
 
     # -- the supervisor: reads, routes, dispatches. It has read tools only. Its fact-building is bounded: the cases
     #    changed since the previous run, plus every open case that is overdue or flagged (all cases on a first run).
-    since = _previous_run_at(L, run_id)
+    since, after = _previous_run_at(L, run_id)
     sup = ToolBox(identity_for(SUPERVISOR), SUPERVISOR_TOOLS, now, L)
     exhausted = over()
-    worklist = [] if exhausted else sup.call("read_active_cases", since=since)
+    capped_orders = False
+    worklist = [] if exhausted else sup.call("read_active_cases", since=since, after=after)
+    read_truncated = bool(getattr(worklist, "truncated", False))
+    read_through = getattr(worklist, "through", None)
     metrics = {} if exhausted else sup.call("read_metrics")
     alerts = [] if exhausted else sup.call("read_alerts")
     waiting = [] if exhausted else sup.call("read_ledger", status=NEEDS_HUMAN)
@@ -306,6 +310,16 @@ def _run(L, run_id, now, trigger, created_by, budget_seconds, max_tasks, planner
         head = HEADS[dept]
         candidates = head.candidates([w for w in items if w.case_id is not None], now)
         kept, skipped = [], []
+        # M7-7: a plan holds at most MAX_ORDERS orders (planner validation). More candidates than that is a backlog, not an
+        # error: the first MAX_ORDERS go to the planner, the rest are skipped as `order_cap`, the run is marked capped so the
+        # next run reads the same cases again, and by then the first ones are tasks, so the rest come up.
+        over_cap = candidates.orders[MAX_ORDERS:]
+        if over_cap:
+            capped_orders = True
+            skipped.extend({"case_id": o.case_id, "agent_type": o.agent_type, "reason": "order_cap"} for o in over_cap[:20])
+            candidates = candidates.model_copy(update={"orders": candidates.orders[:MAX_ORDERS]})
+        if len(candidates.deferred) > MAX_ORDERS:
+            candidates = candidates.model_copy(update={"deferred": candidates.deferred[:MAX_ORDERS]})
         for o in candidates.orders:
             if o.agent_type not in head.spec.executioners:
                 skipped.append({"agent_type": o.agent_type, "reason": "not_this_department"})
@@ -364,9 +378,14 @@ def _run(L, run_id, now, trigger, created_by, budget_seconds, max_tasks, planner
                     queue.append((child, fu, owner_dept))
     superseded = _supersede_caseless(L, run_id, now)
     status = "budget_exhausted" if exhausted or _skipped_for_budget(L, run_id) else "done"
+    if status == "done" and (read_truncated or capped_orders):
+        status = "capped"  # M7-7: the read window or the order cap left cases for the next run (which resumes, see _previous_run_at)
     summary = {"status": status, "housekeeping": {**housekeeping, "superseded": superseded},
                "rationale": rationale, "tasks_created": created, "cases_read": len(worklist),
                "read_since": since.isoformat() if since else None,
+               "read_truncated": read_truncated, "orders_capped": capped_orders,
+               "read_through": ([read_through[0].isoformat(), str(read_through[1])]
+                                if read_truncated and read_through else None),
                "metrics": {k: metrics.get(k) for k in ("cases_open", "cases_closed")}}
     _finish(L, L.get(run_id), DONE, now, summary,
             {**_rules_provenance(SUPERVISOR, {d: [w.reason for w in work[d]] for d in DEPARTMENTS}),
@@ -374,14 +393,26 @@ def _run(L, run_id, now, trigger, created_by, budget_seconds, max_tasks, planner
     return run_summary(L.get(run_id), L)
 
 
-def _previous_run_at(L: TaskLedger, run_id: UUID) -> datetime | None:
-    """The sim time of the latest earlier run that completed (not cut short by its budget), or None: then every case
-    is read. A run that ran out of budget does not count, so the cases it never reached are read again."""
+def _previous_run_at(L: TaskLedger, run_id: UUID) -> tuple[datetime | None, tuple | None]:
+    """`(since, after)` for this run's read of the changed cases.
+
+    * The latest earlier run that completed (`status` done): its sim time, and no position: everything changed since is read.
+    * A run that was CAPPED (M7-7: the read window or the order cap left cases over) resumes: the `since` it used and the keyset
+      position it stopped at, so the next run reads the cases after it, not the same ones again. If it stopped on the order
+      cap rather than the read window it has no position and the same cases are read again (the first ones are tasks by now).
+    * A run that ran out of budget does not count, so the cases it never reached are read again.
+    * None, None when there is no usable run: then every case is read (up to the cap, resuming as above)."""
     for root in L.runs(50):
-        if (root.run_id != run_id and root.status == DONE and root.input.get("sim_at")
-                and (root.output or {}).get("status") == "done"):
-            return datetime.fromisoformat(root.input["sim_at"])
-    return None
+        if root.run_id == run_id or root.status != DONE or not root.input.get("sim_at"):
+            continue
+        out = root.output or {}
+        if out.get("status") == "done":
+            return datetime.fromisoformat(root.input["sim_at"]), None
+        if out.get("status") == "capped":
+            since = datetime.fromisoformat(out["read_since"]) if out.get("read_since") else None
+            through = out.get("read_through")
+            return since, ((datetime.fromisoformat(through[0]), UUID(through[1])) if through else None)
+    return None, None
 
 
 def _skipped_for_budget(L: TaskLedger, run_id: UUID) -> bool:

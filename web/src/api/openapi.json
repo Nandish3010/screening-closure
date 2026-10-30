@@ -905,7 +905,7 @@
     },
     "/cases": {
       "get": {
-        "description": "The worklist (A9): one row per case with the fields the web needs, in a stable order\n(genesis time, then case id). Filters: `state`, `owner` (the opaque actor `role:user_id` or its\nbare user id, never a display name: F8-1), `overdue`, `provider`, `flagged` (open watchdog flag). A patient sees only their own\ncases; everyone else sees all. `risk_score` (D9) is the modelled probability of loss to follow-up,\nfor ordering only: the rows come back in the same order with or without it, and a patient's rows\ncarry null.",
+        "description": "The worklist (A9): one row per case with the fields the web needs, in a stable order (case id). Filters: `state` (a SQL\nfilter), `owner` (the opaque actor `role:user_id` or its bare user id, never a display name: F8-1), `overdue`,\n`provider`, `flagged` (open watchdog flag). A patient sees only their own cases; everyone else sees all.\n`risk_score` (D9) is the modelled probability of loss to follow-up, for ordering only: a patient's rows carry null.\n\nThe answer is one PAGE of at most `limit` rows (default 100, hard maximum 500; M7-7: an unbounded answer exhausted an API\npod's memory at 873,000 cases). The body is still a plain list, as before. When more rows may follow, the response\nheader `X-Next-Cursor` holds the cursor to send as `?cursor=` for the next page; it is absent on the last page. A page can\nhold fewer than `limit` rows while a cursor is still given (the model-derived filters dropped some of the cases read,\nand one request reads at most 2,000): keep following the cursor until it is absent.",
         "operationId": "list_cases_cases_get",
         "parameters": [
           {
@@ -986,6 +986,38 @@
                 }
               ],
               "title": "Flagged"
+            }
+          },
+          {
+            "description": "rows per page (default 100, at most 500)",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "description": "rows per page (default 100, at most 500)",
+              "maximum": 500,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "the `X-Next-Cursor` of the previous page",
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "the `X-Next-Cursor` of the previous page",
+              "title": "Cursor"
             }
           }
         ],

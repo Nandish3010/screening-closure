@@ -395,7 +395,10 @@ export interface LastHandoff {
 }
 
 /**
- * GET /cases?state=&owner=&overdue=true&flagged=true   (read model from tickets A2, A9, A11)
+ * GET /cases?state=&owner=&overdue=true&flagged=true&limit=&cursor=   (read model from tickets A2, A9, A11)
+ *
+ * BACKEND (M7-7): the answer is one PAGE (at most `limit` rows, default 100, maximum 500) in case-id order; the header
+ * `X-Next-Cursor` holds the `cursor` for the next page and is absent on the last. The http adapter follows it.
  *
  * BACKEND: `owner` filters on exact owner name; `overdue=true` keeps only rows with `overdue: true`;
  * `flagged=true` keeps only rows with an open `watchdog_flagged`. The UI re-applies the filters and the
@@ -460,6 +463,10 @@ export interface CaseListParams {
   overdue?: boolean;
   /** Only cases with an open watchdog flag ("cases nobody is looking at"). */
   flagged?: boolean;
+  /** Page size asked of the API (1 to 500, default 500). The API is paged (M7-7); `listCases` follows `X-Next-Cursor` itself. */
+  limit?: number;
+  /** Stop following pages once this many rows are in hand (default 10,000). */
+  maxRows?: number;
 }
 
 /**

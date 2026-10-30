@@ -1,4 +1,4 @@
-# Local kind cluster `sc-m76` (M7-6 scalability evidence): `make k8s-up` installs the chart with this file.
+# Local kind cluster `sc-m76` (M7-6 scalability evidence, re-measured in M7-7): `make k8s-up` installs the chart with this file.
 # Everything else is the chart's production defaults. DEVIATIONS FROM PRODUCTION, and why:
 #  1. images: local tag `m76`, built from this working tree and loaded with `kind load docker-image` (pullPolicy Never): no registry.
 #  2. replicas: api 3, scheduler 2, watchdog 1 (the benchmark topology; production default api is 2). api cpu limit "1", memory
@@ -37,13 +37,11 @@ api:
 scheduler:
   replicas: 2
 
-# The watchdog (POST /watchdog/scan, api/app/watchdog.py) replays EVERY open case: there is no due-index, so a scan is O(open cases).
-# Measured at ~1.04M cases: 224-230 s per scan. At the production interval of 10 s scans pile up on the API pods, so here the
-# watchdog runs every 15 min (900 s) instead. Same reason for the agency layer: its pass reads the whole case table every 6th sweep
-# and OOM-kills an API pod at this population, so app.agencyEverySweeps is "0" (off) for the benchmark.
+# M7-7: the watchdog and the agency run at the PRODUCTION settings here (no override). M7-6 had to slow the watchdog to 900 s (its scan
+# replayed every open case: 224-230 s at ~1M) and switch the agency off (its pass read the whole case table and OOM-killed an API pod).
+# Both are bounded now (ADR-045; app.agency.tools), so `watchdog.intervalSeconds` and `app.agencyEverySweeps` come from values.yaml.
 watchdog:
   replicas: 1
-  intervalSeconds: 900
 
 app:
   env: production
@@ -52,7 +50,6 @@ app:
   fhirBaseUrl: http://fhir.invalid/fhir
   fhirVerifyEvidence: "true"
   fhirProjection: "false"
-  agencyEverySweeps: "0"     # agency pass off at this population (full-table read OOMs an API pod), see the watchdog note above
 
 networkPolicy:
   enabled: true

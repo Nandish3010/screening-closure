@@ -794,8 +794,26 @@ def test_t_a62_the_supervisor_reads_only_changed_overdue_and_flagged_cases_after
     cases.store.append(Event(changed, "accept_ownership", clock.now(), world.PCO), cases.pathway)
     second = runner.run_agency(trigger="manual")
     root = runner.ledger().get(UUID(second["run_id"]))
-    expected = {s.case_id for s in cases.store.list_cases() if s.updated_at >= runner._previous_run_at(
-        runner.ledger(), UUID(second["run_id"]))} | {
+    since, _after = runner._previous_run_at(runner.ledger(), UUID(second["run_id"]))
+    expected = {s.case_id for s in cases.store.list_cases() if s.updated_at >= since} | {
         cid for cid, m, _ in cases.store.iter_open_case_models(cases.pathway) if m and (m.any_overdue or m.watchdog_flag)}
     assert changed in expected and root.output["cases_read"] == len(expected) < 22
     assert set(read) >= expected
+
+
+def test_m77_more_candidate_orders_than_the_plan_cap_is_a_capped_run_not_an_error(cohort, monkeypatch):
+    """M7-7 (b): a department with more candidate orders than MAX_ORDERS plans the first MAX_ORDERS, skips the rest as
+    `order_cap`, and the run is `capped` (not `done`), so the next run reads those cases again."""
+    clock.advance(hours=1)
+    monkeypatch.setattr(runner, "MAX_ORDERS", 1)
+    summary = runner.run_agency(trigger="manual")
+    root = runner.ledger().get(UUID(summary["run_id"]))
+    assert root.output["orders_capped"] is True and root.output["status"] == "capped"
+    skipped = [s for t in runner.ledger().query(run_id=UUID(summary["run_id"]), agent_type="department_head")
+               for s in (t.output or {}).get("skipped", [])]
+    assert any(s["reason"] == "order_cap" for s in skipped)
+    # the run that follows is not told "nothing changed": a capped run does not count as the previous run
+    monkeypatch.setattr(runner, "MAX_ORDERS", 400)
+    clock.advance(hours=1)
+    again = runner.run_agency(trigger="manual")
+    assert runner.ledger().get(UUID(again["run_id"])).output["cases_read"] > 0

@@ -41,6 +41,19 @@ class Settings(BaseSettings):
     require_leader_fence: bool = False
     leader_lease_ttl_seconds: float = Field(default=30.0, gt=1, le=3600)
     watchdog_idle_days: int = 7
+    # M7-7: bounded work per scheduler sweep (app.sweep.run_sweep). At most this many due cases are evaluated per sweep
+    # (0 = no bound) and at most this many seconds are spent evaluating them (0 = no bound); the rest stay due and drain over
+    # the next loops. The route default keeps one loop inside the scheduler's 10 s interval on the benchmark host.
+    sweep_max_cases: int = 20000
+    sweep_budget_seconds: float = 6.0
+    # M7-7 (ADR-045): the watchdog scan is incremental on the Postgres store. Time one scan may spend (seconds; the rest resumes
+    # on the next scan), how many open cases each scan re-derives from their logs in the full reconciliation pass (0 = off), and
+    # whether to ignore the index and replay every open case (the old behaviour; an operator who distrusts the index).
+    watchdog_scan_budget_seconds: float = 5.0
+    watchdog_reconcile_slice: int = 1000
+    watchdog_full_scan: bool = False
+    # A `scheduler-follower-<pod>` heartbeat row older than this is deleted by the watchdog scan (a pod that is gone).
+    follower_heartbeat_retention_seconds: float = 3600.0
     llm_provider: str = "template"
     agency_planner: str = ""  # A35: "claude" | "template" | "" (follow LLM_PROVIDER); env AGENCY_PLANNER
     # --- identity (ADR-012) ------------------------------------------------------------
@@ -105,6 +118,11 @@ class Settings(BaseSettings):
     # Per-run limits: wall-clock seconds and executioner tasks; past either, the rest of the run is not started.
     agency_run_budget_seconds: float = 20.0
     agency_max_tasks: int = 300
+    # M7-7: the most cases one agency run reads (and builds facts for). A bigger changed set is read over several runs
+    # (a keyset cursor in the run summary); the daily summary and the fairness check work on the same bounded window.
+    agency_max_cases_read: int = 400
+    # The closure metrics route replays every case; the agency reads it only while the case table is no larger than this.
+    agency_metrics_max_cases: int = 20000
     agency_config_path: str = str(_DEFAULT_AGENCY)  # providers and the call script (config/agency.yaml)
     # In compose this is overridden to /config/pathways/colorectal_fit.yaml
     pathway_path: str = str(_DEFAULT_PATHWAY)

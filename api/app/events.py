@@ -152,6 +152,23 @@ class EventStore(Protocol):
 
     def list_cases(self, state: str | None = None) -> list[CaseSummary]: ...
 
+    def load_cases_page(self, pathway: Pathway, state: str | None = None, after: UUID | None = None, limit: int = 100,
+                        only=None) -> tuple[list[LoadedCase], UUID | None]:
+        """At most `limit` cases (with logs and models) in case-id order after the id `after`, and the id to continue
+        from (None on the last page). Memory is bounded by `limit`, whatever the table holds."""
+        ...
+
+    def case_ids_for_patient(self, patient_ref: str) -> list[UUID]: ...
+
+    def cases_changed_page(self, since: datetime | None, after: tuple | None, limit: int) -> tuple[list[tuple], bool]:
+        """`(updated_at, case_id)` of cases updated at or after `since` (all when None), in that order, after the keyset
+        position `after` (a pair from a previous call), at most `limit`; and whether more follow."""
+        ...
+
+    def state_counts(self, pathway: Pathway) -> dict[str, int]:
+        """Cases of the pathway per `current_state` (a SQL aggregate in Postgres)."""
+        ...
+
     def has_events_after(self, at: datetime) -> bool:
         """True if any event of any case is dated strictly after `at` (SEC-1: the sim clock may only be
         reset while nothing has happened after its start)."""
@@ -297,6 +314,47 @@ class InMemoryEventStore:
                 if c.pathway == pathway.name and (state is None or c.model.state == state)
             ]
         return sorted(out, key=lambda lc: (lc.created_at, str(lc.case_id)))
+
+    def load_cases_page(self, pathway: Pathway, state: str | None = None, after=None, limit: int = 100,
+                        only=None) -> tuple[list[LoadedCase], UUID | None]:
+        """One page of `load_cases` in case-id order (the keyset the Postgres store pages by): see
+        `PostgresEventStore.load_cases_page`."""
+        only = set(only) if only is not None else None
+        with self._lock:
+            ids = sorted(
+                (cid for cid, c in self._cases.items()
+                 if c.pathway == pathway.name and (state is None or c.model.state == state)
+                 and (after is None or cid > after) and (only is None or cid in only)),
+                key=lambda i: i.int)
+            more = len(ids) > limit
+            ids = ids[:limit]
+            out = [LoadedCase(cid, self._cases[cid].pathway, self._cases[cid].events[0].at,
+                              list(self._cases[cid].events), start_genesis_milestones(self._cases[cid].model, pathway))
+                   for cid in ids]
+        return out, (ids[-1] if more and ids else None)
+
+    def case_ids_for_patient(self, patient_ref: str) -> list[UUID]:
+        with self._lock:
+            return [cid for cid, c in self._cases.items() if c.events and c.events[0].payload.get("patient_ref") == patient_ref]
+
+    def cases_changed_page(self, since, after, limit):
+        def aware(d):
+            return d if d.tzinfo else d.replace(tzinfo=UTC)
+
+        with self._lock:
+            keys = sorted((aware(c.updated_at), cid) for cid, c in self._cases.items()
+                          if since is None or aware(c.updated_at) >= aware(since))
+        if after is not None:
+            keys = [k for k in keys if (k[0], k[1].int) > (aware(after[0]), after[1].int)]
+        return keys[:limit], len(keys) > limit
+
+    def state_counts(self, pathway):
+        with self._lock:
+            out: dict[str, int] = {}
+            for c in self._cases.values():
+                if c.pathway == pathway.name:
+                    out[c.model.state] = out.get(c.model.state, 0) + 1
+            return out
 
     def list_cases(self, state: str | None = None) -> list[CaseSummary]:
         with self._lock:

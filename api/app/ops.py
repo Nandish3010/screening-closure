@@ -68,6 +68,12 @@ class OpsStore(Protocol):
         """Newest first."""
         ...
 
+    def prune_followers(self, prefix: str, max_age_seconds: float) -> int:
+        """Delete heartbeat rows named `prefix...` older than `max_age_seconds` (a scheduler pod that is gone). Only rows
+        with that prefix: the `scheduler` and `watchdog` rows, and the leader lease (another table), are never touched.
+        Returns the rows deleted."""
+        ...
+
 
 class InMemoryOpsStore:
     """Process-local store. `wall` returns epoch seconds; tests inject a fake one."""
@@ -105,6 +111,14 @@ class InMemoryOpsStore:
                     a["cleared_at"] = self._wall()
                     return True
             return False
+
+    def prune_followers(self, prefix: str, max_age_seconds: float) -> int:
+        with self._lock:
+            now = self._wall()
+            gone = [s for s, (ts, _) in self._beats.items() if s.startswith(prefix) and now - ts > max_age_seconds]
+            for s in gone:
+                del self._beats[s]
+            return len(gone)
 
     def alerts(self, active_only: bool = False, limit: int = 100) -> list[Alert]:
         with self._lock:

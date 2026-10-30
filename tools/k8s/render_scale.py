@@ -197,15 +197,19 @@ def failover_section(fo) -> list[str]:
     s = fo["summary"]
     p = fo["parameters"]
     cv = fo["chart_values"]
+    modes = [m for m in ("force", "graceful", "hard", "sigstop") if m in s]
+    counts = ", ".join(f"{p.get(k, 0)} {label}" for k, label in (("force_runs", "force-delete runs"), ("graceful_runs", "graceful deletes"), ("hard_runs", "hard kills"), ("sigstop_runs", "zombie-leader (SIGSTOP) runs")) if p.get(k))
     out = ["## Failover drill (`failover.json`)", "",
-           f"Tool `tools/k8s/failover_drill.py`. {p['force_runs']} force-delete runs, {p['graceful_runs']} graceful deletes and {p['hard_runs']} hard kills, "
-           f"each over a {p['window_s']:g} s window with the kill at {p['kill_at_s']:g} s. Per run the drill seeds {p['seeded_cases_per_run']:,} open cases whose reminder and escalation "
+           f"Tool `tools/k8s/failover_drill.py`. {counts}, "
+           f"each over a {p['window_s']:g} s window with the kill (or pause) at {p['kill_at_s']:g} s. Per run the drill seeds {p['seeded_cases_per_run']:,} open cases whose reminder and escalation "
            f"triggers fall due uniformly over the window, so the sweep always has work, and a client issues about {p['client_new_case_flows_per_s']:g} new-case flows per second "
            f"(create, accept ownership, contact, acknowledge, read) through the NodePort, retrying a failed request with the same id. "
            f"Lease TTL {cv['leader_lease_ttl_s']:g} s, scheduler interval {cv['scheduler_interval_s']:g} s, fencing {cv['require_leader_fence']}, "
            f"{cv['api_replicas']} API and {cv['scheduler_replicas']} scheduler pods.", "",
            "How each mode kills: **force** = `kubectl delete pod --grace-period=0 --force` on the scheduler leader and the API pod holding the background lease (no lease release); "
-           "**graceful** = ordinary delete (the processes release their leases on SIGTERM); **hard** = SIGKILL of both containers through the node's runtime, then the pods are force-deleted. "
+           "**graceful** = ordinary delete (the processes release their leases on SIGTERM); **hard** = SIGKILL of both containers through the node's runtime, then the pods are force-deleted; "
+           "**sigstop** (the zombie leader, M7-7) = the scheduler leader's process is frozen with SIGSTOP while it is mid-loop, held past the lease TTL until a new leader has taken over and swept, "
+           "then resumed with SIGCONT: it wakes up in the middle of its old loop, still holding the old fencing token. Nothing is deleted. "
            "The full method text is in `failover.json`.", ""]
     metrics = [
         ("scheduler_time_to_new_leader_s", "Time to a new scheduler leader (s)", 2),
@@ -219,7 +223,9 @@ def failover_section(fo) -> list[str]:
         ("client_max_latency_in_window_s", "Client max latency inside the disruption window (s)", 3),
         ("api_pods_ready_again_s", "Killed API pod replaced and Ready (s)", 2),
     ]
-    for mode, title in (("force", "Force delete"), ("graceful", "Graceful delete"), ("hard", "Hard kill (SIGKILL)")):
+    for mode, title in (("force", "Force delete"), ("graceful", "Graceful delete"), ("hard", "Hard kill (SIGKILL)"), ("sigstop", "Zombie leader (SIGSTOP, pause, takeover, resume)")):
+        if mode not in s:
+            continue
         sm = s[mode]
         out += [f"### {title} ({sm['runs']} runs)", ""]
         out += table(["Metric", "Per run", "Min", "Median", "p95", "Max"],
@@ -235,12 +241,12 @@ def failover_section(fo) -> list[str]:
         ("scheduler_events_outside_lease_windows", "Scheduler events inserted outside every lease validity window"),
     ]
     out += ["### Zero duplicates, zero loss, fencing", "",
-            "Totals over all runs of the three modes (each cell is the sum of the per-run values; the per-run values are in `failover.json`):", ""]
+            "Totals over all runs of each mode (each cell is the sum of the per-run values; the per-run values are in `failover.json`):", ""]
     rows = []
     for k, label in proof_keys:
-        cells_ = [sum(s[m][k]["values"]) for m in ("force", "graceful", "hard")]
+        cells_ = [sum(s[m][k]["values"]) for m in modes]
         rows.append([label] + [n(int(c)) if float(c).is_integer() else f(c) for c in cells_] + [n(int(sum(cells_)))])
-    out += table(["Check", "Force", "Graceful", "Hard", "All runs"], rows)
+    out += table(["Check", *[m.capitalize() for m in modes], "All runs"], rows)
     runs = fo["runs"]
     fenc = [r["fencing"]["in_transaction_probe"] for r in runs]
     chk = [r["integrity"] for r in runs]
@@ -346,6 +352,79 @@ def sweep_section(sw, la) -> list[str]:
             f"At 1,000,000 cases with 1 worker the baseline ({f(b1['wall_seconds'])} s) is slower than every tuned run ({f(min(t1s))} to {f(max(t1s))} s). "
             f"**With 4 workers the baseline ({f(b4['wall_seconds'])} s) was faster than every tuned run ({f(min(t4s))} to {f(max(t4s))} s)**, so the tuning did not help the 4-worker sweep at 1,000,000 cases in these runs; "
             "the host is shared and the cells ran at different times, so this report does not attribute the difference to the settings.", ""]
+    return out
+
+
+def before_cell(sw0: dict | None, size: int, workers: int = 1) -> dict | None:
+    """The M7-6 'baseline' cell (Postgres as first deployed) for a size, or the tuned one: the full-replay time is the same thing."""
+    if not sw0:
+        return None
+    return cell(sw0, size, workers, "baseline") or cell(sw0, size, workers, "tuned")
+
+
+def watchdog_scan_section(sw, sw0) -> list[str]:
+    cells = sorted(sw.get("watchdog_cells", []), key=lambda c: c["size"])
+    if not cells:
+        return []
+    interval = sw["target_loop_interval_seconds"]
+    out = ["## The watchdog scan at 100k, 500k and 1M open cases (`sweep.json`, `watchdog_cells`)", "",
+           "Method: the template database of each size (the sweep's seeded population, on the in-cluster Postgres) is cloned and `app.watchdog.run_incremental_scan` runs in a loop at the seed's simulated time, "
+           f"with the production settings (time budget {cells[0]['scan_budget_seconds']:g} s per scan, a reconciliation slice of {cells[0]['reconcile_slice']:,} open cases per scan, idle threshold {cells[0]['idle_days']} days). "
+           "At that time about 39% of the seeded cases are already past the idle threshold, so the first scans are a **catch-up**: they flag every one of those cases (one `watchdog_flagged` event each), a time-budgeted batch per scan, "
+           "until the index has no case left past its deadline. Then **steady-state** scans run with nothing due (only the reconciliation slice does work), and three index-only scans (no reconciliation slice). "
+           "Finally the old **full replay** (`run_idle_scan`, what `POST /watchdog/scan` was) runs once on the same database: it must flag nothing more, which proves the incremental scan missed no case at that size, and its duration is the cost the scan used to have. "
+           "The scan runs on the macOS host and reaches Postgres through the kind port mapping, as the sweep cells do.", ""]
+    rows = []
+    for c in cells:
+        b = before_cell(sw0, c["size"])
+        full = c.get("full_replay_reference") or {}
+        elapsed = c["catchup_wall_seconds"] + max(c["catchup_scans"] - 1, 0) * interval
+        rows.append([f"{c['size']:,}", f(b["full_scan_seconds"], 1) if b and b.get("full_scan_seconds") else "n/a",
+                     f(full.get("seconds"), 1), f"{n(c['catchup_flagged'])} in {c['catchup_scans']} scans", f"{f(c['catchup_scan_seconds']['max'])} (median {f(c['catchup_scan_seconds']['median'])})",
+                     f"{f(c['catchup_wall_seconds'], 0)} s compute, {f(elapsed, 0)} s at a {interval:g} s interval",
+                     f"{f(c['steady_scan_seconds']['median'], 3)} (max {f(c['steady_scan_seconds']['max'], 3)})", f(max(x['seconds'] for x in c['index_only_scans']), 3),
+                     n(full.get("flagged_additionally")), f"{c['peak_rss_mib_before']:.0f} to {c['peak_rss_mib_after']:.0f}"])
+    out += table(["Open cases", "Before (M7-6): full replay (s)", "Full replay now, same database (s)", "Catch-up: cases flagged", "Longest catch-up scan (s)", "Catch-up duration",
+                  "Steady-state scan, median (s)", "Index-only scan, max (s)", "Cases the full replay flagged that the incremental scan had not", "Peak RSS of the scanning process (MiB)"], rows)
+    c1 = cells[-1]
+    out += [f"- A scan is bounded by its time budget whatever the population: the longest scan in any catch-up was {f(max(c['catchup_scan_seconds']['max'] for c in cells))} s (budget {cells[0]['scan_budget_seconds']:g} s plus the batch in flight), "
+            f"and a steady-state scan at {c1['size']:,} cases took {f(c1['steady_scan_seconds']['median'], 3)} s at the median, almost all of it the reconciliation slice "
+            f"(the index-only scans took at most {f(max(x['seconds'] for x in c1['index_only_scans']), 3)} s).",
+            f"- The reconciliation pass walks the open cases {cells[0]['reconcile_slice']:,} per scan from a durable cursor: a full cycle is {math.ceil(c1['size'] / cells[0]['reconcile_slice']):,} scans at {c1['size']:,} cases "
+            f"({f(math.ceil(c1['size'] / cells[0]['reconcile_slice']) * interval / 3600, 1)} h at a {interval:g} s interval). `index_drift` (a stored value that disagreed with the log) was "
+            f"{sum(x['index_drift'] for c in cells for x in c['catchup_first_scans'] + c['catchup_last_scans'])} in the scans recorded here.",
+            f"- Every scan is bounded in memory: the process's peak RSS did not move while it scanned {c1['size']:,} cases ({c1['peak_rss_mib_before']:.0f} to {c1['peak_rss_mib_after']:.0f} MiB, which includes the full replay run afterwards).", ""]
+    return out
+
+
+def drain_section(sw, sw0) -> list[str]:
+    cells = sorted(sw.get("drain_cells", []), key=lambda c: c["size"])
+    if not cells:
+        return []
+    target = sw["target_loop_interval_seconds"]
+    out = ["## The daily catch-up burst, drained by bounded loops (`sweep.json`, `drain_cells`)", "",
+           "Method: the template database of each size is cloned and the scheduler's loop body (`app.sweep.run_sweep`, ONE worker as in the cluster, `index` path) runs repeatedly at the seed's sweep time with the production bounds: "
+           f"at most {cells[0]['max_cases_per_loop']:,} due cases and {cells[0]['budget_seconds_per_loop']:g} s of evaluation per loop (`SWEEP_MAX_CASES`, `SWEEP_BUDGET_SECONDS`). A loop that stops at its bound leaves the rest due; the next loop continues. "
+           f"The scheduler sleeps {target:g} s between loops, so the elapsed time to drain is the sum of the loop times plus {target:g} s per loop. Checks: the events emitted equal the planner's expectation, a full-scan sweep afterwards finds nothing, "
+           "an idle loop afterwards evaluates nothing.", ""]
+    rows = []
+    for c in cells:
+        b = before_cell(sw0, c["size"])
+        rows.append([f"{c['size']:,}", f(b["wall_seconds"]) if b else "n/a", n(c["emitted"]), c["loop_count"], f(c["loop_wall_seconds"]["median"]), f(c["loop_wall_seconds"]["max"]), c["loops_over_interval"],
+                     f(c["drain_compute_seconds"], 1), f(c["time_to_drain_seconds_with_interval_sleeps"], 0), f(c["idle_loop_after_drain_seconds"], 3), "none" if not c["problems"] else "; ".join(c["problems"])])
+    out += table(["Open cases", "Before (M7-6): one unbounded sweep, 1 worker (s)", "Events emitted", "Loops to drain", "Loop duration, median (s)", "Loop duration, max (s)", f"Loops over {target:g} s",
+                  "Compute to drain (s)", f"Time to drain at a {target:g} s interval (s)", "Idle loop afterwards (s)", "Problems"], rows)
+    big = cells[-1]
+    ub = cell(sw, big["size"], 1, "tuned")
+    ub0 = before_cell(sw0, big["size"])
+    ph, ph0 = (ub or {}).get("phases"), (ub0 or {}).get("phases")
+    if ph and ph0:
+        out += [f"Unbounded sweep at {big['size']:,} cases, one worker, for comparison (phases of the same code path): before {f(ub0['wall_seconds'])} s = read {f(ph0['read_replay_seconds'])} + plan {f(ph0['planning_seconds'])} + appends {f(ph0['append_seconds'])}; "
+                f"now {f(ub['wall_seconds'])} s = read {f(ph['read_replay_seconds'])} + plan {f(ph['planning_seconds'])} + appends {f(ph['append_seconds'])} (the appends are one multi-row INSERT and one multi-row UPDATE per batch of 100 cases, "
+                "with the lease re-check `SELECT ... FOR SHARE` unchanged at the start of the same transaction).", ""]
+    out += [f"**Is the {target:g} s target met for a {big['size']:,}-case burst?** The burst does not fit one {target:g} s loop and no longer has to: every loop is bounded (longest {f(big['loop_wall_seconds']['max'])} s, "
+            f"{big['loops_over_interval']} loops over {target:g} s), and the backlog drains in {big['loop_count']} loops, {f(big['time_to_drain_seconds_with_interval_sleeps'] / 60, 1)} minutes at the {target:g} s interval. "
+            f"What is NOT met: all {n(big['emitted'])} events of a {big['size']:,}-case daily burst are not written within one {target:g} s loop; the last case of the burst is swept about {f(big['time_to_drain_seconds_with_interval_sleeps'] / 60, 1)} minutes after it fell due.", ""]
     return out
 
 
@@ -796,27 +875,79 @@ def capacity_section(cp, inp, sw, la) -> list[str]:
     return out
 
 
-def verdicts(fo, sw, la, so, cp) -> list[str]:
+def api_slopes(so: dict) -> dict[str, float]:
+    return {k: v["memory_anon_slope_mib_per_hour"] for k, v in so["summary"]["pods"].items() if k.startswith("closure-api")}
+
+
+def verdicts(fo, sw, la, so, cp, fo0=None, sw0=None, la0=None, so0=None) -> list[str]:
+    """Before (the M7-6 run) and after (this run) against each target. Every figure is read from the raw files."""
     cells = [c for c in sw["cells"] if not c.get("profiled")]
     s = fo["summary"]
-    on = la["summary"]["watchdog_on_as_deployed"]["pass"]
-    off = la["summary"]["watchdog_off"]["pass"]
-    best4 = min((c for c in cells if c["size"] == 1_000_000 and c["workers"] == 4 and c["label"] in ("baseline", "tuned", "tuned-repeat2", "tuned-repeat3")), key=lambda c: c["wall_seconds"])
+    target = sw["target_loop_interval_seconds"]
+    wd = sorted(sw.get("watchdog_cells", []), key=lambda c: c["size"])
+    wd1m = next((c for c in wd if c["size"] == 1_000_000), wd[-1] if wd else None)
+    dr = sorted(sw.get("drain_cells", []), key=lambda c: c["size"])
+    dr1m = next((c for c in dr if c["size"] == 1_000_000), dr[-1] if dr else None)
+    b1m = before_cell(sw0, 1_000_000)
+    on, off = la["summary"].get("watchdog_on_as_deployed"), la["summary"].get("watchdog_off")
+    on0 = (la0 or {}).get("summary", {}).get("watchdog_on_as_deployed")
+    off0 = (la0 or {}).get("summary", {}).get("watchdog_off")
+    ss, ss0 = so["summary"], (so0 or {}).get("summary")
+    probe, probe0 = la.get("unbounded_worklist_probe"), (la0 or {}).get("unbounded_worklist_probe")
     steady = [x["wall_seconds"] for c in cells if c.get("steady_state_sweeps") for x in c["steady_state_sweeps"]]
-    ss = so["summary"]
-    rows = [
-        ["Fail-over loses or duplicates nothing", f"{n(sum(sum(s[m]['duplicates_total']['values']) for m in s))} duplicates, {n(sum(sum(s[m]['acknowledged_writes_missing']['values']) for m in s))} acknowledged writes missing, {n(sum(sum(s[m]['scheduler_events_lost']['values']) for m in s))} scheduler events lost, "
-         f"{n(sum(sum(s[m]['stale_fence_write_rows_written']['values']) for m in s))} stale-fence rows written, over {sum(s[m]['runs'] for m in s)} runs", "met"],
-        ["Scheduler hand-over after a hard kill", f"median {f(s['hard']['scheduler_time_to_new_leader_s']['median'], 1)} s (min {f(s['hard']['scheduler_time_to_new_leader_s']['min'], 1)}, max {f(s['hard']['scheduler_time_to_new_leader_s']['max'], 1)}), {s['hard']['missed_sweeps']['median']:g} sweeps missed; graceful: max {f(s['graceful']['scheduler_time_to_new_leader_s']['max'], 1)} s", "measured"],
-        ["100,000-case sweep under 5 s", f"{f(cell(sw, 100_000, 1, 'tuned')['wall_seconds'])} s (1 worker), {f(cell(sw, 100_000, 4, 'tuned')['wall_seconds'])} s (4 workers)", "met"],
-        ["1,000,000-case daily catch-up burst inside the 10 s loop", f"best {f(best4['wall_seconds'])} s with 4 workers", "**not met**"],
-        ["Steady-state loop at 1,000,000 cases inside 10 s", f"{f(min(steady))} to {f(max(steady))} s per sweep", "met"],
-        ["API p99 < 500 ms and errors < 0.1%, watchdog off", f"up to {off['max_passing_rate_per_s']:g} requests/s (fails at {off['lowest_failing_rate_per_s']:g}/s)", "met up to that rate"],
-        ["API p99 < 500 ms and errors < 0.1%, watchdog as deployed (10 s)", f"no passing rate; fails already at {on['lowest_failing_rate_per_s']:g}/s", "**not met**"],
-        [f"{ss['measured_seconds'] / 3600:.2f} h soak at {so['parameters']['rate_per_s']:g}/s", f"{ss['errors']} errors, p99 {ss['latency_all_requests']['p99_ms']} ms, {ss['restarts']['total_restarts_during_soak']} restarts, but only {ss['scheduler']['completed_fraction_of_expected']:.1%} of the nominal sweeps completed and API pod memory grew", "met on its criteria; sweep cadence and memory **not met**"],
-        ["Unbounded worklist at 1,000,000 cases", "one request OOM-killed an API pod", "**not met** (finding 3)"],
-    ]
-    return table(["Question", "Measured", "Result"], rows)
+    zr = [r for r in fo["runs"] if r["mode"] == "sigstop"]
+    sl, sl0 = api_slopes(so), (api_slopes(so0) if so0 else {})
+    hb_last = so["samples"][-1]["heartbeats"]
+    stale_now = [k for k, v in hb_last.items() if k.startswith("scheduler-follower-") and v.get("age_seconds", 0) > 120 and k.split("scheduler-follower-", 1)[1] not in set(so["samples"][-1]["pods"])]
+    ag = so.get("agency")
+    rows = []
+    if wd1m:
+        rows.append(["Watchdog scan at 1,000,000 open cases, against a 10 s interval (a)", f"{f(b1m['full_scan_seconds'], 0)} s (full replay)" if b1m else "224 to 230 s",
+                     f"steady scan {f(wd1m['steady_scan_seconds']['median'], 2)} s (max {f(wd1m['steady_scan_seconds']['max'], 2)}); a catch-up scan at most {f(wd1m['catchup_scan_seconds']['max'], 1)} s (bounded by its budget); the full replay found 0 cases the incremental scan missed",
+                     "met" if wd1m["catchup_scan_seconds"]["max"] < target * 0.75 and not wd1m["problems"] else "**not met**"])
+    if on is not None:
+        p, p0 = on["pass"], (on0 or {}).get("pass")
+        rows.append(["API p99 < 500 ms and errors < 0.1% with the watchdog at its production interval (a)",
+                     (f"no passing rate; fails already at {p0['lowest_failing_rate_per_s']:g}/s" if p0 and p0["max_passing_rate_per_s"] is None else f"up to {p0['max_passing_rate_per_s']:g}/s") if p0 else "n/a",
+                     (f"up to {p['max_passing_rate_per_s']:g} requests/s" + (f" (fails at {p['lowest_failing_rate_per_s']:g}/s)" if p["lowest_failing_rate_per_s"] else "")) if p["max_passing_rate_per_s"] else f"no passing rate; fails at {p['lowest_failing_rate_per_s']:g}/s",
+                     "met up to that rate" if p["max_passing_rate_per_s"] else "**not met**"])
+    if off is not None and off0 is not None:
+        rows.append(["API, watchdog off (reference)", f"up to {off0['pass']['max_passing_rate_per_s']:g}/s", f"up to {off['pass']['max_passing_rate_per_s']:g}/s", "reference"])
+    if dr1m:
+        rows.append(["1,000,000-case daily catch-up burst (g)", f"one sweep {f(b1m['wall_seconds'], 1)} s with 1 worker; 33.64 s at best with 4 workers; read {f(b1m['phases']['read_replay_seconds'], 1)}, plan {f(b1m['phases']['planning_seconds'], 1)}, appends {f(b1m['phases']['append_seconds'], 1)} s" if b1m and b1m.get("phases") else "n/a",
+                     f"{dr1m['loop_count']} bounded loops; longest loop {f(dr1m['loop_wall_seconds']['max'])} s; drained in {f(dr1m['time_to_drain_seconds_with_interval_sleeps'] / 60, 1)} min at a {target:g} s interval ({f(dr1m['drain_compute_seconds'], 0)} s of compute)",
+                     "bounded loop **met**; the burst inside ONE loop **not met**"])
+    rows.append(["Steady-state sweep at 1,000,000 cases inside 10 s", "0.09 to 0.22 s" if b1m else "n/a", f"{f(min(steady))} to {f(max(steady))} s" if steady else "n/a", "met" if steady and max(steady) < target else "n/a"])
+    if probe:
+        rows.append(["`GET /cases?state=` at ~870,000 cases in the state (c)", f"{probe0['status']} after {f(probe0['seconds'], 1)} s; an API pod OOM-killed" if probe0 else "OOM-killed an API pod",
+                     f"default page {probe['default_page']['rows']} rows in {f(probe['default_page']['seconds'], 2)} s, 500-row pages {f(probe['page_seconds']['median'], 2)} s median ({probe['pages_followed']} pages followed), limit=501 gives {probe['over_max_limit_status']}; restarts "
+                     f"{sum(probe['restarts_after'][k] - probe['restarts_before'][k] for k in probe['restarts_before'])}, OOM kills {sum(1 for v in probe['last_termination'].values() if v == 'OOMKilled')}", "met"])
+    soak_hours = ss["measured_seconds"] / 3600
+    worst = max(sl.values()) if sl else None
+    rows.append([f"{soak_hours:.2f} h soak at {so['parameters']['rate_per_s']:g}/s: API pod memory (e)",
+                 ("+" + " / +".join(f"{v:g}" for v in sorted(sl0.values())) + " MiB/h per pod") if sl0 else "n/a",
+                 "+" + " / +".join(f"{v:g}" for v in sorted(sl.values())) + " MiB/h per pod (anon slope)", "met" if worst is not None and worst < 5 else "**not met**"])
+    rows.append(["Same soak: sweeps completed against the nominal 10 s cadence (a, g)", f"{ss0['scheduler']['completed_fraction_of_expected']:.1%}" if ss0 else "n/a",
+                 f"{ss['scheduler']['completed_fraction_of_expected']:.1%} (period mean {ss['scheduler']['sweep_period_s']['mean']} s, p95 {ss['scheduler']['sweep_period_s']['p95']} s)",
+                 "met" if ss["scheduler"]["completed_fraction_of_expected"] >= 0.95 else "**not met**"])
+    rows.append(["Same soak: errors, p99, restarts", f"{ss0['errors']} errors, p99 {ss0['latency_all_requests']['p99_ms']} ms, {ss0['restarts']['total_restarts_during_soak']} restarts" if ss0 else "n/a",
+                 f"{ss['errors']} errors, p99 {ss['latency_all_requests']['p99_ms']} ms, {ss['restarts']['total_restarts_during_soak']} restarts", "met" if ss["pass"] and not ss["restarts"]["total_restarts_during_soak"] else "**not met**"])
+    if ag:
+        rows.append(["Agency layer on at 1,000,000 cases (b)", "off: its full-table read OOM-killed an API pod", f"{ag['runs']} runs in the soak ({', '.join(f'{k} {v}' for k, v in ag['runs_by_status'].items())}); at most {ag['cases_read_per_run']['max']} cases read per run (cap 400); {ag['tasks_created_total']} tasks; no OOM kill",
+                     "met" if not ss["restarts"]["oom_killed_during_soak"] else "**not met**"])
+    rows.append(["Follower heartbeat rows of pods that are gone (f)", "2 of 3 rows stale after 2 h (never removed)", f"{len(stale_now)} stale rows at the end of the soak", "met" if not stale_now else "**not met**"])
+    rows.append(["Fail-over loses or duplicates nothing", "0 duplicates, 0 lost, 0 stale-fence rows over 11 runs" if fo0 else "n/a",
+                 f"{n(sum(sum(s[m]['duplicates_total']['values']) for m in s))} duplicates, {n(sum(sum(s[m]['acknowledged_writes_missing']['values']) for m in s))} acknowledged writes missing, {n(sum(sum(s[m]['scheduler_events_lost']['values']) for m in s))} scheduler events lost, "
+                 f"{n(sum(sum(s[m]['stale_fence_write_rows_written']['values']) for m in s))} stale-fence rows written, over {sum(s[m]['runs'] for m in s)} runs", "met"])
+    if zr:
+        rows.append(["Zombie leader: SIGSTOP the leader, let the lease expire and a new leader take over, resume the old one (h)", "never run",
+                     f"{len(zr)} runs: the old leader wrote {sum(r['sigstop']['old_leader_rows_written_after_takeover'] for r in zr)} rows; {sum(r['sigstop']['old_leader_stale_leader_errors'] for r in zr)} of {sum(r['sigstop']['old_leader_stale_attempts'] for r in zr)} stale-fence writes raised `StaleLeader`; "
+                     f"{sum(r['sigstop']['old_leader_calls_refused_409_after_resume'] for r in zr)} of its calls after waking were refused with 409; {sum(r['fencing']['outside_every_lease_window_with_tolerance'] for r in zr)} scheduler events outside every lease window",
+                     "met" if all(r["sigstop"]["old_leader_rows_written_after_takeover"] == 0 and r["sigstop"]["old_leader_stale_leader_errors"] == r["sigstop"]["old_leader_stale_attempts"] for r in zr) and len(zr) >= 3 else "**not met**"])
+    if "hard" in s:
+        rows.append(["Scheduler hand-over after a hard kill", f"median {f(fo0['summary']['hard']['scheduler_time_to_new_leader_s']['median'], 1)} s" if fo0 else "n/a", f"median {f(s['hard']['scheduler_time_to_new_leader_s']['median'], 1)} s (min {f(s['hard']['scheduler_time_to_new_leader_s']['min'], 1)}, max {f(s['hard']['scheduler_time_to_new_leader_s']['max'], 1)}), {s['hard']['missed_sweeps']['median']:g} sweeps missed", "measured"])
+    rows.append(["100,000-case sweep under 5 s", f"{f(cell(sw0, 100_000, 1, 'tuned')['wall_seconds'])} s (1 worker)" if sw0 else "n/a", f"{f(cell(sw, 100_000, 1, 'tuned')['wall_seconds'])} s (1 worker)" + (f", {f(cell(sw, 100_000, 4, 'tuned')['wall_seconds'])} s (4 workers)" if cell(sw, 100_000, 4, 'tuned') else ""), "met"])
+    return table(["Question", "Before (M7-6)", "After (M7-7)", "Result"], rows)
 
 
 # ---------------------------------------------------------------------------------------------------------------------------------

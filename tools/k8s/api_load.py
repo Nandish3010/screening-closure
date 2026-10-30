@@ -508,23 +508,46 @@ def sample_seeded_ids(dsn: str, n: int) -> list[str]:
 
 
 def probe_worklist(tokens: dict, api_pods: list[str]) -> dict:
-    """ONE unbounded worklist read (`GET /cases?state=...` on a state with tens of thousands of cases), to see what the route does
-    at this population. Reports latency, response size, the status, and API pod memory/restarts before and after."""
-    out = {}
+    """The worklist read on the state with the most cases (`GET /cases?state=...`), against this population. Before M7-7 this was ONE
+    unbounded request that OOM-killed an API pod at 873,000 rows. The route is paged now: this issues (1) the request exactly as
+    before (no limit: the default page), (2) the largest page (`limit=500`), then (3) follows `X-Next-Cursor` for 40 pages of 500, and
+    reports status, rows, latency of every request, whether a next cursor was given, a request past the hard maximum (must be 422),
+    and the API pods' memory and restarts before and after."""
+    out: dict = {}
     with psycopg.connect(owner_dsn()) as conn:
         counts = dict(conn.execute("SELECT current_state, count(*) FROM cases GROUP BY 1").fetchall())
     state = max(counts, key=counts.get)
+    auth = {"Authorization": f"Bearer {tokens['coord']}"}
     before = {p: _cgroup(p) for p in api_pods}
-    restarts_before = json.loads(kubectl("get", "pods", "-l", "app.kubernetes.io/name=api", "-o", "json"))
-    rb = {p["metadata"]["name"]: p["status"]["containerStatuses"][0]["restartCount"] for p in restarts_before["items"]}
-    t = time.perf_counter()
-    try:
-        r = httpx.get(f"{API_BASE}/cases?state={state}", headers={"Authorization": f"Bearer {tokens['coord']}"}, timeout=300)
-        out.update(status=r.status_code, response_bytes=len(r.content), rows=len(r.json()) if r.status_code == 200 else None)
-    except Exception as exc:  # noqa: BLE001
-        out.update(status=type(exc).__name__)
-    out["seconds"] = time.perf_counter() - t
-    out.update(state=state, cases_in_state=counts[state], pod_cgroup_before={p: (v or {}).get("memory_current") for p, v in before.items()})
+    rb = {p["metadata"]["name"]: p["status"]["containerStatuses"][0]["restartCount"] for p in json.loads(kubectl("get", "pods", "-l", "app.kubernetes.io/name=api", "-o", "json"))["items"]}
+
+    def one(path: str) -> dict:
+        t = time.perf_counter()
+        try:
+            r = httpx.get(f"{API_BASE}{path}", headers=auth, timeout=300)
+            d = {"status": r.status_code, "rows": len(r.json()) if r.status_code == 200 else None, "response_bytes": len(r.content),
+                 "next_cursor": r.headers.get("x-next-cursor")}
+        except Exception as exc:  # noqa: BLE001
+            d = {"status": type(exc).__name__, "next_cursor": None}
+        d["seconds"] = time.perf_counter() - t
+        return d
+
+    default_page = one(f"/cases?state={state}")
+    max_page = one(f"/cases?state={state}&limit=500")
+    over_max = one(f"/cases?state={state}&limit=501")
+    pages, cursor, rows = [], max_page.get("next_cursor"), (max_page.get("rows") or 0)
+    while cursor and len(pages) < 40:
+        d = one(f"/cases?state={state}&limit=500&cursor={cursor}")
+        pages.append(d["seconds"])
+        rows += d.get("rows") or 0
+        cursor = d.get("next_cursor")
+    after_mem = {p: _cgroup(p) for p in api_pods}
+    out.update(state=state, cases_in_state=counts[state], default_page=default_page, max_page=max_page, over_max_limit_status=over_max["status"],
+               status=default_page["status"], seconds=default_page["seconds"], rows=default_page.get("rows"),
+               pages_followed=len(pages) + 1, rows_over_followed_pages=rows,
+               page_seconds={"min": min(pages), "median": statistics.median(pages), "max": max(pages)} if pages else None,
+               pod_cgroup_before={p: (v or {}).get("memory_current") for p, v in before.items()},
+               pod_cgroup_after={p: (v or {}).get("memory_current") for p, v in after_mem.items()})
     time.sleep(2)
     after = json.loads(kubectl("get", "pods", "-l", "app.kubernetes.io/name=api", "-o", "json"))
     out["restarts_before"] = rb

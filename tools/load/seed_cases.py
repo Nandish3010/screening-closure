@@ -52,6 +52,7 @@ from app.db import create_pool, run_migrations  # noqa: E402
 from app.events import CASE_CREATED, Event  # noqa: E402
 from app.pathway import Pathway, load_pathway  # noqa: E402
 from app.state_machine import replay_model  # noqa: E402
+from app.store_pg import idle_anchor  # noqa: E402
 from app.sweep import NEVER, next_due_at, plan_case, timing_fingerprint  # noqa: E402
 
 LOAD_DB = "closure_load"
@@ -268,7 +269,7 @@ def seed(
             if not case_rows:
                 return
             with conn.cursor() as cur:
-                with cur.copy("COPY cases (id, pathway, current_state, created_at, updated_at, next_due_at, next_due_basis) FROM STDIN") as cp:
+                with cur.copy("COPY cases (id, pathway, current_state, created_at, updated_at, next_due_at, next_due_basis, idle_since_at) FROM STDIN") as cp:
                     for row in case_rows:
                         cp.write_row(row)
                 with cur.copy("COPY events (event_id, case_id, seq, type, at, actor, payload) FROM STDIN") as cp:
@@ -297,7 +298,9 @@ def seed(
             # The `unindexed` scenario is `daily` on a database migrated to 012 but never swept since: the column is NULL.
             due = next_due_at(model, pathway, calendar)
             indexed = (NEVER if due is None else due, basis) if scenario != "unindexed" else (None, None)
-            case_rows.append((case_id, pathway.name, model.state, events[0].at, events[-1].at, *indexed))
+            # The watchdog index (migration 017): the idle clock, as the store writes it with every append (`unindexed`: NULL too).
+            idle = idle_anchor(model, pathway) if scenario != "unindexed" else None
+            case_rows.append((case_id, pathway.name, model.state, events[0].at, events[-1].at, *indexed, idle))
             for seq, ev in enumerate(events, start=1):
                 event_rows.append((ev.event_id, case_id, seq, ev.type, ev.at, ev.actor, Jsonb(ev.payload)))
             stats.by_state[model.state] += 1

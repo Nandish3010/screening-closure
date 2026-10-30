@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import logging
 from collections.abc import Sequence
 from uuid import UUID
@@ -34,6 +35,31 @@ _INSERT_EVENT = (
     "INSERT INTO events (event_id, case_id, seq, type, at, actor, payload)"
     " VALUES (%s, %s, %s, %s, %s, %s, %s)"
 )
+
+
+_INSERT_EVENTS_UNNEST = (
+    "INSERT INTO events (event_id, case_id, seq, type, at, actor, payload)"
+    " SELECT t.event_id, t.case_id, t.seq, t.type, t.at, t.actor, t.payload_text::jsonb"
+    " FROM unnest(%s::uuid[], %s::uuid[], %s::int[], %s::text[], %s::timestamptz[], %s::text[], %s::text[])"
+    " AS t(event_id, case_id, seq, type, at, actor, payload_text)"
+)
+_UPDATE_CASES_UNNEST = (
+    "UPDATE cases c SET current_state = v.state, updated_at = now(), next_due_at = v.due, next_due_basis = v.basis,"
+    " idle_since_at = v.idle"
+    " FROM unnest(%s::uuid[], %s::text[], %s::timestamptz[], %s::text[], %s::timestamptz[])"
+    " AS v(id, state, due, basis, idle) WHERE c.id = v.id"
+)
+
+
+def idle_anchor(model: CaseModel, pathway: Pathway):
+    """The value of `cases.idle_since_at` for a replayed model (migration 017): the instant the watchdog's idle clock
+    started while the case is open and unflagged, NEVER (9999-12-31) when it can not be flagged (closed, already flagged,
+    or no person has ever acted). `app.watchdog.plan_idle_flag` flags exactly when `now - anchor >= idle_days`."""
+    from app.sweep import NEVER
+
+    if model.state == pathway.terminal_state or model.watchdog_flag is not None or model.last_human_activity_at is None:
+        return NEVER
+    return model.last_human_activity_at
 
 
 def _event_from_row(case_id: UUID, row) -> Event:
@@ -113,9 +139,11 @@ class PostgresEventStore:
             raise ValueError("genesis_event must be a case_created event for this case")
         with self._pool.connection() as conn, conn.cursor() as cur:
             try:
+                # idle_since_at: the genesis event is a person-less intake, but it starts the idle clock (genesis() in the
+                # state machine sets last_human_activity_at to its time), so the watchdog index starts there too.
                 cur.execute(
-                    "INSERT INTO cases (id, pathway, current_state) VALUES (%s, %s, %s)",
-                    (case_id, pathway_name, initial_state),
+                    "INSERT INTO cases (id, pathway, current_state, idle_since_at) VALUES (%s, %s, %s, %s)",
+                    (case_id, pathway_name, initial_state, genesis_event.at),
                 )
             except errors.UniqueViolation as exc:
                 raise CaseAlreadyExists(str(case_id)) from exc
@@ -205,9 +233,9 @@ class PostgresEventStore:
                 _insert_event(cur, e, next_seq + offset)
             due, basis = self._next_due(model, pathway)
             cur.execute(
-                "UPDATE cases SET current_state = %s, updated_at = now(), next_due_at = %s, next_due_basis = %s"
-                " WHERE id = %s",
-                (model.state, due, basis, case_id),
+                "UPDATE cases SET current_state = %s, updated_at = now(), next_due_at = %s, next_due_basis = %s,"
+                " idle_since_at = %s WHERE id = %s",
+                (model.state, due, basis, idle_anchor(model, pathway), case_id),
             )
             if within is not None:
                 within(cur)
@@ -316,15 +344,23 @@ class PostgresEventStore:
                 for offset, e in enumerate(fresh):
                     insert_rows.append((e.event_id, cid, next_seq + offset, e.type, e.at, e.actor, Jsonb(e.payload)))
                 due, basis = self._next_due(model, pathway)
-                updates.append((model.state, due, basis, cid))
+                updates.append((model.state, due, basis, idle_anchor(model, pathway), cid))
                 outcomes[slots[cid]] = model.state
             if insert_rows:
-                cur.executemany(_INSERT_EVENT, insert_rows)
-                cur.executemany(
-                    "UPDATE cases SET current_state = %s, updated_at = now(), next_due_at = %s, next_due_basis = %s"
-                    " WHERE id = %s",
-                    updates,
-                )
+                # M7-7: ONE multi-row INSERT and ONE multi-row UPDATE for the whole batch (unnest of parallel arrays), not
+                # a statement per row. The fence was checked above in this same transaction; the case rows are locked.
+                try:
+                    cur.execute(_INSERT_EVENTS_UNNEST, (
+                        [r[0] for r in insert_rows], [r[1] for r in insert_rows], [r[2] for r in insert_rows],
+                        [r[3] for r in insert_rows], [r[4] for r in insert_rows], [r[5] for r in insert_rows],
+                        [json.dumps(r[6].obj) for r in insert_rows]))
+                except errors.UniqueViolation as exc:
+                    if exc.diag.constraint_name == "events_event_id_key":
+                        raise EventIdConflict("an event id of the batch was taken by a concurrent writer") from exc
+                    raise
+                cur.execute(_UPDATE_CASES_UNNEST, (
+                    [u[4] for u in updates], [u[0] for u in updates], [u[1] for u in updates], [u[2] for u in updates],
+                    [u[3] for u in updates]))
         return outcomes
 
     def _next_due(self, model: CaseModel, pathway: Pathway):
@@ -392,16 +428,26 @@ class PostgresEventStore:
             params.append(list(states))
         shard_sql, shard_params = self._shard_sql(shard)
         sql, params = sql + shard_sql, params + shard_params
-        with self._pool.connection() as conn:
-            ids = [r[0] for r in conn.execute(sql + " ORDER BY id", params).fetchall()]
-        for i in range(0, len(ids), chunk):
-            part = ids[i : i + chunk]
+        # M7-7: keyset pagination on the primary key, `chunk` ids per query. The ids of ALL open cases used to be fetched into one list
+        # before the first case was replayed (about 100 MB at 1,000,000 cases, per scan, on every pod that ran one), which is where
+        # the API pods' growing memory came from (finding 5): a transient that large leaves the allocator with fragmented arenas it does
+        # not hand back, so the pod's resident memory ratcheted up with every scan. Now the working set is one chunk, whatever N is.
+        last = None
+        while True:
+            q, p = (sql, params) if last is None else (sql + " AND id > %s", [*params, last])
+            with self._pool.connection() as conn:
+                part = [r[0] for r in conn.execute(q + " ORDER BY id LIMIT %s", [*p, chunk]).fetchall()]
+            if not part:
+                return
             by_case = self._read_chunk(part)
             for case_id in part:
                 try:
                     yield case_id, replay_model(by_case.get(case_id, []), pathway), None
                 except InvalidTransition as exc:
                     yield case_id, None, str(exc)
+            if len(part) < chunk:
+                return
+            last = part[-1]
 
     def count_open_cases(self, pathway: Pathway, shard=None) -> int:
         """How many non-closed cases of the pathway (in the shard) there are: what a full scan would read."""
@@ -411,7 +457,7 @@ class PostgresEventStore:
         with self._pool.connection() as conn:
             return int(conn.execute(sql + shard_sql, params + shard_params).fetchone()[0])
 
-    def iter_due_case_models(self, pathway: Pathway, calendar, now, chunk: int = 500, shard=None):
+    def iter_due_case_models(self, pathway: Pathway, calendar, now, chunk: int = 500, shard=None, limit=None):
         """Like `iter_open_case_models`, but only the cases the scheduler can have something to do for at `now` (A20).
 
         Selected: `next_due_at <= now`, and every case whose `next_due_at` is NULL or was written under another
@@ -433,8 +479,11 @@ class PostgresEventStore:
         )
         params: list = [basis, pathway.name, pathway.terminal_state, basis, now]
         shard_sql, shard_params = self._shard_sql(shard)
+        tail = ""
+        if limit:  # M7-7: at most this many due cases, lowest id first; the rest stay due for the next sweep
+            tail, shard_params = " LIMIT %s", shard_params + [limit]
         with self._pool.connection() as conn:
-            rows = conn.execute(sql + shard_sql + " ORDER BY id", params + shard_params).fetchall()
+            rows = conn.execute(sql + shard_sql + " ORDER BY id" + tail, params + shard_params).fetchall()
         for i in range(0, len(rows), chunk):
             part = [r[0] for r in rows[i : i + chunk]]
             stale = {r[0] for r in rows[i : i + chunk] if r[1]}
@@ -460,6 +509,19 @@ class PostgresEventStore:
                 self._write_next_due(heal, basis)
             yield from out
 
+    def count_due_cases(self, pathway: Pathway, calendar, now, shard=None) -> int:
+        """How many open cases `iter_due_case_models` would select now (the backlog a bounded sweep left)."""
+        from app.sweep import timing_fingerprint
+
+        basis = timing_fingerprint(pathway, calendar)
+        sql = (
+            "SELECT count(*) FROM cases WHERE pathway = %s AND current_state <> %s"
+            " AND (next_due_at IS NULL OR next_due_basis IS DISTINCT FROM %s OR next_due_at <= %s)"
+        )
+        shard_sql, shard_params = self._shard_sql(shard)
+        with self._pool.connection() as conn:
+            return int(conn.execute(sql + shard_sql, [pathway.name, pathway.terminal_state, basis, now] + shard_params).fetchone()[0])
+
     def _write_next_due(self, heal: list[tuple], basis: str) -> None:
         """Store `next_due_at` for cases the sweep evaluated without one. Each is locked first and written only if
         its log is still as long as when it was read; a case a writer holds is left to that writer."""
@@ -475,6 +537,149 @@ class PostgresEventStore:
                 "UPDATE cases SET next_due_at = %s, next_due_basis = %s WHERE id = %s",
                 [(due, basis, cid) for cid, seq, due in heal if cid in locked and current.get(cid) == seq],
             )
+
+    # ---- the watchdog's index (migration 017, app.watchdog.run_incremental_scan) --------------------------------------
+
+    def idle_due_ids(self, pathway: Pathway, cutoff, after=None, limit: int = 500) -> list[tuple]:
+        """`(idle_since_at, id)` of open cases whose idle clock started at or before `cutoff`, in that order, after the
+        keyset position `after` (a pair returned by a previous call). An index range read of `cases_idle_since_idx`:
+        a closed or already flagged case holds NEVER and is not in the index; a not-yet-computed row is
+        `uncomputed_ids`'s."""
+        sql = ("SELECT idle_since_at, id FROM cases WHERE pathway = %s AND current_state <> %s"
+               " AND idle_since_at <= %s AND idle_since_at < '9999-01-01'")
+        params: list = [pathway.name, pathway.terminal_state, cutoff]
+        if after is not None:
+            sql += " AND (idle_since_at, id) > (%s, %s)"
+            params += [after[0], after[1]]
+        with self._pool.connection() as conn:
+            return [(r[0], r[1]) for r in conn.execute(sql + " ORDER BY idle_since_at, id LIMIT %s", params + [limit]).fetchall()]
+
+    def uncomputed_ids(self, pathway: Pathway, after_id=None, limit: int = 500) -> list[UUID]:
+        """Open cases whose `idle_since_at` was never computed (NULL), by id."""
+        sql = "SELECT id FROM cases WHERE pathway = %s AND current_state <> %s AND idle_since_at IS NULL"
+        params: list = [pathway.name, pathway.terminal_state]
+        if after_id is not None:
+            sql += " AND id > %s"
+            params.append(after_id)
+        with self._pool.connection() as conn:
+            return [r[0] for r in conn.execute(sql + " ORDER BY id LIMIT %s", params + [limit]).fetchall()]
+
+    def open_case_ids_page(self, pathway: Pathway, after_id=None, limit: int = 500) -> list[UUID]:
+        """Open cases of the pathway by id (primary-key keyset): the full reconciliation pass walks these."""
+        sql = "SELECT id FROM cases WHERE pathway = %s AND current_state <> %s"
+        params: list = [pathway.name, pathway.terminal_state]
+        if after_id is not None:
+            sql += " AND id > %s"
+            params.append(after_id)
+        with self._pool.connection() as conn:
+            return [r[0] for r in conn.execute(sql + " ORDER BY id LIMIT %s", params + [limit]).fetchall()]
+
+    def stored_idle_since(self, ids: list[UUID]) -> dict:
+        with self._pool.connection() as conn:
+            return dict(conn.execute("SELECT id, idle_since_at FROM cases WHERE id = ANY(%s)", (ids,)).fetchall())
+
+    def models_for(self, ids: list[UUID], pathway: Pathway):
+        """`(case_id, model | None, error | None, last_seq)` for each id, replayed from its log (one read for all)."""
+        by_case = self._read_chunk(ids)
+        out = []
+        for case_id in ids:
+            events = by_case.get(case_id, [])
+            try:
+                out.append((case_id, replay_model(events, pathway), None, events[-1].seq if events else 0))
+            except InvalidTransition as exc:
+                out.append((case_id, None, str(exc), events[-1].seq if events else 0))
+        return out
+
+    def write_idle_anchors(self, heal: list[tuple]) -> int:
+        """Store `idle_since_at` for `(case_id, last_seq_read, anchor)` rows evaluated without a correct one. Like
+        `_write_next_due`: each case is locked first (a locked one is left to its writer) and written only if its log is
+        still as long as when it was read. Returns the rows written."""
+        if not heal:
+            return 0
+        ids = [h[0] for h in heal]
+        with self._pool.connection() as conn, conn.cursor() as cur:
+            cur.execute("SELECT id FROM cases WHERE id = ANY(%s) ORDER BY id FOR UPDATE SKIP LOCKED", (ids,))
+            locked = {r[0] for r in cur.fetchall()}
+            cur.execute(
+                "SELECT case_id, max(seq) FROM events WHERE case_id = ANY(%s) GROUP BY case_id", (list(locked),)
+            )
+            current = dict(cur.fetchall())
+            rows = [(anchor, cid) for cid, seq, anchor in heal if cid in locked and current.get(cid) == seq]
+            cur.executemany("UPDATE cases SET idle_since_at = %s WHERE id = %s", rows)
+        return len(rows)
+
+    def watchdog_state(self) -> dict:
+        with self._pool.connection() as conn:
+            row = conn.execute("SELECT value FROM watchdog_state WHERE key = 'scan'").fetchone()
+        return dict(row[0]) if row else {}
+
+    def save_watchdog_state(self, value: dict) -> None:
+        with self._pool.connection() as conn:
+            conn.execute(
+                "INSERT INTO watchdog_state (key, value, updated_at) VALUES ('scan', %s, now())"
+                " ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now()",
+                (Jsonb(value),),
+            )
+
+    # ---- the worklist page (GET /cases) -------------------------------------------------------------------------------
+
+    def load_cases_page(self, pathway: Pathway, state: str | None = None, after=None, limit: int = 100,
+                        only=None) -> tuple[list[LoadedCase], UUID | None]:
+        """Up to `limit` cases of the pathway in id order after the case id `after` (keyset; with `state` the index
+        `cases_state_id_idx` serves it), with their logs and models, and the id to continue from (None when this was the
+        last page). `only` restricts the page to those case ids. Memory is bounded by `limit`."""
+        sql = "SELECT id FROM cases WHERE pathway = %s"
+        params: list = [pathway.name]
+        if state is not None:
+            sql += " AND current_state = %s"
+            params.append(state)
+        if after is not None:
+            sql += " AND id > %s"
+            params.append(after)
+        if only is not None:
+            sql += " AND id = ANY(%s)"
+            params.append(list(only))
+        with self._pool.connection() as conn:
+            ids = [r[0] for r in conn.execute(sql + " ORDER BY id LIMIT %s", params + [limit + 1]).fetchall()]
+        more = len(ids) > limit
+        ids = ids[:limit]
+        by_case = self._read_chunk(ids) if ids else {}
+        out: list[LoadedCase] = []
+        for case_id in ids:
+            events = by_case.get(case_id, [])
+            if not events:
+                continue
+            try:
+                model, error = replay_model(events, pathway), None
+            except InvalidTransition as exc:
+                model, error = None, str(exc)
+            out.append(LoadedCase(case_id, pathway.name, events[0].at, events, model, error))
+        return out, (ids[-1] if more and ids else None)
+
+    def cases_changed_page(self, since, after, limit):
+        """See `EventStore.cases_changed_page`: keyset over `(updated_at, id)`; a sort of the changed set, in Postgres."""
+        sql = "SELECT updated_at, id FROM cases WHERE true"
+        params: list = []
+        if since is not None:
+            sql += " AND updated_at >= %s"
+            params.append(since)
+        if after is not None:
+            sql += " AND (updated_at, id) > (%s, %s)"
+            params += [after[0], after[1]]
+        with self._pool.connection() as conn:
+            rows = conn.execute(sql + " ORDER BY updated_at, id LIMIT %s", params + [limit + 1]).fetchall()
+        return [(r[0], r[1]) for r in rows[:limit]], len(rows) > limit
+
+    def state_counts(self, pathway: Pathway) -> dict[str, int]:
+        with self._pool.connection() as conn:
+            return {r[0]: int(r[1]) for r in conn.execute(
+                "SELECT current_state, count(*) FROM cases WHERE pathway = %s GROUP BY current_state", (pathway.name,)).fetchall()}
+
+    def case_ids_for_patient(self, patient_ref: str) -> list[UUID]:
+        """The cases whose genesis event names `patient_ref`: the lookup `events_genesis_patient_ref_idx` exists for."""
+        with self._pool.connection() as conn:
+            return [r[0] for r in conn.execute(
+                "SELECT case_id FROM events WHERE seq = 1 AND payload ->> 'patient_ref' = %s", (patient_ref,)).fetchall()]
 
     def has_events_after(self, at) -> bool:
         with self._pool.connection() as conn:
@@ -671,6 +876,17 @@ class PostgresOpsStore:
                 "SELECT service, beat_at, extract(epoch FROM (now() - beat_at)), info FROM heartbeats"
             ).fetchall()
         return {r[0]: Heartbeat(r[0], r[1], float(r[2]), r[3]) for r in rows}
+
+    def prune_followers(self, prefix: str, max_age_seconds: float) -> int:
+        # LIKE with the prefix escaped: the prefix is a constant of ours, but never let a % or _ in it widen the delete.
+        like = prefix.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%"
+        with self._pool.connection() as conn:
+            cur = conn.execute(
+                "DELETE FROM heartbeats WHERE service LIKE %s AND service <> ALL(%s)"
+                " AND beat_at < now() - make_interval(secs => %s)",
+                (like, ["scheduler", "watchdog"], max_age_seconds),
+            )
+            return cur.rowcount
 
     def open_alert(self, kind: str, detail: dict) -> bool:
         with self._pool.connection() as conn:
