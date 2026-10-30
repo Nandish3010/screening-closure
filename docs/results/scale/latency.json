@@ -1,0 +1,3785 @@
+{
+  "schema_version": 1,
+  "tool": "tools/k8s/api_load.py",
+  "method": "Open-loop constant arrival rate: request i is due at t0 + i/rate and is issued then, regardless of outstanding requests (no coordinated omission). Latency = intended start to end of response; service latency = actual send to end of response. Each stage = a warm-up (excluded from the statistics) then the measured duration, at one rate. Mix (weights %): create_case 12, post_event 28, get_case_seeded 20, get_case_own 15, timeline 10, notifications 14, worklist 1. Cases for post_event/get_case_own/notifications are created by the run itself; get_case_seeded/timeline read cases from the seeded population (random sample of the `closure` table). Every non-2xx response is an error. The generator, the kind cluster (3 nodes in the Docker Desktop VM) and Postgres share one host: the generator's CPU use competes with the cluster. Per-pod CPU/memory come from the pods' cgroup files read with `kubectl exec` (no metrics-server), node CPU/memory from `docker stats`; per-pod request counts from the API pods' access logs; scheduler timings from the gaps between the scheduler's POSTs in the API access logs (outbox drain -> sweep -> automation scan -> evidence scan are sequential in one loop).",
+  "git": {
+    "commit": "470de7b4b2a2a94f3ca5a9c86294c1da7f1dc056",
+    "branch": "m77-scale-fixes",
+    "dirty_files": [
+      "?? docs/results/scale/latency.json"
+    ]
+  },
+  "generated_at": "2026-10-30T05:19:09.994270+00:00",
+  "machine_spec": {
+    "host": {
+      "cpu_model": "Apple M4",
+      "logical_cores": 10,
+      "physical_cores": 10,
+      "ram_bytes": 17179869184,
+      "macos": "26.6.2"
+    },
+    "docker": {
+      "version": "29.8.2",
+      "os": "Docker Desktop",
+      "cpus": 10,
+      "memory_bytes": 8319504384
+    },
+    "kind": {
+      "version": "kind v0.33.0 go1.27.0 darwin/arm64",
+      "node_image": "kindest/node:v1.37.0@sha256:a1ed56cfb0e7b93589bdf97c8cd566405a265939e3620fc4f5de89adff580ae5",
+      "nodes": "sc-m76-control-plane sc-m76-worker sc-m76-worker2"
+    },
+    "kubernetes_version": "v1.37.0",
+    "helm": "v4.3.1+gc0d08d0",
+    "postgres_version": "16.15 (Debian 16.15-1.pgdg13+2)"
+  },
+  "chart_values": {
+    "images": {
+      "api": {
+        "pullPolicy": "Never",
+        "repository": "screening-closure-api",
+        "tag": "m76"
+      },
+      "scheduler": {
+        "pullPolicy": "Never",
+        "repository": "screening-closure-scheduler",
+        "tag": "m76"
+      },
+      "watchdog": {
+        "pullPolicy": "Never",
+        "repository": "screening-closure-watchdog",
+        "tag": "m76"
+      }
+    },
+    "api": {
+      "ingress": {
+        "annotations": {},
+        "className": "",
+        "enabled": false,
+        "host": "closure.example.invalid",
+        "tlsSecretName": ""
+      },
+      "podDisruptionBudget": {
+        "minAvailable": 1
+      },
+      "port": 8000,
+      "probes": {
+        "liveness": {
+          "failureThreshold": 6,
+          "periodSeconds": 10,
+          "timeoutSeconds": 3
+        },
+        "readiness": {
+          "failureThreshold": 3,
+          "periodSeconds": 5,
+          "timeoutSeconds": 3
+        },
+        "startup": {
+          "failureThreshold": 36,
+          "initialDelaySeconds": 5,
+          "periodSeconds": 5
+        }
+      },
+      "replicas": 3,
+      "resources": {
+        "limits": {
+          "cpu": "1",
+          "memory": "768Mi"
+        },
+        "requests": {
+          "cpu": "250m",
+          "memory": "256Mi"
+        }
+      },
+      "service": {
+        "nodePort": 30076,
+        "port": 8000,
+        "type": "NodePort"
+      },
+      "sweepWorkers": "1",
+      "topologySpread": true
+    },
+    "scheduler": {
+      "intervalSeconds": 10,
+      "replicas": 2,
+      "resources": {
+        "limits": {
+          "cpu": "250m",
+          "memory": "128Mi"
+        },
+        "requests": {
+          "cpu": "50m",
+          "memory": "64Mi"
+        }
+      }
+    },
+    "watchdog": {
+      "idleDays": 7,
+      "intervalSeconds": 10,
+      "replicas": 1,
+      "resources": {
+        "limits": {
+          "cpu": "250m",
+          "memory": "128Mi"
+        },
+        "requests": {
+          "cpu": "50m",
+          "memory": "64Mi"
+        }
+      }
+    },
+    "app": {
+      "agencyEverySweeps": "",
+      "automationEnabled": "true",
+      "corsAllowOrigins": "",
+      "env": "production",
+      "fhirBaseUrl": "http://fhir.invalid/fhir",
+      "fhirProjection": "false",
+      "fhirVerifyEvidence": "true",
+      "leaderLeaseTtlSeconds": "30",
+      "llmProvider": "template",
+      "logFormat": "json",
+      "oidcAudience": "screening-closure",
+      "oidcIssuer": "https://idp.kind.invalid/realms/sc-m76",
+      "oidcJwksUrl": "http://sc-jwks:8080/jwks.json",
+      "oidcRoleClaim": "realm_access.roles",
+      "oidcRoleMap": "",
+      "otlpEndpoint": "",
+      "requireLeaderFence": "true"
+    }
+  },
+  "cluster_overrides": {
+    "api_env_AGENCY_EVERY_SWEEPS": "<unset: code default 6>",
+    "api_env_SWEEP_WORKERS": "1",
+    "api_resources": {
+      "limits": {
+        "cpu": "1",
+        "memory": "768Mi"
+      },
+      "requests": {
+        "cpu": "250m",
+        "memory": "256Mi"
+      }
+    },
+    "postgres_args": [
+      "-c",
+      "max_connections=300",
+      "-c",
+      "shared_buffers=1GB",
+      "-c",
+      "effective_cache_size=2GB",
+      "-c",
+      "random_page_cost=1.1",
+      "-c",
+      "work_mem=16MB",
+      "-c",
+      "maintenance_work_mem=256MB",
+      "-c",
+      "max_wal_size=4GB",
+      "-c",
+      "checkpoint_timeout=15min"
+    ],
+    "postgres_resources": {
+      "limits": {
+        "memory": "3Gi"
+      },
+      "requests": {
+        "cpu": "250m",
+        "memory": "1Gi"
+      }
+    }
+  },
+  "mix_weights": {
+    "create_case": 12,
+    "post_event": 28,
+    "get_case_seeded": 20,
+    "get_case_own": 15,
+    "timeline": 10,
+    "notifications": 14,
+    "worklist": 1
+  },
+  "list_state": "lost_contact",
+  "note_same_host": "the load generator runs on the same host as the cluster",
+  "population_before": {
+    "cases": 1040593,
+    "by_state": {
+      "patient_acknowledged": 876389,
+      "consent_withdrawn": 149822,
+      "acknowledged": 5571,
+      "owner_accepted": 4617,
+      "patient_contacted": 3894,
+      "lost_contact": 300
+    },
+    "events": 7260849,
+    "database_bytes": 2656615447
+  },
+  "pass_criteria": "p99 < 500 ms (all requests, from intended start) and error rate < 0.1%",
+  "stages": [
+    {
+      "target_rate_per_s": 175.0,
+      "warmup_s": 15.0,
+      "duration_s": 300.0,
+      "issued_total": 55125,
+      "unfinished_after_45s": 0,
+      "measured_requests": 52500,
+      "achieved_rate_per_s": 175.0,
+      "errors": 0,
+      "error_rate": 0.0,
+      "errors_by_status": {},
+      "latency_2xx": {
+        "n": 52500,
+        "p50_ms": 4.46,
+        "p95_ms": 19.02,
+        "p99_ms": 66.71,
+        "p999_ms": 166.84,
+        "max_ms": 518.47,
+        "mean_ms": 7.1
+      },
+      "latency_all_requests": {
+        "n": 52500,
+        "p50_ms": 4.46,
+        "p95_ms": 19.02,
+        "p99_ms": 66.71,
+        "p999_ms": 166.84,
+        "max_ms": 518.47,
+        "mean_ms": 7.1
+      },
+      "per_endpoint": {
+        "GET /cases/{id}": {
+          "requests": 18565,
+          "errors": 0,
+          "latency": {
+            "n": 18565,
+            "p50_ms": 3.94,
+            "p95_ms": 12.22,
+            "p99_ms": 59.52,
+            "p999_ms": 126.93,
+            "max_ms": 227.75,
+            "mean_ms": 5.94
+          },
+          "service_latency": {
+            "n": 18565,
+            "p50_ms": 3.58,
+            "p95_ms": 11.5,
+            "p99_ms": 54.0,
+            "p999_ms": 124.97,
+            "max_ms": 227.39,
+            "mean_ms": 5.48
+          }
+        },
+        "GET /cases/{id}/notifications": {
+          "requests": 7290,
+          "errors": 0,
+          "latency": {
+            "n": 7290,
+            "p50_ms": 3.1,
+            "p95_ms": 8.63,
+            "p99_ms": 40.83,
+            "p999_ms": 82.8,
+            "max_ms": 167.05,
+            "mean_ms": 4.45
+          },
+          "service_latency": {
+            "n": 7290,
+            "p50_ms": 2.74,
+            "p95_ms": 8.26,
+            "p99_ms": 35.84,
+            "p999_ms": 78.12,
+            "max_ms": 131.75,
+            "mean_ms": 4.02
+          }
+        },
+        "GET /cases/{id}/timeline": {
+          "requests": 5133,
+          "errors": 0,
+          "latency": {
+            "n": 5133,
+            "p50_ms": 3.71,
+            "p95_ms": 10.35,
+            "p99_ms": 47.83,
+            "p999_ms": 111.97,
+            "max_ms": 181.29,
+            "mean_ms": 5.33
+          },
+          "service_latency": {
+            "n": 5133,
+            "p50_ms": 3.35,
+            "p95_ms": 9.88,
+            "p99_ms": 43.92,
+            "p999_ms": 104.15,
+            "max_ms": 181.06,
+            "mean_ms": 4.91
+          }
+        },
+        "GET /cases?state=": {
+          "requests": 541,
+          "errors": 0,
+          "latency": {
+            "n": 541,
+            "p50_ms": 33.6,
+            "p95_ms": 99.27,
+            "p99_ms": 337.13,
+            "p999_ms": 489.38,
+            "max_ms": 518.47,
+            "mean_ms": 47.55
+          },
+          "service_latency": {
+            "n": 541,
+            "p50_ms": 33.23,
+            "p95_ms": 98.86,
+            "p99_ms": 331.36,
+            "p999_ms": 488.97,
+            "max_ms": 518.06,
+            "mean_ms": 47.12
+          }
+        },
+        "POST /cases": {
+          "requests": 6267,
+          "errors": 0,
+          "latency": {
+            "n": 6267,
+            "p50_ms": 6.01,
+            "p95_ms": 18.54,
+            "p99_ms": 79.63,
+            "p999_ms": 188.2,
+            "max_ms": 293.69,
+            "mean_ms": 8.9
+          },
+          "service_latency": {
+            "n": 6267,
+            "p50_ms": 5.62,
+            "p95_ms": 17.8,
+            "p99_ms": 73.67,
+            "p999_ms": 173.21,
+            "max_ms": 277.53,
+            "mean_ms": 8.41
+          }
+        },
+        "POST /cases/{id}/events": {
+          "requests": 14704,
+          "errors": 0,
+          "latency": {
+            "n": 14704,
+            "p50_ms": 5.53,
+            "p95_ms": 16.53,
+            "p99_ms": 78.42,
+            "p999_ms": 174.65,
+            "max_ms": 321.9,
+            "mean_ms": 8.23
+          },
+          "service_latency": {
+            "n": 14704,
+            "p50_ms": 5.13,
+            "p95_ms": 15.97,
+            "p99_ms": 75.26,
+            "p999_ms": 164.49,
+            "max_ms": 284.98,
+            "mean_ms": 7.75
+          }
+        }
+      },
+      "per_operation": {
+        "create_case": {
+          "requests": 6267,
+          "latency": {
+            "n": 6267,
+            "p50_ms": 6.01,
+            "p95_ms": 18.54,
+            "p99_ms": 79.63,
+            "p999_ms": 188.2,
+            "max_ms": 293.69,
+            "mean_ms": 8.9
+          }
+        },
+        "post_event": {
+          "requests": 14704,
+          "latency": {
+            "n": 14704,
+            "p50_ms": 5.53,
+            "p95_ms": 16.53,
+            "p99_ms": 78.42,
+            "p999_ms": 174.65,
+            "max_ms": 321.9,
+            "mean_ms": 8.23
+          }
+        },
+        "get_case_seeded": {
+          "requests": 10617,
+          "latency": {
+            "n": 10617,
+            "p50_ms": 4.0,
+            "p95_ms": 12.18,
+            "p99_ms": 58.26,
+            "p999_ms": 123.95,
+            "max_ms": 227.75,
+            "mean_ms": 5.97
+          }
+        },
+        "get_case_own": {
+          "requests": 7948,
+          "latency": {
+            "n": 7948,
+            "p50_ms": 3.86,
+            "p95_ms": 12.34,
+            "p99_ms": 62.24,
+            "p999_ms": 130.61,
+            "max_ms": 184.94,
+            "mean_ms": 5.91
+          }
+        },
+        "timeline": {
+          "requests": 5133,
+          "latency": {
+            "n": 5133,
+            "p50_ms": 3.71,
+            "p95_ms": 10.35,
+            "p99_ms": 47.83,
+            "p999_ms": 111.97,
+            "max_ms": 181.29,
+            "mean_ms": 5.33
+          }
+        },
+        "notifications": {
+          "requests": 7290,
+          "latency": {
+            "n": 7290,
+            "p50_ms": 3.1,
+            "p95_ms": 8.63,
+            "p99_ms": 40.83,
+            "p999_ms": 82.8,
+            "max_ms": 167.05,
+            "mean_ms": 4.45
+          }
+        },
+        "worklist": {
+          "requests": 541,
+          "latency": {
+            "n": 541,
+            "p50_ms": 33.6,
+            "p95_ms": 99.27,
+            "p99_ms": 337.13,
+            "p999_ms": 489.38,
+            "max_ms": 518.47,
+            "mean_ms": 47.55
+          }
+        }
+      },
+      "generator_lag_ms": {
+        "p50": 0.36,
+        "p99": 1.13,
+        "max": 41.6
+      },
+      "latency_all_requests_excluding_worklist": {
+        "n": 51959,
+        "p50_ms": 4.44,
+        "p95_ms": 13.52,
+        "p99_ms": 63.2,
+        "p999_ms": 157.75,
+        "max_ms": 321.9,
+        "mean_ms": 6.68
+      },
+      "pass": true,
+      "pass_excluding_worklist": true,
+      "criteria": "p99 (all requests, from intended start) < 500 ms and error rate < 0.1%",
+      "started_at": "2026-10-30T05:19:12.760946+00:00",
+      "finished_at": "2026-10-30T05:24:28.589491+00:00",
+      "resources": {
+        "sample_period_s": 10.0,
+        "pods": {
+          "closure-api-6489f8b5df-5fd9x": {
+            "cpu_cores_mean": 0.17890998790672558,
+            "cpu_cores_max": 0.42748431666674974,
+            "cpu_cores_p95": 0.24797120591775873,
+            "memory_bytes_mean": 146087040.0,
+            "memory_bytes_max": 160391168,
+            "memory_limit_bytes": 805306368,
+            "samples": 32,
+            "cpu_throttled_periods": 30,
+            "cpu_periods": 3098,
+            "cpu_throttled_seconds": 0.309182
+          },
+          "closure-api-6489f8b5df-fhcll": {
+            "cpu_cores_mean": 0.18531666532777533,
+            "cpu_cores_max": 0.47138818805573457,
+            "cpu_cores_p95": 0.24808372005579848,
+            "memory_bytes_mean": 149966208.0,
+            "memory_bytes_max": 186511360,
+            "memory_limit_bytes": 805306368,
+            "samples": 32,
+            "cpu_throttled_periods": 41,
+            "cpu_periods": 3097,
+            "cpu_throttled_seconds": 0.251938
+          },
+          "closure-api-6489f8b5df-n89rf": {
+            "cpu_cores_mean": 0.16641408676565633,
+            "cpu_cores_max": 0.39467651102243373,
+            "cpu_cores_p95": 0.24003319331079973,
+            "memory_bytes_mean": 178321408.0,
+            "memory_bytes_max": 195764224,
+            "memory_limit_bytes": 805306368,
+            "samples": 32,
+            "cpu_throttled_periods": 20,
+            "cpu_periods": 3096,
+            "cpu_throttled_seconds": 0.538011
+          },
+          "closure-scheduler-769c98989c-7qjqd": {
+            "cpu_cores_mean": 0.0045239456674871755,
+            "cpu_cores_max": 0.008732867151015976,
+            "cpu_cores_p95": 0.008356624768749902,
+            "memory_bytes_mean": 24294144.0,
+            "memory_bytes_max": 29429760,
+            "memory_limit_bytes": 134217728,
+            "samples": 32,
+            "cpu_throttled_periods": 12,
+            "cpu_periods": 373,
+            "cpu_throttled_seconds": 0.607061
+          },
+          "closure-scheduler-769c98989c-dwpqj": {
+            "cpu_cores_mean": 0.003927666868467602,
+            "cpu_cores_max": 0.008283928817113161,
+            "cpu_cores_p95": 0.007738440474140481,
+            "memory_bytes_mean": 22928000.0,
+            "memory_bytes_max": 27774976,
+            "memory_limit_bytes": 134217728,
+            "samples": 32,
+            "cpu_throttled_periods": 18,
+            "cpu_periods": 261,
+            "cpu_throttled_seconds": 1.278023
+          },
+          "postgres-0": {
+            "cpu_cores_mean": 0.22971432598974417,
+            "cpu_cores_max": 0.3418455524883798,
+            "cpu_cores_p95": 0.2718884955102053,
+            "memory_bytes_mean": 3121137792.0,
+            "memory_bytes_max": 3220119552,
+            "memory_limit_bytes": 3221225472,
+            "samples": 32,
+            "cpu_throttled_periods": 0,
+            "cpu_periods": 0,
+            "cpu_throttled_seconds": 0.0
+          }
+        },
+        "nodes": {
+          "sc-m76-control-plane": {
+            "cpu_percent_mean": 7.778125,
+            "cpu_percent_max": 17.4,
+            "mem_usage_last": "830.9MiB / 7.748GiB",
+            "samples": 32
+          },
+          "sc-m76-worker": {
+            "cpu_percent_mean": 50.308437500000004,
+            "cpu_percent_max": 136.56,
+            "mem_usage_last": "1.759GiB / 7.748GiB",
+            "samples": 32
+          },
+          "sc-m76-worker2": {
+            "cpu_percent_mean": 49.3540625,
+            "cpu_percent_max": 136.43,
+            "mem_usage_last": "623.1MiB / 7.748GiB",
+            "samples": 32
+          }
+        }
+      },
+      "request_distribution_per_pod": {
+        "closure-api-6489f8b5df-5fd9x": {
+          "total": 16835,
+          "by_route": {
+            "POST /cases/{id}/events": 4807,
+            "GET /cases/{id}": 5936,
+            "GET /cases": 183,
+            "GET /cases/{id}/timeline": 1582,
+            "POST /cases": 2026,
+            "GET /cases/{id}/notifications": 2301
+          },
+          "share": 0.3206727747195185
+        },
+        "closure-api-6489f8b5df-fhcll": {
+          "total": 18033,
+          "by_route": {
+            "POST /cases/{id}/events": 5018,
+            "GET /cases/{id}/notifications": 2499,
+            "POST /cases": 2198,
+            "GET /cases/{id}": 6329,
+            "GET /cases": 182,
+            "GET /cases/{id}/timeline": 1807
+          },
+          "share": 0.34349225699537134
+        },
+        "closure-api-6489f8b5df-n89rf": {
+          "total": 17631,
+          "by_route": {
+            "POST /cases/{id}/events": 4880,
+            "GET /cases/{id}/notifications": 2488,
+            "GET /cases/{id}": 6304,
+            "POST /cases": 2043,
+            "GET /cases/{id}/timeline": 1738,
+            "GET /cases": 178
+          },
+          "share": 0.33583496828511017
+        }
+      },
+      "scheduler_during_stage": {
+        "sweep_duration": {
+          "n": 25,
+          "mean_s": 0.109,
+          "p50_s": 0.103,
+          "p95_s": 0.146,
+          "max_s": 0.149
+        },
+        "automation_scan_duration": {
+          "n": 26,
+          "mean_s": 1.564,
+          "p50_s": 1.521,
+          "p95_s": 1.971,
+          "max_s": 2.186
+        },
+        "evidence_scan_duration": {
+          "n": 26,
+          "mean_s": 0.003,
+          "p50_s": 0.003,
+          "p95_s": 0.005,
+          "max_s": 0.006
+        },
+        "sweep_to_sweep_period": {
+          "n": 24,
+          "mean_s": 11.698,
+          "p50_s": 11.652,
+          "p95_s": 12.106,
+          "max_s": 12.335
+        },
+        "interval_setting_s": 10.0,
+        "note": "sweep_duration = time between the outbox-drain and sweep access-log lines (the sweep runs between them); period = gap between consecutive sweep completions (interval + all loop work)"
+      },
+      "cases_created_by_run": 6583,
+      "label": "watchdog_off"
+    },
+    {
+      "target_rate_per_s": 250.0,
+      "warmup_s": 15.0,
+      "duration_s": 300.0,
+      "issued_total": 78750,
+      "unfinished_after_45s": 0,
+      "measured_requests": 75000,
+      "achieved_rate_per_s": 250.0,
+      "errors": 0,
+      "error_rate": 0.0,
+      "errors_by_status": {},
+      "latency_2xx": {
+        "n": 75000,
+        "p50_ms": 4.79,
+        "p95_ms": 37.11,
+        "p99_ms": 132.79,
+        "p999_ms": 280.94,
+        "max_ms": 1251.75,
+        "mean_ms": 10.39
+      },
+      "latency_all_requests": {
+        "n": 75000,
+        "p50_ms": 4.79,
+        "p95_ms": 37.11,
+        "p99_ms": 132.79,
+        "p999_ms": 280.94,
+        "max_ms": 1251.75,
+        "mean_ms": 10.39
+      },
+      "per_endpoint": {
+        "GET /cases/{id}": {
+          "requests": 26054,
+          "errors": 0,
+          "latency": {
+            "n": 26054,
+            "p50_ms": 4.03,
+            "p95_ms": 31.23,
+            "p99_ms": 114.98,
+            "p999_ms": 222.91,
+            "max_ms": 343.0,
+            "mean_ms": 8.79
+          },
+          "service_latency": {
+            "n": 26054,
+            "p50_ms": 3.54,
+            "p95_ms": 30.1,
+            "p99_ms": 110.99,
+            "p999_ms": 216.32,
+            "max_ms": 322.29,
+            "mean_ms": 8.16
+          }
+        },
+        "GET /cases/{id}/notifications": {
+          "requests": 10605,
+          "errors": 0,
+          "latency": {
+            "n": 10605,
+            "p50_ms": 3.2,
+            "p95_ms": 19.76,
+            "p99_ms": 73.95,
+            "p999_ms": 162.6,
+            "max_ms": 280.94,
+            "mean_ms": 6.12
+          },
+          "service_latency": {
+            "n": 10605,
+            "p50_ms": 2.7,
+            "p95_ms": 18.93,
+            "p99_ms": 67.62,
+            "p999_ms": 146.03,
+            "max_ms": 280.0,
+            "mean_ms": 5.49
+          }
+        },
+        "GET /cases/{id}/timeline": {
+          "requests": 7566,
+          "errors": 0,
+          "latency": {
+            "n": 7566,
+            "p50_ms": 3.79,
+            "p95_ms": 29.56,
+            "p99_ms": 97.06,
+            "p999_ms": 207.26,
+            "max_ms": 313.32,
+            "mean_ms": 8.03
+          },
+          "service_latency": {
+            "n": 7566,
+            "p50_ms": 3.29,
+            "p95_ms": 28.13,
+            "p99_ms": 93.27,
+            "p999_ms": 198.28,
+            "max_ms": 312.78,
+            "mean_ms": 7.4
+          }
+        },
+        "GET /cases?state=": {
+          "requests": 728,
+          "errors": 0,
+          "latency": {
+            "n": 728,
+            "p50_ms": 37.01,
+            "p95_ms": 212.79,
+            "p99_ms": 667.33,
+            "p999_ms": 1035.99,
+            "max_ms": 1251.75,
+            "mean_ms": 67.6
+          },
+          "service_latency": {
+            "n": 728,
+            "p50_ms": 36.49,
+            "p95_ms": 207.36,
+            "p99_ms": 664.99,
+            "p999_ms": 1035.51,
+            "max_ms": 1251.26,
+            "mean_ms": 66.97
+          }
+        },
+        "POST /cases": {
+          "requests": 9038,
+          "errors": 0,
+          "latency": {
+            "n": 9038,
+            "p50_ms": 6.18,
+            "p95_ms": 43.29,
+            "p99_ms": 158.86,
+            "p999_ms": 291.03,
+            "max_ms": 384.28,
+            "mean_ms": 13.01
+          },
+          "service_latency": {
+            "n": 9038,
+            "p50_ms": 5.7,
+            "p95_ms": 42.8,
+            "p99_ms": 153.79,
+            "p999_ms": 290.78,
+            "max_ms": 379.08,
+            "mean_ms": 12.37
+          }
+        },
+        "POST /cases/{id}/events": {
+          "requests": 21009,
+          "errors": 0,
+          "latency": {
+            "n": 21009,
+            "p50_ms": 5.69,
+            "p95_ms": 41.66,
+            "p99_ms": 158.28,
+            "p999_ms": 309.14,
+            "max_ms": 488.1,
+            "mean_ms": 12.27
+          },
+          "service_latency": {
+            "n": 21009,
+            "p50_ms": 5.19,
+            "p95_ms": 40.92,
+            "p99_ms": 155.61,
+            "p999_ms": 308.22,
+            "max_ms": 487.1,
+            "mean_ms": 11.63
+          }
+        }
+      },
+      "per_operation": {
+        "create_case": {
+          "requests": 9038,
+          "latency": {
+            "n": 9038,
+            "p50_ms": 6.18,
+            "p95_ms": 43.29,
+            "p99_ms": 158.86,
+            "p999_ms": 291.03,
+            "max_ms": 384.28,
+            "mean_ms": 13.01
+          }
+        },
+        "post_event": {
+          "requests": 21009,
+          "latency": {
+            "n": 21009,
+            "p50_ms": 5.69,
+            "p95_ms": 41.66,
+            "p99_ms": 158.28,
+            "p999_ms": 309.14,
+            "max_ms": 488.1,
+            "mean_ms": 12.27
+          }
+        },
+        "get_case_seeded": {
+          "requests": 14969,
+          "latency": {
+            "n": 14969,
+            "p50_ms": 4.08,
+            "p95_ms": 31.31,
+            "p99_ms": 113.71,
+            "p999_ms": 220.6,
+            "max_ms": 343.0,
+            "mean_ms": 8.83
+          }
+        },
+        "get_case_own": {
+          "requests": 11085,
+          "latency": {
+            "n": 11085,
+            "p50_ms": 3.96,
+            "p95_ms": 31.15,
+            "p99_ms": 116.04,
+            "p999_ms": 226.61,
+            "max_ms": 309.63,
+            "mean_ms": 8.74
+          }
+        },
+        "timeline": {
+          "requests": 7566,
+          "latency": {
+            "n": 7566,
+            "p50_ms": 3.79,
+            "p95_ms": 29.56,
+            "p99_ms": 97.06,
+            "p999_ms": 207.26,
+            "max_ms": 313.32,
+            "mean_ms": 8.03
+          }
+        },
+        "notifications": {
+          "requests": 10605,
+          "latency": {
+            "n": 10605,
+            "p50_ms": 3.2,
+            "p95_ms": 19.76,
+            "p99_ms": 73.95,
+            "p999_ms": 162.6,
+            "max_ms": 280.94,
+            "mean_ms": 6.12
+          }
+        },
+        "worklist": {
+          "requests": 728,
+          "latency": {
+            "n": 728,
+            "p50_ms": 37.01,
+            "p95_ms": 212.79,
+            "p99_ms": 667.33,
+            "p999_ms": 1035.99,
+            "max_ms": 1251.75,
+            "mean_ms": 67.6
+          }
+        }
+      },
+      "generator_lag_ms": {
+        "p50": 0.39,
+        "p99": 2.31,
+        "max": 58.83
+      },
+      "latency_all_requests_excluding_worklist": {
+        "n": 74272,
+        "p50_ms": 4.76,
+        "p95_ms": 33.1,
+        "p99_ms": 128.17,
+        "p999_ms": 263.42,
+        "max_ms": 488.1,
+        "mean_ms": 9.83
+      },
+      "pass": true,
+      "pass_excluding_worklist": true,
+      "criteria": "p99 (all requests, from intended start) < 500 ms and error rate < 0.1%",
+      "started_at": "2026-10-30T05:24:30.740077+00:00",
+      "finished_at": "2026-10-30T05:29:46.867747+00:00",
+      "resources": {
+        "sample_period_s": 10.0,
+        "pods": {
+          "closure-api-6489f8b5df-5fd9x": {
+            "cpu_cores_mean": 0.247499741538768,
+            "cpu_cores_max": 0.4098122756086706,
+            "cpu_cores_p95": 0.3784581112108497,
+            "memory_bytes_mean": 157075712.0,
+            "memory_bytes_max": 167129088,
+            "memory_limit_bytes": 805306368,
+            "samples": 32,
+            "cpu_throttled_periods": 64,
+            "cpu_periods": 3093,
+            "cpu_throttled_seconds": 1.53041
+          },
+          "closure-api-6489f8b5df-fhcll": {
+            "cpu_cores_mean": 0.3081531688131849,
+            "cpu_cores_max": 0.5893961332902791,
+            "cpu_cores_p95": 0.42916193958193527,
+            "memory_bytes_mean": 180394368.0,
+            "memory_bytes_max": 190377984,
+            "memory_limit_bytes": 805306368,
+            "samples": 32,
+            "cpu_throttled_periods": 149,
+            "cpu_periods": 3095,
+            "cpu_throttled_seconds": 1.796317
+          },
+          "closure-api-6489f8b5df-n89rf": {
+            "cpu_cores_mean": 0.23796699016162773,
+            "cpu_cores_max": 0.46443248030053413,
+            "cpu_cores_p95": 0.3599137853918857,
+            "memory_bytes_mean": 194544256.0,
+            "memory_bytes_max": 207486976,
+            "memory_limit_bytes": 805306368,
+            "samples": 32,
+            "cpu_throttled_periods": 56,
+            "cpu_periods": 3095,
+            "cpu_throttled_seconds": 2.146548
+          },
+          "closure-scheduler-769c98989c-7qjqd": {
+            "cpu_cores_mean": 0.00477082017662377,
+            "cpu_cores_max": 0.011236451499851315,
+            "cpu_cores_p95": 0.009130517615435462,
+            "memory_bytes_mean": 24142208.0,
+            "memory_bytes_max": 31137792,
+            "memory_limit_bytes": 134217728,
+            "samples": 32,
+            "cpu_throttled_periods": 15,
+            "cpu_periods": 377,
+            "cpu_throttled_seconds": 0.633018
+          },
+          "closure-scheduler-769c98989c-dwpqj": {
+            "cpu_cores_mean": 0.004316316605176414,
+            "cpu_cores_max": 0.009916813844321184,
+            "cpu_cores_p95": 0.00869727215279249,
+            "memory_bytes_mean": 22814592.0,
+            "memory_bytes_max": 28016640,
+            "memory_limit_bytes": 134217728,
+            "samples": 32,
+            "cpu_throttled_periods": 19,
+            "cpu_periods": 278,
+            "cpu_throttled_seconds": 1.148357
+          },
+          "postgres-0": {
+            "cpu_cores_mean": 0.3224018818764345,
+            "cpu_cores_max": 0.4645219174633189,
+            "cpu_cores_p95": 0.4169604873513279,
+            "memory_bytes_mean": 3204679552.0,
+            "memory_bytes_max": 3220938752,
+            "memory_limit_bytes": 3221225472,
+            "samples": 32,
+            "cpu_throttled_periods": 0,
+            "cpu_periods": 0,
+            "cpu_throttled_seconds": 0.0
+          }
+        },
+        "nodes": {
+          "sc-m76-control-plane": {
+            "cpu_percent_mean": 9.3559375,
+            "cpu_percent_max": 15.04,
+            "mem_usage_last": "832.9MiB / 7.748GiB",
+            "samples": 32
+          },
+          "sc-m76-worker": {
+            "cpu_percent_mean": 73.2003125,
+            "cpu_percent_max": 159.39,
+            "mem_usage_last": "1.786GiB / 7.748GiB",
+            "samples": 32
+          },
+          "sc-m76-worker2": {
+            "cpu_percent_mean": 63.31875,
+            "cpu_percent_max": 146.41,
+            "mem_usage_last": "617.5MiB / 7.748GiB",
+            "samples": 32
+          }
+        }
+      },
+      "request_distribution_per_pod": {
+        "closure-api-6489f8b5df-5fd9x": {
+          "total": 7865,
+          "by_route": {
+            "GET /cases/{id}": 2780,
+            "POST /cases/{id}/events": 2165,
+            "GET /cases/{id}/timeline": 790,
+            "GET /cases/{id}/notifications": 1098,
+            "POST /cases": 962,
+            "GET /cases": 70
+          },
+          "share": 0.30259310557094493
+        },
+        "closure-api-6489f8b5df-fhcll": {
+          "total": 10639,
+          "by_route": {
+            "POST /cases/{id}/events": 3009,
+            "GET /cases/{id}": 3649,
+            "GET /cases/{id}/notifications": 1507,
+            "POST /cases": 1279,
+            "GET /cases/{id}/timeline": 1082,
+            "GET /cases": 113
+          },
+          "share": 0.4093182517697753
+        },
+        "closure-api-6489f8b5df-n89rf": {
+          "total": 7488,
+          "by_route": {
+            "GET /cases/{id}/timeline": 725,
+            "POST /cases": 905,
+            "GET /cases/{id}": 2622,
+            "POST /cases/{id}/events": 2105,
+            "GET /cases/{id}/notifications": 1039,
+            "GET /cases": 92
+          },
+          "share": 0.2880886426592798
+        }
+      },
+      "scheduler_during_stage": {
+        "sweep_duration": {
+          "n": 8,
+          "mean_s": 0.151,
+          "p50_s": 0.14,
+          "p95_s": 0.212,
+          "max_s": 0.224
+        },
+        "automation_scan_duration": {
+          "n": 8,
+          "mean_s": 2.34,
+          "p50_s": 2.175,
+          "p95_s": 2.892,
+          "max_s": 3.01
+        },
+        "evidence_scan_duration": {
+          "n": 9,
+          "mean_s": 1.417,
+          "p50_s": 0.006,
+          "p95_s": 7.627,
+          "max_s": 12.696
+        },
+        "sweep_to_sweep_period": {
+          "n": 7,
+          "mean_s": 12.552,
+          "p50_s": 12.369,
+          "p95_s": 13.079,
+          "max_s": 13.174
+        },
+        "interval_setting_s": 10.0,
+        "note": "sweep_duration = time between the outbox-drain and sweep access-log lines (the sweep runs between them); period = gap between consecutive sweep completions (interval + all loop work)"
+      },
+      "cases_created_by_run": 9491,
+      "label": "watchdog_off"
+    },
+    {
+      "target_rate_per_s": 50.0,
+      "warmup_s": 15.0,
+      "duration_s": 300.0,
+      "issued_total": 15750,
+      "unfinished_after_45s": 0,
+      "measured_requests": 15000,
+      "achieved_rate_per_s": 50.0,
+      "errors": 0,
+      "error_rate": 0.0,
+      "errors_by_status": {},
+      "latency_2xx": {
+        "n": 15000,
+        "p50_ms": 6.3,
+        "p95_ms": 12.08,
+        "p99_ms": 41.41,
+        "p999_ms": 101.73,
+        "max_ms": 160.12,
+        "mean_ms": 7.68
+      },
+      "latency_all_requests": {
+        "n": 15000,
+        "p50_ms": 6.3,
+        "p95_ms": 12.08,
+        "p99_ms": 41.41,
+        "p999_ms": 101.73,
+        "max_ms": 160.12,
+        "mean_ms": 7.68
+      },
+      "per_endpoint": {
+        "GET /cases/{id}": {
+          "requests": 5262,
+          "errors": 0,
+          "latency": {
+            "n": 5262,
+            "p50_ms": 5.6,
+            "p95_ms": 8.67,
+            "p99_ms": 29.75,
+            "p999_ms": 84.83,
+            "max_ms": 160.12,
+            "mean_ms": 6.49
+          },
+          "service_latency": {
+            "n": 5262,
+            "p50_ms": 5.29,
+            "p95_ms": 8.14,
+            "p99_ms": 26.03,
+            "p999_ms": 71.11,
+            "max_ms": 124.76,
+            "mean_ms": 6.05
+          }
+        },
+        "GET /cases/{id}/notifications": {
+          "requests": 2049,
+          "errors": 0,
+          "latency": {
+            "n": 2049,
+            "p50_ms": 4.27,
+            "p95_ms": 7.02,
+            "p99_ms": 28.95,
+            "p999_ms": 52.9,
+            "max_ms": 95.77,
+            "mean_ms": 5.05
+          },
+          "service_latency": {
+            "n": 2049,
+            "p50_ms": 3.97,
+            "p95_ms": 6.6,
+            "p99_ms": 24.73,
+            "p999_ms": 48.54,
+            "max_ms": 84.1,
+            "mean_ms": 4.58
+          }
+        },
+        "GET /cases/{id}/timeline": {
+          "requests": 1500,
+          "errors": 0,
+          "latency": {
+            "n": 1500,
+            "p50_ms": 5.32,
+            "p95_ms": 8.26,
+            "p99_ms": 35.66,
+            "p999_ms": 114.57,
+            "max_ms": 132.29,
+            "mean_ms": 6.37
+          },
+          "service_latency": {
+            "n": 1500,
+            "p50_ms": 5.0,
+            "p95_ms": 7.81,
+            "p99_ms": 30.29,
+            "p999_ms": 107.72,
+            "max_ms": 131.73,
+            "mean_ms": 5.9
+          }
+        },
+        "GET /cases?state=": {
+          "requests": 172,
+          "errors": 0,
+          "latency": {
+            "n": 172,
+            "p50_ms": 38.1,
+            "p95_ms": 58.78,
+            "p99_ms": 129.71,
+            "p999_ms": 139.66,
+            "max_ms": 141.08,
+            "mean_ms": 40.91
+          },
+          "service_latency": {
+            "n": 172,
+            "p50_ms": 37.75,
+            "p95_ms": 58.31,
+            "p99_ms": 104.55,
+            "p999_ms": 125.36,
+            "max_ms": 128.06,
+            "mean_ms": 40.25
+          }
+        },
+        "POST /cases": {
+          "requests": 1852,
+          "errors": 0,
+          "latency": {
+            "n": 1852,
+            "p50_ms": 8.58,
+            "p95_ms": 13.56,
+            "p99_ms": 34.52,
+            "p999_ms": 82.46,
+            "max_ms": 102.3,
+            "mean_ms": 9.64
+          },
+          "service_latency": {
+            "n": 1852,
+            "p50_ms": 8.22,
+            "p95_ms": 13.14,
+            "p99_ms": 29.0,
+            "p999_ms": 73.09,
+            "max_ms": 81.09,
+            "mean_ms": 9.14
+          }
+        },
+        "POST /cases/{id}/events": {
+          "requests": 4165,
+          "errors": 0,
+          "latency": {
+            "n": 4165,
+            "p50_ms": 7.75,
+            "p95_ms": 11.77,
+            "p99_ms": 36.16,
+            "p999_ms": 103.47,
+            "max_ms": 122.68,
+            "mean_ms": 8.72
+          },
+          "service_latency": {
+            "n": 4165,
+            "p50_ms": 7.39,
+            "p95_ms": 11.14,
+            "p99_ms": 29.42,
+            "p999_ms": 75.42,
+            "max_ms": 120.7,
+            "mean_ms": 8.19
+          }
+        }
+      },
+      "per_operation": {
+        "create_case": {
+          "requests": 1852,
+          "latency": {
+            "n": 1852,
+            "p50_ms": 8.58,
+            "p95_ms": 13.56,
+            "p99_ms": 34.52,
+            "p999_ms": 82.46,
+            "max_ms": 102.3,
+            "mean_ms": 9.64
+          }
+        },
+        "post_event": {
+          "requests": 4165,
+          "latency": {
+            "n": 4165,
+            "p50_ms": 7.75,
+            "p95_ms": 11.77,
+            "p99_ms": 36.16,
+            "p999_ms": 103.47,
+            "max_ms": 122.68,
+            "mean_ms": 8.72
+          }
+        },
+        "get_case_seeded": {
+          "requests": 3045,
+          "latency": {
+            "n": 3045,
+            "p50_ms": 5.69,
+            "p95_ms": 8.9,
+            "p99_ms": 28.22,
+            "p999_ms": 75.11,
+            "max_ms": 160.12,
+            "mean_ms": 6.57
+          }
+        },
+        "get_case_own": {
+          "requests": 2217,
+          "latency": {
+            "n": 2217,
+            "p50_ms": 5.45,
+            "p95_ms": 8.03,
+            "p99_ms": 36.6,
+            "p999_ms": 85.08,
+            "max_ms": 118.87,
+            "mean_ms": 6.37
+          }
+        },
+        "timeline": {
+          "requests": 1500,
+          "latency": {
+            "n": 1500,
+            "p50_ms": 5.32,
+            "p95_ms": 8.26,
+            "p99_ms": 35.66,
+            "p999_ms": 114.57,
+            "max_ms": 132.29,
+            "mean_ms": 6.37
+          }
+        },
+        "notifications": {
+          "requests": 2049,
+          "latency": {
+            "n": 2049,
+            "p50_ms": 4.27,
+            "p95_ms": 7.02,
+            "p99_ms": 28.95,
+            "p999_ms": 52.9,
+            "max_ms": 95.77,
+            "mean_ms": 5.05
+          }
+        },
+        "worklist": {
+          "requests": 172,
+          "latency": {
+            "n": 172,
+            "p50_ms": 38.1,
+            "p95_ms": 58.78,
+            "p99_ms": 129.71,
+            "p999_ms": 139.66,
+            "max_ms": 141.08,
+            "mean_ms": 40.91
+          }
+        }
+      },
+      "generator_lag_ms": {
+        "p50": 0.27,
+        "p99": 2.49,
+        "max": 92.16
+      },
+      "latency_all_requests_excluding_worklist": {
+        "n": 14828,
+        "p50_ms": 6.27,
+        "p95_ms": 11.05,
+        "p99_ms": 33.33,
+        "p999_ms": 96.13,
+        "max_ms": 160.12,
+        "mean_ms": 7.3
+      },
+      "pass": true,
+      "pass_excluding_worklist": true,
+      "criteria": "p99 (all requests, from intended start) < 500 ms and error rate < 0.1%",
+      "started_at": "2026-10-30T04:46:22.086593+00:00",
+      "finished_at": "2026-10-30T04:51:37.411696+00:00",
+      "resources": {
+        "sample_period_s": 10.0,
+        "pods": {
+          "closure-api-6489f8b5df-5fd9x": {
+            "cpu_cores_mean": 0.05227515457808798,
+            "cpu_cores_max": 0.1253158727550215,
+            "cpu_cores_p95": 0.0670098650615555,
+            "memory_bytes_mean": 117241344.0,
+            "memory_bytes_max": 125894656,
+            "memory_limit_bytes": 805306368,
+            "samples": 32,
+            "cpu_throttled_periods": 0,
+            "cpu_periods": 2963,
+            "cpu_throttled_seconds": 0.0
+          },
+          "closure-api-6489f8b5df-fhcll": {
+            "cpu_cores_mean": 0.06401385429490741,
+            "cpu_cores_max": 0.14589540804726012,
+            "cpu_cores_p95": 0.07329973324368345,
+            "memory_bytes_mean": 112256896.0,
+            "memory_bytes_max": 118353920,
+            "memory_limit_bytes": 805306368,
+            "samples": 32,
+            "cpu_throttled_periods": 0,
+            "cpu_periods": 2969,
+            "cpu_throttled_seconds": 0.0
+          },
+          "closure-api-6489f8b5df-n89rf": {
+            "cpu_cores_mean": 0.0807527613894725,
+            "cpu_cores_max": 0.19349384538796602,
+            "cpu_cores_p95": 0.0917079348232235,
+            "memory_bytes_mean": 130420608.0,
+            "memory_bytes_max": 137408512,
+            "memory_limit_bytes": 805306368,
+            "samples": 32,
+            "cpu_throttled_periods": 0,
+            "cpu_periods": 3098,
+            "cpu_throttled_seconds": 0.0
+          },
+          "closure-scheduler-769c98989c-7qjqd": {
+            "cpu_cores_mean": 0.004105852395116285,
+            "cpu_cores_max": 0.010001819260624871,
+            "cpu_cores_p95": 0.008942528000201313,
+            "memory_bytes_mean": 24777728.0,
+            "memory_bytes_max": 29450240,
+            "memory_limit_bytes": 134217728,
+            "samples": 32,
+            "cpu_throttled_periods": 12,
+            "cpu_periods": 269,
+            "cpu_throttled_seconds": 0.524898
+          },
+          "closure-scheduler-769c98989c-dwpqj": {
+            "cpu_cores_mean": 0.003970536194010392,
+            "cpu_cores_max": 0.01005574321495944,
+            "cpu_cores_p95": 0.007982002069888937,
+            "memory_bytes_mean": 24607360.0,
+            "memory_bytes_max": 29908992,
+            "memory_limit_bytes": 134217728,
+            "samples": 32,
+            "cpu_throttled_periods": 13,
+            "cpu_periods": 405,
+            "cpu_throttled_seconds": 0.921889
+          },
+          "postgres-0": {
+            "cpu_cores_mean": 0.13358591850428683,
+            "cpu_cores_max": 0.22315335105494177,
+            "cpu_cores_p95": 0.1926296582859405,
+            "memory_bytes_mean": 3201818624.0,
+            "memory_bytes_max": 3220930560,
+            "memory_limit_bytes": 3221225472,
+            "samples": 32,
+            "cpu_throttled_periods": 0,
+            "cpu_periods": 0,
+            "cpu_throttled_seconds": 0.0
+          }
+        },
+        "nodes": {
+          "sc-m76-control-plane": {
+            "cpu_percent_mean": 8.544375,
+            "cpu_percent_max": 13.08,
+            "mem_usage_last": "1.097GiB / 7.748GiB",
+            "samples": 32
+          },
+          "sc-m76-worker": {
+            "cpu_percent_mean": 27.5415625,
+            "cpu_percent_max": 115.13,
+            "mem_usage_last": "1.762GiB / 7.748GiB",
+            "samples": 32
+          },
+          "sc-m76-worker2": {
+            "cpu_percent_mean": 22.580625,
+            "cpu_percent_max": 50.19,
+            "mem_usage_last": "623.1MiB / 7.748GiB",
+            "samples": 32
+          }
+        }
+      },
+      "request_distribution_per_pod": {
+        "closure-api-6489f8b5df-5fd9x": {
+          "total": 4000,
+          "by_route": {
+            "GET /cases/{id}": 1385,
+            "GET /cases/{id}/timeline": 436,
+            "POST /cases": 502,
+            "POST /cases/{id}/events": 1105,
+            "GET /cases/{id}/notifications": 531,
+            "GET /cases": 41
+          },
+          "share": 0.26668444562970867
+        },
+        "closure-api-6489f8b5df-fhcll": {
+          "total": 4600,
+          "by_route": {
+            "GET /cases/{id}/notifications": 648,
+            "POST /cases/{id}/events": 1268,
+            "GET /cases/{id}": 1593,
+            "GET /cases/{id}/timeline": 455,
+            "POST /cases": 573,
+            "GET /cases": 63
+          },
+          "share": 0.30668711247416497
+        },
+        "closure-api-6489f8b5df-n89rf": {
+          "total": 6399,
+          "by_route": {
+            "GET /cases/{id}": 2285,
+            "GET /cases/{id}/timeline": 609,
+            "GET /cases": 69,
+            "POST /cases/{id}/events": 1787,
+            "GET /cases/{id}/notifications": 871,
+            "POST /cases": 778
+          },
+          "share": 0.4266284418961264
+        }
+      },
+      "scheduler_during_stage": {
+        "sweep_duration": {
+          "n": 29,
+          "mean_s": 0.479,
+          "p50_s": 0.575,
+          "p95_s": 0.669,
+          "max_s": 0.674
+        },
+        "automation_scan_duration": {
+          "n": 29,
+          "mean_s": 0.033,
+          "p50_s": 0.036,
+          "p95_s": 0.06,
+          "max_s": 0.065
+        },
+        "evidence_scan_duration": {
+          "n": 29,
+          "mean_s": 0.005,
+          "p50_s": 0.003,
+          "p95_s": 0.015,
+          "max_s": 0.046
+        },
+        "sweep_to_sweep_period": {
+          "n": 28,
+          "mean_s": 10.547,
+          "p50_s": 10.63,
+          "p95_s": 10.727,
+          "max_s": 10.792
+        },
+        "interval_setting_s": 10.0,
+        "note": "sweep_duration = time between the outbox-drain and sweep access-log lines (the sweep runs between them); period = gap between consecutive sweep completions (interval + all loop work)"
+      },
+      "cases_created_by_run": 1937,
+      "label": "watchdog_on_as_deployed"
+    },
+    {
+      "target_rate_per_s": 100.0,
+      "warmup_s": 15.0,
+      "duration_s": 300.0,
+      "issued_total": 31500,
+      "unfinished_after_45s": 0,
+      "measured_requests": 30000,
+      "achieved_rate_per_s": 100.0,
+      "errors": 0,
+      "error_rate": 0.0,
+      "errors_by_status": {},
+      "latency_2xx": {
+        "n": 30000,
+        "p50_ms": 4.68,
+        "p95_ms": 9.1,
+        "p99_ms": 38.12,
+        "p999_ms": 86.66,
+        "max_ms": 297.32,
+        "mean_ms": 6.06
+      },
+      "latency_all_requests": {
+        "n": 30000,
+        "p50_ms": 4.68,
+        "p95_ms": 9.1,
+        "p99_ms": 38.12,
+        "p999_ms": 86.66,
+        "max_ms": 297.32,
+        "mean_ms": 6.06
+      },
+      "per_endpoint": {
+        "GET /cases/{id}": {
+          "requests": 10642,
+          "errors": 0,
+          "latency": {
+            "n": 10642,
+            "p50_ms": 4.18,
+            "p95_ms": 6.51,
+            "p99_ms": 34.23,
+            "p999_ms": 79.67,
+            "max_ms": 297.32,
+            "mean_ms": 5.13
+          },
+          "service_latency": {
+            "n": 10642,
+            "p50_ms": 3.92,
+            "p95_ms": 6.21,
+            "p99_ms": 28.63,
+            "p999_ms": 69.08,
+            "max_ms": 296.83,
+            "mean_ms": 4.77
+          }
+        },
+        "GET /cases/{id}/notifications": {
+          "requests": 4167,
+          "errors": 0,
+          "latency": {
+            "n": 4167,
+            "p50_ms": 3.26,
+            "p95_ms": 5.03,
+            "p99_ms": 24.44,
+            "p999_ms": 59.35,
+            "max_ms": 89.81,
+            "mean_ms": 3.94
+          },
+          "service_latency": {
+            "n": 4167,
+            "p50_ms": 3.01,
+            "p95_ms": 4.71,
+            "p99_ms": 20.81,
+            "p999_ms": 49.67,
+            "max_ms": 89.54,
+            "mean_ms": 3.59
+          }
+        },
+        "GET /cases/{id}/timeline": {
+          "requests": 2907,
+          "errors": 0,
+          "latency": {
+            "n": 2907,
+            "p50_ms": 3.93,
+            "p95_ms": 6.4,
+            "p99_ms": 28.13,
+            "p999_ms": 89.06,
+            "max_ms": 216.72,
+            "mean_ms": 4.75
+          },
+          "service_latency": {
+            "n": 2907,
+            "p50_ms": 3.69,
+            "p95_ms": 6.08,
+            "p99_ms": 23.84,
+            "p999_ms": 88.79,
+            "max_ms": 203.72,
+            "mean_ms": 4.43
+          }
+        },
+        "GET /cases?state=": {
+          "requests": 308,
+          "errors": 0,
+          "latency": {
+            "n": 308,
+            "p50_ms": 33.52,
+            "p95_ms": 63.16,
+            "p99_ms": 105.43,
+            "p999_ms": 129.1,
+            "max_ms": 133.41,
+            "mean_ms": 37.32
+          },
+          "service_latency": {
+            "n": 308,
+            "p50_ms": 33.34,
+            "p95_ms": 62.95,
+            "p99_ms": 104.82,
+            "p999_ms": 128.76,
+            "max_ms": 133.04,
+            "mean_ms": 37.06
+          }
+        },
+        "POST /cases": {
+          "requests": 3528,
+          "errors": 0,
+          "latency": {
+            "n": 3528,
+            "p50_ms": 6.62,
+            "p95_ms": 10.96,
+            "p99_ms": 46.9,
+            "p999_ms": 82.4,
+            "max_ms": 125.67,
+            "mean_ms": 7.89
+          },
+          "service_latency": {
+            "n": 3528,
+            "p50_ms": 6.33,
+            "p95_ms": 10.6,
+            "p99_ms": 41.31,
+            "p999_ms": 73.78,
+            "max_ms": 125.38,
+            "mean_ms": 7.51
+          }
+        },
+        "POST /cases/{id}/events": {
+          "requests": 8448,
+          "errors": 0,
+          "latency": {
+            "n": 8448,
+            "p50_ms": 5.9,
+            "p95_ms": 8.64,
+            "p99_ms": 34.27,
+            "p999_ms": 87.18,
+            "max_ms": 292.95,
+            "mean_ms": 6.82
+          },
+          "service_latency": {
+            "n": 8448,
+            "p50_ms": 5.61,
+            "p95_ms": 8.35,
+            "p99_ms": 30.18,
+            "p999_ms": 79.2,
+            "max_ms": 292.53,
+            "mean_ms": 6.45
+          }
+        }
+      },
+      "per_operation": {
+        "create_case": {
+          "requests": 3528,
+          "latency": {
+            "n": 3528,
+            "p50_ms": 6.62,
+            "p95_ms": 10.96,
+            "p99_ms": 46.9,
+            "p999_ms": 82.4,
+            "max_ms": 125.67,
+            "mean_ms": 7.89
+          }
+        },
+        "post_event": {
+          "requests": 8448,
+          "latency": {
+            "n": 8448,
+            "p50_ms": 5.9,
+            "p95_ms": 8.64,
+            "p99_ms": 34.27,
+            "p999_ms": 87.18,
+            "max_ms": 292.95,
+            "mean_ms": 6.82
+          }
+        },
+        "get_case_seeded": {
+          "requests": 6116,
+          "latency": {
+            "n": 6116,
+            "p50_ms": 4.24,
+            "p95_ms": 6.55,
+            "p99_ms": 33.17,
+            "p999_ms": 81.3,
+            "max_ms": 297.32,
+            "mean_ms": 5.16
+          }
+        },
+        "get_case_own": {
+          "requests": 4526,
+          "latency": {
+            "n": 4526,
+            "p50_ms": 4.1,
+            "p95_ms": 6.43,
+            "p99_ms": 35.63,
+            "p999_ms": 74.81,
+            "max_ms": 252.49,
+            "mean_ms": 5.1
+          }
+        },
+        "timeline": {
+          "requests": 2907,
+          "latency": {
+            "n": 2907,
+            "p50_ms": 3.93,
+            "p95_ms": 6.4,
+            "p99_ms": 28.13,
+            "p999_ms": 89.06,
+            "max_ms": 216.72,
+            "mean_ms": 4.75
+          }
+        },
+        "notifications": {
+          "requests": 4167,
+          "latency": {
+            "n": 4167,
+            "p50_ms": 3.26,
+            "p95_ms": 5.03,
+            "p99_ms": 24.44,
+            "p999_ms": 59.35,
+            "max_ms": 89.81,
+            "mean_ms": 3.94
+          }
+        },
+        "worklist": {
+          "requests": 308,
+          "latency": {
+            "n": 308,
+            "p50_ms": 33.52,
+            "p95_ms": 63.16,
+            "p99_ms": 105.43,
+            "p999_ms": 129.1,
+            "max_ms": 133.41,
+            "mean_ms": 37.32
+          }
+        }
+      },
+      "generator_lag_ms": {
+        "p50": 0.23,
+        "p99": 1.0,
+        "max": 43.53
+      },
+      "latency_all_requests_excluding_worklist": {
+        "n": 29692,
+        "p50_ms": 4.65,
+        "p95_ms": 8.33,
+        "p99_ms": 34.44,
+        "p999_ms": 82.89,
+        "max_ms": 297.32,
+        "mean_ms": 5.73
+      },
+      "pass": true,
+      "pass_excluding_worklist": true,
+      "criteria": "p99 (all requests, from intended start) < 500 ms and error rate < 0.1%",
+      "started_at": "2026-10-30T04:51:39.752466+00:00",
+      "finished_at": "2026-10-30T04:56:55.298773+00:00",
+      "resources": {
+        "sample_period_s": 10.0,
+        "pods": {
+          "closure-api-6489f8b5df-5fd9x": {
+            "cpu_cores_mean": 0.10836184510980054,
+            "cpu_cores_max": 0.20476154723301587,
+            "cpu_cores_p95": 0.13326736703334446,
+            "memory_bytes_mean": 124698752.0,
+            "memory_bytes_max": 131850240,
+            "memory_limit_bytes": 805306368,
+            "samples": 32,
+            "cpu_throttled_periods": 3,
+            "cpu_periods": 3096,
+            "cpu_throttled_seconds": 0.048274
+          },
+          "closure-api-6489f8b5df-fhcll": {
+            "cpu_cores_mean": 0.10635707542606129,
+            "cpu_cores_max": 0.2404738588035204,
+            "cpu_cores_p95": 0.14940147678328386,
+            "memory_bytes_mean": 118325504.0,
+            "memory_bytes_max": 129871872,
+            "memory_limit_bytes": 805306368,
+            "samples": 32,
+            "cpu_throttled_periods": 0,
+            "cpu_periods": 3097,
+            "cpu_throttled_seconds": 0.0
+          },
+          "closure-api-6489f8b5df-n89rf": {
+            "cpu_cores_mean": 0.07956473828220435,
+            "cpu_cores_max": 0.20412264338350952,
+            "cpu_cores_p95": 0.0973555023320989,
+            "memory_bytes_mean": 139776896.0,
+            "memory_bytes_max": 148090880,
+            "memory_limit_bytes": 805306368,
+            "samples": 32,
+            "cpu_throttled_periods": 2,
+            "cpu_periods": 3093,
+            "cpu_throttled_seconds": 0.085328
+          },
+          "closure-scheduler-769c98989c-7qjqd": {
+            "cpu_cores_mean": 0.0039687021884582336,
+            "cpu_cores_max": 0.009325706024920178,
+            "cpu_cores_p95": 0.007689200059785562,
+            "memory_bytes_mean": 25163264.0,
+            "memory_bytes_max": 29704192,
+            "memory_limit_bytes": 134217728,
+            "samples": 32,
+            "cpu_throttled_periods": 11,
+            "cpu_periods": 262,
+            "cpu_throttled_seconds": 0.413633
+          },
+          "closure-scheduler-769c98989c-dwpqj": {
+            "cpu_cores_mean": 0.00394525519650311,
+            "cpu_cores_max": 0.008110796410510384,
+            "cpu_cores_p95": 0.007702374059430555,
+            "memory_bytes_mean": 23970688.0,
+            "memory_bytes_max": 28192768,
+            "memory_limit_bytes": 134217728,
+            "samples": 32,
+            "cpu_throttled_periods": 15,
+            "cpu_periods": 379,
+            "cpu_throttled_seconds": 1.073046
+          },
+          "postgres-0": {
+            "cpu_cores_mean": 0.15860211990630496,
+            "cpu_cores_max": 0.2096402769140482,
+            "cpu_cores_p95": 0.20290434676628863,
+            "memory_bytes_mean": 3217436416.0,
+            "memory_bytes_max": 3220951040,
+            "memory_limit_bytes": 3221225472,
+            "samples": 32,
+            "cpu_throttled_periods": 0,
+            "cpu_periods": 0,
+            "cpu_throttled_seconds": 0.0
+          }
+        },
+        "nodes": {
+          "sc-m76-control-plane": {
+            "cpu_percent_mean": 7.5021875,
+            "cpu_percent_max": 20.34,
+            "mem_usage_last": "1.092GiB / 7.748GiB",
+            "samples": 32
+          },
+          "sc-m76-worker": {
+            "cpu_percent_mean": 33.3596875,
+            "cpu_percent_max": 125.54,
+            "mem_usage_last": "1.836GiB / 7.748GiB",
+            "samples": 32
+          },
+          "sc-m76-worker2": {
+            "cpu_percent_mean": 29.3246875,
+            "cpu_percent_max": 44.05,
+            "mem_usage_last": "648.7MiB / 7.748GiB",
+            "samples": 32
+          }
+        }
+      },
+      "request_distribution_per_pod": {
+        "closure-api-6489f8b5df-5fd9x": {
+          "total": 11400,
+          "by_route": {
+            "GET /cases/{id}/timeline": 1151,
+            "GET /cases/{id}": 3943,
+            "POST /cases": 1379,
+            "POST /cases/{id}/events": 3207,
+            "GET /cases/{id}/notifications": 1613,
+            "GET /cases": 107
+          },
+          "share": 0.3800253350223348
+        },
+        "closure-api-6489f8b5df-fhcll": {
+          "total": 11198,
+          "by_route": {
+            "GET /cases/{id}/notifications": 1533,
+            "GET /cases/{id}": 3999,
+            "GET /cases/{id}/timeline": 1088,
+            "POST /cases/{id}/events": 3173,
+            "POST /cases": 1284,
+            "GET /cases": 121
+          },
+          "share": 0.37329155277018466
+        },
+        "closure-api-6489f8b5df-n89rf": {
+          "total": 7400,
+          "by_route": {
+            "POST /cases": 865,
+            "POST /cases/{id}/events": 2073,
+            "GET /cases/{id}": 2697,
+            "GET /cases/{id}/notifications": 1018,
+            "GET /cases": 77,
+            "GET /cases/{id}/timeline": 670
+          },
+          "share": 0.2466831122074805
+        }
+      },
+      "scheduler_during_stage": {
+        "sweep_duration": {
+          "n": 29,
+          "mean_s": 0.419,
+          "p50_s": 0.621,
+          "p95_s": 0.694,
+          "max_s": 0.724
+        },
+        "automation_scan_duration": {
+          "n": 29,
+          "mean_s": 0.11,
+          "p50_s": 0.099,
+          "p95_s": 0.186,
+          "max_s": 0.312
+        },
+        "evidence_scan_duration": {
+          "n": 29,
+          "mean_s": 0.005,
+          "p50_s": 0.003,
+          "p95_s": 0.017,
+          "max_s": 0.026
+        },
+        "sweep_to_sweep_period": {
+          "n": 28,
+          "mean_s": 10.56,
+          "p50_s": 10.719,
+          "p95_s": 10.824,
+          "max_s": 10.831
+        },
+        "interval_setting_s": 10.0,
+        "note": "sweep_duration = time between the outbox-drain and sweep access-log lines (the sweep runs between them); period = gap between consecutive sweep completions (interval + all loop work)"
+      },
+      "cases_created_by_run": 3721,
+      "label": "watchdog_on_as_deployed"
+    },
+    {
+      "target_rate_per_s": 175.0,
+      "warmup_s": 15.0,
+      "duration_s": 300.0,
+      "issued_total": 55125,
+      "unfinished_after_45s": 0,
+      "measured_requests": 52500,
+      "achieved_rate_per_s": 175.0,
+      "errors": 0,
+      "error_rate": 0.0,
+      "errors_by_status": {},
+      "latency_2xx": {
+        "n": 52500,
+        "p50_ms": 4.35,
+        "p95_ms": 12.05,
+        "p99_ms": 58.89,
+        "p999_ms": 135.52,
+        "max_ms": 437.52,
+        "mean_ms": 6.48
+      },
+      "latency_all_requests": {
+        "n": 52500,
+        "p50_ms": 4.35,
+        "p95_ms": 12.05,
+        "p99_ms": 58.89,
+        "p999_ms": 135.52,
+        "max_ms": 437.52,
+        "mean_ms": 6.48
+      },
+      "per_endpoint": {
+        "GET /cases/{id}": {
+          "requests": 18289,
+          "errors": 0,
+          "latency": {
+            "n": 18289,
+            "p50_ms": 3.85,
+            "p95_ms": 7.98,
+            "p99_ms": 54.44,
+            "p999_ms": 121.01,
+            "max_ms": 257.17,
+            "mean_ms": 5.45
+          },
+          "service_latency": {
+            "n": 18289,
+            "p50_ms": 3.48,
+            "p95_ms": 7.6,
+            "p99_ms": 45.45,
+            "p999_ms": 111.71,
+            "max_ms": 257.06,
+            "mean_ms": 4.96
+          }
+        },
+        "GET /cases/{id}/notifications": {
+          "requests": 7477,
+          "errors": 0,
+          "latency": {
+            "n": 7477,
+            "p50_ms": 3.05,
+            "p95_ms": 5.4,
+            "p99_ms": 37.99,
+            "p999_ms": 84.56,
+            "max_ms": 150.27,
+            "mean_ms": 4.08
+          },
+          "service_latency": {
+            "n": 7477,
+            "p50_ms": 2.68,
+            "p95_ms": 5.04,
+            "p99_ms": 31.37,
+            "p999_ms": 76.43,
+            "max_ms": 149.71,
+            "mean_ms": 3.62
+          }
+        },
+        "GET /cases/{id}/timeline": {
+          "requests": 5283,
+          "errors": 0,
+          "latency": {
+            "n": 5283,
+            "p50_ms": 3.61,
+            "p95_ms": 7.55,
+            "p99_ms": 45.64,
+            "p999_ms": 106.75,
+            "max_ms": 154.2,
+            "mean_ms": 5.05
+          },
+          "service_latency": {
+            "n": 5283,
+            "p50_ms": 3.26,
+            "p95_ms": 7.19,
+            "p99_ms": 40.46,
+            "p999_ms": 105.09,
+            "max_ms": 153.83,
+            "mean_ms": 4.57
+          }
+        },
+        "GET /cases?state=": {
+          "requests": 489,
+          "errors": 0,
+          "latency": {
+            "n": 489,
+            "p50_ms": 33.23,
+            "p95_ms": 75.9,
+            "p99_ms": 140.41,
+            "p999_ms": 259.25,
+            "max_ms": 296.42,
+            "mean_ms": 39.53
+          },
+          "service_latency": {
+            "n": 489,
+            "p50_ms": 32.85,
+            "p95_ms": 75.48,
+            "p99_ms": 135.27,
+            "p999_ms": 252.17,
+            "max_ms": 296.1,
+            "mean_ms": 39.08
+          }
+        },
+        "POST /cases": {
+          "requests": 6254,
+          "errors": 0,
+          "latency": {
+            "n": 6254,
+            "p50_ms": 6.14,
+            "p95_ms": 15.22,
+            "p99_ms": 73.2,
+            "p999_ms": 216.83,
+            "max_ms": 310.15,
+            "mean_ms": 8.81
+          },
+          "service_latency": {
+            "n": 6254,
+            "p50_ms": 5.76,
+            "p95_ms": 14.84,
+            "p99_ms": 68.97,
+            "p999_ms": 201.89,
+            "max_ms": 309.7,
+            "mean_ms": 8.31
+          }
+        },
+        "POST /cases/{id}/events": {
+          "requests": 14708,
+          "errors": 0,
+          "latency": {
+            "n": 14708,
+            "p50_ms": 5.48,
+            "p95_ms": 11.21,
+            "p99_ms": 63.06,
+            "p999_ms": 133.49,
+            "max_ms": 437.52,
+            "mean_ms": 7.4
+          },
+          "service_latency": {
+            "n": 14708,
+            "p50_ms": 5.08,
+            "p95_ms": 10.81,
+            "p99_ms": 56.52,
+            "p999_ms": 120.47,
+            "max_ms": 437.27,
+            "mean_ms": 6.88
+          }
+        }
+      },
+      "per_operation": {
+        "create_case": {
+          "requests": 6254,
+          "latency": {
+            "n": 6254,
+            "p50_ms": 6.14,
+            "p95_ms": 15.22,
+            "p99_ms": 73.2,
+            "p999_ms": 216.83,
+            "max_ms": 310.15,
+            "mean_ms": 8.81
+          }
+        },
+        "post_event": {
+          "requests": 14708,
+          "latency": {
+            "n": 14708,
+            "p50_ms": 5.48,
+            "p95_ms": 11.21,
+            "p99_ms": 63.06,
+            "p999_ms": 133.49,
+            "max_ms": 437.52,
+            "mean_ms": 7.4
+          }
+        },
+        "get_case_seeded": {
+          "requests": 10454,
+          "latency": {
+            "n": 10454,
+            "p50_ms": 3.89,
+            "p95_ms": 8.43,
+            "p99_ms": 54.72,
+            "p999_ms": 128.33,
+            "max_ms": 257.17,
+            "mean_ms": 5.58
+          }
+        },
+        "get_case_own": {
+          "requests": 7835,
+          "latency": {
+            "n": 7835,
+            "p50_ms": 3.79,
+            "p95_ms": 7.43,
+            "p99_ms": 53.51,
+            "p999_ms": 112.03,
+            "max_ms": 160.97,
+            "mean_ms": 5.26
+          }
+        },
+        "timeline": {
+          "requests": 5283,
+          "latency": {
+            "n": 5283,
+            "p50_ms": 3.61,
+            "p95_ms": 7.55,
+            "p99_ms": 45.64,
+            "p999_ms": 106.75,
+            "max_ms": 154.2,
+            "mean_ms": 5.05
+          }
+        },
+        "notifications": {
+          "requests": 7477,
+          "latency": {
+            "n": 7477,
+            "p50_ms": 3.05,
+            "p95_ms": 5.4,
+            "p99_ms": 37.99,
+            "p999_ms": 84.56,
+            "max_ms": 150.27,
+            "mean_ms": 4.08
+          }
+        },
+        "worklist": {
+          "requests": 489,
+          "latency": {
+            "n": 489,
+            "p50_ms": 33.23,
+            "p95_ms": 75.9,
+            "p99_ms": 140.41,
+            "p999_ms": 259.25,
+            "max_ms": 296.42,
+            "mean_ms": 39.53
+          }
+        }
+      },
+      "generator_lag_ms": {
+        "p50": 0.36,
+        "p99": 1.39,
+        "max": 63.18
+      },
+      "latency_all_requests_excluding_worklist": {
+        "n": 52011,
+        "p50_ms": 4.33,
+        "p95_ms": 9.96,
+        "p99_ms": 56.85,
+        "p999_ms": 131.01,
+        "max_ms": 437.52,
+        "mean_ms": 6.17
+      },
+      "pass": true,
+      "pass_excluding_worklist": true,
+      "criteria": "p99 (all requests, from intended start) < 500 ms and error rate < 0.1%",
+      "started_at": "2026-10-30T04:56:57.903975+00:00",
+      "finished_at": "2026-10-30T05:02:13.736720+00:00",
+      "resources": {
+        "sample_period_s": 10.0,
+        "pods": {
+          "closure-api-6489f8b5df-5fd9x": {
+            "cpu_cores_mean": 0.16400086784205678,
+            "cpu_cores_max": 0.33571818170116835,
+            "cpu_cores_p95": 0.1870063049888344,
+            "memory_bytes_mean": 129355904.0,
+            "memory_bytes_max": 138010624,
+            "memory_limit_bytes": 805306368,
+            "samples": 32,
+            "cpu_throttled_periods": 15,
+            "cpu_periods": 3095,
+            "cpu_throttled_seconds": 0.298462
+          },
+          "closure-api-6489f8b5df-fhcll": {
+            "cpu_cores_mean": 0.1622943440710785,
+            "cpu_cores_max": 0.31840729139681034,
+            "cpu_cores_p95": 0.18122849508728286,
+            "memory_bytes_mean": 127186816.0,
+            "memory_bytes_max": 139161600,
+            "memory_limit_bytes": 805306368,
+            "samples": 32,
+            "cpu_throttled_periods": 9,
+            "cpu_periods": 3096,
+            "cpu_throttled_seconds": 0.106409
+          },
+          "closure-api-6489f8b5df-n89rf": {
+            "cpu_cores_mean": 0.13675743713759675,
+            "cpu_cores_max": 0.24219001359170791,
+            "cpu_cores_p95": 0.15512487243511033,
+            "memory_bytes_mean": 146572160.0,
+            "memory_bytes_max": 151920640,
+            "memory_limit_bytes": 805306368,
+            "samples": 32,
+            "cpu_throttled_periods": 14,
+            "cpu_periods": 3096,
+            "cpu_throttled_seconds": 0.14443
+          },
+          "closure-scheduler-769c98989c-7qjqd": {
+            "cpu_cores_mean": 0.0041328862914780514,
+            "cpu_cores_max": 0.009145702125253877,
+            "cpu_cores_p95": 0.00767792918994255,
+            "memory_bytes_mean": 24633088.0,
+            "memory_bytes_max": 29073408,
+            "memory_limit_bytes": 134217728,
+            "samples": 32,
+            "cpu_throttled_periods": 12,
+            "cpu_periods": 283,
+            "cpu_throttled_seconds": 0.489394
+          },
+          "closure-scheduler-769c98989c-dwpqj": {
+            "cpu_cores_mean": 0.0039336860021245935,
+            "cpu_cores_max": 0.008421616912385202,
+            "cpu_cores_p95": 0.007881477653059552,
+            "memory_bytes_mean": 24169856.0,
+            "memory_bytes_max": 27901952,
+            "memory_limit_bytes": 134217728,
+            "samples": 32,
+            "cpu_throttled_periods": 17,
+            "cpu_periods": 387,
+            "cpu_throttled_seconds": 1.09429
+          },
+          "postgres-0": {
+            "cpu_cores_mean": 0.20136837712240102,
+            "cpu_cores_max": 0.32702130637286636,
+            "cpu_cores_p95": 0.2749362728443501,
+            "memory_bytes_mean": 3219028480.0,
+            "memory_bytes_max": 3220930560,
+            "memory_limit_bytes": 3221225472,
+            "samples": 32,
+            "cpu_throttled_periods": 0,
+            "cpu_periods": 0,
+            "cpu_throttled_seconds": 0.0
+          }
+        },
+        "nodes": {
+          "sc-m76-control-plane": {
+            "cpu_percent_mean": 10.464375,
+            "cpu_percent_max": 25.25,
+            "mem_usage_last": "1.089GiB / 7.748GiB",
+            "samples": 32
+          },
+          "sc-m76-worker": {
+            "cpu_percent_mean": 32.8828125,
+            "cpu_percent_max": 129.32,
+            "mem_usage_last": "1.894GiB / 7.748GiB",
+            "samples": 32
+          },
+          "sc-m76-worker2": {
+            "cpu_percent_mean": 31.6540625,
+            "cpu_percent_max": 62.08,
+            "mem_usage_last": "665.5MiB / 7.748GiB",
+            "samples": 32
+          }
+        }
+      },
+      "request_distribution_per_pod": {
+        "closure-api-6489f8b5df-5fd9x": {
+          "total": 66,
+          "by_route": {
+            "GET /cases/{id}": 25,
+            "GET /cases/{id}/timeline": 9,
+            "POST /cases/{id}/events": 12,
+            "GET /cases/{id}/notifications": 10,
+            "POST /cases": 10
+          },
+          "share": 0.0042411001156663665
+        },
+        "closure-api-6489f8b5df-fhcll": {
+          "total": 67,
+          "by_route": {
+            "GET /cases/{id}/notifications": 10,
+            "GET /cases/{id}": 22,
+            "GET /cases/{id}/timeline": 6,
+            "POST /cases/{id}/events": 22,
+            "POST /cases": 7
+          },
+          "share": 0.004305359208327978
+        },
+        "closure-api-6489f8b5df-n89rf": {
+          "total": 15429,
+          "by_route": {
+            "GET /cases/{id}": 5297,
+            "POST /cases": 1818,
+            "POST /cases/{id}/events": 4422,
+            "GET /cases/{id}/notifications": 2203,
+            "GET /cases": 154,
+            "GET /cases/{id}/timeline": 1535
+          },
+          "share": 0.9914535406760057
+        }
+      },
+      "scheduler_during_stage": {
+        "sweep_duration": {
+          "n": 6,
+          "mean_s": 22.973,
+          "p50_s": 21.094,
+          "p95_s": 50.47,
+          "max_s": 53.227
+        },
+        "automation_scan_duration": {
+          "n": 10,
+          "mean_s": 25.584,
+          "p50_s": 21.251,
+          "p95_s": 65.534,
+          "max_s": 74.855
+        },
+        "evidence_scan_duration": {
+          "n": 7,
+          "mean_s": 21.105,
+          "p50_s": 11.031,
+          "p95_s": 49.579,
+          "max_s": 52.488
+        },
+        "sweep_to_sweep_period": {
+          "n": 5,
+          "mean_s": 50.553,
+          "p50_s": 42.757,
+          "p95_s": 111.919,
+          "max_s": 127.023
+        },
+        "interval_setting_s": 10.0,
+        "note": "sweep_duration = time between the outbox-drain and sweep access-log lines (the sweep runs between them); period = gap between consecutive sweep completions (interval + all loop work)"
+      },
+      "cases_created_by_run": 6576,
+      "label": "watchdog_on_as_deployed"
+    },
+    {
+      "target_rate_per_s": 200.0,
+      "warmup_s": 15.0,
+      "duration_s": 300.0,
+      "issued_total": 63000,
+      "unfinished_after_45s": 0,
+      "measured_requests": 60000,
+      "achieved_rate_per_s": 200.0,
+      "errors": 0,
+      "error_rate": 0.0,
+      "errors_by_status": {},
+      "latency_2xx": {
+        "n": 60000,
+        "p50_ms": 4.26,
+        "p95_ms": 18.4,
+        "p99_ms": 77.09,
+        "p999_ms": 181.99,
+        "max_ms": 504.33,
+        "mean_ms": 7.21
+      },
+      "latency_all_requests": {
+        "n": 60000,
+        "p50_ms": 4.26,
+        "p95_ms": 18.4,
+        "p99_ms": 77.09,
+        "p999_ms": 181.99,
+        "max_ms": 504.33,
+        "mean_ms": 7.21
+      },
+      "per_endpoint": {
+        "GET /cases/{id}": {
+          "requests": 21015,
+          "errors": 0,
+          "latency": {
+            "n": 21015,
+            "p50_ms": 3.73,
+            "p95_ms": 10.55,
+            "p99_ms": 71.01,
+            "p999_ms": 134.72,
+            "max_ms": 235.73,
+            "mean_ms": 5.91
+          },
+          "service_latency": {
+            "n": 21015,
+            "p50_ms": 3.5,
+            "p95_ms": 10.25,
+            "p99_ms": 60.36,
+            "p999_ms": 130.48,
+            "max_ms": 226.33,
+            "mean_ms": 5.53
+          }
+        },
+        "GET /cases/{id}/notifications": {
+          "requests": 8396,
+          "errors": 0,
+          "latency": {
+            "n": 8396,
+            "p50_ms": 2.91,
+            "p95_ms": 8.14,
+            "p99_ms": 53.3,
+            "p999_ms": 96.7,
+            "max_ms": 175.45,
+            "mean_ms": 4.54
+          },
+          "service_latency": {
+            "n": 8396,
+            "p50_ms": 2.68,
+            "p95_ms": 7.65,
+            "p99_ms": 41.74,
+            "p999_ms": 87.06,
+            "max_ms": 175.16,
+            "mean_ms": 4.1
+          }
+        },
+        "GET /cases/{id}/timeline": {
+          "requests": 6082,
+          "errors": 0,
+          "latency": {
+            "n": 6082,
+            "p50_ms": 3.48,
+            "p95_ms": 9.71,
+            "p99_ms": 66.53,
+            "p999_ms": 116.92,
+            "max_ms": 161.41,
+            "mean_ms": 5.52
+          },
+          "service_latency": {
+            "n": 6082,
+            "p50_ms": 3.25,
+            "p95_ms": 9.41,
+            "p99_ms": 54.23,
+            "p999_ms": 102.69,
+            "max_ms": 161.2,
+            "mean_ms": 5.09
+          }
+        },
+        "GET /cases?state=": {
+          "requests": 653,
+          "errors": 0,
+          "latency": {
+            "n": 653,
+            "p50_ms": 35.23,
+            "p95_ms": 89.14,
+            "p99_ms": 233.89,
+            "p999_ms": 492.43,
+            "max_ms": 504.33,
+            "mean_ms": 46.12
+          },
+          "service_latency": {
+            "n": 653,
+            "p50_ms": 35.05,
+            "p95_ms": 88.92,
+            "p99_ms": 233.7,
+            "p999_ms": 492.33,
+            "max_ms": 504.2,
+            "mean_ms": 45.85
+          }
+        },
+        "POST /cases": {
+          "requests": 7107,
+          "errors": 0,
+          "latency": {
+            "n": 7107,
+            "p50_ms": 6.07,
+            "p95_ms": 18.48,
+            "p99_ms": 99.59,
+            "p999_ms": 197.59,
+            "max_ms": 271.18,
+            "mean_ms": 9.41
+          },
+          "service_latency": {
+            "n": 7107,
+            "p50_ms": 5.81,
+            "p95_ms": 17.82,
+            "p99_ms": 89.75,
+            "p999_ms": 194.11,
+            "max_ms": 270.92,
+            "mean_ms": 9.0
+          }
+        },
+        "POST /cases/{id}/events": {
+          "requests": 16747,
+          "errors": 0,
+          "latency": {
+            "n": 16747,
+            "p50_ms": 5.35,
+            "p95_ms": 15.03,
+            "p99_ms": 86.48,
+            "p999_ms": 199.38,
+            "max_ms": 330.24,
+            "mean_ms": 8.35
+          },
+          "service_latency": {
+            "n": 16747,
+            "p50_ms": 5.11,
+            "p95_ms": 14.47,
+            "p99_ms": 77.27,
+            "p999_ms": 182.49,
+            "max_ms": 330.13,
+            "mean_ms": 7.92
+          }
+        }
+      },
+      "per_operation": {
+        "create_case": {
+          "requests": 7107,
+          "latency": {
+            "n": 7107,
+            "p50_ms": 6.07,
+            "p95_ms": 18.48,
+            "p99_ms": 99.59,
+            "p999_ms": 197.59,
+            "max_ms": 271.18,
+            "mean_ms": 9.41
+          }
+        },
+        "post_event": {
+          "requests": 16747,
+          "latency": {
+            "n": 16747,
+            "p50_ms": 5.35,
+            "p95_ms": 15.03,
+            "p99_ms": 86.48,
+            "p999_ms": 199.38,
+            "max_ms": 330.24,
+            "mean_ms": 8.35
+          }
+        },
+        "get_case_seeded": {
+          "requests": 12066,
+          "latency": {
+            "n": 12066,
+            "p50_ms": 3.76,
+            "p95_ms": 11.15,
+            "p99_ms": 72.39,
+            "p999_ms": 141.0,
+            "max_ms": 235.73,
+            "mean_ms": 6.11
+          }
+        },
+        "get_case_own": {
+          "requests": 8949,
+          "latency": {
+            "n": 8949,
+            "p50_ms": 3.68,
+            "p95_ms": 9.95,
+            "p99_ms": 61.62,
+            "p999_ms": 119.91,
+            "max_ms": 229.64,
+            "mean_ms": 5.65
+          }
+        },
+        "timeline": {
+          "requests": 6082,
+          "latency": {
+            "n": 6082,
+            "p50_ms": 3.48,
+            "p95_ms": 9.71,
+            "p99_ms": 66.53,
+            "p999_ms": 116.92,
+            "max_ms": 161.41,
+            "mean_ms": 5.52
+          }
+        },
+        "notifications": {
+          "requests": 8396,
+          "latency": {
+            "n": 8396,
+            "p50_ms": 2.91,
+            "p95_ms": 8.14,
+            "p99_ms": 53.3,
+            "p999_ms": 96.7,
+            "max_ms": 175.45,
+            "mean_ms": 4.54
+          }
+        },
+        "worklist": {
+          "requests": 653,
+          "latency": {
+            "n": 653,
+            "p50_ms": 35.23,
+            "p95_ms": 89.14,
+            "p99_ms": 233.89,
+            "p999_ms": 492.43,
+            "max_ms": 504.33,
+            "mean_ms": 46.12
+          }
+        }
+      },
+      "generator_lag_ms": {
+        "p50": 0.21,
+        "p99": 2.14,
+        "max": 76.05
+      },
+      "latency_all_requests_excluding_worklist": {
+        "n": 59347,
+        "p50_ms": 4.23,
+        "p95_ms": 12.64,
+        "p99_ms": 74.77,
+        "p999_ms": 170.6,
+        "max_ms": 330.24,
+        "mean_ms": 6.78
+      },
+      "pass": true,
+      "pass_excluding_worklist": true,
+      "criteria": "p99 (all requests, from intended start) < 500 ms and error rate < 0.1%",
+      "started_at": "2026-10-30T05:02:15.737538+00:00",
+      "finished_at": "2026-10-30T05:07:31.674294+00:00",
+      "resources": {
+        "sample_period_s": 10.0,
+        "pods": {
+          "closure-api-6489f8b5df-5fd9x": {
+            "cpu_cores_mean": 0.1912454825358904,
+            "cpu_cores_max": 0.35025479866156856,
+            "cpu_cores_p95": 0.23119570821058205,
+            "memory_bytes_mean": 141665536.0,
+            "memory_bytes_max": 150237184,
+            "memory_limit_bytes": 805306368,
+            "samples": 32,
+            "cpu_throttled_periods": 41,
+            "cpu_periods": 3099,
+            "cpu_throttled_seconds": 0.644192
+          },
+          "closure-api-6489f8b5df-fhcll": {
+            "cpu_cores_mean": 0.20798359641311304,
+            "cpu_cores_max": 0.3703137240867635,
+            "cpu_cores_p95": 0.23866869218375697,
+            "memory_bytes_mean": 137214080.0,
+            "memory_bytes_max": 144719872,
+            "memory_limit_bytes": 805306368,
+            "samples": 32,
+            "cpu_throttled_periods": 37,
+            "cpu_periods": 3093,
+            "cpu_throttled_seconds": 0.815094
+          },
+          "closure-api-6489f8b5df-n89rf": {
+            "cpu_cores_mean": 0.15213345522651925,
+            "cpu_cores_max": 0.2840326798647177,
+            "cpu_cores_p95": 0.1869705613823867,
+            "memory_bytes_mean": 154718976.0,
+            "memory_bytes_max": 162762752,
+            "memory_limit_bytes": 805306368,
+            "samples": 32,
+            "cpu_throttled_periods": 11,
+            "cpu_periods": 3099,
+            "cpu_throttled_seconds": 0.067656
+          },
+          "closure-scheduler-769c98989c-7qjqd": {
+            "cpu_cores_mean": 0.004296772440173521,
+            "cpu_cores_max": 0.008623790245216164,
+            "cpu_cores_p95": 0.00778178882409616,
+            "memory_bytes_mean": 24400896.0,
+            "memory_bytes_max": 27672576,
+            "memory_limit_bytes": 134217728,
+            "samples": 32,
+            "cpu_throttled_periods": 11,
+            "cpu_periods": 267,
+            "cpu_throttled_seconds": 0.219517
+          },
+          "closure-scheduler-769c98989c-dwpqj": {
+            "cpu_cores_mean": 0.00436382962557197,
+            "cpu_cores_max": 0.009741483193191113,
+            "cpu_cores_p95": 0.007912038152732215,
+            "memory_bytes_mean": 22573696.0,
+            "memory_bytes_max": 26857472,
+            "memory_limit_bytes": 134217728,
+            "samples": 32,
+            "cpu_throttled_periods": 18,
+            "cpu_periods": 393,
+            "cpu_throttled_seconds": 1.098162
+          },
+          "postgres-0": {
+            "cpu_cores_mean": 0.22703041104525462,
+            "cpu_cores_max": 0.31766896368017356,
+            "cpu_cores_p95": 0.279317445111793,
+            "memory_bytes_mean": 3217783936.0,
+            "memory_bytes_max": 3220910080,
+            "memory_limit_bytes": 3221225472,
+            "samples": 32,
+            "cpu_throttled_periods": 0,
+            "cpu_periods": 0,
+            "cpu_throttled_seconds": 0.0
+          }
+        },
+        "nodes": {
+          "sc-m76-control-plane": {
+            "cpu_percent_mean": 6.14125,
+            "cpu_percent_max": 9.68,
+            "mem_usage_last": "1.087GiB / 7.748GiB",
+            "samples": 32
+          },
+          "sc-m76-worker": {
+            "cpu_percent_mean": 37.1246875,
+            "cpu_percent_max": 118.91,
+            "mem_usage_last": "1.899GiB / 7.748GiB",
+            "samples": 32
+          },
+          "sc-m76-worker2": {
+            "cpu_percent_mean": 41.7525,
+            "cpu_percent_max": 89.08,
+            "mem_usage_last": "680.2MiB / 7.748GiB",
+            "samples": 32
+          }
+        }
+      },
+      "request_distribution_per_pod": {
+        "closure-api-6489f8b5df-5fd9x": {
+          "total": 20600,
+          "by_route": {
+            "GET /cases/{id}/timeline": 2113,
+            "GET /cases/{id}": 7250,
+            "POST /cases/{id}/events": 5688,
+            "GET /cases/{id}/notifications": 2934,
+            "POST /cases": 2394,
+            "GET /cases": 221
+          },
+          "share": 0.3665415206135122
+        },
+        "closure-api-6489f8b5df-fhcll": {
+          "total": 23399,
+          "by_route": {
+            "POST /cases/{id}/events": 6554,
+            "GET /cases/{id}/notifications": 3264,
+            "GET /cases/{id}": 8170,
+            "POST /cases": 2737,
+            "GET /cases": 250,
+            "GET /cases/{id}/timeline": 2424
+          },
+          "share": 0.4163449048949307
+        },
+        "closure-api-6489f8b5df-n89rf": {
+          "total": 12202,
+          "by_route": {
+            "GET /cases/{id}/notifications": 1648,
+            "POST /cases/{id}/events": 3460,
+            "GET /cases/{id}": 4256,
+            "POST /cases": 1537,
+            "GET /cases/{id}/timeline": 1166,
+            "GET /cases": 135
+          },
+          "share": 0.21711357449155708
+        }
+      },
+      "scheduler_during_stage": {
+        "sweep_duration": {
+          "n": 26,
+          "mean_s": 0.247,
+          "p50_s": 0.13,
+          "p95_s": 0.793,
+          "max_s": 0.878
+        },
+        "automation_scan_duration": {
+          "n": 25,
+          "mean_s": 1.314,
+          "p50_s": 0.475,
+          "p95_s": 8.781,
+          "max_s": 10.871
+        },
+        "evidence_scan_duration": {
+          "n": 25,
+          "mean_s": 0.009,
+          "p50_s": 0.004,
+          "p95_s": 0.041,
+          "max_s": 0.045
+        },
+        "sweep_to_sweep_period": {
+          "n": 25,
+          "mean_s": 11.171,
+          "p50_s": 10.65,
+          "p95_s": 11.337,
+          "max_s": 20.987
+        },
+        "interval_setting_s": 10.0,
+        "note": "sweep_duration = time between the outbox-drain and sweep access-log lines (the sweep runs between them); period = gap between consecutive sweep completions (interval + all loop work)"
+      },
+      "cases_created_by_run": 7484,
+      "label": "watchdog_on_as_deployed"
+    },
+    {
+      "target_rate_per_s": 250.0,
+      "warmup_s": 15.0,
+      "duration_s": 300.0,
+      "issued_total": 78750,
+      "unfinished_after_45s": 0,
+      "measured_requests": 75000,
+      "achieved_rate_per_s": 250.0,
+      "errors": 0,
+      "error_rate": 0.0,
+      "errors_by_status": {},
+      "latency_2xx": {
+        "n": 75000,
+        "p50_ms": 4.59,
+        "p95_ms": 34.19,
+        "p99_ms": 135.82,
+        "p999_ms": 301.72,
+        "max_ms": 1530.18,
+        "mean_ms": 9.91
+      },
+      "latency_all_requests": {
+        "n": 75000,
+        "p50_ms": 4.59,
+        "p95_ms": 34.19,
+        "p99_ms": 135.82,
+        "p999_ms": 301.72,
+        "max_ms": 1530.18,
+        "mean_ms": 9.91
+      },
+      "per_endpoint": {
+        "GET /cases/{id}": {
+          "requests": 26246,
+          "errors": 0,
+          "latency": {
+            "n": 26246,
+            "p50_ms": 3.88,
+            "p95_ms": 26.18,
+            "p99_ms": 113.67,
+            "p999_ms": 218.79,
+            "max_ms": 457.34,
+            "mean_ms": 8.24
+          },
+          "service_latency": {
+            "n": 26246,
+            "p50_ms": 3.43,
+            "p95_ms": 24.57,
+            "p99_ms": 107.01,
+            "p999_ms": 213.49,
+            "max_ms": 457.21,
+            "mean_ms": 7.61
+          }
+        },
+        "GET /cases/{id}/notifications": {
+          "requests": 10469,
+          "errors": 0,
+          "latency": {
+            "n": 10469,
+            "p50_ms": 3.11,
+            "p95_ms": 19.64,
+            "p99_ms": 77.97,
+            "p999_ms": 135.54,
+            "max_ms": 283.2,
+            "mean_ms": 6.03
+          },
+          "service_latency": {
+            "n": 10469,
+            "p50_ms": 2.64,
+            "p95_ms": 18.04,
+            "p99_ms": 67.1,
+            "p999_ms": 127.07,
+            "max_ms": 246.02,
+            "mean_ms": 5.36
+          }
+        },
+        "GET /cases/{id}/timeline": {
+          "requests": 7507,
+          "errors": 0,
+          "latency": {
+            "n": 7507,
+            "p50_ms": 3.66,
+            "p95_ms": 19.67,
+            "p99_ms": 101.64,
+            "p999_ms": 185.81,
+            "max_ms": 392.29,
+            "mean_ms": 7.34
+          },
+          "service_latency": {
+            "n": 7507,
+            "p50_ms": 3.19,
+            "p95_ms": 18.6,
+            "p99_ms": 96.73,
+            "p999_ms": 175.03,
+            "max_ms": 392.12,
+            "mean_ms": 6.72
+          }
+        },
+        "GET /cases?state=": {
+          "requests": 731,
+          "errors": 0,
+          "latency": {
+            "n": 731,
+            "p50_ms": 35.58,
+            "p95_ms": 113.45,
+            "p99_ms": 503.11,
+            "p999_ms": 1197.18,
+            "max_ms": 1530.18,
+            "mean_ms": 56.71
+          },
+          "service_latency": {
+            "n": 731,
+            "p50_ms": 35.16,
+            "p95_ms": 113.24,
+            "p99_ms": 502.56,
+            "p999_ms": 1197.1,
+            "max_ms": 1530.08,
+            "mean_ms": 56.11
+          }
+        },
+        "POST /cases": {
+          "requests": 9128,
+          "errors": 0,
+          "latency": {
+            "n": 9128,
+            "p50_ms": 6.1,
+            "p95_ms": 38.44,
+            "p99_ms": 179.16,
+            "p999_ms": 335.74,
+            "max_ms": 594.57,
+            "mean_ms": 12.92
+          },
+          "service_latency": {
+            "n": 9128,
+            "p50_ms": 5.63,
+            "p95_ms": 37.02,
+            "p99_ms": 170.95,
+            "p999_ms": 335.38,
+            "max_ms": 594.3,
+            "mean_ms": 12.24
+          }
+        },
+        "POST /cases/{id}/events": {
+          "requests": 20919,
+          "errors": 0,
+          "latency": {
+            "n": 20919,
+            "p50_ms": 5.62,
+            "p95_ms": 33.24,
+            "p99_ms": 173.46,
+            "p999_ms": 340.47,
+            "max_ms": 623.12,
+            "mean_ms": 11.93
+          },
+          "service_latency": {
+            "n": 20919,
+            "p50_ms": 5.11,
+            "p95_ms": 31.66,
+            "p99_ms": 166.78,
+            "p999_ms": 332.29,
+            "max_ms": 622.45,
+            "mean_ms": 11.23
+          }
+        }
+      },
+      "per_operation": {
+        "create_case": {
+          "requests": 9128,
+          "latency": {
+            "n": 9128,
+            "p50_ms": 6.1,
+            "p95_ms": 38.44,
+            "p99_ms": 179.16,
+            "p999_ms": 335.74,
+            "max_ms": 594.57,
+            "mean_ms": 12.92
+          }
+        },
+        "post_event": {
+          "requests": 20919,
+          "latency": {
+            "n": 20919,
+            "p50_ms": 5.62,
+            "p95_ms": 33.24,
+            "p99_ms": 173.46,
+            "p999_ms": 340.47,
+            "max_ms": 623.12,
+            "mean_ms": 11.93
+          }
+        },
+        "get_case_seeded": {
+          "requests": 15101,
+          "latency": {
+            "n": 15101,
+            "p50_ms": 3.92,
+            "p95_ms": 23.74,
+            "p99_ms": 114.04,
+            "p999_ms": 226.14,
+            "max_ms": 451.09,
+            "mean_ms": 8.23
+          }
+        },
+        "get_case_own": {
+          "requests": 11145,
+          "latency": {
+            "n": 11145,
+            "p50_ms": 3.83,
+            "p95_ms": 29.31,
+            "p99_ms": 113.2,
+            "p999_ms": 217.77,
+            "max_ms": 457.34,
+            "mean_ms": 8.25
+          }
+        },
+        "timeline": {
+          "requests": 7507,
+          "latency": {
+            "n": 7507,
+            "p50_ms": 3.66,
+            "p95_ms": 19.67,
+            "p99_ms": 101.64,
+            "p999_ms": 185.81,
+            "max_ms": 392.29,
+            "mean_ms": 7.34
+          }
+        },
+        "notifications": {
+          "requests": 10469,
+          "latency": {
+            "n": 10469,
+            "p50_ms": 3.11,
+            "p95_ms": 19.64,
+            "p99_ms": 77.97,
+            "p999_ms": 135.54,
+            "max_ms": 283.2,
+            "mean_ms": 6.03
+          }
+        },
+        "worklist": {
+          "requests": 731,
+          "latency": {
+            "n": 731,
+            "p50_ms": 35.58,
+            "p95_ms": 113.45,
+            "p99_ms": 503.11,
+            "p999_ms": 1197.18,
+            "max_ms": 1530.18,
+            "mean_ms": 56.71
+          }
+        }
+      },
+      "generator_lag_ms": {
+        "p50": 0.38,
+        "p99": 2.46,
+        "max": 62.92
+      },
+      "latency_all_requests_excluding_worklist": {
+        "n": 74269,
+        "p50_ms": 4.56,
+        "p95_ms": 27.34,
+        "p99_ms": 133.77,
+        "p999_ms": 269.14,
+        "max_ms": 623.12,
+        "mean_ms": 9.45
+      },
+      "pass": true,
+      "pass_excluding_worklist": true,
+      "criteria": "p99 (all requests, from intended start) < 500 ms and error rate < 0.1%",
+      "started_at": "2026-10-30T05:07:33.807682+00:00",
+      "finished_at": "2026-10-30T05:12:49.977117+00:00",
+      "resources": {
+        "sample_period_s": 10.0,
+        "pods": {
+          "closure-api-6489f8b5df-5fd9x": {
+            "cpu_cores_mean": 0.2345381962825513,
+            "cpu_cores_max": 0.37404551323111584,
+            "cpu_cores_p95": 0.3112917602194114,
+            "memory_bytes_mean": 155239040.0,
+            "memory_bytes_max": 166801408,
+            "memory_limit_bytes": 805306368,
+            "samples": 32,
+            "cpu_throttled_periods": 80,
+            "cpu_periods": 3095,
+            "cpu_throttled_seconds": 2.756118
+          },
+          "closure-api-6489f8b5df-fhcll": {
+            "cpu_cores_mean": 0.22143585849694788,
+            "cpu_cores_max": 0.40065577432005695,
+            "cpu_cores_p95": 0.2746295059769991,
+            "memory_bytes_mean": 154533632.0,
+            "memory_bytes_max": 164569088,
+            "memory_limit_bytes": 805306368,
+            "samples": 32,
+            "cpu_throttled_periods": 75,
+            "cpu_periods": 3095,
+            "cpu_throttled_seconds": 1.545249
+          },
+          "closure-api-6489f8b5df-n89rf": {
+            "cpu_cores_mean": 0.2571213005992513,
+            "cpu_cores_max": 0.40090531725228395,
+            "cpu_cores_p95": 0.3159042847937854,
+            "memory_bytes_mean": 168720384.0,
+            "memory_bytes_max": 181538816,
+            "memory_limit_bytes": 805306368,
+            "samples": 32,
+            "cpu_throttled_periods": 93,
+            "cpu_periods": 3094,
+            "cpu_throttled_seconds": 2.636266
+          },
+          "closure-scheduler-769c98989c-7qjqd": {
+            "cpu_cores_mean": 0.004413439662103982,
+            "cpu_cores_max": 0.009779233809726532,
+            "cpu_cores_p95": 0.008109843638077964,
+            "memory_bytes_mean": 23380352.0,
+            "memory_bytes_max": 29196288,
+            "memory_limit_bytes": 134217728,
+            "samples": 32,
+            "cpu_throttled_periods": 14,
+            "cpu_periods": 282,
+            "cpu_throttled_seconds": 0.496079
+          },
+          "closure-scheduler-769c98989c-dwpqj": {
+            "cpu_cores_mean": 0.004328254430205521,
+            "cpu_cores_max": 0.00913959347174624,
+            "cpu_cores_p95": 0.008573581772111769,
+            "memory_bytes_mean": 23407744.0,
+            "memory_bytes_max": 28340224,
+            "memory_limit_bytes": 134217728,
+            "samples": 32,
+            "cpu_throttled_periods": 17,
+            "cpu_periods": 399,
+            "cpu_throttled_seconds": 1.248057
+          },
+          "postgres-0": {
+            "cpu_cores_mean": 0.26655415312270864,
+            "cpu_cores_max": 0.35557316066622485,
+            "cpu_cores_p95": 0.3500654273757572,
+            "memory_bytes_mean": 3211421440.0,
+            "memory_bytes_max": 3220955136,
+            "memory_limit_bytes": 3221225472,
+            "samples": 32,
+            "cpu_throttled_periods": 0,
+            "cpu_periods": 0,
+            "cpu_throttled_seconds": 0.0
+          }
+        },
+        "nodes": {
+          "sc-m76-control-plane": {
+            "cpu_percent_mean": 7.576875,
+            "cpu_percent_max": 13.16,
+            "mem_usage_last": "1.091GiB / 7.748GiB",
+            "samples": 32
+          },
+          "sc-m76-worker": {
+            "cpu_percent_mean": 69.435625,
+            "cpu_percent_max": 157.47,
+            "mem_usage_last": "1.904GiB / 7.748GiB",
+            "samples": 32
+          },
+          "sc-m76-worker2": {
+            "cpu_percent_mean": 55.6628125,
+            "cpu_percent_max": 121.73,
+            "mem_usage_last": "705.4MiB / 7.748GiB",
+            "samples": 32
+          }
+        }
+      },
+      "request_distribution_per_pod": {
+        "closure-api-6489f8b5df-5fd9x": {
+          "total": 8610,
+          "by_route": {
+            "GET /cases/{id}/timeline": 862,
+            "POST /cases": 1006,
+            "POST /cases/{id}/events": 2486,
+            "GET /cases/{id}": 2967,
+            "GET /cases/{id}/notifications": 1207,
+            "GET /cases": 82
+          },
+          "share": 0.44715658270579073
+        },
+        "closure-api-6489f8b5df-fhcll": {
+          "total": 9113,
+          "by_route": {
+            "GET /cases/{id}": 3226,
+            "POST /cases/{id}/events": 2517,
+            "POST /cases": 1114,
+            "GET /cases/{id}/timeline": 882,
+            "GET /cases/{id}/notifications": 1288,
+            "GET /cases": 86
+          },
+          "share": 0.4732796676188003
+        },
+        "closure-api-6489f8b5df-n89rf": {
+          "total": 1532,
+          "by_route": {
+            "GET /cases/{id}": 513,
+            "GET /cases/{id}/notifications": 217,
+            "POST /cases/{id}/events": 421,
+            "POST /cases": 196,
+            "GET /cases/{id}/timeline": 165,
+            "GET /cases": 20
+          },
+          "share": 0.07956374967540898
+        }
+      },
+      "scheduler_during_stage": {
+        "sweep_duration": {
+          "n": 6,
+          "mean_s": 3.867,
+          "p50_s": 0.156,
+          "p95_s": 11.319,
+          "max_s": 11.319
+        },
+        "automation_scan_duration": {
+          "n": 6,
+          "mean_s": 4.652,
+          "p50_s": 1.097,
+          "p95_s": 12.111,
+          "max_s": 12.26
+        },
+        "evidence_scan_duration": {
+          "n": 6,
+          "mean_s": 5.595,
+          "p50_s": 0.006,
+          "p95_s": 19.63,
+          "max_s": 22.486
+        },
+        "sweep_to_sweep_period": {
+          "n": 6,
+          "mean_s": 14.842,
+          "p50_s": 11.278,
+          "p95_s": 22.267,
+          "max_s": 22.407
+        },
+        "interval_setting_s": 10.0,
+        "note": "sweep_duration = time between the outbox-drain and sweep access-log lines (the sweep runs between them); period = gap between consecutive sweep completions (interval + all loop work)"
+      },
+      "cases_created_by_run": 9598,
+      "label": "watchdog_on_as_deployed"
+    },
+    {
+      "target_rate_per_s": 300.0,
+      "warmup_s": 15.0,
+      "duration_s": 300.0,
+      "issued_total": 94500,
+      "unfinished_after_45s": 0,
+      "measured_requests": 90000,
+      "achieved_rate_per_s": 300.0,
+      "errors": 15869,
+      "error_rate": 0.1763222222222222,
+      "errors_by_status": {
+        "RemoteProtocolError": 8252,
+        "ReadTimeout": 7107,
+        "ReadError": 510
+      },
+      "latency_2xx": {
+        "n": 74131,
+        "p50_ms": 2897.11,
+        "p95_ms": 18385.28,
+        "p99_ms": 25048.26,
+        "p999_ms": 29405.25,
+        "max_ms": 33556.67,
+        "mean_ms": 5234.71
+      },
+      "latency_all_requests": {
+        "n": 90000,
+        "p50_ms": 2840.18,
+        "p95_ms": 30002.49,
+        "p99_ms": 30078.6,
+        "p999_ms": 32027.1,
+        "max_ms": 35107.95,
+        "mean_ms": 6703.27
+      },
+      "per_endpoint": {
+        "GET /cases/{id}": {
+          "requests": 31679,
+          "errors": 5648,
+          "latency": {
+            "n": 26031,
+            "p50_ms": 2947.21,
+            "p95_ms": 19351.92,
+            "p99_ms": 24835.53,
+            "p999_ms": 29240.42,
+            "max_ms": 30393.35,
+            "mean_ms": 5310.44
+          },
+          "service_latency": {
+            "n": 26031,
+            "p50_ms": 2946.29,
+            "p95_ms": 19347.12,
+            "p99_ms": 24834.96,
+            "p999_ms": 29239.75,
+            "max_ms": 30392.89,
+            "mean_ms": 5309.22
+          }
+        },
+        "GET /cases/{id}/notifications": {
+          "requests": 12711,
+          "errors": 2225,
+          "latency": {
+            "n": 10486,
+            "p50_ms": 2713.41,
+            "p95_ms": 18948.06,
+            "p99_ms": 24578.91,
+            "p999_ms": 29248.51,
+            "max_ms": 33556.67,
+            "mean_ms": 5135.27
+          },
+          "service_latency": {
+            "n": 10486,
+            "p50_ms": 2711.35,
+            "p95_ms": 18946.97,
+            "p99_ms": 24578.38,
+            "p999_ms": 29248.1,
+            "max_ms": 33556.0,
+            "mean_ms": 5133.92
+          }
+        },
+        "GET /cases/{id}/timeline": {
+          "requests": 9063,
+          "errors": 1613,
+          "latency": {
+            "n": 7450,
+            "p50_ms": 2808.15,
+            "p95_ms": 18972.11,
+            "p99_ms": 25255.97,
+            "p999_ms": 29304.41,
+            "max_ms": 32231.98,
+            "mean_ms": 5166.8
+          },
+          "service_latency": {
+            "n": 7450,
+            "p50_ms": 2807.65,
+            "p95_ms": 18971.75,
+            "p99_ms": 25255.63,
+            "p999_ms": 29304.03,
+            "max_ms": 32224.36,
+            "mean_ms": 5165.34
+          }
+        },
+        "GET /cases?state=": {
+          "requests": 891,
+          "errors": 163,
+          "latency": {
+            "n": 728,
+            "p50_ms": 7821.73,
+            "p95_ms": 26202.56,
+            "p99_ms": 28554.33,
+            "p999_ms": 29209.54,
+            "max_ms": 29893.39,
+            "mean_ms": 9163.2
+          },
+          "service_latency": {
+            "n": 728,
+            "p50_ms": 7821.24,
+            "p95_ms": 26200.54,
+            "p99_ms": 28553.78,
+            "p999_ms": 29208.2,
+            "max_ms": 29893.03,
+            "mean_ms": 9162.21
+          }
+        },
+        "POST /cases": {
+          "requests": 11989,
+          "errors": 2446,
+          "latency": {
+            "n": 9543,
+            "p50_ms": 2808.08,
+            "p95_ms": 17882.21,
+            "p99_ms": 26660.9,
+            "p999_ms": 29809.85,
+            "max_ms": 31762.46,
+            "mean_ms": 5597.74
+          },
+          "service_latency": {
+            "n": 9543,
+            "p50_ms": 2807.51,
+            "p95_ms": 17880.91,
+            "p99_ms": 26660.6,
+            "p999_ms": 29809.11,
+            "max_ms": 31743.51,
+            "mean_ms": 5596.11
+          }
+        },
+        "POST /cases/{id}/events": {
+          "requests": 23667,
+          "errors": 3774,
+          "latency": {
+            "n": 19893,
+            "p50_ms": 2967.98,
+            "p95_ms": 17411.79,
+            "p99_ms": 24803.61,
+            "p999_ms": 29475.01,
+            "max_ms": 30377.48,
+            "mean_ms": 4895.55
+          },
+          "service_latency": {
+            "n": 19893,
+            "p50_ms": 2965.51,
+            "p95_ms": 17410.7,
+            "p99_ms": 24803.25,
+            "p999_ms": 29474.35,
+            "max_ms": 30376.34,
+            "mean_ms": 4894.31
+          }
+        }
+      },
+      "per_operation": {
+        "create_case": {
+          "requests": 11989,
+          "latency": {
+            "n": 9543,
+            "p50_ms": 2808.08,
+            "p95_ms": 17882.21,
+            "p99_ms": 26660.9,
+            "p999_ms": 29809.85,
+            "max_ms": 31762.46,
+            "mean_ms": 5597.74
+          }
+        },
+        "post_event": {
+          "requests": 23667,
+          "latency": {
+            "n": 19893,
+            "p50_ms": 2967.98,
+            "p95_ms": 17411.79,
+            "p99_ms": 24803.61,
+            "p999_ms": 29475.01,
+            "max_ms": 30377.48,
+            "mean_ms": 4895.55
+          }
+        },
+        "get_case_seeded": {
+          "requests": 18107,
+          "latency": {
+            "n": 14889,
+            "p50_ms": 2945.38,
+            "p95_ms": 19446.32,
+            "p99_ms": 24750.2,
+            "p999_ms": 29243.97,
+            "max_ms": 29983.5,
+            "mean_ms": 5312.1
+          }
+        },
+        "get_case_own": {
+          "requests": 13572,
+          "latency": {
+            "n": 11142,
+            "p50_ms": 2951.42,
+            "p95_ms": 19202.08,
+            "p99_ms": 24883.9,
+            "p999_ms": 29204.33,
+            "max_ms": 30393.35,
+            "mean_ms": 5308.21
+          }
+        },
+        "timeline": {
+          "requests": 9063,
+          "latency": {
+            "n": 7450,
+            "p50_ms": 2808.15,
+            "p95_ms": 18972.11,
+            "p99_ms": 25255.97,
+            "p999_ms": 29304.41,
+            "max_ms": 32231.98,
+            "mean_ms": 5166.8
+          }
+        },
+        "notifications": {
+          "requests": 12711,
+          "latency": {
+            "n": 10486,
+            "p50_ms": 2713.41,
+            "p95_ms": 18948.06,
+            "p99_ms": 24578.91,
+            "p999_ms": 29248.51,
+            "max_ms": 33556.67,
+            "mean_ms": 5135.27
+          }
+        },
+        "worklist": {
+          "requests": 891,
+          "latency": {
+            "n": 728,
+            "p50_ms": 7821.73,
+            "p95_ms": 26202.56,
+            "p99_ms": 28554.33,
+            "p999_ms": 29209.54,
+            "max_ms": 29893.39,
+            "mean_ms": 9163.2
+          }
+        }
+      },
+      "generator_lag_ms": {
+        "p50": 0.41,
+        "p99": 40.12,
+        "max": 319.83
+      },
+      "latency_all_requests_excluding_worklist": {
+        "n": 89109,
+        "p50_ms": 2829.29,
+        "p95_ms": 30002.49,
+        "p99_ms": 30080.36,
+        "p999_ms": 32054.71,
+        "max_ms": 35107.95,
+        "mean_ms": 6667.67
+      },
+      "pass": false,
+      "pass_excluding_worklist": false,
+      "criteria": "p99 (all requests, from intended start) < 500 ms and error rate < 0.1%",
+      "started_at": "2026-10-30T05:12:52.021489+00:00",
+      "finished_at": "2026-10-30T05:18:11.108227+00:00",
+      "resources": {
+        "sample_period_s": 10.0,
+        "pods": {
+          "closure-api-6489f8b5df-5fd9x": {
+            "cpu_cores_mean": -0.9907246374102721,
+            "cpu_cores_max": 1.000258909048393,
+            "cpu_cores_p95": 0.9993251508021577,
+            "memory_bytes_mean": 205761536.0,
+            "memory_bytes_max": 281804800,
+            "memory_limit_bytes": 805306368,
+            "samples": 32,
+            "cpu_throttled_periods": 426,
+            "cpu_periods": -35253,
+            "cpu_throttled_seconds": 2.934697
+          },
+          "closure-api-6489f8b5df-fhcll": {
+            "cpu_cores_mean": -1.0434339251799671,
+            "cpu_cores_max": 1.0050461480573418,
+            "cpu_cores_p95": 1.000279954990055,
+            "memory_bytes_mean": 183206400.0,
+            "memory_bytes_max": 226979840,
+            "memory_limit_bytes": 805306368,
+            "samples": 32,
+            "cpu_throttled_periods": 441,
+            "cpu_periods": -35736,
+            "cpu_throttled_seconds": 2.197784
+          },
+          "closure-api-6489f8b5df-n89rf": {
+            "cpu_cores_mean": -0.9248965112796926,
+            "cpu_cores_max": 1.0033178881959535,
+            "cpu_cores_p95": 0.9994277007346595,
+            "memory_bytes_mean": 190536576.0,
+            "memory_bytes_max": 235978752,
+            "memory_limit_bytes": 805306368,
+            "samples": 32,
+            "cpu_throttled_periods": 481,
+            "cpu_periods": -36271,
+            "cpu_throttled_seconds": 37.306212
+          },
+          "closure-scheduler-769c98989c-7qjqd": {
+            "cpu_cores_mean": 0.006289040464197901,
+            "cpu_cores_max": 0.017279359651493097,
+            "cpu_cores_p95": 0.016143148563211474,
+            "memory_bytes_mean": 22352256.0,
+            "memory_bytes_max": 26849280,
+            "memory_limit_bytes": 134217728,
+            "samples": 32,
+            "cpu_throttled_periods": 35,
+            "cpu_periods": 297,
+            "cpu_throttled_seconds": 1.493929
+          },
+          "closure-scheduler-769c98989c-dwpqj": {
+            "cpu_cores_mean": 0.006186298347421506,
+            "cpu_cores_max": 0.018348417997414334,
+            "cpu_cores_p95": 0.015043708723674071,
+            "memory_bytes_mean": 22441344.0,
+            "memory_bytes_max": 27463680,
+            "memory_limit_bytes": 134217728,
+            "samples": 32,
+            "cpu_throttled_periods": 39,
+            "cpu_periods": 355,
+            "cpu_throttled_seconds": 2.481595
+          },
+          "postgres-0": {
+            "cpu_cores_mean": 0.5140557795135862,
+            "cpu_cores_max": 1.4653937423098151,
+            "cpu_cores_p95": 0.5959852552912837,
+            "memory_bytes_mean": 3101251328.0,
+            "memory_bytes_max": 3220955136,
+            "memory_limit_bytes": 3221225472,
+            "samples": 32,
+            "cpu_throttled_periods": 0,
+            "cpu_periods": 0,
+            "cpu_throttled_seconds": 0.0
+          }
+        },
+        "nodes": {
+          "sc-m76-control-plane": {
+            "cpu_percent_mean": 14.0103125,
+            "cpu_percent_max": 49.97,
+            "mem_usage_last": "1.103GiB / 7.748GiB",
+            "samples": 32
+          },
+          "sc-m76-worker": {
+            "cpu_percent_mean": 152.8421875,
+            "cpu_percent_max": 228.03,
+            "mem_usage_last": "1.906GiB / 7.748GiB",
+            "samples": 32
+          },
+          "sc-m76-worker2": {
+            "cpu_percent_mean": 183.9353125,
+            "cpu_percent_max": 245.9,
+            "mem_usage_last": "868.7MiB / 7.748GiB",
+            "samples": 32
+          }
+        }
+      },
+      "request_distribution_per_pod": {
+        "closure-api-6489f8b5df-5fd9x": {
+          "total": 0,
+          "by_route": {},
+          "share": 0.0
+        },
+        "closure-api-6489f8b5df-fhcll": {
+          "total": 5002,
+          "by_route": {
+            "GET /cases/{id}/notifications": 705,
+            "GET /cases/{id}/timeline": 493,
+            "GET /cases/{id}": 1785,
+            "POST /cases/{id}/events": 1037,
+            "POST /cases": 946,
+            "GET /cases": 36
+          },
+          "share": 0.5189334993256561
+        },
+        "closure-api-6489f8b5df-n89rf": {
+          "total": 4637,
+          "by_route": {
+            "GET /cases/{id}/notifications": 657,
+            "GET /cases/{id}/timeline": 478,
+            "GET /cases/{id}": 1588,
+            "POST /cases/{id}/events": 982,
+            "POST /cases": 877,
+            "GET /cases": 55
+          },
+          "share": 0.4810665006743438
+        }
+      },
+      "scheduler_during_stage": {
+        "sweep_duration": {
+          "n": 0
+        },
+        "automation_scan_duration": {
+          "n": 0
+        },
+        "evidence_scan_duration": {
+          "n": 0
+        },
+        "sweep_to_sweep_period": {
+          "n": 0
+        },
+        "interval_setting_s": 10.0,
+        "note": "sweep_duration = time between the outbox-drain and sweep access-log lines (the sweep runs between them); period = gap between consecutive sweep completions (interval + all loop work)"
+      },
+      "cases_created_by_run": 12554,
+      "label": "watchdog_on_as_deployed"
+    }
+  ],
+  "started_at": "2026-10-30T04:46:21.584234+00:00",
+  "population_after": {
+    "cases": 1056667,
+    "by_state": {
+      "patient_acknowledged": 887294,
+      "consent_withdrawn": 149822,
+      "acknowledged": 7511,
+      "owner_accepted": 6350,
+      "patient_contacted": 5390,
+      "lost_contact": 300
+    },
+    "events": 7348024,
+    "database_bytes": 2693413911
+  },
+  "finished_at": "2026-10-30T05:29:48.779862+00:00",
+  "summary": {
+    "watchdog_on_as_deployed": {
+      "pass": {
+        "max_passing_rate_per_s": 250.0,
+        "lowest_failing_rate_per_s": 300.0
+      },
+      "pass_excluding_worklist": {
+        "max_passing_rate_per_s": 250.0,
+        "lowest_failing_rate_per_s": 300.0
+      }
+    },
+    "watchdog_off": {
+      "pass": {
+        "max_passing_rate_per_s": 250.0,
+        "lowest_failing_rate_per_s": null
+      },
+      "pass_excluding_worklist": {
+        "max_passing_rate_per_s": 250.0,
+        "lowest_failing_rate_per_s": null
+      }
+    }
+  },
+  "unbounded_worklist_probe": {
+    "state": "patient_acknowledged",
+    "cases_in_state": 876370,
+    "default_page": {
+      "status": "RemoteProtocolError",
+      "next_cursor": null,
+      "seconds": 0.022012333036400378
+    },
+    "max_page": {
+      "status": "RemoteProtocolError",
+      "next_cursor": null,
+      "seconds": 1.008382249972783
+    },
+    "over_max_limit_status": 422,
+    "status": "RemoteProtocolError",
+    "seconds": 0.022012333036400378,
+    "rows": null,
+    "pages_followed": 1,
+    "rows_over_followed_pages": 0,
+    "page_seconds": null,
+    "pod_cgroup_before": {
+      "closure-api-6489f8b5df-5fd9x": 79511552,
+      "closure-api-6489f8b5df-fhcll": 614219776,
+      "closure-api-6489f8b5df-n89rf": 615104512
+    },
+    "pod_cgroup_after": {
+      "closure-api-6489f8b5df-5fd9x": 97394688,
+      "closure-api-6489f8b5df-fhcll": 31227904,
+      "closure-api-6489f8b5df-n89rf": 22802432
+    },
+    "restarts_before": {
+      "closure-api-6489f8b5df-5fd9x": 2,
+      "closure-api-6489f8b5df-fhcll": 1,
+      "closure-api-6489f8b5df-n89rf": 1
+    },
+    "restarts_after": {
+      "closure-api-6489f8b5df-5fd9x": 2,
+      "closure-api-6489f8b5df-fhcll": 2,
+      "closure-api-6489f8b5df-n89rf": 2
+    },
+    "last_termination": {
+      "closure-api-6489f8b5df-5fd9x": "OOMKilled",
+      "closure-api-6489f8b5df-fhcll": "OOMKilled",
+      "closure-api-6489f8b5df-n89rf": "OOMKilled"
+    }
+  }
+}
