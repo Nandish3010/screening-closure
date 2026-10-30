@@ -56,6 +56,8 @@ def cadence_rows(so):
     c = so["summary"]["scheduler"].get("cadence") or {}
     rows = []
     for task, v in c.items():
+        if task == "cadence-log":  # the scheduler's own reporting timer, not a job
+            continue
         g, d = v["gap_s"] or {}, v["duration_s"] or {}
         rows.append([task, f"{v['nominal_interval_s']:g} s", n(v["starts"]), f"{v['expected_starts']:,.0f}", f"{v['achieved_fraction_of_nominal'] * 100:.1f}%",
                      "yes" if v["meets_95_percent_of_nominal"] else "no", f(g.get("mean"), 3), f(g.get("p95"), 3), f(g.get("max"), 3), v["gaps_over_1_5_intervals"],
@@ -71,11 +73,13 @@ def memory_tables(so, title):
     head = ["Pod", "Start / end / max (MiB, anon)"] + [f"Hour {h}" for h in range(1, int(hours + 0.999) + 1)] + ["Linear fit (MiB/h)", "Saturating fit: plateau MiB, tau h", "AIC linear - saturating", "Preferred"]
     rows = []
     for pod, v in an.items():
+        if v["hours"] < 0.2 and hours > 0.5:  # a pod of an earlier arm that was still in the sample list when this run began
+            continue
         sl = {s["hour"]: s["slope_mib_per_h"] for s in v["slices"]}
         sat = v.get("saturating")
         rows.append([pod.replace("closure-api-", "api-"), f"{v['start_mib']} / {v['end_mib']} / {v['max_mib']}"]
                     + [f(sl.get(h), 1) if h in sl else "-" for h in range(1, int(hours + 0.999) + 1)]
-                    + [f(v["linear"]["slope_mib_per_h"], 1), (f"{sat['plateau_mib']}, {sat['tau_h']}" if sat else "n/a"), f(v.get("aic_linear_minus_saturating"), 1), v["preferred"]])
+                    + [f(v["linear"]["slope_mib_per_h"], 1) if v["linear"]["slope_mib_per_h"] is not None else "n/a", (f"{sat['plateau_mib']}, {sat['tau_h']}" if sat else "n/a"), f(v.get("aic_linear_minus_saturating"), 1), v["preferred"]])
     out += [f"#### {title}", "", "Hour columns: least-squares slope of the pod's anonymous memory in that one-hour slice (MiB/h). Fits use samples from minute 10 on.", ""]
     out += table(head, rows)
     return out, an
@@ -90,6 +94,7 @@ def build(raw: Path, jload, so7, la7, fo7=None) -> list[str]:
 
     so = finished("soak.json")
     sr = finished("soak_recycle.json")
+    sk = finished("soak_control.json")
     mb1 = jload(d / "metrics_bench_1m.json") if (d / "metrics_bench_1m.json").exists() else None
     mb1i = jload(d / "metrics_bench_1m_indexed.json") if (d / "metrics_bench_1m_indexed.json").exists() else None
     mb100 = jload(d / "metrics_bench_100k.json") if (d / "metrics_bench_100k.json").exists() else None
@@ -110,7 +115,7 @@ def build(raw: Path, jload, so7, la7, fo7=None) -> list[str]:
                               ["Population", f"{ref['population_before']['cases']:,} cases / {ref['population_before']['events']:,} events at the start of `{'soak' if ref is so else 'latency'}.json`"]])
         L += ["A run is attributed to the commit it started from; its working tree is listed when it was not clean.", "",
               "| File | Tool | Commit | Branch | Working tree | Started | Finished |", "|---|---|---|---|---|---|---|"]
-        for nm, doc in (("latency.json", la), ("soak.json", so), ("soak_recycle.json", sr), ("metrics_bench_100k.json", mb100), ("metrics_bench_1m.json", mb1), ("metrics_bench_1m_indexed.json", mb1i)):
+        for nm, doc in (("latency.json", la), ("soak.json", so), ("soak_control.json", sk), ("soak_recycle.json", sr), ("metrics_bench_100k.json", mb100), ("metrics_bench_1m.json", mb1), ("metrics_bench_1m_indexed.json", mb1i)):
             if doc:
                 L.append(git_row(nm, doc))
         L += ["", "`sweep.json` and `failover.json` of the M7-7 run were not repeated: the sweep, the watchdog scan and the fencing code paths they measure are unchanged in M7-8 "
@@ -187,7 +192,9 @@ def build(raw: Path, jload, so7, la7, fo7=None) -> list[str]:
         for name, b in (("100,000-case scratch database (cluster Postgres)", mb100), ("1,000,000-case `closure` database (the cluster's)", mb1i or mb1)):
             if not b:
                 continue
-            lg, rf, st, inc = b["legacy_replay"], b.get("refresh"), b["steady"], b["incremental"]
+            lg, rf, st, inc = b["legacy_replay"], b.get("refresh") or (mb1 or {}).get("refresh"), b["steady"], b["incremental"]
+            if "skipped" in lg:
+                lg = {"skipped": "not run (the replay holds every event in memory: it needed " + (f"{mb100['legacy_replay']['closure_peak_rss_mib']} MiB at 100,000 cases" if mb100 else "more than the pod has") + ", against a 768 MiB pod limit)"}
             rows.append([name, (f"{lg['closure_seconds']} s / {lg['effort_seconds']} s; RSS {lg['closure_peak_rss_mib']} / {lg['effort_peak_rss_mib']} MiB" if "cases" in lg else lg.get("skipped")),
                          (f"{rf['calls']} calls, {rf['total_seconds']:,.0f} s total, {rf['replayed_total']:,} replays ({rf['replay_rate_cases_per_s']:,.0f} cases/s), process RSS {rf['peak_rss_mib']} MiB" if rf else "see the 1M run above"),
                          f"{st['closure_aggregate']['median_s']} s / {st['effort_aggregate']['median_s']} s", f"{st['refresh_when_current']['median_s']} s",
@@ -259,19 +266,38 @@ def build(raw: Path, jload, so7, la7, fo7=None) -> list[str]:
                              f"{a['status_kb'].get('Threads')} -> {b['status_kb'].get('Threads')}"])
             L += table(["Pod", "RssAnon (MiB)", "[heap] RSS (MiB)", "Anonymous rw RSS (MiB)", "Anonymous rw mappings", "64 MiB arena-like mappings", "Threads"], rows)
         L += ["**Verdict.** " + verdict(an, an7), ""]
-    if sr:
-        t, anr = memory_tables(sr, "Mitigation A/B: workers recycled after N requests (`--limit-max-requests`)")
-        L += ["### Mitigation A/B: recycling the uvicorn workers", ""]
-        L += [f"`api.server.workers={sr['chart_values']['api'].get('server', {}).get('workers')}`, `limitMaxRequests={sr['chart_values']['api'].get('server', {}).get('limitMaxRequests')}`; "
-              f"{sr['summary']['requests_total']:,} requests at {sr['parameters']['rate_per_s']:g}/s over {sr['parameters']['duration_s'] / 3600:.2f} h; errors {sr['summary']['errors']}, shed {sr['summary'].get('shed', 0)}, "
-              f"p99 {sr['summary']['latency_all_requests']['p99_ms']} ms, container restarts {sr['summary']['restarts']['total_restarts_during_soak']}. This is a mitigation of memory growth, not a fix of its cause.", ""]
-        L += t
-        L += ["Memory per pod is the cgroup of the whole container (all workers), so a recycled worker shows as a drop. " + recycle_note(anr), ""]
+    if sr and sk:
+        L += ["### Mitigation A/B: recycling the uvicorn workers (`--limit-max-requests`)", "",
+              "Two runs of the same length on freshly started pods, same load: **control** (the default, one uvicorn process per pod) and **recycling** "
+              f"(`api.server.workers={sr['chart_values']['api'].get('server', {}).get('workers')}`, `limitMaxRequests={sr['chart_values']['api'].get('server', {}).get('limitMaxRequests')}`; "
+              "uvicorn's supervisor restarts a worker that reaches the limit while the other keeps serving). The comparison is not a controlled trial (one run each, the cluster and the "
+              "population differ a little between them): it shows whether recycling bounds the pod's memory, not by how much.", ""]
+        rows = []
+        for name, doc in (("control", sk), ("recycling", sr)):
+            sm_ = doc["summary"]
+            rows.append([name, f"{sm_['requests_total']:,}", sm_["errors"], sm_.get("shed", 0), sm_["latency_all_requests"]["p99_ms"], sm_["restarts"]["total_restarts_during_soak"],
+                         sm_["restarts"]["oom_killed_during_soak"], f"{doc['parameters']['duration_s'] / 3600:.2f} h"])
+        L += table(["Arm", "Requests", "Errors", "Shed", "p99 (ms)", "Container restarts", "OOM kills", "Duration"], rows)
+        for title, doc in (("Control", sk), ("Recycling", sr)):
+            t, _ = memory_tables(doc, f"{title}: per pod, per hour (cgroup anon memory of the whole container)")
+            L += t
+        L += ["The control arm also shows what a fresh pod does: a steep first hour (it starts near 65 MiB, the 4 h soak's pods started near 150 MiB because they had already served the ladder) and a much flatter last slice. "
+              "1.25 h cannot tell a plateau from a slow slope; the 4 h soak above is the evidence on that.", ""]
+        rr = sr["summary"]["restarts"]
+        L += [f"**Reading.** In this configuration recycling did **not** work: two workers in a pod with the 768 MiB limit used more memory than one, the containers were OOM-killed {rr['oom_killed_during_soak']} times "
+              f"({rr['total_restarts_during_soak']} restarts) in {sr['parameters']['duration_s'] / 3600:.2f} h, and the requests in flight at each kill failed ({sr['summary']['errors']} errors: "
+              f"{', '.join(f'{k} {v}' for k, v in sr['summary']['errors_by_status'].items())}). The control arm, one process per pod, had no restart and no error. A second worker is a second copy of the application and a second database pool, "
+              "so recycling needs a memory limit well above 768 MiB per pod (not tried: the kind nodes have no room) or a worker count of 1 with an external restart of the pod. It is reported as a mitigation that fails at this limit, "
+              "not as a fix; the cause of the growth is not found.", ""]
+    elif sk or sr:
+        L += ["### Mitigation A/B", "", "Only one arm finished; see the raw file.", ""]
+    L += what_is_not_met(la, so, sk, sr, mb100, mb1, mb1i)
     return L
 
 
 def verdict(an, an7) -> str:
     parts = []
+    an = {k: v for k, v in an.items() if v["hours"] >= 1}
     pref = [v["preferred"] for v in an.values()]
     last = [v["last_slice_slope_mib_per_h"] for v in an.values()]
     first = [v["first_slice_slope_mib_per_h"] for v in an.values()]
@@ -295,3 +321,33 @@ def verdict(an, an7) -> str:
 def recycle_note(anr) -> str:
     last = [f(v["last_slice_slope_mib_per_h"], 1) for v in anr.values()]
     return "Last-hour slopes: " + ", ".join(last) + " MiB/h."
+
+
+def what_is_not_met(la, so, sk, sr, mb100, mb1, mb1i) -> list[str]:
+    L = ["### What is still not met after M7-8", ""]
+    if so:
+        an = memfit.analyse(so)
+        L.append(f"- **API pod memory is not flat.** Over {max(v['hours'] for v in an.values()):.2f} h the three pods grew by "
+                 + ", ".join(f"{v['linear']['slope_mib_per_h']} MiB/h" for v in an.values()) + f" (anon, linear fits), ending at {', '.join(str(v['end_mib']) for v in an.values())} MiB against a 768 MiB limit; "
+                 f"AIC prefers the {', '.join(sorted({v['preferred'] for v in an.values()}))} fit, and the slope in the last hour was {', '.join(f(v['last_slice_slope_mib_per_h'], 1) for v in an.values())} MiB/h. "
+                 "At that rate a pod would reach its limit in roughly a day; this is a slow growth, not a plateau, and its cause is not found. py-spy, memray and jemalloc are not in the image and nothing was installed; "
+                 "the maps of the processes (above) put the growth in anonymous memory mappings, not in glibc's `[heap]` or its 64 MiB arenas. "
+                 "An attempt with Python's built-in `tracemalloc` (`MEMTRACE=1`, `app.memtrace`) OOM-killed the 768 MiB pods twice (once with 12 frames per trace, once with 1 when the snapshot was taken), so it needs a larger limit; "
+                 "no allocation site was identified.")
+        cad = so["summary"]["scheduler"].get("cadence") or {}
+        short = [t for t, v in cad.items() if t != "cadence-log" and not v["meets_95_percent_of_nominal"]]
+        auto = cad.get("automation-scan")
+        if auto:
+            L.append(f"- The automation scan started {auto['achieved_fraction_of_nominal'] * 100:.1f}% of its nominal starts (its work took {f(auto['duration_s']['mean'], 2)} s on average and {f(auto['duration_s']['max'], 1)} s at most, gap max {f(auto['gap_s']['max'], 1)} s): "
+                     "a tick that overran was skipped, as designed." + (" Tasks under 95%: " + ", ".join(short) + "." if short else " Every task met 95% of its nominal starts."))
+        s_ = so["summary"]
+        L.append(f"- {s_['windows_over_p99_500ms']} of the {s_['windows']} five-minute windows of the soak had a p99 over 500 ms (worst {s_['windows_p99_ms_range'][1]} ms at {s_['worst_window_by_p99']['start']}; overall p99 {s_['latency_all_requests']['p99_ms']} ms).")
+    if la:
+        over = [f"{s_['target_rate_per_s']:g}/s" for s_ in la["stages"] if not s_["pass"]]
+        L.append("- Overload is refused, not served: at " + (", ".join(over) if over else "no tested rate") + " the p99 of the requests the pods answered is over 500 ms and a share is refused with 503 (table above). Shedding turns timeouts and resets into an answer a client can act on; it adds no capacity. "
+                 "The web client does not yet show a message for 503 (HZ-45).")
+    L.append("- **The metrics routes are bounded in memory and replay, not in time.** The aggregate is a scan of a table inside Postgres, so it grows with the number of cases (seconds at 1,000,000); the first catch-up of an unindexed table takes tens of minutes of budgeted calls (the benchmark's figures above); nothing keeps the table warm between calls; the agency still avoids the route above 20,000 cases (ADR-046, unchanged).")
+    L.append("- The fail-over drill (`failover.json`) and the offline sweep and watchdog cells (`sweep.json`) were not repeated for M7-8. The scheduler's fencing and heartbeat behaviour is covered by tests (ADR-047) but a real kill, freeze and resume of the task-based scheduler on the cluster was not run.")
+    L.append("- The target of cutting human labour by 40% is not shown to be met by anything in this report; it is a simulator result with its own caveats (docs/results).")
+    L.append("- Everything here is one laptop-class host, a local kind cluster, one Postgres without HA or TLS, and no network latency between nodes and database. No cloud environment was measured.")
+    return L + [""]

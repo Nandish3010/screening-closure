@@ -1,0 +1,119 @@
+{
+  "tool": "tools/load/metrics_bench.py",
+  "label": "cluster-1m",
+  "git": {
+    "commit": "df9d786ffd6a8bfadca26d1f97b5b84d4c2d5ad1",
+    "branch": "m78-cadence",
+    "dirty_files": [
+      "M api/app/agency/ledger.py",
+      " M api/app/agency/runner.py",
+      " M api/app/config.py",
+      " M api/app/effort.py",
+      " M api/app/main.py",
+      " M api/app/observability.py",
+      " M api/app/policy.py",
+      " M api/app/routers/metrics.py",
+      " M api/app/routers/scheduler.py",
+      " M api/tests/test_automation_hardening.py",
+      " M api/tests/test_scheduler_loop.py",
+      " M api/tests/test_sweep.py",
+      " M deploy/helm/screening-closure/templates/_helpers.tpl",
+      " M deploy/helm/screening-closure/templates/api.yaml",
+      " M deploy/helm/screening-closure/templates/workers.yaml",
+      " M deploy/helm/screening-closure/values.yaml",
+      " M docs/governance/rbac-matrix.md",
+      " M project/DECISIONS.md",
+      " M scheduler/main.py",
+      " M tools/k8s/api_load.py",
+      " M tools/k8s/soak.py",
+      " M web/src/api/generated.ts",
+      " M web/src/api/openapi.json",
+      "?? api/app/loadshed.py",
+      "?? api/app/metrics_index.py",
+      "?? api/migrations/018_metrics_index.sql",
+      "?? api/tests/test_loadshed.py",
+      "?? api/tests/test_metrics_index_pg.py",
+      "?? api/tests/test_scheduler_agency_run.py",
+      "?? api/tests/test_scheduler_cadence.py"
+    ]
+  },
+  "started_at": "2026-10-30T11:01:56.707239+00:00",
+  "host": {
+    "platform": "macOS-26.6.2-arm64-arm-64bit-Mach-O",
+    "python": "3.14.7",
+    "machine": "arm64"
+  },
+  "cases_in_database": 1000300,
+  "now": "2026-10-31T11:01:49.604003+00:00",
+  "legacy_max": 100000,
+  "legacy_replay": {
+    "skipped": "1,000,300 cases is over --legacy-max 100,000"
+  },
+  "refresh": {
+    "budget_seconds": 3.0,
+    "calls": 865,
+    "total_seconds": 2789.9,
+    "replayed_total": 1382156,
+    "call_seconds": {
+      "median": 3.23,
+      "p95": 3.43,
+      "max": 3.82
+    },
+    "first_call": {
+      "seconds": 3.32,
+      "replayed": 2200,
+      "batches": 11,
+      "lag": 998100,
+      "caught_up": false,
+      "busy": false
+    },
+    "last_call": {
+      "seconds": 1.23,
+      "replayed": 501,
+      "batches": 124,
+      "lag": null,
+      "caught_up": true,
+      "busy": false
+    },
+    "case_metrics_rows": 1000300,
+    "case_metric_dwells_rows": 4075179,
+    "case_metrics_bytes": 331046912,
+    "case_metric_dwells_bytes": 728424448,
+    "peak_rss_mib": 61.4,
+    "replay_rate_cases_per_s": 495.0
+  },
+  "equality_at_legacy_size": {
+    "skipped": "1,000,300 cases is over --legacy-max 100,000"
+  },
+  "steady": {
+    "closure_aggregate": {
+      "calls": 5,
+      "median_s": 10.88,
+      "max_s": 11.893,
+      "min_s": 10.581
+    },
+    "effort_aggregate": {
+      "calls": 5,
+      "median_s": 0.083,
+      "max_s": 0.154,
+      "min_s": 0.08
+    },
+    "refresh_when_current": {
+      "calls": 5,
+      "median_s": 0.189,
+      "max_s": 0.691,
+      "min_s": 0.174
+    },
+    "cases_total": 1000300,
+    "peak_rss_mib": 59.5
+  },
+  "incremental": {
+    "touched": 1000,
+    "append_seconds": 3.8,
+    "refresh_seconds": 1.81,
+    "replayed": 1036,
+    "caught_up": true,
+    "peak_rss_mib": 65.2
+  },
+  "finished_at": "2026-10-30T11:49:42.227227+00:00"
+}

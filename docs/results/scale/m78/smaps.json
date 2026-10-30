@@ -1,0 +1,1734 @@
+{
+ "tool": "tools/k8s/smaps_sampler.py",
+ "started_at": "2026-10-30T12:51:36.452745+00:00",
+ "samples": [
+  {
+   "t": "2026-10-30T12:51:36.488271+00:00",
+   "t_epoch": 1793364696.5,
+   "pods": {
+    "closure-api-59dcddc4f-fwpm2": {
+     "status_kb": {
+      "VmRSS": 184948,
+      "RssAnon": 153564,
+      "RssFile": 31384,
+      "VmData": 453320,
+      "Threads": 11
+     },
+     "smaps_rollup_kb": {
+      "Rss": 184948,
+      "Pss": 167113,
+      "Anonymous": 153564,
+      "Private_Dirty": 153564
+     },
+     "heap_rss_kb": 19296,
+     "heap_size_kb": 19432,
+     "anon_rw_mappings": 111,
+     "anon_rw_rss_kb": 129840,
+     "arena_like_64mib_mappings": 0,
+     "arena_like_rss_kb": 0,
+     "other_anon_rss_kb": 129840,
+     "file_backed_rss_kb": 35728,
+     "largest_anon_rss_kb": [
+      11268,
+      8388,
+      8196,
+      8192,
+      7836
+     ]
+    },
+    "closure-api-59dcddc4f-qpt7q": {
+     "status_kb": {
+      "VmRSS": 206940,
+      "RssAnon": 174868,
+      "RssFile": 32072,
+      "VmData": 455840,
+      "Threads": 11
+     },
+     "smaps_rollup_kb": {
+      "Rss": 206940,
+      "Pss": 198124,
+      "Anonymous": 174868,
+      "Private_Dirty": 174868
+     },
+     "heap_rss_kb": 19296,
+     "heap_size_kb": 19432,
+     "anon_rw_mappings": 114,
+     "anon_rw_rss_kb": 151144,
+     "arena_like_64mib_mappings": 0,
+     "arena_like_rss_kb": 0,
+     "other_anon_rss_kb": 151144,
+     "file_backed_rss_kb": 36416,
+     "largest_anon_rss_kb": [
+      13312,
+      10240,
+      9216,
+      8192,
+      7544
+     ]
+    },
+    "closure-api-59dcddc4f-zbjnl": {
+     "status_kb": {
+      "VmRSS": 181568,
+      "RssAnon": 150188,
+      "RssFile": 31380,
+      "VmData": 432764,
+      "Threads": 12
+     },
+     "smaps_rollup_kb": {
+      "Rss": 181568,
+      "Pss": 163723,
+      "Anonymous": 150188,
+      "Private_Dirty": 150188
+     },
+     "heap_rss_kb": 19296,
+     "heap_size_kb": 19432,
+     "anon_rw_mappings": 111,
+     "anon_rw_rss_kb": 126464,
+     "arena_like_64mib_mappings": 0,
+     "arena_like_rss_kb": 0,
+     "other_anon_rss_kb": 126464,
+     "file_backed_rss_kb": 35724,
+     "largest_anon_rss_kb": [
+      20480,
+      11572,
+      8172,
+      7588,
+      7168
+     ]
+    }
+   }
+  },
+  {
+   "t": "2026-10-30T13:06:36.567556+00:00",
+   "t_epoch": 1793365596.6,
+   "pods": {
+    "closure-api-59dcddc4f-fwpm2": {
+     "status_kb": {
+      "VmRSS": 234804,
+      "RssAnon": 204304,
+      "RssFile": 30500,
+      "VmData": 477420,
+      "Threads": 11
+     },
+     "smaps_rollup_kb": {
+      "Rss": 234804,
+      "Pss": 217587,
+      "Anonymous": 204304,
+      "Private_Dirty": 204304
+     },
+     "heap_rss_kb": 19296,
+     "heap_size_kb": 19432,
+     "anon_rw_mappings": 112,
+     "anon_rw_rss_kb": 180580,
+     "arena_like_64mib_mappings": 0,
+     "arena_like_rss_kb": 0,
+     "other_anon_rss_kb": 180580,
+     "file_backed_rss_kb": 34844,
+     "largest_anon_rss_kb": [
+      11268,
+      8388,
+      8192,
+      8192,
+      8004
+     ]
+    },
+    "closure-api-59dcddc4f-qpt7q": {
+     "status_kb": {
+      "VmRSS": 217396,
+      "RssAnon": 186044,
+      "RssFile": 31352,
+      "VmData": 486580,
+      "Threads": 13
+     },
+     "smaps_rollup_kb": {
+      "Rss": 217396,
+      "Pss": 209193,
+      "Anonymous": 186044,
+      "Private_Dirty": 186044
+     },
+     "heap_rss_kb": 19296,
+     "heap_size_kb": 19432,
+     "anon_rw_mappings": 116,
+     "anon_rw_rss_kb": 162320,
+     "arena_like_64mib_mappings": 0,
+     "arena_like_rss_kb": 0,
+     "other_anon_rss_kb": 162320,
+     "file_backed_rss_kb": 35696,
+     "largest_anon_rss_kb": [
+      13312,
+      9216,
+      8192,
+      7824,
+      7544
+     ]
+    },
+    "closure-api-59dcddc4f-zbjnl": {
+     "status_kb": {
+      "VmRSS": 183892,
+      "RssAnon": 153372,
+      "RssFile": 30520,
+      "VmData": 463636,
+      "Threads": 13
+     },
+     "smaps_rollup_kb": {
+      "Rss": 183892,
+      "Pss": 166658,
+      "Anonymous": 153372,
+      "Private_Dirty": 153372
+     },
+     "heap_rss_kb": 19296,
+     "heap_size_kb": 19432,
+     "anon_rw_mappings": 113,
+     "anon_rw_rss_kb": 129648,
+     "arena_like_64mib_mappings": 0,
+     "arena_like_rss_kb": 0,
+     "other_anon_rss_kb": 129648,
+     "file_backed_rss_kb": 34864,
+     "largest_anon_rss_kb": [
+      20480,
+      11572,
+      7168,
+      7068,
+      6140
+     ]
+    }
+   }
+  },
+  {
+   "t": "2026-10-30T13:21:36.672257+00:00",
+   "t_epoch": 1793366496.7,
+   "pods": {
+    "closure-api-59dcddc4f-fwpm2": {
+     "status_kb": {
+      "VmRSS": 236212,
+      "RssAnon": 209924,
+      "RssFile": 26288,
+      "VmData": 483868,
+      "Threads": 14
+     },
+     "smaps_rollup_kb": {
+      "Rss": 236212,
+      "Pss": 221124,
+      "Anonymous": 209924,
+      "Private_Dirty": 209924
+     },
+     "heap_rss_kb": 19296,
+     "heap_size_kb": 19432,
+     "anon_rw_mappings": 114,
+     "anon_rw_rss_kb": 186200,
+     "arena_like_64mib_mappings": 0,
+     "arena_like_rss_kb": 0,
+     "other_anon_rss_kb": 186200,
+     "file_backed_rss_kb": 30632,
+     "largest_anon_rss_kb": [
+      11268,
+      10240,
+      8192,
+      8192,
+      8144
+     ]
+    },
+    "closure-api-59dcddc4f-qpt7q": {
+     "status_kb": {
+      "VmRSS": 246856,
+      "RssAnon": 215564,
+      "RssFile": 31292,
+      "VmData": 496476,
+      "Threads": 13
+     },
+     "smaps_rollup_kb": {
+      "Rss": 246856,
+      "Pss": 238691,
+      "Anonymous": 215564,
+      "Private_Dirty": 215564
+     },
+     "heap_rss_kb": 19296,
+     "heap_size_kb": 19432,
+     "anon_rw_mappings": 115,
+     "anon_rw_rss_kb": 191840,
+     "arena_like_64mib_mappings": 0,
+     "arena_like_rss_kb": 0,
+     "other_anon_rss_kb": 191840,
+     "file_backed_rss_kb": 35636,
+     "largest_anon_rss_kb": [
+      13312,
+      9216,
+      8192,
+      8192,
+      8100
+     ]
+    },
+    "closure-api-59dcddc4f-zbjnl": {
+     "status_kb": {
+      "VmRSS": 217908,
+      "RssAnon": 191648,
+      "RssFile": 26260,
+      "VmData": 463932,
+      "Threads": 13
+     },
+     "smaps_rollup_kb": {
+      "Rss": 217912,
+      "Pss": 202834,
+      "Anonymous": 191652,
+      "Private_Dirty": 191652
+     },
+     "heap_rss_kb": 19296,
+     "heap_size_kb": 19432,
+     "anon_rw_mappings": 112,
+     "anon_rw_rss_kb": 167932,
+     "arena_like_64mib_mappings": 0,
+     "arena_like_rss_kb": 0,
+     "other_anon_rss_kb": 167932,
+     "file_backed_rss_kb": 30604,
+     "largest_anon_rss_kb": [
+      20480,
+      14336,
+      10240,
+      7168,
+      7068
+     ]
+    }
+   }
+  },
+  {
+   "t": "2026-10-30T13:36:36.737122+00:00",
+   "t_epoch": 1793367396.7,
+   "pods": {
+    "closure-api-59dcddc4f-fwpm2": {
+     "status_kb": {
+      "VmRSS": 236656,
+      "RssAnon": 210368,
+      "RssFile": 26288,
+      "VmData": 486076,
+      "Threads": 12
+     },
+     "smaps_rollup_kb": {
+      "Rss": 236656,
+      "Pss": 221562,
+      "Anonymous": 210368,
+      "Private_Dirty": 210368
+     },
+     "heap_rss_kb": 19296,
+     "heap_size_kb": 19432,
+     "anon_rw_mappings": 114,
+     "anon_rw_rss_kb": 186644,
+     "arena_like_64mib_mappings": 0,
+     "arena_like_rss_kb": 0,
+     "other_anon_rss_kb": 186644,
+     "file_backed_rss_kb": 30632,
+     "largest_anon_rss_kb": [
+      11268,
+      10240,
+      8192,
+      8192,
+      8004
+     ]
+    },
+    "closure-api-59dcddc4f-qpt7q": {
+     "status_kb": {
+      "VmRSS": 250928,
+      "RssAnon": 219636,
+      "RssFile": 31292,
+      "VmData": 501500,
+      "Threads": 15
+     },
+     "smaps_rollup_kb": {
+      "Rss": 250928,
+      "Pss": 242763,
+      "Anonymous": 219636,
+      "Private_Dirty": 219636
+     },
+     "heap_rss_kb": 19296,
+     "heap_size_kb": 19432,
+     "anon_rw_mappings": 115,
+     "anon_rw_rss_kb": 195912,
+     "arena_like_64mib_mappings": 0,
+     "arena_like_rss_kb": 0,
+     "other_anon_rss_kb": 195912,
+     "file_backed_rss_kb": 35636,
+     "largest_anon_rss_kb": [
+      13312,
+      9216,
+      8192,
+      8192,
+      7676
+     ]
+    },
+    "closure-api-59dcddc4f-zbjnl": {
+     "status_kb": {
+      "VmRSS": 216816,
+      "RssAnon": 190524,
+      "RssFile": 26292,
+      "VmData": 468124,
+      "Threads": 14
+     },
+     "smaps_rollup_kb": {
+      "Rss": 216816,
+      "Pss": 201717,
+      "Anonymous": 190524,
+      "Private_Dirty": 190524
+     },
+     "heap_rss_kb": 19296,
+     "heap_size_kb": 19432,
+     "anon_rw_mappings": 112,
+     "anon_rw_rss_kb": 166800,
+     "arena_like_64mib_mappings": 0,
+     "arena_like_rss_kb": 0,
+     "other_anon_rss_kb": 166800,
+     "file_backed_rss_kb": 30636,
+     "largest_anon_rss_kb": [
+      20480,
+      14336,
+      7168,
+      7068,
+      6208
+     ]
+    }
+   }
+  },
+  {
+   "t": "2026-10-30T13:51:36.787434+00:00",
+   "t_epoch": 1793368296.8,
+   "pods": {
+    "closure-api-59dcddc4f-fwpm2": {
+     "status_kb": {
+      "VmRSS": 256012,
+      "RssAnon": 229840,
+      "RssFile": 26172,
+      "VmData": 517272,
+      "Threads": 14
+     },
+     "smaps_rollup_kb": {
+      "Rss": 256012,
+      "Pss": 240999,
+      "Anonymous": 229840,
+      "Private_Dirty": 229840
+     },
+     "heap_rss_kb": 19296,
+     "heap_size_kb": 19432,
+     "anon_rw_mappings": 112,
+     "anon_rw_rss_kb": 206116,
+     "arena_like_64mib_mappings": 0,
+     "arena_like_rss_kb": 0,
+     "other_anon_rss_kb": 206116,
+     "file_backed_rss_kb": 30516,
+     "largest_anon_rss_kb": [
+      11268,
+      10240,
+      10240,
+      8192,
+      8192
+     ]
+    },
+    "closure-api-59dcddc4f-qpt7q": {
+     "status_kb": {
+      "VmRSS": 253312,
+      "RssAnon": 222020,
+      "RssFile": 31292,
+      "VmData": 521648,
+      "Threads": 14
+     },
+     "smaps_rollup_kb": {
+      "Rss": 253312,
+      "Pss": 245147,
+      "Anonymous": 222020,
+      "Private_Dirty": 222020
+     },
+     "heap_rss_kb": 19296,
+     "heap_size_kb": 19432,
+     "anon_rw_mappings": 115,
+     "anon_rw_rss_kb": 198296,
+     "arena_like_64mib_mappings": 0,
+     "arena_like_rss_kb": 0,
+     "other_anon_rss_kb": 198296,
+     "file_backed_rss_kb": 35636,
+     "largest_anon_rss_kb": [
+      13312,
+      9216,
+      8296,
+      8192,
+      8192
+     ]
+    },
+    "closure-api-59dcddc4f-zbjnl": {
+     "status_kb": {
+      "VmRSS": 215696,
+      "RssAnon": 189520,
+      "RssFile": 26176,
+      "VmData": 470800,
+      "Threads": 12
+     },
+     "smaps_rollup_kb": {
+      "Rss": 215696,
+      "Pss": 200679,
+      "Anonymous": 189520,
+      "Private_Dirty": 189520
+     },
+     "heap_rss_kb": 19296,
+     "heap_size_kb": 19432,
+     "anon_rw_mappings": 115,
+     "anon_rw_rss_kb": 165796,
+     "arena_like_64mib_mappings": 0,
+     "arena_like_rss_kb": 0,
+     "other_anon_rss_kb": 165796,
+     "file_backed_rss_kb": 30520,
+     "largest_anon_rss_kb": [
+      20480,
+      14336,
+      7896,
+      7168,
+      7068
+     ]
+    }
+   }
+  },
+  {
+   "t": "2026-10-30T14:06:36.898426+00:00",
+   "t_epoch": 1793369196.9,
+   "pods": {
+    "closure-api-59dcddc4f-fwpm2": {
+     "status_kb": {
+      "VmRSS": 258908,
+      "RssAnon": 232760,
+      "RssFile": 26148,
+      "VmData": 542408,
+      "Threads": 12
+     },
+     "smaps_rollup_kb": {
+      "Rss": 258908,
+      "Pss": 243910,
+      "Anonymous": 232760,
+      "Private_Dirty": 232760
+     },
+     "heap_rss_kb": 19296,
+     "heap_size_kb": 19432,
+     "anon_rw_mappings": 112,
+     "anon_rw_rss_kb": 209036,
+     "arena_like_64mib_mappings": 0,
+     "arena_like_rss_kb": 0,
+     "other_anon_rss_kb": 209036,
+     "file_backed_rss_kb": 30492,
+     "largest_anon_rss_kb": [
+      21508,
+      12192,
+      10240,
+      10240,
+      8868
+     ]
+    },
+    "closure-api-59dcddc4f-qpt7q": {
+     "status_kb": {
+      "VmRSS": 273284,
+      "RssAnon": 242032,
+      "RssFile": 31252,
+      "VmData": 544712,
+      "Threads": 14
+     },
+     "smaps_rollup_kb": {
+      "Rss": 273284,
+      "Pss": 265148,
+      "Anonymous": 242032,
+      "Private_Dirty": 242032
+     },
+     "heap_rss_kb": 19296,
+     "heap_size_kb": 19432,
+     "anon_rw_mappings": 116,
+     "anon_rw_rss_kb": 218308,
+     "arena_like_64mib_mappings": 0,
+     "arena_like_rss_kb": 0,
+     "other_anon_rss_kb": 218308,
+     "file_backed_rss_kb": 35596,
+     "largest_anon_rss_kb": [
+      13312,
+      9216,
+      8192,
+      8192,
+      8192
+     ]
+    },
+    "closure-api-59dcddc4f-zbjnl": {
+     "status_kb": {
+      "VmRSS": 228712,
+      "RssAnon": 202560,
+      "RssFile": 26152,
+      "VmData": 492980,
+      "Threads": 12
+     },
+     "smaps_rollup_kb": {
+      "Rss": 228712,
+      "Pss": 213708,
+      "Anonymous": 202560,
+      "Private_Dirty": 202560
+     },
+     "heap_rss_kb": 19296,
+     "heap_size_kb": 19432,
+     "anon_rw_mappings": 114,
+     "anon_rw_rss_kb": 178836,
+     "arena_like_64mib_mappings": 0,
+     "arena_like_rss_kb": 0,
+     "other_anon_rss_kb": 178836,
+     "file_backed_rss_kb": 30496,
+     "largest_anon_rss_kb": [
+      20480,
+      14336,
+      8152,
+      8132,
+      7168
+     ]
+    }
+   }
+  },
+  {
+   "t": "2026-10-30T14:21:36.990976+00:00",
+   "t_epoch": 1793370097.0,
+   "pods": {
+    "closure-api-59dcddc4f-fwpm2": {
+     "status_kb": {
+      "VmRSS": 278152,
+      "RssAnon": 252068,
+      "RssFile": 26084,
+      "VmData": 568396,
+      "Threads": 12
+     },
+     "smaps_rollup_kb": {
+      "Rss": 278152,
+      "Pss": 263190,
+      "Anonymous": 252068,
+      "Private_Dirty": 252068
+     },
+     "heap_rss_kb": 19296,
+     "heap_size_kb": 19432,
+     "anon_rw_mappings": 117,
+     "anon_rw_rss_kb": 228344,
+     "arena_like_64mib_mappings": 0,
+     "arena_like_rss_kb": 0,
+     "other_anon_rss_kb": 228344,
+     "file_backed_rss_kb": 30428,
+     "largest_anon_rss_kb": [
+      21508,
+      12192,
+      11172,
+      10240,
+      10240
+     ]
+    },
+    "closure-api-59dcddc4f-qpt7q": {
+     "status_kb": {
+      "VmRSS": 276168,
+      "RssAnon": 244916,
+      "RssFile": 31252,
+      "VmData": 571956,
+      "Threads": 13
+     },
+     "smaps_rollup_kb": {
+      "Rss": 276168,
+      "Pss": 268032,
+      "Anonymous": 244916,
+      "Private_Dirty": 244916
+     },
+     "heap_rss_kb": 19296,
+     "heap_size_kb": 19432,
+     "anon_rw_mappings": 119,
+     "anon_rw_rss_kb": 221192,
+     "arena_like_64mib_mappings": 0,
+     "arena_like_rss_kb": 0,
+     "other_anon_rss_kb": 221192,
+     "file_backed_rss_kb": 35596,
+     "largest_anon_rss_kb": [
+      13312,
+      9352,
+      9216,
+      9196,
+      8192
+     ]
+    },
+    "closure-api-59dcddc4f-zbjnl": {
+     "status_kb": {
+      "VmRSS": 243856,
+      "RssAnon": 217768,
+      "RssFile": 26088,
+      "VmData": 526864,
+      "Threads": 12
+     },
+     "smaps_rollup_kb": {
+      "Rss": 243856,
+      "Pss": 228889,
+      "Anonymous": 217768,
+      "Private_Dirty": 217768
+     },
+     "heap_rss_kb": 19296,
+     "heap_size_kb": 19432,
+     "anon_rw_mappings": 118,
+     "anon_rw_rss_kb": 194044,
+     "arena_like_64mib_mappings": 0,
+     "arena_like_rss_kb": 0,
+     "other_anon_rss_kb": 194044,
+     "file_backed_rss_kb": 30432,
+     "largest_anon_rss_kb": [
+      20480,
+      14336,
+      10240,
+      7452,
+      7168
+     ]
+    }
+   }
+  },
+  {
+   "t": "2026-10-30T14:36:37.074028+00:00",
+   "t_epoch": 1793370997.1,
+   "pods": {
+    "closure-api-59dcddc4f-fwpm2": {
+     "status_kb": {
+      "VmRSS": 285740,
+      "RssAnon": 259880,
+      "RssFile": 25860,
+      "VmData": 605116,
+      "Threads": 12
+     },
+     "smaps_rollup_kb": {
+      "Rss": 285740,
+      "Pss": 270940,
+      "Anonymous": 259880,
+      "Private_Dirty": 259880
+     },
+     "heap_rss_kb": 19296,
+     "heap_size_kb": 19432,
+     "anon_rw_mappings": 119,
+     "anon_rw_rss_kb": 236156,
+     "arena_like_64mib_mappings": 0,
+     "arena_like_rss_kb": 0,
+     "other_anon_rss_kb": 236156,
+     "file_backed_rss_kb": 30204,
+     "largest_anon_rss_kb": [
+      21508,
+      12288,
+      10240,
+      10240,
+      9380
+     ]
+    },
+    "closure-api-59dcddc4f-qpt7q": {
+     "status_kb": {
+      "VmRSS": 285444,
+      "RssAnon": 254404,
+      "RssFile": 31040,
+      "VmData": 611488,
+      "Threads": 13
+     },
+     "smaps_rollup_kb": {
+      "Rss": 285444,
+      "Pss": 277508,
+      "Anonymous": 254404,
+      "Private_Dirty": 254404
+     },
+     "heap_rss_kb": 19296,
+     "heap_size_kb": 19432,
+     "anon_rw_mappings": 122,
+     "anon_rw_rss_kb": 230680,
+     "arena_like_64mib_mappings": 0,
+     "arena_like_rss_kb": 0,
+     "other_anon_rss_kb": 230680,
+     "file_backed_rss_kb": 35384,
+     "largest_anon_rss_kb": [
+      13312,
+      9216,
+      8192,
+      8192,
+      8136
+     ]
+    },
+    "closure-api-59dcddc4f-zbjnl": {
+     "status_kb": {
+      "VmRSS": 263540,
+      "RssAnon": 237676,
+      "RssFile": 25864,
+      "VmData": 581736,
+      "Threads": 12
+     },
+     "smaps_rollup_kb": {
+      "Rss": 263540,
+      "Pss": 248731,
+      "Anonymous": 237676,
+      "Private_Dirty": 237676
+     },
+     "heap_rss_kb": 19296,
+     "heap_size_kb": 19432,
+     "anon_rw_mappings": 120,
+     "anon_rw_rss_kb": 213952,
+     "arena_like_64mib_mappings": 0,
+     "arena_like_rss_kb": 0,
+     "other_anon_rss_kb": 213952,
+     "file_backed_rss_kb": 30208,
+     "largest_anon_rss_kb": [
+      20480,
+      14336,
+      10240,
+      8100,
+      7168
+     ]
+    }
+   }
+  },
+  {
+   "t": "2026-10-30T14:51:37.153767+00:00",
+   "t_epoch": 1793371897.2,
+   "pods": {
+    "closure-api-59dcddc4f-fwpm2": {
+     "status_kb": {
+      "VmRSS": 292840,
+      "RssAnon": 266964,
+      "RssFile": 25876,
+      "VmData": 660284,
+      "Threads": 18
+     },
+     "smaps_rollup_kb": {
+      "Rss": 292840,
+      "Pss": 278029,
+      "Anonymous": 266964,
+      "Private_Dirty": 266964
+     },
+     "heap_rss_kb": 19296,
+     "heap_size_kb": 19432,
+     "anon_rw_mappings": 122,
+     "anon_rw_rss_kb": 243240,
+     "arena_like_64mib_mappings": 0,
+     "arena_like_rss_kb": 0,
+     "other_anon_rss_kb": 243240,
+     "file_backed_rss_kb": 30220,
+     "largest_anon_rss_kb": [
+      21508,
+      12288,
+      10240,
+      10240,
+      9216
+     ]
+    },
+    "closure-api-59dcddc4f-qpt7q": {
+     "status_kb": {
+      "VmRSS": 303264,
+      "RssAnon": 272224,
+      "RssFile": 31040,
+      "VmData": 695836,
+      "Threads": 13
+     },
+     "smaps_rollup_kb": {
+      "Rss": 303264,
+      "Pss": 295328,
+      "Anonymous": 272224,
+      "Private_Dirty": 272224
+     },
+     "heap_rss_kb": 19296,
+     "heap_size_kb": 19432,
+     "anon_rw_mappings": 122,
+     "anon_rw_rss_kb": 248500,
+     "arena_like_64mib_mappings": 0,
+     "arena_like_rss_kb": 0,
+     "other_anon_rss_kb": 248500,
+     "file_backed_rss_kb": 35384,
+     "largest_anon_rss_kb": [
+      13312,
+      9220,
+      9216,
+      9216,
+      8192
+     ]
+    },
+    "closure-api-59dcddc4f-zbjnl": {
+     "status_kb": {
+      "VmRSS": 274196,
+      "RssAnon": 248316,
+      "RssFile": 25880,
+      "VmData": 621120,
+      "Threads": 14
+     },
+     "smaps_rollup_kb": {
+      "Rss": 274196,
+      "Pss": 259378,
+      "Anonymous": 248316,
+      "Private_Dirty": 248316
+     },
+     "heap_rss_kb": 19296,
+     "heap_size_kb": 19432,
+     "anon_rw_mappings": 120,
+     "anon_rw_rss_kb": 224592,
+     "arena_like_64mib_mappings": 0,
+     "arena_like_rss_kb": 0,
+     "other_anon_rss_kb": 224592,
+     "file_backed_rss_kb": 30224,
+     "largest_anon_rss_kb": [
+      20480,
+      14336,
+      10240,
+      8152,
+      8100
+     ]
+    }
+   }
+  },
+  {
+   "t": "2026-10-30T15:06:37.109585+00:00",
+   "t_epoch": 1793372797.1,
+   "pods": {
+    "closure-api-59dcddc4f-fwpm2": {
+     "status_kb": {
+      "VmRSS": 302336,
+      "RssAnon": 276464,
+      "RssFile": 25872,
+      "VmData": 674016,
+      "Threads": 12
+     },
+     "smaps_rollup_kb": {
+      "Rss": 302336,
+      "Pss": 287527,
+      "Anonymous": 276464,
+      "Private_Dirty": 276464
+     },
+     "heap_rss_kb": 19296,
+     "heap_size_kb": 19432,
+     "anon_rw_mappings": 121,
+     "anon_rw_rss_kb": 252740,
+     "arena_like_64mib_mappings": 0,
+     "arena_like_rss_kb": 0,
+     "other_anon_rss_kb": 252740,
+     "file_backed_rss_kb": 30216,
+     "largest_anon_rss_kb": [
+      21508,
+      12288,
+      10240,
+      10240,
+      10240
+     ]
+    },
+    "closure-api-59dcddc4f-qpt7q": {
+     "status_kb": {
+      "VmRSS": 309612,
+      "RssAnon": 278620,
+      "RssFile": 30992,
+      "VmData": 775784,
+      "Threads": 16
+     },
+     "smaps_rollup_kb": {
+      "Rss": 309612,
+      "Pss": 301716,
+      "Anonymous": 278620,
+      "Private_Dirty": 278620
+     },
+     "heap_rss_kb": 19296,
+     "heap_size_kb": 19432,
+     "anon_rw_mappings": 124,
+     "anon_rw_rss_kb": 254896,
+     "arena_like_64mib_mappings": 0,
+     "arena_like_rss_kb": 0,
+     "other_anon_rss_kb": 254896,
+     "file_backed_rss_kb": 35336,
+     "largest_anon_rss_kb": [
+      13312,
+      9220,
+      9216,
+      9216,
+      8192
+     ]
+    },
+    "closure-api-59dcddc4f-zbjnl": {
+     "status_kb": {
+      "VmRSS": 286632,
+      "RssAnon": 260756,
+      "RssFile": 25876,
+      "VmData": 676296,
+      "Threads": 13
+     },
+     "smaps_rollup_kb": {
+      "Rss": 286632,
+      "Pss": 271818,
+      "Anonymous": 260756,
+      "Private_Dirty": 260756
+     },
+     "heap_rss_kb": 19296,
+     "heap_size_kb": 19432,
+     "anon_rw_mappings": 123,
+     "anon_rw_rss_kb": 237032,
+     "arena_like_64mib_mappings": 0,
+     "arena_like_rss_kb": 0,
+     "other_anon_rss_kb": 237032,
+     "file_backed_rss_kb": 30220,
+     "largest_anon_rss_kb": [
+      20480,
+      14336,
+      10240,
+      10240,
+      8124
+     ]
+    }
+   }
+  },
+  {
+   "t": "2026-10-30T15:21:37.205166+00:00",
+   "t_epoch": 1793373697.2,
+   "pods": {
+    "closure-api-59dcddc4f-fwpm2": {
+     "status_kb": {
+      "VmRSS": 309872,
+      "RssAnon": 284000,
+      "RssFile": 25872,
+      "VmData": 736452,
+      "Threads": 18
+     },
+     "smaps_rollup_kb": {
+      "Rss": 309872,
+      "Pss": 295063,
+      "Anonymous": 284000,
+      "Private_Dirty": 284000
+     },
+     "heap_rss_kb": 19296,
+     "heap_size_kb": 19432,
+     "anon_rw_mappings": 128,
+     "anon_rw_rss_kb": 260276,
+     "arena_like_64mib_mappings": 0,
+     "arena_like_rss_kb": 0,
+     "other_anon_rss_kb": 260276,
+     "file_backed_rss_kb": 30216,
+     "largest_anon_rss_kb": [
+      21508,
+      12288,
+      12288,
+      10240,
+      10240
+     ]
+    },
+    "closure-api-59dcddc4f-qpt7q": {
+     "status_kb": {
+      "VmRSS": 326376,
+      "RssAnon": 295352,
+      "RssFile": 31024,
+      "VmData": 846072,
+      "Threads": 13
+     },
+     "smaps_rollup_kb": {
+      "Rss": 326376,
+      "Pss": 318464,
+      "Anonymous": 295352,
+      "Private_Dirty": 295352
+     },
+     "heap_rss_kb": 19296,
+     "heap_size_kb": 19432,
+     "anon_rw_mappings": 122,
+     "anon_rw_rss_kb": 271628,
+     "arena_like_64mib_mappings": 0,
+     "arena_like_rss_kb": 0,
+     "other_anon_rss_kb": 271628,
+     "file_backed_rss_kb": 35368,
+     "largest_anon_rss_kb": [
+      13312,
+      13312,
+      10240,
+      9220,
+      9216
+     ]
+    },
+    "closure-api-59dcddc4f-zbjnl": {
+     "status_kb": {
+      "VmRSS": 295388,
+      "RssAnon": 269512,
+      "RssFile": 25876,
+      "VmData": 751384,
+      "Threads": 15
+     },
+     "smaps_rollup_kb": {
+      "Rss": 295388,
+      "Pss": 280574,
+      "Anonymous": 269512,
+      "Private_Dirty": 269512
+     },
+     "heap_rss_kb": 19296,
+     "heap_size_kb": 19432,
+     "anon_rw_mappings": 124,
+     "anon_rw_rss_kb": 245788,
+     "arena_like_64mib_mappings": 0,
+     "arena_like_rss_kb": 0,
+     "other_anon_rss_kb": 245788,
+     "file_backed_rss_kb": 30220,
+     "largest_anon_rss_kb": [
+      20480,
+      14336,
+      10240,
+      10240,
+      9216
+     ]
+    }
+   }
+  },
+  {
+   "t": "2026-10-30T15:36:37.306132+00:00",
+   "t_epoch": 1793374597.3,
+   "pods": {
+    "closure-api-59dcddc4f-fwpm2": {
+     "status_kb": {
+      "VmRSS": 328624,
+      "RssAnon": 303088,
+      "RssFile": 25536,
+      "VmData": 751952,
+      "Threads": 13
+     },
+     "smaps_rollup_kb": {
+      "Rss": 328624,
+      "Pss": 314045,
+      "Anonymous": 303088,
+      "Private_Dirty": 303088
+     },
+     "heap_rss_kb": 19296,
+     "heap_size_kb": 19432,
+     "anon_rw_mappings": 126,
+     "anon_rw_rss_kb": 279364,
+     "arena_like_64mib_mappings": 0,
+     "arena_like_rss_kb": 0,
+     "other_anon_rss_kb": 279364,
+     "file_backed_rss_kb": 29880,
+     "largest_anon_rss_kb": [
+      21508,
+      12288,
+      12288,
+      10240,
+      10240
+     ]
+    },
+    "closure-api-59dcddc4f-qpt7q": {
+     "status_kb": {
+      "VmRSS": 330052,
+      "RssAnon": 299344,
+      "RssFile": 30708,
+      "VmData": 922524,
+      "Threads": 13
+     },
+     "smaps_rollup_kb": {
+      "Rss": 330052,
+      "Pss": 322435,
+      "Anonymous": 299344,
+      "Private_Dirty": 299344
+     },
+     "heap_rss_kb": 19296,
+     "heap_size_kb": 19432,
+     "anon_rw_mappings": 126,
+     "anon_rw_rss_kb": 275620,
+     "arena_like_64mib_mappings": 0,
+     "arena_like_rss_kb": 0,
+     "other_anon_rss_kb": 275620,
+     "file_backed_rss_kb": 35052,
+     "largest_anon_rss_kb": [
+      16860,
+      13312,
+      13312,
+      10240,
+      9220
+     ]
+    },
+    "closure-api-59dcddc4f-zbjnl": {
+     "status_kb": {
+      "VmRSS": 303500,
+      "RssAnon": 277960,
+      "RssFile": 25540,
+      "VmData": 849500,
+      "Threads": 23
+     },
+     "smaps_rollup_kb": {
+      "Rss": 303500,
+      "Pss": 288914,
+      "Anonymous": 277960,
+      "Private_Dirty": 277960
+     },
+     "heap_rss_kb": 19296,
+     "heap_size_kb": 19432,
+     "anon_rw_mappings": 138,
+     "anon_rw_rss_kb": 254236,
+     "arena_like_64mib_mappings": 0,
+     "arena_like_rss_kb": 0,
+     "other_anon_rss_kb": 254236,
+     "file_backed_rss_kb": 29884,
+     "largest_anon_rss_kb": [
+      20480,
+      14336,
+      10240,
+      10240,
+      9216
+     ]
+    }
+   }
+  },
+  {
+   "t": "2026-10-30T15:51:37.352111+00:00",
+   "t_epoch": 1793375497.4,
+   "pods": {
+    "closure-api-59dcddc4f-fwpm2": {
+     "status_kb": {
+      "VmRSS": 333184,
+      "RssAnon": 307648,
+      "RssFile": 25536,
+      "VmData": 806372,
+      "Threads": 15
+     },
+     "smaps_rollup_kb": {
+      "Rss": 333184,
+      "Pss": 318603,
+      "Anonymous": 307648,
+      "Private_Dirty": 307648
+     },
+     "heap_rss_kb": 19296,
+     "heap_size_kb": 19432,
+     "anon_rw_mappings": 128,
+     "anon_rw_rss_kb": 283924,
+     "arena_like_64mib_mappings": 0,
+     "arena_like_rss_kb": 0,
+     "other_anon_rss_kb": 283924,
+     "file_backed_rss_kb": 29880,
+     "largest_anon_rss_kb": [
+      21508,
+      12288,
+      12288,
+      10240,
+      10240
+     ]
+    },
+    "closure-api-59dcddc4f-qpt7q": {
+     "status_kb": {
+      "VmRSS": 333368,
+      "RssAnon": 302660,
+      "RssFile": 30708,
+      "VmData": 1007948,
+      "Threads": 19
+     },
+     "smaps_rollup_kb": {
+      "Rss": 333368,
+      "Pss": 325752,
+      "Anonymous": 302660,
+      "Private_Dirty": 302660
+     },
+     "heap_rss_kb": 19296,
+     "heap_size_kb": 19432,
+     "anon_rw_mappings": 131,
+     "anon_rw_rss_kb": 278936,
+     "arena_like_64mib_mappings": 0,
+     "arena_like_rss_kb": 0,
+     "other_anon_rss_kb": 278936,
+     "file_backed_rss_kb": 35052,
+     "largest_anon_rss_kb": [
+      13312,
+      13312,
+      11264,
+      10240,
+      9220
+     ]
+    },
+    "closure-api-59dcddc4f-zbjnl": {
+     "status_kb": {
+      "VmRSS": 318924,
+      "RssAnon": 293384,
+      "RssFile": 25540,
+      "VmData": 846480,
+      "Threads": 12
+     },
+     "smaps_rollup_kb": {
+      "Rss": 318924,
+      "Pss": 304337,
+      "Anonymous": 293384,
+      "Private_Dirty": 293384
+     },
+     "heap_rss_kb": 19296,
+     "heap_size_kb": 19432,
+     "anon_rw_mappings": 132,
+     "anon_rw_rss_kb": 269660,
+     "arena_like_64mib_mappings": 0,
+     "arena_like_rss_kb": 0,
+     "other_anon_rss_kb": 269660,
+     "file_backed_rss_kb": 29884,
+     "largest_anon_rss_kb": [
+      20480,
+      14336,
+      10240,
+      10240,
+      9216
+     ]
+    }
+   }
+  },
+  {
+   "t": "2026-10-30T16:06:37.503428+00:00",
+   "t_epoch": 1793376397.5,
+   "pods": {
+    "closure-api-59dcddc4f-fwpm2": {
+     "status_kb": {
+      "VmRSS": 339640,
+      "RssAnon": 314360,
+      "RssFile": 25280,
+      "VmData": 828564,
+      "Threads": 15
+     },
+     "smaps_rollup_kb": {
+      "Rss": 339640,
+      "Pss": 325244,
+      "Anonymous": 314360,
+      "Private_Dirty": 314360
+     },
+     "heap_rss_kb": 19296,
+     "heap_size_kb": 19432,
+     "anon_rw_mappings": 128,
+     "anon_rw_rss_kb": 290636,
+     "arena_like_64mib_mappings": 0,
+     "arena_like_rss_kb": 0,
+     "other_anon_rss_kb": 290636,
+     "file_backed_rss_kb": 29624,
+     "largest_anon_rss_kb": [
+      21508,
+      12288,
+      10240,
+      10240,
+      10240
+     ]
+    },
+    "closure-api-59dcddc4f-qpt7q": {
+     "status_kb": {
+      "VmRSS": 352232,
+      "RssAnon": 321668,
+      "RssFile": 30564,
+      "VmData": 1075156,
+      "Threads": 14
+     },
+     "smaps_rollup_kb": {
+      "Rss": 352232,
+      "Pss": 344718,
+      "Anonymous": 321668,
+      "Private_Dirty": 321668
+     },
+     "heap_rss_kb": 19296,
+     "heap_size_kb": 19432,
+     "anon_rw_mappings": 130,
+     "anon_rw_rss_kb": 297944,
+     "arena_like_64mib_mappings": 0,
+     "arena_like_rss_kb": 0,
+     "other_anon_rss_kb": 297944,
+     "file_backed_rss_kb": 34908,
+     "largest_anon_rss_kb": [
+      13312,
+      13312,
+      11264,
+      10240,
+      9220
+     ]
+    },
+    "closure-api-59dcddc4f-zbjnl": {
+     "status_kb": {
+      "VmRSS": 314924,
+      "RssAnon": 289640,
+      "RssFile": 25284,
+      "VmData": 1003452,
+      "Threads": 23
+     },
+     "smaps_rollup_kb": {
+      "Rss": 314924,
+      "Pss": 300523,
+      "Anonymous": 289640,
+      "Private_Dirty": 289640
+     },
+     "heap_rss_kb": 19296,
+     "heap_size_kb": 19432,
+     "anon_rw_mappings": 141,
+     "anon_rw_rss_kb": 265916,
+     "arena_like_64mib_mappings": 0,
+     "arena_like_rss_kb": 0,
+     "other_anon_rss_kb": 265916,
+     "file_backed_rss_kb": 29628,
+     "largest_anon_rss_kb": [
+      20480,
+      14336,
+      12288,
+      10240,
+      9240
+     ]
+    }
+   }
+  },
+  {
+   "t": "2026-10-30T16:21:37.572862+00:00",
+   "t_epoch": 1793377297.6,
+   "pods": {
+    "closure-api-59dcddc4f-fwpm2": {
+     "status_kb": {
+      "VmRSS": 364492,
+      "RssAnon": 339244,
+      "RssFile": 25248,
+      "VmData": 865412,
+      "Threads": 12
+     },
+     "smaps_rollup_kb": {
+      "Rss": 364492,
+      "Pss": 350117,
+      "Anonymous": 339244,
+      "Private_Dirty": 339244
+     },
+     "heap_rss_kb": 19296,
+     "heap_size_kb": 19432,
+     "anon_rw_mappings": 132,
+     "anon_rw_rss_kb": 315520,
+     "arena_like_64mib_mappings": 0,
+     "arena_like_rss_kb": 0,
+     "other_anon_rss_kb": 315520,
+     "file_backed_rss_kb": 29592,
+     "largest_anon_rss_kb": [
+      21508,
+      12288,
+      10240,
+      10240,
+      10240
+     ]
+    },
+    "closure-api-59dcddc4f-qpt7q": {
+     "status_kb": {
+      "VmRSS": 379556,
+      "RssAnon": 349064,
+      "RssFile": 30492,
+      "VmData": 1115816,
+      "Threads": 12
+     },
+     "smaps_rollup_kb": {
+      "Rss": 379556,
+      "Pss": 372090,
+      "Anonymous": 349064,
+      "Private_Dirty": 349064
+     },
+     "heap_rss_kb": 19296,
+     "heap_size_kb": 19432,
+     "anon_rw_mappings": 131,
+     "anon_rw_rss_kb": 325340,
+     "arena_like_64mib_mappings": 0,
+     "arena_like_rss_kb": 0,
+     "other_anon_rss_kb": 325340,
+     "file_backed_rss_kb": 34836,
+     "largest_anon_rss_kb": [
+      13312,
+      13312,
+      11264,
+      10240,
+      9220
+     ]
+    },
+    "closure-api-59dcddc4f-zbjnl": {
+     "status_kb": {
+      "VmRSS": 351680,
+      "RssAnon": 326428,
+      "RssFile": 25252,
+      "VmData": 1118604,
+      "Threads": 23
+     },
+     "smaps_rollup_kb": {
+      "Rss": 351680,
+      "Pss": 337300,
+      "Anonymous": 326428,
+      "Private_Dirty": 326428
+     },
+     "heap_rss_kb": 19296,
+     "heap_size_kb": 19432,
+     "anon_rw_mappings": 144,
+     "anon_rw_rss_kb": 302704,
+     "arena_like_64mib_mappings": 0,
+     "arena_like_rss_kb": 0,
+     "other_anon_rss_kb": 302704,
+     "file_backed_rss_kb": 29596,
+     "largest_anon_rss_kb": [
+      20480,
+      14336,
+      12288,
+      10240,
+      10004
+     ]
+    }
+   }
+  },
+  {
+   "t": "2026-10-30T16:36:37.687151+00:00",
+   "t_epoch": 1793378197.7,
+   "pods": {
+    "closure-api-59dcddc4f-fwpm2": {
+     "status_kb": {
+      "VmRSS": 381852,
+      "RssAnon": 356604,
+      "RssFile": 25248,
+      "VmData": 1094960,
+      "Threads": 14
+     },
+     "smaps_rollup_kb": {
+      "Rss": 381852,
+      "Pss": 367479,
+      "Anonymous": 356604,
+      "Private_Dirty": 356604
+     },
+     "heap_rss_kb": 19296,
+     "heap_size_kb": 19432,
+     "anon_rw_mappings": 137,
+     "anon_rw_rss_kb": 332880,
+     "arena_like_64mib_mappings": 0,
+     "arena_like_rss_kb": 0,
+     "other_anon_rss_kb": 332880,
+     "file_backed_rss_kb": 29592,
+     "largest_anon_rss_kb": [
+      21508,
+      12288,
+      10240,
+      10240,
+      10240
+     ]
+    },
+    "closure-api-59dcddc4f-qpt7q": {
+     "status_kb": {
+      "VmRSS": 382144,
+      "RssAnon": 351652,
+      "RssFile": 30492,
+      "VmData": 1211328,
+      "Threads": 24
+     },
+     "smaps_rollup_kb": {
+      "Rss": 382144,
+      "Pss": 374678,
+      "Anonymous": 351652,
+      "Private_Dirty": 351652
+     },
+     "heap_rss_kb": 19296,
+     "heap_size_kb": 19432,
+     "anon_rw_mappings": 144,
+     "anon_rw_rss_kb": 327928,
+     "arena_like_64mib_mappings": 0,
+     "arena_like_rss_kb": 0,
+     "other_anon_rss_kb": 327928,
+     "file_backed_rss_kb": 34836,
+     "largest_anon_rss_kb": [
+      13312,
+      13312,
+      11264,
+      10240,
+      9220
+     ]
+    },
+    "closure-api-59dcddc4f-zbjnl": {
+     "status_kb": {
+      "VmRSS": 360784,
+      "RssAnon": 335532,
+      "RssFile": 25252,
+      "VmData": 1178644,
+      "Threads": 12
+     },
+     "smaps_rollup_kb": {
+      "Rss": 360784,
+      "Pss": 346404,
+      "Anonymous": 335532,
+      "Private_Dirty": 335532
+     },
+     "heap_rss_kb": 19296,
+     "heap_size_kb": 19432,
+     "anon_rw_mappings": 138,
+     "anon_rw_rss_kb": 311808,
+     "arena_like_64mib_mappings": 0,
+     "arena_like_rss_kb": 0,
+     "other_anon_rss_kb": 311808,
+     "file_backed_rss_kb": 29596,
+     "largest_anon_rss_kb": [
+      20480,
+      14336,
+      12288,
+      10240,
+      9216
+     ]
+    }
+   }
+  },
+  {
+   "t": "2026-10-30T16:51:37.790224+00:00",
+   "t_epoch": 1793379097.8,
+   "pods": {
+    "closure-api-59dcddc4f-fwpm2": {
+     "status_kb": {
+      "VmRSS": 398860,
+      "RssAnon": 373612,
+      "RssFile": 25248,
+      "VmData": 1232824,
+      "Threads": 23
+     },
+     "smaps_rollup_kb": {
+      "Rss": 398860,
+      "Pss": 384489,
+      "Anonymous": 373612,
+      "Private_Dirty": 373612
+     },
+     "heap_rss_kb": 19296,
+     "heap_size_kb": 19432,
+     "anon_rw_mappings": 145,
+     "anon_rw_rss_kb": 349888,
+     "arena_like_64mib_mappings": 0,
+     "arena_like_rss_kb": 0,
+     "other_anon_rss_kb": 349888,
+     "file_backed_rss_kb": 29592,
+     "largest_anon_rss_kb": [
+      21508,
+      12288,
+      10240,
+      10240,
+      10240
+     ]
+    },
+    "closure-api-59dcddc4f-qpt7q": {
+     "status_kb": {
+      "VmRSS": 387680,
+      "RssAnon": 357188,
+      "RssFile": 30492,
+      "VmData": 1365432,
+      "Threads": 16
+     },
+     "smaps_rollup_kb": {
+      "Rss": 387680,
+      "Pss": 380214,
+      "Anonymous": 357188,
+      "Private_Dirty": 357188
+     },
+     "heap_rss_kb": 19296,
+     "heap_size_kb": 19432,
+     "anon_rw_mappings": 136,
+     "anon_rw_rss_kb": 333464,
+     "arena_like_64mib_mappings": 0,
+     "arena_like_rss_kb": 0,
+     "other_anon_rss_kb": 333464,
+     "file_backed_rss_kb": 34836,
+     "largest_anon_rss_kb": [
+      13312,
+      13312,
+      11264,
+      10240,
+      9220
+     ]
+    },
+    "closure-api-59dcddc4f-zbjnl": {
+     "status_kb": {
+      "VmRSS": 386336,
+      "RssAnon": 361084,
+      "RssFile": 25252,
+      "VmData": 1305460,
+      "Threads": 14
+     },
+     "smaps_rollup_kb": {
+      "Rss": 386336,
+      "Pss": 371956,
+      "Anonymous": 361084,
+      "Private_Dirty": 361084
+     },
+     "heap_rss_kb": 19296,
+     "heap_size_kb": 19432,
+     "anon_rw_mappings": 138,
+     "anon_rw_rss_kb": 337360,
+     "arena_like_64mib_mappings": 0,
+     "arena_like_rss_kb": 0,
+     "other_anon_rss_kb": 337360,
+     "file_backed_rss_kb": 29596,
+     "largest_anon_rss_kb": [
+      20480,
+      14336,
+      12288,
+      10240,
+      9216
+     ]
+    }
+   }
+  },
+  {
+   "t": "2026-10-30T17:06:37.890977+00:00",
+   "t_epoch": 1793379997.9,
+   "pods": {
+    "closure-api-59dcddc4f-fwpm2": {
+     "status_kb": {
+      "VmRSS": 411156,
+      "RssAnon": 385908,
+      "RssFile": 25248,
+      "VmData": 1235404,
+      "Threads": 12
+     },
+     "smaps_rollup_kb": {
+      "Rss": 411156,
+      "Pss": 396782,
+      "Anonymous": 385908,
+      "Private_Dirty": 385908
+     },
+     "heap_rss_kb": 19296,
+     "heap_size_kb": 19432,
+     "anon_rw_mappings": 140,
+     "anon_rw_rss_kb": 362184,
+     "arena_like_64mib_mappings": 1,
+     "arena_like_rss_kb": 3552,
+     "other_anon_rss_kb": 358632,
+     "file_backed_rss_kb": 29592,
+     "largest_anon_rss_kb": [
+      21508,
+      12288,
+      10240,
+      10240,
+      10240
+     ]
+    },
+    "closure-api-59dcddc4f-qpt7q": {
+     "status_kb": {
+      "VmRSS": 397556,
+      "RssAnon": 367064,
+      "RssFile": 30492,
+      "VmData": 1405896,
+      "Threads": 11
+     },
+     "smaps_rollup_kb": {
+      "Rss": 397556,
+      "Pss": 390090,
+      "Anonymous": 367064,
+      "Private_Dirty": 367064
+     },
+     "heap_rss_kb": 19296,
+     "heap_size_kb": 19432,
+     "anon_rw_mappings": 134,
+     "anon_rw_rss_kb": 343340,
+     "arena_like_64mib_mappings": 0,
+     "arena_like_rss_kb": 0,
+     "other_anon_rss_kb": 343340,
+     "file_backed_rss_kb": 34836,
+     "largest_anon_rss_kb": [
+      13312,
+      13312,
+      11264,
+      10240,
+      9220
+     ]
+    },
+    "closure-api-59dcddc4f-zbjnl": {
+     "status_kb": {
+      "VmRSS": 397944,
+      "RssAnon": 372692,
+      "RssFile": 25252,
+      "VmData": 1320192,
+      "Threads": 12
+     },
+     "smaps_rollup_kb": {
+      "Rss": 397944,
+      "Pss": 383563,
+      "Anonymous": 372692,
+      "Private_Dirty": 372692
+     },
+     "heap_rss_kb": 19296,
+     "heap_size_kb": 19432,
+     "anon_rw_mappings": 137,
+     "anon_rw_rss_kb": 348968,
+     "arena_like_64mib_mappings": 0,
+     "arena_like_rss_kb": 0,
+     "other_anon_rss_kb": 348968,
+     "file_backed_rss_kb": 29596,
+     "largest_anon_rss_kb": [
+      20480,
+      14336,
+      12288,
+      12288,
+      10240
+     ]
+    }
+   }
+  }
+ ]
+}

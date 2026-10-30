@@ -29,7 +29,7 @@ def _write(path: str, top: int = 40) -> None:
         stats = snap.compare_to(_baseline[0], "lineno")
         cur, peak = tracemalloc.get_traced_memory()
         text = f"traced now {cur / 2**20:.1f} MiB (peak {peak / 2**20:.1f}); growth since the baseline, by line:\n"
-        text += "\n".join(str(s) for s in stats[:top]) + "\n\nby traceback (top 8, 12 frames):\n"
+        text += "\n".join(str(s) for s in stats[:top]) + "\n\nby traceback (top 8):\n"
         for s in snap.compare_to(_baseline[0], "traceback")[:8]:
             text += f"{s.size_diff / 2**20:+.2f} MiB {s.count_diff:+d} blocks\n" + "\n".join("    " + ln for ln in s.traceback.format()[-12:]) + "\n"
     with open(path, "w") as fh:
@@ -39,7 +39,7 @@ def _write(path: str, top: int = 40) -> None:
 def install() -> None:
     if os.environ.get("MEMTRACE") != "1":
         return
-    tracemalloc.start(12)
+    tracemalloc.start(int(os.environ.get("MEMTRACE_FRAMES", "1")))  # 12 frames OOM-killed a 768 MiB pod within 30 minutes; 1 is the cheap setting
     path = os.environ.get("MEMTRACE_OUT", "/tmp/memtrace.txt")
     signal.signal(signal.SIGUSR1, lambda *_: threading.Thread(target=_write, args=(path,), daemon=True).start())
     log.warning("memtrace on: tracemalloc started; SIGUSR1 writes %s", path)

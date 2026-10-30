@@ -81,6 +81,11 @@ def analyse(doc: dict, prefix: str = "closure-api", skip_s: int = SKIP_S) -> dic
     for pod, pts in pod_series(doc, prefix).items():
         hours = pts[-1][0]
         fit_pts = [(t, y) for t, y in pts if t * 3600 >= skip_s]
+        if len(fit_pts) < 6:  # a pod that restarted too often to fit anything
+            out[pod] = {"hours": round(hours, 2), "start_mib": round(pts[0][1], 1), "end_mib": round(pts[-1][1], 1), "max_mib": round(max(y for _, y in pts), 1),
+                        "slices": [], "linear": {"slope_mib_per_h": None, "intercept_mib": None, "rmse_mib": None, "aic": None}, "preferred": "too few samples",
+                        "last_slice_slope_mib_per_h": None, "first_slice_slope_mib_per_h": None}
+            continue
         slices = []
         for h in range(int(math.ceil(hours))):
             seg = [(t, y) for t, y in pts if h <= t < h + 1]
