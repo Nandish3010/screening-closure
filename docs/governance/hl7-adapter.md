@@ -89,6 +89,21 @@ PID-13 and PID-14 are judged: a telephone number with 7 to 15 digits is valid; a
 
 One line per message: message type, an internal kind, the ACK code, the fixed reason and a 12-hex-digit hash of sender and control id. No identifier, name, number, date or free text; an exception is logged by class only. `api/tests/test_hl7_logs.py` pushes marker values through every message type and error path and scans every log record and ACK. The case log holds codes and dates only (the payload schemas, ADR-019, apply). The genesis event of a case created from a message is `case_created` by `system:intake`, exactly as from `POST /cases`; the message's origin is not recorded on it (see "Not built").
 
+## TLS and client certificates
+
+The MLLP listener can terminate TLS and require client certificates (M7-6). Off by default; with the variables below unset it is the clear-text listener described above. Standard library `ssl`, minimum TLS 1.2.
+
+| Variable | Meaning |
+|---|---|
+| `HL7_TLS_CERT`, `HL7_TLS_KEY` | Server certificate chain and private key (PEM). Both or neither. |
+| `HL7_TLS_CLIENT_CA` | CA bundle that must have signed the client certificate. When set, a client certificate is required (`CERT_REQUIRED`); a client without one, or signed by another CA, fails the handshake. |
+| `HL7_TLS_ALLOWED_CLIENT_CNS` | Optional comma list of accepted client subject CNs or DNS SANs. A verified client not on the list is disconnected and the CN is logged. Set but empty means nobody (fail closed). Needs `HL7_TLS_CLIENT_CA`. |
+| `HL7_REQUIRE_TLS` | `1`: refuse to start in clear text. |
+
+Fail closed: a certificate without a key, unreadable files, or a client CA / allow-list without a server certificate stop the listener at start-up with an error; it never falls back to clear text. The log carries the verified client CN per connection and never message content.
+
+Test certificates: `tools/hl7/gen_test_certs.sh [DIR]` (openssl; default `tools/hl7/.certs/`, git-ignored) writes a throw-away CA, a server certificate (SAN `localhost`, `127.0.0.1`), a good client, a second client, and a client from a rogue CA. Send with `python tools/hl7/send.py --mllp localhost:2575 --tls-ca DIR/ca.pem --tls-cert DIR/client.pem --tls-key DIR/client.key FILE`. Production certificates and the client CA come from the exchange operator and are held in Key Vault; none is committed. Tests: `api/tests/test_hl7_tls.py`.
+
 ## What Malaffi must confirm
 
 Each item is an assumption in the code or the mapping that no document we hold settles. Added to the list in [malaffi-adapter-plan.md](malaffi-adapter-plan.md).

@@ -33,7 +33,7 @@ api:
     startup:   { initialDelaySeconds: 5, periodSeconds: 5, failureThreshold: 36 }   # migrations run in the lifespan: allow 3 min
     liveness:  { periodSeconds: 10, timeoutSeconds: 3, failureThreshold: 6 }
     readiness: { periodSeconds: 5,  timeoutSeconds: 3, failureThreshold: 3 }
-  service: { type: ClusterIP, port: 8000 }
+  service: { type: ClusterIP, port: 8000 }   # nodePort: 30000-32767, only with type NodePort (throw-away clusters; kind maps a host port to it)
   ingress:
     enabled: false
     className: ""
@@ -78,6 +78,10 @@ app:
   fhirProjection: "true"
   automationEnabled: "true"
   leaderLeaseTtlSeconds: "30"
+  # Run the agency layer (supervisor -> heads -> executioners) after every N-th scheduler sweep; "0" = never. Empty = not rendered,
+  # the API's code default applies (6). The agency pass reads the whole case table, so on a very large population it can exhaust
+  # an API pod's memory (M7-6: OOM at ~1M cases in a 768Mi pod).
+  agencyEverySweeps: ""
   requireLeaderFence: "true"    # scheduler calls without a current leader token are refused
   logFormat: json
   corsAllowOrigins: ""          # the web app's origin(s), comma separated
@@ -129,7 +133,11 @@ networkPolicy:
     - namespaceLabels: { kubernetes.io/metadata.name: ingress-nginx }
   metricsFrom:
     - namespaceLabels: { kubernetes.io/metadata.name: observability }
+  # Extra source ranges allowed to reach the API port (e.g. a node/host range for NodePort access in a throw-away cluster).
+  ingressCidrs: []
   # Egress of the API (and the migrate job for the database). CIDRs are placeholders; use the private endpoints' addresses.
+  # An empty cidr switches that rule off (fhir, oidc). The database rule must match the database's POD or private-endpoint
+  # address, not a Service ClusterIP (NetworkPolicy is evaluated after the Service address is translated).
   egress:
     database: { cidr: 10.20.2.0/24, port: 5432 }
     fhir:     { cidr: 10.20.3.0/24, port: 443 }

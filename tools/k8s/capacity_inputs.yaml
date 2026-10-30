@@ -1,0 +1,134 @@
+# Inputs of tools/k8s/render_scale.py's capacity plan (M7-6). Everything in this file is an ASSUMPTION or a quoted list price, never a
+# measurement: measured numbers are read from docs/results/scale/*.json by the script. `status` says which kind each block is.
+# Costs computed from this file are ESTIMATES from public list prices, excluding tax, support plans, reservations and DoH-specific
+# hosting requirements.
+
+volumes:
+  # Annual new cases in Abu Dhabi, low / central / high. Source: docs/commercial/business-case.md (line cited per row), which itself
+  # derives them from eligible population x participation x positivity (section 1) or assumes them (section 9.2).
+  status: "from the business case (FIT is a model output; the other three pathways are assumed or a programme target, none built or simulated)"
+  pathways:
+    - {name: FIT positives,                         low: 8216,  central: 17696, high: 59724, source: "docs/commercial/business-case.md:49 (central 17,696; the task brief rounds it to 17,700)"}
+    - {name: Blood-based screening positives,       low: 500,   central: 1200,  high: 3000,  source: "docs/commercial/business-case.md:327"}
+    - {name: Breast screening recalls,              low: 1250,  central: 3200,  high: 8400,  source: "docs/commercial/business-case.md:328"}
+    - {name: Cervical screening abnormal results,   low: 900,   central: 2500,  high: 6400,  source: "docs/commercial/business-case.md:329"}
+  all_four_total_source: "docs/commercial/business-case.md:330 (10,866 / 24,596 / 77,524)"
+
+scenarios:
+  # small = FIT only, central; base = four pathways, central; high = four pathways, high volume, sized on the upper-bound retention.
+  small: {label: small, volume: central, pathways: [FIT positives], open_basis: simulated_duration, db_vcore_floor: 2, storage_gb_floor: 64,  waf_capacity_units: 2, log_gb_per_month: 10, egress_gb_per_month: 20}
+  base:  {label: base,  volume: central, pathways: all,             open_basis: simulated_duration, db_vcore_floor: 4, storage_gb_floor: 128, waf_capacity_units: 2, log_gb_per_month: 20, egress_gb_per_month: 50}
+  high:  {label: high,  volume: high,    pathways: all,             open_basis: retained_upper_bound, db_vcore_floor: 8, storage_gb_floor: 256, waf_capacity_units: 4, log_gb_per_month: 60, egress_gb_per_month: 200}
+  _basis: >-
+    db_vcore_floor, storage_gb_floor, waf_capacity_units, log_gb_per_month and egress_gb_per_month are judgement (assumed): a floor
+    chosen for headroom (restore, reindex, failover catch-up, a later move to a UAE-wide volume without a resize), not derived from a
+    measurement. The script prints the computed minimum next to the floor so the gap is visible.
+
+open_cases:
+  # Open-case population at steady state = annual new cases x mean open duration / 365.
+  simulated_source: docs/results/results.json scenarios.literature_anchored.arms.orchestrated (open_30d, open_60d, open_90d, closed_share; follow_up_days 360)
+  simulated_note: >-
+    The mean open duration is the area under the simulator's open-share curve (trapezoid through t=0 (open share 1), 30, 60, 90 days and
+    follow-up end, where the open share is 1 - closed_share), for the orchestrated arm of the literature-anchored scenario. Cases still
+    open at the end of the 360-day follow-up are counted as open for the 360 days only (the simulator does not follow them further),
+    so this UNDERSTATES the population if they stay open; the upper bound below covers that. The simulator models the FIT pathway only;
+    the same duration is assumed for the other three pathways.
+  retained_upper_bound_years: 3
+  retained_upper_bound_note: >-
+    Conservative upper bound: every case of the last N years is still open (nothing is ever closed). Assumed N = 3. This is a bound
+    for sizing, not a forecast.
+  retention_years_for_database: 5
+  retention_note: >-
+    The case log is append-only and closed cases are kept: the database grows with all cases ever created. Assumed retention for sizing: 5 years
+    (the DoH retention rule is not read here).
+
+events_and_requests:
+  lifetime_events_factor: 2.0
+  lifetime_events_note: >-
+    ASSUMED. Measured: the seeded 1,000,000-case population (eleven open states, a mix of stages) carries 5.80 events per case
+    (sweep.json, seeding). A case seeded at a spread of mid-life stages has on average about half of its lifetime events, so the lifetime
+    events per case is taken as factor x the measured mean.
+  requests_per_event: 5.0
+  requests_per_event_note: >-
+    ASSUMED. One write request per event plus four reads (worklist, case, timeline, notifications) by the clinicians and coordinators
+    who act on it. The load-test mix (api_load.py) is 40% writes (create 12 + post_event 28) and 60% reads, i.e. 2.5 requests per write; 5.0
+    is deliberately more read-heavy than that mix.
+  peak_factor: 10.0
+  peak_note: >-
+    ASSUMED. Daytime peak rate = 10 x the 24-hour average (clinic hours, batch result files and the daily catch-up concentrate traffic).
+  new_case_share_of_year: 1.0   # cases are spread over 365 days; the annual figure is divided by 365 (no weekend or holiday correction)
+
+cloud_sizing:
+  laptop_to_cloud_safety_factor: 2.0
+  safety_note: >-
+    ASSUMED. All measurements are from one laptop-class machine (Apple M4, Docker Desktop VM with 10 CPUs / about 8 GB, shared with the
+    load generator, Postgres and the kind nodes; no cloud was measured). Throughput measured there is divided by this factor, and
+    measured times are multiplied by it, before they are applied to Azure vCPUs. The factor is a judgement, not a measurement.
+  availability_zones: 3
+  availability_zones_note: >-
+    ASSUMED: three availability zones in UAE North (to verify against the subscription). One API replica per zone minimum; the chart's
+    topologySpread is on.
+  api_pod: {cpu_request: 0.25, cpu_limit: 1.0, mem_limit_mib: 768}        # deploy/helm/screening-closure/values-kind.yaml, as measured
+  scheduler_pod: {cpu_request: 0.05, mem_limit_mib: 128}
+  watchdog_pod: {cpu_request: 0.05, mem_limit_mib: 128}
+  scheduler_replicas: 2
+  watchdog_replicas: 1
+  api_max_replicas_for_node_sizing: 6        # deploy/bicep/main.bicep apiReplicasMax; the nodes must hold the autoscaler's maximum
+  node_system_reserved: {cpu: 0.6, mem_gib: 2.0}   # ASSUMED per-node share of kube-system, AKS add-ons and the kubelet reservation
+  loop_interval_s: 10
+  sweep_workers_choices: [1, 4]
+  postgres_ram_gib_per_vcore: 4      # GP Ddsv5 (Microsoft sizing: 4 GiB per vCore; not verified from the price API)
+  postgres_cache_fraction: 0.5       # share of server RAM assumed available as cache for the database (shared_buffers + page cache)
+  storage_overhead_factor: 3.0       # ASSUMED headroom over the data size: WAL, bloat, index growth, vacuum, restores
+  storage_min_gb: 32                 # ASSUMED Azure Flexible Server minimum
+  postgres_backup_size_factor: 2.0   # ASSUMED backup volume as a multiple of the used database size
+  backup_free_allowance: provisioned storage   # UNVERIFIED: the free allowance is taken as equal to the provisioned storage
+  aks_node_os_disk: P10                # one Premium SSD P10 LRS OS disk per node (assumed managed, not ephemeral)
+
+postgres_tuning_before_after:
+  # Documented in the comment block of tools/k8s/postgres.yaml (commit a0a0f4f); sweep.json records only the `tuned` settings
+  # (cells labelled `tuned*` carry postgres_settings), the `baseline` cells ran with these:
+  baseline: {shared_buffers: 256MB, memory_limit: 1536Mi, dev_shm: "64 MB (Docker default)", random_page_cost: "4 (PostgreSQL default)", effective_cache_size: "4GB (PostgreSQL default)", work_mem: "4MB (default)", maintenance_work_mem: "64MB (default)", max_wal_size: "1GB (default)", checkpoint_timeout: "5min (default)"}
+  source: tools/k8s/postgres.yaml header comment and git show a0a0f4f
+
+pricing:
+  # Azure Retail Prices API, https://prices.azure.com/api/retail/prices with $filter armRegionName eq 'uaenorth'. Pay-as-you-go,
+  # Linux, USD, list price. Retrieved 2026-10-29. 730 hours a month. ESTIMATES: excluding tax, support plans, reservations / savings
+  # plans and any DoH-specific hosting requirements.
+  source_url: https://prices.azure.com/api/retail/prices
+  filter: "armRegionName eq 'uaenorth'"
+  retrieved: "2026-10-29"
+  hours_per_month: 730
+  aks:
+    standard_tier_usd_per_cluster_hour: 0.10      # Standard tier, Uptime SLA
+    free_tier_usd_per_cluster_hour: 0.0           # headline Free tier
+    free_tier_infrastructure_cost_meter_usd_per_hour: 0.05   # UNVERIFIED: the API lists a "FreeTierInfrastructureCost Uptime SLA" meter, effective 2026-10-01; not confirmed to be charged on Free-tier clusters
+  vm_usd_per_hour: {Standard_D2s_v5: 0.118, Standard_D4s_v5: 0.235, Standard_D8s_v5: 0.471, Standard_D2as_v5: 0.106, Standard_D4as_v5: 0.212}
+  vm_vcpu: {Standard_D2s_v5: 2, Standard_D4s_v5: 4, Standard_D8s_v5: 8, Standard_D2as_v5: 2, Standard_D4as_v5: 4}
+  vm_ram_gib: {Standard_D2s_v5: 8, Standard_D4s_v5: 16, Standard_D8s_v5: 32, Standard_D2as_v5: 8, Standard_D4as_v5: 16}
+  postgres_flexible_gp_ddsv5_usd_per_hour: {2: 0.217, 4: 0.434, 8: 0.868}
+  postgres_burstable_b2ms_usd_per_hour: 0.158       # no high availability on Burstable; listed for reference, not used in any scenario
+  postgres_storage_usd_per_gb_month: 0.138
+  postgres_backup_usd_per_gb_month: 0.105           # beyond the free allowance (allowance = provisioned storage: UNVERIFIED)
+  postgres_ha_standby_billing: same rate as the primary (compute and storage), https://learn.microsoft.com/en-us/azure/reliability/reliability-azure-database-postgresql
+  container_apps:
+    source_url: https://azure.microsoft.com/en-us/pricing/details/container-apps/
+    vcpu_second_active_usd: 0.000024
+    gib_second_active_usd: 0.000003
+    million_requests_usd: 0.40
+    free_grant: {vcpu_seconds: 180000, gib_seconds: 360000, requests: 2000000}   # per month; per subscription (other apps in it share the grant)
+    environment_hour_usd: 0.143                     # carried from tools/pilot/inputs.yaml (M7-4, Retail Prices API read 2026-10-25); whether it applies to an internal consumption-only environment is unverified there
+    deploy_bicep_defaults:                          # deploy/bicep/main.bicep + modules/apps.bicep
+      api: {cpu: 1.0, mem_gib: 2.0}
+      scheduler: {cpu: 0.25, mem_gib: 0.5, replicas: 2}
+      watchdog: {cpu: 0.25, mem_gib: 0.5, replicas: 1}
+  key_vault_usd_per_10k_operations: 0.0396
+  key_vault_operations_per_month: 500000            # ASSUMED, as the M7-4 hosting build-up
+  log_analytics_usd_per_gb_ingested: 3.29
+  log_analytics_retention_usd_per_gb_month: 0.132
+  log_retention_billed_months: 2                    # ASSUMED, as the M7-4 hosting build-up
+  standard_load_balancer_usd_per_hour: 0.025
+  app_gateway_standard_v2: {fixed_usd_per_hour: 0.264, capacity_unit_usd_per_hour: 0.0106}
+  app_gateway_waf_v2: {fixed_usd_per_hour: 0.475, capacity_unit_usd_per_hour: 0.019}
+  premium_ssd_p10_lrs_usd_per_month: 21.504
+  egress: {free_gb: 100, internet_routing_usd_per_gb: 0.12, microsoft_network_usd_per_gb: 0.181}   # the Microsoft network is the default

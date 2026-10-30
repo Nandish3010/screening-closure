@@ -72,7 +72,12 @@ spec:
     app.kubernetes.io/name: api
     app.kubernetes.io/instance: {{ .Release.Name }}
   ports:
-    - { name: http, port: {{ .Values.api.service.port }}, targetPort: http }
+    - name: http
+      port: {{ .Values.api.service.port }}
+      targetPort: http
+      {{- if and .Values.api.service.nodePort (eq .Values.api.service.type "NodePort") }}
+      nodePort: {{ .Values.api.service.nodePort }}
+      {{- end }}
 ---
 apiVersion: policy/v1
 kind: PodDisruptionBudget

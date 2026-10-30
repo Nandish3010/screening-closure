@@ -1,4 +1,4 @@
-.PHONY: evaluate-outcomes evaluate-outcomes-check rai-fairness rai-fairness-check rai-oversight rai-oversight-check rai-check claude-smoke claude-record redteam-generate triage-serve up-obs check-full evaluate-smoke test-redteam validate validate-check validate-targets evaluate-refusal evaluate-abudhabi oidc-up oidc-down test-oidc up-scale agency-run test-demo test-e2e-live demo-scenario demo-stage demo-snapshot demo-restore demo-reset demo-kill-scheduler check docs-check docs-numbers tracker-lint test-security test-tools test-load load-check up down logs test test-db test-db-create test-db-reset test-chaos synthea demo-seed demo-seed-clean evaluate evaluate-capacity evaluate-capacity-check simulate evaluate-check sensitivity sensitivity-check reset web-install web-dev web-build web-test web-e2e test-e2e review-packs review-packs-check test-review-packs test-phi-logs rbac-matrix test-offline fresh-clone risk-report risk-check calibrate-fetch calibrate-fit calibrate-check effort effort-check video video-check video-deps verify hl7-demo hl7-samples judge-headline judge-headline-check api-types api-types-check
+.PHONY: k8s-up k8s-down scale-report scale-report-check evaluate-outcomes evaluate-outcomes-check rai-fairness rai-fairness-check rai-oversight rai-oversight-check rai-check claude-smoke claude-record redteam-generate triage-serve up-obs check-full evaluate-smoke test-redteam validate validate-check validate-targets evaluate-refusal evaluate-abudhabi oidc-up oidc-down test-oidc up-scale agency-run test-demo test-e2e-live demo-scenario demo-stage demo-snapshot demo-restore demo-reset demo-kill-scheduler check docs-check docs-numbers tracker-lint test-security test-tools test-load load-check up down logs test test-db test-db-create test-db-reset test-chaos synthea demo-seed demo-seed-clean evaluate evaluate-capacity evaluate-capacity-check simulate evaluate-check sensitivity sensitivity-check reset web-install web-dev web-build web-test web-e2e test-e2e review-packs review-packs-check test-review-packs test-phi-logs rbac-matrix test-offline fresh-clone risk-report risk-check calibrate-fetch calibrate-fit calibrate-check effort effort-check video video-check video-deps verify hl7-demo hl7-samples judge-headline judge-headline-check api-types api-types-check
 
 up:
 	docker compose up -d --build
@@ -13,6 +13,23 @@ up-scale:
 # docs/governance/deployment.md.
 up-obs:
 	OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318 LOG_FORMAT=json docker compose --profile obs up -d --build
+
+# M7-6: the Helm chart on a local kind cluster `sc-m76` (3 api, 2 scheduler, 1 watchdog, in-cluster Postgres), API on
+# 127.0.0.1:18376, Postgres on 127.0.0.1:15476. Needs kind, helm, kubectl. Touches only that cluster. tools/k8s/, values-kind.yaml.
+k8s-up:
+	bash tools/k8s/up.sh
+
+k8s-down:
+	bash tools/k8s/down.sh
+
+# M7-6: docs/results/scale.md and scale.json (scalability evidence and the emirate capacity plan), rendered from the raw measurements in
+# docs/results/scale/*.json and tools/k8s/capacity_inputs.yaml. Pure Python, no cluster. `scale-report-check` fails if the committed
+# files differ from what the raw files and the inputs produce.
+scale-report:
+	$(PY) tools/k8s/render_scale.py
+
+scale-report-check:
+	$(PY) tools/k8s/render_scale.py --check
 
 down:
 	docker compose --profile scale --profile obs down
