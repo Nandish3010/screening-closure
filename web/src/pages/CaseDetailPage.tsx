@@ -98,6 +98,7 @@ export function CaseDetailPage() {
   const [replyChannel, setReplyChannel] = useState<ContactChannel>("whatsapp");
   const [replyText, setReplyText] = useState("");
   const [replyResult, setReplyResult] = useState<ReplyResult | null>(null);
+  const [replyQuote, setReplyQuote] = useState("");
   const [appointment, setAppointment] = useState("");
   const [appointmentDate, setAppointmentDate] = useState("");
   const [resultRef, setResultRef] = useState("");
@@ -639,6 +640,7 @@ export function CaseDetailPage() {
               onClick={() => act(async () => {
                 const r = await api.postReply(caseId, { channel: replyChannel, text: replyText.trim() });
                 setReplyResult(r);
+                setReplyQuote(replyText.trim());
                 setReplyText("");
                 return r;
               }, (r: ReplyResult) => (r.needs_human ? STAFF.replyForm.recordedNeedsPerson : STAFF.replyForm.recordedHandled(String(r.intent).replace(/_/g, " "))))}
@@ -647,6 +649,11 @@ export function CaseDetailPage() {
             </ActionButton>
             {replyResult && (
               <p className={`banner ${replyResult.needs_human ? "banner-warn" : "banner-ok"}`} role="status" data-testid="reply-result" data-intent={replyResult.intent} data-needs-human={String(replyResult.needs_human)}>
+                {replyQuote && (
+                  <span className="reply-quote" data-testid="reply-quote" dir="auto" style={{ display: "block", marginBottom: 4 }}>
+                    {STAFF.replyForm.quote} «<bdi>{replyQuote}</bdi>»
+                  </span>
+                )}
                 <strong>{STAFF.replyForm.readAs} {String(replyResult.intent).replace(/_/g, " ")}</strong>
                 {" "}({Math.round(replyResult.confidence * 100)}% sure, model: {replyResult.model_id}).{" "}
                 {replyResult.needs_human ? STAFF.replyForm.needsPerson : STAFF.replyForm.handled}

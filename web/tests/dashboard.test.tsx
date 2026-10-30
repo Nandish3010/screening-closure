@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createMockAdapter } from "../src/api/mockAdapter";
 import { ApiError } from "../src/api/contract";
-import { ALERT_POLL_MS, DashboardPage } from "../src/pages/DashboardPage";
+import { ALERT_POLL_MS, DashboardPage, minutesSince } from "../src/pages/DashboardPage";
 import { renderWithApp } from "./helpers";
 
 const cid = (n: number) => `c${String(n).padStart(7, "0")}-0000-4000-8000-${String(n).padStart(12, "0")}`;
@@ -38,6 +38,15 @@ describe("C9: cases nobody is looking at", () => {
   });
 });
 
+describe("C9: minutesSince", () => {
+  it("counts real minutes from the heartbeat, never below zero", () => {
+    const now = Date.parse("2026-10-30T21:40:00Z");
+    expect(minutesSince("2026-10-30T21:31:00Z", now)).toBe("9 minutes");
+    expect(minutesSince("2026-10-30T21:39:00Z", now)).toBe("1 minute");
+    expect(minutesSince("2026-10-30T21:50:00Z", now)).toBe("less than a minute");
+  });
+});
+
 describe("C9: stale-scheduler banner", () => {
   it("is absent while GET /alerts is empty and appears for an active scheduler_down alert", async () => {
     const user = userEvent.setup();
@@ -48,7 +57,7 @@ describe("C9: stale-scheduler banner", () => {
     const banner = await screen.findByTestId("scheduler-banner");
     expect(banner).toHaveAttribute("role", "alert");
     expect(banner).toHaveTextContent(/scheduler is down/i);
-    expect(banner).toHaveTextContent(/not reported since 2026-11-04/);
+    expect(banner).toHaveTextContent(/not reported for (\d+ minutes?|less than a minute) \(real clock, not simulated time\)/);
     expect(screen.getByTestId("toggle-scheduler")).toHaveTextContent(/back up/i);
   });
 

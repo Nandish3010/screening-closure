@@ -470,6 +470,20 @@ describe("Dashboard: the human-effort card", () => {
   });
 });
 
+describe("Effort card with no reduction yet", () => {
+  it("says 'Not enough data yet', not 'Below target', while the reduction is n/a", () => {
+    const m: EffortMetrics = {
+      sim_time: SIM_NOW, cases: 0, per_case: [],
+      totals: { human_actions: 0, automated_actions: 0, automation_share: null, human_minutes: 0, baseline_minutes: 0, minutes_saved: 0, reduction_pct: null, target_pct: 40, meets_target: false },
+      assumptions: { status: "assumed", note: "Assumed.", minutes: { acknowledge: 2 } },
+    };
+    render(<EffortCard metrics={m} />);
+    expect(screen.getByTestId("effort-reduction")).toHaveTextContent("n/a");
+    expect(screen.getByTestId("effort-target-status")).toHaveTextContent("Not enough data yet");
+    expect(screen.getByTestId("effort-target-status")).not.toHaveTextContent("Below target");
+  });
+});
+
 describe("http adapter: GET /metrics/effort", () => {
   const effort: EffortMetrics = {
     sim_time: "2026-11-04T09:00:00Z", cases: 2,

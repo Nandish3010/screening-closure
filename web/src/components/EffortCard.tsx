@@ -23,8 +23,8 @@ export function EffortCard({ metrics }: { metrics: EffortMetrics | null }) {
             <span className="kpi-value" data-testid="effort-reduction">{reduction === null ? "n/a" : `${reduction}%`}</span>{" "}
             <span className="kpi-label">{s.reduction}</span>
             {" "}
-            <span className={`chip ${t.meets_target ? "chip-ok" : "chip-warn"}`} data-testid="effort-target-status">
-              {t.meets_target ? s.met : s.notMet}
+            <span className={`chip ${reduction === null ? "chip-neutral" : t.meets_target ? "chip-ok" : "chip-warn"}`} data-testid="effort-target-status">
+              {reduction === null ? s.notEnoughData : t.meets_target ? s.met : s.notMet}
             </span>
           </div>
           <div

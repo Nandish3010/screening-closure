@@ -200,7 +200,7 @@ function overlayScript(caption: string): string {
   return `(() => {
   const FIRST = ${JSON.stringify(caption)};
   const PREFIX = "__vcap:";
-  const css = "#__vcap_bar{position:fixed;left:50%;transform:translateX(-50%);bottom:34px;width:min(1180px,calc(100vw - 40px));z-index:2147483647;pointer-events:none;background:rgba(8,18,26,.9);color:#fff;font:600 22px/1.3 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;padding:12px 18px;border-radius:10px;text-align:center;box-shadow:0 4px 18px rgba(0,0,0,.35)}"
+  const css = "#__vcap_bar{position:fixed;left:50%;transform:translateX(-50%);bottom:34px;width:min(1180px,calc(100vw - 40px));z-index:2147483647;pointer-events:none;background:rgba(8,18,26,.9);color:#fff;font:600 22px/1.3 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;padding:12px 18px;border-radius:10px;text-align:center;direction:ltr;unicode-bidi:isolate;box-shadow:0 4px 18px rgba(0,0,0,.35)}"
     + "#__vcap_bar.m{font-size:18px}#__vcap_bar.s{font-size:15px;line-height:1.3}"
     + "#__vcap_strip{position:fixed;left:0;right:0;bottom:0;height:26px;z-index:2147483647;pointer-events:none;background:#ffb703;color:#1b1300;font:800 13px/26px -apple-system,Segoe UI,sans-serif;letter-spacing:.08em;text-align:center;text-transform:uppercase}"
     + "body{padding-bottom:170px !important}";
@@ -208,8 +208,8 @@ function overlayScript(caption: string): string {
     if (!document.documentElement) return;
     if (!document.getElementById("__vcap_style")) { const s = document.createElement("style"); s.id = "__vcap_style"; s.textContent = css; (document.head || document.documentElement).appendChild(s); }
     if (!document.getElementById("__vcap_bar") && document.body) {
-      const b = document.createElement("div"); b.id = "__vcap_bar"; b.setAttribute("role", "note"); document.body.appendChild(b);
-      const t = document.createElement("div"); t.id = "__vcap_strip"; t.textContent = "Synthetic data  \\u00b7  simulated time  \\u00b7  nothing is diagnosed"; document.body.appendChild(t);
+      const b = document.createElement("div"); b.id = "__vcap_bar"; b.setAttribute("role", "note"); b.setAttribute("dir", "ltr"); document.body.appendChild(b);
+      const t = document.createElement("div"); t.id = "__vcap_strip"; t.setAttribute("dir", "ltr"); t.textContent = "Synthetic data  \\u00b7  simulated time  \\u00b7  nothing is diagnosed"; document.body.appendChild(t);
     }
   }
   function current() { return window.name.startsWith(PREFIX) ? window.name.slice(PREFIX.length) : FIRST; }
@@ -446,6 +446,14 @@ async function main() {
   let simTime = "";
   try {
     await waitForStack();
+    // The agency recording run needs a 600 s budget (the API default is 20 s): recreate the API container with the override,
+    // and put the default back in `finally`. Production defaults are untouched (docker-compose.yml keeps 20).
+    const budget = process.env.VIDEO_AGENCY_BUDGET ?? "600";
+    const rb = sh(`AGENCY_RUN_BUDGET_SECONDS=${budget} docker compose up -d --no-build api`, 180);
+    if (rb.code !== 0) throw new Error(`could not set the agency run budget to ${budget} s: ${rb.out.slice(-300)}`);
+    log(`agency run budget: ${budget} s (API recreated)`);
+    for (let i = 0; i < 40 && (await stackProblem()); i++) await sleep(3000); // the recreated API takes a while to answer
+    await waitForStack();
     if (!args.has("--no-reset")) {
       make("demo-reset");
       make("demo-scenario", ["UNTIL=owner_accepted"]);
@@ -515,6 +523,8 @@ async function main() {
     const up = sh("docker compose start scheduler", 120);
     log(`scheduler start: ${up.code === 0 ? "ok" : "FAILED " + up.out.slice(-200)}`);
     preview?.kill();
+    const rb2 = sh("docker compose up -d --no-build api", 180);
+    log(`agency run budget back to the default: ${rb2.code === 0 ? "ok" : "FAILED " + rb2.out.slice(-200)}`);
     await browser.close().catch(() => undefined);
     writeFileSync(join(OUT, "shots.json"), JSON.stringify({ generated_at: new Date().toISOString(), sim_time_at_start: simTime, cases, shots: results }, null, 2));
     if (!args.has("--no-reset") && !args.has("--keep-state")) {

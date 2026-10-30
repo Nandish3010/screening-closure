@@ -20,6 +20,13 @@ function Days({ value }: { value: number | null | undefined }) {
   return <>{value}<small> days</small></>;
 }
 
+/** Heartbeats are real wall-clock time (that is what liveness means), so say how long ago in real minutes, not a date under the simulated clock. */
+export function minutesSince(iso: string, now: number = Date.now()): string {
+  const m = Math.max(0, Math.round((now - Date.parse(iso)) / 60000));
+  if (m < 1) return "less than a minute";
+  return m === 1 ? "1 minute" : `${m} minutes`;
+}
+
 export function DashboardPage() {
   const { api, role } = useApp();
   const [effort, setEffort] = useState<EffortMetrics | null>(null);
@@ -87,7 +94,7 @@ export function DashboardPage() {
       </p>
       {down.map((a) => (
         <p key={a.since} className="banner banner-watchdog" role="alert" data-testid="scheduler-banner">
-          <strong>The scheduler is down.</strong> It has not reported since {fmtDateTime(a.since)}, so SLA clocks are not being checked and no case will be marked overdue or escalated until it is back.
+          <strong>The scheduler is down.</strong> It has not reported for {minutesSince(a.since)} (real clock, not simulated time), so SLA clocks are not being checked and no case will be marked overdue or escalated until it is back.
         </p>
       ))}
       {down.length === 0 && recovered.length > 0 && (

@@ -50,7 +50,7 @@ cards:
     seconds: 4
     heading: Screening Closure
     line: "Repository: [repository link: to be added at submission]"
-    team: "[Team name]"
+    team: "Humans Decide"
     note: "All data synthetic. Narration is synthetic text-to-speech."
 
 shots:
@@ -61,7 +61,7 @@ shots:
     route: "card:stat, /coordinator"
     duration: 14
     caption: "Abu Dhabi audit: 30.5% of positive screening tests ever reached a colonoscopy (BMC Cancer 2021). An accountability and closure engine: a named owner, a clock, an audit trail, a clinician-signed closure. Nothing is diagnosed. All data synthetic."
-    narration: "An Abu Dhabi audit found only thirty point five percent of positive bowel screening tests ever reached a colonoscopy. This is an accountability and closure engine: a named owner, a clock, an audit trail and a clinician's signature. Nothing is diagnosed."
+    narration: "An Abu Dhabi audit found only thirty point five percent of positive screening tests reached a colonoscopy. This is an accountability engine: a named owner, a clock, an audit trail and a clinician's signature. Nothing is diagnosed."
     actions:
       - card: {kind: stat, value: "30.5%", text: "of positive screening tests in an Abu Dhabi audit ever had the follow-up colonoscopy", source: "Almansoori et al., BMC Cancer 2021"}
       - hold: 6
@@ -156,7 +156,7 @@ shots:
       - wait_for: {text: "refused", timeout: 20000}
       - hold: 2
       # The agency run is started from a terminal (the supervisor's dev-login is inside the script), so no extra role switch.
-      - terminal: {command: "make agency-run", run: true, timeout: 120, lines: 14}
+      - terminal: {command: "make agency-run", run: true, timeout: 600, lines: 14}
       - hold: 2
       - goto: /agency
       - role: specialist
@@ -191,7 +191,7 @@ shots:
       - {text: "سأحضر يوم الأحد إن شاء الله، شكراً لكم", outcome: handled, group: null, shown: false, says: "standard Arabic"}
       - {text: "Yes, I will come on Sunday, thank you.", outcome: handled, group: null, shown: false, says: "English"}
       - {text: "STOP", outcome: person, group: null, shown: false, says: "opt-out"}
-    caption: "A reply in Gulf Arabic, read by an offline model: a Gulf reply always goes to a person (the fairness audit found 91% of the Gulf replies it handled alone were right, below the 95% target). The Why panel names the rule: Gulf dialect, a person always checks these replies (safety rule HZ-43). A clear confirmation in English or standard Arabic can be handled without one. An opt-out is caught by a keyword rule first and always goes to a person. It can flag, never close, send or change consent. No appointment is booked: the FHIR Appointment is a stub."
+    caption: "A Gulf reply always goes to a person: the audit found 91% of those it handled alone were right, below the 95% target. English or standard Arabic confirmations can be handled; an opt-out never."
     narration: "A patient replies in Gulf Arabic that she will come on Sunday. Our fairness audit found the Gulf replies it handled alone were right only ninety-one percent of the time, short of our ninety-five percent target. So a Gulf reply always goes to a person, and the Why panel says so. So does an opt-out."
     actions:
       # Needs `make triage-serve` on the host so the banner names what the model read. The first wait is for the amber banner, which a
@@ -205,8 +205,9 @@ shots:
       - click: {testid: record-reply}
       - wait_for: {testid: reply-result, contains: "A person must look at this reply", timeout: 30000}
       - wait_for: {testid: reply-result, contains: "model: qwen", timeout: 5000}   # the live model answered; with the server down it says "unavailable" and this fails loudly
+      - wait_for: {testid: reply-quote, contains: "ان شاء الله بجي يوم الأحد", timeout: 5000}   # the reply itself is quoted in the result box
       - scroll: {testid: reply-result}
-      - hold: 3
+      - hold: 4
       - scroll: {testid: why-triage-reply}
       - click: {testid: why-triage-reply-summary}
       - wait_for: {testid: why-triage-reply-rule, contains: "Gulf dialect: a person always checks these replies", timeout: 5000}
@@ -238,7 +239,7 @@ shots:
     route: "card:results"
     duration: 18
     caption: "Simulation on synthetic data, literature-anchored, before capacity limits, against a US-calibrated usual-care baseline. Colonoscopy within 180 days 51% to 67%, a ratio of about 1.31, calibrated to published navigation trials: the model shows the mechanism, not new evidence of effect. Closed with evidence and a signature 53% to 68%. Lost without anyone told, programme-level 45% to 21%; 0% among the cases the programme reaches, true by construction. Rerun: make evaluate"
-    narration: "Synthetic simulation, before capacity limits. Colonoscopy within one hundred eighty days: fifty-one to sixty-seven percent, calibrated to published trials, not new evidence. Lost without anyone told: forty-five to twenty-one percent programme-wide; zero among cases reached, by construction."
+    narration: "Synthetic, before capacity limits. Colonoscopy within one hundred eighty days: fifty-one to sixty-seven percent, a ratio of about one point three one, calibrated to published trials, not new evidence. Lost without anyone told: forty-five to twenty-one percent programme-wide; zero among cases reached, by construction."
     actions:
       - card:
           kind: results
@@ -297,7 +298,7 @@ shots:
     route: "card:slide"
     duration: 18
     caption: "Pilot ask: one programme, two providers, 90 days, shadow mode first. Cases closed without evidence: must stay zero. The pull is regulatory: the IFHAS V10 referral clock of 15 working days. Shadow run: about AED 106,000 to serve 155 cases in 90 days (model, assumed inputs). Buyer hypothesis: Abu Dhabi's public health programme. Synthetic, assumption-based."
-    narration: "The ask: one programme, two providers, ninety days, shadow mode first; closures without evidence must stay zero. The pull is regulatory: the screening standard sets a fifteen working day referral clock. A shadow run costs about one hundred six thousand dirhams for one hundred fifty-five cases."
+    narration: "The ask: one programme, two providers, ninety days, shadow mode first; cases closed without evidence must stay zero. The pull is regulatory: a fifteen working day referral clock. A shadow run costs about one hundred six thousand dirhams for one hundred fifty-five cases."
     actions:
       - card:
           kind: slide

@@ -18,4 +18,4 @@ Supporting documents referenced from the technical documentation: [evidence regi
 
 GitHub Actions is unavailable (billing): the CI badge in the README is not current, and changes were merged on a green local `make check` recorded in the pull request.
 
-Before submitting (H6): re-check this list against the requirements shared at registration, fill in the two placeholders, regenerate results with `make evaluate` and run `make check`.
+Before submitting (H6): re-check this list against the requirements shared at registration, fill in the placeholders (the repository link and the video link; the team name, "Humans Decide", is set), regenerate results with `make evaluate` and run `make check`.
