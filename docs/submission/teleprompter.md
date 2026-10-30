@@ -50,7 +50,7 @@ I open it from the inbox, record the real procedure and sign as myself. Closed. 
 **3:45** [Case page. Role coordinator. Record patient reply: WhatsApp, the Arabic text. Record reply.]
 A patient writes back in Gulf Arabic: God willing, I will come on Sunday. Our fairness audit found the Gulf replies the model handled alone were right only ninety-one percent of the time.
 
-**4:00** [Point at the amber banner, A person must look at this reply, then the Why panel. Optional: record STOP; or the English reply, Yes I will come on Sunday, thank you, which may be handled alone.]
+**4:00** [Point at the amber banner, A person must look at this reply, then open the Why panel and read its first line. Optional: record STOP; or the English reply, Yes I will come on Sunday, thank you, which may be handled alone.]
 So a Gulf reply always goes to a person, whatever the model says. So does STOP, caught first by a keyword rule. No appointment is booked: that record is a stub.
 
 **4:15** [Role patient. Open /patient/ and the case id. Click the language button, العربية. Point at the owner line.]

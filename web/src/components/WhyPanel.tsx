@@ -18,12 +18,18 @@ export interface WhyContent {
 
 export type WhyInput =
   | { kind: "draft"; provider: string | null | undefined; model_id?: string | null; fallback_used: boolean; abstention_reason?: string | null }
-  | { kind: "triage"; model_id?: string | null; confidence?: number | null; needs_human?: boolean | null }
+  | { kind: "triage"; model_id?: string | null; confidence?: number | null; needs_human?: boolean | null; forced_reason?: string | null }
   | { kind: "risk" }
   | { kind: "planner"; provider: string | null | undefined; model_id?: string | null; fallback_used: boolean | null | undefined };
 
 const isTemplate = (provider: string | null | undefined, fallback: boolean | null | undefined) =>
   fallback === true || (provider ?? "").toLowerCase() === "template";
+
+/** The language-group rule (api/app/triage/dialect.py, hazard HZ-43) that sends a reply to a person, in plain words. */
+const GROUP_RULE: Record<string, string> = {
+  ar_gulf: "Gulf dialect: a person always checks these replies (safety rule HZ-43). The audit found the model too often wrong on them, so no confidence is high enough. ",
+  arabizi: "Arabic in Latin letters: a person checks these replies unless the model is very sure (safety rule HZ-43). ",
+};
 
 /** Pure: what the "Why?" panel says for one AI output. */
 export function whyContent(i: WhyInput): WhyContent {
@@ -48,7 +54,7 @@ export function whyContent(i: WhyInput): WhyContent {
           ? "Opt-out rule (no AI), checked before any model"
           : i.model_id!,
       confidence: typeof i.confidence === "number" ? pct(i.confidence) : "not available",
-      rule: `Handled without a person only if confidence is at least ${pct(TRIAGE_THRESHOLD, 1)} and the intent is not question, other or opt-out. Otherwise a person reads it.${i.needs_human ? " This reply is waiting for a person." : ""}`,
+      rule: `${GROUP_RULE[i.forced_reason ?? ""] ?? ""}Handled without a person only if confidence is at least ${pct(TRIAGE_THRESHOLD, 1)} and the intent is not question, other or opt-out. Otherwise a person reads it.${i.needs_human ? " This reply is waiting for a person." : ""}`,
       human: "Review the reply. An opt-out is always read by a person.",
       card: DOCS.cardTriage,
     };
@@ -80,7 +86,7 @@ export function WhyPanel({ input, subject, testId }: { input: WhyInput; subject:
   const c = whyContent(input);
   return (
     <details className="why-panel" data-testid={testId}>
-      <summary>Why? ({subject})</summary>
+      <summary data-testid={`${testId}-summary`}>Why? ({subject})</summary>
       <dl>
         <div><dt>Model</dt><dd data-testid={`${testId}-model`}>{c.model}</dd></div>
         <div><dt>Confidence</dt><dd data-testid={`${testId}-confidence`}>{c.confidence}</dd></div>

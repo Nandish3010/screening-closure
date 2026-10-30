@@ -11,7 +11,7 @@
 # target in seconds), and optionally submission: true (in the 3-minute video; every shot is in the backup video) and
 # optional: true (skipped, not failed, when its route is absent or its guard element never shows up).
 #
-# Targets: the 10 shots add up to 167 s, which with the 3 s title card and the 4 s end card is 174 s, inside the 180 s
+# Targets: the 10 shots add up to 169 s, which with the 3 s title card and the 4 s end card is 176 s, inside the 180 s
 # cap (check the real length: the previous 14-shot cut was 177 s of targets and measured 179.75 s; narration is estimated at about 2.8 words a second plus 0.8 s a shot, and no shot's narration is longer than its target). The final length of a shot is max(narration length, target); `make video-check` checks the targets, `assemble.sh`
 # checks the real lengths.
 #
@@ -181,7 +181,7 @@ shots:
     beat: "Reveal 5. A Gulf-Arabic reply, read live, routed to a person"
     submission: true
     route: "/coordinator/{case}"
-    duration: 19
+    duration: 21
     # Every reply typed in this shot, and the outcome the words claim for it, is checked against the code by
     # tests/test_storyboard_triage.py (dialect.detect and triage.classify with a stand-in scorer that is as sure as can be).
     # `person`: the code sends it to a person whatever the model says. `handled`: no rule forces a person (the model decides).
@@ -191,8 +191,8 @@ shots:
       - {text: "سأحضر يوم الأحد إن شاء الله، شكراً لكم", outcome: handled, group: null, shown: false, says: "standard Arabic"}
       - {text: "Yes, I will come on Sunday, thank you.", outcome: handled, group: null, shown: false, says: "English"}
       - {text: "STOP", outcome: person, group: null, shown: false, says: "opt-out"}
-    caption: "A reply in Gulf Arabic, read by an offline model: a Gulf reply always goes to a person (the fairness audit found 91% of the Gulf replies it handled alone were right, below the 95% target). The Why panel shows the reply waiting for a person. A clear confirmation in English or standard Arabic can be handled without one. An opt-out is caught by a keyword rule first and always goes to a person. It can flag, never close, send or change consent. No appointment is booked: the FHIR Appointment is a stub."
-    narration: "A patient replies in Gulf Arabic that she will come on Sunday. Our fairness audit found the Gulf replies it handled alone were right only ninety-one percent of the time, short of our ninety-five percent target. So a Gulf reply always goes to a person. So does an opt-out."
+    caption: "A reply in Gulf Arabic, read by an offline model: a Gulf reply always goes to a person (the fairness audit found 91% of the Gulf replies it handled alone were right, below the 95% target). The Why panel names the rule: Gulf dialect, a person always checks these replies (safety rule HZ-43). A clear confirmation in English or standard Arabic can be handled without one. An opt-out is caught by a keyword rule first and always goes to a person. It can flag, never close, send or change consent. No appointment is booked: the FHIR Appointment is a stub."
+    narration: "A patient replies in Gulf Arabic that she will come on Sunday. Our fairness audit found the Gulf replies it handled alone were right only ninety-one percent of the time, short of our ninety-five percent target. So a Gulf reply always goes to a person, and the Why panel says so. So does an opt-out."
     actions:
       # Needs `make triage-serve` on the host so the banner names what the model read. The first wait is for the amber banner, which a
       # Gulf reply gets whatever the model says; the second makes sure the live model (not the fail-safe) answered.
@@ -208,7 +208,9 @@ shots:
       - scroll: {testid: reply-result}
       - hold: 3
       - scroll: {testid: why-triage-reply}
-      - hold: 3
+      - click: {testid: why-triage-reply-summary}
+      - wait_for: {testid: why-triage-reply-rule, contains: "Gulf dialect: a person always checks these replies", timeout: 5000}
+      - hold: 4
 
   - id: 6
     title: The patient's own screen, in Arabic

@@ -22,7 +22,8 @@ async function openCase(role: "coordinator" | "owner" = "coordinator", api?: Api
 
 describe("the mock's keyword stand-in for the triage", () => {
   it.each([
-    ["ان شاء الله بجي يوم الأحد", "confirm", false],
+    ["ان شاء الله بجي يوم الأحد", "confirm", true], // Gulf dialect (dialect.py, HZ-43): always to a person
+    ["تمام، سأحضر يوم الأحد إن شاء الله", "confirm", false], // standard Arabic: the usual rules
     ["yes I will come on Sunday", "confirm", false],
     ["شنو يعني هالنتيجة؟", "question", true],
     ["please stop messaging me", "opt_out", true],
@@ -34,18 +35,19 @@ describe("the mock's keyword stand-in for the triage", () => {
 });
 
 describe("Record patient reply", () => {
-  it("a confident Gulf-Arabic confirmation is read and needs no person", async () => {
+  it("a Gulf-Arabic confirmation is read as confirm but always goes to a person, and the Why panel says the rule", async () => {
     const user = userEvent.setup();
     const { api, id } = await openCase();
     await user.type(screen.getByTestId("reply-text"), "ان شاء الله بجي يوم الأحد");
     await user.click(screen.getByTestId("record-reply"));
     const res = await screen.findByTestId("reply-result");
     expect(res).toHaveAttribute("data-intent", "confirm");
-    expect(res).toHaveAttribute("data-needs-human", "false");
+    expect(res).toHaveAttribute("data-needs-human", "true");
     expect(res.textContent).toMatch(/Read as confirm/);
+    expect(res.textContent).toMatch(/A person must look at this reply/);
+    expect(screen.getByTestId("why-triage-reply-rule")).toHaveTextContent("Gulf dialect: a person always checks these replies (safety rule HZ-43)");
     const events = (await api.getCase(id)).events.map((e) => e.type);
-    expect(events).toEqual(expect.arrayContaining(["reply_received", "reply_classified"]));
-    expect(events).not.toContain("review_requested");
+    expect(events).toEqual(expect.arrayContaining(["reply_received", "reply_classified", "review_requested"]));
   });
 
   it("an uncertain reply flags the case for a person and says so, and the case page shows the review banner", async () => {

@@ -374,3 +374,14 @@ def test_a_stop_reply_is_an_opt_out_for_a_person_even_with_no_model():  # D15: t
     assert body["intent"] == "opt_out" and body["needs_human"] is True and body["model_id"].startswith("rule:")
     reasons = [e.payload["reason"] for e in log(cid) if e.type == "review_requested"]
     assert reasons == ["opt_out"]
+
+
+def test_a_gulf_reply_returns_forced_reason_and_a_plain_one_does_not():
+    """Additive, display only: the response names the language group whose rule sends the reply to a person."""
+    cid = new_case()
+    gulf = reply(cid, "ان شاء الله بجي يوم الأحد intent:confirm").json()
+    assert gulf["needs_human"] is True and gulf["forced_reason"] == "ar_gulf"
+    plain = reply(cid, "Yes I will come intent:confirm").json()
+    assert plain["needs_human"] is False and plain["forced_reason"] is None
+    q = reply(cid, "ليش بجي intent:question").json()  # a question has its own reason: no group is named
+    assert q["needs_human"] is True and q["forced_reason"] is None

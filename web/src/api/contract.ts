@@ -555,6 +555,8 @@ export interface ReplyResult {
   needs_human: boolean;
   logged: boolean;
   applied: string[];
+  /** Additive, display only: `ar_gulf` or `arabizi` when that language group's rule (HZ-43) is why a person reads this reply, else null. */
+  forced_reason?: "ar_gulf" | "arabizi" | null;
   note: string | null;
 }
 

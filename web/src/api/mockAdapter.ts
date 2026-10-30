@@ -31,7 +31,11 @@ export { ROLE_NAMES };
  * browser: the same rules of the API apply after it (an opt-out, a question, anything else and every low-confidence reply need a
  * person; a confirmation needs nothing).
  */
-export function mockClassifyReply(text: string): { intent: string; confidence: number; needs_human: boolean } {
+// The Gulf-dialect markers of api/app/triage/dialect.py (a short subset): a reply with one always goes to a person (HZ-43).
+const GULF_MARKERS = ["بجي", "ابي", "ابغى", "وايد", "شلون", "الحين", "سويت", "باجر", "زين", "شو"];
+const isGulf = (text: string) => /[\u0600-\u06FF]/.test(text) && text.split(/[\s،.؟!]+/).some((w) => GULF_MARKERS.includes(w));
+
+export function mockClassifyReply(text: string): { intent: string; confidence: number; needs_human: boolean; forced_reason: "ar_gulf" | null } {
   const intent =
     /(\bstop\b|opt.?out|unsubscribe|لا تتصل|لا ترسل|أوقف|اوقف)/i.test(text) ? "opt_out"
     : /(wrong number|not my number|رقم غلط|رقم خاطئ|رقم خطأ)/i.test(text) ? "wrong_number"
@@ -39,8 +43,9 @@ export function mockClassifyReply(text: string): { intent: string; confidence: n
     : /(\byes\b|\bok(ay)?\b|will come|see you|تمام|إن شاء الله|ان شاء الله|نعم|ايوه)/i.test(text) ? "confirm"
     : "other";
   const confidence = intent === "other" ? 0.35 : 0.93;
-  const needs_human = ["opt_out", "question", "other"].includes(intent) || confidence < 0.553;
-  return { intent, confidence, needs_human };
+  const always = ["opt_out", "question", "other"].includes(intent) || confidence < 0.553;
+  const gulf = isGulf(text);
+  return { intent, confidence, needs_human: always || gulf, forced_reason: gulf && !always ? "ar_gulf" : null };
 }
 
 /**
@@ -458,7 +463,8 @@ export function createMockAdapter(
       if (!body.text || !body.text.trim()) throw new ApiError(422, "text: a reply cannot be empty");
       const db = load();
       const evs = must(db, id);
-      const result = { ...mockClassifyReply(body.text), model_id: "triage-mock-1" };
+      const { forced_reason, ...classified } = mockClassifyReply(body.text);
+      const result = { ...classified, model_id: "triage-mock-1" };
       const n = evs.length;
       const ref = `reply-mock-${n + 1}`;
       const closed = replayState(evs) === "closed";
@@ -477,7 +483,7 @@ export function createMockAdapter(
         save(db);
       }
       return {
-        reply_id: ref, case_id: id, channel: body.channel, ...result, logged: applied.length > 0, applied,
+        reply_id: ref, case_id: id, channel: body.channel, ...result, forced_reason, logged: applied.length > 0, applied,
         note: applied.length ? null : "the case is closed: the reply is stored for a person to read, nothing was logged",
       };
     },

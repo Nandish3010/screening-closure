@@ -22,6 +22,17 @@ const noop = () => undefined;
 const renderDrafts = (drafts: DraftView[]) =>
   render(<MemoryRouter><DraftsPanel drafts={drafts} canRequest canDecide onRequest={noop} onApprove={noop} onReject={noop} /></MemoryRouter>);
 
+describe("Why? panel: the language-group rule", () => {
+  it("names the Gulf-dialect rule in plain words when the API says it forced a person", () => {
+    const c = whyContent({ kind: "triage", model_id: "qwen-lora", confidence: 0.99, needs_human: true, forced_reason: "ar_gulf" });
+    expect(c.rule).toMatch(/^Gulf dialect: a person always checks these replies \(safety rule HZ-43\)/);
+    expect(c.rule).toMatch(/Handled without a person only if/);
+  });
+  it("says nothing about a group when there is no forced_reason", () => {
+    expect(whyContent({ kind: "triage", model_id: "qwen-lora", confidence: 0.4, needs_human: true }).rule).not.toMatch(/HZ-43/);
+  });
+});
+
 describe("Why? panel", () => {
   it("is collapsed by default and has its own accessible name", () => {
     renderDrafts([draft({})]);
