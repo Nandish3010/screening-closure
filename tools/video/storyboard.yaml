@@ -11,7 +11,7 @@
 # target in seconds), and optionally submission: true (in the 3-minute video; every shot is in the backup video) and
 # optional: true (skipped, not failed, when its route is absent or its guard element never shows up).
 #
-# Targets: the 10 shots add up to 169 s, which with the 3 s title card and the 4 s end card is 176 s, inside the 180 s
+# Targets: the 10 shots add up to 167 s, which with the 3 s title card and the 4 s end card is 174 s, inside the 180 s
 # cap (check the real length: the previous 14-shot cut was 177 s of targets and measured 179.75 s; narration is estimated at about 2.8 words a second plus 0.8 s a shot, and no shot's narration is longer than its target). The final length of a shot is max(narration length, target); `make video-check` checks the targets, `assemble.sh`
 # checks the real lengths.
 #
@@ -74,7 +74,7 @@ shots:
     beat: "Catch 1 to 4. Owned case, banner, kill the scheduler, patient contacted, clock jump"
     submission: true
     route: "/coordinator/{case}"
-    duration: 20
+    duration: 18
     caption: "The system named the owner and sent the first message by itself (mock only: nothing reaches a phone). Amber: no clinician has signed those messages off, so the demo runs on a placeholder. We stop the scheduler on purpose. No answer from the patient; eleven working days pass; nothing is flagged: this is silence."
     narration: "A positive result has a named owner. Its first message is mock-only, and the amber banner says no clinician has signed it off. Now we stop the scheduler on purpose. The patient does not answer; eleven working days pass; nothing is flagged, because the clock that flags it is dead."
     actions:
@@ -244,7 +244,7 @@ shots:
     route: "card:results"
     duration: 18
     caption: "Simulation on synthetic data, literature-anchored, before capacity limits, against a US-calibrated usual-care baseline. Colonoscopy within 180 days 51% to 67%, a ratio of about 1.31, calibrated to published navigation trials: the model shows the mechanism, not new evidence of effect. Closed with evidence and a signature 53% to 68%. Lost without anyone told, programme-level 45% to 21%; 0% among the cases the programme reaches, true by construction. Rerun: make evaluate"
-    narration: "Synthetic, US-calibrated, before capacity limits. Colonoscopy within one hundred eighty days: fifty-one to sixty-seven percent, a ratio of about one point three one, calibrated to published trials, not new evidence. Lost without anyone told: forty-five to twenty-one percent programme-wide; zero among cases reached, by construction."
+    narration: "Synthetic, US-calibrated, before capacity limits. Colonoscopy in one hundred eighty days: fifty-one to sixty-seven percent, a ratio of one point three one, calibrated to published trials, no new evidence. Lost, nobody told: forty-five to twenty-one percent overall; zero among cases reached, by construction."
     actions:
       - card:
           kind: results

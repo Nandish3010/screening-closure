@@ -128,6 +128,7 @@ export function CaseDetailPage() {
     setTimeline(t);
     setDraftRecords(recs);
     setDraftsDenied(denied);
+    setError(null); // a successful fetch clears an earlier failure (for example a 404 answered to the previous login)
     // `role` is a dependency on purpose: a different login sees a different case (the drafts list is owner-scoped, SEC-2).
   }, [api, caseId, role]);
 

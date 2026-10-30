@@ -23,8 +23,9 @@ export function EffortCard({ metrics }: { metrics: EffortMetrics | null }) {
             <span className="kpi-value" data-testid="effort-reduction">{reduction === null ? "n/a" : `${reduction}%`}</span>{" "}
             <span className="kpi-label">{s.reduction}</span>
             {" "}
-            <span className={`chip ${reduction === null ? "chip-neutral" : t.meets_target ? "chip-ok" : "chip-warn"}`} data-testid="effort-target-status">
-              {reduction === null ? s.notEnoughData : t.meets_target ? s.met : s.notMet}
+            {/* Never a "Target met" verdict here: this is a handful of demo cases with assumed minutes, not a programme result. */}
+            <span className="chip chip-neutral" data-testid="effort-target-status">
+              {reduction === null ? s.notEnoughData : s.sampleLabel}
             </span>
           </div>
           <div
@@ -40,6 +41,7 @@ export function EffortCard({ metrics }: { metrics: EffortMetrics | null }) {
             <div className="meter-target" style={{ left: `${t.target_pct}%` }} title={`${s.target} ${t.target_pct}%`} />
           </div>
           <p className="muted" data-testid="effort-target">{s.target}: {t.target_pct}%</p>
+          <p className="muted" data-testid="effort-programme">{s.programme}</p>
           <dl className="facts effort-facts">
             <div><dt>{s.humanActions}</dt><dd data-testid="effort-total-human">{t.human_actions}</dd></div>
             <div><dt>{s.automatedActions}</dt><dd data-testid="effort-total-automated">{t.automated_actions}</dd></div>

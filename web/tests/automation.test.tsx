@@ -441,7 +441,9 @@ describe("Dashboard: the human-effort card", () => {
     expect(within(card).getByTestId("effort-target")).toHaveTextContent("Target: 40%");
     expect(within(card).getByTestId("effort-total-human")).toHaveTextContent(String(m.totals.human_actions));
     expect(within(card).getByTestId("effort-total-automated")).toHaveTextContent(String(m.totals.automated_actions));
-    expect(within(card).getByTestId("effort-target-status")).toHaveTextContent(m.totals.meets_target ? "Target met" : "Below target");
+    expect(within(card).getByTestId("effort-target-status")).toHaveTextContent(/not a programme result/);
+    expect(card).not.toHaveTextContent(/target met/i);
+    expect(within(card).getByTestId("effort-programme")).toHaveTextContent(/40% target is not met/);
     expect(within(card).getByRole("meter")).toHaveAttribute("aria-valuenow", String(m.totals.reduction_pct ?? 0));
     expect(within(card).getByTestId("effort-caveat")).toHaveTextContent(/assumed minutes, to source/i);
   });
@@ -458,15 +460,27 @@ describe("Dashboard: the human-effort card", () => {
     expect(screen.getByTestId("effort-caveat")).toBeInTheDocument();
   });
 
-  it("shows a missed target as below target", () => {
+  it("labels a sample as a sample, whatever the reduction", () => {
     const m: EffortMetrics = {
       sim_time: SIM_NOW, cases: 1, per_case: [],
       totals: { human_actions: 4, automated_actions: 1, automation_share: 0.2, human_minutes: 20, baseline_minutes: 24, minutes_saved: 4, reduction_pct: 16.7, target_pct: 40, meets_target: false },
       assumptions: { status: "assumed", note: "Assumed.", minutes: { acknowledge: 2 } },
     };
     render(<EffortCard metrics={m} />);
-    expect(screen.getByTestId("effort-target-status")).toHaveTextContent("Below target");
+    expect(screen.getByTestId("effort-target-status")).toHaveTextContent(/not a programme result/);
     expect(screen.getByTestId("effort-reduction")).toHaveTextContent("16.7%");
+  });
+
+  it("never renders a target-met verdict, even when the sample's reduction is above 40%", () => {
+    const m: EffortMetrics = {
+      sim_time: SIM_NOW, cases: 22, per_case: [],
+      totals: { human_actions: 40, automated_actions: 90, automation_share: 0.69, human_minutes: 100, baseline_minutes: 410, minutes_saved: 310, reduction_pct: 75.6, target_pct: 40, meets_target: true },
+      assumptions: { status: "assumed", note: "Assumed.", minutes: { acknowledge: 2 } },
+    };
+    const { container } = render(<EffortCard metrics={m} />);
+    expect(container).not.toHaveTextContent(/target met|meets target/i);
+    expect(screen.getByTestId("effort-reduction")).toHaveTextContent("75.6%");
+    expect(screen.getByTestId("effort-target-status")).toHaveTextContent(/not a programme result/);
   });
 });
 
@@ -480,7 +494,7 @@ describe("Effort card with no reduction yet", () => {
     render(<EffortCard metrics={m} />);
     expect(screen.getByTestId("effort-reduction")).toHaveTextContent("n/a");
     expect(screen.getByTestId("effort-target-status")).toHaveTextContent("Not enough data yet");
-    expect(screen.getByTestId("effort-target-status")).not.toHaveTextContent("Below target");
+    expect(screen.getByTestId("effort-target-status")).not.toHaveTextContent(/target met/i);
   });
 });
 
