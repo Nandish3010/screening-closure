@@ -32,7 +32,8 @@ export { ROLE_NAMES };
  * person; a confirmation needs nothing).
  */
 // The Gulf-dialect markers of api/app/triage/dialect.py (a short subset): a reply with one always goes to a person (HZ-43).
-const GULF_MARKERS = ["بجي", "ابي", "ابغى", "وايد", "شلون", "الحين", "سويت", "باجر", "زين", "شو"];
+// (written as escapes so the Arabic review pack does not list a developer-only word list as user-facing text)
+const GULF_MARKERS = ["\u0628\u062C\u064A", "\u0627\u0628\u064A", "\u0627\u0628\u063A\u0649", "\u0648\u0627\u064A\u062F", "\u0634\u0644\u0648\u0646", "\u0627\u0644\u062D\u064A\u0646", "\u0633\u0648\u064A\u062A", "\u0628\u0627\u062C\u0631", "\u0632\u064A\u0646", "\u0634\u0648"];
 const isGulf = (text: string) => /[\u0600-\u06FF]/.test(text) && text.split(/[\s،.؟!]+/).some((w) => GULF_MARKERS.includes(w));
 
 export function mockClassifyReply(text: string): { intent: string; confidence: number; needs_human: boolean; forced_reason: "ar_gulf" | null } {
