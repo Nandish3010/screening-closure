@@ -5,7 +5,7 @@ from contextlib import asynccontextmanager
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app import auth, automation, confirmatory, evidence, fhir_projection, leader, loadshed, notify, observability, ops, outreach_policy, policy, users
+from app import auth, automation, confirmatory, evidence, fhir_projection, leader, loadshed, memtrace, notify, observability, ops, outreach_policy, policy, users
 from app.clock import clock
 from app.config import settings
 from app.events import InMemoryEventStore
@@ -59,6 +59,7 @@ async def lifespan(app: FastAPI):
     if store_problems:
         raise RuntimeError("; ".join(store_problems))  # fail closed (E20a F3): never silently non-durable outside dev and test
     pool = None
+    memtrace.install()  # M7-8: opt-in (MEMTRACE=1) tracemalloc + SIGUSR1 dump, for one pod while diagnosing memory
     confirmatory.configure(settings)
     if isinstance(evidence.configure(settings), evidence.FhirVerifier):
         log.info("closure evidence is verified against %s", settings.fhir_base_url)
