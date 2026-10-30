@@ -1278,6 +1278,8 @@ export class ApiError extends Error {
   constructor(
     public status: number,
     message: string,
+    /** Seconds from the `Retry-After` header of a 503 (load shedding, ADR-048), when there was one. */
+    public retryAfter?: number,
   ) {
     super(message);
     this.name = "ApiError";

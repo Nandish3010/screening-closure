@@ -298,4 +298,14 @@ describe("http adapter: agency (A22)", () => {
     await expect(api.agencyInbox()).rejects.toMatchObject({ status: 403 });
     await expect(api.caseAgency("c1")).rejects.toMatchObject({ status: 403 });
   });
+  it("HZ-45: a 503 shed under overload becomes a plain 'busy, try again in N seconds' message from Retry-After", async () => {
+    const shed = (retry?: string) => vi.fn(async () => new Response(JSON.stringify({ detail: "overloaded" }), { status: 503, headers: { ...(retry ? { "Retry-After": retry } : {}), "X-Shed": "1" } }));
+    const api = createHttpAdapter("http://api.test", shed("7") as unknown as typeof fetch);
+    await expect(api.getCase("c1")).rejects.toMatchObject({ status: 503, retryAfter: 7, message: "The system is busy. Please try again in 7 seconds. Nothing was changed." });
+    const api1 = createHttpAdapter("http://api.test", shed("1") as unknown as typeof fetch);
+    await expect(api1.getCase("c1")).rejects.toThrow("Please try again in 1 second.");
+    // a 503 that is not a shed keeps the server's own words
+    const plain = vi.fn(async () => new Response(JSON.stringify({ detail: "database down" }), { status: 503 }));
+    await expect(createHttpAdapter("http://api.test", plain as unknown as typeof fetch).getCase("c1")).rejects.toMatchObject({ message: "database down" });
+  });
 });
