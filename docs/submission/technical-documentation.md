@@ -24,7 +24,7 @@ flowchart LR
 
 A positive FIT result enters as an HL7 v2 message through the adapter or as a FHIR resource in the HAPI store, and the API turns it into a case. Every change to a case is an event appended to a Postgres table that the application cannot update or delete. The current state of a case is always recomputed by replaying its events through one pure function, `step()`, which holds the pathway rules and the closure guard. A case cannot reach `closed` without evidence that resolves in the FHIR store and the signature of the closing physician. After each append the API projects the event to FHIR resources; the projection can be rebuilt from the log.
 
-Two background services call the API with their own service tokens. The scheduler runs the working-day sweep: it marks steps overdue, walks the escalation ladder to named people and bounces unanswered referrals. When several replicas run, only the one holding the leader lease sweeps. The watchdog finds open cases nobody has touched and raises an alert when the scheduler's heartbeat goes stale. Neither can close a case or decide anything clinical.
+Two background services call the API with their own service tokens. The scheduler runs the working-day sweep: it marks steps overdue, walks the escalation ladder to named people and bounces unanswered referrals. When several replicas run, only the one holding the leader lease sweeps, and the lease token is re-checked inside each write transaction (`SELECT ... FOR SHARE`), so a leader that was replaced mid-sweep cannot append: the write is refused with `StaleLeader` and the route answers 409 ([PR #25](https://github.com/Nandish3010/screening-closure/pull/25), M7-1, engineering review F10). The watchdog finds open cases nobody has touched and raises an alert when the scheduler's heartbeat goes stale. Neither can close a case or decide anything clinical.
 
 Four AI helpers draft patient messages, order the worklist by a risk score, plan the agency's work queue and classify inbound patient replies. They propose only. The state machine refuses a model actor for every event except a draft, a person approves each message, and a model cannot change consent, move a case or close one. With no model configured, deterministic templates are used.
 
@@ -32,7 +32,7 @@ The web app has three surfaces: worklists for coordinators and owners, the sign-
 
 Two parts of the demo are stand-ins. Patient messages are written to a logged mock and nothing reaches a phone. The FHIR `Appointment` is a proposed stub, not real scheduling.
 
-The simulator runs offline and produces the evaluation numbers. It loads the same pathway file and applies the same transition rules and closure guard to each simulated event. Its timers, escalation, patient behaviour and consent holds are its own code, so it shows what the mechanism does under stated assumptions. It does not run the real scheduler or the database, but a conformance test replays sampled simulated cases through the real scheduler sweep and requires the same overdue flags and escalation steps within one working day.
+The simulator runs offline and produces the evaluation numbers. It loads the same pathway file and applies the same transition rules and closure guard to each simulated event. Since M7-1 ([PR #25](https://github.com/Nandish3010/screening-closure/pull/25)) its timers, breaches, escalation ladder, coalescing and referral bounce are the API's own code (`app.sweep.plan_case` and `next_due_at`, run on the API's read model by `simulator/sim/machine.py`) on the API's working-day calendar (`config/calendar.yaml`, Asia/Dubai); only patient behaviour, who answers and how fast, and consent-hold timing are simulator code, so it shows what the mechanism does under stated assumptions. It does not run the database or the scheduler process, but a conformance test (`simulator/tests/test_sweep_conformance.py`) replays every simulated case through the real event store and sweep and requires the same event log, event for event.
 
 Challenge 05, Closing the Screening-to-Care Loop. Pathway: positive FIT (faecal immunochemical test) result to confirmatory colonoscopy to a documented, clinician-signed closure.
 
@@ -352,7 +352,7 @@ A small fine-tuned multilingual classifier (Qwen2.5-1.5B-Instruct, 4-bit, LoRA) 
 
 ## 8. Hazard log summary
 
-[docs/governance/hazard-log.md](../governance/hazard-log.md) lists 40 hazards (HZ-01 to HZ-42; HZ-23 and HZ-24 are unused) with cause, likelihood, impact, control, the test that proves the control, residual risk and owner; `make docs-check` checks that every row has ratings, a control and test ids that exist (T-E7). Ratings are the author's judgement for the clinician review (H1) to revise. The eight with high impact and the most direct patient consequence:
+[docs/governance/hazard-log.md](../governance/hazard-log.md) lists 41 hazards (HZ-01 to HZ-43; HZ-23 and HZ-24 are unused) with cause, likelihood, impact, control, the test that proves the control, residual risk and owner; `make docs-check` checks that every row has ratings, a control and test ids that exist (T-E7). Ratings are the author's judgement for the clinician review (H1) to revise. The eight with high impact and the most direct patient consequence:
 
 | ID | Hazard | Main controls (built unless stated) | Tests |
 |---|---|---|---|

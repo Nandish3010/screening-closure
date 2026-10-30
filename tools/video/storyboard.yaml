@@ -312,7 +312,7 @@ shots:
     submission: true
     route: "card:slide"
     duration: 16
-    caption: "Pilot ask: one programme, two providers, 90 days, shadow mode first. Cases closed without evidence: must stay zero. Buyer hypothesis: a programme licence across pathways; about 24 to 55 advanced cancers avoided a year in Abu Dhabi (synthetic, assumption-based)."
+    caption: "Pilot ask: one programme, two providers, 90 days, shadow mode first. Cases closed without evidence: must stay zero. Buyer hypothesis: a programme licence across pathways; about 42 advanced cancers avoided a year in Abu Dhabi (synthetic, assumption-based)."
     narration: "The ask: one programme, two providers, ninety days, shadow mode first. Cases closed without evidence must stay zero. Who pays: a programme licence; Abu Dhabi's public health programme is the hypothesised buyer. Replay it with the Judge tour."
     actions:
       - card:
@@ -324,7 +324,7 @@ shots:
             - "Ninety days, shadow mode first: 30 days watching, nothing sent"
             - "Cases closed without evidence: must stay at zero. If it moves, we stop"
             - "Who pays (hypothesis, not a relationship): a programme licence across pathways, Abu Dhabi public health programme as buyer"
-            - "About 24 to 55 advanced cancers avoided a year in Abu Dhabi: synthetic, assumption-based"
+            - "About 42 advanced cancers avoided a year in Abu Dhabi: synthetic, assumption-based"
             - "Judges: the Judge tour button (header) replays this, read-only"
       - hold: 11
 

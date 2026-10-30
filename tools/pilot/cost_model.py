@@ -608,6 +608,16 @@ def load_outcomes(path):
     return json.loads(p.read_text(encoding="utf-8")) if p.exists() else None
 
 
+def outcome_advanced(outcomes, fit_cases):
+    """Advanced-stage (III-IV) cancers avoided a year for `fit_cases` positives, central and 95% PSA bounds, from the outcomes
+    model (docs/results/outcomes.json, literature-anchored). This is the authoritative count; the cost model's own
+    odds-ratio arithmetic (section 4.3) is used only for avoided treatment cost."""
+    g = outcomes["scenarios"]["literature_anchored"]["groups"]["all"]
+    k = fit_cases / 1000
+    return (g["central"]["advanced_avoided"] * k, g["psa"]["advanced_avoided"]["p025"] * k,
+            g["psa"]["advanced_avoided"]["p975"] * k)
+
+
 def outcome_costs(outcomes, fit_cases, net_costs):
     """Net cost per death avoided and per QALY for each (label, net cost a year), from the outcomes model's literature-anchored
     per-1,000 results scaled to `fit_cases`. Intervals divide by the PSA bounds of deaths or QALYs (2.5th and 97.5th
@@ -703,7 +713,12 @@ def pricing_markdown(spec, delay_shares, effort_rows, prog, results_name, outcom
     ]), ""]
 
     lic, fit_fee = v["programme_licence_aed_per_year"], fit_s["revenue"]["B1: per tracked case"]
+    adv_oc = outcome_advanced(outcomes, fit_s["cases"]) if outcomes is not None else None
+    if adv_oc is not None:
+        b = dict(b, advanced_avoided=adv_oc[0])
     hi = buyer_value(spec, v, fit_s["cases"], delay_shares, effort_rows, prog, ">12 month ORs")
+    if adv_oc is not None:
+        hi = dict(hi, advanced_avoided=adv_oc[0])
     out += ["**9.6 What the buyer gets a year from the FIT pathway** (the only pathway simulated; synthetic shares, "
             "observational odds ratios, assumed wages; literature-anchored, programme level)", ""]
     rows = [
@@ -716,8 +731,10 @@ def pricing_markdown(spec, delay_shares, effort_rows, prog, results_name, outcom
         [f"specialist time consumed ({b['specialist_fte']:.1f} FTE at {v['wage_ratio_specialist']:g} times)",
          money(-b["specialist_cost"])],
         ["**net labour, wage-weighted**", f"**{money(b['net_labour'])}**"],
-        ["advanced-stage cancers avoided (count; 10-12 and beyond-12-month ORs)",
-         f"{b['advanced_avoided']:.1f} to {hi['advanced_avoided']:.1f}"],
+        *([["advanced-stage cancers avoided (count; outcomes model, central and 95% interval)",
+            f"{adv_oc[0]:.0f} ({adv_oc[1]:.0f} to {adv_oc[2]:.0f})"]] if adv_oc is not None else
+          [["advanced-stage cancers avoided (count; 10-12 and beyond-12-month ORs)",
+            f"{b['advanced_avoided']:.1f} to {hi['advanced_avoided']:.1f}"]]),
         [f"positives no longer lost without anyone told (count; silent loss {prog['baseline']['silent_loss_rate']:.1%} to "
          f"{prog['orchestrated']['silent_loss_rate']:.1%})", money(b["silent_loss_prevented"])],
         ["IFHAS 15-working-day referral and 31-working-day colonoscopy clocks, measured per case", "not monetised"],
@@ -751,9 +768,13 @@ def pricing_markdown(spec, delay_shares, effort_rows, prog, results_name, outcom
         ps = mm["scopes"]["programme, four pathways"]
         lic_ = mm["v"]["programme_licence_aed_per_year"]
         net = lic_ - mm["buyer"]["avoided_cost"]
+        adv_ = (outcome_advanced(outcomes, ps_fit(mm))[0] if outcomes is not None else mm["buyer"]["advanced_avoided"])
         return [label, money(ps["cost"]["total"]), f"{(lic_ - ps['cost']['total']) / lic_:+.0%}",
                 f"{ps['cost']['total'] / ps['cases']:,.1f}", f"{mm['buyer']['avoided_cost'] / lic_:.0%}",
-                money(net / mm["buyer"]["advanced_avoided"]) if net > 0 else "saves money"]
+                money(net / adv_) if net > 0 else "saves money"]
+
+    def ps_fit(mm):
+        return mm["scopes"]["FIT only"]["cases"]
 
     rows = [cells(base, "**base case**")]
     sens = [
@@ -812,8 +833,10 @@ def pricing_markdown(spec, delay_shares, effort_rows, prog, results_name, outcom
             f"wage-weighted labour is a net cost of AED {money(-b['net_labour'])} a year in the current routing, so neither pays "
             "the fee. The buyer pays for the remainder in safety and outcomes: about "
             f"{money(b['silent_loss_prevented'])} positives a year no longer lost without anyone told and "
-            f"{b['advanced_avoided']:.0f} to {hi['advanced_avoided']:.0f} advanced-stage cancers avoided (synthetic, "
-            "assumption-based), plus a per-case record against the IFHAS timelines"
+            + (f"{adv_oc[0]:.0f} ({adv_oc[1]:.0f} to {adv_oc[2]:.0f}) advanced-stage cancers avoided (outcomes model, synthetic, "
+               if adv_oc is not None else
+               f"{b['advanced_avoided']:.0f} to {hi['advanced_avoided']:.0f} advanced-stage cancers avoided (synthetic, ")
+            + "assumption-based), plus a per-case record against the IFHAS timelines"
             + (f", and in health terms about {oc['deaths']:.0f} colorectal cancer deaths avoided within 5 years for each year of "
                f"positives ({oc['deaths_lo']:.0f} to {oc['deaths_hi']:.0f}), at a net cost of about AED "
                f"{money(oc['rows'][1]['net'] / oc['qalys'])} per QALY on the licence before the extra colonoscopies and "
