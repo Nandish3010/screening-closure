@@ -71,7 +71,7 @@ make down
 
 The handover is the TTL plus up to one poll, never less than the TTL: a follower cannot take the lease before it has expired. With the default TTL of 30 s a dead leader leaves the work undone for about 32 s.
 
-### Measured on Kubernetes (M7-6)
+### Measured on Kubernetes (M7-6 and M7-7)
 
 The same handover measured on the Helm chart on a local kind cluster (3 API pods, 2 schedulers, lease TTL 30 s, fencing on), with 1,500 open cases falling due during each run and a client writing about 2 new-case flows a second ([scale.md](../results/scale.md), raw data in `docs/results/scale/failover.json`):
 
@@ -83,7 +83,9 @@ The same handover measured on the Helm chart on a local kind cluster (3 API pods
 
 In words: after a hard kill or a force delete the schedule is late by about the TTL (roughly 24 to 30 s, two sweeps), and every trigger that fell due in the gap fires late, not never (the largest lateness seen was 39 s). A graceful delete (a rolling update, a drain) hands the lease over in about a second. Across all 11 runs no event was duplicated, no acknowledged client write was missing, no scheduler event was lost, and no stale-fence write reached the database (the in-transaction probe refused all 33 attempts); clients saw no outage beyond one retried request in one hard-kill run. The API background lease (the FHIR projection drain) moved within 0.4 to 1.5 s on force and graceful deletes and within 21 to 31 s on hard kills. The killed API pod was replaced and Ready in about 6 to 7 s.
 
-**Watchdog interval caveat.** The watchdog replays every open case on each scan (`POST /watchdog/scan`, O(open cases)): about 224 to 230 s for a full replay at 1,000,000 cases on the benchmark host, and a scan of that size outlived its client's 120 s timeout in every soak scan. The chart default interval is 10 s; the kind cluster ran it every 900 s (and the agency layer off) for the soak, and with the default interval the API could not hold even 20 requests/s inside p99 500 ms. Until the scan is made incremental (open item in the scale report), set `watchdog.intervalSeconds` from the scan time at your population, not from the default, and do not read the `scheduler_down` alert as proof the scheduler is down while a scan is running on the same pod.
+**Watchdog interval (M7-7).** The scan used to replay every open case (224 to 230 s at 1,000,000 cases) and the interval had to be set from that. Since M7-7 (ADR-045) it reads the idle index and runs a slice of a full reconciliation pass, inside a time budget (`WATCHDOG_SCAN_BUDGET_SECONDS`, 5 s, `WATCHDOG_RECONCILE_SLICE`, 1,000): the steady-state scan is a fraction of a second at 1,000,000 cases and a catch-up scan never runs longer than its budget plus one batch, so the chart default of 10 s is safe and is what the cluster runs ([scale.md](../results/scale.md), "The watchdog scan"). A first scan after a long outage, or on a database whose index was never filled, works through the backlog over several scans. `WATCHDOG_FULL_SCAN=true` goes back to the replay-everything scan. Do not read the `scheduler_down` alert as proof the scheduler is down while a catch-up scan is running on the same pod.
+
+**Zombie leader (M7-7).** The drill also freezes the scheduler leader mid-loop with SIGSTOP, holds it past the lease TTL until a new leader has taken over, and resumes it: it wakes holding its old fencing token and every call it makes is refused with 409 and writes nothing (results in scale.md, "The zombie leader").
 
 ### Runbook: drills and load on the kind cluster
 
@@ -91,9 +93,9 @@ All of these need `make k8s-up` first, touch only the cluster `sc-m76` (and, for
 
 | What | Command | Notes |
 |---|---|---|
-| Failover drill (kill the scheduler leader and the API background leader) | `.venv/bin/python tools/k8s/failover_drill.py --runs 5 --graceful-runs 3 --out docs/results/scale/failover.json` | Several minutes per run; seeds cases into the `closure` database; the report lists time to the new leader, missed sweeps and the integrity checks (duplicates, acknowledged writes, replay, fencing) |
-| Sweep at scale | `.venv/bin/python tools/load/scale_sweep.py sweep --sizes 100000,500000,1000000 --workers 1,4` | Seeds templates into the in-cluster Postgres first (the 1,000,000-case seed took about 200 s); `seed-closure --size 1000000` builds the population for the API test; `drop` removes the `closure_load*` databases |
-| API latency at a sustained rate | `.venv/bin/python tools/k8s/api_load.py --rates 50,100 --duration 300 [--search-start 150 --search-step 50] [--probe-worklist]` | Open-loop; pass criteria p99 under 500 ms and under 0.1% errors; `--probe-worklist` issues one unbounded worklist read and can OOM an API pod at 1,000,000 cases |
+| Failover drill (kill the scheduler leader and the API background leader) | `.venv/bin/python tools/k8s/failover_drill.py --runs 5 --graceful-runs 3 --hard-runs 3 --sigstop-runs 3 --out docs/results/scale/failover.json` | Several minutes per run; seeds cases into the `closure` database; the report lists time to the new leader, missed sweeps and the integrity checks (duplicates, acknowledged writes, replay, fencing) |
+| Sweep at scale | `.venv/bin/python tools/load/scale_sweep.py sweep --sizes 100000,500000,1000000 --workers 1 --label tuned --drain --watchdog --steady 3 --keep-templates` (then `--workers 4` with `SWEEP_MAX_CASES=0 SWEEP_BUDGET_SECONDS=0 ... --no-full-scan`) | Seeds templates into the in-cluster Postgres first (the 1,000,000-case seed took about 200 s); `seed-closure --size 1000000` builds the population for the API test; `drop` removes the `closure_load*` databases |
+| API latency at a sustained rate | `.venv/bin/python tools/k8s/api_load.py --rates 50,100 --duration 300 [--search-start 150 --search-step 50] [--probe-worklist]` | Open-loop; pass criteria p99 under 500 ms and under 0.1% errors; `--probe-worklist` reads the largest state page by page (the route is paged since M7-7) |
 | Soak | `.venv/bin/python tools/k8s/soak.py --duration 7500 --rate 50 --out docs/results/scale/soak.json` | 2 hours; samples pod memory and CPU, restarts, leases and the heartbeats table every 60 s; keep the machine awake |
 | Token for manual calls | `.venv/bin/python tools/k8s/mint_token.py --role coordinator --name me` | See [deployment.md](deployment.md) |
 
