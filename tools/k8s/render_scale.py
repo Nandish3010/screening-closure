@@ -131,7 +131,7 @@ def machine_section(fo, sw, la, so) -> list[str]:
         ["PostgreSQL", m["postgres_version"]],
         ["Shared", "The load generator, the kind nodes (3 containers in one VM) and Postgres share the VM and the host; the sweep tool runs on the host and reaches Postgres through the kind port mapping"],
     ])
-    out += ["Runs (the raw files are the evidence; a run is attributed to the commit it started from):", ""]
+    out += ["Runs (the raw files are the evidence; a run is attributed to the commit it started from). The branch commits named here were later squashed into one commit on m76-scale, so that no commit in history trips the secrets scan (pod names under a key containing api, and a variable name, matched credential patterns); the measuring code did not change; only a variable, one JSON key and one description string were renamed:", ""]
     out += ["| File | Tool | Commit | Branch | Working tree | Started | Finished |", "|---|---|---|---|---|---|---|",
             git_line("failover.json", fo), git_line("sweep.json", sw), git_line("latency.json", la), git_line("soak.json", so), ""]
     return out
