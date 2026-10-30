@@ -3,13 +3,14 @@
   "tool": "tools/k8s/api_load.py",
   "method": "Open-loop constant arrival rate: request i is due at t0 + i/rate and is issued then, regardless of outstanding requests (no coordinated omission). Latency = intended start to end of response; service latency = actual send to end of response. Each stage = a warm-up (excluded from the statistics) then the measured duration, at one rate. Mix (weights %): create_case 12, post_event 28, get_case_seeded 20, get_case_own 15, timeline 10, notifications 14, worklist 1. Cases for post_event/get_case_own/notifications are created by the run itself; get_case_seeded/timeline read cases from the seeded population (random sample of the `closure` table). Every non-2xx response is an error. The generator, the kind cluster (3 nodes in the Docker Desktop VM) and Postgres share one host: the generator's CPU use competes with the cluster. Per-pod CPU/memory come from the pods' cgroup files read with `kubectl exec` (no metrics-server), node CPU/memory from `docker stats`; per-pod request counts from the API pods' access logs; scheduler timings from the gaps between the scheduler's POSTs in the API access logs (outbox drain -> sweep -> automation scan -> evidence scan are sequential in one loop).",
   "git": {
-    "commit": "470de7b4b2a2a94f3ca5a9c86294c1da7f1dc056",
+    "commit": "028d47088d8d8b0bb19502d4ddbaaeb43c72d693",
     "branch": "m77-scale-fixes",
     "dirty_files": [
-      "?? docs/results/scale/latency.json"
+      "M tools/k8s/render_scale.py",
+      "?? docs/results/scale/failover.json"
     ]
   },
-  "generated_at": "2026-10-30T05:19:09.994270+00:00",
+  "generated_at": "2026-10-30T09:51:55.634061+00:00",
   "machine_spec": {
     "host": {
       "cpu_model": "Apple M4",
@@ -201,17 +202,17 @@
   "list_state": "lost_contact",
   "note_same_host": "the load generator runs on the same host as the cluster",
   "population_before": {
-    "cases": 1040593,
+    "cases": 1159472,
     "by_state": {
-      "patient_acknowledged": 876389,
+      "patient_acknowledged": 972564,
       "consent_withdrawn": 149822,
-      "acknowledged": 5571,
-      "owner_accepted": 4617,
-      "patient_contacted": 3894,
+      "acknowledged": 14040,
+      "owner_accepted": 12218,
+      "patient_contacted": 10528,
       "lost_contact": 300
     },
-    "events": 7260849,
-    "database_bytes": 2656615447
+    "events": 8098835,
+    "database_bytes": 3053214743
   },
   "pass_criteria": "p99 < 500 ms (all requests, from intended start) and error rate < 0.1%",
   "stages": [
@@ -3734,52 +3735,70 @@
         "max_passing_rate_per_s": 250.0,
         "lowest_failing_rate_per_s": null
       }
+    },
+    "probe_only": {
+      "pass": {
+        "max_passing_rate_per_s": null,
+        "lowest_failing_rate_per_s": null
+      },
+      "pass_excluding_worklist": {
+        "max_passing_rate_per_s": null,
+        "lowest_failing_rate_per_s": null
+      }
     }
   },
   "unbounded_worklist_probe": {
     "state": "patient_acknowledged",
-    "cases_in_state": 876370,
+    "cases_in_state": 972564,
     "default_page": {
-      "status": "RemoteProtocolError",
-      "next_cursor": null,
-      "seconds": 0.022012333036400378
+      "status": 200,
+      "rows": 100,
+      "response_bytes": 59239,
+      "next_cursor": "AAaaHk-tTj68mVwrZ5P9mQ",
+      "seconds": 0.07763408299069852
     },
     "max_page": {
-      "status": "RemoteProtocolError",
-      "next_cursor": null,
-      "seconds": 1.008382249972783
+      "status": 200,
+      "rows": 500,
+      "response_bytes": 297544,
+      "next_cursor": "ACBxjSIQQ-6mmOWhBmF8Gw",
+      "seconds": 0.5538990830536932
     },
     "over_max_limit_status": 422,
-    "status": "RemoteProtocolError",
-    "seconds": 0.022012333036400378,
-    "rows": null,
-    "pages_followed": 1,
-    "rows_over_followed_pages": 0,
-    "page_seconds": null,
+    "status": 200,
+    "seconds": 0.07763408299069852,
+    "rows": 100,
+    "pages_followed": 41,
+    "rows_over_followed_pages": 20500,
+    "page_seconds": {
+      "min": 0.16475566604640335,
+      "median": 0.21665208344347775,
+      "max": 0.4518648749217391
+    },
     "pod_cgroup_before": {
-      "closure-api-6489f8b5df-5fd9x": 79511552,
-      "closure-api-6489f8b5df-fhcll": 614219776,
-      "closure-api-6489f8b5df-n89rf": 615104512
+      "closure-api-6489f8b5df-5ds5s": 282812416,
+      "closure-api-6489f8b5df-9vrgk": 210051072,
+      "closure-api-6489f8b5df-xdfcg": 156831744
     },
     "pod_cgroup_after": {
-      "closure-api-6489f8b5df-5fd9x": 97394688,
-      "closure-api-6489f8b5df-fhcll": 31227904,
-      "closure-api-6489f8b5df-n89rf": 22802432
+      "closure-api-6489f8b5df-5ds5s": 282419200,
+      "closure-api-6489f8b5df-9vrgk": 208814080,
+      "closure-api-6489f8b5df-xdfcg": 155811840
     },
     "restarts_before": {
-      "closure-api-6489f8b5df-5fd9x": 2,
-      "closure-api-6489f8b5df-fhcll": 1,
-      "closure-api-6489f8b5df-n89rf": 1
+      "closure-api-6489f8b5df-5ds5s": 0,
+      "closure-api-6489f8b5df-9vrgk": 0,
+      "closure-api-6489f8b5df-xdfcg": 0
     },
     "restarts_after": {
-      "closure-api-6489f8b5df-5fd9x": 2,
-      "closure-api-6489f8b5df-fhcll": 2,
-      "closure-api-6489f8b5df-n89rf": 2
+      "closure-api-6489f8b5df-5ds5s": 0,
+      "closure-api-6489f8b5df-9vrgk": 0,
+      "closure-api-6489f8b5df-xdfcg": 0
     },
     "last_termination": {
-      "closure-api-6489f8b5df-5fd9x": "OOMKilled",
-      "closure-api-6489f8b5df-fhcll": "OOMKilled",
-      "closure-api-6489f8b5df-n89rf": "OOMKilled"
+      "closure-api-6489f8b5df-5ds5s": null,
+      "closure-api-6489f8b5df-9vrgk": null,
+      "closure-api-6489f8b5df-xdfcg": null
     }
   }
 }

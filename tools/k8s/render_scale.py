@@ -574,11 +574,20 @@ def soak_section(so) -> list[str]:
     ])
     d = w.get("duration_s")
     out += ["### Memory per pod", ""]
+    def tail_slope(pod, minutes=40):
+        pts = [(x["elapsed_s"], x["cgroup"][pod]["mem_anon"] / 2**20) for x in so["samples"] if x["cgroup"].get(pod)]
+        pts = [q for q in pts if q[0] >= pts[-1][0] - minutes * 60]
+        if len(pts) < 3:
+            return None
+        mx, my = sum(q[0] for q in pts) / len(pts), sum(q[1] for q in pts) / len(pts)
+        den = sum((q[0] - mx) ** 2 for q in pts)
+        return round(sum((q[0] - mx) * (q[1] - my) for q in pts) / den * 3600, 1) if den else None
+
     rows = []
     for pod, v in s["pods"].items():
         rows.append([pod, f"{v['memory_current_start_mib']} / {v['memory_current_end_mib']} / {v['memory_current_max_mib']}", f"{v['memory_anon_start_mib']} / {v['memory_anon_end_mib']} / {v['memory_anon_max_mib']}",
-                     v["memory_anon_slope_mib_per_hour"], v["memory_anon_slope_after_20min_mib_per_hour"], v["memory_limit_mib"], v["restart_count_end"] - v["restart_count_start"]])
-    out += table(["Pod", "Memory start / end / max (MiB)", "Anon start / end / max (MiB)", "Anon slope (MiB/h)", "Anon slope after 20 min (MiB/h)", "Limit (MiB)", "Restarts"], rows)
+                     v["memory_anon_slope_mib_per_hour"], v["memory_anon_slope_after_20min_mib_per_hour"], tail_slope(pod), v["memory_limit_mib"], v["restart_count_end"] - v["restart_count_start"]])
+    out += table(["Pod", "Memory start / end / max (MiB)", "Anon start / end / max (MiB)", "Anon slope (MiB/h)", "Anon slope after 20 min (MiB/h)", "Anon slope, last 40 min (MiB/h)", "Limit (MiB)", "Restarts"], rows)
     sl = api_slopes(so)
     out += [f"Slopes are least-squares fits to the {s['sampling']['period_s']:g} s samples; anon memory is the process's own allocations (page cache excluded). **API pods: " + ", ".join(f"{k.rsplit('-', 1)[-1]} {v:+g}" for k, v in sorted(sl.items())) + " MiB/h** "
             "(M7-6: " + ", ".join(f"{v:+g}" for v in sorted(api_slopes(jload(RAW / "before" / "soak.json")).values())) + " MiB/h over 2.08 h).", ""]
@@ -865,6 +874,12 @@ def memory_repro_section() -> list[str]:
                 "(`ids = [r[0] for r in conn.execute(...).fetchall()]`); that is O(N) bytes allocated per scan on whichever API pod serves the request, a few hundred MiB at 1,000,000 cases against a 768 MiB limit. "
                 "The allocator does not hand arenas fragmented by such a transient back to the operating system, so the pod's resident memory stays above its working set and each further scan adds to it "
                 "(the table shows what this host measured). The fix removes the transient: ids are fetched 500 at a time by primary-key keyset (`iter_open_case_models`) and the scan itself reads an index, so the working set no longer depends on the number of cases. ", ""]
+        ab = d / "arena_ab_soak30min.json"
+        out += ["3. **What is NOT explained: the growth that remains.** With the scan fixed, the three API pods in the 2-hour soak still show a positive anon slope and it is the same on all three, so it is not the scan path, the agency (it runs on the leader pod only) or the watchdog. "
+                "The request path was run 60 rounds of the soak's mix under `tracemalloc` and retains nothing that grows (kilobytes), so it is not a Python-level leak either. The series of the soak is a warm-up curve that bends over (see the last-40-minute slope in the Soak table), not a straight line; "
+                "a 30-minute run on freshly started pods with `MALLOC_ARENA_MAX=2` (`memory_repro/arena_ab_soak30min.json`) climbed the same way, from about 70 to about 180-220 MiB in 30 minutes, so limiting glibc arenas did not remove it and was not adopted. "
+                "This report therefore claims the scan-path part is fixed and the pods are not growing without bound inside the limit of 768 MiB over the 2 hours measured (maximum anon "
+                "observed in the soak: see the Soak table), and does NOT claim memory is flat. A longer soak is needed to tell a plateau from a slow leak.", ""]
     return out
 
 
@@ -898,8 +913,8 @@ def defects_section(fo, sw, la, so, fo0, sw0, la0, so0) -> list[str]:
                      f"{n(probe['cases_in_state'])} rows in the state: default page {probe['default_page']['rows']} rows in {f(probe['default_page']['seconds'], 2)} s; {probe['pages_followed']} pages of 500 followed at {f(probe['page_seconds']['median'], 2)} s median; no restart" if probe.get("page_seconds") else "see the probe"])
     rows.append(["(d) A duplicate index on `events`", "`events_case_id_seq_idx` = the unique `(case_id, seq)` index, 294 MiB each at 1M, both maintained on every append",
                  "migration 017 drops `events_case_id_seq_idx`. `events_genesis_patient_ref_idx` is **kept**: `app.erasure` queries `WHERE seq = 1 AND payload ->> 'patient_ref' = ...` with it and `GET /cases` for a patient reads it", "dropped one, kept one; appends measured below"])
-    rows.append(["(e) API pod memory grew +30 / +71 / +131 MiB/h", "an excursion of 181 to 255 MiB on the pod that ran each 224 s scan, and a ratchet after it", "no list of all ids any more (`iter_open_case_models` pages by primary key) and no full replay in the scan; root cause below",
-                 "+" + " / +".join(f"{v:g}" for v in sorted(sl.values())) + " MiB/h per API pod over " + f"{ss['measured_seconds'] / 3600:.2f} h"])
+    rows.append(["(e) API pod memory grew +30 / +71 / +131 MiB/h", "an excursion of 181 to 255 MiB on the pod that ran each 224 s scan, and a ratchet after it", "no list of all ids any more (`iter_open_case_models` pages by primary key) and no full replay in the scan; root cause of the scan-path part below",
+                 "scan-path transient removed (no 180 to 255 MiB excursions); but the pods still grew by +" + " / +".join(f"{v:g}" for v in sorted(sl.values())) + f" MiB/h (anon) over {ss['measured_seconds'] / 3600:.2f} h, of which +" + " / +".join(f"{v:g}" for v in sorted(tail_slopes(so).values())) + " MiB/h in the last 40 min: **not flat**"])
     stale_before = "2 of 3 follower rows stale and never removed"
     rows.append(["(f) `scheduler-follower-<pod>` heartbeat rows kept forever", stale_before, "the watchdog scan deletes follower rows older than `FOLLOWER_HEARTBEAT_RETENTION_SECONDS` (3600 s); the `scheduler` and `watchdog` rows and the leader lease are never touched",
                  f"{sum(1 for k, v in so['samples'][-1]['heartbeats'].items() if k.startswith('scheduler-follower-') and v['age_s'] > 120 and k.removeprefix('scheduler-follower-') not in set(so['samples'][-1]['pods']))} stale rows at the end of the soak"])
@@ -934,14 +949,20 @@ def still_not_met(fo, sw, la, so, cp) -> list[str]:
     if on is not None and (not on["pass"]["max_passing_rate_per_s"] or on["pass"]["lowest_failing_rate_per_s"]):
         items.append("- The API rate ladder: the highest passing rate with the watchdog on is " + (f"{on['pass']['max_passing_rate_per_s']:g}/s" if on["pass"]["max_passing_rate_per_s"] else "none") + (f"; the lowest failing rate is {on['pass']['lowest_failing_rate_per_s']:g}/s" if on["pass"]["lowest_failing_rate_per_s"] else "") + ".")
     if ss["scheduler"]["completed_fraction_of_expected"] < 0.95:
-        items.append(f"- The sweep cadence in the soak: {ss['scheduler']['completed_fraction_of_expected']:.1%} of the nominal sweeps completed (period mean {ss['scheduler']['sweep_period_s']['mean']} s). Each pass of the scheduler loop is the outbox drain, the sweep, the automation and the evidence scan in series, so the period is the interval plus all of them.")
+        dd = ss['scheduler']['durations_from_api_access_log']
+        items.append(f"- **The sweep cadence in the soak: {ss['scheduler']['completed_fraction_of_expected']:.1%} of the nominal sweeps completed** (period mean {ss['scheduler']['sweep_period_s']['mean']} s, not 10 s). A pass of the scheduler loop is the outbox drain, the sweep ({dd['sweep_duration']['mean_s']} s mean), the automation scan ({dd['automation_scan_duration']['mean_s']} s mean) and the evidence scan in series, and then the 10 s sleep, so the period is the interval plus about {f(ss['scheduler']['sweep_period_s']['mean'] - 10, 1)} s of work; the sweep itself is not the long part (the agency layer and the automation scan share the pod). The sweeps are bounded and steady, they are just not started every 10 s.")
     sl = api_slopes(so)
     if sl and max(sl.values()) >= 5:
-        items.append(f"- API pod memory: the fastest-growing pod still grew at {max(sl.values()):g} MiB/h (anon) over the soak.")
+        items.append(f"- **API pod memory is not flat.** The scan-path transient is gone (root cause above), but all three API pods still grew by {min(sl.values()):g} to {max(sl.values()):g} MiB/h (anon) over the {ss['measured_seconds'] / 3600:.2f} h soak "
+                     f"({min(tail_slopes(so).values()):g} to {max(tail_slopes(so).values()):g} MiB/h in the last 40 minutes). No pod came near its 768 MiB limit or restarted, but the cause of the remainder is not found.")
+    wo = ss["windows_over_p99_500ms"]
+    if wo:
+        items.append(f"- {wo} of the {ss['windows']} five-minute windows of the soak had a p99 over 500 ms (worst {ss['windows_p99_ms_range'][1]} ms); the overall p99 was {ss['latency_all_requests']['p99_ms']} ms.")
+    pr = la.get("unbounded_worklist_probe")
+    items.append(f"- At {max(s_['target_rate_per_s'] for s_ in la['stages'] if s_['label'] == 'watchdog_on_as_deployed'):g} requests/s (the first failing stage) the API timed out and reset connections; that is overload, and it was not tuned or retried.")
     items += ["- **Other unbounded reads** that are not on a path measured here: `GET /metrics/closure` and `GET /metrics/effort` (and the dashboards behind them) replay every case in one call (`load_cases`); the agency's own totals avoid them above 20,000 cases, the routes do not.",
               "- The reconciliation pass is slow by design: a full cycle at 1,000,000 cases is about a thousand scans (about 2.8 hours at a 10 s interval), so a case hidden by a wrong index value (HZ-44) is found within one cycle, not at once.",
-              "- Everything here is one laptop-class host, a local kind cluster, one Postgres without HA or TLS, and no network latency between nodes and database. No cloud environment was measured.",
-              "- The 40% labour-reduction target is a result of the simulator and the pilot, not of this report; nothing here measures it."]
+              "- Everything here is one laptop-class host, a local kind cluster, one Postgres without HA or TLS, and no network latency between nodes and database. No cloud environment was measured."]
     return out + items + [""]
 
 
@@ -1188,6 +1209,19 @@ def capacity_section(cp, inp, sw, la) -> list[str]:
             "- No Azure environment was built or measured. The safety factor, the zone count, every volume beyond FIT, the open duration, the events per case, requests per event and the peak factor are assumptions; changing them moves the open population, the load and the cost, and `capacity_inputs.yaml` is where to do it.",
             "- The plan assumes the open items above are fixed or mitigated: the watchdog scan, the agency pass and the unbounded worklist are not safe at large populations as the code stands (findings 1 to 3). At the base scenario's population they are smaller problems, but they are not measured at that population in this report.",
             "- HL7 ingestion, the FHIR projection, the web application and observability were not part of the load; their cost and load are not in this plan.", ""]
+    return out
+
+
+def tail_slopes(so: dict, minutes: int = 40) -> dict[str, float]:
+    out = {}
+    for pod in so["samples"][0]["cgroup"]:
+        if not pod.startswith("closure-api"):
+            continue
+        pts = [(x["elapsed_s"], x["cgroup"][pod]["mem_anon"] / 2**20) for x in so["samples"] if x["cgroup"].get(pod)]
+        pts = [q for q in pts if q[0] >= pts[-1][0] - minutes * 60]
+        mx, my = sum(q[0] for q in pts) / len(pts), sum(q[1] for q in pts) / len(pts)
+        den = sum((q[0] - mx) ** 2 for q in pts)
+        out[pod] = round(sum((q[0] - mx) * (q[1] - my) for q in pts) / den * 3600, 1) if den else 0.0
     return out
 
 

@@ -52,6 +52,8 @@ scheduler:
 watchdog:
   replicas: 1
   idleDays: 7
+  # M7-7: 10 s is measured safe. The scan reads an index (ADR-045): at 1,000,000 open cases a steady-state scan took 0.28 s and the longest catch-up scan
+  # 6.3 s (time budget 5 s), the API held 250 requests/s with the watchdog at this interval. Before M7-7 a scan took 224-230 s and 10 s was unsafe.
   intervalSeconds: 10
   resources:
     requests: { cpu: 50m,  memory: 64Mi }
