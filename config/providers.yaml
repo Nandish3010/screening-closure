@@ -24,9 +24,14 @@ registration:
 referral:
   specialty_by_pathway:
     colorectal_fit: gastroenterology
+    cervical_hpv: gynaecology  # second pathway; the provider names below are synthetic, like the rest of this file
   reroute_reasons: [capacity, wrong_service, timeout]
   reroute_order:
     gastroenterology:
       - Corniche Gastro Unit
       - Al Noor Endoscopy Centre
       - Marina Digestive Health
+    gynaecology:
+      - Corniche Women's Health Unit
+      - Al Noor Colposcopy Centre
+      - Marina Women's Health Clinic

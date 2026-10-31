@@ -39,7 +39,7 @@ No named "healthcare sandbox" was found for Abu Dhabi. The closest published mec
 
 | Buyer | Price point that fits ([business case](business-case.md) section 9) | Why |
 |---|---|---|
-| ADPHC (programme owner) | Programme licence across FIT, blood-based positives, breast and cervical recall | It owns the KPIs across all providers and pathways; a licence avoids counting arguments between providers |
+| ADPHC (programme owner) | Programme licence across FIT, blood-based positives, breast recall and cervical screening (cervical is implemented on the engine, unreviewed; blood-based and breast are designed only) | It owns the KPIs across all providers and pathways; a licence avoids counting arguments between providers |
 | Provider group | Per case closed with evidence, or per tracked case, at cost during a pilot | Pays in proportion to the work; a closed-case fee pays only for documented outcomes |
 | Daman or Thiqa | Not a first buyer; a co-funder of a programme licence once the pilot measures cost per advanced cancer avoided | The avoided cost lands on the payer, years after the fee |
 | DoH | Not a buyer; the approval route | Sets the standard the others are measured against |

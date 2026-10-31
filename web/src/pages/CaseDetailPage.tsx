@@ -24,7 +24,8 @@ import {
 } from "../lib/derive";
 import { fmtDate, fmtDateTime, titleCase } from "../lib/format";
 import { STAFF } from "../i18n/strings";
-import { ESCALATION_LADDER, HANDOFF_RESPONSE_WORKING_DAYS, MILESTONES, REFUSAL_FROM_STATES, RUNG_LABEL, handoffReasonLabel } from "../lib/pathway";
+import { ESCALATION_LADDER, HANDOFF_RESPONSE_WORKING_DAYS, REFUSAL_FROM_STATES, RUNG_LABEL, handoffReasonLabel, milestonesFor, pathwayMeta } from "../lib/pathway";
+import { PathwayBadge } from "../components/PathwayBadge";
 import type { MilestoneDef } from "../lib/pathway";
 import { WatchdogMarker, watchdogDetail } from "../components/WatchdogMarker";
 import { RiskBar, StatePill } from "./CoordinatorPage";
@@ -219,12 +220,13 @@ export function CaseDetailPage() {
     panel?.focus();
   };
   /** The Procedure/DiagnosticReport the confirmatory result named, offered as the closure evidence. */
+  const procedure = pathwayMeta(detail.pathway).procedure; // the pathway's confirmatory procedure: colonoscopy, colposcopy
   const recordedEvidence = [...events].reverse().find((e) => e.type === "complete_confirmatory" && /^(Procedure|DiagnosticReport)\//.test(String(e.payload.result_ref ?? "")))?.payload.result_ref as string | undefined;
 
   return (
     <main className="container">
       <p><Link to="/coordinator">&larr; Worklist</Link></p>
-      <h1>Case <span className="mono">{detail.case_id.slice(0, 8)}</span> <StatePill state={state} /></h1>
+      <h1>Case <span className="mono">{detail.case_id.slice(0, 8)}</span> <StatePill state={state} /> <PathwayBadge pathway={detail.pathway} /></h1>
       <OutreachDemoBanner />
       <AgencyChip caseId={detail.case_id} version={`${detail.state}:${events.length}`} />
 
@@ -233,7 +235,7 @@ export function CaseDetailPage() {
       <dl className="facts">
         <div><dt>Owner</dt><dd data-testid="owner">{detail.owner ?? "Unowned"}{detail.provider ? <span className="muted"> · {detail.provider}</span> : null}</dd></div>
         <div><dt>SLA clock</dt><dd data-testid="sla-clock">{closed ? "Closed" : detail.due_at ? <>Due {fmtDateTime(detail.due_at)}{od.overdue ? <> · <span className="chip chip-bad">{od.days > 0 ? `${od.days} day${od.days === 1 ? "" : "s"} overdue` : "overdue"}</span></> : " · on track"}</> : "No SLA for this step"}</dd></div>
-        {MILESTONES.map((def) => (
+        {milestonesFor(detail.pathway).map((def) => (
           <MilestoneRow key={def.name} def={def} clock={detail.milestones?.[def.name]} now={timeline?.sim_time ?? simTime} closed={closed} />
         ))}
         {detail.re_offer_due_at && (
@@ -364,9 +366,9 @@ export function CaseDetailPage() {
             )}
             {state === "confirmatory_booked" && (
               <>
-                <label className="field"><span>Confirmatory result reference</span><input value={resultRef} onChange={(e) => setResultRef(e.target.value)} placeholder="Procedure/colonoscopy-0001" /></label>
-                <ActionButton testId="record-colonoscopy" busy={busy} disabledReason={why("recordColonoscopy", "owner, specialist or clinician (the case owner)", true)} onClick={() => act(async () => { const r = await api.recordConfirmatoryResult(caseId); setResultRef(r.evidence_ref); return r; }, (r) => `Colonoscopy recorded in the FHIR store as ${r.evidence_ref}. Now record the confirmatory result.`)}>
-                  Record colonoscopy result
+                <label className="field"><span>Confirmatory result reference</span><input value={resultRef} onChange={(e) => setResultRef(e.target.value)} placeholder={`Procedure/${procedure}-0001`} /></label>
+                <ActionButton testId="record-colonoscopy" busy={busy} disabledReason={why("recordColonoscopy", "owner, specialist or clinician (the case owner)", true)} onClick={() => act(async () => { const r = await api.recordConfirmatoryResult(caseId); setResultRef(r.evidence_ref); return r; }, (r) => `${procedure.charAt(0).toUpperCase()}${procedure.slice(1)} recorded in the FHIR store as ${r.evidence_ref}. Now record the confirmatory result.`)}>
+                  Record {procedure} result
                 </ActionButton>
                 <ActionButton primary testId="record-result" busy={busy} disabledReason={why("recordResult", "specialist", true) ?? (resultRef.trim() ? null : "Enter the result reference first.")} onClick={() => act(() => post("complete_confirmatory", { result_ref: resultRef.trim() }), "Confirmatory result recorded.")}>
                   Record confirmatory result
@@ -394,6 +396,7 @@ export function CaseDetailPage() {
                 extraWhy={scopeWhy}
                 defaultEvidence={proposal?.evidence_ref ?? recordedEvidence}
                 signer={userId ? `Practitioner/${userId}` : undefined}
+                procedure={procedure}
                 onRecordResult={can(role, "recordColonoscopy") && !scopeWhy ? async () => {
                   const r = await api.recordConfirmatoryResult(caseId);
                   return r.evidence_ref;
@@ -412,7 +415,7 @@ export function CaseDetailPage() {
                   <strong>The patient declined after counselling.</strong> Counselled by {actorNameOf(detail.refusal.counselled_by) || detail.refusal.counselled_by} on {fmtDate(detail.refusal.recorded_at)};
                   reason: {REFUSAL_LABEL[detail.refusal.reason] ?? titleCase(detail.refusal.reason)}. Record: <span className="mono">{detail.refusal.counselling_ref}</span>.
                 </p>
-                <p className="muted">A physician who did not counsel the patient signs to close the case as declined. A declined closure is counted apart from completed colonoscopies.</p>
+                <p className="muted">A physician who did not counsel the patient signs to close the case as declined. A declined closure is counted apart from completed {procedure === "colonoscopy" ? "colonoscopies" : `${procedure}s`}.</p>
                 <ActionButton
                   primary
                   testId="sign-declined"
@@ -450,7 +453,7 @@ export function CaseDetailPage() {
               </div>
             )}
             {closed && detail.closure_outcome === "declined" && (
-              <p data-testid="closed-declined">Closed as <strong>declined</strong>: the patient decided against the colonoscopy after counselling and a physician signed. This is not a completed colonoscopy. Re-offer date: {fmtDate(detail.re_offer_due_at)}.</p>
+              <p data-testid="closed-declined">Closed as <strong>declined</strong>: the patient decided against the {procedure} after counselling and a physician signed. This is not a completed {procedure}. Re-offer date: {fmtDate(detail.re_offer_due_at)}.</p>
             )}
             {closed && <p>This case is closed. The audit trail below is final unless a clinician reopens it.</p>}
             {!closed && (
@@ -468,7 +471,7 @@ export function CaseDetailPage() {
           {REFUSAL_FROM_STATES.includes(state) && (
             <section className="panel" aria-labelledby="refuse-h" data-testid="refusal-panel">
               <h3 id="refuse-h">Record an informed refusal</h3>
-              <p className="muted">Use this only after a physician has counselled the patient and the patient has declined the colonoscopy. A different physician then signs the closure. Stopping contact is not a refusal.</p>
+              <p className="muted">Use this only after a physician has counselled the patient and the patient has declined the {procedure}. A different physician then signs the closure. Stopping contact is not a refusal.</p>
               <label className="field"><span>Counselling record (DocumentReference/...)</span>
                 <input value={counsellingRef} onChange={(e) => setCounsellingRef(e.target.value)} placeholder="DocumentReference/counselling-0001" data-testid="counselling-ref" />
               </label>

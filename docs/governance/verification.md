@@ -156,7 +156,7 @@ Both observations below were answered by ADR-044 (A36), as owner-delegated defau
 - **Closure evidence completeness in HAPI** (ADR-036: final report, complete colonoscopy). This needs the FHIR server. Covered by T-A67 (`api/tests/test_closure_completeness.py`). The checker covers the shape of the reference and the signer.
 - **Time.** Working days, SLA due dates, the weekly cap on automatic messages and the same-working-day coalescing rule are computed by the sweep and the append-time guard from a calendar. The checker decides "due" by the payload. Covered by the sweep, calendar, coalescing and automation tests.
 - **Channels other than SMS**, and more than two drafts. The machine treats channels and draft ids alike (lookups in the consent ledger and in the approved set). The checker uses one channel and two draft ids, plus an unknown channel and an unapproved id.
-- **Other pathways.** Only the shipped YAML is checked. A changed pathway is checked by rerunning `make verify`, which is part of `make check`.
+- **Other pathways.** Every pack in `config/pathways/` is checked, each on its own (`make verify` runs `--all-pathways`; `--pathway NAME` runs one). A changed or new pathway is checked by rerunning `make verify`, which is part of `make check`. A pack that extends another is explored in full: nothing is assumed from its parent's result. Per-pathway state counts: see "The second pathway" below.
 
 ## How to rerun
 
@@ -168,3 +168,7 @@ PYTHONPATH=api .venv/bin/pytest api/tests/test_model_check.py -q      # the bug'
 ```
 
 `--max-depth` bounds the search. Hitting the bound with states still being found is a failure (`saturated: FALSE`), never a silent pass. `--abstraction-samples` and `--interference-samples` set how many pairs the two soundness checks compare.
+
+## The second pathway
+
+`make verify` runs `--all-pathways`: the bowel pack and the cervical pack (`config/pathways/cervical_hpv.yaml`, which extends the bowel pack) are each explored from their own genesis model and saturated. Both pass I1 to I8. Counts, per pathway: 23,730 abstract states each (messaging 4,736, ownership 6,816, ladders 12,178; 47,460 in total), equal slice by slice because the cervical pack changes timings, the closure evidence rule and wording, none of which the abstraction reads. `api/tests/test_model_check.py` also asserts that equality, catches a seeded closure-guard mutation on the cervical pack, and exercises the command line.

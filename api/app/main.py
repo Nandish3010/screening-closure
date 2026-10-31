@@ -2,14 +2,14 @@ import logging
 import os
 from contextlib import asynccontextmanager
 
-from fastapi import Depends, FastAPI
+from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 from app import auth, automation, confirmatory, evidence, fhir_projection, leader, loadshed, memtrace, notify, observability, ops, outreach_policy, policy, users
 from app.clock import clock
 from app.config import settings
 from app.events import InMemoryEventStore
-from app.pathway import load_pathway
+from app.pathway import load_registry
 from app.routers import auth as auth_router
 from app.routers import agency as agency_router
 from app.routers import cases, drafts, erasure as erasure_router, replies, scheduler, watchdog
@@ -21,7 +21,9 @@ logging.basicConfig(level=logging.INFO, format="%(levelname)s:     %(name)s: %(m
 observability.configure_logging()  # LOG_FORMAT=json: one JSON object per line with trace_id (F14)
 log = logging.getLogger("app.main")
 
-pathway = load_pathway(settings.pathway_path)
+registry = load_registry([settings.pathway_path, *(p.strip() for p in settings.pathway_paths.split(",") if p.strip())])
+pathway = registry.default  # the default pathway: what a route that names none means (bowel screening)
+cases.registry = registry
 cases.pathway = pathway
 
 
@@ -96,7 +98,7 @@ async def lifespan(app: FastAPI):
     if settings.fhir_projection:
         from app.calendar import default_calendar
 
-        cases.store = fhir_projection.wrap_store(cases.store, settings, pathway, default_calendar(), pool)
+        cases.store = fhir_projection.wrap_store(cases.store, settings, registry, default_calendar(), pool)
         log.info("FHIR projection is ON: events are written to %s", settings.fhir_base_url)
     else:
         log.warning("FHIR projection is OFF (FHIR_PROJECTION is not true)")
@@ -162,6 +164,9 @@ def health() -> dict:
 
 
 @app.get("/pathways")
-def pathways() -> dict:
-    """Return the loaded pathway config as parsed from YAML."""
-    return pathway.raw
+def pathways(name: str | None = None) -> dict:
+    """Return a loaded pathway config as parsed from YAML: the default pathway's, or the one named by `?name=`."""
+    pw = cases.registry.get(name)
+    if pw is None:
+        raise HTTPException(404, "no such pathway")
+    return pw.raw

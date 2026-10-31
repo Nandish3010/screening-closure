@@ -45,7 +45,7 @@ from uuid import UUID
 from app import users
 from app.calendar import WorkingCalendar
 from app.events import Event
-from app.pathway import Pathway
+from app.pathway import Pathway, PathwayRegistry
 from app.state_machine import CASE_CREATED, CaseModel, actor_role, is_automated, replay_model
 from app.readmodel import current_due
 
@@ -557,6 +557,8 @@ class Projector:
 
     def __init__(self, client: FhirClient, store, pathway: Pathway, calendar: WorkingCalendar,
                  queue: ProjectionQueue, tag: dict | None = None, backoff_seconds: float = 15.0):
+        # `pathway` is one Pathway, or a PathwayRegistry (several pathways, one engine): then each event is mapped under
+        # the pathway of its own case.
         self.client, self.store, self.pathway, self.calendar, self.queue = client, store, pathway, calendar, queue
         self.tag = tag or DEFAULT_TAG
         self.backoff_seconds = backoff_seconds
@@ -564,15 +566,21 @@ class Projector:
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
 
-    def _mapper(self) -> Mapper:
-        return Mapper(self.pathway, self.calendar, self.tag, self.client.exists)
+    def _pathway_for(self, case_id: UUID) -> Pathway:
+        if isinstance(self.pathway, Pathway):
+            return self.pathway
+        name = self.store.pathway_name_of(case_id)
+        return self.pathway.get(name) or self.pathway.default
+
+    def _mapper(self, case_id: UUID) -> Mapper:
+        return Mapper(self._pathway_for(case_id), self.calendar, self.tag, self.client.exists)
 
     def project_now(self, case_id: UUID, event: Event) -> None:
         """Write the event's resources. Raises on failure (callers queue it)."""
         events = self.store.events_for(case_id)
         if not any(e.event_id == event.event_id for e in events):
             raise FhirError(f"event {event.event_id} is not in the log of case {case_id}")
-        resources = self._mapper().resources_for(case_id, events, event)
+        resources = self._mapper(case_id).resources_for(case_id, events, event)
         bundle = {"resourceType": "Bundle", "type": "transaction", "entry": [
             {"resource": r, "request": {"method": "PUT", "url": f"{r['resourceType']}/{r['id']}"}} for r in resources]}
         self.client.transaction(bundle)
@@ -753,7 +761,7 @@ def dead_letter_alert(store) -> dict | None:
             "cleared_at": None, "derived": True, "detail": {"dead_lettered": count}}
 
 
-def wrap_store(store, app_settings, pathway: Pathway, calendar: WorkingCalendar, pool=None, tag: dict | None = None):
+def wrap_store(store, app_settings, pathway: "Pathway | PathwayRegistry", calendar: WorkingCalendar, pool=None, tag: dict | None = None):
     """Wire the projection around `store` when FHIR_PROJECTION is on (what `app.main` does at start-up).
 
     Returns the store to use (a `ProjectingStore`, or `store` itself when projection is off). The

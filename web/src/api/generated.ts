@@ -10,6 +10,7 @@ export interface Advance {
 export interface CreateCase {
   "case_id"?: string | null;
   "contact_valid"?: boolean | Record<string, boolean> | null;
+  "pathway"?: string | null;
   "patient_ref"?: string | null;
   "registered_provider"?: string | null;
   "result_ref"?: string | null;
@@ -122,7 +123,7 @@ export interface Routes {
   "GET /metrics/abstention": { response: Record<string, unknown>; };
   "GET /metrics/closure": { response: Record<string, unknown>; };
   "GET /metrics/effort": { query: { "limit"?: number; }; response: Record<string, unknown>; };
-  "GET /pathways": { response: Record<string, unknown>; };
+  "GET /pathways": { query: { "name"?: string | null; }; response: Record<string, unknown>; };
   "POST /scheduler/agency-run": { response: Record<string, unknown>; };
   "POST /scheduler/automation-scan": { response: Record<string, unknown>; };
   "POST /scheduler/evidence-scan": { response: Record<string, unknown>; };

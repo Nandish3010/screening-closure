@@ -895,6 +895,24 @@ The ledger is the agency's memory (`api/app/agency/ledger.py`, migration `014_ag
 - One more index and about 0.3 KiB per case of derived data. The migration adds `cases_updated_id_idx (updated_at, id)`.
 - **To reverse**: route the two functions back to `legacy_closure` / `legacy_effort`; the tables can be dropped without losing a fact.
 
+## ADR-050: A second pathway is a pack on the same engine; the case row names it
+
+**Context.** The submission said the engine "generalises to four pathways" and one was built. An AI judge's re-score after M7 marked that as unbacked (it asked for a second pathway on the same engine, with the same tests). Making it true meant running a second pathway through the real engine, not writing a second engine: the closure guard (a physician who signs as themselves, with evidence), the consent hold and the default-deny actor table had to apply to it unchanged. The engine, however, loaded ONE pathway at start-up and passed it to every route, sweep and scan.
+
+**Decision.**
+- **Cervical screening (an abnormal HPV or cytology result through colposcopy to closure) is the second pathway**, as a pack: `config/pathways/cervical_hpv.yaml` `extends` `colorectal_fit.yaml`, so its states, side states, transitions (the closure guard among them), annotations, human-only events, escalation ladder, handoff contract and informed-refusal path are literally the bowel pack's. The pack sets only data: the SLA block and the two milestone clocks, the closure `evidence` rule, the patient-message `{next_step}` per language, a label. Breast screening was the alternative: it needs an assessment OR a biopsy as the target, two procedures and a branch, where cervical has one procedure and no CT-colonography-style alternative. Neither is better sourced (the repository names the DoH breast and cervical V2 standards and says "V2 texts not read").
+- **The engine learns "several pathways" in one generic way.** `app.pathway.PathwayRegistry` holds the packs the process loads (`PATHWAY_PATH` first, then `PATHWAY_PATHS`); the first is the default. A case already has its pathway in its row (`cases.pathway`); `POST /cases` takes an optional `pathway`, and every case-scoped route steps the case with the pack named in its own row (`cases.pathway_of`). The worklist is one page over every pathway in case-id order; the sweep, the automation scan, the evidence scan and the watchdog scan run once per pathway and add up their counts. No state-machine, policy, store or sweep code names a pathway (a test greps for it).
+- **Closure evidence is the pack's rule** (`app.pathway.EvidenceRule`, `app.evidence.refusal_reason`): the confirmatory procedure, which completeness may close, whether the record must NAME the procedure (so a patient's colonoscopy cannot close their colposcopy case), and the codes a patient-level search may use (none asserted for cervical). The recorder writes the pathway's procedure. The bowel pack's rule is the default and is exactly what it was.
+- **Nothing is claimed for the second pathway.** Its timings are sourced or marked "placeholder, needs clinician sign-off (H1)"; the bowel risk model and the closure and effort metrics stay bowel-only; no simulated impact, labour or outcome number exists for it.
+
+**Consequences.**
+- **Bowel behaviour is unchanged.** With one pathway loaded every route, sweep and scan answers as it did; the default pack's events, closure rule and flags are untouched, and `repr(Pathway)` (the fingerprint that next-due and the metrics index hash) is unchanged because the new fields are not in it.
+- The model checker explores a pack as data (`--pathway`, `--all-pathways`; `make verify` runs both) and reports each pathway's states on its own; the simulator's sweep-conformance test also runs on the cervical pack.
+- `GET /metrics/closure` and `/effort` report the default pathway only. The agency, the HL7 booking messages and the web read every loaded pathway; the HL7 colonoscopy-result mapping refuses a case of another pathway.
+- A case of a pack the deployment does not load answers 503 and is never stepped by another pack's rules. The Helm chart and the k8s scale runs load the bowel pack only; compose loads both.
+- The Arabic next step needs native review (H2) and the English wording a clinician's (H1); the recorded Claude outputs hold no cervical prompt, so a model draft for a cervical case falls back to the template (abstention reason `cache_miss`).
+- **To reverse:** drop `PATHWAY_PATHS`; the registry then holds the bowel pack alone and every route behaves as before. Cervical cases already in a database would answer 503 until the pack is loaded again.
+
 ## Open questions for the owner (M6 week 1)
 
 These are not decisions. Each is a question the M6 work surfaced that needs an owner's answer before anyone changes code. Nothing here has been changed. When one is answered, record the answer as a new ADR that names this entry.

@@ -13,7 +13,7 @@ import { ActionButton } from "./ActionButton";
  * colonoscopy result" creates the Procedure there (POST /cases/{id}/confirmatory-result) and fills the field.
  */
 export function SignOffPanel({
-  role, onSignOff, busy, needsReview, extraWhy, defaultEvidence, signer: fixedSigner, onRecordResult,
+  role, onSignOff, busy, needsReview, extraWhy, defaultEvidence, signer: fixedSigner, onRecordResult, procedure = "colonoscopy",
 }: {
   role: Role;
   /** A reason the acting clinician may not sign this case off, e.g. they do not own it (A5). */
@@ -26,8 +26,10 @@ export function SignOffPanel({
   defaultEvidence?: string;
   /** The signer the API will accept (`Practitioner/<own user id>`); fixed and read-only. Without it the field is free text (mock). */
   signer?: string;
-  /** Records the colonoscopy as FHIR evidence and returns its reference (owners only; absent = no button). */
+  /** Records the confirmatory procedure as FHIR evidence and returns its reference (owners only; absent = no button). */
   onRecordResult?: () => Promise<string>;
+  /** The pathway's confirmatory procedure (colonoscopy, colposcopy): words the hint, the placeholder and the button. */
+  procedure?: string;
 }) {
   const [evidence, setEvidence] = useState(defaultEvidence ?? "");
   const [signerText, setSignerText] = useState("");
@@ -42,7 +44,7 @@ export function SignOffPanel({
   const reasons: string[] = [];
   if (!can(role, "signOff")) reasons.push("Only a clinician (a case owner) can sign off. Switch the role to owner, specialist or clinician.");
   else if (extraWhy) reasons.push(extraWhy);
-  if (!evidence.trim()) reasons.push("Add an evidence reference (for example the colonoscopy report id).");
+  if (!evidence.trim()) reasons.push(`Add an evidence reference (for example the ${procedure} report id).`);
   if (!signer.trim()) reasons.push("Enter the name of the clinician who signs.");
 
   const record = async () => {
@@ -67,12 +69,12 @@ export function SignOffPanel({
       </p>
       <label className="field">
         <span>Evidence reference</span>
-        <input value={evidence} onChange={(e) => setEvidence(e.target.value)} placeholder="Procedure/colonoscopy-0001" />
+        <input value={evidence} onChange={(e) => setEvidence(e.target.value)} placeholder={`Procedure/${procedure}-0001`} />
       </label>
       {onRecordResult && (
         <>
           <ActionButton testId="record-colonoscopy" busy={busy || recording} disabledReason={null} onClick={() => void record()}>
-            Record colonoscopy result
+            Record {procedure} result
           </ActionButton>
           {recordError && <p className="banner banner-bad" role="alert">{recordError}</p>}
         </>

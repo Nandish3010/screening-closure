@@ -121,7 +121,7 @@ Who loses: the patient whose positive test never becomes a colonoscopy and who i
 
 It does: create a case for every positive FIT and keep it as an append-only event log; give it a named owner, moved between providers only when the receiver accepts; run a working-day clock on every open step and, when one runs out, mark the case overdue and walk an escalation ladder to named people who must accept; flag cases nobody has touched and alert when the scheduler stops; record consent per channel and freeze outreach on withdrawal; let the owner approve a drafted Arabic or English message before a logged mock "sends" it; refuse closure without evidence that resolves in the FHIR store and the closing clinician's own sign-off; project every event to FHIR R4.
 
-It does not: diagnose, interpret a result, advise or decide care; let any automated actor (scheduler, watchdog, model, notifier) close or sign; send real messages; integrate with Malaffi or a provider system today (section 7); cover invitations, recall of negatives or any second pathway, which would be configuration.
+It does not: diagnose, interpret a result, advise or decide care; let any automated actor (scheduler, watchdog, model, notifier) close or sign; send real messages; integrate with Malaffi or a provider system today (section 7); cover invitations or recall of negatives; and it simulates only the bowel pathway: cervical screening runs on the same engine as configuration, implemented and tested but not simulated and not clinically reviewed (section 4.15).
 
 ## 4. Architecture
 
@@ -164,7 +164,7 @@ The `events` table is the source of truth; triggers reject `UPDATE`, `DELETE` an
 
 ### 4.3 State machine, side states and annotations
 
-The pathway lives in [`config/pathways/colorectal_fit.yaml`](../../config/pathways/colorectal_fit.yaml) (version 0.3). Nine main states run from `result_received` to `closed`. Five side states change who may act next: `referral_rejected`, `consent_withdrawn`, `lost_contact`, `reopened`, `declined_pending_signoff` (an informed refusal waiting for a physician's sign-off). `overdue` and `escalated` are flags derived by replay, not states, because a case can be overdue and in `patient_contacted` at once (ADR-011). Thirteen annotation events (overdue, escalation, handoff, consent, message and watchdog events) are recorded without moving the main state. Six events are human-only and refused for any automated actor by the state machine itself: `escalation_accepted`, `handoff_accepted`, `consent_updated`, `message_approved`, `callback_requested`, `reopen`.
+The pathway lives in [`config/pathways/colorectal_fit.yaml`](../../config/pathways/colorectal_fit.yaml) (version 0.3). Nine main states run from `result_received` to `closed`. Five side states change who may act next: `referral_rejected`, `consent_withdrawn`, `lost_contact`, `reopened`, `declined_pending_signoff` (an informed refusal waiting for a physician's sign-off). `overdue` and `escalated` are flags derived by replay, not states, because a case can be overdue and in `patient_contacted` at once (ADR-011). Thirteen annotation events (overdue, escalation, handoff, consent, message and watchdog events) are recorded without moving the main state. Six events are human-only and refused for any automated actor by the state machine itself: `escalation_accepted`, `handoff_accepted`, `consent_updated`, `message_approved`, `callback_requested`, `reopen`. The same engine runs a second pathway, cervical screening, from [`config/pathways/cervical_hpv.yaml`](../../config/pathways/cervical_hpv.yaml), a pack that extends this one and changes only data (section 4.15).
 
 ### 4.4 The closure invariant
 
@@ -264,6 +264,22 @@ The rejection branch is simplified: in the pathway a rejected referral returns t
 
 The full role-by-event table is in [the decision matrix](../governance/decision-matrix.md).
 
+### 4.15 A second pathway on the same engine: cervical screening
+
+The claim that the engine generalises beyond bowel screening is backed by one real second pathway, not by a promise of four: **cervical screening** (an abnormal HPV or cytology result, a referral, a colposcopy, a documented closure), implemented and tested on the same engine (A37, ADR-050, [docs/governance/second-pathway.md](../governance/second-pathway.md)). Two more pathways named in the business case, blood-based colorectal screening and breast recall, are designed only.
+
+**It is a pack.** [`cervical_hpv.yaml`](../../config/pathways/cervical_hpv.yaml) `extends` the bowel pack and sets only data: the SLAs, the two milestone clocks, the closure evidence rule (`evidence`: the confirmatory procedure is the colposcopy, only a complete one may close, and the record must name it, so a patient's colonoscopy cannot close their colposcopy case), the patient-message next step in English and Arabic, and a label. The nine states, the five side states, every transition, the closure guard, the annotations, the human-only events, the escalation ladder, the handoff contract and the informed-refusal path are the bowel pack's, so the physician-signer-is-the-closer rule, the consent hold and default-deny apply unchanged. The loader checks the merged pack with the same closure-guard rule as any other.
+
+**Engine changes are generic.** A case already carried its pathway in its row; the engine now keeps a registry of the packs it loads (`PATHWAY_PATH`, then `PATHWAY_PATHS`) and steps each case with the pack named in its own row. `POST /cases` takes an optional `pathway`; the worklist is one page over every pathway; the sweep, the automation and evidence scans and the watchdog run once per pathway. No state-machine, policy or store code names a pathway (a test greps for it), and with one pathway loaded every route answers as before.
+
+**Timings are sourced or marked.** The 15-working-day referral clock is the IFHAS V10 rule (section 4.5), whose application to cervical results is for the clinician review (H1) to confirm. The 31-working-day colposcopy clock and every per-state SLA are **placeholders, needs clinician sign-off (H1)**: carried over from the colorectal pack so the clocks run; the repository holds no cervical timeline. The case page says so.
+
+**Patient messages** use the shared English and Arabic templates through `{owner_name}`, `{next_step}` and `{appointment_date}`; the pack supplies the next step as an appointment ("a follow-up examination"), never a finding, and every message passes the validator in a test. The Arabic needs native review (H2), like every Arabic string here.
+
+**What is tested.** The pack (T-A83); a case from result to closed, and the refusals (T-A84); coexistence, the consent hold and default-deny (T-A85); the messages (T-A86); the model checker on the pack, I1 to I8, with its own state counts (T-A87; 23,730 abstract states for each of the two packs, 47,460 in total, all saturated); the simulator's sweep conformance on the pack (T-A88); the demo seed (T-A89); the worklist and case page (T-C19).
+
+**What is not claimed.** No simulated impact, labour or outcome number exists for it: the closure and effort metrics, the risk score and the evaluation are bowel-only. It has not been seen by a clinician or a native Arabic speaker. The Helm chart and the scale evidence (section 10) cover the bowel pack only.
+
 ## 5. Automated-versus-human decision matrix
 
 [docs/governance/decision-matrix.md](../governance/decision-matrix.md) has one row for each of the 24 event types and the routes that matter for control: who may emit it, whether any automated actor may, what evidence or payload it needs, what it changes, and the test that proves the restriction. `make docs-check` fails if the event rows differ from `EVENT_POLICY` in `api/app/policy.py` (T-E6). The short version:
@@ -352,7 +368,7 @@ A small fine-tuned multilingual classifier (Qwen2.5-1.5B-Instruct, 4-bit, LoRA) 
 
 ## 8. Hazard log summary
 
-[docs/governance/hazard-log.md](../governance/hazard-log.md) lists 41 hazards (HZ-01 to HZ-43; HZ-23 and HZ-24 are unused) with cause, likelihood, impact, control, the test that proves the control, residual risk and owner; `make docs-check` checks that every row has ratings, a control and test ids that exist (T-E7). Ratings are the author's judgement for the clinician review (H1) to revise. The eight with high impact and the most direct patient consequence:
+[docs/governance/hazard-log.md](../governance/hazard-log.md) lists 48 hazards (HZ-01 to HZ-50; HZ-23 and HZ-24 are unused) with cause, likelihood, impact, control, the test that proves the control, residual risk and owner; `make docs-check` checks that every row has ratings, a control and test ids that exist (T-E7). Ratings are the author's judgement for the clinician review (H1) to revise. The eight with high impact and the most direct patient consequence:
 
 | ID | Hazard | Main controls (built unless stated) | Tests |
 |---|---|---|---|
@@ -364,6 +380,8 @@ A small fine-tuned multilingual classifier (Qwen2.5-1.5B-Instruct, 4-bit, LoRA) 
 | HZ-06 | Closure without evidence | Guard in the state machine and the transaction; only clinician roles close; evidence must resolve in HAPI and the signer must be the closer; append-only triggers | T-A1, T-A3, T-A4, T-A8, T-A26, T-A37, T-B6 |
 | HZ-09 | Model output with diagnosis, reassurance or advice | Model can only draft; bilingual validation with template fallback; human approval before any send | T-D2, T-D3, T-D8, T-D14, T-D1, T-C13; T-F6 (`api/tests/test_chaos_ai_consent.py`) |
 | HZ-15 | A rejected or unanswered referral is lost | Rejection needs a taxonomy reason; ownership changes only on acceptance; unanswered referral bounces after 3 working days; 2 working-day re-route SLA walks the ladder | T-A14, T-A20, T-A21, T-A22 |
+
+The second pathway (A37) added HZ-47 to HZ-50: a cervical case closed on evidence that is not its colposcopy (the pack's evidence rule and the named-procedure check), a case stepped by another pathway's pack (the case row names its pathway; an unloaded pack answers 503), a placeholder timing read as a standard (every timing is sourced or marked, and the page says so), and a message or score meant for another pathway (shared finding-free templates, a bowel-only risk model). Tests T-A83 to T-A86.
 
 Two residual risks stand out. The simulated escalation acted-on rate is 30.5% (literature anchored, synthetic; `results.json` `scenarios.literature_anchored.arms.orchestrated.escalation_acted_on_rate`), so fewer than a third of escalations are acted on within five working days in the model, which makes alert fatigue plausible (HZ-01, L08). And the keyword filters and the Arabic phrase list are unreviewed until H1 and H2 (HZ-09, L17).
 
@@ -518,7 +536,7 @@ The full table, with where each item bites, its source, its impact if wrong, how
 | L34 | Sweep scale: measured, 100,000 open cases take 8.72 s single process and 3.93 s with 4 workers (the default); the 5 s target is met (section 10); the first sweep after migration 012 reads every case once (20.4 s) | resolved by F6 (a198b3c), A17 (7607b4f) and A20 (2aa5e9e): measured, parallel sweep in the production path, sweep index; re-measure on the pilot hardware |
 | L35 | No regulator rung on the ladder | open |
 | L36 | Regulatory readings incomplete: DoH Circular 2026/10 and IFHAS V10 read first-hand (evidence.md section 8); the legal texts, ADHICS V2 and the cloud exception route are still to read | partly resolved: the circular was read for evidence.md 8c; the legal texts, ADHICS V2 and the exception route stay open |
-| L37 | No usability testing; one pathway, one jurisdiction | open |
+| L37 | No usability testing; two pathways implemented (bowel simulated, cervical not), one jurisdiction | open |
 
 **Dependencies.** Postgres 16, HAPI FHIR R4 (image pinned to `hapiproject/hapi:v8.12.0-2`, ADR-006), Synthea v3.3.0 (downloaded at run time, hash-pinned), Docker Compose, Python for the API and simulator, Node for the web app. For a pilot: a provider data feed and agreements, an approved in-country host (ADR-026), an in-country model host or the template, an in-country messaging provider, an identity provider, and optionally the Malaffi interface specification.
 

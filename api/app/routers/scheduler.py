@@ -36,6 +36,7 @@ from app.agency import runner as agency_runner
 from app.calendar import default_calendar
 from app.clock import clock
 from app.config import settings
+from app.pathway import merge_counts
 from app.routers import cases, drafts
 from app.sweep import SweepPool, run_sweep, sweep_workers_from_env
 
@@ -177,20 +178,24 @@ def sweep(request: Request) -> dict:
 
 
 def _sweep(now, fence=None) -> dict:
+    """One sweep per loaded pathway (each pathway's cases are stepped by its own pack), one answer. With one pathway
+    loaded, exactly the single sweep it always was."""
     calendar = default_calendar()
     pool = get_pool()
     url = _postgres_url(cases.store) if pool.workers > 1 else None
-    if url is None:
-        out = run_sweep(cases.store, cases.pathway, calendar, now, fence=fence, max_cases=settings.sweep_max_cases,
-                        budget_seconds=settings.sweep_budget_seconds).to_json()
-        out["workers"] = 1
-        return out
-    record = getattr(cases.store, "projector", None) is not None
-    result = pool.run(url, cases.pathway, calendar, now, record=record, fence=fence, max_cases=settings.sweep_max_cases,
-                      budget_seconds=settings.sweep_budget_seconds)
-    _project_emitted(cases.store, result.emitted_refs)
-    out = result.to_json()
-    out["workers"] = pool.workers
+    parts: list[dict] = []
+    for pw in cases.all_pathways():
+        if url is None:
+            parts.append(run_sweep(cases.store, pw, calendar, now, fence=fence, max_cases=settings.sweep_max_cases,
+                                   budget_seconds=settings.sweep_budget_seconds).to_json())
+            continue
+        record = getattr(cases.store, "projector", None) is not None
+        result = pool.run(url, pw, calendar, now, record=record, fence=fence, max_cases=settings.sweep_max_cases,
+                          budget_seconds=settings.sweep_budget_seconds)
+        _project_emitted(cases.store, result.emitted_refs)
+        parts.append(result.to_json())
+    out = merge_counts(parts)
+    out["workers"] = 1 if url is None else pool.workers
     return out
 
 
@@ -212,7 +217,8 @@ def automation_scan(request: Request) -> dict:
     re-route rejected referrals, send the due pre-approved messages. Idempotent (deterministic event ids); counts only.
     A no-op, answering `{"enabled": false}`, unless AUTOMATION_ENABLED is true."""
     with _stale_is_409():
-        return automation.run_automation_scan(_fenced(cases.store, request), cases.pathway, clock.now(), default_calendar())
+        store, now, calendar = _fenced(cases.store, request), clock.now(), default_calendar()
+        return merge_counts([automation.run_automation_scan(store, pw, now, calendar) for pw in cases.all_pathways()])
 
 
 @router.post("/evidence-scan", dependencies=fenced)
@@ -220,7 +226,8 @@ def evidence_scan(request: Request) -> dict:
     """Ask HAPI whether the colonoscopy exists for each booked or completed case; complete the confirmatory step and
     propose the closure when it does (A21). Closure itself stays a person's. Counts only; a no-op unless enabled."""
     with _stale_is_409():
-        return automation.scan_evidence(_fenced(cases.store, request), cases.pathway, clock.now())
+        store, now = _fenced(cases.store, request), clock.now()
+        return merge_counts([automation.scan_evidence(store, pw, now) for pw in cases.all_pathways()])
 
 
 @router.post("/agency-run", dependencies=fenced)

@@ -140,6 +140,10 @@ class Settings(BaseSettings):
     agency_config_path: str = str(_DEFAULT_AGENCY)  # providers and the call script (config/agency.yaml)
     # In compose this is overridden to /config/pathways/colorectal_fit.yaml
     pathway_path: str = str(_DEFAULT_PATHWAY)
+    # More pathway packs the same engine runs, comma separated (env PATHWAY_PATHS), after `pathway_path` (the default
+    # pathway, which keeps every route that takes no pathway as it was). Empty: bowel screening only. Compose adds
+    # /config/pathways/cervical_hpv.yaml.
+    pathway_paths: str = ""
     # Closure evidence (A15, ADR-021): when true, `close` requires evidence_ref to resolve in HAPI.
     # Compose sets it to true; unit tests use a fake verifier instead.
     fhir_verify_evidence: bool = False

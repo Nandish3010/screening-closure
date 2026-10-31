@@ -114,6 +114,8 @@ services:
         required: false
     environment: &api-env
       PATHWAY_PATH: /config/pathways/colorectal_fit.yaml
+      # More pathway packs the same engine runs (comma separated). Cervical screening: docs/governance/second-pathway.md.
+      PATHWAY_PATHS: /config/pathways/cervical_hpv.yaml
       CALENDAR_PATH: /config/calendar.yaml
       # The automation actor (A21, ADR-032): acknowledge and assign on ingest, re-route, pre-approved outreach, evidence scan.
       # Its files are config/providers.yaml and config/outreach_policy.yaml; its token is AUTOMATION_SERVICE_TOKEN (.env).
