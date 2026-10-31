@@ -38,6 +38,9 @@ include = ["app*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+# simulator/ on sys.path for every invocation (make test, the CI unit-api job, a bare pytest in api/ or at the root):
+# tests/test_physician_guard.py imports `sim.actors`. It used to work only when simulator/tests was collected in the same run.
+pythonpath = ["../simulator"]
 markers = [
   "integration: needs a running Postgres (set DATABASE_URL); run with `make test-db`",
   "oidc: needs Docker and the keycloak image; run with `make test-oidc`",
