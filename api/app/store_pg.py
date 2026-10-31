@@ -743,6 +743,11 @@ class PostgresEventStore:
             ).fetchone()
         return row[0] if row else None
 
+    def pathway_name_of(self, case_id: UUID) -> str | None:
+        with self._pool.connection() as conn:
+            row = conn.execute("SELECT pathway FROM cases WHERE id = %s", (case_id,)).fetchone()
+        return row[0] if row else None
+
     def list_cases(self, state: str | None = None) -> list[CaseSummary]:
         sql = "SELECT id, pathway, current_state, created_at, updated_at FROM cases"
         params: tuple = ()

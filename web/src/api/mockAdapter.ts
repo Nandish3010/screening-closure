@@ -11,12 +11,12 @@ import type {
   DraftRecord, DraftRejection, DraftRequestBody, EffortMetrics, Me, PostEventBody, ReplyBody, ReplyResult, Role, TimelineItem,
 } from "./contract";
 import { ApiError, AUTOMATION_ACTOR, BACKEND_ROLE, OWNER_SCOPED_ROLES, REJECT_NOTE_MAX, REJECT_REASONS, ROLES } from "./contract";
-import { FIXTURE_RISK, SEED_ALERTS, SEED_METRICS, SIM_NOW, caseIdFor, seedDrafts, seedEvents } from "./fixtures";
+import { FIXTURE_RISK, SEED_ALERTS, SEED_METRICS, SIM_NOW, caseIdFor, pathwayOfCase, seedDrafts, seedEvents } from "./fixtures";
 import {
   type AgencyLedger, type CaseFact, caseSummaryOf, executeRun, fakePromptHash, inboxOf, orgOf, runsOf, seedLedger, tasksOf,
 } from "./mockAgency";
 import { PROVIDER_CLINICIANS, ROLE_NAMES, ROLE_PROVIDERS, backendActor } from "./identities";
-import { ESCALATION_LADDER } from "../lib/pathway";
+import { ESCALATION_LADDER, pathwayMeta } from "../lib/pathway";
 import {
   actorKindOf, actorRole, closureOutcomeOf, closureProposalOf, incompleteProcedureOf, refusalOf, completeDetail, consentOf, consentHistoryOf, milestonesOf, overdueDays, pendingEscalation, replayHandoffs,
   replayState, reviewOf, slaClock, summarise, triageReplayOf, validateAppend,
@@ -60,6 +60,12 @@ export function mockClassifyReply(text: string): { intent: string; confidence: n
  */
 export interface MockOptions {
   automation?: boolean;
+  /**
+   * Also seed the second pathway's demo cases (cervical screening, ids 30 to 33) next to the bowel cases. Default OFF, so no
+   * test or recording that counts cases changes; the worklist and the case page then show both pathways. The shipped app turns
+   * it on with `?pathways=2` (see `mockSecondPathwayFromEnv` in index.ts).
+   */
+  secondPathway?: boolean;
   decliningProviders?: readonly string[];
 }
 
@@ -137,9 +143,10 @@ export function createMockAdapter(
   options: MockOptions = {},
 ): ApiClient {
   const automation = options.automation === true;
+  const secondPathway = options.secondPathway === true;
   const declining = new Set(options.decliningProviders ?? ["Al Noor Endoscopy Centre"]);
   // A demo with automation has its own seed (cases the automation actor already worked on), so it keeps its own copy of the data.
-  const KEY = automation ? `${KEY_BASE}.auto` : KEY_BASE;
+  const KEY = `${automation ? `${KEY_BASE}.auto` : KEY_BASE}${secondPathway ? ".p2" : ""}`;
   let memory: MockDb | null = null;
 
   const storedRole = (): Role => {
@@ -178,13 +185,13 @@ export function createMockAdapter(
   }
   const fresh = (): MockDb => {
     const db: MockDb = {
-      events: seedEvents(automation), drafts: seedDrafts(), alerts: structuredClone(SEED_ALERTS), draftCounter: 0, notificationCounter: 0, tick: 0,
+      events: seedEvents(automation, secondPathway), drafts: seedDrafts(), alerts: structuredClone(SEED_ALERTS), draftCounter: 0, notificationCounter: 0, tick: 0,
     };
     db.agency = seedLedger(factsOf(db), db.drafts);
     return db;
   };
   const factsOf = (db: MockDb): CaseFact[] =>
-    Object.keys(db.events).map((id) => ({ summary: summarise(id, db.events[id], SIM_NOW, FIXTURE_RISK[id] ?? 0.2), events: db.events[id] }));
+    Object.keys(db.events).map((id) => ({ summary: summarise(id, db.events[id], SIM_NOW, FIXTURE_RISK[id] ?? 0.2, pathwayOfCase(id)), events: db.events[id] }));
   const ledgerOf = (db: MockDb): AgencyLedger => {
     if (!db.agency) db.agency = seedLedger(factsOf(db), db.drafts);
     return db.agency;
@@ -195,7 +202,7 @@ export function createMockAdapter(
     if (!evs) throw new ApiError(404, "case not found");
     return evs;
   }
-  const summary = (db: MockDb, id: string): CaseSummary => summarise(id, must(db, id), SIM_NOW, FIXTURE_RISK[id] ?? 0.2);
+  const summary = (db: MockDb, id: string): CaseSummary => summarise(id, must(db, id), SIM_NOW, FIXTURE_RISK[id] ?? 0.2, pathwayOfCase(id));
   const detail = (db: MockDb, id: string): CaseDetail => {
     const evs = must(db, id);
     const consent = consentOf(evs);
@@ -367,14 +374,15 @@ export function createMockAdapter(
       if (!OWNER_SCOPED_ROLES.includes(session.role)) throw new ApiError(403, `role '${BACKEND_ROLE[session.role]}' may not call POST /cases/{case_id}/confirmatory-result`);
       const owner = replayHandoffs(evs).owner;
       if (!owner || owner.actor !== actor()) throw new ApiError(403, `${BACKEND_ROLE[session.role]} '${session.name}' may only act on cases they own (this case's owner is ${owner?.name ?? "not yet assigned"})`);
-      const evidenceRef = `Procedure/colonoscopy-${id}`;
+      const procedure = pathwayMeta(pathwayOfCase(id)).procedure; // colonoscopy, colposcopy
+      const evidenceRef = `Procedure/${procedure}-${id}`;
       if (automation) {
         autoEvidenceFound(db, id, evidenceRef);
         save(db);
       }
       return {
         case_id: id, evidence_ref: evidenceRef, procedure_ref: evidenceRef,
-        report_ref: `DiagnosticReport/colonoscopy-report-${id}`, recorded_at: SIM_NOW,
+        report_ref: `DiagnosticReport/${procedure}-report-${id}`, recorded_at: SIM_NOW,
       };
     },
     async me(): Promise<Me> {

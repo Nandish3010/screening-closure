@@ -430,6 +430,7 @@ export function summarise(
   events: CaseEvent[],
   simNow: string,
   risk: number,
+  pathway = "colorectal_fit",
 ): CaseSummary {
   const state = replayState(events);
   const clock = slaClock(events, state, simNow);
@@ -438,7 +439,7 @@ export function summarise(
   const h = replayHandoffs(events);
   return {
     case_id: caseId,
-    pathway: "colorectal_fit",
+    pathway,
     state,
     created_at: events[0]?.at ?? simNow,
     updated_at: events[events.length - 1]?.at ?? simNow,
@@ -454,7 +455,8 @@ export function summarise(
     consent_frozen: consentFrozen(events),
     last_event_at: events[events.length - 1]?.at ?? simNow,
     watchdog_flagged: watchdog,
-    risk_score: risk,
+    // The risk model is the bowel pathway's: the API scores no other pathway's case (its risk_score is null).
+    risk_score: pathway === "colorectal_fit" ? risk : undefined,
   };
 }
 

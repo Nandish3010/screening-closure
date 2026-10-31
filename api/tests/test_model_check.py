@@ -261,3 +261,53 @@ def test_an_event_that_reads_another_slices_fields_is_reported(monkeypatch):
     monkeypatch.setattr(sm, "_precheck", precheck)
     v = _only(mc.check(["ownership"], abstraction_samples=0, interference_samples=2000), "INTERFERENCE")
     assert "messaging" in v.message and "close" in v.message
+
+
+# ---- the second pathway is explored by the same checker ---------------------------------------------------------------
+
+
+CERVICAL_PACK = ROOT / "config/pathways/cervical_hpv.yaml"
+
+
+@pytest.mark.parametrize("slice_name", ["messaging", "ownership", "ladders"])
+def test_the_cervical_pathway_passes_every_invariant_on_every_slice(slice_name):
+    """The second pathway on the same machine: I1 to I8 hold, the search saturates, and its state counts are reported
+    on their own. The pack extends the bowel pack, so the count equals the bowel pack's for the same slice: a difference
+    would mean the pack changed a state, a transition or a timing the model reads."""
+    cervical = mc.load_pathway(CERVICAL_PACK)
+    bowel = mc.load_pathway(mc.PATHWAY_PATH)
+    r = mc.check([slice_name], cervical, **FAST)
+    assert r.ok and r.pathway == "cervical_hpv", mc.render(r)
+    s = r.slices[0]
+    assert s.saturated and s.levels[-1] > 0 and s.states > 500
+    assert {"I1 closures", "I2 human decisions", "I5 open states", "I6 replays", "I7 states", "I8 erasures"} <= set(s.checked)
+    assert s.checked["I1 closures"] > 0, "the cervical closure guard was exercised"
+    reference = mc.check([slice_name], bowel, **FAST).slices[0]
+    assert s.states == reference.states and s.states_by_name == reference.states_by_name
+
+
+def test_the_closure_guard_mutation_is_caught_on_the_cervical_pathway_too(monkeypatch):
+    """Remove the evidence requirement from `close` in the machine: caught on the cervical pack exactly as on the bowel pack."""
+    original = sm._transition
+
+    def lax(model, event, pathway, t):
+        if event.type == "close":
+            t = dataclasses.replace(t, requires=tuple(r for r in t.requires if r != "evidence_ref"))
+        return original(model, event, pathway, t)
+
+    monkeypatch.setattr(sm, "_transition", lax)
+    r = mc.check(["ownership"], mc.load_pathway(CERVICAL_PACK), **FAST)
+    assert not r.ok and r.violations[0].invariant == "I1", mc.render(r)
+
+
+def test_the_command_line_names_packs_and_reports_each_pathways_counts(capsys):
+    assert [p.name for p in mc.pack_paths(None, True)] == ["colorectal_fit.yaml", "cervical_hpv.yaml"]
+    assert mc.pack_paths(["cervical_hpv"], False) == [CERVICAL_PACK]
+    with pytest.raises(SystemExit):
+        mc.pack_paths(["no_such_pack"], False)
+    code = mc.main(["--slice", "messaging", "--pathway", "colorectal_fit", "--pathway", "cervical_hpv",
+                    "--abstraction-samples", "20", "--interference-samples", "10"])
+    out = capsys.readouterr().out
+    assert code == 0
+    assert "== pathway colorectal_fit ==" in out and "== pathway cervical_hpv ==" in out
+    assert "model-check summary: PASS" in out and "cervical_hpv:" in out and "colorectal_fit:" in out

@@ -139,7 +139,7 @@ def _scalar(sql: str) -> int:
 def _open_by_state() -> dict[str, int]:
     from app.routers import cases
 
-    terminal = cases.pathway.terminal_state
+    terminal = cases.pathway.terminal_state  # one terminal state for every pathway of an engine (PathwayRegistry)
     counts: dict[str, int] = {}
     for c in _store().list_cases():
         if c.current_state != terminal:
@@ -152,9 +152,10 @@ def _overdue_count() -> int:
     from app.routers import cases
 
     n = 0
-    for _cid, model, _err in _store().iter_open_case_models(cases.pathway):
-        if model is not None and model.any_overdue:
-            n += 1
+    for pw in cases.all_pathways():
+        for _cid, model, _err in _store().iter_open_case_models(pw):
+            if model is not None and model.any_overdue:
+                n += 1
     return n
 
 

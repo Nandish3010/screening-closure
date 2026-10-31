@@ -189,7 +189,9 @@ def send(
         from app.routers import cases  # resolved late: tests and main rebind these
 
         store = store if store is not None else cases.store
-        pathway = pathway if pathway is not None else cases.pathway
+        if pathway is None:
+            name = store.pathway_name_of(case_id) if hasattr(store, "pathway_name_of") else None
+            pathway = (cases.pathway_by_name(name) if name else None) or cases.pathway
     out = notification_log if notification_log is not None else log
     at = at or clock.now()
 

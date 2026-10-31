@@ -40,7 +40,7 @@ def service() -> ErasureService:
     pool = getattr(cases.store, "_pool", None)
     if pool is None:
         raise HTTPException(503, "erasure needs the Postgres store (the in-memory store has no erasure register)")
-    return ErasureService(pool, cases.store, cases.pathway, HapiEraser(settings.fhir_base_url))
+    return ErasureService(pool, cases.store, cases.pathway, HapiEraser(settings.fhir_base_url), resolver=cases.pathway_of)
 
 
 def _run(fn, *args):

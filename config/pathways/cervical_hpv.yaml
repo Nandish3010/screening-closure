@@ -1,0 +1,69 @@
+# Cervical screening pathway pack: an abnormal HPV or cytology result through colposcopy to documented closure.
+#
+# SECOND PATHWAY ON THE SAME ENGINE. This pack does not restate the state machine. `extends` takes everything from
+# colorectal_fit.yaml except the top-level keys set below, so the states, the side states, every transition (the closure
+# guard: `close` needs evidence_ref AND signed_by, a physician who is not a counsellor), the annotations, the human-only
+# events, the escalation ladder, the handoff contract and the informed-refusal path are literally the bowel pathway's, and
+# `app.pathway._validate` checks the merged result like any other pack. What differs is data: the timings, the closure
+# evidence rule, the patient-message `{next_step}`, the label. The confirmatory events keep their generic names
+# (`book_confirmatory`, `complete_confirmatory`): here the confirmatory procedure is the colposcopy.
+#
+# STATUS: implemented and tested on the engine (docs/governance/second-pathway.md). NOT clinically reviewed, NOT simulated:
+# no outcome, impact or labour number is claimed for it. Every clinical timing below is either sourced (and says where) or
+# marked "placeholder, needs clinician sign-off (H1)". The repository holds no cervical timeline: the DoH cervical cancer
+# screening standard V2 (October 2025) is named in docs/commercial/buyer-map.md with "V2 texts not read".
+extends: colorectal_fit.yaml
+pathway: cervical_hpv
+version: 0.1
+description: Abnormal HPV or cytology screening result through colposcopy to documented closure (second pathway, placeholder timings, H1 pending)
+labels:
+  en: Cervical screening
+  ar: فحص عنق الرحم
+# Per-state SLAs: working days allowed to perform the event that leaves the state. Each clock starts when the state is
+# entered. These are our own design values carried over from the bowel pack (assumed, not sourced, and not specific to the
+# cervical pathway). PLACEHOLDER, needs clinician sign-off (H1): every value in this block.
+slas_working_days:
+  acknowledge: 2
+  accept_ownership: 1
+  contact_patient: 3
+  patient_acknowledge: 5
+  book_confirmatory: 5
+  clinician_review: 5
+  close: 3
+  reassign: 2
+# Milestones (clocks that span states, against a standard; see colorectal_fit.yaml for how they run).
+#   * referral_requested: SOURCED, with one open point. DoH IFHAS standard V10 (July 2025), referral to secondary care within
+#     15 working days of releasing results (docs/evidence.md section 8a, read first-hand for the colorectal programme). The
+#     clause is written for the IFHAS programme in general, but whether it governs a cervical result is for H1 to confirm.
+#   * confirmatory_completed: PLACEHOLDER, needs clinician sign-off (H1). 31 working days is the colorectal colonoscopy
+#     figure (National Guideline Appendix 2). It is carried over so the clock runs; it is NOT a cervical standard. No cervical
+#     colposcopy timeline is in the repository.
+milestones:
+  referral_requested:
+    from_event: case_created
+    until_event: handoff_requested
+    working_days: 15
+    source: "DoH IFHAS standard July 2025 via docs/evidence.md section 8a (generic referral clause; applicability to cervical results to be confirmed by H1)"
+  confirmatory_completed:
+    from_event: handoff_requested
+    until_event: complete_confirmatory
+    working_days: 31
+    source: "PLACEHOLDER, needs clinician sign-off (H1): the colorectal colonoscopy figure (National Guideline Appendix 2) carried over; not a cervical standard"
+# Closure evidence (app.evidence, A24). The target procedure is a colposcopy. A case closes only on a final report that states
+# a complete colposcopy, or a completed Procedure linked to one, and the record must NAME the colposcopy so that another
+# pathway's record of the same patient (a colonoscopy) cannot close this case. There is no CT-colonography alternative.
+# `search_codes` is empty on purpose: no SNOMED or LOINC code is asserted without a source, so the evidence scan looks for the
+# case's own records by case identifier only. PLACEHOLDER, needs clinician sign-off (H1): what counts as a complete colposcopy
+# (adequacy, the transformation zone seen) is a clinical definition this pack does not make.
+evidence:
+  procedure: colposcopy
+  closable_completeness: [complete]
+  require_named_procedure: true
+  search_codes: []
+# Patient messages. The message templates (api/app/ai/templates/en.yaml, ar.yaml) are shared by the pathways: they state no
+# finding and name only "the next step". This pack supplies that next step, in each language, as an appointment and never as
+# a finding (E14). PLACEHOLDER, needs clinician sign-off (H1) for the English; the Arabic needs native-speaker review (H2).
+patient_messages:
+  next_step:
+    en: a follow-up examination
+    ar: فحص متابعة في العيادة

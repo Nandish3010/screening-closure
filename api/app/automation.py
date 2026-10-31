@@ -337,7 +337,7 @@ def _outreach(store, pathway: Pathway, case_id: UUID, model, now: datetime, cale
                         if channel_consent(model, c)[0] and notify.contact_blocked(genesis, c, model) is None), rule.channels[0])
         template = policy.templates[f"{rule.purpose}.{channel}"]
         body = render(template.purpose, channel, language, owner_name=owner["display_name"],
-                      next_step=DEFAULT_NEXT_STEP[language], appointment_date=date)
+                      next_step=pathway.next_step(language, DEFAULT_NEXT_STEP), appointment_date=date)
         try:
             row = notify.send(case_id, channel, language, template.purpose, body, at=now, store=store, pathway=pathway,
                               notification_id=nid, auto={"template_id": template.id, "template_version": template.version})
@@ -459,12 +459,14 @@ def scan_evidence(store, pathway: Pathway, now: datetime, finder=None, verifier=
         ref = None  # the first reference that is complete closure evidence
         incomplete_ref = None  # else the first that is the case's own record but is not (A24)
         try:
-            for candidate in finder.find(case_id=case_id, patient_ref=patient_ref, after=_booking_time(events)):
-                verdict = verifier.assess(candidate, case_id=case_id, patient_ref=patient_ref)
-                if verdict.acceptable:
+            rule = pathway.evidence  # the pack's own rule: which procedure, and which completeness may close
+            for candidate in finder.find(case_id=case_id, patient_ref=patient_ref, after=_booking_time(events),
+                                         codes=rule.search_codes):
+                verdict = verifier.assess(candidate, case_id=case_id, patient_ref=patient_ref, procedure=rule.procedure)
+                if verdict.resolves and evidence.refusal_reason(verdict, rule) is None:
                     ref = candidate
                     break
-                if verdict.incomplete and incomplete_ref is None:
+                if verdict.resolves and incomplete_ref is None:  # the case's own record, and not closure evidence (A24)
                     incomplete_ref = candidate
         except evidence.EvidenceUnavailable as exc:
             result.add("unavailable")

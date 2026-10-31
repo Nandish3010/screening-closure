@@ -203,8 +203,13 @@ class MapRow:
 
 
 class ErasureService:
-    def __init__(self, pool, store, pathway, hapi: HapiEraser | None) -> None:
+    def __init__(self, pool, store, pathway, hapi: HapiEraser | None, resolver=None) -> None:
+        # `pathway` is the default; `resolver(case_id)` (optional) names the pathway a case runs on (several pathways, one engine).
         self.pool, self.store, self.pathway, self.hapi = pool, store, pathway, hapi
+        self.resolver = resolver
+
+    def _pathway_of(self, case_id):
+        return self.resolver(case_id) if self.resolver is not None else self.pathway
 
     # -- request ----------------------------------------------------------------------------------------------------------
 
@@ -305,7 +310,7 @@ class ErasureService:
             for case_id in case_ids:
                 events = self.store.events_for(case_id)
                 if events and not is_erased_ref(events[0].payload.get("patient_ref")):
-                    ids = case_resource_ids(self.pathway, default_calendar(), case_id, events)
+                    ids = case_resource_ids(self._pathway_of(case_id), default_calendar(), case_id, events)
                     refs += [r for r in (ids["task"], ids["consent"]) if r]
                     for key in ("service_requests", "appointments", "communications", "provenance"):
                         refs += ids[key]
@@ -340,5 +345,5 @@ class ErasureService:
             cur.execute("DELETE FROM fhir_projection_queue WHERE case_id = %s", (m.case_id,))
             cur.execute("DELETE FROM fhir_projection_dead_letter WHERE case_id = %s", (m.case_id,))
 
-        self.store.append(event, self.pathway, within=scrub)
+        self.store.append(event, self._pathway_of(m.case_id), within=scrub)
         return categories, {k: v for k, v in counts.items() if isinstance(v, int)}

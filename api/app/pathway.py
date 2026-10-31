@@ -74,6 +74,33 @@ class Milestone:
     source: str
 
 
+# Closure-evidence rules of a pathway (pack section `evidence`). The defaults are the bowel pathway's (A24, ADR-036), so a
+# pack that says nothing behaves as it always did.
+DEFAULT_PROCEDURE = "colonoscopy"
+DEFAULT_CLOSABLE_COMPLETENESS = ("complete", "ct_colonography")
+COMPLETENESS_VOCABULARY = ("complete", "incomplete", "ct_colonography")
+
+
+@dataclass(frozen=True)
+class EvidenceRule:
+    """What may close a case of this pathway (pack section `evidence`).
+
+    * `procedure`: the confirmatory procedure's plain-text label (`colonoscopy`, `colposcopy`); it words the refusal reasons
+      and is the text a report must carry when `require_named_procedure` is true.
+    * `closable_completeness`: the completeness values (the vocabulary of `app.evidence`) that may close a case.
+    * `require_named_procedure`: a report whose text does not name `procedure` is refused, so another pathway's record of
+      the same patient cannot close this case. False for the bowel pack (its rule predates the check and is unchanged).
+    * `search_codes`: `[resource type, "system|code"]` pairs the evidence finder may search a patient's records by, besides
+      the case identifier. Empty: the finder asks by case identifier only (no code is asserted without a source).
+    """
+
+    procedure: str = DEFAULT_PROCEDURE
+    closable_completeness: tuple[str, ...] = DEFAULT_CLOSABLE_COMPLETENESS
+    require_named_procedure: bool = False
+    search_codes: tuple[tuple[str, str], ...] = (
+        ("Procedure", "http://snomed.info/sct|73761001"), ("DiagnosticReport", "http://loinc.org|18746-8"))
+
+
 @dataclass(frozen=True)
 class Pathway:
     name: str
@@ -101,6 +128,13 @@ class Pathway:
     refusal_reasons: tuple[str, ...] = ()
     re_offer_months: int = 12
     appointment_cancel_reasons: tuple[str, ...] = ()
+    # Multi-pathway fields. Not in repr: the timing fingerprints hash `repr(pathway)`, and none of these is timing.
+    evidence: EvidenceRule = field(default_factory=EvidenceRule, repr=False)
+    # Patient messages: the pathway's `{next_step}` per language (the generic template files are shared; E14: an appointment,
+    # never a finding). Empty: the app's DEFAULT_NEXT_STEP.
+    next_steps: dict[str, str] = field(default_factory=dict, repr=False)
+    # Shown by the web next to the case: {en, ar} short labels, and the screening the pathway belongs to.
+    labels: dict[str, str] = field(default_factory=dict, repr=False)
     raw: dict = field(default_factory=dict, compare=False, repr=False)
 
     @property
@@ -135,6 +169,10 @@ class Pathway:
     def resumable_states(self) -> frozenset[str]:
         """Side states that remember the state they interrupted and resume to it."""
         return frozenset(t.from_state for t in self.transitions if t.to_state == RESUME_STATE)
+
+    def next_step(self, language: str, default: dict[str, str]) -> str:
+        """The `{next_step}` text for `language`: this pathway's own if the pack names one, else `default`'s."""
+        return self.next_steps.get(language) or default[language]
 
     def transitions_for(self, state: str, event: str) -> list[Transition]:
         return [t for t in self.transitions if t.from_state == state and t.event == event]
@@ -197,8 +235,35 @@ def _expand_sources(row: dict, states, side_states) -> list[str]:
     return list(src) if isinstance(src, list) else [src]
 
 
+MAX_EXTENDS_DEPTH = 3
+
+
+def read_pack(path: str | Path, _depth: int = 0) -> dict:
+    """The pack's YAML as a mapping, with `extends: <file>` resolved. A pack may name another pack in the same directory;
+    every top-level key the pack itself sets REPLACES the parent's (no deep merge, so a section is read in one place), and
+    every other key is the parent's. A pack that extends another reuses its states and transitions by not restating them:
+    the closure guard, the side states and the annotation lists are then literally the parent's, and `_validate` checks the
+    merged result like any other pack."""
+    path = Path(path)
+    raw = yaml.safe_load(path.read_text())
+    if not isinstance(raw, dict):
+        raise PathwayError(f"{path.name}: a pathway pack must be a mapping")
+    parent = raw.get("extends")
+    if parent is None:
+        return raw
+    if _depth >= MAX_EXTENDS_DEPTH:
+        raise PathwayError(f"{path.name}: `extends` nests deeper than {MAX_EXTENDS_DEPTH}")
+    if not isinstance(parent, str) or "/" in parent or not parent.endswith(".yaml"):
+        raise PathwayError(f"{path.name}: `extends` must name a .yaml file in the same directory")
+    merged = read_pack(path.with_name(parent), _depth + 1)
+    merged.pop("extends", None)
+    merged.update({k: v for k, v in raw.items() if k != "extends"})
+    merged["extended_from"] = parent
+    return merged
+
+
 def load_pathway(path: str | Path) -> Pathway:
-    raw = yaml.safe_load(Path(path).read_text())
+    raw = read_pack(path)
     try:
         states = tuple(raw["states"])
         side_states = tuple(raw.get("side_states", []))
@@ -246,12 +311,64 @@ def load_pathway(path: str | Path) -> Pathway:
             refusal_reasons=tuple((raw.get("informed_refusal") or {}).get("reasons", [])),
             re_offer_months=(raw.get("informed_refusal") or {}).get("re_offer_months", 12),
             appointment_cancel_reasons=tuple(raw.get("appointment_cancel_reasons", [])),
+            evidence=_load_evidence(raw.get("evidence")),
+            next_steps=_load_str_map(raw.get("patient_messages"), "next_step", "patient_messages.next_step"),
+            labels=_load_str_map(raw, "labels", "labels"),
             raw=raw,
         )
     except KeyError as exc:
         raise PathwayError(f"pathway config missing required key: {exc}") from exc
     _validate(pw)
     return pw
+
+
+_LANGUAGES = ("en", "ar")
+
+
+def _load_str_map(container: object, key: str, where: str) -> dict[str, str]:
+    """`{en: ..., ar: ...}` under `container[key]`: non-empty strings, languages en/ar only. Missing: empty."""
+    value = container.get(key) if isinstance(container, dict) else None
+    if value is None:
+        return {}
+    if not isinstance(value, dict) or not set(value) <= set(_LANGUAGES):
+        raise PathwayError(f"{where} must be a mapping with the languages {list(_LANGUAGES)}")
+    for lang, text in value.items():
+        if not isinstance(text, str) or not text.strip() or len(text) > 40:
+            raise PathwayError(f"{where}.{lang} must be a non-empty string of at most 40 characters (the message field limit)")
+    return {k: v.strip() for k, v in value.items()}
+
+
+def _load_evidence(raw: object) -> EvidenceRule:
+    if raw is None:
+        return EvidenceRule()
+    if not isinstance(raw, dict):
+        raise PathwayError("evidence must be a mapping")
+    unknown = set(raw) - {"procedure", "closable_completeness", "require_named_procedure", "search_codes"}
+    if unknown:
+        raise PathwayError(f"evidence has unknown keys {sorted(unknown)}")
+    procedure = raw.get("procedure", DEFAULT_PROCEDURE)
+    if not isinstance(procedure, str) or not re.fullmatch(r"[a-z][a-z ]{2,40}", procedure):
+        raise PathwayError("evidence.procedure must be a lower-case plain-text label")
+    closable = tuple(raw.get("closable_completeness", DEFAULT_CLOSABLE_COMPLETENESS))
+    if not closable or not set(closable) <= set(COMPLETENESS_VOCABULARY) or "incomplete" in closable:
+        raise PathwayError(f"evidence.closable_completeness must be a non-empty subset of {list(COMPLETENESS_VOCABULARY)} without 'incomplete'")
+    named = raw.get("require_named_procedure", False)
+    if not isinstance(named, bool):
+        raise PathwayError("evidence.require_named_procedure must be true or false")
+    codes_raw = raw.get("search_codes", None)
+    if codes_raw is None:
+        codes = EvidenceRule().search_codes
+    else:
+        if not isinstance(codes_raw, list):
+            raise PathwayError("evidence.search_codes must be a list of [resource type, 'system|code']")
+        codes = []
+        for item in codes_raw:
+            if (not isinstance(item, list) or len(item) != 2 or item[0] not in ("Procedure", "DiagnosticReport")
+                    or not isinstance(item[1], str) or "|" not in item[1]):
+                raise PathwayError("evidence.search_codes entries must be ['Procedure'|'DiagnosticReport', 'system|code']")
+            codes.append((item[0], item[1]))
+        codes = tuple(codes)
+    return EvidenceRule(procedure, closable, named, codes)
 
 
 def _load_milestones(raw: object) -> dict[str, Milestone]:
@@ -390,3 +507,71 @@ def _validate(pw: Pathway) -> None:
         raise PathwayError(
             "handoff_bounce_reason is reserved for the scheduler and may not be a human reason"
         )
+
+
+class PathwayRegistry:
+    """The pathways one engine runs, in load order; the first is the default (the one a case created without naming a
+    pathway gets, and the one the aggregate routes that take a single pathway report). One engine, many packs: every
+    pack goes through `load_pathway` and `_validate`, and every case is stepped by the pack named in its own row."""
+
+    def __init__(self, pathways) -> None:
+        pathways = tuple(pathways)
+        if not pathways:
+            raise PathwayError("a registry needs at least one pathway")
+        names = [p.name for p in pathways]
+        if len(set(names)) != len(names):
+            raise PathwayError(f"pathway names must be unique, got {names}")
+        if len({p.terminal_state for p in pathways}) != 1:
+            # Cross-pathway reads ("every open case") filter on one terminal state; the closure guard is per pack.
+            raise PathwayError("every pathway of one engine must end in the same terminal state")
+        self._by_name = {p.name: p for p in pathways}
+        self.default = pathways[0]
+
+    def __iter__(self):
+        return iter(self._by_name.values())
+
+    def __len__(self) -> int:
+        return len(self._by_name)
+
+    def __contains__(self, name: object) -> bool:
+        return name in self._by_name
+
+    @property
+    def names(self) -> tuple[str, ...]:
+        return tuple(self._by_name)
+
+    def get(self, name: str | None) -> Pathway | None:
+        """The pathway called `name` (the default for None), or None if no such pack is loaded."""
+        return self.default if name is None else self._by_name.get(name)
+
+    def require(self, name: str) -> Pathway:
+        pw = self._by_name.get(name)
+        if pw is None:
+            raise PathwayError(f"pathway {name!r} is not loaded (loaded: {list(self._by_name)})")
+        return pw
+
+
+def load_registry(paths) -> PathwayRegistry:
+    return PathwayRegistry([load_pathway(p) for p in paths])
+
+
+def merge_counts(parts: list[dict], and_keys: tuple[str, ...] = ()) -> dict:
+    """One answer from the per-pathway answers of a scan that ran once per pathway: whole numbers add, lists join, a
+    boolean is true if any part says so (`and_keys`: only if all do), anything else keeps the first part's value. One part
+    is returned as it is, so an engine with one pathway answers exactly as it always did."""
+    if len(parts) == 1:
+        return parts[0]
+    out: dict = {}
+    for part in parts:
+        for key, value in part.items():
+            if key not in out:
+                out[key] = list(value) if isinstance(value, list) else value
+            elif isinstance(value, bool):
+                out[key] = (out[key] and value) if key in and_keys else (out[key] or value)
+            elif isinstance(value, int) and isinstance(out[key], int):
+                out[key] += value
+            elif isinstance(value, float) and isinstance(out[key], (int, float)):
+                out[key] += value
+            elif isinstance(value, list) and isinstance(out[key], list):
+                out[key] += value
+    return out

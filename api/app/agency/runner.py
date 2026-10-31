@@ -176,7 +176,7 @@ def reconcile(L: TaskLedger, now: datetime, run_id: UUID) -> dict:
             except LedgerError:
                 pass  # another process moved it on first
     for t in L.query(status=NEEDS_HUMAN):
-        r = _resolution(t, cases.store, cases.pathway)
+        r = _resolution(t, cases.store, cases.pathway_or_default(t.case_id))
         if r is not None:
             try:
                 L.resolve(t.id, r[0], now, r[1], r[2])

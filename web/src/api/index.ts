@@ -34,6 +34,33 @@ export function mockAutomationFromEnv(search: string = typeof location === "unde
   return asBool(import.meta.env.VITE_MOCK_AUTOMATION) ?? true;
 }
 
+const PATHWAYS_KEY = "sc.mock.pathways";
+
+/**
+ * Whether the mock also seeds the second pathway's cases (cervical screening). OFF by default: `?pathways=2` turns it on (remembered
+ * for the browser tab), `?pathways=1` off; the build-time default is `VITE_MOCK_SECOND_PATHWAY=on|off`, else OFF.
+ */
+export function mockSecondPathwayFromEnv(search: string = typeof location === "undefined" ? "" : location.search): boolean {
+  const asBool = (v: string | null | undefined): boolean | null => {
+    const t = (v ?? "").trim().toLowerCase();
+    if (["2", "on", "true", "yes"].includes(t)) return true;
+    if (["1", "off", "false", "no"].includes(t)) return false;
+    return null;
+  };
+  const fromUrl = asBool(new URLSearchParams(search).get("pathways"));
+  try {
+    if (fromUrl !== null) {
+      sessionStorage.setItem(PATHWAYS_KEY, fromUrl ? "on" : "off");
+      return fromUrl;
+    }
+    const remembered = asBool(sessionStorage.getItem(PATHWAYS_KEY));
+    if (remembered !== null) return remembered;
+  } catch {
+    /* no sessionStorage: fall through to the build-time default */
+  }
+  return asBool(import.meta.env.VITE_MOCK_SECOND_PATHWAY) ?? false;
+}
+
 /** Chosen at build time by VITE_API_ADAPTER=mock|http (default mock). */
 export function createClientFromEnv(): ApiClient {
   const env = import.meta.env;
@@ -47,5 +74,5 @@ export function createClientFromEnv(): ApiClient {
     });
     return createHttpAdapter(url, (...a) => fetch(...a), { oidc });
   }
-  return createMockAdapter(undefined, { automation: mockAutomationFromEnv() });
+  return createMockAdapter(undefined, { automation: mockAutomationFromEnv(), secondPathway: mockSecondPathwayFromEnv() });
 }

@@ -1,4 +1,9 @@
-/** Pathway knowledge the UI needs (mirrors config/pathways/colorectal_fit.yaml). */
+/**
+ * Pathway knowledge the UI needs (mirrors config/pathways/colorectal_fit.yaml). The states, transitions and SLAs below are the
+ * shared engine's: the second pathway (cervical_hpv, config/pathways/cervical_hpv.yaml) extends this pack and changes only
+ * data, so the same tables serve both. What differs per pathway (its label, its confirmatory procedure, the wording of its
+ * milestone clocks) is in PATHWAYS below.
+ */
 import type { CaseState, EscalationRung, HandoffRejectReason } from "../api/contract";
 import { MAIN_STATES } from "../api/contract";
 
@@ -71,6 +76,49 @@ export const SLA_WORKING_DAYS: Record<string, number> = {
 
 export type MilestoneName = "referral_requested" | "confirmatory_completed";
 
+/** The pathway a case with no `pathway` field belongs to (the API's default: bowel screening). */
+export const DEFAULT_PATHWAY = "colorectal_fit";
+
+export interface PathwayMeta {
+  /** The pathway pack's name (`pathway:` in config/pathways/*.yaml), as the API puts it on every case. */
+  name: string;
+  /** Short label for the badge and the filter. */
+  label: string;
+  /** The screening programme, for tooltips. */
+  programme: string;
+  /** The confirmatory procedure (the pack's `evidence.procedure`): the word the case page uses for the target procedure. */
+  procedure: string;
+  /** Row label of the `confirmatory_completed` milestone on the case page. */
+  confirmatoryMilestoneLabel: string;
+  /** Pathways whose clinical timings are not signed off say so on the case page. */
+  placeholderTimings: boolean;
+}
+
+/**
+ * The pathways the UI knows by name. Any other name the API sends is shown as-is (humanised), never hidden. The cervical
+ * entry mirrors config/pathways/cervical_hpv.yaml: its colposcopy clock is a PLACEHOLDER (needs clinician sign-off, H1) and the
+ * page says so.
+ */
+export const PATHWAYS: Record<string, PathwayMeta> = {
+  colorectal_fit: {
+    name: "colorectal_fit", label: "Bowel screening", programme: "Colorectal cancer screening: positive FIT to colonoscopy",
+    procedure: "colonoscopy", confirmatoryMilestoneLabel: "Colonoscopy within 31 working days of referral", placeholderTimings: false,
+  },
+  cervical_hpv: {
+    name: "cervical_hpv", label: "Cervical screening", programme: "Cervical screening: abnormal HPV or cytology result to colposcopy",
+    procedure: "colposcopy", confirmatoryMilestoneLabel: "Colposcopy within 31 working days of referral (placeholder, H1)",
+    placeholderTimings: true,
+  },
+};
+
+export function pathwayMeta(name?: string | null): PathwayMeta {
+  const key = name || DEFAULT_PATHWAY;
+  return PATHWAYS[key] ?? {
+    name: key, label: key.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase()), programme: key, procedure: "confirmatory procedure",
+    confirmatoryMilestoneLabel: "Confirmatory procedure within 31 working days of referral", placeholderTimings: false,
+  };
+}
+
 export interface MilestoneDef {
   name: MilestoneName;
   /** The event that starts the clock (`case_created` = the result release). The FIRST occurrence counts and the clock never restarts (A25). */
@@ -102,6 +150,17 @@ export const MILESTONES: readonly MilestoneDef[] = [
     source: "National Guideline Appendix 2 via evidence.md",
   },
 ];
+
+/** The milestone clocks of a case's pathway: the same two clocks, worded for its confirmatory procedure. */
+export function milestonesFor(pathway?: string | null): readonly MilestoneDef[] {
+  const meta = pathwayMeta(pathway);
+  if (meta.name === DEFAULT_PATHWAY) return MILESTONES;
+  return MILESTONES.map((m) => m.name === "confirmatory_completed"
+    ? { ...m, label: meta.confirmatoryMilestoneLabel, source: meta.placeholderTimings ? "Placeholder, needs clinician sign-off (H1): carried over from the colorectal pathway, not a standard for this pathway" : m.source }
+    : m.name === "referral_requested" && meta.placeholderTimings
+      ? { ...m, source: `${m.source} (applicability to this pathway to be confirmed by H1)` }
+      : m);
+}
 
 /** escalation_ladder from the pathway YAML, in the event vocabulary (`escalate {rung, target_role}`). */
 export const ESCALATION_LADDER: { after_breach_days: number; rung: EscalationRung; target_role: string }[] = [

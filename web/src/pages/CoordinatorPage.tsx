@@ -3,7 +3,9 @@ import { Link } from "react-router-dom";
 import { useApp } from "../app/AppContext";
 import type { CaseSummary } from "../api/contract";
 import { MAIN_STATES } from "../api/contract";
-import { DEFAULT_FILTERS, UNOWNED, ownersOf, worklist, type WorklistFilters } from "../lib/worklist";
+import { DEFAULT_FILTERS, UNOWNED, ownersOf, pathwaysOf, worklist, type WorklistFilters } from "../lib/worklist";
+import { pathwayMeta } from "../lib/pathway";
+import { PathwayBadge } from "../components/PathwayBadge";
 import { fmtDate, fmtDateTime, shortId, titleCase } from "../lib/format";
 import { overdueInfo } from "../lib/derive";
 import { WatchdogMarker } from "../components/WatchdogMarker";
@@ -49,6 +51,7 @@ export function CoordinatorPage() {
   );
   const rows = useMemo(() => (cases ? worklist(cases, filters, now) : []), [cases, filters, now]);
   const owners = useMemo(() => ownersOf(cases ?? []), [cases]);
+  const pathways = useMemo(() => pathwaysOf(cases ?? []), [cases]);
   const set = (p: Partial<WorklistFilters>) => setFilters((f) => ({ ...f, ...p }));
 
   return (
@@ -76,6 +79,15 @@ export function CoordinatorPage() {
             {MAIN_STATES.map((s) => <option key={s} value={s}>{titleCase(s)}</option>)}
           </select>
         </label>
+        {pathways.length > 1 && (
+          <label className="field">
+            <span>Pathway</span>
+            <select value={filters.pathway} onChange={(e) => set({ pathway: e.target.value })}>
+              <option value="">Every pathway</option>
+              {pathways.map((p) => <option key={p} value={p}>{pathwayMeta(p).label}</option>)}
+            </select>
+          </label>
+        )}
         <label className="field">
           <span>Owner</span>
           <select value={filters.owner} onChange={(e) => set({ owner: e.target.value })}>
@@ -108,7 +120,7 @@ export function CoordinatorPage() {
           <div className="table-wrap">
             <table className="worklist" data-testid="worklist">
               <thead>
-                <tr><th>Case</th><th>Age</th><th>State</th><th>Owner</th><th>Next due</th><th>Flags</th><th>Last activity</th><th>Risk</th></tr>
+                <tr><th>Case</th><th>Pathway</th><th>Age</th><th>State</th><th>Owner</th><th>Next due</th><th>Flags</th><th>Last activity</th><th>Risk</th></tr>
               </thead>
               <tbody>
                 {rows.map((c) => {
@@ -119,6 +131,7 @@ export function CoordinatorPage() {
                   return (
                     <tr key={c.case_id} data-testid="worklist-row" className={`${od.overdue ? "row-overdue" : ""} ${c.watchdog_flagged ? "row-watchdog" : ""}`.trim()}>
                       <td data-label="Case" className="nowrap"><Link to={`/coordinator/${c.case_id}`}>{shortId(c.case_id)}</Link></td>
+                      <td data-label="Pathway" className="nowrap"><PathwayBadge pathway={c.pathway} testId="worklist-pathway" /></td>
                       <td data-label="Age" className="nowrap num" title="Days since the result was received">{age === null ? "-" : `${age} d`}</td>
                       <td data-label="State"><StatePill state={c.state} /></td>
                       <td data-label="Owner">
@@ -143,7 +156,7 @@ export function CoordinatorPage() {
                     </tr>
                   );
                 })}
-                {rows.length === 0 && <tr><td colSpan={8}>No cases match these filters.</td></tr>}
+                {rows.length === 0 && <tr><td colSpan={9}>No cases match these filters.</td></tr>}
               </tbody>
             </table>
           </div>

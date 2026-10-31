@@ -289,7 +289,7 @@ def test_t_a62_a_transient_tool_error_is_tried_twice_then_the_task_fails(cohort)
     calls = []
 
     class Down:
-        def exists(self, ref, *, case_id=None, patient_ref=None):
+        def exists(self, ref, *, case_id=None, patient_ref=None, procedure=None):
             calls.append(ref)
             raise evidence.EvidenceUnavailable("HAPI is down")
 

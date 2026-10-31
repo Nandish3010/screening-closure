@@ -59,6 +59,7 @@ R_INVALID_STATE = "the event is not valid in the case's current state"
 R_CONTENT_CONFLICT = "message control id reused with different content"
 R_NO_COMPLETENESS = "colonoscopy completeness not stated"
 R_BAD_COMPLETENESS = "colonoscopy completeness value not recognised"
+R_NOT_COLONOSCOPY = "the colonoscopy result mapping does not apply to this case's pathway"
 R_RECORDER = "evidence store unavailable, retry"
 R_INTERNAL = "internal error, retry"
 R_DENIED = "action not permitted for this interface"
@@ -193,7 +194,8 @@ def _cases_of(patient_ref: str, states) -> list:
 
     out = []
     for state in states:
-        out += [lc for lc in cases.store.load_cases(cases.pathway, state) if lc.patient_ref == patient_ref]
+        for pw in cases.all_pathways():  # every pathway the engine runs: a patient may have a case on any of them
+            out += [lc for lc in cases.store.load_cases(pw, state) if lc.patient_ref == patient_ref]
     return out
 
 
@@ -312,6 +314,8 @@ def _colonoscopy(msg: Message, obr: Segment, cfg: Hl7Config) -> Outcome:
         raise Reject("AE", "103", R_BAD_COMPLETENESS)  # a colonoscopy report cannot say it was a CT colonography
     patient_ref = patient_ref_of(msg.first("PID"), cfg)
     lc = _one_case(patient_ref, sorted(cases.RESULT_STATES))
+    if cases.pathway_of(lc.case_id).evidence.procedure != "colonoscopy":
+        raise Reject("AE", "100", R_NOT_COLONOSCOPY)  # this adapter's observation codes are the colonoscopy's (A28)
     performed = _timestamp(obr.get(7, 1) or obr.get(8, 1), cfg)
     now = clock.now()
     at = performed[0].astimezone(UTC) if performed and performed[0].astimezone(UTC) <= now else now
@@ -383,7 +387,7 @@ def _append_cancel(cases, case_id: UUID, event_id: UUID) -> Event:
     policy.authorize_hl7("cancel_appointment")
     event = Event(case_id, "appointment_cancelled", clock.now(), HL7_ACTOR, dict(_CANCEL_PAYLOAD), event_id)
     payloads.validate("appointment_cancelled", event.payload)
-    validate_payload(event, cases.pathway)
+    validate_payload(event, cases.pathway_of(case_id))
     return event
 
 
@@ -414,7 +418,7 @@ def _cancel(msg: Message, cfg: Hl7Config) -> Outcome:
             raise Reject("AE", "100", R_NOT_BOOKED)
         raise Reject("AE", "204", R_NO_CASE)
     def go():
-        cases.store.append(_append_cancel(cases, lc.case_id, event_id), cases.pathway)
+        cases.store.append(_append_cancel(cases, lc.case_id, event_id), cases.pathway_of(lc.case_id))
     _guarded(go)
     return Outcome("AA", None, None, "siu_cancel")
 
@@ -426,12 +430,13 @@ def _cancel_and_book(cases, case_id: UUID, payload: dict, cancel_id: UUID, book_
         policy.authorize_hl7("book_confirmatory")
         book = Event(case_id, "book_confirmatory", clock.now(), HL7_ACTOR, payload, book_id)
         payloads.validate("book_confirmatory", payload)
-        validate_payload(book, cases.pathway)
+        pw = cases.pathway_of(case_id)
+        validate_payload(book, pw)
         if hasattr(cases.store, "append_many"):
-            cases.store.append_many([cancel, book], cases.pathway)
+            cases.store.append_many([cancel, book], pw)
         else:
-            cases.store.append(cancel, cases.pathway)
-            cases.store.append(book, cases.pathway)
+            cases.store.append(cancel, pw)
+            cases.store.append(book, pw)
     _guarded(go)
     return Outcome("AA", None, None, "siu_reschedule")
 def _duplicate_of(prior: Event, payload: dict) -> Outcome:
@@ -447,8 +452,9 @@ def _book(cases, case_id: UUID, payload: dict, event_id: UUID) -> Outcome:
         policy.authorize_hl7("book_confirmatory")
         event = Event(case_id, "book_confirmatory", clock.now(), HL7_ACTOR, payload, event_id)
         payloads.validate("book_confirmatory", payload)
-        validate_payload(event, cases.pathway)
-        cases.store.append(event, cases.pathway)
+        pw = cases.pathway_of(case_id)
+        validate_payload(event, pw)
+        cases.store.append(event, pw)
     except HTTPException:
         raise Reject("AE", "207", R_DENIED) from None
     except (InvalidTransition, PayloadError, payloads.PayloadSchemaError):

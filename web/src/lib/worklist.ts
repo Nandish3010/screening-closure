@@ -1,5 +1,6 @@
 import type { CaseSummary } from "../api/contract";
 import { overdueInfo } from "./derive";
+import { DEFAULT_PATHWAY } from "./pathway";
 
 export interface WorklistFilters {
   /** "open" (default) = everything not closed; "all"; or an exact state. */
@@ -9,9 +10,11 @@ export interface WorklistFilters {
   overdueOnly: boolean;
   /** Only cases with an open watchdog flag ("nobody is looking at this"). */
   flaggedOnly: boolean;
+  /** "" = every pathway; else the pathway name (`colorectal_fit`, `cervical_hpv`). */
+  pathway: string;
 }
 
-export const DEFAULT_FILTERS: WorklistFilters = { state: "open", owner: "", overdueOnly: false, flaggedOnly: false };
+export const DEFAULT_FILTERS: WorklistFilters = { state: "open", owner: "", overdueOnly: false, flaggedOnly: false, pathway: "" };
 export const UNOWNED = "__unowned__";
 
 /**
@@ -39,6 +42,7 @@ export function filterWorklist(cases: CaseSummary[], f: WorklistFilters): CaseSu
     if (f.owner === UNOWNED ? !!c.owner : f.owner !== "" && c.owner !== f.owner) return false;
     if (f.overdueOnly && !c.overdue) return false;
     if (f.flaggedOnly && !c.watchdog_flagged) return false;
+    if (f.pathway !== "" && (c.pathway || DEFAULT_PATHWAY) !== f.pathway) return false;
     return true;
   });
 }
@@ -48,4 +52,10 @@ export const worklist = (cases: CaseSummary[], f: WorklistFilters, now?: string 
 
 export function ownersOf(cases: CaseSummary[]): string[] {
   return [...new Set(cases.map((c) => c.owner).filter((o): o is string => !!o))].sort();
+}
+
+/** The pathways present in a list of cases, default pathway first (what the filter offers). */
+export function pathwaysOf(cases: CaseSummary[]): string[] {
+  const seen = [...new Set(cases.map((c) => c.pathway || DEFAULT_PATHWAY))];
+  return seen.sort((a, b) => (a === DEFAULT_PATHWAY ? -1 : b === DEFAULT_PATHWAY ? 1 : a.localeCompare(b)));
 }

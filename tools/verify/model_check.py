@@ -14,7 +14,13 @@ the three is too large for the three-minute budget and adds nothing for these pr
 each other's fields. That claim is checked, not assumed: the non-interference check flips every other slice's fields on
 the representatives and requires the slice's events to behave the same. docs/governance/verification.md has the argument.
 
-    PYTHONPATH=api python tools/verify/model_check.py [--slice NAME] [--all] [--json] [-v]
+    PYTHONPATH=api python tools/verify/model_check.py [--slice NAME] [--pathway NAME] [--all-pathways] [--all] [--json] [-v]
+
+Several pathways. The checker takes a pathway as data, so a second pack is explored by the same code: `--pathway cervical_hpv`
+(a pack name in config/pathways/, or a path), repeatable; `--all-pathways` explores every pack in config/pathways/ (what
+`make verify` does). With no flag it explores the bowel pack only, as it always has. Each pathway is saturated and checked on
+its own and its state counts are reported on their own; the run fails if any pathway fails. A pack that extends another
+(cervical_hpv extends colorectal_fit) is still explored in full: nothing is assumed from the parent's result.
 """
 
 from __future__ import annotations
@@ -41,7 +47,8 @@ from app import state_machine as sm  # noqa: E402
 from app.events import Event  # noqa: E402
 from app.pathway import Pathway, load_pathway  # noqa: E402
 
-PATHWAY_PATH = ROOT / "config/pathways/colorectal_fit.yaml"
+PATHWAY_DIR = ROOT / "config/pathways"
+PATHWAY_PATH = PATHWAY_DIR / "colorectal_fit.yaml"
 OUTREACH_POLICY_PATH = ROOT / "config/outreach_policy.yaml"
 
 NS = UUID("6d1c3a52-0a27-4c38-9b8e-5e3f2b7a9a27")
@@ -432,7 +439,7 @@ def physician_not_counsellor(pre: sm.CaseModel, actor: str, p: dict) -> list:
     return bad
 
 
-def route_gate_refusal(actor: str, payload: dict) -> str | None:
+def route_gate_refusal(actor: str, payload: dict, pathway: Pathway | None = None) -> str | None:
     """Run the REAL route gate (`routers.cases._check_signature_and_evidence`) on a close the machine accepted: the HTTP
     status it refuses with, or None if it lets the close through to the evidence lookup."""
     from app.routers import cases
@@ -440,7 +447,7 @@ def route_gate_refusal(actor: str, payload: dict) -> str | None:
     if identity is None:
         return "no person (services are refused by the route policy)"
     try:
-        cases._check_signature_and_evidence(identity, "close", dict(payload), CASE)
+        cases._check_signature_and_evidence(identity, "close", dict(payload), CASE, pathway)
     except HTTPException as exc:
         return str(exc.status_code)
     except Exception:  # noqa: BLE001 - got past the signer and shape checks, to the evidence lookup
@@ -514,6 +521,7 @@ class SliceResult:
 class Result:
     slices: list = field(default_factory=list)
     seconds: float = 0.0
+    pathway: str = ""
 
     @property
     def ok(self) -> bool:
@@ -642,7 +650,7 @@ class Checker:
             ref = p.get("evidence_ref")
             if not (isinstance(ref, str) and ref.partition("/")[2].strip(".") != ""):
                 _bump(self.r.delegated, "I1: malformed evidence -> refused by the route gate (ADR-021)")
-                if route_gate_refusal(actor, p) is None:
+                if route_gate_refusal(actor, p, self.pw) is None:
                     out.append(("I1", f"close with evidence {ref!r} passes the machine AND the route gate"))
         if t == "clinician_review" and post.state != pre.state:
             _bump(c, "I1 clinician reviews")
@@ -909,7 +917,7 @@ class Checker:
 
 def check(slices=None, pathway: Pathway | None = None, **kw) -> Result:
     t0 = time.perf_counter()
-    out = Result()
+    out = Result(pathway=pathway.name if pathway is not None else "")
     for name in slices or SLICES:
         res = Checker(SLICES[name], pathway, **kw).run()
         out.slices.append(res)
@@ -943,9 +951,26 @@ def render(r: Result) -> str:
     return "\n".join(lines)
 
 
+def pack_paths(selection: list[str] | None, every: bool) -> list[Path]:
+    """The packs to explore: every pack of config/pathways/ (the bowel pack first), or the ones named (a pack name or a path)."""
+    if every:
+        return sorted(PATHWAY_DIR.glob("*.yaml"), key=lambda p: (p != PATHWAY_PATH, p.name))
+    out = []
+    for item in selection or [str(PATHWAY_PATH)]:
+        path = Path(item)
+        if not path.exists():
+            path = PATHWAY_DIR / (item if item.endswith(".yaml") else f"{item}.yaml")
+        if not path.exists():
+            raise SystemExit(f"no such pathway pack: {item}")
+        out.append(path)
+    return out
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--slice", action="append", choices=list(SLICES), help="run only this slice (repeatable)")
+    ap.add_argument("--pathway", action="append", help="explore this pathway pack (a name in config/pathways/ or a path; repeatable)")
+    ap.add_argument("--all-pathways", action="store_true", help="explore every pack in config/pathways/")
     ap.add_argument("--max-depth", type=int, default=200)
     ap.add_argument("--abstraction-samples", type=int, default=1000)
     ap.add_argument("--interference-samples", type=int, default=400)
@@ -953,15 +978,31 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--json", action="store_true")
     ap.add_argument("-v", "--verbose", action="store_true", help="print each BFS level as it finishes")
     args = ap.parse_args(argv)
-    r = check(args.slice, max_depth=args.max_depth, abstraction_samples=args.abstraction_samples,
-              interference_samples=args.interference_samples, stop_at_first=not args.all, verbose=args.verbose)
+    packs = [load_pathway(p) for p in pack_paths(args.pathway, args.all_pathways)]
+    results = [check(args.slice, pw, max_depth=args.max_depth, abstraction_samples=args.abstraction_samples,
+                     interference_samples=args.interference_samples, stop_at_first=not args.all, verbose=args.verbose)
+               for pw in packs]
+    ok = all(r.ok for r in results)
     if args.json:
-        print(json.dumps({"ok": r.ok, "seconds": round(r.seconds, 1), "slices": [
-            {k: v for k, v in vars(s).items() if k != "violations"} | {"violations": [v.render() for v in s.violations]}
-            for s in r.slices]}, indent=2, default=str))
+        def one(r: Result) -> dict:
+            return {"pathway": r.pathway, "ok": r.ok, "seconds": round(r.seconds, 1), "slices": [
+                {k: v for k, v in vars(s).items() if k != "violations"} | {"violations": [v.render() for v in s.violations]}
+                for s in r.slices]}
+
+        if len(results) == 1:  # the original shape, for a run over one pathway
+            print(json.dumps(one(results[0]) | {"pathway": results[0].pathway}, indent=2, default=str))
+        else:
+            print(json.dumps({"ok": ok, "pathways": [one(r) for r in results]}, indent=2, default=str))
+    elif len(results) == 1:
+        print(render(results[0]))
     else:
-        print(render(r))
-    return 0 if r.ok else 1
+        for r in results:
+            print(f"== pathway {r.pathway} ==")
+            print(render(r))
+        print("model-check summary: " + ("PASS" if ok else "FAIL") + "  " +
+              "; ".join(f"{r.pathway}: {r.states} abstract states in {len(r.slices)} slices" for r in results) +
+              f"  (total {sum(r.states for r in results)})")
+    return 0 if ok else 1
 
 
 if __name__ == "__main__":

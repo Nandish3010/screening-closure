@@ -165,3 +165,50 @@ def test_a_missed_timer_masks_only_its_obligation(ctx):
     assert not [e for e in sched if e.type in ("mark_overdue", "escalate")]
     assert any(e.type == "handoff_rejected" for e in sched)
     assert res.counters["timers_missed"] > 0
+
+
+# ---- the second pathway (cervical screening) on the same engine ------------------------------------------------------
+#
+# Conformance is a property of the engine, not of a pack: the simulator folds a case with the API's `step`, checks it with
+# the API's `plan_case` at the instants `next_due_at` names, and this test replays the log through the real store and the
+# real sweep. Run on the cervical pack (its own milestones and SLAs), the two must still agree event for event. This is a
+# check that the pack is data the sweep honours. It is NOT an evaluation: the cohort, rates and behaviours are the bowel
+# programme's, no result of this run is reported anywhere, and no impact number exists for the second pathway.
+
+CERVICAL_CASES = 120
+
+
+@pytest.fixture(scope="module")
+def cervical_run():
+    from pathlib import Path
+
+    from simulator.sim.runner import load_context
+
+    ctx = load_context(pathway_path=Path(__file__).resolve().parents[2] / "config/pathways/cervical_hpv.yaml", warn=False)
+    assert ctx.pathway.name == "cervical_hpv"
+    return ctx, _run(ctx, 1.0, cases=CERVICAL_CASES)
+
+
+def test_the_simulator_runs_the_apis_sweep_event_for_event_on_the_second_pathway(cervical_run):
+    ctx, result = cervical_run
+    calendar = default_calendar()
+    failures = []
+    for case in result.cases:
+        got = replay(case.mach, ctx.pathway, calendar)
+        if [_key(e) for e in got] != [_key(e) for e in case.mach.log]:
+            failures.append(case.p.idx)
+    assert not failures, f"{len(failures)} of {len(result.cases)} cervical cases differ from the real sweep: {failures[:5]}"
+    assert len(result.cases) == CERVICAL_CASES
+
+
+def test_the_second_pathways_breaches_come_from_its_own_pack(cervical_run):
+    """The cervical pack's milestone clocks are the ones the sweep ran: the log carries `mark_overdue` for the cervical
+    milestones by name, and every machine event passes the API's strict payload schema."""
+    ctx, result = cervical_run
+    milestones = set()
+    for case in result.cases:
+        for e in case.mach.log[1:]:
+            payloads.validate(e.type, e.payload)
+            if e.type == "mark_overdue" and e.payload.get("milestone"):
+                milestones.add(e.payload["milestone"])
+    assert milestones == set(ctx.pathway.milestones), milestones  # both cervical milestones were breached and named

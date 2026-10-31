@@ -16,6 +16,10 @@ from datetime import datetime
 from . import features as F
 from .model import Model, default_model
 
+# The pathway the model was trained and validated on (the simulated bowel cohort). A case of any other pathway is not scored:
+# a probability from another pathway's model would be a number nobody validated (docs/governance/second-pathway.md).
+TRAINED_ON_PATHWAY = "colorectal_fit"
+
 SCORE_DECIMALS = 4
 TOP_FACTORS = 3
 

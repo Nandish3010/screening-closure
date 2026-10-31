@@ -30,6 +30,11 @@ the vocabulary `app.confirmatory` writes (our own completeness code system, LOIN
 SNOMED code and no external terminology server. The same verdict gates `close` (422) and the automatic
 `complete_confirmatory` of the evidence scan (which raises `review_requested {incomplete_procedure}` instead).
 
+Several pathways (the second pathway work). The completeness vocabulary is one for every pathway; WHICH values may close a
+case, and whether the report must name the pathway's own procedure (`colposcopy`, not another pathway's colonoscopy of the
+same patient), is the pathway pack's `evidence` section (`app.pathway.EvidenceRule`). `refusal_reason(assessment, rule)` is
+the one place that applies it; the bowel pack's rule is the default and is exactly the rule above.
+
 Unit tests use `StaticVerifier`; the default verifier accepts anything, so a run without HAPI
 is never blocked by a lookup.
 """
@@ -46,6 +51,7 @@ from datetime import UTC, datetime
 from typing import Protocol
 
 from app.auth import Identity
+from app.pathway import DEFAULT_PROCEDURE
 
 CASE_IDENTIFIER_SYSTEM = "urn:screening-closure:case"
 MAX_BODY_BYTES = 1_000_000
@@ -61,11 +67,26 @@ PROCEDURE_STATUS_OK = "completed"
 # Plain-text forms (lower-cased, whitespace squeezed) a `CodeableConcept.text` or `coding.display` may use. Deliberately
 # short: it is the vocabulary our recorder writes, not a terminology.
 _TEXT_COMPLETENESS = {
-    "colonoscopy complete": "complete", "complete colonoscopy": "complete",
-    "colonoscopy incomplete": "incomplete", "incomplete colonoscopy": "incomplete",
     "ct colonography": "ct_colonography", "ct colonography complete": "ct_colonography",
     "ct colonography report": "ct_colonography",
 }
+# The confirmatory procedures whose plain-text forms are recognised (one per pathway pack: `evidence.procedure`). A report
+# that states `<label> complete` / `complete <label>` (or the `incomplete` forms) says that; `named_procedures` finds which of
+# these labels a resource's own text names. `register_procedure` adds a label for a pack that is not in the seed.
+_PROCEDURES: set[str] = set()
+
+
+def register_procedure(label: str) -> None:
+    """Recognise `<label> complete`, `complete <label>`, `<label> incomplete`, `incomplete <label>` in a report's text."""
+    _PROCEDURES.add(label)
+    _TEXT_COMPLETENESS.update({
+        f"{label} complete": "complete", f"complete {label}": "complete",
+        f"{label} incomplete": "incomplete", f"incomplete {label}": "incomplete",
+    })
+
+
+for _label in ("colonoscopy", "colposcopy"):  # the shipped packs
+    register_procedure(_label)
 MAX_LINKED_REPORTS = 5
 _PATIENT_REF = re.compile(r"^Patient/[A-Za-z0-9-]{1,64}$")
 _FOUND_ID = re.compile(r"^[A-Za-z0-9-]{1,64}$")  # a reference the payload schemas accept (no dots)
@@ -91,6 +112,9 @@ class Assessment:
     resolves: bool
     completeness: str | None = None
     reason: str | None = None
+    # The procedure labels the resource's own text names (`colonoscopy`, `colposcopy`); None: not looked at (no lookup).
+    # A pathway whose pack says `require_named_procedure` refuses a resource whose set does not hold its procedure.
+    procedures: frozenset[str] | None = None
 
     @property
     def acceptable(self) -> bool:
@@ -108,10 +132,22 @@ class EvidenceVerifier(Protocol):
         `patient_ref` as its subject). Raises EvidenceUnavailable if it cannot tell."""
         ...
 
-    def assess(self, ref: str, *, case_id, patient_ref: str | None = None) -> Assessment:
+    def assess(self, ref: str, *, case_id, patient_ref: str | None = None, procedure: str = DEFAULT_PROCEDURE) -> Assessment:
         """`exists`, and whether the resource is complete closure evidence (A24): a final report that states a complete
         colonoscopy (or a CT colonography), or a completed Procedure linked to one. Raises EvidenceUnavailable."""
         ...
+
+
+def refusal_reason(verdict: Assessment, rule) -> str | None:
+    """Why `verdict` is not closure evidence under the pathway's `rule` (an `app.pathway.EvidenceRule`), or None if it is.
+    One fixed sentence, shown in the 422 and never stored in the log. `verdict.resolves` is checked by the caller."""
+    if verdict.completeness not in rule.closable_completeness:
+        return verdict.reason or _reason_for(verdict.completeness, rule.procedure)
+    if verdict.reason is not None:
+        return verdict.reason
+    if rule.require_named_procedure and verdict.procedures is not None and rule.procedure not in verdict.procedures:
+        return f"the record does not name a {rule.procedure}: it is not this pathway's confirmatory procedure"
+    return None
 
 
 class AcceptAllVerifier:
@@ -120,7 +156,7 @@ class AcceptAllVerifier:
     def exists(self, ref: str, *, case_id=None, patient_ref: str | None = None) -> bool:
         return True
 
-    def assess(self, ref: str, *, case_id=None, patient_ref: str | None = None) -> Assessment:
+    def assess(self, ref: str, *, case_id=None, patient_ref: str | None = None, procedure: str = DEFAULT_PROCEDURE) -> Assessment:
         return Assessment(True, "complete")  # no lookup, so nothing to say about completeness: as before A24
 
 
@@ -129,10 +165,12 @@ class StaticVerifier:
     the case id it belongs to; a bound reference resolves only for that case. `completeness` maps a reference to what it
     says (default `complete`); anything outside CLOSABLE_COMPLETENESS (or None) is refused by `assess`."""
 
-    def __init__(self, existing=(), bindings=None, completeness=None) -> None:
+    def __init__(self, existing=(), bindings=None, completeness=None, procedures=None) -> None:
         self.existing = set(existing)
         self.bindings = {k: str(v) for k, v in (bindings or {}).items()}
         self.completeness = dict(completeness or {})
+        # reference -> the procedure labels its text names; a reference not listed says nothing (None: not looked at)
+        self.procedures = {k: frozenset(v) for k, v in (procedures or {}).items()}
         self.calls: list[str] = []
 
     def exists(self, ref: str, *, case_id=None, patient_ref: str | None = None) -> bool:
@@ -142,11 +180,12 @@ class StaticVerifier:
         bound = self.bindings.get(ref)
         return bound is None or bound == str(case_id)
 
-    def assess(self, ref: str, *, case_id=None, patient_ref: str | None = None) -> Assessment:
+    def assess(self, ref: str, *, case_id=None, patient_ref: str | None = None, procedure: str = DEFAULT_PROCEDURE) -> Assessment:
         if not self.exists(ref, case_id=case_id, patient_ref=patient_ref):
             return Assessment(False, None, "does not resolve to a resource of this case")
         value = self.completeness.get(ref, "complete")
-        return Assessment(True, value, None if value in CLOSABLE_COMPLETENESS else _reason_for(value))
+        return Assessment(True, value, None if value in CLOSABLE_COMPLETENESS else _reason_for(value, procedure),
+                          self.procedures.get(ref))
 
 
 def belongs_to_case(resource: dict, case_id, patient_ref: str | None) -> bool:
@@ -163,10 +202,24 @@ def belongs_to_case(resource: dict, case_id, patient_ref: str | None) -> bool:
     return bool(patient_ref) and isinstance(reference, str) and reference == patient_ref
 
 
-def _reason_for(completeness: str | None) -> str:
+def _reason_for(completeness: str | None, procedure: str = "colonoscopy") -> str:
     if completeness == "incomplete":
-        return "the colonoscopy is recorded as incomplete: repeat it or do a CT colonography before closing"
-    return "the report does not state that the colonoscopy was complete"
+        if procedure == "colonoscopy":
+            return "the colonoscopy is recorded as incomplete: repeat it or do a CT colonography before closing"
+        return f"the {procedure} is recorded as incomplete: repeat it before closing"
+    return f"the report does not state that the {procedure} was complete"
+
+
+def named_procedures(resource: dict) -> frozenset[str]:
+    """The registered procedure labels a resource's own text names (code text and display, conclusion text and display)."""
+    parts: list[str] = []
+    for concept in [resource.get("code"), *(resource.get("conclusionCode") or [])]:
+        if not isinstance(concept, dict):
+            continue
+        parts.append(str(concept.get("text") or ""))
+        parts += [str(c.get("display") or "") for c in concept.get("coding") or [] if isinstance(c, dict)]
+    text = " ".join(" ".join(parts).lower().split())
+    return frozenset(label for label in _PROCEDURES if label in text)
 
 
 def _concept_values(concept) -> list[str]:
@@ -201,12 +254,14 @@ def report_completeness(report: dict) -> str | None:
     return None
 
 
-def assess_report(report: dict) -> Assessment:
-    """A resolved DiagnosticReport: it must be `final` and state a complete colonoscopy (or a CT colonography)."""
+def assess_report(report: dict, procedure: str = DEFAULT_PROCEDURE) -> Assessment:
+    """A resolved DiagnosticReport: it must be `final` and state a complete confirmatory procedure (a colonoscopy, or a CT
+    colonography, for the bowel pathway)."""
     if report.get("status") != REPORT_STATUS_OK:
         return Assessment(True, None, f"the report is not final (status {str(report.get('status'))[:20]!r})")
     value = report_completeness(report)
-    return Assessment(True, value, None if value in CLOSABLE_COMPLETENESS else _reason_for(value))
+    return Assessment(True, value, None if value in CLOSABLE_COMPLETENESS else _reason_for(value, procedure),
+                      named_procedures(report))
 
 
 def linked_report_refs(procedure: dict) -> list[str]:
@@ -263,25 +318,27 @@ class FhirVerifier:
         body = self._get(ref)
         return body is not None and belongs_to_case(body, case_id, patient_ref)
 
-    def assess(self, ref: str, *, case_id=None, patient_ref: str | None = None) -> Assessment:
+    def assess(self, ref: str, *, case_id=None, patient_ref: str | None = None, procedure: str = DEFAULT_PROCEDURE) -> Assessment:
         body = self._get(ref)
         if body is None or not belongs_to_case(body, case_id, patient_ref):
             return Assessment(False, None, "does not resolve to a resource of this case")
         if body["resourceType"] == "DiagnosticReport":
-            return assess_report(body)
+            return assess_report(body, procedure)
         status = body.get("status")
         if status != PROCEDURE_STATUS_OK:
             value = "incomplete" if status in ("stopped", "not-done") else None
             return Assessment(True, value, f"the procedure is not completed (status {str(status)[:20]!r})")
         links = linked_report_refs(body)
         if not links:
-            return Assessment(True, None, "a procedure alone is not closure evidence: it must link to a final colonoscopy report")
-        verdict = Assessment(True, None, "no linked report is a final report of a complete colonoscopy")
+            return Assessment(True, None, f"a procedure alone is not closure evidence: it must link to a final {procedure} report")
+        verdict = Assessment(True, None, f"no linked report is a final report of a complete {procedure}")
+        own = named_procedures(body)
         for link in links:
             report = self._get(link)
             if report is None or not belongs_to_case(report, case_id, patient_ref):
                 continue  # a link to nothing, or to another case's report, proves nothing
-            got = assess_report(report)
+            got = assess_report(report, procedure)
+            got = Assessment(got.resolves, got.completeness, got.reason, (got.procedures or frozenset()) | own)
             if got.acceptable:
                 return got
             if got.completeness == "incomplete" or verdict.completeness is None:
@@ -301,17 +358,18 @@ verifier: EvidenceVerifier = AcceptAllVerifier()
 
 
 class EvidenceFinder(Protocol):
-    def find(self, *, case_id, patient_ref: str | None, after: datetime | None) -> list[str]:
+    def find(self, *, case_id, patient_ref: str | None, after: datetime | None, codes=None) -> list[str]:
         """Candidate closure-evidence references (`Procedure/<id>` first, then `DiagnosticReport/<id>`) for the case:
-        a resource carrying the case identifier, or a colonoscopy of the patient dated at or after `after` (the
-        booking). Raises EvidenceUnavailable if HAPI cannot answer."""
+        a resource carrying the case identifier, or (when `codes` lists any) a record of the patient with one of those
+        codes dated at or after `after` (the booking). `codes` is the pathway's `evidence.search_codes`; None means the
+        bowel pathway's colonoscopy codes. Raises EvidenceUnavailable if HAPI cannot answer."""
         ...
 
 
 class NullFinder:
     """No HAPI to ask: finds nothing, so the evidence scan does nothing."""
 
-    def find(self, *, case_id, patient_ref=None, after=None) -> list[str]:
+    def find(self, *, case_id, patient_ref=None, after=None, codes=None) -> list[str]:
         return []
 
 
@@ -323,7 +381,7 @@ class StaticFinder:
         self.fail = fail
         self.calls: list[tuple[str, str | None, datetime | None]] = []
 
-    def find(self, *, case_id, patient_ref=None, after=None) -> list[str]:
+    def find(self, *, case_id, patient_ref=None, after=None, codes=None) -> list[str]:
         self.calls.append((str(case_id), patient_ref, after))
         if self.fail:
             raise EvidenceUnavailable(self.fail)
@@ -379,12 +437,18 @@ class FhirFinder:
                 out.append(res)
         return out
 
-    def find(self, *, case_id, patient_ref=None, after=None) -> list[str]:
+    def find(self, *, case_id, patient_ref=None, after=None, codes=None) -> list[str]:
         found: list[str] = []
         floor = (after if after is None or after.tzinfo else after.replace(tzinfo=UTC))
-        for resource_type, code in (("Procedure", COLONOSCOPY_SNOMED), ("DiagnosticReport", COLONOSCOPY_LOINC)):
+        by_type = {"Procedure": COLONOSCOPY_SNOMED, "DiagnosticReport": COLONOSCOPY_LOINC} if codes is None else {}
+        if codes is not None:
+            for resource_type, code in codes:
+                by_type.setdefault(resource_type, code)
+        # A pathway with no search code asserts none: its records are found by the case identifier alone.
+        for resource_type in ("Procedure", "DiagnosticReport"):
+            code = by_type.get(resource_type)
             hits = self._search(resource_type, {"identifier": f"{CASE_IDENTIFIER_SYSTEM}|{case_id}"})
-            if patient_ref and _PATIENT_REF.match(patient_ref):
+            if code and patient_ref and _PATIENT_REF.match(patient_ref):
                 hits += self._search(resource_type, {"subject": patient_ref, "code": code})
             for res in hits:
                 ref = f"{resource_type}/{res['id']}"
