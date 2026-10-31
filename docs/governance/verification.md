@@ -168,3 +168,7 @@ PYTHONPATH=api .venv/bin/pytest api/tests/test_model_check.py -q      # the bug'
 ```
 
 `--max-depth` bounds the search. Hitting the bound with states still being found is a failure (`saturated: FALSE`), never a silent pass. `--abstraction-samples` and `--interference-samples` set how many pairs the two soundness checks compare.
+
+## The second pathway
+
+`make verify` runs `--all-pathways`: the bowel pack and the cervical pack (`config/pathways/cervical_hpv.yaml`, which extends the bowel pack) are each explored from their own genesis model and saturated. Both pass I1 to I8. Counts, per pathway: 23,730 abstract states each (messaging 4,736, ownership 6,816, ladders 12,178; 47,460 in total), equal slice by slice because the cervical pack changes timings, the closure evidence rule and wording, none of which the abstraction reads. `api/tests/test_model_check.py` also asserts that equality, catches a seeded closure-guard mutation on the cervical pack, and exercises the command line.

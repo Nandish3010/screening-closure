@@ -149,7 +149,7 @@ project/     plan, tracker, decisions, log, test cases
 | Run | `synthea`, `demo-seed`, `demo-seed-clean` | Generate the cohort in a container; load it and create cases; delete generated files |
 | Run | `demo-seed-cervical` | Opt-in: a few synthetic cervical-screening cases (the second pathway) on the running stack; kept out of the demo snapshot and the video (`make demo-seed DEMO_SECOND_PATHWAY=1` does it after the seed) |
 | Test | `test` | Unit and property tests, no database |
-| Test | `verify` | Exhaustive model check of the state machine (`tools/verify/`, ADR-038): 23,730 abstract states, 8 invariants, about a minute, no database |
+| Test | `verify` | Exhaustive model check of the state machine (`tools/verify/`, ADR-038), run on every pathway pack: 23,730 abstract states for each of bowel and cervical, 8 invariants, about 80 seconds, no database |
 | Test | `test-db` (`test-db-create`, `test-db-reset`) | Integration tests against `closure_test`; create or recreate that database |
 | Test | `test-chaos` | Chaos-marked tests: duplicate delivery, clock skew and store failures through the fault harness (F3), a sweep killed part-way (F4), bad model output and consent withdrawn mid-send (F5), and the scheduler container stopped and restarted with the watchdog alert |
 | Test | `test-oidc` | The committed Keycloak realm against a real Keycloak (own compose project, throw-away passwords; skips without Docker) |
@@ -186,7 +186,7 @@ Two modes, chosen by `AUTH_MODE` (A29, ADR-040). `dev` (the default) keeps the p
 
 At the M5 final merge (project/LOG.md, line "M5-final", 2026-10-18), `make check` was green over 17 of 17 stages: 2154 api and simulator tests, 230 integration, 287 web unit, 51 e2e, 188 tool tests, 72 security-gate tests, 19 pack tests, 20 effort tests, 21 calibration tests. Outside it: `make test-chaos` 45 passed, `make test-demo` 2 passed, `make test-e2e-live` 3 passed, `make test-offline` 17 of 17.
 
-The state machine is also model-checked exhaustively by `make verify` (`tools/verify/model_check.py`, [docs/governance/verification.md](docs/governance/verification.md)): 23,730 abstract states (three slices), 8 invariants, and 8 seeded mutations (M8 removes the physician check), all caught. It found one real bug, now fixed: an approved draft could be sent while an opt-out or wrong-number hold was open (ADR-038).
+The state machine is also model-checked exhaustively by `make verify` (`tools/verify/model_check.py`, [docs/governance/verification.md](docs/governance/verification.md)): 23,730 abstract states per pathway pack (three slices; bowel and cervical are each explored), 8 invariants, and 8 seeded mutations (M8 removes the physician check), all caught. It found one real bug, now fixed: an approved draft could be sent while an opt-out or wrong-number hold was open (ADR-038).
 
 The closure rule has its own property test: `api/tests/test_state_machine.py::test_never_closed_without_evidence_and_human_signoff`.
 

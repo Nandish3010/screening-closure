@@ -276,7 +276,7 @@ The claim that the engine generalises beyond bowel screening is backed by one re
 
 **Patient messages** use the shared English and Arabic templates through `{owner_name}`, `{next_step}` and `{appointment_date}`; the pack supplies the next step as an appointment ("a follow-up examination"), never a finding, and every message passes the validator in a test. The Arabic needs native review (H2), like every Arabic string here.
 
-**What is tested.** The pack (T-A83); a case from result to closed, and the refusals (T-A84); coexistence, the consent hold and default-deny (T-A85); the messages (T-A86); the model checker on the pack, I1 to I8, with its own state counts (T-A87; MODEL_CHECK_SENTENCE); the simulator's sweep conformance on the pack (T-A88); the demo seed (T-A89); the worklist and case page (T-C19).
+**What is tested.** The pack (T-A83); a case from result to closed, and the refusals (T-A84); coexistence, the consent hold and default-deny (T-A85); the messages (T-A86); the model checker on the pack, I1 to I8, with its own state counts (T-A87; 23,730 abstract states for each of the two packs, 47,460 in total, all saturated); the simulator's sweep conformance on the pack (T-A88); the demo seed (T-A89); the worklist and case page (T-C19).
 
 **What is not claimed.** No simulated impact, labour or outcome number exists for it: the closure and effort metrics, the risk score and the evaluation are bowel-only. It has not been seen by a clinician or a native Arabic speaker. The Helm chart and the scale evidence (section 10) cover the bowel pack only.
 

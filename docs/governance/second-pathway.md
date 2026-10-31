@@ -71,7 +71,7 @@ A cervical case closes only on a final `DiagnosticReport` that states a **comple
 | The demo seed | `simulator/tests/test_create_cervical_cases.py` (T-A89) |
 | The worklist and case page for both pathways | `web/tests/pathways.test.tsx` (T-C19) |
 
-Model checker (`make verify`, state counts per pathway): MODEL_CHECK_COUNTS
+Model checker (`make verify`, state counts per pathway): `make verify` explores both packs, each on its own, and both pass I1 to I8 and saturate: bowel (`colorectal_fit`) 23,730 abstract states (messaging 4,736, ownership 6,816, ladders 12,178); cervical (`cervical_hpv`) 23,730 abstract states (the same per slice, because the pack changes timings, evidence and wording, none of which the abstraction reads); 47,460 in total. The pack is explored in full; nothing is assumed from its parent's result.
 
 The sweep-conformance run on the cervical pack uses the bowel programme's cohort and behaviour parameters. It checks that the simulator's log equals the real store's and sweep's, event for event. It is not an evaluation, and none of its output is reported anywhere.
 
