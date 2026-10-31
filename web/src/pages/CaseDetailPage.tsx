@@ -22,7 +22,7 @@ import {
   actorName as actorNameOf, allowedChannels, consentOf, draftViews, handoffs, hasCallbackPending, lostContact, overdueDays, overdueInfo,
   patientLang, pendingEscalation, personId, rejectionReasons,
 } from "../lib/derive";
-import { fmtDate, fmtDateTime, titleCase } from "../lib/format";
+import { fmtDate, fmtDateTime, plainRefs, titleCase } from "../lib/format";
 import { STAFF } from "../i18n/strings";
 import { ESCALATION_LADDER, HANDOFF_RESPONSE_WORKING_DAYS, MILESTONES, REFUSAL_FROM_STATES, RUNG_LABEL, handoffReasonLabel } from "../lib/pathway";
 import type { MilestoneDef } from "../lib/pathway";
@@ -74,6 +74,13 @@ function MilestoneRow({ def, clock, now, closed }: { def: MilestoneDef; clock: M
     body = <>due {fmtDate(clock.due_at)}{clock.overdue ? <> · <span className="chip chip-bad">{days > 0 ? `${days} day${days === 1 ? "" : "s"} overdue` : "overdue"}</span></> : " · on track"}</>;
   }
   return <div><dt>{def.label}</dt><dd data-testid={`milestone-${def.name}`} title={def.source}>{body}</dd></div>;
+}
+
+/** The model in plain words; the full id is under "Details" in the Why panel. */
+function modelWords(id: string | null | undefined): string {
+  if (!id || id === "unavailable") return "no model available";
+  if (id.startsWith("rule:")) return "opt-out rule, no AI";
+  return "on-device model";
 }
 
 export function CaseDetailPage() {
@@ -156,7 +163,7 @@ export function CaseDetailPage() {
         refreshSim();
         setFlash(typeof okMessage === "function" ? okMessage(result) : okMessage);
       } catch (e) {
-        setError(e instanceof ApiError ? `The engine refused this: ${e.message}` : `Something went wrong: ${(e as Error).message}`);
+        setError(e instanceof ApiError ? `The engine refused this: ${plainRefs(e.message)}` : `Something went wrong: ${(e as Error).message}`);
       } finally {
         setBusy(false);
       }
@@ -656,7 +663,7 @@ export function CaseDetailPage() {
                   </span>
                 )}
                 <strong>{STAFF.replyForm.readAs} {String(replyResult.intent).replace(/_/g, " ")}</strong>
-                {" "}({Math.round(replyResult.confidence * 100)}% sure, model: {replyResult.model_id}).{" "}
+                {" "}({Math.round(replyResult.confidence * 100)}% sure, {modelWords(replyResult.model_id)}).{" "}
                 {replyResult.needs_human ? STAFF.replyForm.needsPerson : STAFF.replyForm.handled}
               </p>
             )}

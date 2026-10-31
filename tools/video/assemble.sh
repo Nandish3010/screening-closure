@@ -19,13 +19,20 @@ cd "$OUT"
 [ -f cards/title.png ] && [ -f cards/end.png ] || { echo "assemble: out/cards/*.png missing: run record.ts first" >&2; exit 1; }
 
 # The cards: a still, with silent audio, in the same encoding as the shots so the concat needs no re-encode.
-secs() { "$PY" -c "import sys; sys.path.insert(0, '$HERE'); import storyboard; print(storyboard.load()['cards']['$1']['seconds'])"; }
+secs() { "$PY" -c "import json, os, sys; sys.path.insert(0, '$HERE'); import storyboard; d = json.load(open('cards.json')) if os.path.exists('cards.json') else {}; print(d.get('seconds', {}).get('$1') or storyboard.load()['cards']['$1']['seconds'])"; }
 mkdir -p final
 for name in title end; do
   s=$(secs "$name")
-  ffmpeg -y -loglevel error -loop 1 -t "$s" -framerate 25 -i "cards/$name.png" -f lavfi -t "$s" -i anullsrc=r=48000:cl=mono \
-    -vf "scale=1280:800,format=yuv420p" -c:v libx264 -preset fast -crf 20 -r 25 -c:a aac -b:a 128k -ar 48000 -ac 1 -shortest \
-    -movflags +faststart "final/card-$name.mp4"
+  if [ -f "audio/card-$name.m4a" ]; then
+    # a spoken card: the narration (after the lead) over the still, padded with silence to the card length
+    ffmpeg -y -loglevel error -loop 1 -t "$s" -framerate 25 -i "cards/$name.png" -i "audio/card-$name.m4a" \
+      -filter_complex "[0:v]scale=1280:800,format=yuv420p[v];[1:a]adelay=150:all=1,apad=whole_dur=$s[a]" -map "[v]" -map "[a]" -t "$s" \
+      -c:v libx264 -preset fast -crf 20 -r 25 -c:a aac -b:a 128k -ar 48000 -ac 1 -movflags +faststart "final/card-$name.mp4"
+  else
+    ffmpeg -y -loglevel error -loop 1 -t "$s" -framerate 25 -i "cards/$name.png" -f lavfi -t "$s" -i anullsrc=r=48000:cl=mono \
+      -vf "scale=1280:800,format=yuv420p" -c:v libx264 -preset fast -crf 20 -r 25 -c:a aac -b:a 128k -ar 48000 -ac 1 -shortest \
+      -movflags +faststart "final/card-$name.mp4"
+  fi
 done
 
 list() { # $1 = all|submission

@@ -10,6 +10,7 @@ const pct = (x: number, digits = 0) => `${(x * 100).toFixed(digits)}%`;
 
 export interface WhyContent {
   model: string;
+  modelId?: string;
   confidence: string;
   rule: string;
   human: string;
@@ -52,7 +53,8 @@ export function whyContent(i: WhyInput): WhyContent {
         ? "No model available. Sent to a person."
         : i.model_id!.startsWith("rule:")
           ? "Opt-out rule (no AI), checked before any model"
-          : i.model_id!,
+          : "On-device model (runs offline)",
+      modelId: none || i.model_id!.startsWith("rule:") ? undefined : i.model_id!,
       confidence: typeof i.confidence === "number" ? pct(i.confidence) : "not available",
       rule: `${GROUP_RULE[i.forced_reason ?? ""] ?? ""}Handled without a person only if confidence is at least ${pct(TRIAGE_THRESHOLD, 1)} and the intent is not question, other or opt-out. Otherwise a person reads it.${i.needs_human ? " This reply is waiting for a person." : ""}`,
       human: "Review the reply. An opt-out is always read by a person.",
@@ -88,12 +90,15 @@ export function WhyPanel({ input, subject, testId }: { input: WhyInput; subject:
     <details className="why-panel" data-testid={testId}>
       <summary data-testid={`${testId}-summary`}>Why? ({subject})</summary>
       <dl>
-        <div><dt>Model</dt><dd data-testid={`${testId}-model`}>{c.model}</dd></div>
+        <div><dt>Model</dt><dd data-testid={`${testId}-model`}>
+          {c.model}
+          {c.modelId && <details className="why-detail" data-testid={`${testId}-details`}><summary>Details</summary><span className="mono" data-testid={`${testId}-model-id`}>{c.modelId}</span></details>}
+        </dd></div>
         <div><dt>Confidence</dt><dd data-testid={`${testId}-confidence`}>{c.confidence}</dd></div>
         <div><dt>Rule applied</dt><dd data-testid={`${testId}-rule`}>{c.rule}</dd></div>
         <div><dt>A human must still decide</dt><dd data-testid={`${testId}-human`}>{c.human}</dd></div>
       </dl>
-      <p><a href={docHref(c.card)} target="_blank" rel="noreferrer">{c.card.label}</a> <span className="muted mono">({c.card.path})</span></p>
+      <p><a href={docHref(c.card)} target="_blank" rel="noreferrer" title={c.card.path}>{c.card.label}</a></p>
     </details>
   );
 }

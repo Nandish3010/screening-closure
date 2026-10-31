@@ -13,6 +13,7 @@ to at most the submission cap (180 s).
 from __future__ import annotations
 
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -87,22 +88,55 @@ def budget(sb: dict) -> dict:
     }
 
 
-def missing_tools(sb: dict, which=shutil.which, run=subprocess.run) -> list[str]:
-    """What is needed to narrate and assemble, and is not there. Empty when ffmpeg, ffprobe and `say` (and its voice) are present."""
+HF_KOKORO = Path.home() / ".cache/huggingface/hub/models--hexgrad--Kokoro-82M"
+
+
+def say_voice(sb: dict) -> str | None:
+    meta = sb.get("meta", {})
+    return meta.get("say_voice") or meta.get("voice")
+
+
+def kokoro_status(sb: dict, env=None, run=subprocess.run) -> tuple[str | None, str]:
+    """(python, note): the interpreter that runs Kokoro when meta.tts is kokoro and it is usable, else (None, why not)."""
+    env = os.environ if env is None else env
+    meta = sb.get("meta", {})
+    if meta.get("tts") != "kokoro":
+        return None, "meta.tts is not kokoro"
+    py = env.get("KOKORO_PYTHON")
+    if not py:
+        return None, "KOKORO_PYTHON is not set (the Python that has `kokoro` installed)"
+    if not os.access(py, os.X_OK):
+        return None, f"KOKORO_PYTHON={py} is not an executable"
+    voice = meta.get("voice", "bf_emma")
+    snaps = sorted((HF_KOKORO / "snapshots").glob("*")) if (HF_KOKORO / "snapshots").is_dir() else []
+    if not any((s / "kokoro-v1_0.pth").exists() and (s / "voices" / f"{voice}.pt").exists() for s in snaps):
+        return None, f"the Kokoro model or voice {voice} is not in {HF_KOKORO} (nothing is downloaded)"
+    try:
+        ok = run([py, "-I", "-c", "import kokoro"], capture_output=True, timeout=120).returncode == 0
+    except (OSError, subprocess.SubprocessError):
+        ok = False
+    return (py, "") if ok else (None, f"`import kokoro` fails under {py}")
+
+
+def missing_tools(sb: dict, which=shutil.which, run=subprocess.run, env=None) -> list[str]:
+    """What is needed to narrate and assemble, and is not there. Kokoro is used when it is usable; otherwise macOS `say` is the fallback."""
     problems: list[str] = []
     for tool in ("ffmpeg", "ffprobe"):
         if not which(tool):
             problems.append(f"{tool} not found on PATH: install it with `brew install ffmpeg` (narrate.py and assemble.sh need it)")
+    if kokoro_status(sb, env, run)[0]:
+        return problems
     if not which("say"):
-        problems.append("`say` not found: narration uses the macOS text-to-speech command, so `make video` runs on macOS only")
+        problems.append("`say` not found: narration uses the macOS text-to-speech command (the fallback when Kokoro is not set up), "
+                        "so `make video` runs on macOS only")
     else:
-        voice = sb.get("meta", {}).get("voice")
+        voice = say_voice(sb)
         try:
             listing = run(["say", "-v", "?"], capture_output=True, text=True, timeout=30).stdout
         except (OSError, subprocess.SubprocessError):
             listing = ""
         if voice and listing and not any(line.split()[:1] == [voice] for line in listing.splitlines()):
-            problems.append(f"the macOS voice {voice!r} named in storyboard.yaml (meta.voice) is not installed: `say -v '?'` lists "
+            problems.append(f"the macOS voice {voice!r} named in storyboard.yaml (meta.say_voice) is not installed: `say -v '?'` lists "
                             f"the installed voices (System Settings > Accessibility > Spoken Content > System Voice > Manage Voices)")
     return problems
 
@@ -116,7 +150,11 @@ def main(argv: list[str]) -> int:
             for p in problems:
                 print(f"  - {p}", file=sys.stderr)
             return 1
-        print(f"video-deps: PASS: ffmpeg, ffprobe and say (voice {sb['meta'].get('voice')}) are available")
+        py, why = kokoro_status(sb)
+        if py:
+            print(f"video-deps: PASS: ffmpeg, ffprobe and Kokoro (voice {sb['meta'].get('voice')}, offline) are available")
+        else:
+            print(f"video-deps: PASS: ffmpeg, ffprobe and say (voice {say_voice(sb)}) are available; Kokoro is not used: {why}")
         return 0
     if "--json" in argv:
         json.dump(sb, sys.stdout)

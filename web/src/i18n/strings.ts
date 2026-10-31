@@ -286,7 +286,7 @@ export const STAFF = {
     reduction: "Reduction in human time",
     target: "Target",
     sampleLabel: "Demo cases, assumed minutes: not a programme result",
-    programme: "Programme estimate (simulation, synthetic): 36% fewer staff minutes per handled case and 20% across the programme; the 40% target is not met in realistic scenarios. See docs/results/results.md.",
+    programme: "Programme estimate (simulation, synthetic): 36% fewer staff minutes per handled case and 20% across the programme; the 40% target is not met in realistic scenarios. See the simulation results.",
     notEnoughData: "Not enough data yet",
     noData: "No effort data yet.",
     humanActions: "Human actions",

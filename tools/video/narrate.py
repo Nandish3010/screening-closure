@@ -23,8 +23,8 @@ import storyboard  # noqa: E402
 
 HERE = Path(__file__).resolve().parent
 OUT = Path(os.environ.get("VIDEO_OUT", HERE / "out"))
-LEAD = 0.3      # silence before the narration starts
-TAIL = 0.5      # silence after it
+LEAD = 0.15     # silence before the narration starts
+TAIL = 0.25     # silence after it (the gap between two shots is about 0.4 s)
 HEAD_TRIM = 0.3  # the first frames of a Playwright recording are blank
 MAX_SPEED = 6.0  # beyond this a shot is too fast to read: warn
 
@@ -34,6 +34,25 @@ def run(cmd: list[str]) -> str:
     if r.returncode != 0:
         raise SystemExit(f"narrate: {' '.join(cmd[:3])} failed:\n{r.stderr[-1500:]}")
     return r.stdout
+
+
+def synth(text: str, wav: Path, sb: dict) -> str:
+    """Narration audio for `text` into `wav`: Kokoro (offline, neural) when meta.tts is kokoro and KOKORO_PYTHON works, else macOS `say`.
+    Returns the engine used. The text is passed as a file and paths as arguments; Kokoro runs isolated (-I) with the network off."""
+    meta = sb["meta"]
+    py, _why = storyboard.kokoro_status(sb)
+    if py:
+        txt = wav.with_suffix(".txt")
+        txt.write_text(text, encoding="utf-8")
+        env = {**os.environ, "HF_HUB_OFFLINE": "1", "TRANSFORMERS_OFFLINE": "1", "KOKORO_VOICE": str(meta.get("voice", "bf_emma")),
+               "KOKORO_SPEED": str(meta.get("speed", 1.0))}
+        r = subprocess.run([py, "-I", str(HERE / "kokoro_tts.py"), str(txt), str(wav)], capture_output=True, text=True, env=env)
+        if r.returncode != 0:
+            raise SystemExit(f"narrate: kokoro failed:\n{r.stderr[-1500:]}")
+        return "kokoro"
+    aiff = wav.with_suffix(".aiff")
+    run(["say", "-v", str(storyboard.say_voice(sb)), "-r", str(meta["rate"]), "-o", str(aiff), "--", text])
+    return "say"
 
 
 def duration(path: Path) -> float:
@@ -47,7 +66,6 @@ def main() -> int:
         raise SystemExit("narrate: storyboard invalid: " + "; ".join(errs))
     shots = json.loads((OUT / "shots.json").read_text())["shots"]
     by_id = {s["id"]: s for s in sb["shots"]}
-    voice, rate = sb["meta"]["voice"], str(sb["meta"]["rate"])
     audio_dir, final_dir = OUT / "audio", OUT / "final"
     audio_dir.mkdir(parents=True, exist_ok=True)
     final_dir.mkdir(parents=True, exist_ok=True)
@@ -59,9 +77,11 @@ def main() -> int:
             continue
         sid = rec["id"]
         spec = by_id[sid]
-        aiff, m4a = audio_dir / f"shot-{sid}.aiff", audio_dir / f"shot-{sid}.m4a"
-        run(["say", "-v", voice, "-r", rate, "-o", str(aiff), "--", spec["narration"]])
-        run(["ffmpeg", "-y", "-loglevel", "error", "-i", str(aiff), "-ar", "48000", "-ac", "1", "-c:a", "aac", "-b:a", "128k", str(m4a)])
+        wav, m4a = audio_dir / f"shot-{sid}.wav", audio_dir / f"shot-{sid}.m4a"
+        (audio_dir / f"shot-{sid}.narration.txt").write_text(spec["narration"], encoding="utf-8")  # one file per shot: swap the voice, rerun narrate
+        engine = synth(spec["narration"], wav, sb)
+        src = wav if engine == "kokoro" else wav.with_suffix(".aiff")
+        run(["ffmpeg", "-y", "-loglevel", "error", "-i", str(src), "-ar", "48000", "-ac", "1", "-c:a", "aac", "-b:a", "128k", str(m4a)])
         narr = duration(m4a)
         final = max(narr + LEAD + TAIL, float(spec["duration"]))
 
@@ -99,9 +119,24 @@ def main() -> int:
                          "narration_seconds": round(narr, 2), "final": round(final, 2), "speed": round(speed, 2),
                          "file": str(out)})
 
+    # The title and end cards can be spoken too (cards.<name>.narration): their length is then the narration plus the same lead and tail.
+    card_secs = {}
+    for name in ("title", "end"):
+        card = sb["cards"][name]
+        secs = float(card["seconds"])
+        if card.get("narration"):
+            wav, m4a = audio_dir / f"card-{name}.wav", audio_dir / f"card-{name}.m4a"
+            (audio_dir / f"card-{name}.narration.txt").write_text(card["narration"], encoding="utf-8")
+            engine = synth(card["narration"], wav, sb)
+            src = wav if engine == "kokoro" else wav.with_suffix(".aiff")
+            run(["ffmpeg", "-y", "-loglevel", "error", "-i", str(src), "-ar", "48000", "-ac", "1", "-c:a", "aac", "-b:a", "128k", str(m4a)])
+            secs = max(secs, duration(m4a) + LEAD + TAIL)
+            print(f"card {name}: narration {duration(m4a):.1f} s, card {secs:.1f} s")
+        card_secs[name] = round(secs, 3)
+    (OUT / "cards.json").write_text(json.dumps({"lead": LEAD, "seconds": card_secs}))
     (OUT / "timeline.json").write_text(json.dumps({"shots": timeline}, indent=2))
     sub = sum(t["final"] for t in timeline if t["submission"])
-    cards = storyboard.budget(sb)["card_seconds"]
+    cards = sum(card_secs.values())
     print(f"narrate: {len(timeline)} shots; submission shots {sub:.1f} s + cards {cards:.0f} s = {sub + cards:.1f} s (cap {sb['meta']['submission_cap_seconds']} s)")
     return 0
 

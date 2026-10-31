@@ -5,7 +5,7 @@ import type {
   AgencyDepartmentNode, AgencyInboxItem, AgencyOrg, AgencyProvenance, AgencyRun, AgencyTask, AgencyTaskStatus, Role, StatusCounts,
 } from "../api/contract";
 import { AGENCY_DEPARTMENTS, AGENCY_DEPARTMENT_LABEL, AGENCY_TASK_STATUSES, ApiError } from "../api/contract";
-import { fmtDateTime, shortId, titleCase } from "../lib/format";
+import { fmtDateTime, plainRefs, shortId, titleCase } from "../lib/format";
 import { WhyPanel } from "../components/WhyPanel";
 
 /** Shown when the API sends no `principle`. */
@@ -136,13 +136,16 @@ function Inbox({ items, error, loaded }: { items: AgencyInboxItem[]; error: stri
             <li key={it.task_id} data-testid="inbox-item">
               <h3>{it.title}</h3>
               <p className="agency-meta">
-                <span className="chip">{AGENCY_DEPARTMENT_LABEL[it.department] ?? it.department}</span>{" "}
-                <span className="mono">{it.agent_type}</span>
-                <span className="muted"> · for {titleCase(it.assignee_role)} · prepared <time dateTime={it.created_at}>{fmtDateTime(it.created_at)}</time></span>
+                <span className="chip">{AGENCY_DEPARTMENT_LABEL[it.department] ?? it.department}</span>
+                <span className="muted"> for {titleCase(it.assignee_role)} · prepared <time dateTime={it.created_at}>{fmtDateTime(it.created_at)}</time></span>
               </p>
-              <p>{it.summary}</p>
-              <p><strong>Recommended:</strong> {it.recommended_action}</p>
-              <Material data={{ ...it.material, ...(it.links.draft_id ? { draft: it.links.draft_id } : {}) }} />
+              <p title={it.summary}>{plainRefs(it.summary)}</p>
+              <p><strong>Recommended:</strong> {titleCase(it.recommended_action)}</p>
+              <details className="tl-details" data-testid="inbox-details">
+                <summary>Details</summary>
+                <p className="muted"><span className="mono">{it.agent_type}</span></p>
+                <Material data={{ ...it.material, ...(it.links.draft_id ? { draft: it.links.draft_id } : {}) }} />
+              </details>
               {it.case_id && (
                 <p>
                   <Link to={`/coordinator/${it.case_id}`}>Open case<span className="visually-hidden"> {shortId(it.case_id)}</span></Link>

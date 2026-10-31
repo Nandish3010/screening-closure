@@ -90,6 +90,38 @@ function payloadSummary(type: string, p: Record<string, unknown>): string {
     .join(" · ");
 }
 
+
+/** Who did it, in plain words (no `role:id` strings): the people by name, the machinery by what it is. */
+export function plainWho(actor: string, kind: ActorKind): string {
+  const name = actorName(actor);
+  if (kind === "automation") return "Automation";
+  if (kind === "model") return "AI model";
+  if (kind === "service") {
+    const role = actorRole(actor);
+    const base = role === "system" ? actor.slice(actor.indexOf(":") + 1) : role;
+    return titleCase(base.replace(/_/g, " "));
+  }
+  return name || titleCase(actorRole(actor).replace(/_/g, " "));
+}
+
+const intentText = (p: Record<string, unknown>) => String(p.intent ?? "unknown").replace(/_/g, " ");
+
+/** One plain sentence per event type that carries something worth saying; the raw fields stay behind "Details". */
+export function plainSummary(type: string, p: Record<string, unknown>): string {
+  switch (type) {
+    case "contact_patient": return p.channel ? `By ${String(p.channel).replace(/_/g, " ")}.` : "";
+    case "reply_received": return `Arrived by ${String(p.channel ?? "an unknown channel")}. The reply text is kept outside the audit trail.`;
+    case "reply_classified": {
+      const conf = typeof p.confidence === "number" ? `${Math.round(p.confidence * 100)}% sure` : "confidence unknown";
+      return `Read as ${intentText(p)} (${conf}). ${p.needs_human === true ? "A person must look at it." : "No person needed."}`;
+    }
+    case "escalate": return `Passed up to the ${String(p.target ?? p.rung ?? "next level").replace(/_/g, " ")}${typeof p.level === "number" ? ` (level ${p.level})` : ""}.`;
+    case "message_sent": return p.channel ? `Sent by ${String(p.channel).replace(/_/g, " ")}.` : "";
+    case "consent_updated": return payloadSummary(type, p);
+    default: return "";
+  }
+}
+
 /**
  * Who wrote an event. A21: the automation actor (`system:automation`) carries its own "Automated" chip, apart from the model
  * chip (an AI draft that a person must approve) and the service chip (scheduler, watchdog, notifier). A human gets none.
@@ -245,10 +277,15 @@ export function Timeline({ items, drafts = [] }: { items: TimelineItem[]; drafts
               <WhyPanel testId={`why-triage-${it.seq}`} subject={`reply label #${it.seq}`}
                 input={{ kind: "triage", model_id: typeof it.payload.model_id === "string" ? it.payload.model_id : null, confidence: typeof it.payload.confidence === "number" ? it.payload.confidence : null, needs_human: it.payload.needs_human === true }} />
             )}
-            <div className="muted">
-              #{it.seq} · <ActorTag actor={it.actor} kind={kindOfEvent(it)} />
-              {Object.keys(it.payload).length > 0 && <> · {payloadSummary(it.type, it.payload)}</>}
-            </div>
+            {plainSummary(it.type, it.payload) && <div data-testid="tl-plain">{plainSummary(it.type, it.payload)}</div>}
+            <div className="muted" data-testid="tl-who">By {plainWho(it.actor, kindOfEvent(it))}{kindOfEvent(it) === "automation" && <> <AutomationChip /></>}{kindOfEvent(it) === "model" && <> <span className="chip chip-auto chip-model" data-testid="automated-chip" role="img" aria-label={STAFF.modelChipLabel}>{STAFF.modelChip}</span></>}{kindOfEvent(it) === "service" && <> <span className="chip chip-auto" data-testid="automated-chip" role="img" aria-label={STAFF.serviceChipLabel}>{STAFF.serviceChip}</span></>}</div>
+            <details className="tl-details" data-testid="tl-details">
+              <summary>Details</summary>
+              <div className="muted mono" data-testid="tl-raw">
+                #{it.seq} · {it.actor}
+                {Object.keys(it.payload).length > 0 && <> · {payloadSummary(it.type, it.payload)}</>}
+              </div>
+            </details>
           </li>
         );
       })}

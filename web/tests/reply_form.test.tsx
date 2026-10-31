@@ -89,6 +89,24 @@ describe("Record patient reply", () => {
     expect(screen.getByTestId("record-reply-why").textContent).toMatch(/Switch the role to coordinator/);
   });
 
+  it("says 'on-device model' in the result box and keeps the full model id behind Details in the Why panel", async () => {
+    const user = userEvent.setup();
+    const base = createMockAdapter(null, { automation: true });
+    const reply: ReplyResult = { reply_id: "r2", case_id: "c", channel: "whatsapp", intent: "confirm", confidence: 0.98, model_id: "qwen2.5-1.5b-4bit+lora-8b5a49fc", needs_human: true, logged: true, applied: ["reply_received"], forced_reason: "ar_gulf" } as ReplyResult;
+    const api = { ...base, postReply: async () => reply } as ApiClient;
+    await openCase("coordinator", api);
+    await user.type(screen.getByTestId("reply-text"), "ان شاء الله بجي يوم الأحد");
+    await user.click(screen.getByTestId("record-reply"));
+    const res = await screen.findByTestId("reply-result");
+    expect(res.textContent).toMatch(/98% sure, on-device model/);
+    expect(res.textContent).not.toMatch(/qwen/);
+    const panel = screen.getByTestId("why-triage-reply");
+    expect(within(panel).getByTestId("why-triage-reply-model")).toHaveTextContent(/On-device model/);
+    const details = within(panel).getByTestId("why-triage-reply-details");
+    expect(details).not.toHaveAttribute("open");
+    expect(within(details).getByTestId("why-triage-reply-model-id")).toHaveTextContent("qwen2.5-1.5b-4bit+lora-8b5a49fc");
+  });
+
   it("shows the API's own answer, including a fail-safe 'unavailable' model", async () => {
     const user = userEvent.setup();
     const base = createMockAdapter(null, { automation: true });
@@ -99,7 +117,7 @@ describe("Record patient reply", () => {
     await user.click(screen.getByTestId("record-reply"));
     const res = await screen.findByTestId("reply-result");
     expect(within(res).getByText(/Read as other/)).toBeInTheDocument();
-    expect(res.textContent).toMatch(/0% sure, model: unavailable/);
+    expect(res.textContent).toMatch(/0% sure, no model available/);
     await waitFor(() => expect(screen.getByTestId("flash").textContent).toMatch(/a person must read it/));
   });
 });

@@ -170,7 +170,7 @@ function cardHtml(c: Action): string {
     return pageHtml(`<div class="wrap"><div class="big">${esc(c.value)}</div><p class="line">${esc(c.text)}</p><div class="src">${esc(c.source)}. All data in this video is synthetic.</div></div>`);
   }
   if (c.kind === "slide") {
-    return pageHtml(`<div class="wrap"><h1>${esc(c.heading)}</h1><ul>${(c.bullets as string[]).map((b) => `<li>${esc(b)}</li>`).join("")}</ul><div class="note">Synthetic data. Pilot plan: docs/pilot-plan.md</div></div>`);
+    return pageHtml(`<div class="wrap"><h1>${esc(c.heading)}</h1><ul>${(c.bullets as string[]).map((b) => `<li>${esc(b)}</li>`).join("")}</ul><div class="note">Synthetic data. All figures from the simulation results.</div></div>`, "body{align-items:flex-start;padding-top:36px}");
   }
   if (c.kind === "text") {
     return pageHtml(`<div class="wrap"><h1>${esc(c.heading)}</h1><p class="line">${esc(c.text)}</p></div>`);
@@ -187,7 +187,7 @@ function cardHtml(c: Action): string {
       if (!row) throw new Error(`results card: no row starting with ${JSON.stringify(name)} in ${c.source}`);
       return `<tr class="hl"><td>${esc(row[0])}</td>${valueCols.map((i) => { const m = /^(\S+%?)\s*(\(.*\))?$/.exec(row[i]); return `<td class="v">${esc(m?.[1] ?? row[i])}${m?.[2] ? `<small>95% CI ${esc(m[2].replace(/[()]/g, ""))}</small>` : ""}</td>`; }).join("")}</tr>`;
     }).join("");
-    return pageHtml(`<div class="wrap" style="width:1160px"><h1 style="font-size:40px">Simulation, synthetic data: baseline vs orchestrated</h1><table><tr><th>Metric</th>${valueCols.map((i) => `<th>${esc(header[i])}</th>`).join("")}</tr>${body}</table><div class="src">Source: ${esc(c.source)}, headline table (literature-anchored scenario). Before capacity limits. Rerun: make evaluate</div></div>`);
+    return pageHtml(`<div class="wrap" style="width:1160px"><h1 style="font-size:40px">Simulation, synthetic data: baseline vs orchestrated</h1><table><tr><th>Metric</th>${valueCols.map((i) => `<th>${esc(header[i])}</th>`).join("")}</tr>${body}</table><div class="src">Simulation results, headline table (literature-anchored scenario). Before capacity limits.</div></div>`);
   }
   throw new Error(`unknown card kind ${c.kind}`);
 }
@@ -319,7 +319,7 @@ async function runAction(page: any, act: Action, ctx: { cases: Record<string, st
       return;
     }
     case "shell": {
-      const r = await shAsync(v, 120); // async: a blocked event loop would stall the screencast and shorten the video
+      const r = await shAsync(v, 600); // async: a blocked event loop would stall the screencast and shorten the video
       if (r.code !== 0) throw new Error(`shell ${JSON.stringify(v)} exited ${r.code}: ${r.out.slice(-400)}`);
       return;
     }
