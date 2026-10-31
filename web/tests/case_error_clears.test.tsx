@@ -32,7 +32,7 @@ describe("Case page error banner", () => {
     renderWithApp(<><SwitchToClinician /><CaseDetailPage /></>, { api, role: "patient", route: `/coordinator/${id}`, path: "/coordinator/:caseId" });
     expect(await screen.findByText("Case not found.")).toBeInTheDocument();
     await user.click(screen.getByText("switch"));
-    await screen.findByTestId("reply-panel").catch(() => undefined);
+    await screen.findByTestId("reply-panel");
     await waitFor(() => expect(screen.queryByText("Case not found.")).toBeNull());
   });
 });

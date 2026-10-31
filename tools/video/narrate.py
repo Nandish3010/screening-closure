@@ -36,11 +36,16 @@ def run(cmd: list[str]) -> str:
     return r.stdout
 
 
+ALLOW_SAY = "--allow-say-fallback" in sys.argv
+
+
 def synth(text: str, wav: Path, sb: dict) -> str:
     """Narration audio for `text` into `wav`: Kokoro (offline, neural) when meta.tts is kokoro and KOKORO_PYTHON works, else macOS `say`.
     Returns the engine used. The text is passed as a file and paths as arguments; Kokoro runs isolated (-I) with the network off."""
     meta = sb["meta"]
-    py, _why = storyboard.kokoro_status(sb)
+    py, why = storyboard.kokoro_status(sb)
+    if meta.get("tts") == "kokoro" and not py and not ALLOW_SAY:
+        raise SystemExit(f"narrate: meta.tts is kokoro but Kokoro is not usable: {why}. Fix that, or pass --allow-say-fallback to narrate with macOS `say` instead.")
     if py:
         txt = wav.with_suffix(".txt")
         txt.write_text(text, encoding="utf-8")
@@ -50,6 +55,7 @@ def synth(text: str, wav: Path, sb: dict) -> str:
         if r.returncode != 0:
             raise SystemExit(f"narrate: kokoro failed:\n{r.stderr[-1500:]}")
         return "kokoro"
+    print(f"narrate: WARNING: using macOS say, not Kokoro ({why})", file=sys.stderr)
     aiff = wav.with_suffix(".aiff")
     run(["say", "-v", str(storyboard.say_voice(sb)), "-r", str(meta["rate"]), "-o", str(aiff), "--", text])
     return "say"
@@ -113,7 +119,7 @@ def main() -> int:
              "-movflags", "+faststart", str(out)])
         warn = f"  WARNING: sped up {speed:.1f}x" if speed > MAX_SPEED else ""
         over = " (narration longer than the target)" if narr + LEAD + TAIL > spec["duration"] else ""
-        print(f"shot {sid:>2}: target {spec['duration']:>4.0f} s, narration {narr:5.1f} s, final {final:5.1f} s, "
+        print(f"shot {sid:>2} [{engine}]: target {spec['duration']:>4.0f} s, narration {narr:5.1f} s, final {final:5.1f} s, "
               f"video {dur:5.1f} s raw / {kept:5.1f} s kept, speed {speed:.2f}x{over}{warn}")
         timeline.append({"id": sid, "title": spec["title"], "submission": bool(spec.get("submission")), "target": spec["duration"],
                          "narration_seconds": round(narr, 2), "final": round(final, 2), "speed": round(speed, 2),
@@ -124,6 +130,8 @@ def main() -> int:
     for name in ("title", "end"):
         card = sb["cards"][name]
         secs = float(card["seconds"])
+        for stale in audio_dir.glob(f"card-{name}.*"):  # a card whose narration was removed must not keep an old voice-over
+            stale.unlink()
         if card.get("narration"):
             wav, m4a = audio_dir / f"card-{name}.wav", audio_dir / f"card-{name}.m4a"
             (audio_dir / f"card-{name}.narration.txt").write_text(card["narration"], encoding="utf-8")
@@ -133,7 +141,7 @@ def main() -> int:
             secs = max(secs, duration(m4a) + LEAD + TAIL)
             print(f"card {name}: narration {duration(m4a):.1f} s, card {secs:.1f} s")
         card_secs[name] = round(secs, 3)
-    (OUT / "cards.json").write_text(json.dumps({"lead": LEAD, "seconds": card_secs}))
+    (OUT / "cards.json").write_text(json.dumps({"lead": LEAD, "seconds": card_secs, "spoken": {n: bool(sb["cards"][n].get("narration")) for n in card_secs}}))
     (OUT / "timeline.json").write_text(json.dumps({"shots": timeline}, indent=2))
     sub = sum(t["final"] for t in timeline if t["submission"])
     cards = sum(card_secs.values())

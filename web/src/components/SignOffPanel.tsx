@@ -1,7 +1,7 @@
-import { plainRefs } from "../lib/format";
 import { useEffect, useState } from "react";
 import type { Role } from "../api/contract";
 import { can } from "../app/AppContext";
+import { plainError } from "../lib/format";
 import { ActionButton } from "./ActionButton";
 
 /**
@@ -53,7 +53,7 @@ export function SignOffPanel({
     try {
       setEvidence(await onRecordResult());
     } catch (e) {
-      setRecordError(`The engine refused this: ${plainRefs((e as Error).message)}`);
+      setRecordError(`The engine refused this: ${plainError((e as Error).message)}`);
     } finally {
       setRecording(false);
     }

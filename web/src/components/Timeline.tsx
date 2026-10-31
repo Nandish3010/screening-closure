@@ -1,7 +1,7 @@
 import type { ActorKind, CaseEvent, TimelineItem } from "../api/contract";
 import { STAFF } from "../i18n/strings";
 import { MILESTONES, RUNG_LABEL, handoffReasonLabel } from "../lib/pathway";
-import { fmtDateTime, titleCase } from "../lib/format";
+import { fmtDateTime, plainRef, titleCase } from "../lib/format";
 import { actorKindOf, actorName, actorRole, itemKey, kindOfEvent, type DraftView } from "../lib/derive";
 import { WATCHDOG_TEXT, watchdogDetail } from "./WatchdogMarker";
 import { WhyPanel } from "./WhyPanel";
@@ -105,19 +105,45 @@ export function plainWho(actor: string, kind: ActorKind): string {
 }
 
 const intentText = (p: Record<string, unknown>) => String(p.intent ?? "unknown").replace(/_/g, " ");
+const str = (v: unknown): string => (typeof v === "string" ? v : typeof v === "number" ? String(v) : "");
+const refOf = (p: Record<string, unknown>) => str(p.evidence_ref) || str(p.result_ref);
+const channelText = (v: unknown) => str(v).replace(/_/g, " ");
 
-/** One plain sentence per event type that carries something worth saying; the raw fields stay behind "Details". */
+/**
+ * One plain sentence for every event type that carries something a person decides on or audits (evidence references, reasons,
+ * providers, owners, levels). Record references keep a visible short id, so two records can be told apart. The raw fields and
+ * ids stay behind "Event details". An event type with nothing worth saying returns "".
+ */
 export function plainSummary(type: string, p: Record<string, unknown>): string {
+  const ref = refOf(p);
+  const refText = ref ? plainRef(ref) : "";
   switch (type) {
-    case "contact_patient": return p.channel ? `By ${String(p.channel).replace(/_/g, " ")}.` : "";
-    case "reply_received": return `Arrived by ${String(p.channel ?? "an unknown channel")}. The reply text is kept outside the audit trail.`;
+    case "contact_patient": return p.channel ? `By ${channelText(p.channel)}.` : "";
+    case "reply_received": return `Arrived by ${str(p.channel) || "an unknown channel"}. The reply text is kept outside the audit trail.`;
     case "reply_classified": {
       const conf = typeof p.confidence === "number" ? `${Math.round(p.confidence * 100)}% sure` : "confidence unknown";
-      return `Read as ${intentText(p)} (${conf}). ${p.needs_human === true ? "A person must look at it." : "No person needed."}`;
+      // Fail closed: only an explicit `needs_human: false` says no person is needed.
+      return `Read as ${intentText(p)} (${conf}). ${p.needs_human === false ? "No person needed." : "A person must look at it."}`;
     }
-    case "escalate": return `Passed up to the ${String(p.target ?? p.rung ?? "next level").replace(/_/g, " ")}${typeof p.level === "number" ? ` (level ${p.level})` : ""}.`;
-    case "message_sent": return p.channel ? `Sent by ${String(p.channel).replace(/_/g, " ")}.` : "";
+    case "escalate": return `Passed up to the ${channelText(p.target ?? p.rung ?? "next level")}${typeof p.level === "number" ? ` (level ${p.level})` : ""}.`;
+    case "escalation_accepted": return p.rung ? `Accepted by a person at the ${channelText(p.rung)} level.` : "Accepted by a person.";
+    case "message_sent": return p.channel ? `Sent by ${channelText(p.channel)}.` : "";
+    case "message_rejected": return p.reason ? `Rejected: ${str(p.reason)}.` : "Rejected by a person.";
     case "consent_updated": return payloadSummary(type, p);
+    case "complete_confirmatory": return refText ? `Result recorded: ${refText}.` : "Result recorded.";
+    case "closure_proposed": return refText ? `The system proposed closing on ${refText}. A clinician must sign.` : "The system proposed closing. A clinician must sign.";
+    case "clinician_review": return refText ? `Evidence reviewed: ${refText}${p.signed_by ? `, signed by ${plainRef(str(p.signed_by))}` : ""}.` : "Evidence reviewed by a clinician.";
+    case "close": return `Closed${refText ? ` on ${refText}` : ""}${p.signed_by ? `, signed by ${plainRef(str(p.signed_by))}` : ""}.`;
+    case "reopen": return p.reason ? `Reopened: ${str(p.reason).replace(/_/g, " ")}.` : "Reopened by a clinician.";
+    case "book_confirmatory": return p.appointment_ref ? `Booked: ${plainRef(str(p.appointment_ref))}.` : "";
+    case "assign_ownership": return p.owner ? `Owner: ${actorName(str(p.owner)) || str(p.owner)}${p.provider ? ` at ${str(p.provider)}` : ""}.` : "";
+    case "reassign": return p.owner || p.to_provider ? `Re-routed to ${actorName(str(p.owner)) || str(p.owner) || str(p.to_provider)}${p.to_provider && p.owner ? ` at ${str(p.to_provider)}` : ""}.` : "";
+    case "handoff_requested": return p.to_provider ? `Hand-off requested to ${str(p.to_provider)}.` : "";
+    case "handoff_accepted": return p.provider || p.to_provider ? `${str(p.provider ?? p.to_provider)} accepted the referral.` : "The receiving provider accepted the referral.";
+    case "handoff_rejected": return `Rejected: ${handoffReasonLabel(str(p.reason) || undefined)}.`;
+    case "mark_overdue": return p.due_at ? `The step was due ${fmtDateTime(str(p.due_at))}.` : "";
+    case "mark_lost_contact": return typeof p.attempts === "number" ? `After ${p.attempts} failed contact attempts.` : "";
+    case "review_requested": return p.reason ? `Reason: ${channelText(p.reason)}.` : "";
     default: return "";
   }
 }
@@ -278,9 +304,9 @@ export function Timeline({ items, drafts = [] }: { items: TimelineItem[]; drafts
                 input={{ kind: "triage", model_id: typeof it.payload.model_id === "string" ? it.payload.model_id : null, confidence: typeof it.payload.confidence === "number" ? it.payload.confidence : null, needs_human: it.payload.needs_human === true }} />
             )}
             {plainSummary(it.type, it.payload) && <div data-testid="tl-plain">{plainSummary(it.type, it.payload)}</div>}
-            <div className="muted" data-testid="tl-who">By {plainWho(it.actor, kindOfEvent(it))}{kindOfEvent(it) === "automation" && <> <AutomationChip /></>}{kindOfEvent(it) === "model" && <> <span className="chip chip-auto chip-model" data-testid="automated-chip" role="img" aria-label={STAFF.modelChipLabel}>{STAFF.modelChip}</span></>}{kindOfEvent(it) === "service" && <> <span className="chip chip-auto" data-testid="automated-chip" role="img" aria-label={STAFF.serviceChipLabel}>{STAFF.serviceChip}</span></>}</div>
+            <div className="muted" data-testid="tl-who">Event #{it.seq} · By {plainWho(it.actor, kindOfEvent(it))}{kindOfEvent(it) === "automation" && <> <AutomationChip /></>}{kindOfEvent(it) === "model" && <> <span className="chip chip-auto chip-model" data-testid="automated-chip" role="img" aria-label={STAFF.modelChipLabel}>{STAFF.modelChip}</span></>}{kindOfEvent(it) === "service" && <> <span className="chip chip-auto" data-testid="automated-chip" role="img" aria-label={STAFF.serviceChipLabel}>{STAFF.serviceChip}</span></>}</div>
             <details className="tl-details" data-testid="tl-details">
-              <summary>Details</summary>
+              <summary>Event details<span className="visually-hidden"> for event {it.seq}, {eventLabel(it)}</span></summary>
               <div className="muted mono" data-testid="tl-raw">
                 #{it.seq} · {it.actor}
                 {Object.keys(it.payload).length > 0 && <> · {payloadSummary(it.type, it.payload)}</>}

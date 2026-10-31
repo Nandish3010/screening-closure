@@ -22,7 +22,8 @@ import {
   actorName as actorNameOf, allowedChannels, consentOf, draftViews, handoffs, hasCallbackPending, lostContact, overdueDays, overdueInfo,
   patientLang, pendingEscalation, personId, rejectionReasons,
 } from "../lib/derive";
-import { fmtDate, fmtDateTime, plainRefs, titleCase } from "../lib/format";
+import { modelWords } from "../lib/models";
+import { fmtDate, fmtDateTime, plainError, titleCase } from "../lib/format";
 import { STAFF } from "../i18n/strings";
 import { ESCALATION_LADDER, HANDOFF_RESPONSE_WORKING_DAYS, MILESTONES, REFUSAL_FROM_STATES, RUNG_LABEL, handoffReasonLabel } from "../lib/pathway";
 import type { MilestoneDef } from "../lib/pathway";
@@ -76,13 +77,6 @@ function MilestoneRow({ def, clock, now, closed }: { def: MilestoneDef; clock: M
   return <div><dt>{def.label}</dt><dd data-testid={`milestone-${def.name}`} title={def.source}>{body}</dd></div>;
 }
 
-/** The model in plain words; the full id is under "Details" in the Why panel. */
-function modelWords(id: string | null | undefined): string {
-  if (!id || id === "unavailable") return "no model available";
-  if (id.startsWith("rule:")) return "opt-out rule, no AI";
-  return "on-device model";
-}
-
 export function CaseDetailPage() {
   const { caseId = "" } = useParams();
   const { api, role, actor, actorName, provider: myProvider, userId, refreshSim, simTime } = useApp();
@@ -106,6 +100,12 @@ export function CaseDetailPage() {
   const [replyText, setReplyText] = useState("");
   const [replyResult, setReplyResult] = useState<ReplyResult | null>(null);
   const [replyQuote, setReplyQuote] = useState("");
+  // One component serves every /coordinator/:caseId: a reply (and its text) belongs to the case it was recorded on.
+  useEffect(() => {
+    setReplyResult(null);
+    setReplyQuote("");
+    setReplyText("");
+  }, [caseId]);
   const [appointment, setAppointment] = useState("");
   const [appointmentDate, setAppointmentDate] = useState("");
   const [resultRef, setResultRef] = useState("");
@@ -163,7 +163,7 @@ export function CaseDetailPage() {
         refreshSim();
         setFlash(typeof okMessage === "function" ? okMessage(result) : okMessage);
       } catch (e) {
-        setError(e instanceof ApiError ? `The engine refused this: ${plainRefs(e.message)}` : `Something went wrong: ${(e as Error).message}`);
+        setError(e instanceof ApiError ? `The engine refused this: ${plainError(e.message)}` : `Something went wrong: ${(e as Error).message}`);
       } finally {
         setBusy(false);
       }
@@ -643,6 +643,7 @@ export function CaseDetailPage() {
             </label>
             <ActionButton
               testId="record-reply"
+              quietWhy={Boolean(replyResult) && !replyText.trim()}
               busy={busy}
               disabledReason={why("recordReply", "coordinator") ?? (replyText.trim() ? null : STAFF.replyForm.needText)}
               onClick={() => act(async () => {
@@ -658,8 +659,8 @@ export function CaseDetailPage() {
             {replyResult && (
               <p className={`banner ${replyResult.needs_human ? "banner-warn" : "banner-ok"}`} role="status" data-testid="reply-result" data-intent={replyResult.intent} data-needs-human={String(replyResult.needs_human)}>
                 {replyQuote && (
-                  <span className="reply-quote" data-testid="reply-quote" dir="auto" style={{ display: "block", marginBottom: 4 }}>
-                    {STAFF.replyForm.quote} “<bdi>{replyQuote}</bdi>”
+                  <span className="reply-quote" data-testid="reply-quote">
+                    <bdi>{STAFF.replyForm.quote} “{replyQuote}”</bdi>
                   </span>
                 )}
                 <strong>{STAFF.replyForm.readAs} {String(replyResult.intent).replace(/_/g, " ")}</strong>

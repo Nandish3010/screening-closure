@@ -1,3 +1,4 @@
+import { PROGRAMME_LABOUR } from "../lib/programmeFigures";
 /**
  * Patient-facing strings, English and Arabic. Grade-6 reading level: short, plain sentences.
  *
@@ -286,7 +287,7 @@ export const STAFF = {
     reduction: "Reduction in human time",
     target: "Target",
     sampleLabel: "Demo cases, assumed minutes: not a programme result",
-    programme: "Programme estimate (simulation, synthetic): 36% fewer staff minutes per handled case and 20% across the programme; the 40% target is not met in realistic scenarios. See the simulation results.",
+    programme: `Programme estimate (simulation, synthetic): ${PROGRAMME_LABOUR.inReachPct}% fewer staff minutes per handled case and ${PROGRAMME_LABOUR.programmePct}% across the programme; the ${PROGRAMME_LABOUR.targetPct}% target is not met in realistic scenarios.`,
     notEnoughData: "Not enough data yet",
     noData: "No effort data yet.",
     humanActions: "Human actions",

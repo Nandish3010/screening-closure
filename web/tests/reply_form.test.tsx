@@ -5,6 +5,7 @@
  * read, how sure it was, and whether a person must look.
  */
 import { screen, waitFor, within } from "@testing-library/react";
+import { Link } from "react-router-dom";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import type { ApiClient, ReplyResult } from "../src/api/contract";
@@ -34,6 +35,24 @@ describe("the mock's keyword stand-in for the triage", () => {
   });
 });
 
+describe("Record patient reply across cases", () => {
+  it("does not carry one case's reply, or its text, over to another case", async () => {
+    const user = userEvent.setup();
+    const api = createMockAdapter(null, { automation: true });
+    const ids = (await api.listCases()).filter((c) => c.state === "owner_accepted").map((c) => c.case_id);
+    expect(ids.length).toBeGreaterThan(1);
+    renderWithApp(<><Link to={`/coordinator/${ids[1]}`}>next case</Link><CaseDetailPage /></>, { api, role: "coordinator", route: `/coordinator/${ids[0]}`, path: "/coordinator/:caseId" });
+    await screen.findByTestId("reply-panel");
+    await user.type(screen.getByTestId("reply-text"), "reply for the first case");
+    await user.click(screen.getByTestId("record-reply"));
+    expect(await screen.findByTestId("reply-quote")).toHaveTextContent("reply for the first case");
+    await user.click(screen.getByText("next case"));
+    await waitFor(() => expect(screen.queryByTestId("reply-result")).toBeNull());
+    expect(screen.queryByTestId("reply-quote")).toBeNull();
+    expect(screen.queryByText(/reply for the first case/)).toBeNull();
+  });
+});
+
 describe("Record patient reply", () => {
   it("a Gulf-Arabic confirmation is read as confirm but always goes to a person, and the Why panel says the rule", async () => {
     const user = userEvent.setup();
@@ -46,10 +65,10 @@ describe("Record patient reply", () => {
     expect(res.textContent).toMatch(/Read as confirm/);
     expect(res.textContent).toMatch(/A person must look at this reply/);
     const quote = within(res).getByTestId("reply-quote");
-    expect(quote).toHaveAttribute("dir", "auto");
+    expect(quote.querySelector("bdi")).not.toBeNull(); // the quote marks sit inside the isolate, with the reply
     expect(quote).toHaveTextContent("Reply: “ان شاء الله بجي يوم الأحد”");
     expect(screen.getByTestId("reply-text")).toHaveValue("");
-    expect(screen.getByTestId("why-triage-reply-rule")).toHaveTextContent("Gulf dialect: a person always checks these replies (safety rule HZ-43)");
+    expect(screen.getByTestId("why-triage-reply-rule")).toHaveTextContent("Gulf dialect: a person always checks these replies (safety rule)");
     const events = (await api.getCase(id)).events.map((e) => e.type);
     expect(events).toEqual(expect.arrayContaining(["reply_received", "reply_classified", "review_requested"]));
   });
@@ -102,9 +121,9 @@ describe("Record patient reply", () => {
     expect(res.textContent).not.toMatch(/qwen/);
     const panel = screen.getByTestId("why-triage-reply");
     expect(within(panel).getByTestId("why-triage-reply-model")).toHaveTextContent(/On-device model/);
-    const details = within(panel).getByTestId("why-triage-reply-details");
-    expect(details).not.toHaveAttribute("open");
-    expect(within(details).getByTestId("why-triage-reply-model-id")).toHaveTextContent("qwen2.5-1.5b-4bit+lora-8b5a49fc");
+    expect(within(panel).queryByTestId("why-triage-reply-model-id")).toBeNull();
+    await user.click(within(panel).getByRole("button", { name: /Model details/ }));
+    expect(within(panel).getByTestId("why-triage-reply-model-id")).toHaveTextContent("qwen2.5-1.5b-4bit+lora-8b5a49fc");
   });
 
   it("shows the API's own answer, including a fail-safe 'unavailable' model", async () => {

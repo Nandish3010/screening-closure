@@ -77,3 +77,33 @@ def test_an_uninstalled_voice_is_reported():
     sb["meta"]["say_voice"] = "Nobody"
     problems = storyboard.missing_tools(sb, which=lambda n: "/usr/bin/" + n, run=lambda *a, **k: Done(), env={})
     assert problems and "'Nobody'" in problems[0]
+
+
+def test_a_spoken_card_counts_for_its_narration_in_the_budget():
+    card = {"seconds": 3, "narration": " ".join(["word"] * 26)}
+    assert storyboard.card_seconds(card) == 26 / storyboard.WORDS_PER_SECOND + 0.4
+    assert storyboard.card_seconds({"seconds": 3}) == 3.0
+
+
+def test_the_kokoro_cache_honours_hf_hub_cache_and_hf_home(tmp_path):
+    assert storyboard.hf_kokoro_dir({"HF_HUB_CACHE": str(tmp_path)}) == tmp_path / "models--hexgrad--Kokoro-82M"
+    assert storyboard.hf_kokoro_dir({"HF_HOME": str(tmp_path)}) == tmp_path / "hub" / "models--hexgrad--Kokoro-82M"
+
+
+def test_kokoro_is_unusable_without_the_python_or_the_model_and_says_why(tmp_path):
+    sb = {"meta": {"tts": "kokoro", "voice": "bf_emma"}}
+    py, why = storyboard.kokoro_status(sb, env={})
+    assert py is None and "KOKORO_PYTHON" in why
+    py, why = storyboard.kokoro_status(sb, env={"KOKORO_PYTHON": "/usr/bin/python3", "HF_HUB_CACHE": str(tmp_path)})
+    assert py is None and "nothing is downloaded" in why
+
+
+def test_narrate_refuses_to_fall_back_to_say_unless_asked(tmp_path, monkeypatch):
+    import narrate
+    sb = {"meta": {"tts": "kokoro", "voice": "bf_emma", "rate": 185, "say_voice": "Samantha"}}
+    monkeypatch.delenv("KOKORO_PYTHON", raising=False)
+    monkeypatch.setattr(narrate, "ALLOW_SAY", False)
+    import pytest
+    with pytest.raises(SystemExit) as e:
+        narrate.synth("hello", tmp_path / "x.wav", sb)
+    assert "Kokoro is not usable" in str(e.value) and "--allow-say-fallback" in str(e.value)

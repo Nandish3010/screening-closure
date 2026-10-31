@@ -73,10 +73,21 @@ def validate(sb: dict) -> list[str]:
     return errors
 
 
+WORDS_PER_SECOND = 2.6  # Kokoro bf_emma at speed 1.0 measured about 2.6 to 2.9 words a second
+
+
+def card_seconds(card: dict) -> float:
+    """A card is at least its `seconds`, and as long as its narration (estimated from the word count) plus a short lead and tail."""
+    secs = float(card["seconds"])
+    if card.get("narration"):
+        secs = max(secs, len(str(card["narration"]).split()) / WORDS_PER_SECOND + 0.4)
+    return secs
+
+
 def budget(sb: dict) -> dict:
     submission = [s for s in sb["shots"] if s.get("submission")]
     shots = sum(float(s["duration"]) for s in submission)
-    cards = float(sb["cards"]["title"]["seconds"]) + float(sb["cards"]["end"]["seconds"])
+    cards = card_seconds(sb["cards"]["title"]) + card_seconds(sb["cards"]["end"])
     return {
         "submission_shots": len(submission),
         "submission_shot_seconds": shots,
@@ -88,7 +99,11 @@ def budget(sb: dict) -> dict:
     }
 
 
-HF_KOKORO = Path.home() / ".cache/huggingface/hub/models--hexgrad--Kokoro-82M"
+def hf_kokoro_dir(env=None) -> Path:
+    """The Kokoro model in the local Hugging Face cache, honouring HF_HUB_CACHE and HF_HOME like the library does."""
+    env = os.environ if env is None else env
+    hub = env.get("HF_HUB_CACHE") or (Path(env["HF_HOME"]) / "hub" if env.get("HF_HOME") else Path.home() / ".cache/huggingface/hub")
+    return Path(hub) / "models--hexgrad--Kokoro-82M"
 
 
 def say_voice(sb: dict) -> str | None:
@@ -108,9 +123,10 @@ def kokoro_status(sb: dict, env=None, run=subprocess.run) -> tuple[str | None, s
     if not os.access(py, os.X_OK):
         return None, f"KOKORO_PYTHON={py} is not an executable"
     voice = meta.get("voice", "bf_emma")
-    snaps = sorted((HF_KOKORO / "snapshots").glob("*")) if (HF_KOKORO / "snapshots").is_dir() else []
+    cache = hf_kokoro_dir(env)
+    snaps = sorted((cache / "snapshots").glob("*")) if (cache / "snapshots").is_dir() else []
     if not any((s / "kokoro-v1_0.pth").exists() and (s / "voices" / f"{voice}.pt").exists() for s in snaps):
-        return None, f"the Kokoro model or voice {voice} is not in {HF_KOKORO} (nothing is downloaded)"
+        return None, f"the Kokoro model or voice {voice} is not in {cache} (nothing is downloaded)"
     try:
         ok = run([py, "-I", "-c", "import kokoro"], capture_output=True, timeout=120).returncode == 0
     except (OSError, subprocess.SubprocessError):

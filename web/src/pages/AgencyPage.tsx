@@ -142,7 +142,7 @@ function Inbox({ items, error, loaded }: { items: AgencyInboxItem[]; error: stri
               <p title={it.summary}>{plainRefs(it.summary)}</p>
               <p><strong>Recommended:</strong> {titleCase(it.recommended_action)}</p>
               <details className="tl-details" data-testid="inbox-details">
-                <summary>Details</summary>
+                <summary>Task details<span className="visually-hidden"> for {it.title}</span></summary>
                 <p className="muted"><span className="mono">{it.agent_type}</span></p>
                 <Material data={{ ...it.material, ...(it.links.draft_id ? { draft: it.links.draft_id } : {}) }} />
               </details>

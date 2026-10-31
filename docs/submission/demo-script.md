@@ -177,20 +177,20 @@ For the submission video (H4): the same two beats compressed, cut from 14 shots 
 
 | # | Shot | Live step | On-screen caption |
 |---|---|---|---|
-| 1 | The problem, and what this is | Problem | "In an Abu Dhabi audit only 30.5% of positive screening tests reached a colonoscopy (BMC Cancer 2021). Screening Closure gives each one an owner, a clock and a clinician's signature. Synthetic data." |
-| 2 | An owned case, the scheduler stopped, silence | C1 to C4 | "A positive result has a named owner and a clock. We stop the scheduler on purpose: no answer from the patient, eleven working days pass, and nothing is flagged. Mock messages only." |
-| 3 | Watchdog catches the dead scheduler, a person accepts | C5 to C7 | "The watchdog catches the dead scheduler within minutes. Restarted: the overdue flag, the reminder and the supervisor escalation appear, once each, in order. A person must accept every escalation." |
-| 4 | Bad reference refused, agency inbox, signed and closed | R1 to R3 | "A reference that does not exist is refused. Agents prepare all 22 open cases and the inbox holds only the human decision. The real evidence and a clinician's own signature close the case." |
-| 5 | Triage cameo: a Gulf-Arabic reply goes to a person | R4 | "A Gulf reply always goes to a person: the audit found 91% of those it handled alone were right, below the 95% target. English or standard Arabic confirmations can be handled; an opt-out never." |
-| 6 | The patient's own screen, in Arabic | R5 | "The patient's own screen, in Arabic and right to left: the result in plain words, who owns the case, one button to say she understood." |
-| 7 | Numbers | Numbers | "Simulation on synthetic data, literature-anchored, before capacity limits, against a US-calibrated usual-care baseline. Colonoscopy within 180 days 51% to 67%, a ratio of about 1.31, calibrated to published navigation trials: the model shows the mechanism, not new evidence of effect. Closed with evidence and a signature 53% to 68%. Lost without anyone told, programme-level 45% to 21%; 0% among the cases the programme reaches, true by construction." |
-| 8 | The honest range | Numbers | "The honest range, synthetic. Abu Dhabi-shaped baseline (sensitivity run): 30.6% to 38.8% at 360 days, +8.2 points. At base colonoscopy capacity the median wait among completers is 15.0 days longer. Base capacity is a scale device, not a real unit." |
-| 9 | Labour, by role | Numbers | "Labour: 36% fewer staff minutes per case the system handles, 20% across the programme. The 40% target is not met in realistic scenarios; only the upper bound, a mechanism ceiling, comes close. By role: coordinator minutes fall 36%, owner-clinician minutes rise 94% and specialist minutes rise 23%." |
-| 10 | The ask, and why a buyer would act | Ask | "Pilot ask: a 90-day shadow run, one programme, two providers, nothing sent to patients. Cases closed without evidence must stay zero. The pull: a 15-working-day referral clock (IFHAS V10). About AED 106,000 for 155 cases (model, assumed inputs)." |
+| 1 | The problem, and what this is | Problem | "Screening Closure, by Humans Decide. The product demo data is synthetic. Nothing is diagnosed." |
+| 2 | An owned case, the scheduler stopped, silence | C1 to C4 | "A positive result has a named owner and a clock. We stop the scheduler on purpose; the patient does not answer. Mock messages only." |
+| 3 | Watchdog catches the dead scheduler, a person accepts | C5 to C7 | "The watchdog catches the dead scheduler within minutes and the dashboard says so. After the restart the escalation appears, and a person must accept it." |
+| 4 | Bad reference refused, agency inbox, signed and closed | R1 to R3 | "A reference that does not exist is refused. The inbox holds only the human decision. Real evidence and a clinician's own signature close the case." |
+| 5 | Triage cameo: a Gulf-Arabic reply goes to a person | R4 | "A Gulf reply always goes to a person: our synthetic test set found 91% of those it handled alone were right, below the 95% target. English or standard Arabic confirmations can be handled; an opt-out never." |
+| 6 | The patient's own screen, in Arabic | R5 | "The patient's own page, in Arabic: the result in plain words, who owns her case, and one button to say she understood." |
+| 7 | Numbers | Numbers | "Synthetic simulation, US-calibrated baseline, before capacity limits. Colonoscopy within 180 days 51% to 67% (a ratio of about 1.31, calibrated, not new evidence). Closed with evidence and a signature 53% to 68%. Lost without anyone told 45% to 21%, and 0% among cases reached, true by construction." |
+| 8 | The honest range | Numbers | "Synthetic sensitivity run: a range, not a promise." |
+| 9 | Labour, by role | Numbers | "Synthetic simulation: the 40% target is not met in realistic scenarios." |
+| 10 | The pilot offer | Ask | "A 90-day shadow run: nothing is sent to patients. One programme, two providers." |
 
 An eleventh shot, the effort counter on a case page, is in the backup video only (it is not in the spoken demo either; the effort figures are spoken from the results slide). The Judge tour (C13) has no shot of its own: shot 10 names it on its card as the hand-off, and a fuller walk through it is not filmed because the submission cut is at its length limit. Governance has no shot of its own: captions 2, 3, 4 and 6 carry it, and the technical documentation covers it in full.
 
-**End card:** the team name is "Humans Decide" and the repository link is still a placeholder ("[repository link: to be added at submission]") in `tools/video/storyboard.yaml` (`cards.end`). The repository is private today.
+**End card:** the team name is "Humans Decide" and the repository link is https://github.com/Nandish3010/screening-closure (`cards.end` in `tools/video/storyboard.yaml`). The video opens on the 30.5% card (no title card) and ends on a call to action: "Host a 90-day shadow run".
 
 ## If something fails on stage
 

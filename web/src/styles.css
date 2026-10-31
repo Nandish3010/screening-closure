@@ -363,3 +363,12 @@ body.tour-open { padding-bottom: 46vh; }
 .why-panel dt { font-size: var(--fs-xs); color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
 .why-panel dd { margin: 0; overflow-wrap: anywhere; }
 .why-panel p { margin: 0; }
+
+/* Plain-language disclosures: the technical fields sit behind a quiet toggle (case timeline, agency inbox, Why panel, reply quote). */
+.tl-details { margin-top: 2px; font-size: var(--fs-xs); }
+.tl-details > summary { cursor: pointer; color: var(--muted); display: inline-block; padding: 1px 0; }
+.tl-details > div, .tl-details > p { margin: 2px 0 0; overflow-wrap: anywhere; }
+.why-detail { margin: 0 0 var(--s-2); font-size: var(--fs-xs); }
+.why-detail button.linklike { background: none; border: 0; padding: 1px 0; color: var(--link); text-decoration: underline; cursor: pointer; font: inherit; }
+.why-detail .mono { margin-top: 2px; overflow-wrap: anywhere; }
+.reply-quote { display: block; margin-bottom: var(--s-1); }

@@ -21,10 +21,19 @@ function Days({ value }: { value: number | null | undefined }) {
 }
 
 /** Heartbeats are real wall-clock time (that is what liveness means), so say how long ago in real minutes, not a date under the simulated clock. */
-export function minutesSince(iso: string, now: number = Date.now()): string {
-  const m = Math.max(0, Math.round((now - Date.parse(iso)) / 60000));
-  if (m < 1) return "less than a minute";
+export function minutesSince(iso: string, now: number = Date.now()): string | null {
+  const t = Date.parse(iso);
+  if (!Number.isFinite(t)) return null;
+  const m = Math.max(0, Math.round((now - t) / 60000));
+  if (m < 1) return null; // under a minute: the banner says "just now" instead of a count
   return m === 1 ? "1 minute" : `${m} minutes`;
+}
+
+/** The banner sentence after "The scheduler is down.": a count of real minutes, "just now", or nothing when the timestamp is unreadable. */
+export function stoppedWording(iso: string, now: number = Date.now()): string {
+  if (!Number.isFinite(Date.parse(iso))) return "It stopped reporting";
+  const m = minutesSince(iso, now);
+  return m ? `It has not reported for ${m} (real clock, not simulated time)` : "It stopped reporting just now (real clock, not simulated time)";
 }
 
 export function DashboardPage() {
@@ -94,7 +103,7 @@ export function DashboardPage() {
       </p>
       {down.map((a) => (
         <p key={a.since} className="banner banner-watchdog" role="alert" data-testid="scheduler-banner">
-          <strong>The scheduler is down.</strong> It has not reported for {minutesSince(a.since)} (real clock, not simulated time), so SLA clocks are not being checked and no case will be marked overdue or escalated until it is back.
+          <strong>The scheduler is down.</strong> {stoppedWording(a.since)}, so SLA clocks are not being checked and no case will be marked overdue or escalated until it is back.
         </p>
       ))}
       {down.length === 0 && recovered.length > 0 && (

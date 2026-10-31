@@ -28,19 +28,8 @@ export function EffortCard({ metrics }: { metrics: EffortMetrics | null }) {
               {reduction === null ? s.notEnoughData : s.sampleLabel}
             </span>
           </div>
-          <div
-            className="meter"
-            role="meter"
-            aria-label={`${s.reduction} against the ${t.target_pct}% target`}
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-valuenow={Math.max(0, Math.min(100, reduction ?? 0))}
-            aria-valuetext={`${reduction ?? 0}% of ${t.target_pct}% target`}
-          >
-            <div className="meter-fill" style={{ width: `${Math.max(0, Math.min(100, reduction ?? 0))}%` }} />
-            <div className="meter-target" style={{ left: `${t.target_pct}%` }} title={`${s.target} ${t.target_pct}%`} />
-          </div>
-          <p className="muted" data-testid="effort-target">{s.target}: {t.target_pct}%</p>
+          {/* No meter and no target marker: a bar that fills past a 40% tick would read as "met" for what is only a demo sample. */}
+          <p className="muted" data-testid="effort-target">{s.target}: {t.target_pct}% (the programme target; see the estimate below)</p>
           <p className="muted" data-testid="effort-programme">{s.programme}</p>
           <dl className="facts effort-facts">
             <div><dt>{s.humanActions}</dt><dd data-testid="effort-total-human">{t.human_actions}</dd></div>
