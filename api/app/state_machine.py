@@ -1028,8 +1028,10 @@ def validate_payload(event: Event, pathway: Pathway) -> None:
             raise PayloadError("handoff_accepted 'provider', if given, must be a non-empty string")
     elif kind == "consent_updated":
         given = [k for k in CONSENT_KEYS if k in payload]
-        if not given:
-            raise PayloadError(f"consent_updated needs at least one of {list(CONSENT_KEYS)}")
+        if "lang" in payload and payload["lang"] not in ("en", "ar"):
+            raise PayloadError("consent_updated lang must be 'en' or 'ar'")
+        if not given and "lang" not in payload:
+            raise PayloadError(f"consent_updated needs at least one of {list(CONSENT_KEYS)} or lang")
         bad = [k for k in given if not isinstance(payload[k], bool)]
         if bad:
             raise PayloadError(f"consent_updated values must be booleans: {bad}")
@@ -1278,7 +1280,8 @@ def _finish(
                       outbound_message_times=(*out.outbound_message_times, at))
         if payload.get("auto") is True:
             out = replace(out, auto_message_times=(*out.auto_message_times, at))
-    elif kind == "consent_updated":
+    elif kind == "consent_updated" and any(k in payload for k in CONSENT_KEYS):
+        # (a `consent_updated` that carries only `lang` is a preference: no consent change, no hold cleared, ADR-052)
         out = _clear_hold(_consent_after(out, event, (before or model).consent_frozen), "opt_out")
         if out.pending_handoff and referral_hold(before or model) is not None and referral_hold(out) is None:
             # A36: the hold on a pending referral ends; its bounce timer starts again, in full, from now

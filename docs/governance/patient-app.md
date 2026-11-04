@@ -11,7 +11,7 @@ The mobile patient experience at `/patient`, and the privacy and consent centre 
 | My care, "My appointment" | The booked date (and time if there is one), the appointment named as its pathway names it, "Add to my calendar" (an `.ics` file made on the phone; nothing is uploaded), "Ask for another date" (`callback_requested`, reason `reschedule`) and "I cannot come" (reason `cannot_attend`). | `book_confirmatory` payload; `buildIcs` |
 | My care, owner | The owner's name and role (`care_contact`), a call button to the care team's line (a labelled synthetic number). | `GET /cases/{id}` |
 | My care, status | The journey strip and a plain-language list of the steps the patient is allowed to see, newest first. | the patient's allow-listed events |
-| Privacy, choices | Channels (SMS, WhatsApp, phone, letter), sharing with the specialist, the app and message language, stop all contact (with a confirmation) and "you may contact me again". | `consent_updated` |
+| Privacy, choices | Channels (SMS, WhatsApp, phone, letter), sharing with the specialist, the app and message language (`consent_updated {lang}`), stop all contact (with a confirmation) and "you may contact me again". | `consent_updated` |
 | Privacy, who looked at my record | Each staff member who opened the record: name, role and time. | `GET /cases/{id}/access-log` |
 | Privacy, how we use your data | Synthetic data; software only prepares and sorts messages; a person decides everything about care; what the patient writes is kept apart from the care record and can be erased; the log holds steps, dates and roles; erasure after closure needs two supervisors. Each line is a fact the repository already enforces. | `STRINGS.data` |
 | Privacy, this phone | What the phone keeps for offline use, and a button that removes it. | `localStorage` `sc.patient.last` |
@@ -22,7 +22,9 @@ Pathways: `colorectal_fit` (camera test, colonoscopy), `cervical_hpv` (a follow-
 
 Every choice posts the existing `consent_updated` with only the booleans the patient changed. Withdrawing is `withdrawn: true`, restoring is `withdrawn: false`; the engine's consent hold (outreach frozen, a person asked to review, a pending referral held, ADR-044) applies as before. The app adds a confirmation step before a withdrawal; nothing is written until the patient confirms.
 
-Two things the brief named have no engine event and were not added (ADR-052): a patient "I will attend" confirmation of a booked appointment, and a language preference stored without an action. The language chosen in the app is sent as `lang` with the buttons that reach the care team, which is what the outreach reads.
+The language chosen in the privacy centre is told to the care team as a `consent_updated` carrying only `lang` (`en` or `ar`, validated). It changes no consent, adds no consent-history entry, clears no hold and moves no state; the outreach reads the latest `lang` on a patient event (this one, or the one sent with a button) for the language of its messages, and the phone's own value is the fallback.
+
+Possible future event, not built (ADR-052): a patient "I will attend" confirmation of a booked appointment. There is no such event today (a `confirm` reply exists only as a coordinator-recorded, classified message and has no effect), and adding one would change the state machine's alphabet and the model checker. Until then the one primary action on a booked appointment is "Add to my calendar", with "Ask for another date" and "I cannot come".
 
 ## Who looked at my record (access audit)
 

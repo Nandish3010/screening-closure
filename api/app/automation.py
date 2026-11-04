@@ -289,7 +289,7 @@ def _rule_key(rule, model, pathway: Pathway, calendar: WorkingCalendar, now: dat
 
 def _language(events, default: str) -> str:
     for e in reversed(events):
-        if e.type in ("patient_acknowledge", "callback_requested") and e.payload.get("lang") in ("en", "ar"):
+        if e.type in ("patient_acknowledge", "callback_requested", "consent_updated") and e.payload.get("lang") in ("en", "ar"):
             return e.payload["lang"]
     return default
 

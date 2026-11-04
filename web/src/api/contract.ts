@@ -370,7 +370,7 @@ export const CONSENT_KEYS = [
 ] as const;
 export type ConsentKey = (typeof CONSENT_KEYS)[number];
 /** A `consent_updated` payload: any non-empty subset of the six booleans. */
-export type ConsentChanges = Partial<Record<ConsentKey, boolean>>;
+export type ConsentChanges = Partial<Record<ConsentKey, boolean>> & { lang?: "en" | "ar" };
 export interface ConsentHistoryEntry {
   at: string;
   actor: string;

@@ -357,6 +357,9 @@ class ConsentUpdated(_Human):
     channel_letter: bool | None = None
     share_with_specialist: bool | None = None
     withdrawn: bool | None = None
+    # ADR-052: the patient's language preference ("en" or "ar"). Alone it is a pure preference: no consent changes, no hold
+    # cleared, no history entry; the automation reads it for the language of its messages.
+    lang: Literal["en", "ar"] | None = None
 
 
 class MarkLostContact(_Human):

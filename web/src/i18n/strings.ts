@@ -274,7 +274,7 @@ export const STRINGS: Record<Lang, PatientStrings> = {
     channels: { phone: "Phone call", sms: "Text message", whatsapp: "WhatsApp", letter: "Letter" },
     shareLabel: "My care team may share my result with the specialist who will do my test.",
     languageLabel: "Language for this app and your messages",
-    languageNote: "Kept on this phone. We use it when you tap a button to reach your care team.",
+    languageNote: "Kept on this phone and told to your care team. We use it for the messages we send you.",
     withdrawButton: "Stop all contact",
     // AI clinical review 2026-10-18
     withdrawHint: "If you stop contact, your care team will not message or call you. A person will check your case. You can still call your care team.",
@@ -458,7 +458,7 @@ export const STRINGS: Record<Lang, PatientStrings> = {
     // AI Arabic review 2026-10-18: "my test" is the camera test here, not the screening test.
     shareLabel: "أسمح لفريق رعايتي بمشاركة نتيجتي مع الطبيب الأخصائي الذي سيجري لي الفحص بالكاميرا.",
     languageLabel: "لغة هذا التطبيق ورسائلك",
-    languageNote: "تُحفظ على هذا الهاتف. نستعملها حين تضغط على زر للتواصل مع فريق رعايتك.",
+    languageNote: "تُحفظ على هذا الهاتف ونخبر بها فريق رعايتك. نستعملها في الرسائل التي نرسلها إليك.",
     withdrawButton: "أوقفوا كل تواصل معي", // AI Arabic review 2026-10-18: pairs with resumeButton
     withdrawHint:
       "إذا أوقفت التواصل، فلن يرسل لك فريق رعايتك رسائل ولن يتصل بك. سيراجع أحد أفراد فريق رعايتك ملفك.", // AI Arabic review 2026-10-18

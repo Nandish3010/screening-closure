@@ -312,7 +312,7 @@ PATIENT_EVENT_FIELDS: dict[str, tuple[str, ...]] = {
     "reopen": (),  # not the reason
     # what the patient themselves told us, and what was sent to them
     "consent_updated": ("channel_sms", "channel_whatsapp", "channel_phone", "channel_letter",
-                        "share_with_specialist", "withdrawn"),
+                        "share_with_specialist", "withdrawn", "lang"),
     "callback_requested": ("lang",),  # not the reason code
     "message_sent": ("channel", "language", "purpose"),
 }

@@ -443,7 +443,7 @@ export function PatientView({ caseId }: { caseId: string }) {
           <legend>{t.languageLabel}</legend>
           {(["en", "ar"] as const).map((l) => (
             <label key={l} className="check">
-              <input type="radio" name="pa-lang" checked={lang === l} onChange={() => setLang(l)} />
+              <input type="radio" name="pa-lang" checked={lang === l} onChange={() => { setLang(l); if (canSend && !busy) void post("consent_updated", { lang: l }); }} />
               <span lang={l}>{l === "en" ? STRINGS.ar.switchTo : STRINGS.en.switchTo}</span>
             </label>
           ))}

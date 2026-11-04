@@ -133,7 +133,7 @@ export const DRAFT_TEXT: Record<DraftRequestBody["language"], Record<DraftReques
 export const PATIENT_EVENT_FIELDS: Record<string, readonly string[]> = {
   case_created: [], acknowledge: [], accept_ownership: [], contact_patient: ["channel"], patient_acknowledge: ["lang"],
   book_confirmatory: ["appointment_date", "appointment_at"], complete_confirmatory: [], clinician_review: [], close: [], reopen: [],
-  consent_updated: ["channel_sms", "channel_whatsapp", "channel_phone", "channel_letter", "share_with_specialist", "withdrawn"],
+  consent_updated: ["channel_sms", "channel_whatsapp", "channel_phone", "channel_letter", "share_with_specialist", "withdrawn", "lang"],
   callback_requested: ["lang"], message_sent: ["channel", "language", "purpose"],
 };
 export const PATIENT_CONSENT_KEYS = ["channel_sms", "channel_whatsapp", "channel_phone", "channel_letter", "share_with_specialist", "withdrawn"] as const;

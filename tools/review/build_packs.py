@@ -599,7 +599,7 @@ WEB_CONTEXT: dict[str, tuple[str, str]] = {
     "channels.letter": ("consent", "Label of the check box for letters."),
     "shareLabel": ("consent", "Label of the check box that lets the care team share the result with the specialist."),
     "languageLabel": ("consent", "Label of the English / Arabic choice inside the choices section."),
-    "languageNote": ("consent", "Small grey text under it: the language is saved on the phone and sent with the buttons that reach the care team."),
+    "languageNote": ("consent", "Small grey text under it: the language is saved on the phone and told to the care team (a consent_updated carrying only the language), which uses it for messages."),
     "withdrawButton": ("consent", "Button under the choices. Opens the confirmation below; confirming withdraws all consent to contact at once: the case is frozen for outreach and a person is asked to review it. Hidden after withdrawal."),
     "withdrawHint": ("consent", "Small grey text above that button. It says what stopping contact means and that a person will check the case."),
     "withdrawnNotice": ("consent", "Yellow banner at the top of the choices section after the patient has stopped all contact."),

@@ -376,7 +376,7 @@ Shown in the installed app or browser at `/patient`. Source: `web/src/i18n/strin
 | W115 | Letter | Label of the check box for letters. |
 | W116 | My care team may share my result with the specialist who will do my test. | Label of the check box that lets the care team share the result with the specialist. |
 | W117 | Language for this app and your messages | Label of the English / Arabic choice inside the choices section. |
-| W118 | Kept on this phone. We use it when you tap a button to reach your care team. | Small grey text under it: the language is saved on the phone and sent with the buttons that reach the care team. |
+| W118 | Kept on this phone and told to your care team. We use it for the messages we send you. | Small grey text under it: the language is saved on the phone and told to the care team (a consent_updated carrying only the language), which uses it for messages. |
 | W119 | Stop all contact | Button under the choices. Opens the confirmation below; confirming withdraws all consent to contact at once: the case is frozen for outreach and a person is asked to review it. Hidden after withdrawal. |
 | W120 | If you stop contact, your care team will not message or call you. A person will check your case. You can still call your care team. | Small grey text above that button. It says what stopping contact means and that a person will check the case. |
 | W121 | You asked us to stop contact. We will not message or call you. A person on your care team will check your case. You can still call your care team. | Yellow banner at the top of the choices section after the patient has stopped all contact. |
