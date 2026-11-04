@@ -268,7 +268,7 @@ class RerouteReferral(Executioner):
                 summary="The patient has not agreed to share with a specialist: a person decides the next step.",
                 title="Referral needs consent to share", assignee_role="coordinator",
                 recommended_action="confirm_consent_before_referral", tried=tried))
-        candidates = [p for p in box.call("read_providers") if p not in tried]
+        candidates = [p for p in box.call("read_providers", case_id=order.case_id) if p not in tried]
         if not candidates:
             return Outcome("needs_human", RerouteOut(
                 summary=f"Every provider has been tried ({', '.join(tried) or 'none'}): the reroute is exhausted.",
@@ -293,7 +293,7 @@ class PrepareHandoffPack(Executioner):
         if (gone := self.moved_on(f, order)) is not None:
             return Outcome("done", HandoffPackOut(summary=gone, skipped="case_moved_on", pack={}))
         tried = [h.to_provider for h in f.handoffs if h.outcome != "accepted"]
-        options = [p for p in box.call("read_providers") if p not in tried]
+        options = [p for p in box.call("read_providers", case_id=order.case_id) if p not in tried]
         due = f.milestones.get("referral_requested")
         pack = {"case_id": f.case_id, "patient_ref": f.patient_ref, "referral_due_at": due.due_at if due else None,
                 "referral_overdue": bool(due and due.overdue), "share_with_specialist": f.share_with_specialist,

@@ -130,6 +130,7 @@ def test_the_seeder_creates_cervical_cases_walks_them_to_their_stages_and_a_reru
     assert states == list(seed.STAGES)
     assert all(b["pathway"] == "cervical_hpv" and b["case_id"] == i["case_id"] for b, i in zip(api.created_with, items))
     assert all(b.get("registered_provider") for b in api.created_with)
+    assert all(b["insurance_scheme"] in ("thiqa", "enhanced", "basic", "unknown") for b in api.created_with)  # ADR-054
     assert not {c["state"] for c in api.cases.values()} & set(seed.RECORDER_STATES)
     n_events = len(api.events)
     assert n_events == 2 + 3 + 2 and {e[0] for e in api.events} == {"accept_ownership", "contact_patient", "patient_acknowledge"}

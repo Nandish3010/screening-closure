@@ -10,6 +10,7 @@ export interface Advance {
 export interface CreateCase {
   "case_id"?: string | null;
   "contact_valid"?: boolean | Record<string, boolean> | null;
+  "insurance_scheme"?: string | null;
   "pathway"?: string | null;
   "patient_ref"?: string | null;
   "registered_provider"?: string | null;

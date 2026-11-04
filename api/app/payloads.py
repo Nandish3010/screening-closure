@@ -26,6 +26,8 @@ from typing import Annotated, Literal
 
 from pydantic import AfterValidator, BaseModel, ConfigDict, Field, StringConstraints, ValidationError, field_validator, model_validator
 
+from app import insurance
+
 NOTE_MAX_LENGTH = 200
 
 # ---- taxonomies: the only values a `reason` field may take ------------------------------------
@@ -157,6 +159,9 @@ class CaseCreated(_Payload):
     # codes set by the intake route (system:intake) from the submitted results; the values themselves are never recorded.
     priority: Code | None = None
     priority_rule: Code | None = None
+    # ADR-054: the patient's insurance scheme (generic codes; `unknown` is allowed). Optional and never a hold condition: a case
+    # with none, or with `unknown`, is routed as before. Staff-only: no patient view carries it.
+    insurance_scheme: Literal[*insurance.SCHEME_CODES] | None = None
 
 
 ERASURE_CATEGORIES = (
@@ -311,6 +316,9 @@ class EscalationAccepted(_Human):
 class HandoffRequested(_Human):
     to_provider: Provider
     auto: Literal[True] | None = None  # A21: an automatic reroute after a rejected or bounced referral
+    # ADR-054: whether the provider is in the case's insurance network, stamped by the server (a value a client sends is
+    # replaced). Absent when the case has no known scheme.
+    network: Literal[*insurance.NETWORKS] | None = None
 
 
 class AssignOwnership(_Payload):

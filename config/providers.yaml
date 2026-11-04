@@ -27,6 +27,23 @@ referral:
     cervical_hpv: gynaecology  # second pathway; the provider names below are synthetic, like the rest of this file
     chronic_conditions: family_medicine  # third pathway: the referral goes to the person's family physician (synthetic names)
   reroute_reasons: [capacity, wrong_service, timeout]
+  # Insurance networks (ADR-054): the schemes each referral provider accepts. SYNTHETIC, like every name here; replace with the
+  # payers' real network lists before any pilot. Scheme codes are generic (thiqa, enhanced, basic; only `thiqa` is a real
+  # scheme's name, cited in docs/commercial/buyer-map.md). A case with a known scheme is referred to the first provider in
+  # the reroute order that accepts it; when none does, to the first one that does not, flagged `out_of_network` for a
+  # coordinator, never blocked. A case with no scheme (or `unknown`) is routed by the order alone. A provider with no entry
+  # here accepts every scheme. The mix is chosen so the demo shows both outcomes: no gastroenterology case is ever out of
+  # network (the first provider in the order accepts every scheme), a Basic family-medicine case is.
+  networks:
+    Corniche Gastro Unit: [thiqa, enhanced, basic]
+    Al Noor Endoscopy Centre: [thiqa, enhanced, basic]
+    Marina Digestive Health: [thiqa, basic]
+    Corniche Women's Health Unit: [thiqa, enhanced, basic]
+    Al Noor Colposcopy Centre: [thiqa, enhanced]
+    Marina Women's Health Clinic: [thiqa]
+    Corniche Family Medicine Clinic: [thiqa, enhanced]
+    Al Noor Family Practice: [thiqa, enhanced]
+    Marina Family Health Centre: [thiqa]
   reroute_order:
     gastroenterology:
       - Corniche Gastro Unit
