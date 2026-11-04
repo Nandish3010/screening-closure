@@ -18,6 +18,11 @@ import type { Lang } from "../api/contract";
 /** First-strong isolate so a Latin name does not scramble neighbouring Arabic text. */
 const iso = (s: string) => `\u2068${s}\u2069`;
 
+/** Build-time flag of the cloud-hosted judge demo (deploy/gcp): the reply model is not served there, and the text must not claim it is. */
+function hostedDemo(): boolean {
+  return String(import.meta.env?.VITE_HOSTED_DEMO ?? "") === "1";
+}
+
 export interface PatientStrings {
   appTitle: string;
   language: string;
@@ -234,7 +239,9 @@ export const STAFF = {
   /** D13: the coordinator records what the patient wrote back; the triage reads it and only ever flags or relays. */
   replyForm: {
     heading: "Record patient reply",
-    intro: "The patient wrote back. Type or paste the reply: a small offline model reads it, the text is kept outside the audit trail, and the case gets either one safe step or a request for a person to read it. The model cannot change the case, send, close or withdraw consent.",
+    intro: hostedDemo()
+      ? "The patient wrote back. Type or paste the reply. In this hosted demo the on-device reply model is not running (it needs the clinic's own machine), so only the opt-out keyword check runs and every other reply is sent to a person to read. The text is kept outside the audit trail. Nothing here changes, sends or closes a case on its own."
+      : "The patient wrote back. Type or paste the reply: a small offline model reads it, the text is kept outside the audit trail, and the case gets either one safe step or a request for a person to read it. The model cannot change the case, send, close or withdraw consent.",
     channel: "Reply arrived by",
     text: "Patient's reply",
     button: "Record reply",
