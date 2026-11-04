@@ -4,7 +4,8 @@ Vite + React + TypeScript. Three surfaces on one typed API client:
 
 | Route | Surface |
 |---|---|
-| `/coordinator`, `/coordinator/:caseId` | Coordinator / owner app: worklist (most overdue first, then risk), filters, case timeline, actions |
+| `/coordinator/today` | The coordinator's and supervisor's landing page (C14): what needs a person now, in seven queues (urgent results not yet acted on, overdue cases, escalations to accept, patient replies waiting, cases nobody is looking at, closures waiting for a signature, agency tasks), with a count, an all-clear state and one-click actions per queue (`GET /today`, ADR-053) |
+| `/coordinator`, `/coordinator/:caseId` | Coordinator / owner app: the full worklist (most overdue first, then risk), filters, case timeline, actions |
 | `/patient/:caseId` (and `/patient`) | Patient PWA, Arabic + English, installable, last case renders offline |
 | `/judge` | Judge summary: positioning line, headline with caveats, links to repo docs, `make check`. The header's **Judge tour** button runs a 7-step guided walk (problem, a case timeline, the closure guard, the agency inbox, the effort counter, the numbers, this page) on the current data; it only navigates and reads, posts nothing, and works on both adapters |
 | `/dashboard` | Closure dashboard: P50/P90, open by age, breaches by provider, bottleneck by transition (live: computed by `GET /metrics/closure` from the cases in the database; mock adapter: fixed fixture values, see below) |

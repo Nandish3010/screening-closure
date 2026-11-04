@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { useApp } from "../app/AppContext";
 import type { CaseSummary } from "../api/contract";
 import { MAIN_STATES } from "../api/contract";
-import { DEFAULT_FILTERS, UNOWNED, ownersOf, pathwaysOf, worklist, type WorklistFilters } from "../lib/worklist";
+import { UNOWNED, filtersFromParams, ownersOf, paramsFromFilters, pathwaysOf, worklist, type WorklistFilters } from "../lib/worklist";
+import { PRIORITY_LABEL, PRIORITY_TIERS } from "../lib/priority";
 import { pathwayMeta } from "../lib/pathway";
 import { PathwayBadge } from "../components/PathwayBadge";
 import { PriorityBadge } from "../components/PriorityBadge";
@@ -27,7 +28,9 @@ export function CoordinatorPage() {
   const { api, simTime } = useApp();
   const [cases, setCases] = useState<CaseSummary[] | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [filters, setFilters] = useState<WorklistFilters>(DEFAULT_FILTERS);
+  // The filters live in the URL (deep links such as /coordinator?at_risk=1); a change writes them back.
+  const [params, setParams] = useSearchParams();
+  const filters = useMemo(() => filtersFromParams(params), [params]);
   const [reloads, setReloads] = useState(0);
   const [filed, setFiled] = useState<string | null>(null);
 
@@ -53,7 +56,7 @@ export function CoordinatorPage() {
   const rows = useMemo(() => (cases ? worklist(cases, filters, now) : []), [cases, filters, now]);
   const owners = useMemo(() => ownersOf(cases ?? []), [cases]);
   const pathways = useMemo(() => pathwaysOf(cases ?? []), [cases]);
-  const set = (p: Partial<WorklistFilters>) => setFilters((f) => ({ ...f, ...p }));
+  const set = (p: Partial<WorklistFilters>) => setParams(paramsFromFilters({ ...filters, ...p }), { replace: true });
 
   return (
     <main className="container">
@@ -90,6 +93,13 @@ export function CoordinatorPage() {
           </label>
         )}
         <label className="field">
+          <span>Priority</span>
+          <select value={filters.priority} onChange={(e) => set({ priority: e.target.value })}>
+            <option value="">Any priority</option>
+            {PRIORITY_TIERS.map((t) => <option key={t} value={t}>{PRIORITY_LABEL[t]}</option>)}
+          </select>
+        </label>
+        <label className="field">
           <span>Owner</span>
           <select value={filters.owner} onChange={(e) => set({ owner: e.target.value })}>
             <option value="">Anyone</option>
@@ -100,6 +110,10 @@ export function CoordinatorPage() {
         <label className="check">
           <input type="checkbox" checked={filters.overdueOnly} onChange={(e) => set({ overdueOnly: e.target.checked })} />
           <span>Overdue only</span>
+        </label>
+        <label className="check">
+          <input type="checkbox" checked={filters.atRisk} onChange={(e) => set({ atRisk: e.target.checked })} />
+          <span>At risk of being lost</span>
         </label>
         <label className="check">
           <input type="checkbox" checked={filters.flaggedOnly} onChange={(e) => set({ flaggedOnly: e.target.checked })} />

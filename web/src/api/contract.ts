@@ -455,6 +455,8 @@ export interface CaseSummary {
   last_handoff?: LastHandoff | null;
   /** 0..1 loss-to-follow-up risk. Optional. ONLY used to order the worklist; never acts. */
   risk_score?: number;
+  /** Staff rows: the same rule as `lost_to_follow_up` in `GET /metrics/closure` (no confirmatory, no refusal, lost contact or 30 idle days). */
+  at_risk?: boolean;
   /**
    * Result priority (staff views only; a patient's rows never carry it). null / absent = the pathway has no priority rule for
    * this case. It ONLY orders the worklist and explains why: the SLA clock, the escalation ladder and who may close the case do
@@ -1221,6 +1223,106 @@ export interface AgencyTaskParams {
 }
 
 // ---------------------------------------------------------------------------------------
+// The coordinator's Today screen (C14): GET /today
+// ---------------------------------------------------------------------------------------
+
+/**
+ * `GET /today` (coordinator and supervisor): what needs a person now, in seven queues, from the read model. Bounded: a request
+ * reads at most 1,000 open cases and stops as soon as a queue holds `limit` items; `cursor` continues the scan and
+ * `complete` says every open case has been read, which is the only time an empty queue is "all clear". Read-only: the actions
+ * the screen offers post the ordinary case events (`escalation_accepted`, `accept_ownership`, `contact_updated`,
+ * `contact_patient`) under their own RBAC and audit trail.
+ */
+export type TodayGroupId = "urgent" | "overdue" | "escalations" | "replies" | "flagged" | "signatures" | "agency";
+export const TODAY_GROUPS: readonly TodayGroupId[] = ["urgent", "overdue", "escalations", "replies", "flagged", "signatures", "agency"];
+/** The queues that come from the scan of open cases; `agency` is read from the task ledger and paged apart. */
+export const TODAY_CASE_GROUPS: readonly TodayGroupId[] = TODAY_GROUPS.filter((g) => g !== "agency");
+export type TodayActionId = "open_case" | "accept_escalation" | "take_ownership" | "confirm_contact" | "record_callback";
+
+/** Why a case is in a queue: a code and its parameters; `lib/today.ts` words it. */
+export interface TodayWhy {
+  code: "urgent_untouched" | "overdue" | "escalation_waiting" | "reply_waiting" | "callback_waiting" | "nobody_looking" | "closure_proposed" | "declined_signoff" | (string & {});
+  tier?: string;
+  days?: number;
+  rung?: string;
+  target?: string;
+  level?: number;
+  reason?: string | null;
+  idle_days?: number | null;
+  evidence_ref?: string | null;
+}
+
+export interface TodayItem {
+  case_id: string;
+  pathway: string;
+  state: string;
+  priority: CasePriority | null;
+  owner: OwnerRef | null;
+  provider: string | null;
+  due_at: string | null;
+  last_event_at: string;
+  /** When the case started needing a person for this queue (queues list the longest-waiting first). */
+  since: string;
+  why: TodayWhy;
+  actions: TodayActionId[];
+  days_overdue?: number;
+  /** `escalations`: the rung waiting to be accepted and who may accept it (backend role names). */
+  escalation?: { rung: string; level: number; target: string; accepted_by: string[]; milestone: string | null; at: string | null };
+  /** `replies`: the triage flag, a pending call-back, the open outreach holds, how sure the model was; never the text. */
+  reply?: {
+    reason: string | null; callback: boolean; holds: string[]; intent: string | null; confidence: number | null;
+    /** `ar_gulf` or `arabizi` when the language-group rule is why a person reads the reply. */
+    forced_reason: string | null;
+  };
+  flag?: { reason: string | null; idle_days: number | null; at: string | null };
+}
+
+/** An agency task an agent prepared for a person (the `agency` queue). Nothing here acted on the case. */
+export interface TodayAgencyItem {
+  task_id: string;
+  case_id: string | null;
+  department: AgencyDepartment | string;
+  agent_type: string;
+  assignee_role: string;
+  title: string;
+  summary: string;
+  recommended_action: string;
+  since: string;
+  pathway: string | null;
+  state: string | null;
+  priority: CasePriority | null;
+  actions: TodayActionId[];
+}
+
+export interface TodayGroup<I = TodayItem | TodayAgencyItem> {
+  group: TodayGroupId;
+  items: I[];
+  /** Items in THIS answer. */
+  count: number;
+  /** The queue may hold further items (for a case queue: the scan of open cases is not complete). */
+  more: boolean;
+}
+
+export interface TodayResponse {
+  sim_time: string;
+  limit: number;
+  /** Open cases read for this answer. */
+  scanned: number;
+  cursor: string | null;
+  complete: boolean;
+  agency_cursor: string | null;
+  groups: TodayGroup[];
+}
+
+export interface TodayParams {
+  /** Items per queue, 1 to 50 (default 10). */
+  limit?: number;
+  cursor?: string | null;
+  agencyCursor?: string | null;
+  groups?: TodayGroupId[];
+}
+
+// ---------------------------------------------------------------------------------------
 // The client interface both adapters implement
 // ---------------------------------------------------------------------------------------
 
@@ -1285,6 +1387,8 @@ export interface ApiClient {
   agencyTasks(params?: AgencyTaskParams): Promise<AgencyTask[]>;
   /** GET /agency/inbox (A22): tasks that need a person. Owner roles see only their own cases. */
   agencyInbox(): Promise<AgencyInboxItem[]>;
+  /** GET /today (C14, coordinator and supervisor): what needs a person now, in seven bounded queues. See TodayResponse. */
+  getToday(params?: TodayParams): Promise<TodayResponse>;
   /** POST /agency/run (A22): one run per sim time; `created: false` when it already ran. */
   runAgency(): Promise<AgencyRun>;
   /** GET /cases/{id}/agency (A22): null when the backend has no agency. */

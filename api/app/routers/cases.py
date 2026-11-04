@@ -165,15 +165,15 @@ def _case_json(case_id: UUID, identity: Identity | None = None) -> dict:
     pw = pathway_of(case_id)
     events = store.events_for(case_id)
     model = replay_model(events, pw)
-    row = readmodel.case_row(
-        LoadedCase(case_id, pw.name, events[0].at, events, model), pw, default_calendar()
-    )
+    lc = LoadedCase(case_id, pw.name, events[0].at, events, model)
+    row = readmodel.case_row(lc, pw, default_calendar())
     if identity is not None and identity.role == "patient":
         # SEC-2: a patient's case page is the redacted one (no staff notes or reasons, no escalation
         # internals, no staff names: roles only).
         return readmodel.patient_case_json(row, model, events)
     explained = _risk_explained(model, events, clock.now(), pw.name) if _sees_risk(identity) else None
     row["risk_score"] = explained["score"] if explained else None
+    row["at_risk"] = readmodel.at_risk(lc, pw, clock.now())
     return {
         # The worklist fields (owner as {actor, display_name, role}, due_at, ...) so a case page
         # needs no second request; the keys below it are the case itself.
@@ -313,10 +313,12 @@ def list_cases(
         for lc in page:
             if identity.role == "patient" and (identity.patient_ref is None or lc.patient_ref != identity.patient_ref):
                 continue
-            row = readmodel.case_row(lc, pathway_by_name(lc.pathway) or pathway, calendar)
+            lc_pw = pathway_by_name(lc.pathway) or pathway
+            row = readmodel.case_row(lc, lc_pw, calendar)
             if row is not None and readmodel.matches(row, owner=owner, overdue=overdue, provider=provider, flagged=flagged):
                 if with_risk:  # D9: filled last, so no filter or order above depends on it
                     row["risk_score"] = _risk_score(lc, now)
+                    row["at_risk"] = readmodel.at_risk(lc, lc_pw, now)  # staff only; the metrics' lost_to_follow_up rule
                 rows.append(readmodel.patient_case_row(row) if identity.role == "patient" else row)  # SEC-2: redacted for a patient
         after = next_after
         if next_after is None or len(rows) >= limit or scanned >= MAX_SCAN_PER_REQUEST:

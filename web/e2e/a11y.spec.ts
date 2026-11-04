@@ -36,6 +36,13 @@ for (const scheme of ["light", "dark"] as const) {
       await audit(page, `worklist (${scheme})`);
     });
 
+    test("coordinator app: Today (C14)", async ({ page }) => {
+      await page.goto("/coordinator/today");
+      await page.getByTestId("today-group-overdue").waitFor();
+      await page.getByTestId("today-item").first().waitFor();
+      await audit(page, `today (${scheme})`);
+    });
+
     test("coordinator app: case page with the drafts panel, as coordinator", async ({ page }) => {
       await page.goto(`/coordinator/${OVERDUE_CASE}`);
       await page.getByTestId("request-draft").click();
