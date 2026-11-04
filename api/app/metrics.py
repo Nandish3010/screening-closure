@@ -41,6 +41,10 @@ AGE_BUCKETS = ("0-30", "31-60", "61-90", "90+")
 LTFU_IDLE_DAYS = 30  # metrics.md: metrics.ltfu_idle_days
 SURFACING_EVENTS = frozenset({"mark_overdue", "escalate", "watchdog_flagged", "mark_lost_contact"})
 LOST_CONTACT_EVENT = "mark_lost_contact"
+# The outcome funnel's "referred" (ADR-052): a request to hand the case to another service, or the confirmatory appointment being
+# booked, whichever the log shows first. A booking always follows a referral in the pathway, so the second covers a case whose
+# service was chosen without a recorded handoff request.
+REFERRAL_EVENTS = frozenset({"handoff_requested", "book_confirmatory"})
 UNASSIGNED = "unassigned"
 _DAY = 86400.0
 
@@ -70,6 +74,10 @@ class CaseRecord:
     first_safe_close_declined: bool = False  # the first safe close was a declined one (kept out of the main percentiles)
     refusal_pending: bool = False      # a refusal is recorded and waits for a physician's sign-off
     refusal_on_record: bool = False    # an informed refusal is on record (pending or closed declined): not lost to follow-up
+    # The outcome funnel (ADR-052). Read by `app.metrics_funnel` only; nothing above uses them.
+    priority: str | None = None        # the tier recorded on the genesis event (None: the case was not ranked)
+    referred_at: datetime | None = None   # the first `handoff_requested` or `book_confirmatory`
+    attended_at: datetime | None = None   # the first `complete_confirmatory`
 
 
 def build_record(
@@ -87,6 +95,8 @@ def build_record(
     first_close = first_safe = None
     unsafe = completed = lost_flag = surfaced = first_safe_declined = False
     last_progress = None
+    referred = attended = None
+    priority = None
     breach_providers: list = []
     dwells: list = []
     for ev in events:
@@ -94,6 +104,8 @@ def build_record(
         if ev.type == CASE_CREATED:
             model = genesis(model, ev, pathway)
             t0 = entered_at = at
+            tier = (ev.payload or {}).get("priority")
+            priority = tier if isinstance(tier, str) and tier else None
             continue
         before = model.state
         model = step(model, ev, pathway)
@@ -108,6 +120,10 @@ def build_record(
             last_progress = at
         if ev.type == "complete_confirmatory":
             completed = True
+            if attended is None:
+                attended = at
+        if ev.type in REFERRAL_EVENTS and referred is None:
+            referred = at
         if ev.type == "close":
             if first_close is None:
                 first_close = at
@@ -138,6 +154,9 @@ def build_record(
         refusal_on_record=model.refusal is not None,
         breach_providers=tuple(breach_providers),
         dwells=tuple(dwells),
+        priority=priority,
+        referred_at=referred,
+        attended_at=attended,
     )
 
 

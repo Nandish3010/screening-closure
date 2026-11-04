@@ -99,15 +99,15 @@ _UPSERT = (
 )
 
 
-def _read_state(conn) -> dict:
-    row = conn.execute("SELECT value FROM metrics_index_state WHERE key = %s", (STATE_KEY,)).fetchone()
+def _read_state(conn, key: str = STATE_KEY) -> dict:
+    row = conn.execute("SELECT value FROM metrics_index_state WHERE key = %s", (key,)).fetchone()
     return row[0] if row else {}
 
 
-def _write_state(conn, value: dict) -> None:
+def _write_state(conn, value: dict, key: str = STATE_KEY) -> None:
     conn.execute(
         "INSERT INTO metrics_index_state (key, value, updated_at) VALUES (%s, %s::jsonb, now())"
-        " ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now()", (STATE_KEY, json.dumps(value)))
+        " ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now()", (key, json.dumps(value)))
 
 
 def refresh(store, pathway, calendar, *, budget_seconds: float, batch: int = BATCH, monotonic=time.monotonic) -> dict:

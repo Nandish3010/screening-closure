@@ -8,7 +8,7 @@
  */
 import type {
   AgencyInboxItem, AgencyOrg, AgencyRun, AgencyTask, AgencyTaskParams, Alert, ApiClient, CaseAgencySummary, CaseDetail, CaseEvent, CaseListParams, CaseSummary, CaseTimeline, ClosureMetrics, ConfirmatoryResult, Draft, DraftApproval,
-  DraftRecord, DraftRejection, DraftRequestBody, EffortMetrics, Me, PostEventBody, ReplyBody, ReplyResult, Role, TimelineItem,
+  DraftRecord, DraftRejection, DraftRequestBody, EffortMetrics, FunnelMetrics, FunnelParams, Me, PostEventBody, ReplyBody, ReplyResult, Role, TimelineItem,
 } from "./contract";
 import { ApiError, AUTOMATION_ACTOR, BACKEND_ROLE, OWNER_SCOPED_ROLES, REJECT_NOTE_MAX, REJECT_REASONS, ROLES } from "./contract";
 import { FIXTURE_RISK, SEED_ALERTS, SEED_METRICS, SIM_NOW, caseIdFor, pathwayOfCase, priorityOfCase, seedDrafts, seedEvents } from "./fixtures";
@@ -16,6 +16,7 @@ import {
   type AgencyLedger, type CaseFact, caseSummaryOf, executeRun, fakePromptHash, inboxOf, orgOf, runsOf, seedLedger, tasksOf,
 } from "./mockAgency";
 import { PROVIDER_CLINICIANS, ROLE_NAMES, ROLE_PROVIDERS, backendActor } from "./identities";
+import { funnelMetricsOf } from "../lib/funnel";
 import { ESCALATION_LADDER, pathwayMeta, procedureSlug } from "../lib/pathway";
 import {
   actorKindOf, actorRole, closureOutcomeOf, closureProposalOf, incompleteProcedureOf, refusalOf, completeDetail, consentOf, consentHistoryOf, milestonesOf, overdueDays, pendingEscalation, replayHandoffs,
@@ -627,6 +628,20 @@ export function createMockAdapter(
     async getEffortMetrics(): Promise<EffortMetrics | null> {
       if (session.role !== "coordinator" && session.role !== "supervisor") return null; // the API answers 403
       return effortMetricsOf(load().events, SIM_NOW);
+    },
+    async funnelMetrics(params: FunnelParams = {}): Promise<FunnelMetrics | null> {
+      if (session.role !== "coordinator" && session.role !== "supervisor") return null; // the API answers 403
+      const db = load();
+      const ids = Object.keys(db.events);
+      const pathways = [...new Set(ids.map(pathwayOfCase))];
+      const known = new Set(ids.map((id) => priorityOfCase(id)?.tier).filter((t): t is string => !!t));
+      if ((params.pathway && !pathways.includes(params.pathway)) || (params.priority && params.priority !== "unranked" && !known.has(params.priority))) {
+        throw new ApiError(422, "unknown filter");
+      }
+      return funnelMetricsOf(
+        ids.map((id) => ({ id, events: db.events[id], pathway: pathwayOfCase(id), priority: priorityOfCase(id)?.tier ?? null })),
+        SIM_NOW, params, pathways,
+      );
     },
     async createCase(): Promise<string> {
       requireStaff();
