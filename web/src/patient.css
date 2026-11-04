@@ -1,0 +1,105 @@
+/*
+ * Patient app (mobile-first PWA) and privacy centre. Everything here is scoped to .pa-* so the staff screens are untouched.
+ * Logical properties only (inline-start/end, padding-inline): the same CSS serves English (ltr) and Arabic (rtl).
+ * Targets: buttons and rows at least 48px tall, the main buttons 60px; body text 18px; contrast comes from the shared tokens
+ * in styles.css (checked in dark and light by web/e2e/a11y.spec.ts).
+ */
+
+.pa-stage { min-height: 100dvh; background: var(--bg); overflow-x: clip; }
+.pa-phone { min-height: 100dvh; }
+
+.pa {
+  display: flex; flex-direction: column; min-height: 100dvh; background: var(--bg); color: var(--text);
+  font-size: 1.125rem; line-height: 1.65; max-width: 640px; margin: 0 auto; position: relative;
+  overflow-x: clip; /* never a sideways scroll, whatever font the phone has; clip keeps the sticky bars working */
+}
+.pa * { min-width: 0; }
+.pa-journey li, .pa-lang span { overflow-wrap: anywhere; }
+.pa-bar {
+  position: sticky; top: 0; z-index: 5; display: flex; align-items: center; justify-content: space-between; gap: var(--s-3);
+  padding: var(--s-3) var(--s-4); background: var(--surface); border-bottom: 1px solid var(--border);
+}
+.pa-title { font-size: 1.35rem; line-height: 1.3; margin: 0; }
+.pa-title:focus { outline: none; }
+.pa-title:focus-visible { outline: 3px solid var(--focus); outline-offset: 4px; }
+.pa-body { flex: 1; padding: var(--s-4); padding-bottom: 6rem; overflow-wrap: anywhere; }
+.pa-lead { font-size: 1.1rem; margin: 0 0 var(--s-4); }
+
+.pa-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: var(--s-4); margin: 0 0 var(--s-4); box-shadow: var(--shadow); }
+.pa-card h2 { font-size: 1.25rem; margin: 0 0 var(--s-2); }
+.pa-card h3 { font-size: 1.1rem; margin: var(--s-3) 0 var(--s-2); }
+.pa-card p { margin: var(--s-2) 0; }
+.pa .big { font-size: 1.3rem; line-height: 1.55; white-space: pre-line; }
+.pa .muted { font-size: 0.95rem; color: var(--muted); }
+.pa-sub { margin: var(--s-3) 0 var(--s-1); font-weight: 700; }
+.pa-appt-name { font-weight: 700; margin: 0; }
+.pa-subcard { margin-top: var(--s-4); padding-top: var(--s-3); border-top: 1px solid var(--border); }
+
+.pa-steps { margin: var(--s-3) 0; padding-inline-start: 1.5rem; }
+.pa-steps li { margin-bottom: var(--s-2); }
+.pa-actions { display: grid; gap: var(--s-3); margin-top: var(--s-4); }
+.pa .btn { min-height: 48px; }
+.pa .btn-xl { min-height: 60px; display: flex; align-items: center; justify-content: center; text-align: center; text-decoration: none; font-size: 1.2rem; }
+.pa .btn-danger { background: var(--alarm-bg); color: var(--alarm-text); border-color: var(--alarm-bg); font-weight: 700; }
+.pa .banner { font-size: 1.05rem; margin: var(--s-2) 0; }
+.pa-reach { margin-top: var(--s-3); }
+.pa-reach .btn { text-decoration: none; }
+
+/* language toggle: both names are always visible, each in its own script; the current one is filled */
+.pa-lang { display: inline-flex; padding: 3px; gap: 2px; min-height: 48px; min-width: 48px; border-radius: 999px; }
+.pa-lang span { display: inline-flex; align-items: center; padding: 0 var(--s-3); min-height: 40px; border-radius: 999px; font-size: 1rem; color: var(--muted); }
+.pa-lang span.on { background: var(--brand); color: var(--brand-contrast); font-weight: 700; }
+
+/* journey strip */
+.pa-journey { list-style: none; display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--s-2); margin: var(--s-2) 0 0; padding: 0; font-size: 0.9rem; line-height: 1.35; }
+.pa-journey li { border-top: 6px solid var(--border); padding-top: var(--s-1); color: var(--muted); border-radius: 3px; }
+.pa-journey li.done { border-color: var(--brand); color: var(--text); }
+.pa-journey li.current { border-color: var(--brand); color: var(--text); font-weight: 700; background: linear-gradient(var(--brand-soft), transparent); }
+
+/* status timeline (newest first) */
+.pa-history { list-style: none; margin: var(--s-2) 0 0; padding: 0; border-inline-start: 3px solid var(--border); }
+.pa-history li { position: relative; padding: 0 var(--s-3) var(--s-3); padding-inline-start: var(--s-4); display: grid; gap: 2px; }
+.pa-history li::before { content: ""; position: absolute; inset-inline-start: -8px; top: 0.55rem; width: 13px; height: 13px; border-radius: 50%; background: var(--brand); border: 3px solid var(--surface); }
+.pa-history time, .pa-access time { font-size: 0.9rem; color: var(--muted); }
+
+/* who looked at my record */
+.pa-access { list-style: none; margin: var(--s-2) 0; padding: 0; }
+.pa-access li { display: grid; gap: 2px; padding: var(--s-3) 0; border-top: 1px solid var(--border); min-height: 48px; }
+.pa-access li:first-child { border-top: 0; }
+.pa-facts { margin: var(--s-2) 0; padding-inline-start: 1.25rem; }
+.pa-facts li { margin-bottom: var(--s-2); }
+
+/* choices: each row is a 48px+ touch target */
+.pa .check { align-items: center; gap: var(--s-3); padding: var(--s-2) 0; min-height: 48px; }
+.pa .check input { flex: none; width: 1.6rem; height: 1.6rem; }
+.pa .choices { margin-bottom: var(--s-3); }
+.pa-confirm { border: 2px solid var(--alarm-bg); border-radius: 12px; padding: var(--s-4); display: grid; gap: var(--s-3); background: var(--bad-bg); color: var(--bad); }
+.pa-confirm h3, .pa-confirm p { margin: 0; }
+
+/* bottom menu, like a health app */
+.pa-nav {
+  position: sticky; bottom: 0; z-index: 5; display: grid; grid-template-columns: 1fr 1fr; background: var(--surface);
+  border-top: 1px solid var(--border); padding-bottom: env(safe-area-inset-bottom, 0);
+}
+.pa-nav button {
+  font: inherit; font-size: 1rem; min-height: 64px; display: grid; place-items: center; align-content: center; gap: 2px; border: 0;
+  background: transparent; color: var(--muted); cursor: pointer; padding: var(--s-2);
+}
+.pa-nav button[aria-current="page"] { color: var(--brand); font-weight: 700; box-shadow: inset 0 3px 0 var(--brand); background: var(--brand-soft); }
+.pa-nav .pa-ico { font-size: 1.4rem; line-height: 1; }
+
+/* the phone frame: only on a wide screen, so a judge or a video sees a phone */
+@media (min-width: 820px) {
+  .pa-stage { display: grid; place-items: center; padding: var(--s-5) 0; background: radial-gradient(circle at 50% 0, var(--brand-soft), var(--bg) 70%); }
+  .pa-phone {
+    position: relative; width: 390px; height: min(800px, calc(100dvh - 150px)); min-height: 560px; border-radius: 48px; padding: 12px;
+    background: #10181c; box-shadow: 0 24px 60px rgba(0, 0, 0, 0.28), inset 0 0 0 2px #2b3a41;
+  }
+  .pa-phone::before { content: ""; position: absolute; top: 18px; inset-inline-start: 50%; transform: translateX(-50%); width: 96px; height: 22px; border-radius: 999px; background: #10181c; z-index: 10; }
+  [dir="rtl"] .pa-phone::before { transform: translateX(50%); }
+  .pa-phone .pa { height: 100%; min-height: 0; border-radius: 36px; overflow: hidden; max-width: none; margin: 0; }
+  .pa-phone .pa-bar { padding-top: 40px; }
+  .pa-phone .pa-body { overflow-y: auto; padding-bottom: var(--s-4); }
+}
+
+@media (prefers-reduced-motion: reduce) { .pa * { transition: none !important; animation: none !important; } }

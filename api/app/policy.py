@@ -50,6 +50,8 @@ ROUTE_POLICY: dict[tuple[str, str], object] = {
     ("GET", "/cases/{case_id}"): ALL_USERS,
     # The notification log of a case: owners (of that case), coordinators, supervisors (A7).
     ("GET", "/cases/{case_id}/notifications"): frozenset({PCO, SPEC, COORD, SUPER}),
+    # Who read the case (access audit): the patient (own case), the owner (own case), coordinator, supervisor. Not the lab.
+    ("GET", "/cases/{case_id}/access-log"): frozenset({PCO, SPEC, COORD, SUPER, PATIENT}),
     # The FHIR resources projected for a case (A12): owners (own case), coordinators, supervisors.
     ("GET", "/cases/{case_id}/fhir"): frozenset({PCO, SPEC, COORD, SUPER}),
     # Every role may try; EVENT_POLICY decides per event type. The automation token is not among them: the automation

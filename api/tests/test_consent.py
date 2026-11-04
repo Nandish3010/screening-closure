@@ -331,3 +331,56 @@ def test_restoring_consent_unfreezes_and_clears_the_review():
     assert rm["consent_frozen"] is False and rm["review_reason"] is None
     assert [e["type"] for e in r.json()["events"]].count("review_requested") == 1  # history stays
     assert post(cid, "message_drafted", PCO, DRAFTED).status_code == 201
+
+
+# ---- ADR-053: a language preference on consent_updated -----------------------------------------------------------------
+
+
+def test_a_language_only_update_is_a_preference_and_changes_no_consent_hold_or_history():
+    m = drive(*TO_CONTACTED)
+    before = m
+    after = step(m, consent_event({"lang": "ar"}), PATHWAY)
+    assert after.consent == before.consent and after.consent_history == before.consent_history
+    assert after.state == before.state and after.consent_frozen == before.consent_frozen
+    assert after.last_event_at is not None  # the event is on the log
+
+
+def test_a_language_only_update_does_not_clear_an_opt_out_hold():
+    from dataclasses import replace
+
+    m = replace(drive(*TO_CONTACTED), outreach_holds=("opt_out",))
+    assert step(m, consent_event({"lang": "en"}), PATHWAY).outreach_holds == ("opt_out",)
+    assert step(m, consent_event({"channel_sms": False}), PATHWAY).outreach_holds == ()  # a real consent change still clears it
+
+
+def test_language_travels_with_a_consent_change_and_withdrawal_is_unchanged():
+    m = drive(*TO_CONTACTED)
+    m = step(m, consent_event({"withdrawn": True, "lang": "ar"}), PATHWAY)
+    assert m.consent_frozen and m.consent_history[-1]["changes"] == {"withdrawn": True}
+    m = step(m, consent_event({"lang": "en"}), PATHWAY)
+    assert m.consent_frozen  # still frozen: a preference restores nothing
+    m = step(m, consent_event({"withdrawn": False}), PATHWAY)
+    assert not m.consent_frozen
+
+
+@pytest.mark.parametrize("bad", ["fr", "", None, 1, True])
+def test_the_language_is_validated(bad):
+    from app import payloads
+
+    with pytest.raises(PayloadError):
+        step(drive(*TO_CONTACTED), consent_event({"lang": bad}), PATHWAY)
+    if bad is not None:  # a null is a schema-level "absent"; the machine above still refuses it
+        with pytest.raises(payloads.PayloadSchemaError):
+            payloads.validate("consent_updated", {"lang": bad})
+    payloads.validate("consent_updated", {"lang": "ar"})
+    with pytest.raises(PayloadError):
+        step(drive(*TO_CONTACTED), consent_event({}), PATHWAY)  # still needs a consent key or lang
+
+
+def test_the_outreach_language_follows_the_latest_preference_with_the_phone_value_as_fallback():
+    from app import automation
+
+    ev = lambda t, p: make_event(t, "patient:p", p, at(5))  # noqa: E731
+    assert automation._language([ev("patient_acknowledge", {"lang": "en"}), ev("consent_updated", {"lang": "ar"})], "en") == "ar"
+    assert automation._language([ev("consent_updated", {"lang": "ar"}), ev("callback_requested", {"lang": "en"})], "ar") == "en"
+    assert automation._language([ev("consent_updated", {"channel_sms": False})], "ar") == "ar"

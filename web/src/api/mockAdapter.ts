@@ -10,6 +10,7 @@ import type {
   AgencyInboxItem, AgencyOrg, AgencyRun, AgencyTask, AgencyTaskParams, Alert, ApiClient, CaseAgencySummary, CaseDetail, CaseEvent, CaseListParams, CaseSummary, CaseTimeline, ClosureMetrics, ConfirmatoryResult, Draft, DraftApproval,
   DraftRecord, DraftRejection, DraftRequestBody, EffortMetrics, FunnelMetrics, FunnelParams, Me, PostEventBody, ReplyBody, ReplyResult, Role, TimelineItem,
 } from "./contract";
+import type { AccessLog } from "./contract";
 import { ApiError, AUTOMATION_ACTOR, BACKEND_ROLE, OWNER_SCOPED_ROLES, REJECT_NOTE_MAX, REJECT_REASONS, ROLES } from "./contract";
 import { FIXTURE_RISK, SEED_ALERTS, SEED_METRICS, SIM_NOW, caseIdFor, pathwayOfCase, priorityOfCase, seedDrafts, seedEvents } from "./fixtures";
 import {
@@ -92,7 +93,16 @@ interface MockDb {
   tick: number;
   /** A22 agency ledger; absent in a database stored before it existed (seeded on first use). */
   agency?: AgencyLedger;
+  /** Access audit (ADR-053): staff reads of a case, oldest first, per case; absent in a database stored before it existed. */
+  access?: Record<string, MockAccessRow[]>;
 }
+
+/** One staff read of a case, as the API's `access_audit` row: the actor, the kind of read and the mock's simulation time. */
+interface MockAccessRow { at: string; actor: string; role: string; name: string; kind: string }
+/** One row per (case, person, kind) per this many minutes of simulation time, as the API (app/access_audit.py). */
+const ACCESS_WINDOW_MIN = 15;
+/** The care team's line shown to a patient: a SYNTHETIC placeholder, as the API's (readmodel.CARE_TEAM_PHONE). */
+const CARE_TEAM_PHONE = "+971 2 000 0000";
 
 interface Session {
   role: Role;
@@ -124,7 +134,7 @@ export const DRAFT_TEXT: Record<DraftRequestBody["language"], Record<DraftReques
 export const PATIENT_EVENT_FIELDS: Record<string, readonly string[]> = {
   case_created: [], acknowledge: [], accept_ownership: [], contact_patient: ["channel"], patient_acknowledge: ["lang"],
   book_confirmatory: ["appointment_date", "appointment_at"], complete_confirmatory: [], clinician_review: [], close: [], reopen: [],
-  consent_updated: ["channel_sms", "channel_whatsapp", "channel_phone", "channel_letter", "share_with_specialist", "withdrawn"],
+  consent_updated: ["channel_sms", "channel_whatsapp", "channel_phone", "channel_letter", "share_with_specialist", "withdrawn", "lang"],
   callback_requested: ["lang"], message_sent: ["channel", "language", "purpose"],
 };
 export const PATIENT_CONSENT_KEYS = ["channel_sms", "channel_whatsapp", "channel_phone", "channel_letter", "share_with_specialist", "withdrawn"] as const;
@@ -248,7 +258,10 @@ export function createMockAdapter(
     const events = patientEvents(evs);
     const ownerRole = row.owner_actor ? actorRole(row.owner_actor) : null;
     const roleOnly = (role: string) => ({ actor: role, display_name: role, role });
+    const owner = replayHandoffs(evs).owner;
     const wire = {
+      // ADR-053: the owner's name and role and the care team's line: the one staff name a patient is told.
+      care_contact: owner ? { name: owner.name, role: actorRole(owner.actor), phone: CARE_TEAM_PHONE, synthetic: true } : null,
       case_id: id, pathway: row.pathway, state: row.state, created_at: row.created_at, updated_at: row.updated_at,
       owner: ownerRole ? roleOnly(ownerRole) : null,
       consent_frozen: row.consent_frozen, last_event_at: row.last_event_at, risk_score: null,
@@ -291,6 +304,20 @@ export function createMockAdapter(
       throw new ApiError(403, `role '${BACKEND_ROLE[session.role]}' may not call POST /drafts/{draft_id}/${verb}`);
     }
     requireOwnerScope(db, id);
+  }
+
+  /**
+   * Access audit, as `access_audit.note_read`: a staff login reading a case writes one row per (person, kind) per 15 simulated
+   * minutes. A patient's own reads are not recorded.
+   */
+  function noteRead(db: MockDb, id: string, kind: string) {
+    if (session.role === "patient") return;
+    const who = actor();
+    const now = new Date(new Date(SIM_NOW).getTime() + db.tick * 60_000).getTime();
+    const rows = (db.access ??= {})[id] ??= [];
+    if (rows.some((r) => r.actor === who && r.kind === kind && now - new Date(r.at).getTime() < ACCESS_WINDOW_MIN * 60_000)) return;
+    rows.push({ at: new Date(now).toISOString(), actor: who, role: BACKEND_ROLE[session.role], name: session.name, kind });
+    save(db);
   }
 
   function requireStaff() {
@@ -407,11 +434,26 @@ export function createMockAdapter(
         .filter((c) => !params.flagged || !!c.watchdog_flagged);
     },
     async getCase(id) {
-      return caseFor(load(), id);
+      const db = load();
+      const out = caseFor(db, id);
+      noteRead(db, id, "case");
+      return out;
+    },
+    async getAccessLog(id): Promise<AccessLog> {
+      const db = load();
+      must(db, id);
+      if (session.role !== "patient") requireOwnerScope(db, id);
+      const rows = [...(db.access?.[id] ?? [])].reverse(); // newest first
+      const patient = session.role === "patient";
+      return {
+        case_id: id, window_minutes: ACCESS_WINDOW_MIN, limit: patient ? 100 : 500,
+        entries: rows.slice(0, patient ? 100 : 500).map((r) => (patient ? { at: r.at, role: r.role, name: r.name } : { at: r.at, role: r.role, name: r.name, actor: r.actor, kind: r.kind })),
+      };
     },
     async getTimeline(id): Promise<CaseTimeline> {
       const db = load();
       const evs = must(db, id);
+      noteRead(db, id, "timeline");
       // SEC-2: a patient's timeline is the visible events only, nothing derived (no SLA clocks, breaches, rungs, flags).
       if (session.role === "patient") return { case_id: id, sim_time: SIM_NOW, items: patientEvents(evs).map((e) => ({ kind: "event" as const, ...e })) };
       const items: TimelineItem[] = evs.map((e) => ({ kind: "event" as const, ...withKind(e) }));

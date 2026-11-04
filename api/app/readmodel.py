@@ -312,7 +312,7 @@ PATIENT_EVENT_FIELDS: dict[str, tuple[str, ...]] = {
     "reopen": (),  # not the reason
     # what the patient themselves told us, and what was sent to them
     "consent_updated": ("channel_sms", "channel_whatsapp", "channel_phone", "channel_letter",
-                        "share_with_specialist", "withdrawn"),
+                        "share_with_specialist", "withdrawn", "lang"),
     "callback_requested": ("lang",),  # not the reason code
     "message_sent": ("channel", "language", "purpose"),
 }
@@ -374,8 +374,20 @@ def patient_case_row(row: dict) -> dict:
     }
 
 
-def patient_case_json(row: dict, model: CaseModel, events: list[Event]) -> dict:
-    """`GET /cases/{id}` for a patient (also what posting an event returns to them)."""
+# The care team's line, shown to a patient with the owner's name ("who looks after me and how do I reach them"). A SYNTHETIC
+# placeholder number, labelled as such in the response: the real line is a pilot configuration.
+CARE_TEAM_PHONE = "+971 2 000 0000"
+
+
+def care_contact(name: str, role: str) -> dict:
+    """The owner as the patient may see them: display name, role, and the (synthetic) care-team line. Nothing else about the
+    owner (no id, no provider, no workload)."""
+    return {"name": name, "role": role, "phone": CARE_TEAM_PHONE, "synthetic": True}
+
+
+def patient_case_json(row: dict, model: CaseModel, events: list[Event], care_contact: dict | None = None) -> dict:
+    """`GET /cases/{id}` for a patient (also what posting an event returns to them). `care_contact` is the owner's name and
+    role with the care-team line, or null while nobody owns the case; it is the only staff name in a patient's answer."""
     return {
         **patient_case_row(row),
         "case_id": row["case_id"],
@@ -388,4 +400,5 @@ def patient_case_json(row: dict, model: CaseModel, events: list[Event]) -> dict:
         "actors": patient_actors(events),
         "events": [r for r in (patient_event_json(e) for e in events) if r is not None],
         "risk": None,
+        "care_contact": care_contact,
     }

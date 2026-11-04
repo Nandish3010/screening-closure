@@ -29,6 +29,7 @@ Every cell is what the running API did, not what the policy table says: the scri
 | `GET /cases` | U | A | A | A | A | A | A | R | R | R | R | R |
 | `POST /cases` | U | A | R | R | A | R | A | R | R | R | R | R |
 | `GET /cases/{case_id}` | U | A | A | A | A | A/S | A | R | R | R | R | R |
+| `GET /cases/{case_id}/access-log` | U | R | A/S | A/S | A | A/S | A | R | R | R | R | R |
 | `GET /cases/{case_id}/agency` | U | R | A/S | A/S | A | R | A | R | R | R | R | R |
 | `POST /cases/{case_id}/confirmatory-result` | U | R | A/S | A/S | R | R | R | R | R | R | R | R |
 | `GET /cases/{case_id}/drafts` | U | R | A/S | A/S | A | R | A | R | R | R | R | R |
@@ -115,6 +116,7 @@ Routes that name a case or a draft, with the scope rule the matrix enforces (dec
 | Route | Scope rule |
 |---|---|
 | `GET /cases/{case_id}` | a patient only for their own case |
+| `GET /cases/{case_id}/access-log` | a patient only for their own case; a clinician only for a case they own |
 | `GET /cases/{case_id}/agency` | a clinician only for a case they own |
 | `POST /cases/{case_id}/confirmatory-result` | a clinician only for a case they own |
 | `GET /cases/{case_id}/drafts` | a clinician only for a case they own |
@@ -136,6 +138,6 @@ None.
 
 ## What was checked
 
-- 45 routes in the OpenAPI document, 45 entries in `ROUTE_POLICY`: every route has a decision and no decision is stale.
+- 46 routes in the OpenAPI document, 46 entries in `ROUTE_POLICY`: every route has a decision and no decision is stale.
 - 33 event types in `EVENT_POLICY`, plus one unknown type that must be refused for every role.
-- 1080 role, route and scope combinations probed with real requests; 0 differ from the policy tables; 0 are documented gaps (see Findings).
+- 1095 role, route and scope combinations probed with real requests; 0 differ from the policy tables; 0 are documented gaps (see Findings).

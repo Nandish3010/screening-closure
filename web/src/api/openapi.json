@@ -1181,6 +1181,57 @@
         ]
       }
     },
+    "/cases/{case_id}/access-log": {
+      "get": {
+        "description": "Who read this case (access audit, `app.access_audit`): newest first. A patient asks about their own case and sees\nthe staff member's role, name and time and nothing else (SEC-2: no actor id, no kind of read). Staff who may read it\n(owners of the case, coordinators, supervisors) also get the actor and what was read. Reading the log is not itself\nlogged. Bounded: one row per person and kind per 15 minutes, and a patient is shown the newest 100.",
+        "operationId": "case_access_log_cases__case_id__access_log_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "case_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Case Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Case Access Log Cases  Case Id  Access Log Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Case Access Log",
+        "tags": [
+          "cases"
+        ]
+      }
+    },
     "/cases/{case_id}/agency": {
       "get": {
         "operationId": "case_agency_cases__case_id__agency_get",

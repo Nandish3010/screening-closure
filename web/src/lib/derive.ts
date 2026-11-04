@@ -396,13 +396,13 @@ export function consentChangesOf(payload: Record<string, unknown>): ConsentChang
 export function consentOf(events: CaseEvent[]): Consent {
   let c: Consent = { ...DEFAULT_CONSENT };
   for (const ev of events) {
-    if (ev.type === "consent_updated") c = { ...c, ...consentChangesOf(ev.payload), updated_at: ev.at, updated_by: ev.actor };
+    if (ev.type === "consent_updated" && Object.keys(consentChangesOf(ev.payload)).length > 0) c = { ...c, ...consentChangesOf(ev.payload), updated_at: ev.at, updated_by: ev.actor };
   }
   return c;
 }
 
 export function consentHistoryOf(events: CaseEvent[]): ConsentHistoryEntry[] {
-  return events.filter((e) => e.type === "consent_updated").map((e) => ({ at: e.at, actor: e.actor, changes: consentChangesOf(e.payload) }));
+  return events.filter((e) => e.type === "consent_updated" && Object.keys(consentChangesOf(e.payload)).length > 0).map((e) => ({ at: e.at, actor: e.actor, changes: consentChangesOf(e.payload) }));
 }
 
 /** Outreach is frozen exactly while consent is withdrawn. The real read model's `consent_frozen` wins over this. */
@@ -550,6 +550,7 @@ export function triageReplayOf(events: CaseEvent[]): TriageReplay {
   };
   for (const ev of events) {
     if (ev.type === "consent_updated") {
+      if (Object.keys(consentChangesOf(ev.payload)).length === 0) continue; // a language-only update is a preference (ADR-053)
       const w = consentChangesOf(ev.payload).withdrawn;
       if (w !== undefined) withdrawn = w;
       clear("opt_out");
@@ -765,7 +766,8 @@ export function validateAppend(events: CaseEvent[], type: string, actor: string,
     }
   } else if (type === "consent_updated") {
     const given = Object.keys(payload).filter((k) => (CONSENT_KEYS as readonly string[]).includes(k));
-    if (given.length === 0) throw new ApiError(422, `consent_updated needs at least one of ${JSON.stringify(CONSENT_KEYS)}`);
+    if ("lang" in payload && payload.lang !== "en" && payload.lang !== "ar") throw new ApiError(422, "consent_updated lang must be 'en' or 'ar'");
+    if (given.length === 0 && !("lang" in payload)) throw new ApiError(422, `consent_updated needs at least one of ${JSON.stringify(CONSENT_KEYS)} or lang`);
     if (given.some((k) => typeof payload[k] !== "boolean")) throw new ApiError(422, "consent_updated values must be booleans");
   }
 
