@@ -48,7 +48,8 @@ The upper-range scenario (a ceiling for the mechanism, not a forecast) reaches 8
 | Fail-over of the scheduler | nothing lost or duplicated | 0 duplicates, 0 missing writes, over 11 runs | met |
 | Reply triage, precision of replies handled without a person | at least 95.0% | 96.2% (test set) | met |
 | Human-time reduction | 40% | 19.7% all cases, 36.0% in reach | **not met** |
-| 1,000,000-case daily burst inside one 10 s loop | one loop | bounded, drains over several loops | **not met** |
+| Scheduler sweep keeps its 10 s cadence (4 h soak) | at least 95% of nominal starts | 100.0% (1,440 of 1,440) | met |
+| 1,000,000-case daily burst inside one 10 s loop | one loop | bounded, drains in 9 loops (2.4 minutes) | **not met** |
 | API memory flat over a 4 h soak | flat | +43.85 to +45.94 MiB/h per pod | **not met** |
 | Hosted demo end to end | passes the smoke test | not yet deployed | **not run** |
 
@@ -75,7 +76,7 @@ Reading: Arabizi misses the target in the original build. The hosted build adds 
 | Managed-programme completion under-predicted by 13 to 16 points | The reach parameter was fitted to one ratio and not refitted, to avoid circularity | [../results/results.md](../results/results.md) |
 | Arabizi and Gulf Arabic replies are weaker | Training texts are developer-written templates; real messages are wider and messier; no native-speaker review yet (H2) | [../governance/reply-triage-card.md](../governance/reply-triage-card.md) |
 | API memory grows slowly under load | Cause not found; the scan-path transient was found and fixed, a worker-recycling mitigation failed at the pod limit | [../results/scale.md](../results/scale.md) |
-| Burst and sweep cadence not met | The scheduler loop does its work in series; one laptop-class host, no cloud measured | [../results/scale.md](../results/scale.md) |
+| The one-loop burst is not met | A 1,000,000-case daily catch-up exceeds one 10 s loop (it drains across loops); one laptop-class host, no cloud measured (the sweep cadence itself is now met) | [../results/scale.md](../results/scale.md) |
 | Overload is refused, not served | Above the highest passing rate the API answers 503 with a retry time | [../results/scale.md](../results/scale.md) |
 | Hosted demo not yet exercised | Not deployed; the container builds, identity provider, certificates and reset are untested on the VM | [../governance/hosting-gcp.md](../governance/hosting-gcp.md) |
 | Pathway values not clinician-reviewed | Thresholds and timings are placeholders until the clinical review (H1) | [../governance/third-pathway.md](../governance/third-pathway.md) |
