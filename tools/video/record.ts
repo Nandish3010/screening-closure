@@ -79,7 +79,8 @@ function agencyBudget(raw: string | undefined): number {
 
 /** Recreate the API container with the given environment added (no shell: the values travel in the child's environment). */
 function composeApi(env: Record<string, string>): { code: number; out: string } {
-  const r = spawnSync("docker", ["compose", "up", "-d", "--no-build", "api"], { cwd: REPO, encoding: "utf-8", timeout: 180_000, env: { ...process.env, ...env } });
+  const { AGENCY_RUN_BUDGET_SECONDS: _inherited, ...base } = process.env; // an inherited value never leaks into the restore
+  const r = spawnSync("docker", ["compose", "up", "-d", "--no-build", "api"], { cwd: REPO, encoding: "utf-8", timeout: 180_000, env: { ...base, ...env } });
   return { code: r.status ?? 1, out: `${r.stdout ?? ""}${r.stderr ?? ""}` };
 }
 

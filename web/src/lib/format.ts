@@ -24,6 +24,8 @@ export function shortRef(ref: string): string {
 
 const REF_WORDS: [RegExp, string][] = [
   [/^Procedure\/colonoscopy-/, "the colonoscopy record"],
+  [/^Procedure\/colposcopy-/, "the colposcopy record"],
+  [/^DiagnosticReport\/colposcopy-report-/, "the colposcopy report"],
   [/^DiagnosticReport\/colonoscopy-report-/, "the colonoscopy report"],
   [/^DiagnosticReport\//, "the report"],
   [/^Procedure\//, "the procedure record"],

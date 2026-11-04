@@ -177,7 +177,7 @@ For the submission video (H4): the same two beats compressed, cut from 14 shots 
 
 | # | Shot | Live step | On-screen caption |
 |---|---|---|---|
-| 1 | The problem, and what this is | Problem | "Screening Closure, by Humans Decide. The product demo data is synthetic. Nothing is diagnosed." |
+| 1 | The problem, and what this is | Problem | "Screening Closure, by Humans Decide: bowel screening and, on the same engine, cervical. The product demo data is synthetic." |
 | 2 | An owned case, the scheduler stopped, silence | C1 to C4 | "A positive result has a named owner and a clock. We stop the scheduler on purpose; the patient does not answer. Mock messages only." |
 | 3 | Watchdog catches the dead scheduler, a person accepts | C5 to C7 | "The watchdog catches the dead scheduler within minutes and the dashboard says so. After the restart the escalation appears, and a person must accept it." |
 | 4 | Bad reference refused, agency inbox, signed and closed | R1 to R3 | "A reference that does not exist is refused. The inbox holds only the human decision. Real evidence and a clinician's own signature close the case." |

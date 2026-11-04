@@ -58,6 +58,37 @@ describe("Timeline in plain language", () => {
     expect(plainSummary(type, payload as Record<string, unknown>)).toBe(expected);
   });
 
+  it.each([
+    ["contact_patient", { channel: "whatsapp" }, "By whatsapp."],
+    ["reply_received", { channel: "sms" }, "Arrived by sms. The reply text is kept outside the audit trail."],
+    ["escalate", { target: "supervisor", level: 2 }, "Passed up to the supervisor (level 2)."],
+    ["message_sent", { channel: "sms" }, "Sent by sms."],
+    ["consent_updated", { channel_sms: false, share_with_specialist: true }, "text messages: not allowed · sharing with the specialist: allowed"],
+    ["consent_updated", { withdrawn: true }, "consent withdrawn"],
+    ["book_confirmatory", { appointment_ref: "Appointment/appt-00a1b2" }, "Booked: the appointment (\u202600a1b2)."],
+    ["reassign", { owner: "specialist_owner:u2", to_provider: "Marina Digestive Health" }, "Re-routed to u2 at Marina Digestive Health."],
+    ["mark_overdue", { due_at: "2026-01-12T08:00:00Z" }, "The step was due 2026-01-12 08:00 UTC."],
+    ["review_requested", { reason: "consent_withdrawn" }, "Reason: consent withdrawn."],
+    ["complete_confirmatory", { result_ref: "Procedure/colposcopy-7f3a9c10-0017" }, "Result recorded: the colposcopy record (\u20260017)."],
+    ["close", { evidence_ref: "DiagnosticReport/colposcopy-report-7f3a9c10-00ab12" }, "Closed on the colposcopy report (\u202600ab12)."],
+  ])("%s: more events say their decision-relevant fact", (type, payload, expected) => {
+    expect(plainSummary(type, payload as Record<string, unknown>)).toBe(expected);
+  });
+
+  it("a refused hand-off and an accepted escalation carry their event number and sentence in the row", () => {
+    render(<Timeline items={[
+      ev(5, "handoff_rejected", "specialist_owner:u1", "human", { reason: "capacity" }),
+      ev(6, "escalation_accepted", "supervisor:u3", "human", { rung: "supervisor" }),
+      ev(7, "reply_classified", "model:triage", "model", { intent: "other", confidence: 0.4, needs_human: true, model_id: "qwen2.5-1.5b-4bit+lora-8b5a49fc" }),
+    ]} />);
+    const rows = screen.getByTestId("timeline").querySelectorAll("li");
+    expect(within(rows[0] as HTMLElement).getByTestId("tl-plain")).toHaveTextContent("Rejected: " + handoffReasonLabel("capacity"));
+    expect(within(rows[0] as HTMLElement).getByTestId("tl-who")).toHaveTextContent("Event #5");
+    expect(within(rows[1] as HTMLElement).getByTestId("tl-who")).toHaveTextContent("Event #6");
+    expect(within(rows[2] as HTMLElement).getByTestId("tl-plain")).toHaveTextContent("A person must look at it.");
+    expect(within(rows[2] as HTMLElement).getByTestId("tl-plain")).not.toHaveTextContent("qwen");
+  });
+
   it("an event type with nothing to say returns nothing, and a refused hand-off keeps its reason", () => {
     expect(plainSummary("accept_ownership", {})).toBe("");
     expect(plainSummary("handoff_rejected", {})).toMatch(/^Rejected: /);

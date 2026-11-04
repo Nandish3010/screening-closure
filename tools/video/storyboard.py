@@ -73,7 +73,7 @@ def validate(sb: dict) -> list[str]:
     return errors
 
 
-WORDS_PER_SECOND = 2.6  # Kokoro bf_emma at speed 1.0 measured about 2.6 to 2.9 words a second
+WORDS_PER_SECOND = 2.75  # Kokoro bf_emma at speed 1.0: the spoken end card measured 17 words in 6.2 s (2.74), shots 2.6 to 2.9
 
 
 def card_seconds(card: dict) -> float:

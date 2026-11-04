@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { can, isOwnerScoped, useApp } from "../app/AppContext";
 import type {
@@ -102,7 +102,9 @@ export function CaseDetailPage() {
   const [replyResult, setReplyResult] = useState<ReplyResult | null>(null);
   const [replyQuote, setReplyQuote] = useState("");
   // One component serves every /coordinator/:caseId: a reply (and its text) belongs to the case it was recorded on.
+  const currentCase = useRef(caseId);
   useEffect(() => {
+    currentCase.current = caseId;
     setReplyResult(null);
     setReplyQuote("");
     setReplyText("");
@@ -650,10 +652,13 @@ export function CaseDetailPage() {
               busy={busy}
               disabledReason={why("recordReply", "coordinator") ?? (replyText.trim() ? null : STAFF.replyForm.needText)}
               onClick={() => act(async () => {
+                const forCase = caseId;
                 const r = await api.postReply(caseId, { channel: replyChannel, text: replyText.trim() });
-                setReplyResult(r);
-                setReplyQuote(replyText.trim());
-                setReplyText("");
+                if (currentCase.current === forCase) { // a reply that comes back after the user moved to another case is not shown there
+                  setReplyResult(r);
+                  setReplyQuote(replyText.trim());
+                  setReplyText("");
+                }
                 return r;
               }, (r: ReplyResult) => (r.needs_human ? STAFF.replyForm.recordedNeedsPerson : STAFF.replyForm.recordedHandled(String(r.intent).replace(/_/g, " "))))}
             >
@@ -663,7 +668,7 @@ export function CaseDetailPage() {
               <p className={`banner ${replyResult.needs_human ? "banner-warn" : "banner-ok"}`} role="status" data-testid="reply-result" data-intent={replyResult.intent} data-needs-human={String(replyResult.needs_human)}>
                 {replyQuote && (
                   <span className="reply-quote" data-testid="reply-quote">
-                    <bdi>{STAFF.replyForm.quote} “{replyQuote}”</bdi>
+                    {STAFF.replyForm.quote} “<bdi dir="auto">{replyQuote}</bdi>”
                   </span>
                 )}
                 <strong>{STAFF.replyForm.readAs} {String(replyResult.intent).replace(/_/g, " ")}</strong>

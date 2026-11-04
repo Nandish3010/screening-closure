@@ -1,9 +1,9 @@
 # E16: the shot list for the 3-minute submission video and the backup demo video.
 #
-# Derived from the "Backup video storyboard (3 minutes)" table in docs/submission/demo-script.md (shots 1 to 10, same
-# two beats, same captions: the catch (shots 2, 3), then the reveal (shots 4 to 6), then the numbers (7 to 9) and the ask (10);
-# cut from 14 shots to 10 in the M7 presentation fixes, and the triage cameo re-scripted to match api/app/triage/dialect.py) and
-# driven against the LIVE stack (http adapter) after `make demo-reset` and `make demo-scenario UNTIL=owner_accepted`.
+# Derived from the "Backup video storyboard (3 minutes)" table in docs/submission/demo-script.md (same two beats, same captions:
+# the catch (shots 2, 3), then the reveal (shots 4 to 6), then the numbers (7 to 9) and the ask (10); shot 11, the effort counter on
+# a case, is backup-only) and driven against the LIVE stack (http adapter) after `make demo-reset` and
+# `make demo-scenario UNTIL=owner_accepted`. Eleven shots, ten of them in the 3-minute cut.
 # Read by tools/video/storyboard.py (validation, `make video-check`), tools/video/record.ts (Playwright) and
 # tools/video/narrate.py (text to speech). tests/test_demo_docs.py keeps this file and the demo script in step.
 #
@@ -14,7 +14,8 @@
 # Lengths: a shot's `duration` is a minimum. The real length is the spoken narration plus a short lead and tail (narrate.py), so the
 # narration is continuous with about 0.4 s between shots, and the recording is sped up or its last frame held to fit. The cards are
 # spoken too (cards.<name>.narration; `seconds: 0` leaves a card out: the video then opens on its first shot). `make video-check`
-# estimates the cards from their word count; assemble.sh holds the real total to 180 s.
+# estimates a spoken card from its word count (about 2.75 words a second plus the lead and tail, close to the measured length);
+# assemble.sh holds the real total to 180 s.
 #
 # Actions (one key per step):
 #   goto: /path                      open a route in the app ({case} = the named patient's case, {case2} = the prepared second case)
@@ -31,7 +32,7 @@
 #   cut: start | end                 the video between the two markers is removed (dead waiting); the shot keeps its caption
 #   shell: "command"                 run in the repository root (not shown)
 #   terminal: {command, run: true, timeout: s, reuse: key, lines: n}   run a command and show it in a terminal page
-#   card: {kind: stat|text|results|slide, ...}                         a full-screen page rendered by the tool
+#   card: {kind: stat|figure|results|slide|text, ...}                  a full-screen page rendered by the tool
 #   advance_clock: days              supervisor only: the header's Advance clock (days) control, then the badge changes
 
 meta:
@@ -66,8 +67,8 @@ shots:
     submission: true
     route: "card:stat, /coordinator"
     duration: 19
-    caption: "Screening Closure, by Humans Decide. The product demo data is synthetic. Nothing is diagnosed."
-    narration: "In one Abu Dhabi audit, only thirty point five percent of positive bowel screening tests reached a colonoscopy. Screening Closure, by Humans Decide, gives every positive result an owner and a clock. The routine follow-up runs itself, and people make the decisions. Nothing is diagnosed."
+    caption: "Screening Closure, by Humans Decide: bowel screening and, on the same engine, cervical. The product demo data is synthetic."
+    narration: "In one Abu Dhabi audit, only thirty point five percent of positive bowel screening tests reached a colonoscopy. Screening Closure, by Humans Decide, gives every positive result an owner and a clock. The routine follow-up runs itself, and people make the decisions. The same engine already runs a second pathway, cervical screening. Nothing is diagnosed."
     actions:
       - card: {kind: stat, brand: "Screening Closure, by Humans Decide", value: "30.5%", text: "of positive screening tests in an Abu Dhabi audit reached a colonoscopy", source: "Almansoori et al., BMC Cancer 2021", footer: "The product demo data in this video is synthetic"}
       - hold: 9
@@ -155,7 +156,7 @@ shots:
     route: "/coordinator/{case2}, /agency"
     duration: 19
     caption: "A reference that does not exist is refused. The inbox holds only the human decision. Real evidence and a clinician's own signature close the case."
-    narration: "Nothing closes on a promise. A made-up evidence reference is refused, and the screen shows exactly what was typed. The agents prepare the morning's work, and the inbox keeps only what needs a human. The real evidence and the clinician's own signature close the case. In two thousand random synthetic test sequences, nothing ever closed without evidence."
+    narration: "Nothing closes on a promise. A made-up evidence reference is refused, and the screen shows exactly what was typed. The agents prepare the work, and the inbox keeps only what needs a human. The real evidence and the clinician's own signature close the case. In two thousand random synthetic test sequences, nothing ever closed without evidence."
     actions:
       - goto: "/coordinator/{case2}"
       - role: specialist
@@ -256,7 +257,7 @@ shots:
     route: "card:results"
     duration: 22
     caption: "Synthetic simulation, US-calibrated baseline, before capacity limits. Colonoscopy within 180 days 51% to 67% (a ratio of about 1.31, calibrated, not new evidence). Closed with evidence and a signature 53% to 68%. Lost without anyone told 45% to 21%, and 0% among cases reached, true by construction."
-    narration: "Synthetic simulation, US-calibrated, before capacity limits. Colonoscopy within one hundred eighty days rises from fifty-one to sixty-seven percent, a ratio of about one point three one, calibrated to published trials, not new evidence. Patients lost without anyone told fall from forty-five to twenty-one percent overall, and to zero among cases reached, by construction."
+    narration: "Synthetic simulation, US-calibrated, before capacity limits. Colonoscopy within one hundred eighty days rises from fifty-one to sixty-seven percent, a ratio of about one point three one, calibrated, not new evidence. Patients lost without anyone told fall from forty-five to twenty-one percent overall, and to zero among cases reached, by construction."
     actions:
       - card:
           kind: results
@@ -296,7 +297,7 @@ shots:
     route: "card:slide"
     duration: 13
     caption: "Synthetic simulation: the 40% target is not met in realistic scenarios."
-    narration: "Labour falls thirty-six percent per handled case, twenty percent programme-wide. The forty percent target is not met. Coordinator minutes fall thirty-six percent, owner-clinician minutes rise ninety-four percent, and specialist minutes rise twenty-three percent."
+    narration: "Labour falls thirty-six percent per handled case, twenty percent programme-wide. The forty percent target is not met. Coordinator minutes fall thirty-six percent; owner-clinician minutes rise ninety-four percent and specialist minutes twenty-three percent."
     actions:
       - card:
           kind: figure

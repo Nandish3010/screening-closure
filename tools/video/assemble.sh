@@ -26,7 +26,8 @@ for name in title end; do
   s=$(secs "$name")
   # a card of 0 seconds is left out (the video then opens on its first shot)
   "$PY" -c "import sys; sys.exit(0 if float('$s') > 0 else 1)" || continue
-  spoken=$("$PY" -c "import json, os; d = json.load(open('cards.json')) if os.path.exists('cards.json') else {}; print('1' if d.get('spoken', {}).get('$name') else '0')")
+  # spoken only if the CURRENT storyboard gives this card narration (an old card-*.m4a, or an old cards.json, must not put a stale voice-over on it)
+  spoken=$("$PY" -c "import sys; sys.path.insert(0, '$HERE'); import storyboard; print('1' if storyboard.load()['cards']['$name'].get('narration') else '0')")
   if [ "$spoken" = 1 ] && [ -f "audio/card-$name.m4a" ]; then
     # a spoken card: the narration (after the lead) over the still, padded with silence to the card length
     ffmpeg -y -loglevel error -loop 1 -t "$s" -framerate 25 -i "cards/$name.png" -i "audio/card-$name.m4a" \

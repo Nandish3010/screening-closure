@@ -107,3 +107,28 @@ def test_narrate_refuses_to_fall_back_to_say_unless_asked(tmp_path, monkeypatch)
     with pytest.raises(SystemExit) as e:
         narrate.synth("hello", tmp_path / "x.wav", sb)
     assert "Kokoro is not usable" in str(e.value) and "--allow-say-fallback" in str(e.value)
+
+
+def test_the_committed_end_card_estimate_is_close_to_its_measured_length():
+    # measured with Kokoro bf_emma: the 17-word end card narration took 6.2 s, so the card is 6.6 s with the lead and tail
+    sb = storyboard.load()
+    assert abs(storyboard.card_seconds(sb["cards"]["end"]) - 6.6) < 0.3
+
+
+def test_assemble_decides_a_spoken_card_from_the_current_storyboard_not_from_old_files():
+    text = (Path(__file__).resolve().parents[1] / "assemble.sh").read_text(encoding="utf-8")
+    assert "storyboard.load()['cards']" in text and ".get('narration')" in text
+    assert "d.get('spoken'" not in text
+
+
+def test_narrate_removes_stale_card_audio_before_deciding_whether_a_card_is_spoken():
+    text = (Path(__file__).resolve().parents[1] / "narrate.py").read_text(encoding="utf-8")
+    assert text.index('audio_dir.glob(f"card-{name}.*")') < text.index('if card.get("narration")')
+
+
+def test_record_passes_the_agency_budget_through_the_environment_and_fails_when_the_restore_fails():
+    text = (Path(__file__).resolve().parents[1] / "record.ts").read_text(encoding="utf-8")
+    assert "AGENCY_RUN_BUDGET_SECONDS=${" not in text  # never interpolated into a shell command
+    assert "env: { ...base, ...env }" in text and "agencyBudget(process.env.VIDEO_AGENCY_BUDGET)" in text
+    assert "20 to 3600" in text
+    assert "if (rb2.code !== 0 && !failure) failure = new Error(" in text
