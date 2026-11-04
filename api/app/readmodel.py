@@ -129,6 +129,21 @@ def case_row(lc: LoadedCase, pathway: Pathway, calendar: WorkingCalendar) -> dic
     }
 
 
+def at_risk(lc: LoadedCase, pathway: Pathway, now: datetime) -> bool:
+    """The worklist's `at_risk`: exactly the case `GET /metrics/closure` counts in `lost_to_follow_up` (no confirmatory
+    completed, no informed refusal on record, and an explicit lost-contact flag or no pathway progress for 30 days at `now`),
+    from the same fold (`metrics.build_record`, `metrics.lost_cases`), so a link to the at-risk cases lists the cases the
+    dashboard counts. False for a log that does not replay."""
+    from app import metrics
+
+    if lc.model is None:
+        return False
+    try:
+        return metrics.lost_cases([metrics.build_record(lc.events, pathway)], now)["lost_to_follow_up"] == 1
+    except Exception:  # noqa: BLE001 - an ordering/filter aid must never take the worklist down
+        return False
+
+
 def priority_of(events, pathway: Pathway) -> dict | None:
     genesis = events[0].payload if events else {}
     return priority_module.describe(pathway.priority, genesis.get("priority"), genesis.get("priority_rule"))

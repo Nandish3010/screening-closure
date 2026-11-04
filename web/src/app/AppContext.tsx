@@ -126,6 +126,8 @@ const STAFF_ESCALATORS = ["coordinator", "supervisor"] as const;
 export const PERMISSIONS = {
   acknowledge: ["coordinator"],
   accept: OWNERS,
+  /** `accept_ownership` (EVENT_POLICY): the case-owner clinicians and the supervisor; the Today screen offers it to the supervisor too. */
+  takeOwnership: ["supervisor", ...OWNERS],
   contact: ["coordinator", "supervisor", ...OWNERS],
   book: ["coordinator", ...OWNERS],
   handOff: OWNERS,

@@ -4,6 +4,7 @@ import { STAFF } from "../i18n/strings";
 import { UNRANKED, daysOf, pctOf } from "../lib/funnel";
 import { shortId } from "../lib/format";
 import { pathwayMeta } from "../lib/pathway";
+import { DEFAULT_FILTERS, paramsFromFilters } from "../lib/worklist";
 import { priorityLabel } from "../lib/priority";
 
 export interface FunnelFilters {
@@ -149,7 +150,7 @@ export function FunnelCard({
                 {data.at_risk.truncated && <p className="muted">{s.riskShowing(data.at_risk.cases.length, data.at_risk.count)}</p>}
               </>
             )}
-            <p><Link to="/coordinator" className="btn btn-small" data-testid="funnel-worklist-link">{s.riskWorklist}</Link></p>
+            <p><Link to={`/coordinator?${paramsFromFilters({ ...DEFAULT_FILTERS, atRisk: true, pathway: filters.pathway, priority: filters.priority === UNRANKED ? "" : filters.priority })}`} className="btn btn-small" data-testid="funnel-worklist-link">{s.riskWorklist}</Link></p>
           </div>
         </>
       )}

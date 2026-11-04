@@ -413,3 +413,30 @@ body.tour-open { padding-bottom: 46vh; }
 .why-detail button.linklike { background: none; border: 0; padding: 1px 0; color: var(--link); text-decoration: underline; cursor: pointer; font: inherit; }
 .why-detail .mono { margin-top: 2px; overflow-wrap: anywhere; }
 .reply-quote { display: block; margin-bottom: var(--s-1); }
+
+/* Today (C14): the coordinator's landing screen. A card per queue, a card per item; actions stack on a phone. */
+.today-jump ul { display: flex; flex-wrap: wrap; gap: var(--s-2); margin: 0 0 var(--s-3); padding: 0; list-style: none; }
+.today-group { margin: var(--s-4) 0; }
+.today-group h2 { margin: 0 0 var(--s-3); display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); }
+.today-group h2:focus { outline: 3px solid var(--focus); outline-offset: 3px; }
+.today-list { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--s-3); margin: 0; padding: 0; list-style: none; }
+.today-item { min-width: 0; overflow-wrap: anywhere; border: 1px solid var(--border); border-radius: var(--r-md); padding: var(--s-3) var(--s-4); background: var(--surface-2); }
+.today-head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); }
+.today-head .chip { white-space: normal; }
+.today-case { font-weight: 700; font-size: var(--fs-md); padding: var(--s-1) 0; }
+.today-why { margin: var(--s-2) 0 var(--s-1); }
+.today-notes { margin: 0 0 var(--s-1); padding: 0; }
+.today-meta { margin: 0 0 var(--s-2); font-size: var(--fs-sm); }
+.today-actions { display: flex; flex-wrap: wrap; align-items: flex-start; gap: var(--s-2); }
+.today-actions .action { display: flex; flex-direction: column; gap: var(--s-1); max-width: 22rem; }
+.today-actions a.btn { display: inline-flex; align-items: center; text-decoration: none; }
+.today-clear { margin: 0; padding: var(--s-3) var(--s-4); border-radius: var(--r-md); background: var(--ok-bg); color: var(--ok); border: 1px solid var(--ok); }
+.today-tick { font-weight: 700; margin-inline-end: var(--s-1); }
+.today-live { min-height: 0; }
+@media (max-width: 640px) {
+  .today-jump ul { flex-direction: column; }
+  .today-jump .btn { width: 100%; text-align: start; }
+  .today-actions { flex-direction: column; align-items: stretch; }
+  .today-actions .action { max-width: none; }
+  .today-actions .btn { width: 100%; justify-content: center; }
+}

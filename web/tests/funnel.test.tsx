@@ -120,7 +120,7 @@ describe("T-C21: the card on the dashboard", () => {
     const rows = within(risk).getAllByTestId("funnel-risk-row");
     expect(rows).toHaveLength(m.at_risk.cases.length);
     expect(within(rows[0]).getByRole("link")).toHaveAttribute("href", `/coordinator/${m.at_risk.cases[0].case_id}`);
-    expect(within(risk).getByTestId("funnel-worklist-link")).toHaveAttribute("href", "/coordinator");
+    expect(within(risk).getByTestId("funnel-worklist-link")).toHaveAttribute("href", "/coordinator?at_risk=1");
   });
 
   it("re-asks the API when a filter changes, with exactly that filter, and offers the pathways and tiers the server runs", async () => {
