@@ -25,7 +25,6 @@ PYEOF
 )
 ref=""
 [ -f /var/lib/sc/demo_patient_ref ] && ref=$(cat /var/lib/sc/demo_patient_ref)
-SIM_CLOCK_START=$(cat /var/lib/sc/sim_clock_start 2>/dev/null || true); export SIM_CLOCK_START
 printf '%s' "$secrets_json" | python3 "$PY/render_env.py" --host "$HOST" --mode "$MODE" --out-dir /etc/sc --demo-patient-ref "$ref"
 unset secrets_json
 

@@ -1,7 +1,8 @@
 #!/bin/bash
 # Creates the hosted demo's cloud resources and delivers the code. THIS SPENDS MONEY: run it only after you approved the cost in
 # docs/governance/hosting-gcp.md. It refuses to run without --yes-spend. Idempotent (re-running reuses what exists).
-#   deploy.sh --yes-spend
+#   deploy.sh --yes-spend [--model tools/triage/gguf/triage-q8_0.gguf]
+# --model uploads the converted triage model (about 1-1.7 GB, over IAP SSH) to the VM; without it replies fail safe to a person.
 # Creates: APIs enabled, a service account with NO project roles, secrets in Secret Manager (generated here, never printed),
 # firewall (80/443 from anywhere, SSH only through IAP), one static IP, one VM, a billing budget alert. It does NOT start serving
 # the public: the VM boots in `seed` mode. Next: seed.sh.
@@ -9,6 +10,8 @@ here=$(cd "$(dirname "$0")" && pwd)
 # shellcheck disable=SC1091
 . "$here/lib.sh"
 [ "${1:-}" = "--yes-spend" ] || { echo "Refusing: pass --yes-spend to confirm you approved the cost (see hosting-gcp.md)."; exit 2; }
+MODEL=""; [ "${2:-}" = "--model" ] && MODEL=${3:-}
+if [ -n "$MODEL" ] && [ ! -f "$MODEL" ]; then echo "model file not found: $MODEL" >&2; exit 2; fi
 need_project
 P=(--project "$GCP_PROJECT")
 
@@ -24,7 +27,7 @@ echo "== secrets (generated now, stored in Secret Manager, never printed)"
 for n in $SC_ITEMS; do
   s="$SC_PREFIX-$n"
   if ! gcloud secrets describe "$s" "${P[@]}" >/dev/null 2>&1; then
-    openssl rand -hex 24 | tr -d '\n' | gcloud secrets create "$s" --data-file=- --replication-policy=user-managed --locations="$GCP_REGION" "${P[@]}" >/dev/null
+    openssl rand -hex 24 | tr -d '\n' | gcloud secrets create "$s" --data-file=- --replication-policy=automatic "${P[@]}" >/dev/null
   fi
   gcloud secrets add-iam-policy-binding "$s" --member "serviceAccount:$SA_EMAIL" --role roles/secretmanager.secretAccessor "${P[@]}" >/dev/null
 done
@@ -71,4 +74,9 @@ gcloud compute scp --tunnel-through-iap --zone "$GCP_ZONE" "${P[@]}" "$tmp/sc.tg
 gssh --command 'sudo rm -rf /srv/sc/repo.new && sudo mkdir -p /srv/sc/repo.new && sudo tar -xzf /tmp/sc.tgz -C /srv/sc/repo.new && \
   if [ -d /srv/sc/repo/data ]; then sudo mv /srv/sc/repo/data /srv/sc/repo.new/data; fi && \
   sudo rm -rf /srv/sc/repo && sudo mv /srv/sc/repo.new /srv/sc/repo && rm /tmp/sc.tgz'
+if [ -n "$MODEL" ]; then
+  echo "== uploading the triage model ($(du -h "$MODEL" | cut -f1)); sha256 $(shasum -a 256 "$MODEL" | cut -d' ' -f1)"
+  gcloud compute scp --tunnel-through-iap --zone "$GCP_ZONE" "${P[@]}" "$MODEL" "$SC_VM_NAME:/tmp/triage.gguf"
+  gssh --command 'sudo mkdir -p /srv/sc/models && sudo mv /tmp/triage.gguf /srv/sc/models/triage.gguf && sudo chmod 644 /srv/sc/models/triage.gguf && sha256sum /srv/sc/models/triage.gguf'
+fi
 echo "done. Next:  deploy/gcp/seed.sh   then   deploy/gcp/smoke-test.sh   then   deploy/gcp/credentials.sh"

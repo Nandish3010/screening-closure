@@ -1210,7 +1210,7 @@ export interface ApiClient {
    * GET /health (public): `sim_time` is the simulation clock, readable by every role (`/metrics/closure` is staff-only).
    * `outreach` (A26, ADR-037) says whether automatic patient messages are signed off; absent on an older server.
    */
-  health(): Promise<{ status: string; sim_time?: string; outreach?: OutreachStatus }>;
+  health(): Promise<{ status: string; sim_time?: string; outreach?: OutreachStatus; demo?: { simulated_clock: boolean } }>;
   /**
    * Switch identity. http: POST /auth/dev-login {role (backend role), name, provider?}, keep the bearer
    * token and attach it to every later request (requests wait for a login in flight). `provider` is sent

@@ -31,3 +31,7 @@ deploy/bicep/main.bicepparam
 
 # HL7 TLS test certificates (tools/hl7/gen_test_certs.sh); throw-away, never commit keys
 tools/hl7/.certs/
+
+# Hosted-demo triage build: converted GGUF models and the llama.cpp checkout (tools/triage/convert_gguf.sh)
+tools/triage/gguf/
+tools/triage/llama.cpp/

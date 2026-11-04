@@ -17,6 +17,12 @@ Long-form record: [reply-triage-card.md](../reply-triage-card.md). Template: [RE
 
 A patient answers a result-ready message by SMS or WhatsApp, in Arabic, English, Arabizi or a mixture. A coordinator records the reply (`POST /cases/{id}/replies`). The classifier labels it with one of nine intents (`confirm`, `reschedule`, `cannot_attend`, `dont_understand`, `wrong_number`, `already_done`, `opt_out`, `question`, `other`) and a calibrated confidence. When the intent is in the auto-handled set and the confidence reaches the threshold (0.553, `eval.json` `threshold`), it writes a `callback_requested` or `review_requested` flag on the case; otherwise it asks a person to read the reply. Flags move nothing: they are work for a person.
 
+## Hosted build (GGUF), for the cloud-hosted judge demo
+
+The same fine-tuned model, converted to run on our cloud server, no third-party AI. MLX runs on Apple silicon only, so the hosted demo ([hosting-gcp.md](../hosting-gcp.md)) serves a converted build: the committed LoRA adapter merged into the local 4-bit base (`mlx_lm fuse --dequantize`), converted to GGUF and quantized (Q8_0 or Q5_K_M) by llama.cpp, run on the CPU of our own VM. Reply text stays on that server. Its model id is `qwen2.5-1.5b-<quant>-gguf+lora-<adapter hash>`; the hosted UI labels it "On-premises model (runs on our server, no cloud AI)".
+
+It is a **different artefact** from the MLX model above (the weights are quantized twice, a different runtime computes the scores), so the figures in this card do not transfer. It has its own calibration (`api/app/triage/calibration_gguf.json`) and its own evaluation on the same synthetic splits with the same scripts: `tools/triage/evaluate_gguf.py`, report `docs/results/triage/eval-gguf-<quant>.md`, with the per-language and per-dialect results through the deployed path (dialect rule on and off) and a before/after table against the MLX model. **Status: conversion and evaluation pending (they need a free machine); no figure for the hosted build is claimed until that report exists.** Intended use, out-of-scope uses, human-in-the-loop rules (opt-out, question and other always go to a person), the dialect rule and the fail-safe (unreachable, slow or malformed: a person reads it) are unchanged.
+
 ## Out-of-scope uses
 
 - Any clinical decision, answering the patient, withdrawing or restoring consent, closing, reopening or moving a case. The actor `system:triage` has one row in the actor table (ADR-035 in `project/DECISIONS.md`); the state machine refuses the rest.

@@ -240,7 +240,7 @@ export const STAFF = {
   replyForm: {
     heading: "Record patient reply",
     intro: hostedDemo()
-      ? "The patient wrote back. Type or paste the reply. In this hosted demo the on-device reply model is not running (it needs the clinic's own machine), so only the opt-out keyword check runs and every other reply is sent to a person to read. The text is kept outside the audit trail. Nothing here changes, sends or closes a case on its own."
+      ? "The patient wrote back. Type or paste the reply. On-premises model (runs on our server, no cloud AI): the same small fine-tuned model as in the clinic build, converted to run on this server's CPU, reads it. The text is kept outside the audit trail, and the case gets either one safe step or a request for a person to read it. The model cannot change the case, send, close or withdraw consent."
       : "The patient wrote back. Type or paste the reply: a small offline model reads it, the text is kept outside the audit trail, and the case gets either one safe step or a request for a person to read it. The model cannot change the case, send, close or withdraw consent.",
     channel: "Reply arrived by",
     text: "Patient's reply",
@@ -256,6 +256,11 @@ export const STAFF = {
   outreachDemoBanner: {
     fallback: "DEMO PLACEHOLDER (clinical sign-off pending, H1)",
     explanation: "The automatic patient messages on this system run on a demo approval, not on a clinical lead's signature. No clinician has approved the message texts or the rules that send them. Real patients would receive nothing until the policy is signed.",
+  },
+  /** Hosted judge demo (`GET /health` -> `demo.simulated_clock`): every date on screen is simulated, and a supervisor can move it. */
+  demoClockBanner: {
+    label: "Demo: simulated time",
+    explanation: "All dates and deadlines in this demo run on a simulated clock over synthetic data. Nothing here is real time or a real patient. A supervisor can use \"Advance\" in the header to move the clock forward.",
   },
   contactUpdated: "Contact details confirmed by a person",
   /** D13: the reply triage (`system:triage`). The events carry no reply text; it is stored outside the log. */

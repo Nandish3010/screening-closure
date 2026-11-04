@@ -4,7 +4,12 @@ export COMPOSE_FILE="$SC_REPO/docker-compose.yml:$SC_REPO/deploy/gcp/compose.gcp
 export COMPOSE_ENV_FILES=/etc/sc/compose.env
 export COMPOSE_PROJECT_NAME=screening-closure
 SC_MODE=$(cat /var/lib/sc/mode 2>/dev/null || echo seed)
-if [ "$SC_MODE" = production ]; then export COMPOSE_PROFILES=public; else unset COMPOSE_PROFILES; fi
-# tools/demo/snapshot.sh: the production API has no dev login, so the reset cannot move the simulation clock (it is wall time there).
+if [ "$SC_MODE" = production ]; then
+  export COMPOSE_PROFILES=public
+  # The triage model service only when its GGUF file has been delivered (deploy.sh --model); without it the API fails safe to a person.
+  [ -f /srv/sc/models/triage.gguf ] && export COMPOSE_PROFILES=public,triage
+else unset COMPOSE_PROFILES; fi
+# tools/demo/snapshot.sh: the production API has no dev login, so the reset cannot call POST /clock/reset; the snapshot restore
+# already puts the simulated clock back where the snapshot had it.
 [ "$SC_MODE" = production ] && export SNAPSHOT_SKIP_CLOCK_RESET=1
 cd "$SC_REPO"

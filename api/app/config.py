@@ -39,6 +39,14 @@ class Settings(BaseSettings):
     # (X-Leader-Holder / X-Leader-Token). Compose's `scale` profile turns it on. Off, a call without the headers is
     # allowed (manual runs, older tests); a call WITH stale headers is refused either way.
     require_leader_fence: bool = False
+    # HOSTED DEMO ONLY (deploy/gcp, docs/governance/hosting-gcp.md). Outside APP_ENV=dev the simulation clock is refused ("CLOCK_MODE is
+    # not 'wall'") because moving a clinical safety clock is never a production affordance. A public judge demo of SYNTHETIC data needs
+    # it so the pathway can be shown end to end, so it can be allowed by two explicit flags together, never one:
+    # DEMO_SIMULATED_CLOCK=1 (this switch) AND DEMO_DEPLOYMENT=1 (this deployment declares itself a demo). Both are checked in
+    # app.auth.secure_config_problems; every other production check still applies. Only POST /clock/advance is registered (no reset)
+    # and GET /health reports `demo.simulated_clock`, which the web app turns into the "Demo: simulated time" banner.
+    demo_simulated_clock: bool = False
+    demo_deployment: bool = False
     leader_lease_ttl_seconds: float = Field(default=30.0, gt=1, le=3600)
     watchdog_idle_days: int = 7
     # M7-7: bounded work per scheduler sweep (app.sweep.run_sweep). At most this many due cases are evaluated per sweep

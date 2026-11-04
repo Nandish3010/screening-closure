@@ -6,7 +6,9 @@ production check (app.auth.secure_config_problems). The command line reads a JSO
 (mode 0600) into --out-dir. Nothing here prints a secret.
 
 Two modes of the SAME stack:
-  production  APP_ENV=production, OIDC sign-in, wall clock. This is what judges reach.
+  production  APP_ENV=production, OIDC sign-in, no dev login, the SIMULATED clock under the explicit demo gate
+              (DEMO_SIMULATED_CLOCK=1 + DEMO_DEPLOYMENT=1; app.auth.demo_clock_problems) so a supervisor can "Advance" demo time.
+              Every other fail-closed check applies. This is what judges reach.
   seed        APP_ENV=dev, dev login, simulation clock. Used once, with the public edge STOPPED and every port on loopback,
               to load the synthetic cohort and take the snapshot (deploy/gcp/seed.sh). Never reachable from the internet.
 """
@@ -52,13 +54,14 @@ def build_files(host: str, secrets: dict[str, str], mode: str = "production", de
         "AUTH_MODE": "oidc" if prod else "dev",
         "OIDC_ISSUER": issuer,
         "OIDC_JWKS_URL": f"http://keycloak:8080/auth/realms/{REALM}/protocol/openid-connect/certs",
-        "CLOCK_MODE": "wall" if prod else "sim",
+        "CLOCK_MODE": "sim",  # the demo runs on simulated time in both modes (production: only under the demo gate, api.env)
         "OUTREACH_DEMO_APPROVAL": "0",  # never the demo placeholder: the policy stays unsigned and the automation sends nothing
         "LLM_PROVIDER": "anthropic",
         "LLM_CACHE_MODE": "replay",  # recorded Claude outputs only
         "LLM_NETWORK_ENABLED": "false",
         "LLM_DAILY_TOKEN_BUDGET": "0",  # and a zero spend cap even if someone flips the switches
-        "TRIAGE_REMOTE_URL": "",  # no host model server in the cloud: see hosting-gcp.md, "Reply triage"
+        # The on-premises GGUF build of the fine-tuned triage model (llama.cpp on this VM, deploy/gcp/compose.gcp.yml): hosting-gcp.md.
+        "TRIAGE_REMOTE_URL": "http://triage:8765",
         "REQUIRE_LEADER_FENCE": "false",
         "KC_DB_PASSWORD": s["keycloak-db-password"],
         "KEYCLOAK_ADMIN_PASSWORD": s["keycloak-admin-password"],
@@ -73,8 +76,6 @@ def build_files(host: str, secrets: dict[str, str], mode: str = "production", de
         "SC_PUBLIC_HOST": host,
         "FHIR_HEAP_MB": "1536" if prod else "3072",  # the seed loads 20 MB bundles; serving needs far less
     }
-    if not prod:
-        compose["SIM_CLOCK_START"] = os.environ.get("SIM_CLOCK_START", "")
     api = {
         "APP_ENV": "production" if prod else "dev",
         "DEV_LOGIN_ENABLED": "false" if prod else "true",
@@ -87,9 +88,13 @@ def build_files(host: str, secrets: dict[str, str], mode: str = "production", de
         "MAX_INFLIGHT_REQUESTS": "40",
         "CORS_ALLOW_ORIGINS": f"https://{host}",
         "LOG_FORMAT": "json",
+        # Reply triage: this build's calibration (fitted by tools/triage/evaluate_gguf.py), inside the API image.
+        "TRIAGE_CALIBRATION_PATH": "/app/app/triage/calibration_gguf.json",
     }
-    if not prod and os.environ.get("SIM_CLOCK_START"):
-        api["SIM_CLOCK_START"] = os.environ["SIM_CLOCK_START"]
+    if prod:
+        # The narrow, explicit demo gate: BOTH flags, and the API refuses to start with one alone or with another clock mode.
+        api["DEMO_SIMULATED_CLOCK"] = "1"
+        api["DEMO_DEPLOYMENT"] = "1"
     return {
         "compose.env": compose,
         "api.env": api,

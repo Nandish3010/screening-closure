@@ -2,13 +2,13 @@
 # Nothing in this file creates anything; deploy.sh does, and only with --yes-spend.
 set -euo pipefail
 : "${GCP_PROJECT:=$(gcloud config get-value project 2>/dev/null || true)}"
-: "${GCP_REGION:=europe-west4}"            # see docs/governance/hosting-gcp.md "Region": synthetic data only
-: "${GCP_ZONE:=${GCP_REGION}-a}"
+: "${GCP_REGION:=me-central1}"            # Doha; see docs/governance/hosting-gcp.md "Region": synthetic data only
+: "${GCP_ZONE:=${GCP_REGION}-a}"          # me-central1-a/b/c all offer E2 (Google zone table)
 : "${SC_VM_NAME:=sc-demo}"
-: "${SC_MACHINE_TYPE:=e2-standard-2}"      # 2 vCPU / 8 GB. e2-medium (4 GB) is the cheapest-viable option, see the doc
+: "${SC_MACHINE_TYPE:=e2-standard-2}"      # 2 vCPU / 8 GB
 : "${SC_DISK_GB:=40}"
-: "${SC_BUDGET_USD:=60}"                   # monthly budget ALERT (email), not a cap
-: "${SC_DOMAIN:=}"                         # optional own domain pointing at the static IP; else <ip>.sslip.io
+: "${SC_BUDGET_USD:=80}"                   # monthly budget ALERT (email), not a cap
+: "${SC_DOMAIN:=}"                         # optional own domain pointing at the static IP; else <ip-with-dashes>.sslip.io (later: SC_DOMAIN=demo.example.org)
 SC_PREFIX=sc-demo
 SC_SA="${SC_PREFIX}-vm"
 SC_ADDR="${SC_PREFIX}-ip"

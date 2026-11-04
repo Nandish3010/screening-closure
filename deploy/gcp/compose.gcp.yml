@@ -73,6 +73,32 @@ services:
       - "127.0.0.1:8180:8080"
     networks: [closure]
 
+  # Reply triage, on-premises: the SAME fine-tuned Qwen2.5-1.5B + LoRA, merged and converted to GGUF (tools/triage/convert_gguf.sh),
+  # run on this VM's CPU by llama.cpp. `triage` speaks the existing triage-server contract (POST /classify, as `make triage-serve`) and
+  # adds the opt-out gate, this build's calibration and the dialect rule; the API reaches it through TRIAGE_REMOTE_URL. No published
+  # port, no third-party AI. The GGUF file is delivered by deploy.sh --model to /srv/sc/models/triage.gguf (not in git).
+  triage-llama:
+    image: ${TRIAGE_LLAMA_IMAGE:-ghcr.io/ggml-org/llama.cpp:server}
+    profiles: [triage]
+    restart: unless-stopped
+    command: ["-m", "/models/triage.gguf", "--host", "0.0.0.0", "--port", "8081", "-c", "2048", "-t", "2", "--parallel", "1", "--no-webui"]
+    volumes:
+      - /srv/sc/models:/models:ro
+    mem_limit: 2200m
+    networks: [closure]
+
+  triage:
+    build:
+      context: ./api
+      target: runtime
+    profiles: [triage]
+    restart: unless-stopped
+    command: ["python", "-m", "app.triage.gguf_server", "--llama-url", "http://triage-llama:8081", "--port", "8765"]
+    environment:
+      TRIAGE_CALIBRATION_PATH: /app/app/triage/calibration_gguf.json
+    depends_on: [triage-llama]
+    networks: [closure]
+
   # nginx: serves the web build, routes /api and /auth, rate-limits the public API, blocks the service/ops paths.
   web:
     profiles: [public]

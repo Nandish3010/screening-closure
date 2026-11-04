@@ -21,7 +21,15 @@ server {
     add_header X-Frame-Options DENY always;
 
     # --- the API, under /api (prefix stripped). Service, scrape, clock and HL7 paths are never public. -----------------------
-    location ~ ^/api/(scheduler|watchdog|clock|hl7)(/|$) { return 404; }
+    location ~ ^/api/(scheduler|watchdog|hl7)(/|$) { return 404; }
+    # Demo clock: only "advance" (supervisor token, checked by the API); reset and anything else under /clock stay closed.
+    location = /api/clock/advance {
+        limit_req zone=api_ip burst=5 nodelay;
+        rewrite ^/api/(.*)$ /$1 break;
+        proxy_pass http://api:8000;
+        proxy_set_header Host $host;
+    }
+    location ~ ^/api/clock { return 404; }
     location = /api/metrics { return 404; }
     location = /api/auth/dev-login { return 404; }          # 404 in production anyway; refuse it before the API sees it
     location /api/ {

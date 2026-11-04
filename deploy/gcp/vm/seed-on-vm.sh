@@ -6,10 +6,12 @@
 #      (simulator/*.py) authenticate with the dev login, which production refuses by design.
 #   2. Synthea (deterministic: seed 20261017, 300 patients, in a container) -> HAPI -> FIT results -> cases, as `make demo-seed`.
 #   3. tools/demo/snapshot.sh save: the reset point ("reset demo" restores it).
-#   4. mode=production: APP_ENV=production, OIDC, wall clock, FHIR evidence check on, demo-approval off; Caddy opens 80/443.
+#   4. mode=production: APP_ENV=production, OIDC, no dev login, FHIR evidence check on, demo-approval off, simulated clock under the demo
+#      gate; Caddy opens 80/443.
 #
-# The simulation clock is started one hour before now, so the seeded cases are fresh when the judges arrive and real time takes
-# over from there (wall clock). Re-running starts from an empty database only if you pass --fresh (it deletes the volumes).
+# The simulation clock starts at the repository default (2026-01-05T08:00:00Z), exactly as in the local demo: same cohort, same cases,
+# same dates, so the recorded Claude drafts (api/app/ai/cache, keyed by prompt content) replay. Production keeps that clock (demo gate).
+# Re-running starts from an empty database only if you pass --fresh (it deletes the volumes).
 set -euo pipefail
 export SC_REPO=${SC_REPO:-/srv/sc/repo}
 SYNTH_POP=${SYNTHEA_POPULATION:-300}
@@ -17,7 +19,6 @@ if [ "${1:-}" = "--fresh" ]; then
   . "$SC_REPO/deploy/gcp/vm/env.sh"; docker compose --profile public down -v || true
 fi
 echo seed > /var/lib/sc/mode
-date -u -d '1 hour ago' +%Y-%m-%dT%H:00:00Z > /var/lib/sc/sim_clock_start
 rm -f /var/lib/sc/demo_patient_ref
 "$SC_REPO/deploy/gcp/vm/sc-up.sh"
 # shellcheck disable=SC1091
@@ -34,8 +35,7 @@ else
   echo "seed: using the cohort already in data/synthea/out/fhir"
 fi
 
-export SIM_CLOCK_START; SIM_CLOCK_START=$(cat /var/lib/sc/sim_clock_start)
-docker run --rm --network host -v "$SC_REPO":/repo -w /repo -e SIM_CLOCK_START python:3.12-slim sh -c \
+docker run --rm --network host -v "$SC_REPO":/repo -w /repo python:3.12-slim sh -c \
   'pip install -q --no-cache-dir httpx pyyaml && python simulator/load_cohort.py --skip-if-loaded && python simulator/generate_results.py && python simulator/create_cases.py'
 
 ref=$(docker compose exec -T postgres psql -U closure -d closure -At -c "SELECT payload->>'patient_ref' FROM events WHERE payload ? 'patient_ref' ORDER BY id LIMIT 1")

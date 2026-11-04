@@ -45,9 +45,20 @@ def test_production_files_pass_the_fail_closed_check(monkeypatch):
     files = render_env.build_files(HOST, SECRETS, "production")
     s = _settings_from(files, monkeypatch)
     assert auth.secure_config_problems() == []
-    assert s.app_env == "production" and s.auth_mode == "oidc" and s.clock_mode == "wall"
+    assert s.app_env == "production" and s.auth_mode == "oidc"
+    assert s.clock_mode == "sim" and s.demo_simulated_clock and s.demo_deployment  # the narrow demo gate, both flags
     assert s.oidc_issuer == f"https://{HOST}/auth/realms/screening-closure"
     assert s.dev_login_enabled is False and s.outreach_demo_approval is False
+
+
+def test_either_demo_flag_alone_would_not_start(monkeypatch):
+    from app import auth
+
+    files = render_env.build_files(HOST, SECRETS, "production")
+    del files["api.env"]["DEMO_DEPLOYMENT"]
+    _settings_from(files, monkeypatch)
+    monkeypatch.setattr(__import__("app.config", fromlist=["settings"]).settings, "demo_deployment", False)
+    assert any("DEMO_DEPLOYMENT" in p for p in auth.secure_config_problems())
 
 
 def test_seed_mode_is_dev_and_never_production(monkeypatch):
@@ -59,7 +70,8 @@ def test_llm_is_replay_only_with_a_zero_spend_cap_and_no_key():
     f = render_env.build_files(HOST, SECRETS)
     c = f["compose.env"]
     assert (c["LLM_CACHE_MODE"], c["LLM_NETWORK_ENABLED"], c["LLM_DAILY_TOKEN_BUDGET"]) == ("replay", "false", "0")
-    assert c["TRIAGE_REMOTE_URL"] == ""
+    assert c["TRIAGE_REMOTE_URL"] == "http://triage:8765"  # the on-premises GGUF build, never a third-party AI
+    assert f["api.env"]["TRIAGE_CALIBRATION_PATH"].endswith("calibration_gguf.json")
     assert not any("ANTHROPIC" in k for d in f.values() for k in d)
 
 
@@ -91,6 +103,8 @@ def test_only_caddy_is_published_publicly():
     assert len(findings) == 2 and all("'caddy'" in f for f in findings), findings  # 80 and 443, nothing else
     for name in ("caddy", "web", "keycloak-prod"):
         assert data["services"][name]["profiles"] == ["public"]  # the seed phase has no public listener
+    for name in ("triage", "triage-llama"):
+        assert data["services"][name]["profiles"] == ["triage"] and "ports" not in data["services"][name]  # private network only
     assert "postgres" not in str(data["services"].get("postgres", {}).get("ports", ""))
 
 
@@ -104,7 +118,8 @@ def test_overlay_has_no_literal_secret_and_requires_the_rendered_ones():
 def test_edge_limits_and_blocks():
     t = (GCP / "edge/nginx.conf.template").read_text()
     for must in ("limit_req_zone", "limit_req zone=api_ip", "limit_req zone=login_ip", "set_real_ip_from",
-                 "scheduler|watchdog|clock|hl7", "location = /api/metrics { return 404; }", r"^/auth/(admin|realms/master)"):
+                 "scheduler|watchdog|hl7", "location = /api/clock/advance", "location ~ ^/api/clock { return 404; }",
+                 "location = /api/metrics { return 404; }", r"^/auth/(admin|realms/master)"):
         assert must in t, must
     assert "Strict-Transport-Security" in (GCP / "edge/Caddyfile").read_text()
 
@@ -134,3 +149,16 @@ def test_secret_list_in_lib_matches_the_renderer():
 
     names = re.search(r'SC_ITEMS="([^"]+)"', (GCP / "lib.sh").read_text()).group(1).split()
     assert sorted(names) == sorted(render_env.REQUIRED)
+
+
+def test_triage_is_on_premises_and_the_hosted_label_says_so():
+    strings = (REPO_ROOT / "web/src/i18n/strings.ts").read_text()
+    assert "On-premises model (runs on our server, no cloud AI)" in strings
+    text = (GCP / "compose.gcp.yml").read_text()
+    assert "ghcr.io/ggml-org/llama.cpp:server" in text and "app.triage.gguf_server" in text
+    assert "ANTHROPIC" not in text and "anthropic.com" not in text
+
+
+def test_demo_clock_banner_and_gate_are_wired():
+    assert "demo-clock-banner" in (REPO_ROOT / "web/src/components/Header.tsx").read_text()
+    assert "Demo: simulated time" in (REPO_ROOT / "web/src/i18n/strings.ts").read_text()
