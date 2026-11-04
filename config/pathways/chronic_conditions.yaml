@@ -1,0 +1,174 @@
+# Long-term-conditions pathway pack: an abnormal cardiometabolic screening result (blood pressure, HbA1c or fasting glucose,
+# lipids, BMI) to the person's family physician, closed when the physician visit has happened and a care plan is recorded.
+#
+# THIRD PATHWAY ON THE SAME ENGINE. Like the cervical pack, this pack does not restate the state machine. `extends` takes
+# everything from colorectal_fit.yaml except the top-level keys set below, so the states, the side states, every transition
+# (the closure guard: `close` needs evidence_ref AND signed_by, a physician who is not a counsellor), the annotations, the
+# human-only events, the escalation ladder, the handoff contract, the consent hold and default-deny are literally the bowel
+# pathway's, and `app.pathway._validate` checks the merged result like any other pack. What differs is data: the timings, the
+# closure evidence rule, the patient-message `{next_step}`, the label and the result priority rules. The generic event names
+# stay (`handoff_requested` is the referral to the family physician, `book_confirmatory` books the visit,
+# `complete_confirmatory` records that the visit happened): here the confirmatory step is the care plan visit.
+#
+# STATUS: implemented and tested on the engine (docs/governance/third-pathway.md). NOT clinically reviewed, NOT simulated: no
+# outcome, impact or labour number is claimed for it. The repository holds NO cardiometabolic standard (no blood pressure,
+# HbA1c, glucose, lipid or BMI threshold and no primary-care follow-up timeline is cited anywhere in it), so every clinical
+# threshold and timing below is either sourced (and says where) or marked "PLACEHOLDER, needs clinician sign-off (H1)".
+extends: colorectal_fit.yaml
+pathway: chronic_conditions
+version: 0.1
+description: Abnormal cardiometabolic screening result to the family physician, closed on a documented care plan (third pathway, placeholder thresholds and timings, H1 pending)
+labels:
+  en: Long-term conditions
+  ar: الأمراض المزمنة
+# Per-state SLAs: working days allowed to perform the event that leaves the state. Each clock starts when the state is entered.
+# These are the bowel pack's own design values, carried over (assumed, not sourced, and not specific to this pathway).
+# PLACEHOLDER, needs clinician sign-off (H1): every value in this block.
+slas_working_days:
+  acknowledge: 2
+  accept_ownership: 1
+  contact_patient: 3
+  patient_acknowledge: 5
+  book_confirmatory: 5
+  clinician_review: 5
+  close: 3
+  reassign: 2
+# Milestones (clocks that span states, against a standard; see colorectal_fit.yaml for how they run).
+#   * referral_requested: SOURCED, with one open point. DoH IFHAS standard V10 (July 2025), referral within 15 working days of
+#     releasing results (docs/evidence.md section 8a, read first-hand for the colorectal programme; the clause names referral to
+#     secondary care). Whether it governs a referral to primary care is for H1 to confirm.
+#   * confirmatory_completed: PLACEHOLDER, needs clinician sign-off (H1). 20 working days from the referral request to the
+#     family physician visit is a design value. NO standard for this is in the repository. The tier of a case does not change it
+#     (ADR-051): an urgent result and a routine one run the same clock until a clinician sets per-tier timings.
+milestones:
+  referral_requested:
+    from_event: case_created
+    until_event: handoff_requested
+    working_days: 15
+    source: "DoH IFHAS standard July 2025 via docs/evidence.md section 8a (referral clause written for secondary care; applicability to a referral to the family physician to be confirmed by H1)"
+  confirmatory_completed:
+    from_event: handoff_requested
+    until_event: complete_confirmatory
+    working_days: 20
+    source: "PLACEHOLDER, needs clinician sign-off (H1): a design value; no primary-care follow-up standard is in the repository"
+# Closure evidence (app.evidence, A24). The target is a family physician visit at which a care plan is recorded. A case closes
+# only on a final report that states a complete `care plan visit`, or a completed Procedure linked to one, and the record must
+# NAME it, so another pathway's record of the same patient cannot close this case. "Complete" here means the visit happened AND
+# a care plan is documented. `search_codes` is empty on purpose: no SNOMED or LOINC code is asserted without a source, so the
+# evidence scan looks for the case's own records by case identifier only. PLACEHOLDER, needs clinician sign-off (H1): what counts
+# as a documented care plan (its minimum content) is a clinical definition this pack does not make.
+evidence:
+  procedure: care plan visit
+  closable_completeness: [complete]
+  require_named_procedure: true
+  search_codes: []
+# Patient messages. The message templates (api/app/ai/templates/en.yaml, ar.yaml) are shared by the pathways: they state no
+# finding and name only "the next step". This pack supplies that next step, in each language, as an appointment and never as a
+# finding (E14). PLACEHOLDER, needs clinician sign-off (H1) for the English; the Arabic needs native-speaker review (H2).
+patient_messages:
+  next_step:
+    en: a visit with your family doctor
+    ar: زيارة طبيب الأسرة
+# Result priority (ADR-051). The tier a case is ranked in, derived once at intake from the result values by these rules, and
+# shown on the worklist and the case page. A case takes the highest tier any rule gives any of its results; a result that
+# matches no rule gets the default tier. It orders and explains; it changes no state, SLA, escalation or closure, and only the
+# tier and the deciding rule's id are recorded, never the values.
+#
+# EVERY threshold and tier in this section is PLACEHOLDER, needs clinician sign-off (H1). The repository cites no standard for
+# any of them, so none is a guideline value and none may be quoted as one. The Arabic wording needs native-speaker review (H2).
+# The fields carry their unit in the name; a result in another unit must be converted before intake.
+priority:
+  status: "PLACEHOLDER, needs clinician sign-off (H1): no tier or threshold in this section is sourced"
+  tiers: [urgent, soon, routine]
+  default_tier: routine
+  results:
+    blood_pressure: [systolic_mmhg, diastolic_mmhg]
+    hba1c: [mmol_per_mol]
+    fasting_glucose: [mmol_per_l]
+    ldl_cholesterol: [mmol_per_l]
+    bmi: [kg_per_m2]
+  rules:
+    - id: bp_very_high
+      tier: urgent
+      kind: blood_pressure
+      any:
+        - {field: systolic_mmhg, op: gte, value: 180}
+        - {field: diastolic_mmhg, op: gte, value: 120}
+      reason:
+        en: Very high blood pressure
+        ar: ارتفاع شديد في ضغط الدم
+      basis: "PLACEHOLDER, needs clinician sign-off (H1)"
+    - id: bp_high
+      tier: soon
+      kind: blood_pressure
+      any:
+        - {field: systolic_mmhg, op: gte, value: 160}
+        - {field: diastolic_mmhg, op: gte, value: 100}
+      reason:
+        en: High blood pressure
+        ar: ارتفاع في ضغط الدم
+      basis: "PLACEHOLDER, needs clinician sign-off (H1)"
+    - id: bp_raised
+      tier: routine
+      kind: blood_pressure
+      any:
+        - {field: systolic_mmhg, op: gte, value: 140}
+        - {field: diastolic_mmhg, op: gte, value: 90}
+      reason:
+        en: Raised blood pressure
+        ar: ارتفاع طفيف في ضغط الدم
+      basis: "PLACEHOLDER, needs clinician sign-off (H1)"
+    - id: hba1c_high
+      tier: soon
+      kind: hba1c
+      any:
+        - {field: mmol_per_mol, op: gte, value: 75}
+      reason:
+        en: High HbA1c
+        ar: ارتفاع في السكر التراكمي
+      basis: "PLACEHOLDER, needs clinician sign-off (H1)"
+    - id: hba1c_raised
+      tier: routine
+      kind: hba1c
+      any:
+        - {field: mmol_per_mol, op: gte, value: 48}
+      reason:
+        en: Mildly raised HbA1c
+        ar: ارتفاع طفيف في السكر التراكمي
+      basis: "PLACEHOLDER, needs clinician sign-off (H1)"
+    - id: fasting_glucose_high
+      tier: soon
+      kind: fasting_glucose
+      any:
+        - {field: mmol_per_l, op: gte, value: 11.0}
+      reason:
+        en: High fasting glucose
+        ar: ارتفاع في سكر الدم الصائم
+      basis: "PLACEHOLDER, needs clinician sign-off (H1)"
+    - id: fasting_glucose_raised
+      tier: routine
+      kind: fasting_glucose
+      any:
+        - {field: mmol_per_l, op: gte, value: 7.0}
+      reason:
+        en: Raised fasting glucose
+        ar: ارتفاع طفيف في سكر الدم الصائم
+      basis: "PLACEHOLDER, needs clinician sign-off (H1)"
+    - id: ldl_raised
+      tier: routine
+      kind: ldl_cholesterol
+      any:
+        - {field: mmol_per_l, op: gte, value: 4.1}
+      reason:
+        en: Raised LDL cholesterol
+        ar: ارتفاع في الكوليسترول الضار
+      basis: "PLACEHOLDER, needs clinician sign-off (H1)"
+    - id: bmi_raised
+      tier: routine
+      kind: bmi
+      any:
+        - {field: kg_per_m2, op: gte, value: 30}
+      reason:
+        en: Raised body mass index
+        ar: ارتفاع في مؤشر كتلة الجسم
+      basis: "PLACEHOLDER, needs clinician sign-off (H1)"

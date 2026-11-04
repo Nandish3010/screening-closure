@@ -9,6 +9,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 
 from app import effort, users
+from app import priority as priority_module
 from app.calendar import WorkingCalendar
 from app.events import Event, LoadedCase
 from app.pathway import Pathway
@@ -122,7 +123,15 @@ def case_row(lc: LoadedCase, pathway: Pathway, calendar: WorkingCalendar) -> dic
         "watchdog_flagged": watchdog_flag_json(m),
         "pending_handoff": dict(m.pending_handoff) if m.pending_handoff else None,
         "risk_score": None,  # D9 fills this; the worklist falls back to SLA order without it
+        # ADR-051: {tier, rank, rule, reason: {en, ar}, basis} from the genesis event and the pack's rules; null when the case
+        # has none. Staff only: a patient's rows do not carry it. It orders and explains; nothing is derived from it.
+        "priority": priority_of(lc.events, pathway),
     }
+
+
+def priority_of(events, pathway: Pathway) -> dict | None:
+    genesis = events[0].payload if events else {}
+    return priority_module.describe(pathway.priority, genesis.get("priority"), genesis.get("priority_rule"))
 
 
 def matches(row: dict, *, owner=None, overdue=None, provider=None, flagged=None) -> bool:

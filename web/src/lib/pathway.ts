@@ -92,6 +92,8 @@ export interface PathwayMeta {
   confirmatoryMilestoneLabel: string;
   /** Pathways whose clinical timings are not signed off say so on the case page. */
   placeholderTimings: boolean;
+  /** Working days of the `confirmatory_completed` clock when the pathway's differs from the bowel pack's 31 (chronic_conditions: 20, a placeholder). */
+  confirmatoryWorkingDays?: number;
 }
 
 /**
@@ -109,7 +111,24 @@ export const PATHWAYS: Record<string, PathwayMeta> = {
     procedure: "colposcopy", confirmatoryMilestoneLabel: "Colposcopy within 31 working days of referral (placeholder, H1)",
     placeholderTimings: true,
   },
+  chronic_conditions: {
+    name: "chronic_conditions", label: "Long-term conditions",
+    programme: "Long-term conditions: abnormal cardiometabolic screening result to the family physician, closed on a care plan",
+    procedure: "care plan visit",
+    confirmatoryMilestoneLabel: "Family physician visit with a care plan within 20 working days of referral (placeholder, H1)",
+    placeholderTimings: true, confirmatoryWorkingDays: 20,
+  },
 };
+
+/** The confirmatory procedure as it appears in a resource id: the backend slugs spaces to hyphens (`Procedure/care-plan-visit-<case id>`). */
+export function procedureSlug(procedure: string): string {
+  return procedure.trim().toLowerCase().replace(/\s+/g, "-");
+}
+
+/** Plural of the confirmatory procedure for running text: colonoscopies, colposcopies, care plan visits. */
+export function procedurePlural(procedure: string): string {
+  return /[^aeiou]y$/.test(procedure) ? `${procedure.slice(0, -1)}ies` : `${procedure}s`;
+}
 
 export function pathwayMeta(name?: string | null): PathwayMeta {
   const key = name || DEFAULT_PATHWAY;
@@ -156,7 +175,13 @@ export function milestonesFor(pathway?: string | null): readonly MilestoneDef[] 
   const meta = pathwayMeta(pathway);
   if (meta.name === DEFAULT_PATHWAY) return MILESTONES;
   return MILESTONES.map((m) => m.name === "confirmatory_completed"
-    ? { ...m, label: meta.confirmatoryMilestoneLabel, source: meta.placeholderTimings ? "Placeholder, needs clinician sign-off (H1): carried over from the colorectal pathway, not a standard for this pathway" : m.source }
+    ? {
+      ...m, label: meta.confirmatoryMilestoneLabel,
+      working_days: meta.confirmatoryWorkingDays ?? m.working_days,
+      source: meta.confirmatoryWorkingDays !== undefined
+        ? "Placeholder design value, not a standard (H1): no primary-care follow-up timeline is cited anywhere in the repository, and the tier of a case does not change it"
+        : meta.placeholderTimings ? "Placeholder, needs clinician sign-off (H1): carried over from the colorectal pathway, not a standard for this pathway" : m.source,
+    }
     : m.name === "referral_requested" && meta.placeholderTimings
       ? { ...m, source: `${m.source} (applicability to this pathway to be confirmed by H1)` }
       : m);

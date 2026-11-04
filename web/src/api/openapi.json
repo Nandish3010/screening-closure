@@ -108,6 +108,21 @@
               }
             ],
             "title": "Result Ref"
+          },
+          "results": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Results"
           }
         },
         "title": "CreateCase",

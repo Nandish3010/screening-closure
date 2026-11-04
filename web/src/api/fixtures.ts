@@ -2,7 +2,7 @@
  * Seeded fixtures for the mock adapter. ALL DATA IS SYNTHETIC (invented names, no real people).
  * Sim "now" is fixed so every demo and test is deterministic.
  */
-import type { Alert, CaseEvent, ClosureMetrics, DraftRecord } from "./contract";
+import type { Alert, CaseEvent, CasePriority, ClosureMetrics, DraftRecord } from "./contract";
 import { replayState, slaClock } from "../lib/derive";
 
 export const SIM_NOW = "2026-11-04T09:00:00.000Z";
@@ -285,8 +285,58 @@ add(33, 0, 14, [
   ["book_confirmatory", 5, "specialist_owner:Dr. Karim Nasser", { appointment_ref: "APPT-2026-0033", appointment_date: "2026-11-12" }],
 ], cervicalDefs);
 const CERVICAL_IDS = new Set(cervicalDefs.map((d) => d.id));
+
+/**
+ * The third pathway's demo cases (long-term conditions, `chronic_conditions`): the same engine again. They exist only in a mock
+ * that asks for them (`thirdPathway`, `?pathways=3`, which also seeds the cervical cases). Synthetic; every threshold behind
+ * their priority is a PLACEHOLDER pending clinician sign-off (H1).
+ *  40  very high blood pressure (urgent), just arrived;  41  high HbA1c (soon), patient contacted;
+ *  42  mildly raised HbA1c (routine), patient acknowledged;  43  raised body mass index (routine), just arrived.
+ */
+export const CHRONIC_PATHWAY = "chronic_conditions";
+const chronicDefs: { id: string; risk: number; events: CaseEvent[] }[] = [];
+add(40, 0, 1, [
+  ["acknowledge", 0.9, AUTO, { auto: true }],
+  ["assign_ownership", 0.9, AUTO, { owner: LAYLA_ACTOR, provider: "Riverside Primary Care", auto: true }],
+], chronicDefs);
+add(41, 0, 6, [
+  ["acknowledge", 5.9, AUTO, { auto: true }],
+  ["assign_ownership", 5.9, AUTO, { owner: SARA_ACTOR, provider: "Riverside Primary Care", auto: true }],
+  ["accept_ownership", 5, SARA_ACTOR, OWNER_SARA],
+  ["contact_patient", 4, SARA_ACTOR, { channel: "phone" }],
+], chronicDefs);
+add(42, 0, 9, [
+  ["acknowledge", 8.9, AUTO, { auto: true }],
+  ["assign_ownership", 8.9, AUTO, { owner: HUDA_ACTOR, provider: "Marina Digestive Health", auto: true }],
+  ["accept_ownership", 8, HUDA_ACTOR, HUDA],
+  ["contact_patient", 6, HUDA_ACTOR, { channel: "phone" }],
+  ["patient_acknowledge", 4, "patient:c0000042", { lang: "en" }],
+], chronicDefs);
+add(43, 0, 2, [
+  ["acknowledge", 1.9, AUTO, { auto: true }],
+  ["assign_ownership", 1.9, AUTO, { owner: LAYLA_ACTOR, provider: "Riverside Primary Care", auto: true }],
+], chronicDefs);
+const CHRONIC_IDS = new Set(chronicDefs.map((d) => d.id));
 /** The pathway a seeded case runs on (a case the mock files itself is a bowel case, like the API's default). */
-export const pathwayOfCase = (id: string): string => (CERVICAL_IDS.has(id) ? CERVICAL_PATHWAY : "colorectal_fit");
+export const pathwayOfCase = (id: string): string => (CHRONIC_IDS.has(id) ? CHRONIC_PATHWAY : CERVICAL_IDS.has(id) ? CERVICAL_PATHWAY : "colorectal_fit");
+
+const PLACEHOLDER_BASIS = "PLACEHOLDER, needs clinician sign-off (H1)";
+/**
+ * The result priority of a seeded case, as the API puts it on a staff row (api/app/priority.py `describe`). Bowel cases have none.
+ * The Arabic wording is the pack's and awaits native review (H2). Never shown to a patient.
+ */
+const PRIORITY_OF: Record<string, CasePriority> = {
+  [caseIdFor(31)]: {
+    tier: "urgent", rank: 0, rule: "positive_cancer_screen", reason: { en: "Positive cancer screening result", ar: "نتيجة فحص إيجابية للكشف عن السرطان" },
+    basis: `${PLACEHOLDER_BASIS}: no cervical ranking standard is in the repository`,
+  },
+  [caseIdFor(40)]: { tier: "urgent", rank: 0, rule: "bp_very_high", reason: { en: "Very high blood pressure", ar: "ارتفاع شديد في ضغط الدم" }, basis: PLACEHOLDER_BASIS },
+  [caseIdFor(41)]: { tier: "soon", rank: 1, rule: "hba1c_high", reason: { en: "High HbA1c", ar: "ارتفاع في السكر التراكمي" }, basis: PLACEHOLDER_BASIS },
+  [caseIdFor(42)]: { tier: "routine", rank: 2, rule: "hba1c_raised", reason: { en: "Mildly raised HbA1c", ar: "ارتفاع طفيف في السكر التراكمي" }, basis: PLACEHOLDER_BASIS },
+  [caseIdFor(43)]: { tier: "routine", rank: 2, rule: "bmi_raised", reason: { en: "Raised body mass index", ar: "ارتفاع في مؤشر كتلة الجسم" }, basis: PLACEHOLDER_BASIS },
+};
+/** The priority a seeded case carries (a copy), or null. A case the mock files itself has none. */
+export const priorityOfCase = (id: string): CasePriority | null => (PRIORITY_OF[id] ? structuredClone(PRIORITY_OF[id]) : null);
 
 /** The scheduler's `mark_overdue` for every seeded case whose SLA clock has already passed. */
 function withOverdueMarkers(events: CaseEvent[]): CaseEvent[] {
@@ -301,8 +351,8 @@ function withOverdueMarkers(events: CaseEvent[]): CaseEvent[] {
 }
 
 /** The seeded cases; with `automation` the demo also gets the cases the automation actor has already worked on (A21). */
-export function seedEvents(automation = false, secondPathway = false): Record<string, CaseEvent[]> {
-  const all = [...(automation ? [...defs, ...autoDefs] : defs), ...(secondPathway ? cervicalDefs : [])];
+export function seedEvents(automation = false, secondPathway = false, thirdPathway = false): Record<string, CaseEvent[]> {
+  const all = [...(automation ? [...defs, ...autoDefs] : defs), ...(secondPathway || thirdPathway ? cervicalDefs : []), ...(thirdPathway ? chronicDefs : [])];
   return structuredClone(Object.fromEntries(all.map((d) => [d.id, withOverdueMarkers(d.events)])));
 }
 

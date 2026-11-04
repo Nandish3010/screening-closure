@@ -280,6 +280,14 @@ The claim that the engine generalises beyond bowel screening is backed by one re
 
 **What is not claimed.** No simulated impact, labour or outcome number exists for it: the closure and effort metrics, the risk score and the evaluation are bowel-only. It has not been seen by a clinician or a native Arabic speaker. The Helm chart and the scale evidence (section 10) cover the bowel pack only.
 
+### 4.16 A third pathway and result priority tiers: long-term conditions
+
+The organisers described the loop as covering any actionable result of the adult screening programme (IFHAS, 18 to 75), prioritised by agreed criteria and linked back to the family physician. The engine therefore runs a **third pathway**, [`chronic_conditions.yaml`](../../config/pathways/chronic_conditions.yaml) (A38, ADR-051, [docs/governance/third-pathway.md](../governance/third-pathway.md)): an abnormal cardiometabolic result (blood pressure, HbA1c or fasting glucose, lipids, BMI) goes to the person's family physician, and the case closes when the visit happened and a care plan is recorded. It is a pack on the same engine, like cervical screening (4.15): the bowel pack's states, transitions, closure guard (a physician who signs as themselves, with evidence that names a complete care plan visit), consent hold and default-deny, with its own timings, evidence rule, next step ("a visit with your family doctor") and label.
+
+**Priority tiers** are a generic pack section. A pack names tiers (urgent, soon, routine), result kinds and rules; `POST /cases` takes optional `results`, the route derives the tier once, and only the tier and the deciding rule's id are recorded, never the values. Staff see the tier and its reason on the worklist (a badge, sorted first) and the case page; a patient never does. The tier orders and explains; **it does not change the SLA clock**, the escalation ladder or closure.
+
+**Numbers.** The repository cites no cardiometabolic standard. The 15-working-day referral clock is the IFHAS V10 rule (applicability to a primary-care referral for H1); every threshold, tier and the 20-working-day visit clock are **placeholders, needs clinician sign-off (H1)**, and the Arabic needs native review (H2). The model checker explores the pack: 23,730 abstract states, I1 to I8 hold (T-A93). No simulated impact, labour or outcome number exists for it.
+
 ## 5. Automated-versus-human decision matrix
 
 [docs/governance/decision-matrix.md](../governance/decision-matrix.md) has one row for each of the 24 event types and the routes that matter for control: who may emit it, whether any automated actor may, what evidence or payload it needs, what it changes, and the test that proves the restriction. `make docs-check` fails if the event rows differ from `EVENT_POLICY` in `api/app/policy.py` (T-E6). The short version:
@@ -382,6 +390,8 @@ A small fine-tuned multilingual classifier (Qwen2.5-1.5B-Instruct, 4-bit, LoRA) 
 | HZ-15 | A rejected or unanswered referral is lost | Rejection needs a taxonomy reason; ownership changes only on acceptance; unanswered referral bounces after 3 working days; 2 working-day re-route SLA walks the ladder | T-A14, T-A20, T-A21, T-A22 |
 
 The second pathway (A37) added HZ-47 to HZ-50: a cervical case closed on evidence that is not its colposcopy (the pack's evidence rule and the named-procedure check), a case stepped by another pathway's pack (the case row names its pathway; an unloaded pack answers 503), a placeholder timing read as a standard (every timing is sourced or marked, and the page says so), and a message or score meant for another pathway (shared finding-free templates, a bowel-only risk model). Tests T-A83 to T-A86.
+
+The third pathway and the priority tiers (A38) added HZ-51 to HZ-55: a placeholder threshold read as clinical guidance, a routine-tier case starved by tier-first ordering, a case closed on a visit with no care plan, a wrong tier from a mis-keyed unit that cannot be audited because the values are not stored, and a patient shown a tier. Tests T-A90 to T-A95, T-C20.
 
 Two residual risks stand out. The simulated escalation acted-on rate is 30.5% (literature anchored, synthetic; `results.json` `scenarios.literature_anchored.arms.orchestrated.escalation_acted_on_rate`), so fewer than a third of escalations are acted on within five working days in the model, which makes alert fatigue plausible (HZ-01, L08). And the keyword filters and the Arabic phrase list are unreviewed until H1 and H2 (HZ-09, L17).
 
@@ -536,7 +546,7 @@ The full table, with where each item bites, its source, its impact if wrong, how
 | L34 | Sweep scale: measured, 100,000 open cases take 8.72 s single process and 3.93 s with 4 workers (the default); the 5 s target is met (section 10); the first sweep after migration 012 reads every case once (20.4 s) | resolved by F6 (a198b3c), A17 (7607b4f) and A20 (2aa5e9e): measured, parallel sweep in the production path, sweep index; re-measure on the pilot hardware |
 | L35 | No regulator rung on the ladder | open |
 | L36 | Regulatory readings incomplete: DoH Circular 2026/10 and IFHAS V10 read first-hand (evidence.md section 8); the legal texts, ADHICS V2 and the cloud exception route are still to read | partly resolved: the circular was read for evidence.md 8c; the legal texts, ADHICS V2 and the exception route stay open |
-| L37 | No usability testing; two pathways implemented (bowel simulated, cervical not), one jurisdiction | open |
+| L37 | No usability testing; three pathways implemented (bowel simulated; cervical and long-term conditions not), one jurisdiction | open |
 
 **Dependencies.** Postgres 16, HAPI FHIR R4 (image pinned to `hapiproject/hapi:v8.12.0-2`, ADR-006), Synthea v3.3.0 (downloaded at run time, hash-pinned), Docker Compose, Python for the API and simulator, Node for the web app. For a pilot: a provider data feed and agreements, an approved in-country host (ADR-026), an in-country model host or the template, an in-country messaging provider, an identity provider, and optionally the Malaffi interface specification.
 

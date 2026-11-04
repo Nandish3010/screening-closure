@@ -25,6 +25,7 @@ referral:
   specialty_by_pathway:
     colorectal_fit: gastroenterology
     cervical_hpv: gynaecology  # second pathway; the provider names below are synthetic, like the rest of this file
+    chronic_conditions: family_medicine  # third pathway: the referral goes to the person's family physician (synthetic names)
   reroute_reasons: [capacity, wrong_service, timeout]
   reroute_order:
     gastroenterology:
@@ -35,3 +36,7 @@ referral:
       - Corniche Women's Health Unit
       - Al Noor Colposcopy Centre
       - Marina Women's Health Clinic
+    family_medicine:
+      - Corniche Family Medicine Clinic
+      - Al Noor Family Practice
+      - Marina Family Health Centre

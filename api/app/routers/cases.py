@@ -7,7 +7,7 @@ from uuid import UUID, uuid4
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from pydantic import BaseModel, ConfigDict, Field
 
-from app import automation, confirmatory, consent, effort, evidence, fhir_projection, notify, payloads, policy, readmodel, users
+from app import automation, confirmatory, consent, effort, evidence, fhir_projection, notify, payloads, policy, priority, readmodel, users
 from app.calendar import default_calendar
 from app.config import settings as app_settings
 from app.auth import Identity, require_identity
@@ -85,6 +85,11 @@ class CreateCase(BaseModel):
     # Which pathway the case runs on. Omitted: the default pathway (bowel screening). It is the case's row, not an event
     # payload: the log is the same shape for every pathway.
     pathway: str | None = None
+    # ADR-051: the screening result(s) that made the case, `[{kind, values: {field: number}}]`, e.g. a blood pressure
+    # `{kind: blood_pressure, values: {systolic_mmhg: 182, diastolic_mmhg: 104}}`. The pathway's priority rules turn them into a
+    # tier at intake; only the tier and the deciding rule's id are recorded, never the values. Omitted: the case has no
+    # priority (every case created before this field, and every case a seed creates without it).
+    results: list[dict] | None = None
 
 
 class PostEvent(BaseModel):
@@ -196,10 +201,18 @@ def create_case(body: CreateCase) -> dict:
     pw = pathway if body.pathway is None else pathway_by_name(body.pathway)
     if pw is None:
         raise HTTPException(422, f"unknown pathway {body.pathway!r}; loaded: {[p.name for p in all_pathways()]}")
-    payload = body.model_dump(exclude={"case_id", "pathway"})
+    payload = body.model_dump(exclude={"case_id", "pathway", "results"})
     for key in ("patient_ref", "result_ref", "contact_valid", "registered_provider"):
         if payload.get(key) is None:
             payload.pop(key, None)
+    if body.results is not None:
+        if pw.priority is None:
+            raise HTTPException(422, f"pathway {pw.name!r} has no priority rules, so it cannot rank results")
+        try:
+            derived = priority.derive(pw.priority, body.results)
+        except priority.PriorityInputError as exc:
+            raise HTTPException(422, str(exc))
+        payload["priority"], payload["priority_rule"] = derived.tier, derived.rule
     try:
         payloads.validate(CASE_CREATED, payload)
     except payloads.PayloadSchemaError as exc:

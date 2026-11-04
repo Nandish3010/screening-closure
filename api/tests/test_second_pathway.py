@@ -133,7 +133,7 @@ def test_t_sp1_the_pack_reuses_the_bowel_state_machine_and_changes_only_data():
     assert raw["extended_from"] == "colorectal_fit.yaml"
     set_by_the_pack = {k for k in yaml.safe_load(CERVICAL_PATH.read_text()) if k != "extends"}
     assert set_by_the_pack == {"pathway", "version", "description", "labels", "slas_working_days", "milestones",
-                               "evidence", "patient_messages"}, "a new key in the pack is a new thing to review"
+                               "evidence", "patient_messages", "priority"}, "a new key in the pack is a new thing to review"
 
 
 def test_t_sp2_no_pathway_name_appears_in_the_state_machine_the_policy_or_the_actor_table():

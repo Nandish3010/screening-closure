@@ -1,4 +1,4 @@
-.PHONY: k8s-up k8s-down scale-report scale-report-check evaluate-outcomes evaluate-outcomes-check rai-fairness rai-fairness-check rai-oversight rai-oversight-check rai-check claude-smoke claude-record redteam-generate triage-serve up-obs check-full evaluate-smoke test-redteam validate validate-check validate-targets evaluate-refusal evaluate-abudhabi oidc-up oidc-down test-oidc up-scale agency-run test-demo test-e2e-live demo-scenario demo-stage demo-snapshot demo-restore demo-reset demo-kill-scheduler check docs-check docs-numbers tracker-lint test-security test-tools test-load load-check up down logs test test-db test-db-create test-db-reset test-chaos synthea demo-seed demo-seed-cervical demo-seed-clean evaluate evaluate-capacity evaluate-capacity-check simulate evaluate-check sensitivity sensitivity-check reset web-install web-dev web-build web-test web-e2e test-e2e review-packs review-packs-check test-review-packs test-phi-logs rbac-matrix test-offline fresh-clone risk-report risk-check calibrate-fetch calibrate-fit calibrate-check effort effort-check video video-check video-deps verify hl7-demo hl7-samples judge-headline judge-headline-check api-types api-types-check
+.PHONY: k8s-up k8s-down scale-report scale-report-check evaluate-outcomes evaluate-outcomes-check rai-fairness rai-fairness-check rai-oversight rai-oversight-check rai-check claude-smoke claude-record redteam-generate triage-serve up-obs check-full evaluate-smoke test-redteam validate validate-check validate-targets evaluate-refusal evaluate-abudhabi oidc-up oidc-down test-oidc up-scale agency-run test-demo test-e2e-live demo-scenario demo-stage demo-snapshot demo-restore demo-reset demo-kill-scheduler check docs-check docs-numbers tracker-lint test-security test-tools test-load load-check up down logs test test-db test-db-create test-db-reset test-chaos synthea demo-seed demo-seed-cervical demo-seed-chronic demo-seed-clean evaluate evaluate-capacity evaluate-capacity-check simulate evaluate-check sensitivity sensitivity-check reset web-install web-dev web-build web-test web-e2e test-e2e review-packs review-packs-check test-review-packs test-phi-logs rbac-matrix test-offline fresh-clone risk-report risk-check calibrate-fetch calibrate-fit calibrate-check effort effort-check video video-check video-deps verify hl7-demo hl7-samples judge-headline judge-headline-check api-types api-types-check
 
 up:
 	docker compose up -d --build
@@ -127,12 +127,20 @@ demo-seed:
 	$(PY) simulator/generate_results.py
 	$(PY) simulator/create_cases.py
 	@if [ "$(DEMO_SECOND_PATHWAY)" = "1" ]; then $(MAKE) demo-seed-cervical; fi
+	@if [ "$(DEMO_THIRD_PATHWAY)" = "1" ]; then $(MAKE) demo-seed-chronic; fi
 
 # The second pathway's demo cases (cervical screening, config/pathways/cervical_hpv.yaml): a few synthetic cases at different
 # stages, through the API. OPT-IN and kept out of the demo snapshot and the video: the storyboard says "all 22 open cases" and
 # finds its cases by state. `make demo-reset` removes them. Needs the stack up and `make demo-seed` done.
 demo-seed-cervical:
 	$(PY) simulator/create_cervical_cases.py
+
+# The third pathway's demo cases (long-term conditions, config/pathways/chronic_conditions.yaml): a few synthetic cases at
+# different stages, each created with a synthetic result so it carries a priority tier, through the API. OPT-IN and kept out of
+# the demo snapshot and the video: the storyboard says "all 22 open cases" and finds its cases by state. `make demo-reset`
+# removes them. Needs the stack up and `make demo-seed` done.
+demo-seed-chronic:
+	$(PY) simulator/create_chronic_cases.py
 
 demo-seed-clean:
 	rm -rf data/synthea/out data/results

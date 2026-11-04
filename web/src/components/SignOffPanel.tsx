@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { procedureSlug } from "../lib/pathway";
 import type { Role } from "../api/contract";
 import { can } from "../app/AppContext";
 import { plainError } from "../lib/format";
@@ -70,7 +71,7 @@ export function SignOffPanel({
       </p>
       <label className="field">
         <span>Evidence reference</span>
-        <input value={evidence} onChange={(e) => setEvidence(e.target.value)} placeholder={`Procedure/${procedure}-0001`} />
+        <input value={evidence} onChange={(e) => setEvidence(e.target.value)} placeholder={`Procedure/${procedureSlug(procedure)}-0001`} />
       </label>
       {onRecordResult && (
         <>
