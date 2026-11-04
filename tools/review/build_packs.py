@@ -621,6 +621,19 @@ def build_items() -> list[Item]:
     return items
 
 
+def priority_reasons() -> list[tuple[str, str, str]]:
+    """(rule ids, English, Arabic) of every priority-rule reason in the pathway packs (ADR-051), one row per distinct pair.
+    STAFF-facing wording on the worklist and the case page, never a patient string, so it is kept out of `items`."""
+    from collections import OrderedDict
+
+    rows: "OrderedDict[tuple[str, str], list[str]]" = OrderedDict()
+    for path in sorted((ROOT / "config" / "pathways").glob("*.yaml"), key=lambda p: (p != PATHWAY_PATH, p.name)):
+        raw = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+        for rule in (raw.get("priority") or {}).get("rules", []):
+            rows.setdefault((rule["reason"]["en"], rule["reason"]["ar"]), []).append(f"{path.stem}/{rule['id']}")
+    return [(", ".join(dict.fromkeys(ids)), en, ar) for (en, ar), ids in rows.items()]
+
+
 def template_entry(item: Item, language: str):
     purpose, variant = item.key.split("/")
     ts = load_templates()
@@ -1184,6 +1197,13 @@ def arabic_pack() -> str:
     out += [f"### 5.{len(PURPOSES) + 1} Demo draft texts (coordinator app)", "", MOCK_WHERE, "",
             side_by_side([i for i in items if i.source == "draft"]), ""]
 
+    pr = priority_reasons()
+    if pr:
+        out += [f"### 5.{len(PURPOSES) + 2} Priority reasons (staff worklist)", "",
+                "Short reasons shown to staff next to a case's priority tier (urgent, soon, routine) on the worklist and the case page; never sent to a patient. "
+                "The thresholds behind them are placeholders pending a clinician (H1); please review only the Arabic wording. Source: the `priority` section of the files in `config/pathways/`.", "",
+                table(["ID", "English", "Arabic", "Rule(s)"], [[f"P{n:02d}", en, ar, ids] for n, (ids, en, ar) in enumerate(pr, 1)]), ""]
+
     # forbidden
     out += ["## 6. Arabic forbidden phrases", "",
             "A model-drafted message containing any of these is rejected and replaced by the template above, so the model can never write them. The list is a keyword filter, not a proof of safety; a person also approves every message. Each entry says why it is blocked.", "",
@@ -1213,6 +1233,8 @@ def arabic_pack() -> str:
     for cat in dict.fromkeys(e["category"] for e in f["ar"]):
         ids = [e["id"] for e in f["ar"] if e["category"] == cat]
         fb.append([f"F:{cat}", f"Forbidden phrases, category `{cat}` ({len(ids)} entries: {', '.join(ids)})", "", "", ""])
+    for n, (ids, _, _) in enumerate(priority_reasons(), 1):
+        fb.append([f"P{n:02d}", f"Priority reason ({ids})", "", "", ""])
     fb.append(["F:add", "Forbidden phrases to add", "", "", ""])
     for title, _ in AR_CHECKLIST:
         fb.append([f"C:{title}", f"Checklist: {title}", "", "", ""])
