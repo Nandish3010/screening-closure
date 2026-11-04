@@ -29,13 +29,13 @@ _state = {"model_id": triage.UNAVAILABLE_MODEL_ID, "warm": False}
 
 def load(llama_url: str, wait_seconds: float = 300.0) -> None:
     """Wait for llama-server, install the scorer with this build's calibration, score one reply so the first request is fast."""
-    deadline = time.monotonic() + wait_seconds
+    deadline = time.monotonic() + wait_seconds  # wall-clock-ok: startup wait for llama-server, not case logic
     while True:
         try:
             scorer = LlamaServerScorer(llama_url)
             break
         except Exception:  # noqa: BLE001 - llama-server still loading the model
-            if time.monotonic() > deadline:
+            if time.monotonic() > deadline:  # wall-clock-ok: startup wait
                 raise
             time.sleep(2)
     cal = triage.Calibration.load()
