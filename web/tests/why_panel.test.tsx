@@ -33,8 +33,8 @@ describe("Why? panel: the language-group rule", () => {
   it("says nothing about a group when there is no forced_reason", () => {
     expect(whyContent({ kind: "triage", model_id: "qwen-lora", confidence: 0.4, needs_human: true }).technical).not.toMatch(/HZ-43/);
   });
-  it("calls only the local Qwen model on-device; any other id is a neutral AI model, and none or a rule say so", () => {
-    expect(whyContent({ kind: "triage", model_id: "qwen2.5-1.5b-4bit+lora-1", confidence: 1 }).model).toMatch(/^On-device model/);
+  it("calls only the local Qwen model on-premises; any other id is a neutral AI model, and none or a rule say so", () => {
+    expect(whyContent({ kind: "triage", model_id: "qwen2.5-1.5b-4bit+lora-1", confidence: 1 }).model).toMatch(/^On-premises model/);
     expect(whyContent({ kind: "triage", model_id: "claude-haiku-x", confidence: 1 }).model).toBe("AI model");
     expect(whyContent({ kind: "triage", model_id: "claude-haiku-x", confidence: 1 }).modelId).toBe("claude-haiku-x");
     expect(whyContent({ kind: "triage", model_id: "unavailable" }).model).toMatch(/No model available/);
@@ -87,7 +87,7 @@ describe("Why? panel", () => {
     render(<Timeline items={items} />);
     expect(TRIAGE_THRESHOLD).toBe(0.553);
     expect(screen.getByText("Why? (reply label #5)")).toBeInTheDocument();
-    expect(screen.getByTestId("why-triage-5-model")).toHaveTextContent("On-device model");
+    expect(screen.getByTestId("why-triage-5-model")).toHaveTextContent("On-premises model");
     expect(screen.queryByTestId("why-triage-5-model-id")).toBeNull(); // the id only shows after "Model details" is opened
     expect(screen.getByTestId("why-triage-5-confidence")).toHaveTextContent("42%");
     expect(screen.getByTestId("why-triage-5-rule")).toHaveTextContent(/only if the model is confident enough and the intent is not question, other or opt-out/);

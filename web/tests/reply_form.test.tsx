@@ -111,7 +111,7 @@ describe("Record patient reply", () => {
     expect(screen.getByTestId("record-reply-why").textContent).toMatch(/Switch the role to coordinator/);
   });
 
-  it("says 'on-device model' in the result box and keeps the full model id behind Details in the Why panel", async () => {
+  it("says 'on-premises model' in the result box and keeps the full model id behind Details in the Why panel", async () => {
     const user = userEvent.setup();
     const base = createMockAdapter(null, { automation: true });
     const reply: ReplyResult = { reply_id: "r2", case_id: "c", channel: "whatsapp", intent: "confirm", confidence: 0.98, model_id: "qwen2.5-1.5b-4bit+lora-8b5a49fc", needs_human: true, logged: true, applied: ["reply_received"], forced_reason: "ar_gulf" } as ReplyResult;
@@ -120,10 +120,10 @@ describe("Record patient reply", () => {
     await user.type(screen.getByTestId("reply-text"), "ان شاء الله بجي يوم الأحد");
     await user.click(screen.getByTestId("record-reply"));
     const res = await screen.findByTestId("reply-result");
-    expect(res.textContent).toMatch(/98% sure, on-device model/);
+    expect(res.textContent).toMatch(/98% sure, on-premises model/);
     expect(res.textContent).not.toMatch(/qwen/);
     const panel = screen.getByTestId("why-triage-reply");
-    expect(within(panel).getByTestId("why-triage-reply-model")).toHaveTextContent(/On-device model/);
+    expect(within(panel).getByTestId("why-triage-reply-model")).toHaveTextContent(/On-premises model/);
     expect(within(panel).queryByTestId("why-triage-reply-model-id")).toBeNull();
     await user.click(within(panel).getByRole("button", { name: /Model details/ }));
     expect(within(panel).getByTestId("why-triage-reply-model-id")).toHaveTextContent("qwen2.5-1.5b-4bit+lora-8b5a49fc");

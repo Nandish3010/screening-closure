@@ -207,7 +207,7 @@ shots:
       - {text: "Yes, I will come on Sunday, thank you.", outcome: handled, group: null, shown: false, says: "English"}
       - {text: "STOP", outcome: person, group: null, shown: false, says: "opt-out"}
     caption: "A Gulf reply always goes to a person: our synthetic test set found 91% of those it handled alone were right, below the 95% target. English or standard Arabic confirmations can be handled; an opt-out never."
-    narration: "A patient replies in Gulf Arabic that she will come on Sunday. An on-device AI reads it, and the screen shows the reply and the reason. On our synthetic test set, the Gulf replies it handled alone were right only ninety-one percent of the time, short of our ninety-five percent target. So a Gulf reply always goes to a person. So does an opt-out."
+    narration: "A patient replies in Gulf Arabic that she will come on Sunday. An AI model on our own server reads it, and the screen shows the reply and the reason. On our synthetic test set, the Gulf replies it handled alone were right only ninety-one percent of the time, short of our ninety-five percent target. So a Gulf reply always goes to a person. So does an opt-out."
     actions:
       # Needs `make triage-serve` on the host so the box names what the model read. The first wait is for the amber box, which a
       # Gulf reply gets whatever the model says; the second makes sure the live model (not the fail-safe) answered.
@@ -219,7 +219,7 @@ shots:
       - hold: 1
       - click: {testid: record-reply}
       - wait_for: {testid: reply-result, contains: "A person must look at this reply", timeout: 30000}
-      - wait_for: {testid: reply-result, contains: "on-device model", timeout: 5000}   # the live model answered; with the server down it says "no model available" and this fails loudly
+      - wait_for: {testid: reply-result, contains: "on-premises model", timeout: 5000}   # the live model answered; with the server down it says "no model available" and this fails loudly
       - wait_for: {testid: reply-quote, contains: "ان شاء الله بجي يوم الأحد", timeout: 5000}   # the reply itself is quoted in the result box
       - scroll: {testid: reply-result, align: top}
       - hold: 3
