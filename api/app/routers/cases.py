@@ -7,7 +7,7 @@ from uuid import UUID, uuid4
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from pydantic import BaseModel, ConfigDict, Field
 
-from app import automation, confirmatory, consent, effort, evidence, fhir_projection, notify, payloads, policy, priority, readmodel, users
+from app import access_audit, automation, confirmatory, consent, effort, evidence, fhir_projection, notify, payloads, policy, priority, readmodel, users
 from app.calendar import default_calendar
 from app.config import settings as app_settings
 from app.auth import Identity, require_identity
@@ -156,6 +156,15 @@ def factors_for_agency(case_id: UUID) -> dict | None:
     return _risk_explained(replay_model(events, pw), events, clock.now(), pw.name)
 
 
+def _care_contact(model) -> dict | None:
+    """Who the patient can ask, and how (patient app, ADR-052): the owner's display name and role and the care team's line.
+    The one place a patient sees a staff name; the rest of their view stays role-only."""
+    if not model.owner:
+        return None
+    who = users.resolve_actor(model.owner)
+    return readmodel.care_contact(who["display_name"], who["role"]) if who else None
+
+
 def _case_json(case_id: UUID, identity: Identity | None = None) -> dict:
     """The case page. `identity` decides whether the risk fields are filled (staff yes, patient and
     unauthenticated internal callers no)."""
@@ -171,7 +180,7 @@ def _case_json(case_id: UUID, identity: Identity | None = None) -> dict:
     if identity is not None and identity.role == "patient":
         # SEC-2: a patient's case page is the redacted one (no staff notes or reasons, no escalation
         # internals, no staff names: roles only).
-        return readmodel.patient_case_json(row, model, events)
+        return readmodel.patient_case_json(row, model, events, care_contact=_care_contact(model))
     explained = _risk_explained(model, events, clock.now(), pw.name) if _sees_risk(identity) else None
     row["risk_score"] = explained["score"] if explained else None
     return {
@@ -452,7 +461,9 @@ def post_event(
 def get_case(case_id: UUID, identity: Identity = Depends(require_identity)) -> dict:
     try:
         policy.authorize_case_access(identity, _patient_ref(case_id))
-        return _case_json(case_id, identity)
+        out = _case_json(case_id, identity)
+        access_audit.note_read(identity, case_id, "case", clock.now())
+        return out
     except CaseNotFound:
         raise HTTPException(404, "case not found")
 
@@ -469,6 +480,7 @@ def case_timeline(case_id: UUID, identity: Identity = Depends(require_identity))
     events = store.events_for(case_id)
     if not events:
         raise HTTPException(404, "case not found")
+    access_audit.note_read(identity, case_id, "timeline", clock.now())
     if identity.role == "patient":
         # SEC-2: the patient's own timeline, redacted: visible steps only, roles instead of names.
         return {"case_id": str(case_id), **readmodel.patient_timeline(events, clock.now()),
@@ -491,6 +503,7 @@ def case_fhir(case_id: UUID, identity: Identity = Depends(require_identity)) -> 
     if model is None:
         raise HTTPException(404, "case not found")
     policy.authorize_owner_scope(identity, "view_fhir", model)
+    access_audit.note_read(identity, case_id, "fhir", clock.now())
     projector = getattr(store, "projector", None)
     return {
         "case_id": str(case_id),
@@ -508,7 +521,35 @@ def case_notifications(case_id: UUID, identity: Identity = Depends(require_ident
     if model is None:
         raise HTTPException(404, "case not found")
     policy.authorize_owner_scope(identity, "view_notifications", model)
+    access_audit.note_read(identity, case_id, "messages", clock.now())
     return [n.to_json() for n in notify.log.for_case(case_id)]
+
+
+@router.get("/{case_id}/access-log")
+def case_access_log(case_id: UUID, identity: Identity = Depends(require_identity)) -> dict:
+    """Who read this case (access audit, `app.access_audit`): newest first. A patient asks about their own case and sees
+    the staff member's role, name and time and nothing else (SEC-2: no actor id, no kind of read). Staff who may read it
+    (owners of the case, coordinators, supervisors) also get the actor and what was read. Reading the log is not itself
+    logged. Bounded: one row per person and kind per 15 minutes, and a patient is shown the newest 100."""
+    pw = pathway_of(case_id)
+    model = store.read_model(case_id, pw)
+    if model is None:
+        raise HTTPException(404, "case not found")
+    if identity.role == "patient":
+        policy.authorize_case_access(identity, _patient_ref(case_id))
+    else:
+        policy.authorize_owner_scope(identity, "view_access_log", model)
+    limit = access_audit.PATIENT_LIMIT if identity.role == "patient" else access_audit.STAFF_LIMIT
+    rows = access_audit.log_store.for_case(case_id, limit)
+    entries = []
+    for r in rows:
+        who = users.resolve_actor(r.actor)
+        entry = {"at": r.at.isoformat(), "role": r.role, "name": who["display_name"] if who else r.role}
+        if identity.role != "patient":
+            entry.update(actor=r.actor, kind=r.kind)
+        entries.append(entry)
+    return {"case_id": str(case_id), "window_minutes": int(access_audit.WINDOW.total_seconds() // 60),
+            "limit": limit, "entries": entries}
 
 
 # States from which the colonoscopy result can be recorded: the test is booked or already

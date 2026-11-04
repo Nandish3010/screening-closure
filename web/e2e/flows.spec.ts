@@ -110,12 +110,14 @@ test("patient: acknowledge, Arabic RTL, call-back request, consent", async ({ pa
   await page.getByRole("button", { name: /English/ }).click();
   await expect(page.getByTestId("patient-root")).toHaveAttribute("dir", "ltr");
 
-  // Consent
+  // Consent lives in the privacy centre
+  await page.getByTestId("tab-privacy").click();
   await page.getByRole("checkbox", { name: "Text message" }).uncheck();
-  await expect(page.getByText("Saved")).toBeVisible();
+  await expect(page.getByText("Saved", { exact: true })).toBeVisible();
+  await page.getByTestId("tab-home").click();
 
   // "I don't understand" asks for a call-back
-  await page.getByRole("button", { name: "I don't understand this" }).click();
+  await page.getByRole("button", { name: "I don't understand, call me" }).click();
   await expect(page.getByTestId("callback-done")).toBeVisible();
 
   // Acknowledge

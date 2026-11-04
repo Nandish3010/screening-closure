@@ -27,15 +27,22 @@ const open = async (api = createMockAdapter(null)) => {
   await screen.findByText(STRINGS.en.resultBody);
   return api;
 };
+/** The consent controls live in the privacy centre (second tab of the bottom menu). */
+const openPrivacy = async (user: ReturnType<typeof userEvent.setup>, api = createMockAdapter(null)) => {
+  await open(api);
+  await user.click(screen.getByTestId("tab-privacy"));
+  return api;
+};
 
 describe("Patient page", () => {
   it("renders the plain-language result, next steps and owner", async () => {
     await open();
     expect(screen.getByText(STRINGS.en.resultBody)).toBeInTheDocument();
     expect(screen.getByText("Your care team will explain your result in person or by phone.")).toBeInTheDocument();
-    // SEC-2: the patient's answer carries the owner's role only, so the page says "your primary care doctor", never a name.
-    expect(screen.getByTestId("patient-owner")).toHaveTextContent(STRINGS.en.ownerByRole.primary_care_owner);
-    expect(screen.getByTestId("patient-owner")).not.toHaveTextContent("Sara");
+    // ADR-052: the owner by name and role (the care contact), with a way to call the care team.
+    expect(screen.getByTestId("patient-owner")).toHaveTextContent("Sara Al Mansoori");
+    expect(screen.getByTestId("patient-owner")).toHaveTextContent(STRINGS.en.roles.primary_care_owner);
+    expect(screen.getByTestId("call-care-team")).toHaveAttribute("href", "tel:+97120000000");
     expect(screen.getAllByRole("listitem").length).toBeGreaterThan(3);
   });
 
@@ -51,9 +58,16 @@ describe("Patient page", () => {
       for (const re of banned) expect(text, `${lang}: ${re}`).not.toMatch(re);
       // The explicit line, the owner, the appointment, the acknowledge and the callback buttons.
       expect(screen.getByTestId("explain-in-person")).toHaveTextContent(STRINGS[lang].explainInPerson);
-      expect(screen.getByTestId("patient-owner")).toHaveTextContent(STRINGS[lang].ownerByRole.primary_care_owner);
+      expect(screen.getByTestId("patient-owner")).toHaveTextContent("Sara Al Mansoori");
       expect(screen.getByRole("button", { name: STRINGS[lang].understand })).toBeInTheDocument();
       expect(screen.getByRole("button", { name: STRINGS[lang].dontUnderstand })).toBeInTheDocument();
+    }
+    // The privacy centre is held to the same rule, in both languages.
+    await user.click(screen.getByTestId("tab-privacy"));
+    for (const lang of ["ar", "en"] as const) {
+      if (lang === "en") await user.click(screen.getByRole("button", { name: /English/ }));
+      const text = root.textContent ?? "";
+      for (const re of banned) expect(text, `privacy ${lang}: ${re}`).not.toMatch(re);
     }
   });
 
@@ -78,7 +92,7 @@ describe("Patient page", () => {
     expect(screen.getByText(STRINGS.ar.resultBody)).toBeInTheDocument();
     expect(screen.queryByText(STRINGS.en.resultBody)).toBeNull();
     expect(screen.getByRole("button", { name: STRINGS.ar.dontUnderstand })).toBeInTheDocument();
-    expect(screen.getByTestId("patient-owner").textContent).toContain("طبيبك في الرعاية الأولية");
+    expect(screen.getByTestId("patient-owner").textContent).toContain("طبيب الرعاية الأولية");
     await user.click(screen.getByRole("button", { name: /English/ }));
     expect(root).toHaveAttribute("dir", "ltr");
     expect(screen.getByText(STRINGS.en.resultBody)).toBeInTheDocument();
@@ -116,7 +130,7 @@ describe("Patient page", () => {
 
   it("consent controls post partial consent_updated booleans (A6)", async () => {
     const user = userEvent.setup();
-    const api = await open();
+    const api = await openPrivacy(user);
     const last = async () => (await staffCase(api)).events.at(-1)!;
     // Everything is allowed until the patient says otherwise.
     for (const c of ["Text message", "WhatsApp", "Phone call", "Letter"]) expect(screen.getByRole("checkbox", { name: c })).toBeChecked();
@@ -133,8 +147,11 @@ describe("Patient page", () => {
 
   it("withdrawing consent freezes outreach and flags the case for review; the patient can resume", async () => {
     const user = userEvent.setup();
-    const api = await open();
+    const api = await openPrivacy(user);
     await user.click(screen.getByTestId("consent-withdraw"));
+    // Stopping all contact asks first; nothing is written until the patient confirms.
+    expect((await staffCase(api)).events.some((e) => e.type === "consent_updated")).toBe(false);
+    await user.click(screen.getByTestId("consent-withdraw-yes"));
     await screen.findByTestId("consent-withdrawn");
     let d = await staffCase(api);
     expect(d.events.at(-2)).toMatchObject({ type: "consent_updated", payload: { withdrawn: true } });
@@ -148,9 +165,10 @@ describe("Patient page", () => {
 
   it("the withdraw control works in Arabic and the notice is Arabic", async () => {
     const user = userEvent.setup();
-    await open();
+    await openPrivacy(user);
     await user.click(screen.getByRole("button", { name: /العربية/ }));
     await user.click(screen.getByRole("button", { name: STRINGS.ar.withdrawButton }));
+    await user.click(screen.getByRole("button", { name: STRINGS.ar.withdrawConfirmYes }));
     expect(await screen.findByText(STRINGS.ar.withdrawnNotice)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: STRINGS.ar.resumeButton })).toBeInTheDocument();
   });
@@ -208,7 +226,9 @@ describe("SEC-2: the redacted patient case", () => {
     await api.login("patient", "Patient");
     const d = await api.getCase(DEMO_PATIENT_CASE_ID);
     expect(d).toMatchObject({ owner: "primary_care_owner", owner_actor: "primary_care_owner", owner_role: "primary_care_owner" });
-    expect(JSON.stringify(d)).not.toMatch(/Layla|Sara|Karim|Huda|Maryam|Haddad|Mansoori/);
+    // ADR-052: the owner's name appears in `care_contact` and nowhere else; no other staff name is sent.
+    expect(d.care_contact).toEqual({ name: "Sara Al Mansoori", role: "primary_care_owner", phone: "+971 2 000 0000", synthetic: true });
+    expect(JSON.stringify({ ...d, care_contact: null })).not.toMatch(/Layla|Sara|Karim|Huda|Maryam|Haddad|Mansoori/);
     expect(d.events.length).toBeGreaterThan(0);
     for (const e of d.events) {
       expect(e.actor).not.toContain(":"); // a role, never `role:id`
@@ -253,9 +273,11 @@ describe("SEC-2: the redacted patient case", () => {
   });
 
   it("the rest of the page works on the redacted answer: result, progress, consent defaults and the buttons", async () => {
+    const user = userEvent.setup();
     await openWire(redactedWire(roleOnly("primary_care_owner")));
     expect(screen.getByText(STRINGS.en.resultBody)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: STRINGS.en.dontUnderstand })).toBeEnabled();
+    await user.click(screen.getByTestId("tab-privacy"));
     for (const c of ["Text message", "WhatsApp", "Phone call", "Letter"]) expect(screen.getByRole("checkbox", { name: c })).toBeChecked();
     expect(screen.getByTestId("consent-withdraw")).toBeInTheDocument();
     expect(document.body.textContent).not.toMatch(/undefined|NaN|\[object/);

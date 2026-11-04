@@ -1,6 +1,6 @@
 /** HTTP adapter: the real API at VITE_API_URL, with bearer-token auth from POST /auth/dev-login. */
 import type {
-  AgencyInboxItem, AgencyOrg, AgencyRun, AgencyTask, AgencyTaskParams, Alert, ApiClient, CaseAgencySummary, CaseDetail, CaseEvent, CaseListParams, CaseSummary, CaseTimeline, ClosureMetrics, ConfirmatoryResult, Draft,
+  AccessLog, AgencyInboxItem, AgencyOrg, AgencyRun, AgencyTask, AgencyTaskParams, Alert, ApiClient, CaseAgencySummary, CaseDetail, CaseEvent, CaseListParams, CaseSummary, CaseTimeline, ClosureMetrics, ConfirmatoryResult, Draft,
   DraftApproval, DraftRecord, DraftRejection, DraftRequestBody, EffortMetrics, Me, PostEventBody, ReplyBody, ReplyResult, Role, TimelineItem,
 } from "./contract";
 import { ApiError, BACKEND_ROLE, OWNER_SCOPED_ROLES, ROLES } from "./contract";
@@ -254,6 +254,9 @@ export function createHttpAdapter(baseUrl: string, fetchImpl: typeof fetch = (..
       const d = await request<CaseDetail & { actors?: Record<string, { display_name?: string }> }>(`/cases/${encodeURIComponent(id)}`);
       registerActors(d.actors);
       return completeDetail(d);
+    },
+    getAccessLog(id): Promise<AccessLog> {
+      return request<AccessLog>(`/cases/${encodeURIComponent(id)}/access-log`);
     },
     async getTimeline(id): Promise<CaseTimeline> {
       try {

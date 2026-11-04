@@ -100,6 +100,7 @@ export interface Routes {
   "GET /cases": { query: { "cursor"?: string | null; "flagged"?: boolean | null; "limit"?: number; "overdue"?: boolean | null; "owner"?: string | null; "provider"?: string | null; "state"?: string | null; }; response: Record<string, unknown>[]; };
   "POST /cases": { body: CreateCase; response: Record<string, unknown>; };
   "GET /cases/{case_id}": { path: { "case_id": string; }; response: Record<string, unknown>; };
+  "GET /cases/{case_id}/access-log": { path: { "case_id": string; }; response: Record<string, unknown>; };
   "GET /cases/{case_id}/agency": { path: { "case_id": string; }; response: Record<string, unknown>; };
   "POST /cases/{case_id}/confirmatory-result": { path: { "case_id": string; }; query: { "completeness"?: "complete" | "incomplete" | "ct_colonography"; }; response: Record<string, unknown>; };
   "GET /cases/{case_id}/drafts": { path: { "case_id": string; }; response: Record<string, unknown>[]; };
@@ -148,6 +149,7 @@ export const ROUTES: readonly RouteKey[] = [
   "GET /cases",
   "POST /cases",
   "GET /cases/{case_id}",
+  "GET /cases/{case_id}/access-log",
   "GET /cases/{case_id}/agency",
   "POST /cases/{case_id}/confirmatory-result",
   "GET /cases/{case_id}/drafts",

@@ -209,105 +209,221 @@ A case is handed to another provider with `handoff_requested`. Ownership moves o
 
 ## 9. What the patient reads (English)
 
-78 English strings in three places. The reading-level target is grade 6. Arabic versions are reviewed separately (H2); the IDs below match the Arabic pack. Placeholders in braces are filled in: {owner_name} (the care owner), {next_step} (default "a camera test"), {appointment_date} (for example "Tuesday 3 November 2026"), {name} and {role} on the patient page.
+179 English strings in three places. The reading-level target is grade 6. Arabic versions are reviewed separately (H2); the IDs below match the Arabic pack. Placeholders in braces are filled in: {owner_name} (the care owner), {next_step} (default "a camera test"), {appointment_date} (for example "Tuesday 3 November 2026"), {name} and {role} on the patient page.
 
 ### 9.1 The patient page (web)
 
 Shown in the installed app or browser at `/patient`. Source: `web/src/i18n/strings.ts`.
 
-**Page frame and language.** Title, language switch and start page.
+**Page frame, menu and language.** Title, language switch, bottom menu and start page.
 
 | ID | English text | Where it appears |
 |---|---|---|
 | W01 | Your screening result | Main heading (h1) at the top of the patient page. |
 | W02 | Language | Not shown. Used in the accessible label of the language button, as "Language: <other language>". |
 | W03 | العربية | Language button, top of the page. It names the other language in that language: the English column is the button on the English page, the Arabic column the button on the Arabic page. |
-| W04 | Your screening result | Heading of the app start page (/patient) when no case has been opened on this device. |
-| W05 | Open the link your care team sent you to see your next steps. You can add this page to your home screen. | Text under that heading: how to open the result and add the page to the home screen. |
+| W04 | Main menu | Not shown. Accessible name of the bottom menu with two tabs. |
+| W05 | My care | First tab of the bottom menu: the page with the result, the next step, the appointment and the status. |
+| W06 | Privacy | Second tab of the bottom menu: the privacy centre (choices, who looked at my record, how we use your data). |
+| W07 | Your screening result | Heading of the app start page (/patient) when no case has been opened on this device. |
+| W08 | Open the link your care team sent you to see your next steps. You can add this page to your home screen. | Text under that heading: how to open the result and add the page to the home screen. |
 
-**What the result means.** The first thing the patient reads.
-
-| ID | English text | Where it appears |
-|---|---|---|
-| W06 | Your result is ready | Heading of the first section. |
-| W07 | Your screening result is ready. Your care team needs to talk with you about it and about the next step. | Large paragraph under the heading. It says the result is ready and that the care team needs to talk with the patient. It states no finding. |
-| W08 | Your care team will explain your result in person or by phone. | Line under the paragraph: the care team explains the result in person or by phone (IFHAS: abnormal results are given with the participant present). |
-
-**Where you are now.** Four-step tracker.
+**My result: what the result means.** The first thing the patient reads.
 
 | ID | English text | Where it appears |
 |---|---|---|
-| W09 | Where you are now | Heading of the progress section. |
-| W10 | Result received | Step 1 of the tracker. Current while the case is waiting to be acknowledged. |
-| W11 | Care team ready | Step 2. Current from acknowledgement until the colonoscopy is booked. |
-| W12 | Camera test | Step 3. Current once the colonoscopy has been done. |
-| W13 | Doctor review | Step 4. Current at clinician review and after. |
+| W09 | My result | Heading of the first card. |
+| W10 | Your screening result is ready. Your care team needs to talk with you about it and about the next step. | Large paragraph under the heading. It says the result is ready and that the care team needs to talk with the patient. It states no finding. |
+| W11 | Your care team will explain your result in person or by phone. | Line under the paragraph: the care team explains the result in person or by phone (IFHAS: abnormal results are given with the participant present). |
 
-**What happens next.** Three numbered steps.
+**Where you are now.** Four-step journey strip, worded for each pathway.
 
 | ID | English text | Where it appears |
 |---|---|---|
-| W14 | What happens next | Heading of the next-steps section. |
-| W15 | Your care team will talk with you about your result. | Numbered step 1. |
-| W16 | The next step is an appointment for a camera test called a colonoscopy. | Numbered step 2. |
-| W17 | You will get a date and clear steps to get ready. | Numbered step 3. |
+| W12 | Result received | Step 1 of 4 of the journey strip, in the wording of the bowel screening pathway (a camera test, colonoscopy). |
+| W13 | Care team ready | Step 2 of 4 of the journey strip, in the wording of the bowel screening pathway (a camera test, colonoscopy). |
+| W14 | Camera test | Step 3 of 4 of the journey strip, in the wording of the bowel screening pathway (a camera test, colonoscopy). |
+| W15 | Doctor review | Step 4 of 4 of the journey strip, in the wording of the bowel screening pathway (a camera test, colonoscopy). |
+| W16 | Result received | Step 1 of 4 of the journey strip, in the wording of the cervical screening pathway (a follow-up examination; placeholder wording, H1). |
+| W17 | Care team ready | Step 2 of 4 of the journey strip, in the wording of the cervical screening pathway (a follow-up examination; placeholder wording, H1). |
+| W18 | Follow-up examination | Step 3 of 4 of the journey strip, in the wording of the cervical screening pathway (a follow-up examination; placeholder wording, H1). |
+| W19 | Doctor review | Step 4 of 4 of the journey strip, in the wording of the cervical screening pathway (a follow-up examination; placeholder wording, H1). |
+| W20 | Result received | Step 1 of 4 of the journey strip, in the wording of the long-term conditions pathway (a visit with the family doctor; placeholder wording, H1). |
+| W21 | Care team ready | Step 2 of 4 of the journey strip, in the wording of the long-term conditions pathway (a visit with the family doctor; placeholder wording, H1). |
+| W22 | Family doctor visit | Step 3 of 4 of the journey strip, in the wording of the long-term conditions pathway (a visit with the family doctor; placeholder wording, H1). |
+| W23 | Care plan | Step 4 of 4 of the journey strip, in the wording of the long-term conditions pathway (a visit with the family doctor; placeholder wording, H1). |
+| W24 | Result received | Step 1 of 4 of the journey strip, in the wording of the any pathway the app does not know by name (a plain appointment). |
+| W25 | Care team ready | Step 2 of 4 of the journey strip, in the wording of the any pathway the app does not know by name (a plain appointment). |
+| W26 | Appointment | Step 3 of 4 of the journey strip, in the wording of the any pathway the app does not know by name (a plain appointment). |
+| W27 | Doctor review | Step 4 of 4 of the journey strip, in the wording of the any pathway the app does not know by name (a plain appointment). |
+| W28 | Where you are now | Heading of the journey strip. |
 
-**Who is looking after you.** The named care owner.
-
-| ID | English text | Where it appears |
-|---|---|---|
-| W18 | Who is looking after you | Heading of the care-owner section. |
-| W19 | {name} ({role}) is looking after your care. You can ask them any question. | Large text under that heading. {name} is the owner's name (Latin or Arabic script), {role} the role from the role labels below. In Arabic the sentence is split over three lines so a Latin name does not scramble the line. |
-| W20 | A person in your care team will be chosen to look after you soon. | Shown instead of the line above while nobody has accepted the case. |
-| W21 | Your primary care doctor is looking after your care. You can ask them any question. | Shown instead of the owner line when the owner is the patient's primary care physician. The server shows a patient the owner by role only (SEC-2), so no name is available. |
-| W22 | Your specialist doctor is looking after your care. You can ask them any question. | Same, when the owner is the specialist who will do the test. |
-| W23 | Your care coordinator is looking after your care. You can ask them any question. | Same, when the owner is a care coordinator. |
-| W24 | A senior member of your care team is looking after your care. You can ask them any question. | Same, when the case is with a senior member of the care team. |
-| W25 | Your care team is looking after your care. You can ask them any question. | Same, for any role not listed above. |
-| W26 | Primary care physician | Role shown in brackets after the owner's name in the line "Who is looking after you". The English role is the value stored in the case; unknown roles are shown as stored. |
-| W27 | Care coordinator | Role shown in brackets after the owner's name in the line "Who is looking after you". The English role is the value stored in the case; unknown roles are shown as stored. |
-
-**I understand / I don't understand.** The two buttons and their confirmations.
+**My next step.** What the patient is told to do next, in each situation and for each pathway, with the one main button.
 
 | ID | English text | Where it appears |
 |---|---|---|
-| W28 | I understand, please contact me | Primary button (one tap: the patient has read the message and asks the care team to contact them). Disabled until the patient has been contacted. |
-| W29 | Thank you. We saved this. Your care team will contact you. | Green confirmation that replaces the button once the patient has acknowledged. |
-| W30 | You can tap this button after your care team has sent you a message. | Hint under the disabled button. |
-| W31 | I don't understand this | Second button. Asks a person from the care team to call. |
-| W32 | Thank you. A person from your care team will call you. | Green confirmation after that button is pressed, or while a callback is pending. |
-| W33 | That did not work. Please try again or call your care team. | Red banner if either button fails. |
+| W29 | My next step | Heading of the next-step card. |
+| W30 | Your care team is getting ready to contact you. You do not need to do anything yet. | Shown before the care team has contacted the patient. No button: nothing to do yet. |
+| W31 | Your care team sent you a message. Tap the button when you have read it. | Shown after the care team contacted the patient. The one main button (key understand) sits under it. |
+| W32 | Your appointment is booked. Please check the date and add it to your calendar. | Shown once an appointment is booked. The main button is "Add to my calendar" (key addToCalendar). |
+| W33 | Your appointment is done. A doctor from your care team will go over it with you. | Shown after the appointment has taken place and a doctor reviews it. States no finding. |
+| W34 | Your care team has finished this step. Call your care team if you have a question. | Shown when the care team has finished the step. |
+| W35 | You asked us to stop contact. You can allow contact again in Privacy. | Shown while the patient has stopped all contact; points to the Privacy tab. |
+| W36 | Your care team is working on your next step. Call your care team if you have a question. | Shown for any case that is being handled in a way the other lines do not describe (a referral being re-routed, a step reopened). Neutral: no finding. |
+| W37 | Your care team will talk with you about your result. | Numbered step 1 of 3 in the plain explainer of the next step, in the wording of the bowel screening pathway (a camera test, colonoscopy). |
+| W38 | The next step is an appointment for a camera test called a colonoscopy. | Numbered step 2 of 3 in the plain explainer of the next step, in the wording of the bowel screening pathway (a camera test, colonoscopy). |
+| W39 | You will get a date and clear steps to get ready. | Numbered step 3 of 3 in the plain explainer of the next step, in the wording of the bowel screening pathway (a camera test, colonoscopy). |
+| W40 | Your care team is arranging your camera test. You will get a date soon. | Shown under "My next step" after the patient confirmed, while the care team arranges the appointment (bowel screening pathway (a camera test, colonoscopy)). |
+| W41 | Your care team will talk with you about your result. | Numbered step 1 of 3 in the plain explainer of the next step, in the wording of the cervical screening pathway (a follow-up examination; placeholder wording, H1). |
+| W42 | The next step is an appointment for a follow-up examination. | Numbered step 2 of 3 in the plain explainer of the next step, in the wording of the cervical screening pathway (a follow-up examination; placeholder wording, H1). |
+| W43 | You will get a date and clear steps to get ready. | Numbered step 3 of 3 in the plain explainer of the next step, in the wording of the cervical screening pathway (a follow-up examination; placeholder wording, H1). |
+| W44 | Your care team is arranging your follow-up examination. You will get a date soon. | Shown under "My next step" after the patient confirmed, while the care team arranges the appointment (cervical screening pathway (a follow-up examination; placeholder wording, H1)). |
+| W45 | Your care team will talk with you about your result. | Numbered step 1 of 3 in the plain explainer of the next step, in the wording of the long-term conditions pathway (a visit with the family doctor; placeholder wording, H1). |
+| W46 | The next step is a visit with your family doctor. | Numbered step 2 of 3 in the plain explainer of the next step, in the wording of the long-term conditions pathway (a visit with the family doctor; placeholder wording, H1). |
+| W47 | You will get a date and clear steps to get ready. | Numbered step 3 of 3 in the plain explainer of the next step, in the wording of the long-term conditions pathway (a visit with the family doctor; placeholder wording, H1). |
+| W48 | Your care team is arranging your visit with your family doctor. You will get a date soon. | Shown under "My next step" after the patient confirmed, while the care team arranges the appointment (long-term conditions pathway (a visit with the family doctor; placeholder wording, H1)). |
+| W49 | Your care team will talk with you about your result. | Numbered step 1 of 3 in the plain explainer of the next step, in the wording of the any pathway the app does not know by name (a plain appointment). |
+| W50 | The next step is an appointment. | Numbered step 2 of 3 in the plain explainer of the next step, in the wording of the any pathway the app does not know by name (a plain appointment). |
+| W51 | You will get a date and clear steps to get ready. | Numbered step 3 of 3 in the plain explainer of the next step, in the wording of the any pathway the app does not know by name (a plain appointment). |
+| W52 | Your care team is arranging your appointment. You will get a date soon. | Shown under "My next step" after the patient confirmed, while the care team arranges the appointment (any pathway the app does not know by name (a plain appointment)). |
 
-**Your choices (contact and sharing).** Channel, sharing and their save status.
+**My appointment and calendar.** The booked appointment, in each pathway's own wording, and the calendar file (.ics) the patient can save.
 
 | ID | English text | Where it appears |
 |---|---|---|
-| W34 | How we prepare messages | Heading of a short notice between the buttons and the choices: how messages are prepared (software helps, a member of staff approves each one). |
-| W35 | We use software to help prepare our messages to you. | First line of that notice. Says software helps prepare the messages. Says nothing about results. |
-| W36 | A member of staff checks and approves each message before we send it. | Second line of that notice. A member of staff checks and approves each message before it is sent. |
-| W37 | To speak to a person, press "I don't understand this" or call your care team. | Third line of that notice. Names the button "I don't understand this" exactly as translated for the key dontUnderstand, and the care team phone. |
-| W38 | You can stop messages at any time. Use "Stop all contact" in "Your choices" below. | Fourth line of that notice. Points to the "Stop all contact" button (key withdrawButton) in the choices section just below; the quoted names must match those two keys and the heading consentHeading. |
-| W39 | Your choices | Heading of the choices section. |
-| W40 | How may we contact you? | Legend of the group of contact-channel check boxes. Each box is on unless the patient turned it off (an opt-out default); changing one saves at once. |
-| W41 | Phone call | Label of the check box for phone calls. |
-| W42 | Text message | Label of the check box for text messages. |
-| W43 | WhatsApp | Label of the check box for WhatsApp messages. |
-| W44 | Letter | Label of the check box for letters. |
-| W45 | My care team may share my result with the specialist who will do my test. | Label of the check box that lets the care team share the result with the specialist. |
-| W46 | Stop all contact | Button under the choices. Withdraws all consent to contact at once: the case is frozen for outreach and a person is asked to review it. Hidden after withdrawal. |
-| W47 | If you stop contact, your care team will not message or call you. A person will check your case. You can still call your care team. | Small grey text above that button. It says what stopping contact means and that a person will check the case. |
-| W48 | You asked us to stop contact. We will not message or call you. A person on your care team will check your case. You can still call your care team. | Yellow banner at the top of the choices section after the patient has stopped all contact. |
-| W49 | You may contact me again | Replaces the stop button after withdrawal. Pressing it records that the patient may be contacted again. |
-| W50 | Saved | Status line under the choices after a successful save. |
-| W51 | We could not save this. Please try again. | Status line if saving the choices fails. |
+| W53 | Your camera test (colonoscopy) | Heading of the appointment card, naming the appointment as the bowel screening pathway (a camera test, colonoscopy) does. |
+| W54 | Camera test (colonoscopy) | Title of the calendar entry the patient saves, for the bowel screening pathway (a camera test, colonoscopy). |
+| W55 | Your follow-up examination | Heading of the appointment card, naming the appointment as the cervical screening pathway (a follow-up examination; placeholder wording, H1) does. |
+| W56 | Follow-up examination | Title of the calendar entry the patient saves, for the cervical screening pathway (a follow-up examination; placeholder wording, H1). |
+| W57 | Your visit with your family doctor | Heading of the appointment card, naming the appointment as the long-term conditions pathway (a visit with the family doctor; placeholder wording, H1) does. |
+| W58 | Visit with your family doctor | Title of the calendar entry the patient saves, for the long-term conditions pathway (a visit with the family doctor; placeholder wording, H1). |
+| W59 | Your appointment | Heading of the appointment card, naming the appointment as the any pathway the app does not know by name (a plain appointment) does. |
+| W60 | Appointment | Title of the calendar entry the patient saves, for the any pathway the app does not know by name (a plain appointment). |
+| W61 | My appointment | Heading of the appointment card (shown once an appointment is booked). |
+| W62 | Your care team will tell you the time. | Under the date when the booking carries a date but no time. |
+| W63 | Add to my calendar | The main button once an appointment is booked. Saves a calendar file (.ics) on the phone. |
+| W64 | This saves a small file on your phone. Open it to add the date to your calendar. | Small grey text under that button. |
+| W65 | Booked by your care team. Please call your care team if you cannot come. | Description inside the calendar file the patient saves. Names no finding. |
+
+**Who is looking after you.** The care owner by name and role, how to reach the care team, and role names.
+
+| ID | English text | Where it appears |
+|---|---|---|
+| W66 | Who is looking after you | Heading of the care-owner card. |
+| W67 | {name} ({role}) is looking after your care. You can ask them any question. | Large text under that heading. {name} is the owner's name (Latin or Arabic script), {role} the role from the role names below. In Arabic the sentence is split over three lines so a Latin name does not scramble the line. |
+| W68 | A person in your care team will be chosen to look after you soon. | Shown instead of the line above while nobody has accepted the case. |
+| W69 | How to reach your care team | Small heading above the call button. |
+| W70 | Call your care team | Button that starts a phone call to the care team. |
+| W71 | Demo number. All data here is synthetic. | Small grey text under the call button: the number is a placeholder and the data is synthetic. |
+| W72 | Primary care doctor | Role name shown with a staff member's name, for a primary care doctor. Also used in the list of who looked at the record. |
+| W73 | Specialist doctor | Same, for the specialist doctor. |
+| W74 | Care coordinator | Same, for a care coordinator. |
+| W75 | Senior member of the care team | Same, for a senior member of the care team. |
+| W76 | Laboratory team | Same, for the laboratory team. |
+| W77 | Care team | Same, for any role not listed above. |
+| W78 | Your primary care doctor is looking after your care. You can ask them any question. | Shown instead of the owner line when the server sends the role but no name (the owner is the patient's primary care physician). |
+| W79 | Your specialist doctor is looking after your care. You can ask them any question. | Same, when the owner is the specialist who will do the test. |
+| W80 | Your care coordinator is looking after your care. You can ask them any question. | Same, when the owner is a care coordinator. |
+| W81 | A senior member of your care team is looking after your care. You can ask them any question. | Same, when the case is with a senior member of the care team. |
+| W82 | Your care team is looking after your care. You can ask them any question. | Same, for any role not listed above. |
+| W83 | Primary care physician | Role shown in brackets after the owner's name in the line "Who is looking after you". The English role is the value stored in the case; unknown roles are shown as stored. |
+| W84 | Care coordinator | Role shown in brackets after the owner's name in the line "Who is looking after you". The English role is the value stored in the case; unknown roles are shown as stored. |
+
+**I understand / I don't understand / another date.** The buttons and their confirmations.
+
+| ID | English text | Where it appears |
+|---|---|---|
+| W85 | Ask for another date | Secondary button once an appointment is booked: asks a person to call about another date (callback_requested, reason reschedule). |
+| W86 | Thank you. A person from your care team will call you about a new date. | Green confirmation after that button. |
+| W87 | I cannot come | Secondary button once an appointment is booked: asks a person to call because the patient cannot come (callback_requested, reason cannot_attend). |
+| W88 | Thank you. A person from your care team will call you. | Green confirmation after that button. |
+| W89 | I understand, please contact me | The one main button after the patient was contacted (the patient has read the message and asks the care team to contact them). Disabled until the patient has been contacted. |
+| W90 | Thank you. We saved this. Your care team will contact you. | Green confirmation that replaces the button once the patient has acknowledged. |
+| W91 | You can tap this button after your care team has sent you a message. | Hint under the disabled button. |
+| W92 | I don't understand, call me | Second button, always present. Asks a person from the care team to call. |
+| W93 | Thank you. A person from your care team will call you. | Green confirmation after that button is pressed, or while a callback is pending. |
+| W94 | That did not work. Please try again or call your care team. | Red banner if a button fails. |
+
+**What has happened (status timeline).** One plain sentence for each step the patient is allowed to see.
+
+| ID | English text | Where it appears |
+|---|---|---|
+| W95 | What has happened | Heading of the status timeline. |
+| W96 | Nothing yet. | Shown when there is nothing to list yet. |
+| W97 | Your result was received. | Timeline line for the first step. Plain, no finding. |
+| W98 | Your care team saw your result. | Timeline line: the care team saw the result. |
+| W99 | A member of your care team took charge of your care. | Timeline line: a member of the care team took charge. |
+| W100 | Your care team contacted you. | Timeline line: the care team contacted the patient. |
+| W101 | You said you understood. | Timeline line: the patient said they understood. |
+| W102 | Your appointment was booked. | Timeline line: the appointment was booked. |
+| W103 | Your appointment took place. | Timeline line: the appointment took place. |
+| W104 | A doctor went over it. | Timeline line: a doctor went over it. States no finding. |
+| W105 | Your care team finished this step. | Timeline line: the care team finished the step. |
+| W106 | Your care team opened this step again. | Timeline line: the care team opened the step again. |
+| W107 | You changed your contact choices. | Timeline line: the patient changed contact choices. |
+| W108 | You asked for a call. | Timeline line: the patient asked for a call. |
+| W109 | We sent you a message. | Timeline line: a message was sent to the patient. |
+
+**Your choices (contact, language, sharing, stopping contact).** Channel, language, sharing, stopping and restoring contact, and their save status.
+
+| ID | English text | Where it appears |
+|---|---|---|
+| W110 | Your choices | Heading of the choices section. |
+| W111 | How may we contact you? | Legend of the group of contact-channel check boxes. Each box is on unless the patient turned it off (an opt-out default); changing one saves at once. |
+| W112 | Phone call | Label of the check box for phone calls. |
+| W113 | Text message | Label of the check box for text messages. |
+| W114 | WhatsApp | Label of the check box for WhatsApp messages. |
+| W115 | Letter | Label of the check box for letters. |
+| W116 | My care team may share my result with the specialist who will do my test. | Label of the check box that lets the care team share the result with the specialist. |
+| W117 | Language for this app and your messages | Label of the English / Arabic choice inside the choices section. |
+| W118 | Kept on this phone. We use it when you tap a button to reach your care team. | Small grey text under it: the language is saved on the phone and sent with the buttons that reach the care team. |
+| W119 | Stop all contact | Button under the choices. Opens the confirmation below; confirming withdraws all consent to contact at once: the case is frozen for outreach and a person is asked to review it. Hidden after withdrawal. |
+| W120 | If you stop contact, your care team will not message or call you. A person will check your case. You can still call your care team. | Small grey text above that button. It says what stopping contact means and that a person will check the case. |
+| W121 | You asked us to stop contact. We will not message or call you. A person on your care team will check your case. You can still call your care team. | Yellow banner at the top of the choices section after the patient has stopped all contact. |
+| W122 | Stop all contact? | Heading of the confirmation shown after pressing the stop button. |
+| W123 | Your care team will not message or call you. A person will check your case. You can turn contact back on here at any time. | Text of that confirmation: what stopping means and that it can be undone here. |
+| W124 | Yes, stop all contact | Button that confirms stopping all contact. |
+| W125 | No, keep contact | Button that cancels and keeps contact. |
+| W126 | You may contact me again | Replaces the stop button after withdrawal. Pressing it records that the patient may be contacted again. |
+| W127 | Saved | Status line under the choices after a successful save. |
+| W128 | We could not save this. Please try again. | Status line if saving the choices fails. |
+
+**Privacy centre: who looked at my record, how we use your data, this phone.** Access log, the data panel and the notice about messages.
+
+| ID | English text | Where it appears |
+|---|---|---|
+| W129 | Privacy and choices | Heading of the Privacy tab (h1). |
+| W130 | You decide how we contact you. You can see who opened your record. You can change your mind at any time. | Text under that heading. |
+| W131 | How we prepare messages | Heading of a short notice: how messages are prepared (software helps, a member of staff approves each one). |
+| W132 | We use software to help prepare our messages to you. | First line of that notice. Says software helps prepare the messages. Says nothing about results. |
+| W133 | A member of staff checks and approves each message before we send it. | Second line of that notice. A member of staff checks and approves each message before it is sent. |
+| W134 | To speak to a person, press "I don't understand, call me". You can also call your care team. | Third line of that notice. Names the button "I don't understand, call me" exactly as translated for the key dontUnderstand. |
+| W135 | You can stop messages at any time. Use "Stop all contact" in "Your choices" below. | Fourth line of that notice. Points to the "Stop all contact" button (key withdrawButton) in the choices section; the quoted names must match that key and the heading consentHeading. |
+| W136 | How we use your data | Heading of the "how we use your data" panel. |
+| W137 | This is a demonstration. All the information here is synthetic. It is not about a real person. | Panel line 1: the data is synthetic (this is a demonstration). |
+| W138 | Software only prepares and sorts messages. It never decides anything about your care. | Panel line 2: software only prepares and sorts messages; it never decides about care (the reply triage only flags or relays, the drafting model only drafts). |
+| W139 | A person on your care team makes every decision about your care. | Panel line 3: a person decides everything about care (closure always needs a physician's signature). |
+| W140 | We keep only what we need. What you write to us is kept apart from your care record, and it can be erased. | Panel line 4: data minimisation. What the patient writes is kept apart from the care record (patient_replies table) and can be erased. |
+| W141 | Your care record lists steps, dates and roles. It does not hold names, phone numbers or free text. | Panel line 5: data minimisation. The event log holds steps, dates and roles; its payload schemas hold no free text, and contact details are not logged. |
+| W142 | When your case is finished, you can ask for your personal data to be erased. Two supervisors must agree. | Panel line 6: erasure after the case is finished needs two supervisors (A32, ADR-025). |
+| W143 | Who looked at my record | Heading of the list of staff who opened the record. |
+| W144 | Each time a member of staff opens your record, it is written here with their name, their role and the time. | Text under that heading. |
+| W145 | Nobody on your care team has opened your record yet. | Shown when nobody has opened the record yet. |
+| W146 | We list each person once every 15 minutes, even if they look more than once. Computer systems that keep time or send reminders are not listed. | Small grey text under the list: one line per person every 15 minutes; services are not listed. |
+| W147 | We could not load this list. Please try again. | Shown if the list cannot be loaded. |
+| W148 | On this phone | Heading of the section about what the phone stores. |
+| W149 | To work without internet, this phone keeps the last information it loaded. It stays on this phone only. | Says the phone keeps the last loaded information so the app works without internet, and only on the phone. |
+| W150 | Remove saved information from this phone | Button that removes the saved information from the phone. |
+| W151 | Removed. Open the link from your care team again to load your page. | Confirmation after that button. |
 
 **Loading, offline and errors.** System messages.
 
 | ID | English text | Where it appears |
 |---|---|---|
-| W52 | Loading... | Shown instead of the page while the case loads. |
-| W53 | We could not load your information. Please try again. | Shown if the case cannot be loaded and nothing is saved on the device. |
-| W54 | You are offline. This is the last information we saved. | Banner above the result when the device is offline. The last saved information is shown. |
+| W152 | Loading... | Shown instead of the page while the case loads. |
+| W153 | We could not load your information. Please try again. | Shown if the case cannot be loaded and nothing is saved on the device. |
+| W154 | You are offline. This is the last information we saved. | Banner above the result when the device is offline. The last saved information is shown. |
+| W155 | You are offline. You can read what is saved. You can send something when you are back online. | Hint shown beside the buttons while the device is offline: they work again when the connection returns. |
 
 Not in the catalogue (hard-coded in `web/src/pages/PatientPage.tsx`): a "Demo case" link on the start page and the accessible label "Actions". They are demo scaffolding and not part of this review.
 
@@ -378,7 +494,14 @@ Two draft texts in the demo data of the coordinator app. They stand in for a mod
 
 ### 9.4 A check we ran on our own wording
 
-The forbidden-phrase list in section 10 applies to model drafts. We ran it over every string above as a self-check. None matched.
+The forbidden-phrase list in section 10 applies to model drafts. We ran it over every string above as a self-check. These strings would be rejected if a model had written them. The patient page is fixed text, not a model draft, so they are allowed today. Please say whether each is acceptable (question 3).
+
+| ID | English text | Matching list entries |
+|---|---|---|
+| W31 | Your care team sent you a message. Tap the button when you have read it. | `you_have` |
+| W34 | Your care team has finished this step. Call your care team if you have a question. | `you_have` |
+| W36 | Your care team is working on your next step. Call your care team if you have a question. | `you_have` |
+| W99 | A member of your care team took charge of your care. | `rtg_pressure_and_offers` |
 
 ## 10. Words the system never lets a model write
 
@@ -511,14 +634,17 @@ For each row write keep or change and, if you change it, say what you would do. 
 | H:timeout | Handoff reason `timeout` |  |  |
 | R1 | Lost contact after 3 failed attempts (8.1) |  |  |
 | R2 | Opt-out consent default (8.2) |  |  |
-| W:frame | Patient page: Page frame and language (W01 to W05) |  |  |
-| W:result | Patient page: What the result means (W06 to W08) |  |  |
-| W:progress | Patient page: Where you are now (W09 to W13) |  |  |
-| W:next | Patient page: What happens next (W14 to W17) |  |  |
-| W:owner | Patient page: Who is looking after you (W18 to W27) |  |  |
-| W:actions | Patient page: I understand / I don't understand (W28 to W33) |  |  |
-| W:consent | Patient page: Your choices (contact and sharing) (W34 to W51) |  |  |
-| W:status | Patient page: Loading, offline and errors (W52 to W54) |  |  |
+| W:frame | Patient page: Page frame, menu and language (W01 to W08) |  |  |
+| W:result | Patient page: My result: what the result means (W09 to W11) |  |  |
+| W:progress | Patient page: Where you are now (W12 to W28) |  |  |
+| W:next | Patient page: My next step (W29 to W52) |  |  |
+| W:appointment | Patient page: My appointment and calendar (W53 to W65) |  |  |
+| W:owner | Patient page: Who is looking after you (W66 to W84) |  |  |
+| W:actions | Patient page: I understand / I don't understand / another date (W85 to W94) |  |  |
+| W:history | Patient page: What has happened (status timeline) (W95 to W109) |  |  |
+| W:consent | Patient page: Your choices (contact, language, sharing, stopping contact) (W110 to W128) |  |  |
+| W:privacy | Patient page: Privacy centre: who looked at my record, how we use your data, this phone (W129 to W151) |  |  |
+| W:status | Patient page: Loading, offline and errors (W152 to W155) |  |  |
 | M:result_notification | Message `result_notification` (T01 to T03) |  |  |
 | M:reminder | Message `reminder` (T04 to T09) |  |  |
 | M:appointment_confirmation | Message `appointment_confirmation` (T10 to T12) |  |  |

@@ -486,13 +486,16 @@ def need(table_: dict, key: str, kind: str):
 # ====================================================================== web string context
 
 WEB_GROUPS = [
-    ("frame", "Page frame and language", "Title, language switch and start page."),
-    ("result", "What the result means", "The first thing the patient reads."),
-    ("progress", "Where you are now", "Four-step tracker."),
-    ("next", "What happens next", "Three numbered steps."),
-    ("owner", "Who is looking after you", "The named care owner."),
-    ("actions", "I understand / I don't understand", "The two buttons and their confirmations."),
-    ("consent", "Your choices (contact and sharing)", "Channel, sharing and their save status."),
+    ("frame", "Page frame, menu and language", "Title, language switch, bottom menu and start page."),
+    ("result", "My result: what the result means", "The first thing the patient reads."),
+    ("progress", "Where you are now", "Four-step journey strip, worded for each pathway."),
+    ("next", "My next step", "What the patient is told to do next, in each situation and for each pathway, with the one main button."),
+    ("appointment", "My appointment and calendar", "The booked appointment, in each pathway's own wording, and the calendar file (.ics) the patient can save."),
+    ("owner", "Who is looking after you", "The care owner by name and role, how to reach the care team, and role names."),
+    ("actions", "I understand / I don't understand / another date", "The buttons and their confirmations."),
+    ("history", "What has happened (status timeline)", "One plain sentence for each step the patient is allowed to see."),
+    ("consent", "Your choices (contact, language, sharing, stopping contact)", "Channel, language, sharing, stopping and restoring contact, and their save status."),
+    ("privacy", "Privacy centre: who looked at my record, how we use your data, this phone", "Access log, the data panel and the notice about messages."),
     ("status", "Loading, offline and errors", "System messages."),
 ]
 
@@ -501,39 +504,93 @@ WEB_CONTEXT: dict[str, tuple[str, str]] = {
     "appTitle": ("frame", "Main heading (h1) at the top of the patient page."),
     "language": ("frame", "Not shown. Used in the accessible label of the language button, as \"Language: <other language>\"."),
     "switchTo": ("frame", "Language button, top of the page. It names the other language in that language: the English column is the button on the English page, the Arabic column the button on the Arabic page."),
+    "navLabel": ("frame", "Not shown. Accessible name of the bottom menu with two tabs."),
+    "navHome": ("frame", "First tab of the bottom menu: the page with the result, the next step, the appointment and the status."),
+    "navPrivacy": ("frame", "Second tab of the bottom menu: the privacy centre (choices, who looked at my record, how we use your data)."),
     "homeTitle": ("frame", "Heading of the app start page (/patient) when no case has been opened on this device."),
     "homeBody": ("frame", "Text under that heading: how to open the result and add the page to the home screen."),
-    "resultHeading": ("result", "Heading of the first section."),
+    "resultHeading": ("result", "Heading of the first card."),
     "resultBody": ("result", "Large paragraph under the heading. It says the result is ready and that the care team needs to talk with the patient. It states no finding."),
     "explainInPerson": ("result", "Line under the paragraph: the care team explains the result in person or by phone (IFHAS: abnormal results are given with the participant present)."),
-    "progressHeading": ("progress", "Heading of the progress section."),
-    "progress[0]": ("progress", "Step 1 of the tracker. Current while the case is waiting to be acknowledged."),
-    "progress[1]": ("progress", "Step 2. Current from acknowledgement until the colonoscopy is booked."),
-    "progress[2]": ("progress", "Step 3. Current once the colonoscopy has been done."),
-    "progress[3]": ("progress", "Step 4. Current at clinician review and after."),
-    "nextHeading": ("next", "Heading of the next-steps section."),
-    "nextSteps[0]": ("next", "Numbered step 1."),
-    "nextSteps[1]": ("next", "Numbered step 2."),
-    "nextSteps[2]": ("next", "Numbered step 3."),
-    "ownerHeading": ("owner", "Heading of the care-owner section."),
-    "ownerLine": ("owner", "Large text under that heading. {name} is the owner's name (Latin or Arabic script), {role} the role from the role labels below. In Arabic the sentence is split over three lines so a Latin name does not scramble the line."),
+    "progressHeading": ("progress", "Heading of the journey strip."),
+    "nextHeading": ("next", "Heading of the next-step card."),
+    "nextState.preContact": ("next", "Shown before the care team has contacted the patient. No button: nothing to do yet."),
+    "nextState.contacted": ("next", "Shown after the care team contacted the patient. The one main button (key understand) sits under it."),
+    "nextState.booked": ("next", "Shown once an appointment is booked. The main button is \"Add to my calendar\" (key addToCalendar)."),
+    "nextState.done": ("next", "Shown after the appointment has taken place and a doctor reviews it. States no finding."),
+    "nextState.closed": ("next", "Shown when the care team has finished the step."),
+    "nextState.withdrawn": ("next", "Shown while the patient has stopped all contact; points to the Privacy tab."),
+    "nextState.working": ("next", "Shown for any case that is being handled in a way the other lines do not describe (a referral being re-routed, a step reopened). Neutral: no finding."),
+    "appointmentHeading": ("appointment", "Heading of the appointment card (shown once an appointment is booked)."),
+    "appointmentTimeLater": ("appointment", "Under the date when the booking carries a date but no time."),
+    "addToCalendar": ("appointment", "The main button once an appointment is booked. Saves a calendar file (.ics) on the phone."),
+    "calendarNote": ("appointment", "Small grey text under that button."),
+    "calendarDescription": ("appointment", "Description inside the calendar file the patient saves. Names no finding."),
+    "reschedule": ("actions", "Secondary button once an appointment is booked: asks a person to call about another date (callback_requested, reason reschedule)."),
+    "rescheduleDone": ("actions", "Green confirmation after that button."),
+    "cannotAttend": ("actions", "Secondary button once an appointment is booked: asks a person to call because the patient cannot come (callback_requested, reason cannot_attend)."),
+    "cannotAttendDone": ("actions", "Green confirmation after that button."),
+    "ownerHeading": ("owner", "Heading of the care-owner card."),
+    "ownerLine": ("owner", "Large text under that heading. {name} is the owner's name (Latin or Arabic script), {role} the role from the role names below. In Arabic the sentence is split over three lines so a Latin name does not scramble the line."),
     "ownerPending": ("owner", "Shown instead of the line above while nobody has accepted the case."),
-    "ownerByRole.primary_care_owner": ("owner", "Shown instead of the owner line when the owner is the patient's primary care physician. The server shows a patient the owner by role only (SEC-2), so no name is available."),
+    "ownerReach": ("owner", "Small heading above the call button."),
+    "callCareTeam": ("owner", "Button that starts a phone call to the care team."),
+    "demoNumber": ("owner", "Small grey text under the call button: the number is a placeholder and the data is synthetic."),
+    "roles.primary_care_owner": ("owner", "Role name shown with a staff member's name, for a primary care doctor. Also used in the list of who looked at the record."),
+    "roles.specialist_owner": ("owner", "Same, for the specialist doctor."),
+    "roles.coordinator": ("owner", "Same, for a care coordinator."),
+    "roles.supervisor": ("owner", "Same, for a senior member of the care team."),
+    "roles.lab": ("owner", "Same, for the laboratory team."),
+    "roles.other": ("owner", "Same, for any role not listed above."),
+    "ownerByRole.primary_care_owner": ("owner", "Shown instead of the owner line when the server sends the role but no name (the owner is the patient's primary care physician)."),
     "ownerByRole.specialist_owner": ("owner", "Same, when the owner is the specialist who will do the test."),
     "ownerByRole.coordinator": ("owner", "Same, when the owner is a care coordinator."),
     "ownerByRole.supervisor": ("owner", "Same, when the case is with a senior member of the care team."),
     "ownerByRole.other": ("owner", "Same, for any role not listed above."),
-    "understand": ("actions", "Primary button (one tap: the patient has read the message and asks the care team to contact them). Disabled until the patient has been contacted."),
+    "understand": ("actions", "The one main button after the patient was contacted (the patient has read the message and asks the care team to contact them). Disabled until the patient has been contacted."),
     "understandWait": ("actions", "Hint under the disabled button."),
     "understandDone": ("actions", "Green confirmation that replaces the button once the patient has acknowledged."),
-    "dontUnderstand": ("actions", "Second button. Asks a person from the care team to call."),
+    "dontUnderstand": ("actions", "Second button, always present. Asks a person from the care team to call."),
     "callbackDone": ("actions", "Green confirmation after that button is pressed, or while a callback is pending."),
-    "actionFailed": ("actions", "Red banner if either button fails."),
-    "aiNoticeHeading": ("consent", "Heading of a short notice between the buttons and the choices: how messages are prepared (software helps, a member of staff approves each one)."),
-    "aiNoticeSoftware": ("consent", "First line of that notice. Says software helps prepare the messages. Says nothing about results."),
-    "aiNoticeStaff": ("consent", "Second line of that notice. A member of staff checks and approves each message before it is sent."),
-    "aiNoticePerson": ("consent", "Third line of that notice. Names the button \"I don't understand this\" exactly as translated for the key dontUnderstand, and the care team phone."),
-    "aiNoticeStop": ("consent", "Fourth line of that notice. Points to the \"Stop all contact\" button (key withdrawButton) in the choices section just below; the quoted names must match those two keys and the heading consentHeading."),
+    "actionFailed": ("actions", "Red banner if a button fails."),
+    "historyHeading": ("history", "Heading of the status timeline."),
+    "historyEmpty": ("history", "Shown when there is nothing to list yet."),
+    "history.case_created": ("history", "Timeline line for the first step. Plain, no finding."),
+    "history.acknowledge": ("history", "Timeline line: the care team saw the result."),
+    "history.accept_ownership": ("history", "Timeline line: a member of the care team took charge."),
+    "history.contact_patient": ("history", "Timeline line: the care team contacted the patient."),
+    "history.patient_acknowledge": ("history", "Timeline line: the patient said they understood."),
+    "history.book_confirmatory": ("history", "Timeline line: the appointment was booked."),
+    "history.complete_confirmatory": ("history", "Timeline line: the appointment took place."),
+    "history.clinician_review": ("history", "Timeline line: a doctor went over it. States no finding."),
+    "history.close": ("history", "Timeline line: the care team finished the step."),
+    "history.reopen": ("history", "Timeline line: the care team opened the step again."),
+    "history.consent_updated": ("history", "Timeline line: the patient changed contact choices."),
+    "history.callback_requested": ("history", "Timeline line: the patient asked for a call."),
+    "history.message_sent": ("history", "Timeline line: a message was sent to the patient."),
+    "privacyHeading": ("privacy", "Heading of the Privacy tab (h1)."),
+    "privacyIntro": ("privacy", "Text under that heading."),
+    "aiNoticeHeading": ("privacy", "Heading of a short notice: how messages are prepared (software helps, a member of staff approves each one)."),
+    "aiNoticeSoftware": ("privacy", "First line of that notice. Says software helps prepare the messages. Says nothing about results."),
+    "aiNoticeStaff": ("privacy", "Second line of that notice. A member of staff checks and approves each message before it is sent."),
+    "aiNoticePerson": ("privacy", "Third line of that notice. Names the button \"I don't understand, call me\" exactly as translated for the key dontUnderstand."),
+    "aiNoticeStop": ("privacy", "Fourth line of that notice. Points to the \"Stop all contact\" button (key withdrawButton) in the choices section; the quoted names must match that key and the heading consentHeading."),
+    "dataHeading": ("privacy", "Heading of the \"how we use your data\" panel."),
+    "data[0]": ("privacy", "Panel line 1: the data is synthetic (this is a demonstration)."),
+    "data[1]": ("privacy", "Panel line 2: software only prepares and sorts messages; it never decides about care (the reply triage only flags or relays, the drafting model only drafts)."),
+    "data[2]": ("privacy", "Panel line 3: a person decides everything about care (closure always needs a physician's signature)."),
+    "data[3]": ("privacy", "Panel line 4: data minimisation. What the patient writes is kept apart from the care record (patient_replies table) and can be erased."),
+    "data[4]": ("privacy", "Panel line 5: data minimisation. The event log holds steps, dates and roles; its payload schemas hold no free text, and contact details are not logged."),
+    "data[5]": ("privacy", "Panel line 6: erasure after the case is finished needs two supervisors (A32, ADR-025)."),
+    "accessHeading": ("privacy", "Heading of the list of staff who opened the record."),
+    "accessIntro": ("privacy", "Text under that heading."),
+    "accessEmpty": ("privacy", "Shown when nobody has opened the record yet."),
+    "accessNote": ("privacy", "Small grey text under the list: one line per person every 15 minutes; services are not listed."),
+    "accessLoadError": ("privacy", "Shown if the list cannot be loaded."),
+    "deviceHeading": ("privacy", "Heading of the section about what the phone stores."),
+    "deviceBody": ("privacy", "Says the phone keeps the last loaded information so the app works without internet, and only on the phone."),
+    "deviceClear": ("privacy", "Button that removes the saved information from the phone."),
+    "deviceCleared": ("privacy", "Confirmation after that button."),
     "consentHeading": ("consent", "Heading of the choices section."),
     "channelLabel": ("consent", "Legend of the group of contact-channel check boxes. Each box is on unless the patient turned it off (an opt-out default); changing one saves at once."),
     "channels.phone": ("consent", "Label of the check box for phone calls."),
@@ -541,16 +598,50 @@ WEB_CONTEXT: dict[str, tuple[str, str]] = {
     "channels.whatsapp": ("consent", "Label of the check box for WhatsApp messages."),
     "channels.letter": ("consent", "Label of the check box for letters."),
     "shareLabel": ("consent", "Label of the check box that lets the care team share the result with the specialist."),
-    "withdrawButton": ("consent", "Button under the choices. Withdraws all consent to contact at once: the case is frozen for outreach and a person is asked to review it. Hidden after withdrawal."),
+    "languageLabel": ("consent", "Label of the English / Arabic choice inside the choices section."),
+    "languageNote": ("consent", "Small grey text under it: the language is saved on the phone and sent with the buttons that reach the care team."),
+    "withdrawButton": ("consent", "Button under the choices. Opens the confirmation below; confirming withdraws all consent to contact at once: the case is frozen for outreach and a person is asked to review it. Hidden after withdrawal."),
     "withdrawHint": ("consent", "Small grey text above that button. It says what stopping contact means and that a person will check the case."),
     "withdrawnNotice": ("consent", "Yellow banner at the top of the choices section after the patient has stopped all contact."),
+    "withdrawConfirmTitle": ("consent", "Heading of the confirmation shown after pressing the stop button."),
+    "withdrawConfirmBody": ("consent", "Text of that confirmation: what stopping means and that it can be undone here."),
+    "withdrawConfirmYes": ("consent", "Button that confirms stopping all contact."),
+    "withdrawConfirmNo": ("consent", "Button that cancels and keeps contact."),
     "resumeButton": ("consent", "Replaces the stop button after withdrawal. Pressing it records that the patient may be contacted again."),
     "saved": ("consent", "Status line under the choices after a successful save."),
     "saveFailed": ("consent", "Status line if saving the choices fails."),
     "loading": ("status", "Shown instead of the page while the case loads."),
     "loadError": ("status", "Shown if the case cannot be loaded and nothing is saved on the device."),
     "offline": ("status", "Banner above the result when the device is offline. The last saved information is shown."),
+    "offlineAction": ("status", "Hint shown beside the buttons while the device is offline: they work again when the connection returns."),
 }
+
+_PATHWAY_NAME = {
+    "colorectal_fit": "bowel screening pathway (a camera test, colonoscopy)",
+    "cervical_hpv": "cervical screening pathway (a follow-up examination; placeholder wording, H1)",
+    "chronic_conditions": "long-term conditions pathway (a visit with the family doctor; placeholder wording, H1)",
+    "other": "any pathway the app does not know by name (a plain appointment)",
+}
+
+
+def web_context(key: str) -> tuple[str, str] | None:
+    """(group, where) for a web catalogue key: its own entry, or, for the per-pathway wording, built from the key."""
+    if key in WEB_CONTEXT:
+        return WEB_CONTEXT[key]
+    m = re.fullmatch(r"pathways\.(\w+)\.(\w+)(?:\[(\d+)\])?", key)
+    if not m or m.group(1) not in _PATHWAY_NAME:
+        return None
+    pack, field, n = m.group(1), m.group(2), m.group(3)
+    name = _PATHWAY_NAME[pack]
+    where = {
+        "nextSteps": ("next", f"Numbered step {int(n or 0) + 1} of 3 in the plain explainer of the next step, in the wording of the {name}."),
+        "progress": ("progress", f"Step {int(n or 0) + 1} of 4 of the journey strip, in the wording of the {name}."),
+        "appointmentTitle": ("appointment", f"Heading of the appointment card, naming the appointment as the {name} does."),
+        "calendarTitle": ("appointment", f"Title of the calendar entry the patient saves, for the {name}."),
+        "waiting": ("next", f"Shown under \"My next step\" after the patient confirmed, while the care team arranges the appointment ({name})."),
+    }.get(field)
+    return where
+
 
 ROLE_WHERE = "Role shown in brackets after the owner's name in the line \"Who is looking after you\". The English role is the value stored in the case; unknown roles are shown as stored."
 
@@ -579,9 +670,9 @@ READING_LEVEL = "About grade 6: short sentences, everyday words."
 def build_items() -> list[Item]:
     en, ar, role_en, role_ar, _ = load_web_catalogue()
     groups = {g: title for g, title, _ in WEB_GROUPS}
-    missing = [k for k in en if k not in WEB_CONTEXT]
+    missing = [k for k in en if web_context(k) is None]
     if missing:
-        raise SystemExit(f"build_packs: web catalogue keys without context in WEB_CONTEXT: {missing}")
+        raise SystemExit(f"build_packs: web catalogue keys without context (WEB_CONTEXT or web_context): {missing}")
     stale = [k for k in WEB_CONTEXT if k not in en]
     if stale:
         raise SystemExit(f"build_packs: WEB_CONTEXT keys that are not in strings.ts any more: {stale}")
@@ -590,9 +681,9 @@ def build_items() -> list[Item]:
     n = 0
     for gid, _, _ in WEB_GROUPS:
         for key in en:
-            if WEB_CONTEXT[key][0] == gid:
+            if web_context(key)[0] == gid:
                 n += 1
-                items.append(Item(f"W{n:02d}", "web", key, en[key], ar[key], groups[gid], WEB_CONTEXT[key][1]))
+                items.append(Item(f"W{n:02d}", "web", key, en[key], ar[key], groups[gid], web_context(key)[1]))
         if gid == "owner":  # role labels sit with the owner line they complete
             for role in role_en:
                 n += 1
@@ -1072,6 +1163,22 @@ def clinician_pack() -> str:
 
 # ====================================================================== Arabic pack
 
+def new_app_note(items: list[Item]) -> list[str]:
+    """The patient app and privacy centre (2026-11-05) are new and carry the weight of the privacy scoring: say so, with the IDs
+    of the groups whose wording is new, so the reviewer reads them first (H2: needs a native speaker, none has seen them)."""
+    ids: dict[str, list[str]] = {}
+    for gid in ("appointment", "history", "privacy"):
+        title = next(t for g, t, _ in WEB_GROUPS if g == gid)
+        ids[title] = [i.id for i in items if i.source == "web" and i.group == title]
+    lines = [", ".join(f"{t} ({v[0]} to {v[-1]})" for t, v in ids.items() if v)]
+    return ["**New, please read first (H2, needs a native Arabic speaker).** The mobile patient app and the privacy and consent "
+            "centre added texts that have had no review of any kind, not even the earlier AI-assisted pass: " + lines[0] + ". "
+            "Also new in the older groups: the per-pathway wording of the next step (bowel, cervical, long-term conditions) and the "
+            "role names. The privacy texts matter most: they tell the patient how to stop contact, who looked at the record and how "
+            "the data is used.", ""]
+
+
+
 AR_CHECKLIST = [
     ("Accuracy", "Does each Arabic text say what the English says, no more and no less? In particular: \"your screening result is ready and your care team needs to talk with you about the next step\" and \"your care team will explain your result in person or by phone\". Nothing in Arabic may state or hint at the result."),
     ("Register for Gulf Arabic readers", "Modern Standard Arabic, easy to read, no dialect. Is it natural for a reader in the UAE, neither stiff nor too colloquial? Greetings: \"مرحباً\" in SMS and WhatsApp, \"السلام عليكم\" in letters. Are they right for every patient, including non-Muslim readers of Arabic?"),
@@ -1134,11 +1241,12 @@ def arabic_pack() -> str:
             ["5", "7 and 8 Checklist, feedback table", "Tick the checklist and fill the feedback table."],
         ]), "",
         f"There are {c['patient_strings_total']} Arabic texts (every one is also in English, with the same ID) and {c['arabic_pack']['arabic_forbidden_phrases']} Arabic forbidden-phrase entries. Every Arabic text in the prototype's sources is in this pack. All of it was written by the engineering team and has not been reviewed by a native speaker. Please correct freely; suggest better wording in the feedback table.", "",
+        *new_app_note(items),
     ]
 
     out += [
         "## 1. What these texts are for", "",
-        "A patient in Abu Dhabi has had a screening stool test (FIT) and the care team has the result. The texts below tell the patient, in Arabic or English, that the result is ready and the care team needs to talk with them, who in the care team is responsible, and what the next step is, and let them say \"I understand, please contact me\" or \"I don't understand this\" (a person will call). They never say what the screening found: the care team explains the result in person or by phone.", "",
+        "A patient in Abu Dhabi has had a screening stool test (FIT) and the care team has the result. The texts below tell the patient, in Arabic or English, that the result is ready and the care team needs to talk with them, who in the care team is responsible, and what the next step is, and let them say \"I understand, please contact me\" or \"I don't understand, call me\" (a person will call). They never say what the screening found: the care team explains the result in person or by phone.", "",
         "Hard rules the Arabic must keep:", "",
         "- No text states or hints at what the screening found (IFHAS: abnormal results are communicated with the participant present). No \"blood\", no \"positive\", no \"abnormal\", no diagnosis, no disease name.",
         "- No reassurance (\"don't worry\"), no judgement of urgency, no advice beyond the next step. The care team contacts the patient.",

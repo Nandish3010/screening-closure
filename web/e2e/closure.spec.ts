@@ -101,7 +101,9 @@ test("a rejected draft keeps a reason, writes nothing to the patient, and the te
 test("consent withdrawal freezes drafting and says why, on the coordinator's case page and worklist", async ({ page }) => {
   // The patient withdraws consent on their own page.
   await page.goto(`/patient/${PATIENT_CASE}`);
+  await page.getByTestId("tab-privacy").click();
   await page.getByTestId("consent-withdraw").click();
+  await page.getByTestId("consent-withdraw-yes").click();
   await expect(page.getByTestId("consent-withdrawn")).toContainText("You asked us to stop contact");
 
   // The coordinator sees the case frozen and flagged for review; drafting is disabled with the reason.
@@ -130,7 +132,9 @@ test("a frozen draft cannot be approved by its owner, but can be rejected", asyn
   await expect(draft).toBeVisible();
   // The patient withdraws while the draft waits for approval.
   await page.goto(`/patient/${OVERDUE_CASE}`);
+  await page.getByTestId("tab-privacy").click();
   await page.getByTestId("consent-withdraw").click();
+  await page.getByTestId("consent-withdraw-yes").click();
   await expect(page.getByTestId("consent-withdrawn")).toBeVisible();
   await page.goto(`/coordinator/${OVERDUE_CASE}`);
   await expect(page.getByTestId(/^approve-d-mock-\d+$/)).toBeDisabled();
@@ -199,15 +203,27 @@ test("SEC-2: a clinician who does not own the case sees why the drafts are hidde
   await expect(page.getByTestId("drafts-hidden-why")).toHaveCount(0);
 });
 
-test("SEC-2: the patient is shown the owner by role only, in both languages", async ({ page }) => {
+test("ADR-052: the patient is told the owner's name and role, and no other staff name or id, in both languages", async ({ page }) => {
   await page.goto(`/patient/${PATIENT_CASE}`);
   await expect(page.getByTestId("patient-owner")).toContainText("Sara Al Mansoori"); // a staff login previewing the page
   await page.getByLabel("Switch role").selectOption("patient");
-  await expect(page.getByTestId("patient-owner")).toContainText("Your primary care doctor is looking after your care");
-  await expect(page.getByTestId("patient-owner")).not.toContainText("Sara");
+  await expect(page.getByTestId("patient-owner")).toContainText("Sara Al Mansoori");
+  await expect(page.getByTestId("patient-owner")).toContainText("Primary care doctor");
+  await expect(page.getByTestId("call-care-team")).toBeVisible();
   await page.getByRole("button", { name: /العربية/ }).click();
-  await expect(page.getByTestId("patient-owner")).toContainText("طبيبك في الرعاية الأولية");
+  await expect(page.getByTestId("patient-owner")).toContainText("طبيب الرعاية الأولية");
   await expect(page.getByTestId("patient-root")).not.toContainText("primary_care_owner");
+  await expect(page.getByTestId("patient-root")).not.toContainText("Maryam"); // the coordinator's name is not sent
+});
+
+test("the privacy centre lists who opened the record: a coordinator's read shows up for the patient", async ({ page }) => {
+  await page.goto(`/coordinator/${PATIENT_CASE}`);
+  await page.getByTestId("timeline").waitFor();
+  await page.goto(`/patient/${PATIENT_CASE}`);
+  await page.getByLabel("Switch role").selectOption("patient");
+  await page.getByTestId("tab-privacy").click();
+  await expect(page.getByTestId("access-row").first()).toContainText("Maryam Al Suwaidi");
+  await expect(page.getByTestId("data-panel")).toContainText("synthetic");
 });
 
 test("Arabic patient flow on a phone: RTL, no horizontal scroll, acknowledge, withdraw and resume consent", async ({ page }) => {
@@ -224,8 +240,11 @@ test("Arabic patient flow on a phone: RTL, no horizontal scroll, acknowledge, wi
   // Acknowledge in Arabic.
   await page.getByRole("button", { name: "فهمت، يرجى التواصل معي" }).click();
   await expect(page.getByTestId("ack-done")).toContainText("سجلنا طلبك");
-  // Withdraw and resume consent in Arabic.
+  // Withdraw and resume consent in Arabic, in the privacy centre.
+  await page.getByTestId("tab-privacy").click();
+  expect(await noOverflow()).toBe(true);
   await page.getByRole("button", { name: "أوقفوا كل تواصل" }).click();
+  await page.getByRole("button", { name: "نعم، أوقفوا كل تواصل" }).click();
   await expect(page.getByTestId("consent-withdrawn")).toContainText("طلبت إيقاف التواصل");
   expect(await noOverflow()).toBe(true);
   await page.getByRole("button", { name: "يمكنكم التواصل معي مرة أخرى" }).click();

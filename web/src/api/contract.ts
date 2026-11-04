@@ -502,7 +502,40 @@ export interface CaseListParams {
  * `owner === owner_actor === owner_role === <role>`; a staff-shaped owner has `owner_actor` of the form `role:id`.
  * `patientOwnerOf` (lib/derive.ts) tells the two apart and the patient page says "your primary care doctor".
  */
+/**
+ * Who a patient can ask, and how (patient app, ADR-052): the owner's name and role with the care team's line. Sent to a
+ * patient login only, and the one place a patient is told a staff name. `synthetic` is true while the number is a placeholder.
+ */
+export interface CareContact {
+  name: string;
+  /** The backend role (`primary_care_owner`, `specialist_owner`, `coordinator`, `supervisor`). */
+  role: string;
+  phone: string;
+  synthetic: boolean;
+}
+
+/**
+ * One row of `GET /cases/{id}/access-log` (access audit): a member of staff opened the record. A patient gets `role`, `name`
+ * and `at` only; staff also get the `actor` (`role:opaque_id`) and `kind` of read (`case`, `timeline`, `messages`, `fhir`, `replies`).
+ */
+export interface AccessEntry {
+  at: string;
+  role: string;
+  name: string;
+  actor?: string;
+  kind?: string;
+}
+export interface AccessLog {
+  case_id: string;
+  /** One row per person and kind per this many minutes. */
+  window_minutes: number;
+  limit: number;
+  entries: AccessEntry[];
+}
+
 export interface CaseDetail extends Omit<CaseSummary, "pathway" | "created_at" | "updated_at"> {
+  /** Patient login only (ADR-052): the owner's name, role and the care team's line, else null/absent. */
+  care_contact?: CareContact | null;
   pathway?: string;
   created_at?: string;
   updated_at?: string;
@@ -1266,6 +1299,11 @@ export interface ApiClient {
   listCases(params?: CaseListParams): Promise<CaseSummary[]>;
   getCase(caseId: string): Promise<CaseDetail>;
   getTimeline(caseId: string): Promise<CaseTimeline>;
+  /**
+   * GET /cases/{id}/access-log (access audit): who read the case, newest first. A patient asks about their own case and sees
+   * role, name and time; staff who may read it (the owner, coordinator, supervisor) also see the actor and the kind of read.
+   */
+  getAccessLog(caseId: string): Promise<AccessLog>;
   /** Returns the updated case. Rejects with ApiError(status 409) on an invalid transition. */
   postEvent(caseId: string, body: PostEventBody): Promise<CaseDetail>;
   requestDraft(caseId: string, body: DraftRequestBody): Promise<Draft>;

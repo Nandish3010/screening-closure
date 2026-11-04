@@ -5,7 +5,7 @@ from contextlib import asynccontextmanager
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
-from app import auth, automation, confirmatory, evidence, fhir_projection, leader, loadshed, memtrace, notify, observability, ops, outreach_policy, policy, users
+from app import access_audit, auth, automation, confirmatory, evidence, fhir_projection, leader, loadshed, memtrace, notify, observability, ops, outreach_policy, policy, users
 from app.clock import clock
 from app.config import settings
 from app.events import InMemoryEventStore
@@ -84,6 +84,7 @@ async def lifespan(app: FastAPI):
         run_migrations(pool)
         cases.store = PostgresEventStore(pool)
         notify.log = PostgresNotificationLog(pool)
+        access_audit.log_store = access_audit.PostgresAccessLog(pool)
         users.directory = PostgresUserDirectory(pool)
         ops.store = PostgresOpsStore(pool)
         _start_clock(PostgresClockStore(pool, "main"))
@@ -94,6 +95,7 @@ async def lifespan(app: FastAPI):
     else:
         cases.store = InMemoryEventStore()
         notify.log = notify.InMemoryNotificationLog()
+        access_audit.log_store = access_audit.InMemoryAccessLog()
         users.directory = users.InMemoryUserDirectory()
         ops.store = ops.InMemoryOpsStore()
         log.warning("event store: IN-MEMORY (DATABASE_URL not set); data is not durable")

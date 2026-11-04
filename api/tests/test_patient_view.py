@@ -104,6 +104,13 @@ FORBIDDEN_TEXT = [
 
 
 def assert_clean(body, staff_ids):
+    if isinstance(body, dict) and "care_contact" in body:
+        # ADR-052: the owner's name and role and the care-team line are the ONE staff detail a patient is told, in this field
+        # and nowhere else; every other staff name, id and the rest of the owner's details stay out.
+        body = dict(body)
+        cc = body.pop("care_contact")
+        assert cc is None or (set(cc) == {"name", "role", "phone", "synthetic"} and cc["name"] == NAMES["pco"]
+                              and cc["role"] == "primary_care_owner" and cc["synthetic"] is True)
     blob = json.dumps(body, ensure_ascii=False)
     for needle in FORBIDDEN_TEXT:
         assert needle.lower() not in blob.lower(), f"{needle!r} reached the patient: {blob[:400]}"
