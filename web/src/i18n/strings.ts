@@ -19,6 +19,11 @@ import type { Lang } from "../api/contract";
 /** First-strong isolate so a Latin name does not scramble neighbouring Arabic text. */
 const iso = (s: string) => `\u2068${s}\u2069`;
 
+/** Build-time flag of the cloud-hosted judge demo (deploy/gcp): the reply model is not served there, and the text must not claim it is. */
+function hostedDemo(): boolean {
+  return String(import.meta.env?.VITE_HOSTED_DEMO ?? "") === "1";
+}
+
 /** Pathway-specific patient wording (patient app): the pathway's own words for its next step, never a finding (E14). */
 export interface PathwayStrings {
   /** Three short steps under "My next step" in the plain explainer. */
@@ -529,7 +534,9 @@ export const STAFF = {
   /** D13: the coordinator records what the patient wrote back; the triage reads it and only ever flags or relays. */
   replyForm: {
     heading: "Record patient reply",
-    intro: "The patient wrote back. Type or paste the reply: a small offline model reads it, the text is kept outside the audit trail, and the case gets either one safe step or a request for a person to read it. The model cannot change the case, send, close or withdraw consent.",
+    intro: hostedDemo()
+      ? "The patient wrote back. Type or paste the reply. On-premises model (runs on our server, no cloud AI): the same small fine-tuned model as in the clinic build, converted to run on this server's CPU, reads it. The text is kept outside the audit trail, and the case gets either one safe step or a request for a person to read it. The model cannot change the case, send, close or withdraw consent."
+      : "The patient wrote back. Type or paste the reply: a small offline model reads it, the text is kept outside the audit trail, and the case gets either one safe step or a request for a person to read it. The model cannot change the case, send, close or withdraw consent.",
     channel: "Reply arrived by",
     text: "Patient's reply",
     button: "Record reply",
@@ -545,6 +552,11 @@ export const STAFF = {
   outreachDemoBanner: {
     fallback: "DEMO PLACEHOLDER (clinical sign-off pending, H1)",
     explanation: "The automatic patient messages on this system run on a demo approval, not on a clinical lead's signature. No clinician has approved the message texts or the rules that send them. Real patients would receive nothing until the policy is signed.",
+  },
+  /** Hosted judge demo (`GET /health` -> `demo.simulated_clock`): every date on screen is simulated, and a supervisor can move it. */
+  demoClockBanner: {
+    label: "Demo: simulated time",
+    explanation: "All dates and deadlines in this demo run on a simulated clock over synthetic data. Nothing here is real time or a real patient. A supervisor can use \"Advance\" in the header to move the clock forward.",
   },
   contactUpdated: "Contact details confirmed by a person",
   /** D13: the reply triage (`system:triage`). The events carry no reply text; it is stored outside the log. */
@@ -574,6 +586,39 @@ export const STAFF = {
     saved: "Estimated minutes saved",
     assumed: "assumed minutes, to source",
     summary: (human: number, automated: number) => `Human actions ${human} / Automated actions ${automated}`,
+  },
+  funnel: {
+    heading: "Outcome funnel",
+    intro: "The screening loop from result to documented outcome: how many cases reached each step, and how long the step took.",
+    synthetic: "Synthetic data on a simulated clock.",
+    filtersLabel: "Funnel filters",
+    pathway: "Pathway",
+    priority: "Priority",
+    allPathways: "All pathways",
+    allPriorities: "All priorities",
+    notRanked: "Not ranked",
+    caption: "Cases that reached each step of the screening loop, with the share of the previous step and the median time from it",
+    colStep: "Step",
+    colCases: "Cases",
+    colConversion: "Of the previous step",
+    colMedian: "Median time from the previous step",
+    start: "Start of the loop",
+    atIntake: "At intake",
+    ofWord: { recorded: "of results recorded", referred: "of those referred", attended: "of those who attended" } as Record<string, string>,
+    casesN: (n: number) => (n === 1 ? "1 case" : `${n} cases`),
+    declined: (n: number) => `Closed on an informed refusal: ${n}. Counted apart: the person decided, so they are not in "Attended" or "Outcome documented".`,
+    note: "Counts are cases that reached a step, not people helped. Ranking does not hold a case back, so \"Referred\" is measured against all results recorded. Times are medians in calendar days on the simulated clock, over cases that reached both steps; cases still waiting are not in them, so they understate the slow steps. This is not a measure of health outcomes.",
+    riskHeading: "At risk of being lost to follow-up",
+    riskDefinition: (days: number) => `No confirmatory procedure completed, and either the contact was marked lost or nothing has moved for ${days} days or more on the simulated clock. The same rule as the closure metrics.`,
+    riskNone: "No cases at risk for this filter.",
+    riskCountLabel: (n: number) => (n === 1 ? "case at risk" : "cases at risk"),
+    riskShowing: (shown: number, total: number) => `Showing the ${shown} that have waited longest, of ${total}.`,
+    riskWorklist: "Open the worklist",
+    riskIdle: (d: number) => `no progress for ${d} days`,
+    riskContactLost: (d: number) => `contact marked lost, ${d} days since progress`,
+    failures: (n: number) => `${n} case${n === 1 ? "" : "s"} could not be counted because the record does not replay.`,
+    loading: "Loading the funnel...",
+    error: (m: string) => `Could not load the funnel: ${m}`,
   },
   effortCard: {
     heading: "Human effort",

@@ -3,6 +3,9 @@
 Development only (SEC-1, ADR-029): app.main registers this router only when APP_ENV=dev, so in any
 other environment `/clock/*` does not exist (404). Moving a clinical safety clock is a demo
 affordance, never a production one.
+
+The one exception is the declared hosted demo (DEMO_SIMULATED_CLOCK=1 and DEMO_DEPLOYMENT=1, app.auth.demo_clock_active): there
+`demo_router` is registered instead, with `POST /clock/advance` only (supervisor); `/clock/reset` does not exist.
 """
 
 from fastapi import APIRouter, HTTPException
@@ -12,6 +15,7 @@ from app.clock import clock
 from app.routers import cases
 
 router = APIRouter(prefix="/clock", tags=["clock"])
+demo_router = APIRouter(prefix="/clock", tags=["clock"])  # the hosted demo: advance only
 
 
 class Advance(BaseModel):
@@ -26,6 +30,9 @@ def advance(body: Advance) -> dict:
     if not (body.days or body.hours):
         raise HTTPException(422, "give days and/or hours, greater than zero")
     return {"sim_time": clock.advance(days=body.days or 0, hours=body.hours or 0).isoformat()}
+
+
+demo_router.add_api_route("/advance", advance, methods=["POST"])
 
 
 @router.post("/reset")

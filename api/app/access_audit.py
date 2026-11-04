@@ -1,7 +1,7 @@
 """Access audit (privacy centre): who looked at a patient's record, and when.
 
 The event log records what was DONE to a case; it never recorded who merely READ it. A patient who asks "who looked at my
-record?" needs that, so staff reads of a case are written here, in a table of their own (`access_audit`, migration 020),
+record?" needs that, so staff reads of a case are written here, in a table of their own (`access_audit`, migration 021),
 not in the event log: a read changes no state, so it is not an event, and the state machine, the model checker and the
 replay are untouched.
 
@@ -81,7 +81,7 @@ class InMemoryAccessLog:
 
 
 class PostgresAccessLog:
-    """The `access_audit` table (migration 020)."""
+    """The `access_audit` table (migration 021)."""
 
     _COLS = "id, case_id, at, actor, role, kind"
 

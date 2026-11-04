@@ -1281,7 +1281,7 @@ def _finish(
         if payload.get("auto") is True:
             out = replace(out, auto_message_times=(*out.auto_message_times, at))
     elif kind == "consent_updated" and any(k in payload for k in CONSENT_KEYS):
-        # (a `consent_updated` that carries only `lang` is a preference: no consent change, no hold cleared, ADR-052)
+        # (a `consent_updated` that carries only `lang` is a preference: no consent change, no hold cleared, ADR-053)
         out = _clear_hold(_consent_after(out, event, (before or model).consent_frozen), "opt_out")
         if out.pending_handoff and referral_hold(before or model) is not None and referral_hold(out) is None:
             # A36: the hold on a pending referral ends; its bounce timer starts again, in full, from now

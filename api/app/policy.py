@@ -61,10 +61,13 @@ ROUTE_POLICY: dict[tuple[str, str], object] = {
     ("GET", "/metrics/closure"): frozenset({COORD, SUPER}),
     # Human effort versus automation (A21): per-case counts of human and automated actions, assumed minutes.
     ("GET", "/metrics/effort"): frozenset({COORD, SUPER}),
+    # The outcome funnel (ADR-052): the loop's five steps, counts, median times and the cases at risk of being lost.
+    ("GET", "/metrics/funnel"): frozenset({COORD, SUPER}),
     # Record the confirmatory colonoscopy as FHIR evidence (E8): the case's owner (checked in the handler).
     ("POST", "/cases/{case_id}/confirmatory-result"): frozenset({PCO, SPEC}),
     # Demo clock: supervisor only. The router is registered only when APP_ENV=dev (app.main); outside dev
-    # these paths do not exist, so these entries are never consulted.
+    # these paths do not exist, so these entries are never consulted. Exception: the declared hosted demo (DEMO_SIMULATED_CLOCK +
+    # DEMO_DEPLOYMENT, app.auth.demo_clock_active) registers /clock/advance only.
     ("POST", "/clock/advance"): frozenset({SUPER}),
     ("POST", "/clock/reset"): frozenset({SUPER}),
     # The scheduler service's periodic sweep and its heartbeat.

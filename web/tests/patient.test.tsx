@@ -39,7 +39,7 @@ describe("Patient page", () => {
     await open();
     expect(screen.getByText(STRINGS.en.resultBody)).toBeInTheDocument();
     expect(screen.getByText("Your care team will explain your result in person or by phone.")).toBeInTheDocument();
-    // ADR-052: the owner by name and role (the care contact), with a way to call the care team.
+    // ADR-053: the owner by name and role (the care contact), with a way to call the care team.
     expect(screen.getByTestId("patient-owner")).toHaveTextContent("Sara Al Mansoori");
     expect(screen.getByTestId("patient-owner")).toHaveTextContent(STRINGS.en.roles.primary_care_owner);
     expect(screen.getByTestId("call-care-team")).toHaveAttribute("href", "tel:+97120000000");
@@ -226,7 +226,7 @@ describe("SEC-2: the redacted patient case", () => {
     await api.login("patient", "Patient");
     const d = await api.getCase(DEMO_PATIENT_CASE_ID);
     expect(d).toMatchObject({ owner: "primary_care_owner", owner_actor: "primary_care_owner", owner_role: "primary_care_owner" });
-    // ADR-052: the owner's name appears in `care_contact` and nowhere else; no other staff name is sent.
+    // ADR-053: the owner's name appears in `care_contact` and nowhere else; no other staff name is sent.
     expect(d.care_contact).toEqual({ name: "Sara Al Mansoori", role: "primary_care_owner", phone: "+971 2 000 0000", synthetic: true });
     expect(JSON.stringify({ ...d, care_contact: null })).not.toMatch(/Layla|Sara|Karim|Huda|Maryam|Haddad|Mansoori/);
     expect(d.events.length).toBeGreaterThan(0);

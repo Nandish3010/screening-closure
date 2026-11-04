@@ -270,7 +270,7 @@ export function PatientView({ caseId }: { caseId: string }) {
   }
 
   const contact = detail.care_contact ?? null;
-  // The owner by name when the API sent the care contact (ADR-052); else by role only (an older server), or the name a staff
+  // The owner by name when the API sent the care contact (ADR-053); else by role only (an older server), or the name a staff
   // login previewing this page can read from the log.
   const owner = patientOwnerOf(detail);
   const ownerLine = contact

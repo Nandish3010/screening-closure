@@ -333,7 +333,7 @@ def test_restoring_consent_unfreezes_and_clears_the_review():
     assert post(cid, "message_drafted", PCO, DRAFTED).status_code == 201
 
 
-# ---- ADR-052: a language preference on consent_updated -----------------------------------------------------------------
+# ---- ADR-053: a language preference on consent_updated -----------------------------------------------------------------
 
 
 def test_a_language_only_update_is_a_preference_and_changes_no_consent_hold_or_history():

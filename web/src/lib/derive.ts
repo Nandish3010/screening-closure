@@ -550,7 +550,7 @@ export function triageReplayOf(events: CaseEvent[]): TriageReplay {
   };
   for (const ev of events) {
     if (ev.type === "consent_updated") {
-      if (Object.keys(consentChangesOf(ev.payload)).length === 0) continue; // a language-only update is a preference (ADR-052)
+      if (Object.keys(consentChangesOf(ev.payload)).length === 0) continue; // a language-only update is a preference (ADR-053)
       const w = consentChangesOf(ev.payload).withdrawn;
       if (w !== undefined) withdrawn = w;
       clear("opt_out");

@@ -2342,6 +2342,83 @@
         ]
       }
     },
+    "/metrics/funnel": {
+      "get": {
+        "description": "The outcome funnel (ADR-052): the screening loop in five steps, over every loaded pathway or the one named by `pathway`\n(a pack name from `options.pathways`), optionally only the cases of one priority tier (`priority`: a tier from\n`options.priorities`, or `unranked` for the cases that were given none). Per step: how many cases reached it, the share of\nthe previous step, and the median calendar days from it on the simulated clock; plus the cases at risk of being lost (the\n`lost_to_follow_up` rule of `GET /metrics/closure`) with the longest-waiting ones listed. Read from the `case_funnel` table\n(migration 020), refreshed within the same time budget as the other metrics, so the route is bounded.",
+        "operationId": "funnel_metrics_funnel_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "pathway",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 64,
+                  "pattern": "^[a-z0-9_]+$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Pathway"
+            }
+          },
+          {
+            "in": "query",
+            "name": "priority",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 32,
+                  "pattern": "^[a-z0-9_]+$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Priority"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Funnel Metrics Funnel Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Funnel",
+        "tags": [
+          "metrics"
+        ]
+      }
+    },
     "/pathways": {
       "get": {
         "description": "Return a loaded pathway config as parsed from YAML: the default pathway's, or the one named by `?name=`.",

@@ -1,4 +1,4 @@
-"""The access audit against Postgres: migration 020, the window, the append-only guard and the least-privilege grant.
+"""The access audit against Postgres: migration 021, the window, the append-only guard and the least-privilege grant.
 Run with `make test-db`. Every assertion is about this test's own cases, so a shared database is never disturbed."""
 
 import os

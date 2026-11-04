@@ -157,7 +157,7 @@ def factors_for_agency(case_id: UUID) -> dict | None:
 
 
 def _care_contact(model) -> dict | None:
-    """Who the patient can ask, and how (patient app, ADR-052): the owner's display name and role and the care team's line.
+    """Who the patient can ask, and how (patient app, ADR-053): the owner's display name and role and the care team's line.
     The one place a patient sees a staff name; the rest of their view stays role-only."""
     if not model.owner:
         return None

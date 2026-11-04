@@ -203,7 +203,7 @@ test("SEC-2: a clinician who does not own the case sees why the drafts are hidde
   await expect(page.getByTestId("drafts-hidden-why")).toHaveCount(0);
 });
 
-test("ADR-052: the patient is told the owner's name and role, and no other staff name or id, in both languages", async ({ page }) => {
+test("ADR-053: the patient is told the owner's name and role, and no other staff name or id, in both languages", async ({ page }) => {
   await page.goto(`/patient/${PATIENT_CASE}`);
   await expect(page.getByTestId("patient-owner")).toContainText("Sara Al Mansoori"); // a staff login previewing the page
   await page.getByLabel("Switch role").selectOption("patient");

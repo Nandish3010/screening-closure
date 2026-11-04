@@ -54,6 +54,7 @@ Every cell is what the running API did, not what the policy table says: the scri
 | `GET /metrics/abstention` | U | R | R | R | A | R | A | R | R | R | R | R |
 | `GET /metrics/closure` | U | R | R | R | A | R | A | R | R | R | R | R |
 | `GET /metrics/effort` | U | R | R | R | A | R | A | R | R | R | R | R |
+| `GET /metrics/funnel` | U | R | R | R | A | R | A | R | R | R | R | R |
 | `GET /pathways` | U | A | A | A | A | A | A | A | A | A | A | A |
 | `POST /scheduler/agency-run` | U | R | R | R | R | R | R | A | R | R | R | R |
 | `POST /scheduler/automation-scan` | U | R | R | R | R | R | R | A | R | A | R | R |
@@ -137,6 +138,6 @@ None.
 
 ## What was checked
 
-- 45 routes in the OpenAPI document, 45 entries in `ROUTE_POLICY`: every route has a decision and no decision is stale.
+- 46 routes in the OpenAPI document, 46 entries in `ROUTE_POLICY`: every route has a decision and no decision is stale.
 - 33 event types in `EVENT_POLICY`, plus one unknown type that must be refused for every role.
-- 1083 role, route and scope combinations probed with real requests; 0 differ from the policy tables; 0 are documented gaps (see Findings).
+- 1095 role, route and scope combinations probed with real requests; 0 differ from the policy tables; 0 are documented gaps (see Findings).

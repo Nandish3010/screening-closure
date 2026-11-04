@@ -9,7 +9,7 @@ const KIND: Record<string, string> = {
 };
 
 /**
- * "Who has looked at this record" (access audit, ADR-052): the staff reads the patient is shown in their privacy centre, with the
+ * "Who has looked at this record" (access audit, ADR-053): the staff reads the patient is shown in their privacy centre, with the
  * extra detail staff get (the actor and what was read). A read is written once per person and kind per 15 minutes. Reading this
  * list is not itself written. Not every role may read it (owners only on their own case, not the lab): a refusal is said, not hidden.
  */

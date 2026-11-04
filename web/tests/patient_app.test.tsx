@@ -270,7 +270,7 @@ describe("the privacy and consent centre", () => {
     await user.click(screen.getByTestId("tab-privacy"));
     await user.click(screen.getByRole("radio", { name: "العربية" }));
     expect(screen.getByTestId("patient-root")).toHaveAttribute("dir", "rtl");
-    // ADR-052: the language is told to the care team as a language-only consent_updated: no consent changes
+    // ADR-053: the language is told to the care team as a language-only consent_updated: no consent changes
     await waitFor(async () => expect(await lastEvent(api)).toMatchObject({ type: "consent_updated", payload: { lang: "ar" } }));
     const asStaff = async () => { await api.login("coordinator", "Maryam Al Suwaidi"); const d = await api.getCase(DEMO_PATIENT_CASE_ID); await api.login("patient", "Patient"); return d; };
     expect((await asStaff()).consent).toMatchObject({ channel_sms: true, withdrawn: false });

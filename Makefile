@@ -574,3 +574,32 @@ video: video-check video-deps
 	node tools/video/record.ts
 	$(PY) tools/video/narrate.py
 	tools/video/assemble.sh
+
+# ---- hosted judge demo on Google Cloud (deploy/gcp, docs/governance/hosting-gcp.md). Nothing here runs unless you invoke it. -------
+.PHONY: gcp-preflight gcp-up gcp-smoke gcp-reset gcp-down triage-gguf triage-gguf-eval
+gcp-preflight:
+	deploy/gcp/preflight.sh
+
+# creates billable resources: sign in and approve the cost first (see the doc)
+gcp-up:
+	deploy/gcp/up.sh --yes-spend
+
+gcp-smoke:
+	deploy/gcp/smoke-test.sh
+
+gcp-reset:
+	deploy/gcp/demo-reset.sh
+
+gcp-down:
+	deploy/gcp/teardown.sh
+
+# Reply-triage GGUF build for the hosted demo (CPU-heavy; needs torch+gguf in tools/triage/.venv and brew llama.cpp, see the script):
+# merge the LoRA, convert, quantize; then score both quantizations on the model-card splits (QUANT picks the one to promote).
+triage-gguf:
+	tools/triage/convert_gguf.sh
+
+triage-gguf-eval:
+	tools/triage/.venv/bin/python tools/triage/evaluate_gguf.py --gguf tools/triage/gguf/triage-q8_0.gguf --quant Q8_0
+	tools/triage/.venv/bin/python tools/triage/evaluate_gguf.py --gguf tools/triage/gguf/triage-q5_k_m.gguf --quant Q5_K_M
+	@echo "Choose the build closest to the MLX model in docs/results/triage/eval-gguf-*.md, then:"
+	@echo "  tools/triage/.venv/bin/python tools/triage/evaluate_gguf.py --quant <Q8_0|Q5_K_M> --reuse-scores --promote"

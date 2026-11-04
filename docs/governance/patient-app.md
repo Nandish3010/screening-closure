@@ -1,6 +1,6 @@
 # Patient app and privacy centre
 
-The mobile patient experience at `/patient`, and the privacy and consent centre inside it. All data is synthetic. Decisions: ADR-052. The Arabic text has had no native-speaker review (H2); it is in [the Arabic review pack](../review/arabic-pack.md).
+The mobile patient experience at `/patient`, and the privacy and consent centre inside it. All data is synthetic. Decisions: ADR-053. The Arabic text has had no native-speaker review (H2); it is in [the Arabic review pack](../review/arabic-pack.md).
 
 ## What the patient gets
 
@@ -24,11 +24,11 @@ Every choice posts the existing `consent_updated` with only the booleans the pat
 
 The language chosen in the privacy centre is told to the care team as a `consent_updated` carrying only `lang` (`en` or `ar`, validated). It changes no consent, adds no consent-history entry, clears no hold and moves no state; the outreach reads the latest `lang` on a patient event (this one, or the one sent with a button) for the language of its messages, and the phone's own value is the fallback.
 
-Possible future event, not built (ADR-052): a patient "I will attend" confirmation of a booked appointment. There is no such event today (a `confirm` reply exists only as a coordinator-recorded, classified message and has no effect), and adding one would change the state machine's alphabet and the model checker. Until then the one primary action on a booked appointment is "Add to my calendar", with "Ask for another date" and "I cannot come".
+Possible future event, not built (ADR-053): a patient "I will attend" confirmation of a booked appointment. There is no such event today (a `confirm` reply exists only as a coordinator-recorded, classified message and has no effect), and adding one would change the state machine's alphabet and the model checker. Until then the one primary action on a booked appointment is "Add to my calendar", with "Ask for another date" and "I cannot come".
 
 ## Who looked at my record (access audit)
 
-- **What is written.** A staff user's read of a case: the case page, its timeline, the messages sent, the FHIR ids, the stored patient replies. Table `access_audit` (migration 020): case, actor (`role:opaque_id`, as in the log), role, kind of read, simulation time. Append-only; the application role cannot UPDATE or DELETE.
+- **What is written.** A staff user's read of a case: the case page, its timeline, the messages sent, the FHIR ids, the stored patient replies. Table `access_audit` (migration 021): case, actor (`role:opaque_id`, as in the log), role, kind of read, simulation time. Append-only; the application role cannot UPDATE or DELETE.
 - **What is not.** The patient's own reads; service tokens and in-process automation (scheduler, watchdog, agency, HL7 adapter, the automation scans), which the data panel describes; the worklist (`GET /cases` lists state and owner of many cases); reading the access log.
 - **Bounded.** One row per (case, person, kind) per 15 minutes of simulation time. A page left open does not fill the table. The patient is shown the newest 100 rows, staff the newest 500.
 - **Not in the event log.** A read changes no state. The state machine, replay and model checker do not see it.
@@ -50,5 +50,5 @@ Buttons and rows are at least 48 px tall, the main buttons 60 px. Contrast uses 
 ## Limits
 
 - The care-team phone number is a placeholder. Arabic and the cervical and chronic English are unreviewed (H1, H2).
-- The access log shows what the system records from now on; reads before migration 020 are not in it.
+- The access log shows what the system records from now on; reads before migration 021 are not in it.
 - `Add to my calendar` is a file download: iOS and Android open it with their calendar; a desktop browser saves it.

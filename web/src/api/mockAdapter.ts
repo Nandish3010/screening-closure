@@ -8,7 +8,7 @@
  */
 import type {
   AgencyInboxItem, AgencyOrg, AgencyRun, AgencyTask, AgencyTaskParams, Alert, ApiClient, CaseAgencySummary, CaseDetail, CaseEvent, CaseListParams, CaseSummary, CaseTimeline, ClosureMetrics, ConfirmatoryResult, Draft, DraftApproval,
-  DraftRecord, DraftRejection, DraftRequestBody, EffortMetrics, Me, PostEventBody, ReplyBody, ReplyResult, Role, TimelineItem,
+  DraftRecord, DraftRejection, DraftRequestBody, EffortMetrics, FunnelMetrics, FunnelParams, Me, PostEventBody, ReplyBody, ReplyResult, Role, TimelineItem,
 } from "./contract";
 import type { AccessLog } from "./contract";
 import { ApiError, AUTOMATION_ACTOR, BACKEND_ROLE, OWNER_SCOPED_ROLES, REJECT_NOTE_MAX, REJECT_REASONS, ROLES } from "./contract";
@@ -17,6 +17,7 @@ import {
   type AgencyLedger, type CaseFact, caseSummaryOf, executeRun, fakePromptHash, inboxOf, orgOf, runsOf, seedLedger, tasksOf,
 } from "./mockAgency";
 import { PROVIDER_CLINICIANS, ROLE_NAMES, ROLE_PROVIDERS, backendActor } from "./identities";
+import { funnelMetricsOf } from "../lib/funnel";
 import { ESCALATION_LADDER, pathwayMeta, procedureSlug } from "../lib/pathway";
 import {
   actorKindOf, actorRole, closureOutcomeOf, closureProposalOf, incompleteProcedureOf, refusalOf, completeDetail, consentOf, consentHistoryOf, milestonesOf, overdueDays, pendingEscalation, replayHandoffs,
@@ -92,7 +93,7 @@ interface MockDb {
   tick: number;
   /** A22 agency ledger; absent in a database stored before it existed (seeded on first use). */
   agency?: AgencyLedger;
-  /** Access audit (ADR-052): staff reads of a case, oldest first, per case; absent in a database stored before it existed. */
+  /** Access audit (ADR-053): staff reads of a case, oldest first, per case; absent in a database stored before it existed. */
   access?: Record<string, MockAccessRow[]>;
 }
 
@@ -259,7 +260,7 @@ export function createMockAdapter(
     const roleOnly = (role: string) => ({ actor: role, display_name: role, role });
     const owner = replayHandoffs(evs).owner;
     const wire = {
-      // ADR-052: the owner's name and role and the care team's line: the one staff name a patient is told.
+      // ADR-053: the owner's name and role and the care team's line: the one staff name a patient is told.
       care_contact: owner ? { name: owner.name, role: actorRole(owner.actor), phone: CARE_TEAM_PHONE, synthetic: true } : null,
       case_id: id, pathway: row.pathway, state: row.state, created_at: row.created_at, updated_at: row.updated_at,
       owner: ownerRole ? roleOnly(ownerRole) : null,
@@ -669,6 +670,20 @@ export function createMockAdapter(
     async getEffortMetrics(): Promise<EffortMetrics | null> {
       if (session.role !== "coordinator" && session.role !== "supervisor") return null; // the API answers 403
       return effortMetricsOf(load().events, SIM_NOW);
+    },
+    async funnelMetrics(params: FunnelParams = {}): Promise<FunnelMetrics | null> {
+      if (session.role !== "coordinator" && session.role !== "supervisor") return null; // the API answers 403
+      const db = load();
+      const ids = Object.keys(db.events);
+      const pathways = [...new Set(ids.map(pathwayOfCase))];
+      const known = new Set(ids.map((id) => priorityOfCase(id)?.tier).filter((t): t is string => !!t));
+      if ((params.pathway && !pathways.includes(params.pathway)) || (params.priority && params.priority !== "unranked" && !known.has(params.priority))) {
+        throw new ApiError(422, "unknown filter");
+      }
+      return funnelMetricsOf(
+        ids.map((id) => ({ id, events: db.events[id], pathway: pathwayOfCase(id), priority: priorityOfCase(id)?.tier ?? null })),
+        SIM_NOW, params, pathways,
+      );
     },
     async createCase(): Promise<string> {
       requireStaff();

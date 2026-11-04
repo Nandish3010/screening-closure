@@ -1,4 +1,4 @@
-"""The privacy centre's "who looked at my record" (ADR-052): staff reads are written to the access audit, bounded, and a patient
+"""The privacy centre's "who looked at my record" (ADR-053): staff reads are written to the access audit, bounded, and a patient
 reads them as role, name and time and nothing more. Also the PHI/RBAC proof for the patient app: what a patient is sent never
 holds staff-only data (priority, model ids, risk, other patients, other staff)."""
 
