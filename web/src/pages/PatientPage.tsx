@@ -247,9 +247,9 @@ export function PatientView({ caseId }: { caseId: string }) {
 
   // Large touch targets (btn-xl is 60px tall); both languages are one tap away and each is named in its own script.
   const toggle = (
-    <button type="button" className="btn lang-toggle pa-lang" onClick={() => setLang(lang === "en" ? "ar" : "en")} lang={lang === "en" ? "ar" : "en"} aria-label={`${t.language}: ${t.switchTo}`}>
-      <span aria-hidden="true" className={lang === "en" ? "on" : ""} lang="en">{STRINGS.ar.switchTo}</span>
-      <span aria-hidden="true" className={lang === "ar" ? "on" : ""} lang="ar">{STRINGS.en.switchTo}</span>
+    <button type="button" className="btn lang-toggle pa-lang" onClick={() => setLang(lang === "en" ? "ar" : "en")} lang={lang === "en" ? "ar" : "en"} aria-label={`${t.language}: ${STRINGS.ar.switchTo} ${STRINGS.en.switchTo}`}>
+      <span className={lang === "en" ? "on" : ""} lang="en">{STRINGS.ar.switchTo}</span>{" "}
+      <span className={lang === "ar" ? "on" : ""} lang="ar">{STRINGS.en.switchTo}</span>
     </button>
   );
 
