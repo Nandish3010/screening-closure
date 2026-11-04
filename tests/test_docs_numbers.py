@@ -109,8 +109,14 @@ def test_allow_list_needs_file_number_and_reason_and_cannot_go_stale(tmp_path):
         raise AssertionError("an allow entry without a reason must be rejected")
 
 
+FIGURES_JSON = ('{"effort": {"scenarios": {"literature_anchored": {"in_reach": {"reduction": {"labour_reduction": {"mean": 0.3598}}},'
+                ' "all": {"reduction": {"labour_reduction": {"mean": 0.1969}}}}}}}')
+FIGURES_TS = "export const PROGRAMME_LABOUR = { inReachPct: 36, programmePct: 20, targetPct: 40 } as const;\n"
+
+
 def test_main_exit_codes(tmp_path):
-    root = make(tmp_path, {"docs/results/results.md": "ok 1.5\n", "README.md": "Is 1.5.\n"})
+    root = make(tmp_path, {"docs/results/results.md": "ok 1.5\n", "README.md": "Is 1.5.\n",
+                           "docs/results/results.json": FIGURES_JSON, "web/src/lib/programmeFigures.ts": FIGURES_TS})
     assert dn.main(["--root", str(root)]) == 0
     (root / "README.md").write_text("Is 1.6.\n", encoding="utf-8")
     assert dn.main(["--root", str(root)]) == 1
@@ -119,3 +125,22 @@ def test_main_exit_codes(tmp_path):
 def test_current_tree_is_clean():
     found, _, stale = dn.run(REPO_ROOT)
     assert [str(c) for c in found] == [] and stale == []
+
+
+def test_the_shared_programme_figures_must_be_the_rounded_results(tmp_path):
+    root = make(tmp_path, {"docs/results/results.json": FIGURES_JSON, "web/src/lib/programmeFigures.ts": FIGURES_TS})
+    assert dn.figure_findings(root) == []
+    (root / "web/src/lib/programmeFigures.ts").write_text(FIGURES_TS.replace("inReachPct: 36", "inReachPct: 41"), encoding="utf-8")
+    assert any("inReachPct is 41" in f for f in dn.figure_findings(root))
+    (root / "web/src/lib/programmeFigures.ts").unlink()
+    assert any("missing" in f for f in dn.figure_findings(root))
+    assert dn.main(["--root", str(root)]) == 1
+
+
+def test_a_figure_that_reaches_the_target_is_flagged(tmp_path):
+    root = make(tmp_path, {"docs/results/results.json": FIGURES_JSON.replace("0.3598", "0.41"), "web/src/lib/programmeFigures.ts": FIGURES_TS.replace("36", "41")})
+    assert any("reaches the 40% target" in f for f in dn.figure_findings(root))
+
+
+def test_current_tree_figures_are_clean():
+    assert dn.figure_findings(REPO_ROOT) == []

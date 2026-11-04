@@ -1,3 +1,5 @@
+import { useState } from "react";
+import { modelHeadline, modelKind } from "../lib/models";
 import { abstentionText } from "./DraftsPanel";
 import { DOCS, docHref, type DocLink } from "../judge/links";
 
@@ -10,6 +12,9 @@ const pct = (x: number, digits = 0) => `${(x * 100).toFixed(digits)}%`;
 
 export interface WhyContent {
   model: string;
+  modelId?: string;
+  /** Rule ids and thresholds: shown only when the reader asks for the technical details. */
+  technical?: string;
   confidence: string;
   rule: string;
   human: string;
@@ -27,8 +32,8 @@ const isTemplate = (provider: string | null | undefined, fallback: boolean | nul
 
 /** The language-group rule (api/app/triage/dialect.py, hazard HZ-43) that sends a reply to a person, in plain words. */
 const GROUP_RULE: Record<string, string> = {
-  ar_gulf: "Gulf dialect: a person always checks these replies (safety rule HZ-43). The audit found the model too often wrong on them, so no confidence is high enough. ",
-  arabizi: "Arabic in Latin letters: a person checks these replies unless the model is very sure (safety rule HZ-43). ",
+  ar_gulf: "Gulf dialect: a person always checks these replies (safety rule). The audit found the model too often wrong on them, so no confidence is high enough. ",
+  arabizi: "Arabic in Latin letters: a person checks these replies unless the model is very sure (safety rule). ",
 };
 
 /** Pure: what the "Why?" panel says for one AI output. */
@@ -46,15 +51,13 @@ export function whyContent(i: WhyInput): WhyContent {
     };
   }
   if (i.kind === "triage") {
-    const none = !i.model_id || i.model_id === "unavailable";
+    const kind = modelKind(i.model_id);
     return {
-      model: none
-        ? "No model available. Sent to a person."
-        : i.model_id!.startsWith("rule:")
-          ? "Opt-out rule (no AI), checked before any model"
-          : i.model_id!,
+      model: modelHeadline(i.model_id),
+      modelId: kind === "local" || kind === "other" ? i.model_id! : undefined,
       confidence: typeof i.confidence === "number" ? pct(i.confidence) : "not available",
-      rule: `${GROUP_RULE[i.forced_reason ?? ""] ?? ""}Handled without a person only if confidence is at least ${pct(TRIAGE_THRESHOLD, 1)} and the intent is not question, other or opt-out. Otherwise a person reads it.${i.needs_human ? " This reply is waiting for a person." : ""}`,
+      rule: `${GROUP_RULE[i.forced_reason ?? ""] ?? ""}Handled without a person only if the model is confident enough and the intent is not question, other or opt-out. Otherwise a person reads it.${i.needs_human ? " This reply is waiting for a person." : ""}`,
+      technical: `${i.forced_reason ? "Safety rule HZ-43. " : ""}Handled alone only at or above ${pct(TRIAGE_THRESHOLD, 1)} confidence.`,
       human: "Review the reply. An opt-out is always read by a person.",
       card: DOCS.cardTriage,
     };
@@ -84,6 +87,8 @@ export function whyContent(i: WhyInput): WhyContent {
  */
 export function WhyPanel({ input, subject, testId }: { input: WhyInput; subject: string; testId: string }) {
   const c = whyContent(input);
+  const [more, setMore] = useState(false);
+  const hasMore = Boolean(c.modelId || c.technical);
   return (
     <details className="why-panel" data-testid={testId}>
       <summary data-testid={`${testId}-summary`}>Why? ({subject})</summary>
@@ -93,7 +98,20 @@ export function WhyPanel({ input, subject, testId }: { input: WhyInput; subject:
         <div><dt>Rule applied</dt><dd data-testid={`${testId}-rule`}>{c.rule}</dd></div>
         <div><dt>A human must still decide</dt><dd data-testid={`${testId}-human`}>{c.human}</dd></div>
       </dl>
-      <p><a href={docHref(c.card)} target="_blank" rel="noreferrer">{c.card.label}</a> <span className="muted mono">({c.card.path})</span></p>
+      {hasMore && (
+        <div className="why-detail" data-testid={`${testId}-details`}>
+          <button type="button" className="linklike" aria-expanded={more} aria-controls={`${testId}-more`} onClick={() => setMore((m) => !m)}>
+            {more ? "Hide model details" : "Model details"}<span className="visually-hidden"> for {subject}</span>
+          </button>
+          {more && (
+            <div id={`${testId}-more`} className="mono muted">
+              {c.modelId && <div data-testid={`${testId}-model-id`}>{c.modelId}</div>}
+              {c.technical && <div data-testid={`${testId}-technical`}>{c.technical}</div>}
+            </div>
+          )}
+        </div>
+      )}
+      <p><a href={docHref(c.card)} target="_blank" rel="noreferrer" title={c.card.path}>{c.card.label}</a></p>
     </details>
   );
 }

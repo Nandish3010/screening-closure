@@ -140,6 +140,9 @@ services:
       # keeps the demo snapshot deterministic: no agency run (and so no agency-drafted message_drafted event on the demo case) fires from
       # the scheduler. Trigger one by hand with `make agency-run`; set AGENCY_EVERY_SWEEPS=6 to rehearse the scheduled runs.
       AGENCY_EVERY_SWEEPS: ${AGENCY_EVERY_SWEEPS:-0}
+      # Time budget of one agency run in seconds (agency_run_budget_seconds; the code default is 20, kept here). The video recorder
+      # raises it to 600 for the recording run (tools/video/record.ts, VIDEO_AGENCY_BUDGET) because replaying 22 cases can outlast 20 s.
+      AGENCY_RUN_BUDGET_SECONDS: ${AGENCY_RUN_BUDGET_SECONDS:-20}
       # Set explicitly so a missing .env cannot silently fall back to the in-memory store. The unprivileged role, not the
       # owner (SEC-1): it can add events, not alter or delete them, and cannot change the schema.
       DATABASE_URL: postgresql://closure_app:${APP_DB_PASSWORD:-closure_app_dev_password}@postgres:5432/${POSTGRES_DB:-closure}

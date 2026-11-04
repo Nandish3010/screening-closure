@@ -51,6 +51,18 @@ describe("A22: agency page", () => {
     expect(within(screen.getByTestId("dept-referral_scheduling")).getByTestId("agent-booking_followup")).toHaveTextContent(/failed\s*1/);
   });
 
+  it("reads in plain words: the agent type, the raw material and record references sit behind a closed Details toggle", async () => {
+    renderWithApp(<AgencyPage />);
+    const list = await screen.findByTestId("agency-inbox");
+    const closure = within(list).getAllByTestId("inbox-item").find((i) => i.textContent?.includes("prepare_closure_pack"))!;
+    const details = within(closure).getByTestId("inbox-details");
+    expect(details).not.toHaveAttribute("open");
+    expect(within(details).getByText("prepare_closure_pack")).toBeInTheDocument();
+    const shown = closure.cloneNode(true) as HTMLElement;
+    shown.querySelector("[data-testid=inbox-details]")!.remove();
+    expect(shown.textContent).not.toMatch(/prepare_closure_pack|review_and_sign|Procedure\/|DiagnosticReport\//);
+  });
+
   it("lists what needs a person, with prepared material and a link to the case, and offers no button that acts", async () => {
     renderWithApp(<AgencyPage />);
     const list = await screen.findByTestId("agency-inbox");
