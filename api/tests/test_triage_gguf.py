@@ -92,3 +92,12 @@ def test_default_calibration_is_unchanged(monkeypatch):
     monkeypatch.delenv(triage.CALIBRATION_ENV, raising=False)
     cal = triage.Calibration.load()
     assert cal.group_thresholds is None and cal.model_id.startswith("qwen2.5-1.5b-4bit+lora-")
+
+
+def test_the_promoted_gguf_calibration_loads_and_is_honestly_named():
+    from pathlib import Path
+
+    cal = triage.Calibration.load(Path(triage.CALIBRATION_PATH).with_name("calibration_gguf.json"))
+    assert "gguf" in cal.model_id and cal.model_id != triage.Calibration.load().model_id
+    assert 1.0 < cal.temperature < 3.0 and 0.3 < cal.threshold < 0.9 and cal.mass_floor == 0.5
+    assert set(cal.group_thresholds or {}) <= {"arabizi", "ar_gulf"}
