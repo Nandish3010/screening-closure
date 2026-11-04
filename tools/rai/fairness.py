@@ -259,7 +259,7 @@ def group_rule_section(test, val, t_scores, v_scores, cal, groups, dialects) -> 
                 t[got] += 1
         detection[split] = dict(sorted(table.items()))
     rule = dialect.apply_group_rule
-    dialect.apply_group_rule = lambda result, text: result  # the global rule alone
+    dialect.apply_group_rule = lambda result, text, thresholds=None: result  # the global rule alone
     try:
         without = replay(test, t_scores)
     finally:

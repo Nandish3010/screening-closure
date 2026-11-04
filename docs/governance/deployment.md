@@ -12,6 +12,8 @@ What it would take to run the system outside a laptop, and what has to be agreed
 | Secrets | Azure Key Vault (RBAC, purge protection, no public access, private endpoint) read through a managed identity | No secret in a template, a parameter file or an image. |
 | Region | UAE North only (the `location` parameter allows nothing else) | Health information must not leave the UAE (ADHICS CM 4.2, Federal Law 2 of 2019). Backups are not geo-redundant for the same reason. |
 
+**Hosted judge demo.** A synthetic-data demonstration host on Google Cloud (not a production target, not in-country) is prepared in [hosting-gcp.md](hosting-gcp.md) and `deploy/gcp/`.
+
 ## Architecture
 
 ```mermaid
