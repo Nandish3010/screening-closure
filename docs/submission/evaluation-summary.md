@@ -12,7 +12,7 @@ Counted by collection on the branch that adds this page; recount with the comman
 
 | Suite | Tests | How to run |
 |---|---|---|
-| API and engine, no database needed | 2,727 | `pytest api/tests -m "not integration and not chaos and not oidc"` |
+| API and engine, no database needed | 2,750 | `pytest api/tests -m "not integration and not chaos and not oidc"` |
 | API against a real Postgres (integration) | 328 | `make test-db` |
 | Chaos (stops and restarts containers) | 46 | `make test-chaos` |
 | Identity provider (real Keycloak) | 7 | `make test-oidc` |
@@ -20,9 +20,9 @@ Counted by collection on the branch that adds this page; recount with the comman
 | Repository checks (docs, hosting, tracker, secrets, RBAC) | 199 | `pytest tests --ignore=tests/redteam` |
 | Red team (abuse, injection, authorisation) | 957 | `make test-redteam` |
 | Tools (demo, video, pilot cost model, AI-safety, reviews, calibration) | 151 | `pytest tools/*/tests` |
-| Web unit and component | 521 in 40 files | `make web-test` |
-| Web browser (Playwright, including the accessibility audit) | 51 in 9 spec files | `make web-e2e` |
-| Documented test cases, each with a pass criterion | 195 | [../../project/TEST-CASES.md](../../project/TEST-CASES.md) |
+| Web unit and component | 548 in 42 files | `make web-test` |
+| Web browser (Playwright, including the accessibility audit) | 55 in 10 spec files | `make web-e2e` |
+| Documented test cases, each with a pass criterion | 201 | [../../project/TEST-CASES.md](../../project/TEST-CASES.md) |
 
 `make check` runs the fast tier and `make check-full` adds the simulator-heavy stages; both must pass before a merge (see the README).
 
