@@ -103,6 +103,9 @@ ROUTE_POLICY: dict[tuple[str, str], object] = {
     # The inbox of tasks that need a person: owners (items on cases they own, filtered in the handler), coordinator
     # and supervisor. A case's agency summary: owners on their own case, coordinator, supervisor.
     ("POST", "/agency/run"): frozenset({SUPER}) | AGENCY,
+    # The coordinator's Today screen (C14): what needs a person now, in seven bounded queues. Read-only; the actions it links
+    # to are the existing event routes under their own policy. Owners work from the agency inbox and their own cases.
+    ("GET", "/today"): frozenset({COORD, SUPER}),
     ("GET", "/agency/org"): frozenset({COORD, SUPER}),
     ("GET", "/agency/runs"): frozenset({COORD, SUPER}),
     ("GET", "/agency/tasks"): frozenset({COORD, SUPER}),

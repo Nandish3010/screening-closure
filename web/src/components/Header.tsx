@@ -74,7 +74,8 @@ export function Header() {
       </div>
       <div className="header-row">
         <nav aria-label="Main">
-          <NavLink to="/coordinator">Coordinator</NavLink>
+          {(role === "coordinator" || role === "supervisor") && <NavLink to="/coordinator/today">Today</NavLink>}
+          <NavLink to="/coordinator" className={({ isActive }) => (isActive && pathname !== "/coordinator/today" ? "active" : undefined)}>Coordinator</NavLink>
           <NavLink to="/dashboard">Dashboard</NavLink>
           {(role === "coordinator" || role === "supervisor") && <NavLink to="/agency">Agency</NavLink>}
           <NavLink to={`/patient/${DEMO_PATIENT_CASE_ID}`}>Patient view</NavLink>

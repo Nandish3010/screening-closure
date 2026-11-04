@@ -1,6 +1,7 @@
 import { Link, Navigate, Route, Routes } from "react-router-dom";
 import { Header } from "./components/Header";
 import { CoordinatorPage } from "./pages/CoordinatorPage";
+import { TodayPage } from "./pages/TodayPage";
 import { CaseDetailPage } from "./pages/CaseDetailPage";
 import { AgencyPage } from "./pages/AgencyPage";
 import { JudgePage } from "./pages/JudgePage";
@@ -76,12 +77,19 @@ function Landing() {
       <h1>Screening Closure</h1>
       <p className="lead">Every positive screening result has an owner, a clock and a signed closure. Nothing here diagnoses anyone.</p>
       <ul className="cards">
-        <li><Link to="/coordinator"><strong>Coordinator app</strong><span>Worklist, timeline, actions</span></Link></li>
+        <li><Link to="/coordinator/today"><strong>Coordinator: Today</strong><span>What needs a person now</span></Link></li>
+        <li><Link to="/coordinator"><strong>Full worklist</strong><span>Every case, timeline, actions</span></Link></li>
         <li><Link to={`/patient/${DEMO_PATIENT_CASE_ID}`}><strong>Patient view</strong><span>Arabic and English, installable</span></Link></li>
         <li><Link to="/dashboard"><strong>Closure dashboard</strong><span>P50/P90, ageing, breaches</span></Link></li>
       </ul>
     </main>
   );
+}
+
+/** The coordinator's and the supervisor's landing page is Today (C14); everyone else sees the entry cards. */
+function Home() {
+  const { role } = useApp();
+  return role === "coordinator" || role === "supervisor" ? <Navigate to="/coordinator/today" replace /> : <Landing />;
 }
 
 export default function App({ signInError = null }: { signInError?: string | null }) {
@@ -97,8 +105,9 @@ export default function App({ signInError = null }: { signInError?: string | nul
       <Header />
       <div id="main">
         <Routes>
-          <Route path="/" element={<Landing />} />
+          <Route path="/" element={<Home />} />
           <Route path="/coordinator" element={<CoordinatorPage />} />
+          <Route path="/coordinator/today" element={<TodayPage />} />
           <Route path="/coordinator/:caseId" element={<CaseDetailPage />} />
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/judge" element={<JudgePage />} />

@@ -2764,6 +2764,118 @@
         ]
       }
     },
+    "/today": {
+      "get": {
+        "description": "What needs a person now, in seven queues (`urgent`, `overdue`, `escalations`, `replies`, `flagged`, `signatures`, `agency`).\n\n`groups` is the list of queues in that order, each `{group, items, count, more}`. `count` is the number of items in THIS\nanswer; `more` says the queue may hold further items (for a case queue: the scan of open cases is not complete). Send the\nanswer's `cursor` back to read on (and `group=` to ask only for the queues you are paging). `complete` is true when every open\ncase has been read: only then is an empty queue \"all clear\". At most `SCAN_BUDGET` (1000) open cases are read per request.",
+        "operationId": "get_today_today_get",
+        "parameters": [
+          {
+            "description": "items per queue (default 10, at most 50)",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 10,
+              "description": "items per queue (default 10, at most 50)",
+              "maximum": 50,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "the `cursor` of the previous answer: continues the scan of open cases",
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "the `cursor` of the previous answer: continues the scan of open cases",
+              "title": "Cursor"
+            }
+          },
+          {
+            "description": "the `agency_cursor` of the previous answer",
+            "in": "query",
+            "name": "agency_cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "the `agency_cursor` of the previous answer",
+              "title": "Agency Cursor"
+            }
+          },
+          {
+            "description": "only these queues (default: all seven)",
+            "in": "query",
+            "name": "group",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "only these queues (default: all seven)",
+              "title": "Group"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Today Today Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Today",
+        "tags": [
+          "today"
+        ]
+      }
+    },
     "/watchdog/scan": {
       "post": {
         "operationId": "scan_watchdog_scan_post",
