@@ -28,6 +28,8 @@ export interface AppState {
   outreach: OutreachStatus | null;
   /** `GET /health` -> `demo.simulated_clock`: the hosted demo runs on a simulated clock (deploy/gcp); the header says so. */
   demoClock: boolean;
+  /** `GET /health` -> `demo.deployment`: this is the declared hosted judge demo (DEMO_DEPLOYMENT=1 with the simulated clock). Role cards and the guided steps key off it; a production deployment never reports it. */
+  demoDeployment: boolean;
 }
 
 const Ctx = createContext<AppState | null>(null);
@@ -47,6 +49,7 @@ export function AppProvider({ api, children, initialRole }: { api: ApiClient; ch
   const [simTime, setSimTime] = useState<string | null>(null);
   const [outreach, setOutreach] = useState<OutreachStatus | null>(null);
   const [demoClock, setDemoClock] = useState(false);
+  const [demoDeployment, setDemoDeployment] = useState(false);
 
   // OIDC mode (A29): signed in or not is the provider's session, not a role pick. Re-read /me when it changes.
   const signedIn = useSyncExternalStore(
@@ -82,6 +85,7 @@ export function AppProvider({ api, children, initialRole }: { api: ApiClient; ch
     api.health().then((h) => {
       setOutreach(h.outreach ?? null);
       setDemoClock(h.demo?.simulated_clock === true);
+      setDemoDeployment(h.demo?.deployment === true);
       return h.sim_time ? setSimTime(h.sim_time) : api.closureMetrics().then((m) => setSimTime(m.sim_time));
     }).catch(() => setSimTime(null));
   }, [api]);
@@ -101,8 +105,8 @@ export function AppProvider({ api, children, initialRole }: { api: ApiClient; ch
     // Against the real API the actor is `role:user_id` (opaque id, A14): compared with `owner.actor` to tell "mine".
     const userId = api.adapter === "http" && me && me.role === role ? me.user_id : undefined;
     const actor = userId ? `${BACKEND_ROLE[role]}:${userId}` : backendActor(role, actorName);
-    return { api, role, setRole, me, actorName, actor, provider: ROLE_PROVIDERS[role], userId, simTime, refreshSim, outreach, demoClock };
-  }, [api, role, setRole, me, simTime, refreshSim, outreach, demoClock]);
+    return { api, role, setRole, me, actorName, actor, provider: ROLE_PROVIDERS[role], userId, simTime, refreshSim, outreach, demoClock, demoDeployment };
+  }, [api, role, setRole, me, simTime, refreshSim, outreach, demoClock, demoDeployment]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

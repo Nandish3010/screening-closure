@@ -160,5 +160,6 @@ def test_triage_is_on_premises_and_the_hosted_label_says_so():
 
 
 def test_demo_clock_banner_and_gate_are_wired():
-    assert "demo-clock-banner" in (REPO_ROOT / "web/src/components/Header.tsx").read_text()
-    assert "Demo: simulated time" in (REPO_ROOT / "web/src/i18n/strings.ts").read_text()
+    assert "demo-clock-banner" in (REPO_ROOT / "web/src/components/DemoBanner.tsx").read_text()
+    assert "DemoBanner" in (REPO_ROOT / "web/src/components/Header.tsx").read_text()
+    assert "Demo, synthetic data, simulated time" in (REPO_ROOT / "web/src/i18n/strings.ts").read_text()

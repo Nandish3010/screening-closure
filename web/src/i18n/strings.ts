@@ -555,7 +555,8 @@ export const STAFF = {
   },
   /** Hosted judge demo (`GET /health` -> `demo.simulated_clock`): every date on screen is simulated, and a supervisor can move it. */
   demoClockBanner: {
-    label: "Demo: simulated time",
+    label: "Demo, synthetic data, simulated time",
+    short: "Nothing here is a real patient or real time.",
     explanation: "All dates and deadlines in this demo run on a simulated clock over synthetic data. Nothing here is real time or a real patient. A supervisor can use \"Advance\" in the header to move the clock forward.",
   },
   contactUpdated: "Contact details confirmed by a person",

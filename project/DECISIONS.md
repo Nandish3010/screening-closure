@@ -991,6 +991,21 @@ The ledger is the agency's memory (`api/app/agency/ledger.py`, migration `014_ag
 - A queue shows the longest-waiting first within what has been read; across pages the client merges and re-sorts, so the order is exact only when `complete` is true.
 - **To reverse:** remove `app/routers/today.py`, `app/today.py`, the route's policy row and the web page; no data or event is affected.
 
+## ADR-055: The hosted demo guides judges with role cards that pre-fill the username only, and "Reset demo" stays an operator action
+
+**Context.** Judges open one hosted link and have four test logins (coordinator, clinician, supervisor, patient) behind a real OIDC provider and a simulated clock. They should be able to switch role in one click, follow the challenge owner's five steps, and know the data and the time are not real. The brief asked for a protected "Reset demo" in the web app, "if it can be done safely".
+
+**Decision.**
+- **Cards that start the real sign-in with the username filled in; never the password.** The passwords are generated into Secret Manager by `deploy/gcp/deploy.sh`. A one-click login that also supplied the password would have to put it in the public web bundle or hand it to an unauthenticated page; both defeat the point of a secret. The cards carry usernames and plain descriptions (`JUDGE_ROLES`), start the authorization-code flow with `login_hint`, and say the password is in the submission. The sign-in page and header switcher show them only when `GET /health` reports `demo.deployment`, which the API sets only under the full demo gate (`demo_clock_active`). A production deployment lists no account. Not chosen: a short-lived judge token minted by the API (a second login path outside the provider), or a per-judge link with an embedded one-time code (needs an issuer service that does not exist).
+- **The tour has two tracks.** The challenge owner's five steps (record, prioritise, refer, reminders and navigation, outcome) with "try it" prompts and deep links open first on the demo; the original seven-step story remains. A step clearest as another role offers to sign in as it and resumes at the same step (the place is kept in `sessionStorage` across the provider redirect). The tour only navigates and reads.
+- **Banner "Demo, synthetic data, simulated time"** on every page including the sign-in page and the patient app, from the same health answer.
+- **"Reset demo" is operator-only.** `tools/demo/snapshot.sh reset` stops the API, scheduler, watchdog and HAPI, replaces both databases and restarts them. The API cannot do that to itself without a container-runtime socket or a root helper, so a web trigger would either not work or turn a compromised demo login into host control; a flag polled by a host timer is an untested moving part before the VM exists. `make gcp-reset` over IAP SSH stays the only path. The cost: a judge cannot rewind time from the browser. Tests assert that no reset or `/demo` route exists in any mode.
+
+**Consequences.**
+- One field added to `/health` (`demo.deployment`), present only in the declared demo. No schema, engine, RBAC or migration change.
+- The roles named in the cards must match the realm the deploy imports (`deploy/gcp` and `credentials.sh`: coordinator maryam.alsuwaidi, clinician huda.rahman, supervisor noura.alhammadi, patient demo.patient).
+- **To reverse:** remove `JudgeSignIn` and the cards, drop `deployment` from the health answer; the old sign-in list returns.
+
 ## Open questions for the owner (M6 week 1)
 
 These are not decisions. Each is a question the M6 work surfaced that needs an owner's answer before anyone changes code. Nothing here has been changed. When one is answered, record the answer as a new ADR that names this entry.

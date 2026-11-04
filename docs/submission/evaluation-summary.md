@@ -1,0 +1,99 @@
+# Evaluation summary
+
+Submission document for Challenge 05. Team Humans Decide. One page for evaluators. **Every case, patient and number below is synthetic**: it comes from a simulator, a generated cohort and developer-written test messages, not from patients or a trial. The caveats are in [assumptions-and-limitations.md](assumptions-and-limitations.md).
+
+## What we do, in one line
+
+**We help screening coordinators and case-owner clinicians make sure every positive screening result ends in a clinician-signed closure, using the result feed, each case's append-only event log and clock, and the colonoscopy report held in FHIR as the evidence.** Nothing is diagnosed; a person decides every clinical step.
+
+## Test cases
+
+Counted by collection on the branch that adds this page; recount with the commands in the last column. The web unit count includes the tests added with the guided demo.
+
+| Suite | Tests | How to run |
+|---|---|---|
+| API and engine, no database needed | 2,750 | `pytest api/tests -m "not integration and not chaos and not oidc"` |
+| API against a real Postgres (integration) | 328 | `make test-db` |
+| Chaos (stops and restarts containers) | 46 | `make test-chaos` |
+| Identity provider (real Keycloak) | 7 | `make test-oidc` |
+| Simulator and evaluation | 1,676 | `pytest simulator/tests` |
+| Repository checks (docs, hosting, tracker, secrets, RBAC) | 199 | `pytest tests --ignore=tests/redteam` |
+| Red team (abuse, injection, authorisation) | 957 | `make test-redteam` |
+| Tools (demo, video, pilot cost model, AI-safety, reviews, calibration) | 151 | `pytest tools/*/tests` |
+| Web unit and component | 548 in 42 files | `make web-test` |
+| Web browser (Playwright, including the accessibility audit) | 55 in 10 spec files | `make web-e2e` |
+| Documented test cases, each with a pass criterion | 201 | [../../project/TEST-CASES.md](../../project/TEST-CASES.md) |
+
+`make check` runs the fast tier and `make check-full` adds the simulator-heavy stages; both must pass before a merge (see the README).
+
+## Headline results (synthetic, literature-anchored scenario)
+
+20 replications of 2,000 synthetic cases, 360 days of follow-up, 95% bootstrap intervals over replications. The ratio is calibrated to published navigation trials; the model shows a mechanism and what drives it, not new evidence of effect.
+
+| Measure | Today's process | With the system | Range (95%) |
+|---|---|---|---|
+| Colonoscopy completed within 180 days | 51.0% | 66.8% | baseline 50.5% to 51.5%, system 66.3% to 67.3%; ratio 1.31 |
+| Cases closed with evidence and a human sign-off | 52.8% | 67.8% | system 67.3% to 68.4% |
+| Lost to follow-up and never shown to a human (programme level) | 45.3% | 20.6% | system 20.2% to 21.0% |
+| Reduction in human time per case, all cases | | 19.7% | the 40% target is **not met** |
+| Reduction in human time per case, cases reached | | 36.0% | the 40% target is **not met** |
+
+The upper-range scenario (a ceiling for the mechanism, not a forecast) reaches 82.7% completion at 180 days and 40.0% labour reduction (39.0% to 40.9%). Detail, both scenarios and the capacity-limited run: [../results/results.md](../results/results.md).
+
+## Expected against actual
+
+| Check | Expected | Actual | Result |
+|---|---|---|---|
+| Sweep of 100,000 open cases | under 5 s | 3.93 s with 4 workers | met |
+| Fail-over of the scheduler | nothing lost or duplicated | 0 duplicates, 0 missing writes, over 11 runs | met |
+| Reply triage, precision of replies handled without a person | at least 95.0% | 96.2% (test set) | met |
+| Human-time reduction | 40% | 19.7% all cases, 36.0% in reach | **not met** |
+| Scheduler sweep keeps its 10 s cadence (4 h soak) | at least 95% of nominal starts | 100.0% (1,440 of 1,440) | met |
+| 1,000,000-case daily burst inside one 10 s loop | one loop | bounded, drains in 9 loops (2.4 minutes) | **not met** |
+| API memory flat over a 4 h soak | flat | +43.85 to +45.94 MiB/h per pod | **not met** |
+| Hosted demo end to end | passes the smoke test | not yet deployed | **not run** |
+
+## Reply triage by language group
+
+Test set of 551 synthetic replies (written by developers, split by template). "Precision" is the share of replies handled without a person that were right; the target is 95.0%. The original build is the MLX model; the hosted build is the same model converted to run on a CPU, a different artefact evaluated on the same splits. Sources: [../results/triage/eval.md](../results/triage/eval.md), [../results/triage/eval-gguf-q8_0.md](../results/triage/eval-gguf-q8_0.md).
+
+| Group | n | Original: accuracy | Original: precision | Hosted: accuracy | Hosted: precision with the group rule (share handled by the system) |
+|---|---|---|---|---|---|
+| Arabic (MSA and Gulf) | 194 | 89.7% | 96.3% | 89.7% | 100.0% (33.0%) |
+| Arabizi (Latin letters) | 99 | 68.7% | 81.0% | 68.7% | 100.0% (21.2%) |
+| English | 180 | 100.0% | 100.0% | 100.0% | 100.0% (68.3%) |
+| Mixed script | 78 | 93.6% | 100.0% | 92.3% | 100.0% (41.0%) |
+| All | 551 | 89.8% | 96.2% | 89.7% | 100.0% (43.6%) |
+
+Reading: Arabizi misses the target in the original build. The hosted build adds a group rule (Gulf dialect always to a person, Arabizi only above its own threshold), which reaches 100.0% precision by sending more replies to a person. No reply opt-out was handled automatically (0 of 61).
+
+## Failure analysis: the key known failures and where they come from
+
+| Failure | Where it comes from | Source |
+|---|---|---|
+| Human-time target not met | Minutes per action are assumed from other settings; the gain is largest where the system reaches a case and smaller across the whole programme | [../results/results.md](../results/results.md); [../evidence-wages.md](../evidence-wages.md) |
+| Several timing claims withdrawn | They failed held-out validation (for example the managed 30-day share, 17.4% simulated against 33.3% observed), so the timing structure is only partly right | [../results/validation.md](../results/validation.md) |
+| Managed-programme completion under-predicted by 13 to 16 points | The reach parameter was fitted to one ratio and not refitted, to avoid circularity | [../results/results.md](../results/results.md) |
+| Arabizi and Gulf Arabic replies are weaker | Training texts are developer-written templates; real messages are wider and messier; no native-speaker review yet (H2) | [../governance/reply-triage-card.md](../governance/reply-triage-card.md) |
+| API memory grows slowly under load | Cause not found; the scan-path transient was found and fixed, a worker-recycling mitigation failed at the pod limit | [../results/scale.md](../results/scale.md) |
+| The one-loop burst is not met | A 1,000,000-case daily catch-up exceeds one 10 s loop (it drains across loops); one laptop-class host, no cloud measured (the sweep cadence itself is now met) | [../results/scale.md](../results/scale.md) |
+| Overload is refused, not served | Above the highest passing rate the API answers 503 with a retry time | [../results/scale.md](../results/scale.md) |
+| Hosted demo not yet exercised | Not deployed; the container builds, identity provider, certificates and reset are untested on the VM | [../governance/hosting-gcp.md](../governance/hosting-gcp.md) |
+| Pathway values not clinician-reviewed | Thresholds and timings are placeholders until the clinical review (H1) | [../governance/third-pathway.md](../governance/third-pathway.md) |
+
+## Comparison with existing approaches
+
+Taken only from what the commercial documents record ([../commercial/business-case.md](../commercial/business-case.md), [../commercial/buyer-map.md](../commercial/buyer-map.md)); no head-to-head test was run and no vendor is named.
+
+| Approach | What the commercial documents say | How this differs |
+|---|---|---|
+| Today's process in Abu Dhabi | Only 30.5% of 1,429 positive results in ambulatory clinics had a follow-up colonoscopy (2015-2016 data) | An owner, a clock and a clinician-signed closure for every positive result |
+| Human patient navigation | Median USD 150 per person navigated; evidence mostly from screening uptake, not positive-result follow-up | Automates the routine reminders and tracking, and leaves the decisions with people |
+| Care-gap-closure platforms | Priced per covered life, from a vendor-hosted comparison that is unverified and set in US health plans | Closes a single result to a signed outcome on evidence, rather than counting gaps |
+| Referral-management software | Priced per provider, location or referral; no published figures | Keeps ownership with the referrer until the other side accepts, and re-routes a refusal or silence |
+
+No UAE or GCC contract value for care-navigation, referral-management or care-gap software was found.
+
+## Detailed results
+
+[Evaluation results](../results/results.md) · [Validation](../results/validation.md) · [Sensitivity](../results/sensitivity.md) · [Fairness](../results/fairness.md) · [Health outcomes](../results/outcomes.md) · [Load test](../results/load.md) · [Scale evidence](../results/scale.md) · [Triage evaluation](../results/triage/eval.md) · [Technical documentation](technical-documentation.md) · [Assumptions and limitations](assumptions-and-limitations.md)
