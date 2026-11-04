@@ -49,6 +49,9 @@ log = logging.getLogger("app.triage")
 HERE = Path(__file__).resolve().parent
 REPO_ROOT = HERE.parents[2]
 CALIBRATION_PATH = HERE / "calibration.json"
+# A different model build has its own calibration (temperature, thresholds): the hosted demo's GGUF build sets this to
+# calibration_gguf.json, fitted by tools/triage/evaluate_gguf.py. Unset: the MLX model's calibration.json, as always.
+CALIBRATION_ENV = "TRIAGE_CALIBRATION_PATH"
 UNAVAILABLE_MODEL_ID = "unavailable"
 STARTUP_TIMEOUT_S = 120
 SCORE_TIMEOUT_S = 30
@@ -64,16 +67,23 @@ class Scorer(Protocol):
 class Calibration:
     """temperature, abstain threshold and the identity of the model, as written by tools/triage/evaluate.py."""
 
-    def __init__(self, temperature: float, threshold: float, mass_floor: float, model_id: str) -> None:
+    def __init__(self, temperature: float, threshold: float, mass_floor: float, model_id: str,
+                 group_thresholds: dict | None = None) -> None:
         self.temperature = temperature
         self.threshold = threshold
         self.mass_floor = mass_floor
         self.model_id = model_id
+        self.group_thresholds = group_thresholds  # None: dialect.GROUP_THRESHOLDS (fitted on the MLX model)
 
     @classmethod
-    def load(cls, path: Path = CALIBRATION_PATH) -> "Calibration":
+    def load(cls, path: Path | None = None) -> "Calibration":
+        if path is None:
+            path = Path(os.environ.get(CALIBRATION_ENV) or CALIBRATION_PATH)
         raw = json.loads(path.read_text(encoding="utf-8"))
-        return cls(float(raw["temperature"]), float(raw["threshold"]), float(raw["mass_floor"]), str(raw["model_id"]))
+        groups = raw.get("group_thresholds")
+        if groups is not None:
+            groups = {str(k): (None if v is None else float(v)) for k, v in groups.items()}
+        return cls(float(raw["temperature"]), float(raw["threshold"]), float(raw["mass_floor"]), str(raw["model_id"]), groups)
 
 
 def softmax(logits: list[float], temperature: float) -> list[float]:
@@ -104,6 +114,14 @@ def decide(scores: dict, cal: Calibration, text: str) -> dict:
         or len(text) > MAX_TEXT_CHARS
     )
     return {"intent": intent, "confidence": round(confidence, 4), "model_id": cal.model_id, "needs_human": needs_human}
+
+
+def active_group_thresholds() -> dict | None:
+    """The group thresholds of the calibration in force (None: dialect.GROUP_THRESHOLDS). For display (`dialect.group_reason`)."""
+    try:
+        return (_calibration if _calibration is not None else Calibration.load()).group_thresholds
+    except Exception:  # noqa: BLE001
+        return None
 
 
 def unavailable() -> dict:
@@ -238,7 +256,7 @@ def classify_local(text: str, language_hint: str | None = None) -> dict:
         return unavailable()
     scorer, cal = ready
     try:
-        return dialect.apply_group_rule(decide(scorer.score(text[:MAX_TEXT_CHARS]), cal, text), text)
+        return dialect.apply_group_rule(decide(scorer.score(text[:MAX_TEXT_CHARS]), cal, text), text, cal.group_thresholds)
     except Exception:  # noqa: BLE001
         log.warning("reply triage failed on one reply; sent to a person", exc_info=True)
         return unavailable() | {"model_id": cal.model_id}
@@ -260,14 +278,16 @@ def classify_remote(base_url: str, text: str, language_hint: str | None, timeout
             raise ValueError("malformed answer")
         # The server's needs_human is never trusted alone: the rules that do not depend on the model, and the local
         # confidence threshold (F8), are applied here. The answer has no `mass` score, so mass_floor cannot be applied.
+        groups = None
         try:
             cal = _calibration if _calibration is not None else Calibration.load()
             below = conf < cal.threshold
+            groups = cal.group_thresholds
         except Exception:  # noqa: BLE001 - no calibration to check the confidence against: a person reads it
             below = True
         needs_human = needs_human or intent in ALWAYS_HUMAN or len(text) > MAX_TEXT_CHARS or below
         return dialect.apply_group_rule(
-            {"intent": intent, "confidence": round(float(conf), 4), "model_id": model_id, "needs_human": needs_human}, text)
+            {"intent": intent, "confidence": round(float(conf), 4), "model_id": model_id, "needs_human": needs_human}, text, groups)
     except Exception as exc:  # noqa: BLE001 - unreachable, slow, malformed: a person reads it
         log.warning("remote reply triage failed (%s); sent to a person", type(exc).__name__)
         return unavailable()

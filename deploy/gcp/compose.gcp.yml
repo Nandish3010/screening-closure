@@ -1,0 +1,133 @@
+# The hosted judge demo (docs/governance/hosting-gcp.md): an OVERLAY on the repository's docker-compose.yml, used on the one
+# Compute Engine VM as  COMPOSE_FILE=docker-compose.yml:deploy/gcp/compose.gcp.yml  (deploy/gcp/vm/env.sh sets it).
+# It never changes how `make up` runs on a laptop. Everything the base file publishes stays on 127.0.0.1; the ONLY container
+# published on a public interface is `caddy` (80/443), and it is in the `public` profile, so the seed phase (deploy/gcp/seed.sh)
+# runs with no public listener at all.
+#
+# Secrets come from Secret Manager through deploy/gcp/vm/render_env.py into /etc/sc/*.env (root, mode 0600); none is in this file.
+
+services:
+  api:
+    restart: unless-stopped
+    env_file:
+      - path: /etc/sc/api.env
+        required: true
+    # HAPI and the API stay on the private compose network; no new ports.
+
+  scheduler:
+    # The lease/fencing design (ADR-041) is kept as is; ONE scheduler here (no scale profile), so the lease is trivially held.
+    restart: unless-stopped
+    env_file:
+      - path: /etc/sc/scheduler.env
+        required: true
+
+  watchdog:
+    restart: unless-stopped
+    env_file:
+      - path: /etc/sc/watchdog.env
+        required: true
+
+  fhir:
+    restart: unless-stopped
+    environment:
+      JAVA_TOOL_OPTIONS: -Xmx${FHIR_HEAP_MB:-1536}m
+    mem_limit: 3500m
+
+  postgres:
+    restart: unless-stopped
+
+  # Keycloak in PRODUCTION mode (`start`, not `start-dev`): its own database in the same Postgres server, behind the edge at /auth.
+  # The realm is the committed one with the public host as the only redirect URI (vm/render_realm.py). Admin console is not routed
+  # publicly (edge/nginx.conf.template); reach it with an IAP SSH tunnel to 127.0.0.1:8180 if you ever need it.
+  keycloak-prod:
+    image: quay.io/keycloak/keycloak:26.0.7
+    profiles: [public]
+    restart: unless-stopped
+    command: ["start", "--import-realm"]
+    mem_limit: 1100m
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: ${KC_DB_PASSWORD:?set by render_env.py}
+      KC_HTTP_ENABLED: "true"
+      KC_HTTP_RELATIVE_PATH: /auth
+      KC_HOSTNAME: https://${SC_PUBLIC_HOST:?set by render_env.py}/auth
+      KC_HOSTNAME_BACKCHANNEL_DYNAMIC: "true"
+      KC_PROXY_HEADERS: xforwarded
+      KC_HEALTH_ENABLED: "true"
+      JAVA_OPTS_KC_HEAP: -Xms256m -Xmx768m
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?set by render_env.py}
+      KC_PW_LAB: ${KC_PW_LAB:?}
+      KC_PW_COORDINATOR: ${KC_PW_COORDINATOR:?}
+      KC_PW_OWNER: ${KC_PW_OWNER:?}
+      KC_PW_SPECIALIST: ${KC_PW_SPECIALIST:?}
+      KC_PW_CLINICIAN: ${KC_PW_CLINICIAN:?}
+      KC_PW_SUPERVISOR: ${KC_PW_SUPERVISOR:?}
+      KC_PW_PATIENT: ${KC_PW_PATIENT:?}
+      DEMO_PATIENT_REF: ${DEMO_PATIENT_REF:-Patient/demo-patient}
+    volumes:
+      - /etc/sc/keycloak-import:/opt/keycloak/data/import:ro
+    ports:
+      - "127.0.0.1:8180:8080"
+    networks: [closure]
+
+  # Reply triage, on-premises: the SAME fine-tuned Qwen2.5-1.5B + LoRA, merged and converted to GGUF (tools/triage/convert_gguf.sh),
+  # run on this VM's CPU by llama.cpp. `triage` speaks the existing triage-server contract (POST /classify, as `make triage-serve`) and
+  # adds the opt-out gate, this build's calibration and the dialect rule; the API reaches it through TRIAGE_REMOTE_URL. No published
+  # port, no third-party AI. The GGUF file is delivered by deploy.sh --model to /srv/sc/models/triage.gguf (not in git).
+  triage-llama:
+    image: ${TRIAGE_LLAMA_IMAGE:-ghcr.io/ggml-org/llama.cpp:server}
+    profiles: [triage]
+    restart: unless-stopped
+    command: ["-m", "/models/triage.gguf", "--host", "0.0.0.0", "--port", "8081", "-c", "2048", "-t", "2", "--parallel", "1", "--no-webui"]
+    volumes:
+      - /srv/sc/models:/models:ro
+    mem_limit: 2200m
+    networks: [closure]
+
+  triage:
+    build:
+      context: ./api
+      target: runtime
+    profiles: [triage]
+    restart: unless-stopped
+    command: ["python", "-m", "app.triage.gguf_server", "--llama-url", "http://triage-llama:8081", "--port", "8765"]
+    environment:
+      TRIAGE_CALIBRATION_PATH: /app/app/triage/calibration_gguf.json
+    depends_on: [triage-llama]
+    networks: [closure]
+
+  # nginx: serves the web build, routes /api and /auth, rate-limits the public API, blocks the service/ops paths.
+  web:
+    profiles: [public]
+    restart: unless-stopped
+    build:
+      context: .
+      dockerfile: deploy/gcp/edge/Dockerfile
+      args:
+        VITE_PUBLIC_HOST: ${SC_PUBLIC_HOST:?set by render_env.py}
+    environment:
+      SC_PUBLIC_HOST: ${SC_PUBLIC_HOST}
+    depends_on: [api]
+    networks: [closure]
+
+  # Caddy: only TLS (automatic certificates, HTTP->HTTPS redirect). The one public listener.
+  caddy:
+    image: caddy:2.8.4-alpine@sha256:af32e97399febea808609119bb21544d0265c58a02836576e32a2d082c262c17
+    profiles: [public]
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      SC_PUBLIC_HOST: ${SC_PUBLIC_HOST:?set by render_env.py}
+    volumes:
+      - ./deploy/gcp/edge/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddydata:/data
+    depends_on: [web]
+    networks: [closure]
+
+volumes:
+  caddydata:

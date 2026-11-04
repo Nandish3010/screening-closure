@@ -1,0 +1,1244 @@
+{
+  "accuracy": 0.896551724137931,
+  "adapter_bytes": 21126646,
+  "auto_precision": 0.9625,
+  "auto_precision_ci": [
+    0.9356063934059289,
+    0.9784207112032381
+  ],
+  "baseline": {
+    "accuracy": 0.8493647912885662,
+    "macro_f1": 0.8415076850590781
+  },
+  "confusion": {
+    "already_done": {
+      "already_done": 61,
+      "cannot_attend": 0,
+      "confirm": 0,
+      "dont_understand": 0,
+      "opt_out": 0,
+      "other": 0,
+      "question": 0,
+      "reschedule": 0,
+      "wrong_number": 0
+    },
+    "cannot_attend": {
+      "already_done": 0,
+      "cannot_attend": 61,
+      "confirm": 0,
+      "dont_understand": 0,
+      "opt_out": 0,
+      "other": 0,
+      "question": 0,
+      "reschedule": 0,
+      "wrong_number": 0
+    },
+    "confirm": {
+      "already_done": 0,
+      "cannot_attend": 3,
+      "confirm": 50,
+      "dont_understand": 0,
+      "opt_out": 0,
+      "other": 1,
+      "question": 0,
+      "reschedule": 8,
+      "wrong_number": 0
+    },
+    "dont_understand": {
+      "already_done": 0,
+      "cannot_attend": 0,
+      "confirm": 9,
+      "dont_understand": 39,
+      "opt_out": 6,
+      "other": 0,
+      "question": 7,
+      "reschedule": 0,
+      "wrong_number": 0
+    },
+    "opt_out": {
+      "already_done": 0,
+      "cannot_attend": 0,
+      "confirm": 0,
+      "dont_understand": 0,
+      "opt_out": 60,
+      "other": 1,
+      "question": 0,
+      "reschedule": 0,
+      "wrong_number": 0
+    },
+    "other": {
+      "already_done": 4,
+      "cannot_attend": 0,
+      "confirm": 4,
+      "dont_understand": 0,
+      "opt_out": 1,
+      "other": 53,
+      "question": 0,
+      "reschedule": 0,
+      "wrong_number": 0
+    },
+    "question": {
+      "already_done": 0,
+      "cannot_attend": 0,
+      "confirm": 0,
+      "dont_understand": 0,
+      "opt_out": 0,
+      "other": 1,
+      "question": 59,
+      "reschedule": 1,
+      "wrong_number": 0
+    },
+    "reschedule": {
+      "already_done": 0,
+      "cannot_attend": 4,
+      "confirm": 0,
+      "dont_understand": 0,
+      "opt_out": 1,
+      "other": 0,
+      "question": 0,
+      "reschedule": 56,
+      "wrong_number": 0
+    },
+    "wrong_number": {
+      "already_done": 0,
+      "cannot_attend": 0,
+      "confirm": 0,
+      "dont_understand": 0,
+      "opt_out": 6,
+      "other": 0,
+      "question": 0,
+      "reschedule": 0,
+      "wrong_number": 55
+    }
+  },
+  "coverage": 0.5807622504537205,
+  "ece_calibrated": 0.0539420738132626,
+  "ece_raw": 0.030194113271544462,
+  "groups": {
+    "arabizi_threshold_fitted_on_this_build": 0.915,
+    "arabizi_threshold_in_force": 0.915,
+    "mlx_arabizi_threshold": 0.918,
+    "with_rule": {
+      "by_dialect": {
+        "ar_gulf": {
+          "accuracy": 0.7935,
+          "always_human_auto_handled": [],
+          "always_human_to_person": 1.0,
+          "auto_handled_n": 0,
+          "auto_precision": null,
+          "auto_precision_ci": [
+            0.0,
+            1.0
+          ],
+          "coverage": 0.0,
+          "macro_precision": 0.7637,
+          "macro_recall": 0.8093,
+          "n": 92,
+          "opt_out_caught_by_gate": 0,
+          "opt_out_n": 9,
+          "opt_out_to_person": 9,
+          "per_intent": {
+            "already_done": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "support": 7
+            },
+            "cannot_attend": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "support": 10
+            },
+            "confirm": {
+              "precision": 0.381,
+              "recall": 0.8,
+              "support": 10
+            },
+            "dont_understand": {
+              "precision": null,
+              "recall": 0.0,
+              "support": 10
+            },
+            "opt_out": {
+              "precision": 0.6923,
+              "recall": 1.0,
+              "support": 9
+            },
+            "other": {
+              "precision": 1.0,
+              "recall": 0.7143,
+              "support": 14
+            },
+            "question": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "support": 11
+            },
+            "reschedule": {
+              "precision": 0.8,
+              "recall": 1.0,
+              "support": 8
+            },
+            "wrong_number": {
+              "precision": 1.0,
+              "recall": 0.7692,
+              "support": 13
+            }
+          },
+          "wrong_automatic_steps": 0
+        },
+        "ar_msa": {
+          "accuracy": 0.9902,
+          "always_human_auto_handled": [],
+          "always_human_to_person": 1.0,
+          "auto_handled_n": 64,
+          "auto_precision": 1.0,
+          "auto_precision_ci": [
+            0.9434,
+            1.0
+          ],
+          "coverage": 0.6275,
+          "macro_precision": 0.9915,
+          "macro_recall": 0.9907,
+          "n": 102,
+          "opt_out_caught_by_gate": 0,
+          "opt_out_n": 12,
+          "opt_out_to_person": 12,
+          "per_intent": {
+            "already_done": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "support": 10
+            },
+            "cannot_attend": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "support": 10
+            },
+            "confirm": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "support": 11
+            },
+            "dont_understand": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "support": 11
+            },
+            "opt_out": {
+              "precision": 0.9231,
+              "recall": 1.0,
+              "support": 12
+            },
+            "other": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "support": 14
+            },
+            "question": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "support": 11
+            },
+            "reschedule": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "support": 11
+            },
+            "wrong_number": {
+              "precision": 1.0,
+              "recall": 0.9167,
+              "support": 12
+            }
+          },
+          "wrong_automatic_steps": 0
+        }
+      },
+      "by_language": {
+        "all": {
+          "accuracy": 0.8966,
+          "always_human_auto_handled": [],
+          "always_human_to_person": 1.0,
+          "auto_handled_n": 240,
+          "auto_precision": 1.0,
+          "auto_precision_ci": [
+            0.9842,
+            1.0
+          ],
+          "coverage": 0.4356,
+          "macro_precision": 0.9047,
+          "macro_recall": 0.8968,
+          "n": 551,
+          "opt_out_caught_by_gate": 14,
+          "opt_out_n": 61,
+          "opt_out_to_person": 61,
+          "per_intent": {
+            "already_done": {
+              "precision": 0.9385,
+              "recall": 1.0,
+              "support": 61
+            },
+            "cannot_attend": {
+              "precision": 0.8971,
+              "recall": 1.0,
+              "support": 61
+            },
+            "confirm": {
+              "precision": 0.7937,
+              "recall": 0.8065,
+              "support": 62
+            },
+            "dont_understand": {
+              "precision": 1.0,
+              "recall": 0.6393,
+              "support": 61
+            },
+            "opt_out": {
+              "precision": 0.8108,
+              "recall": 0.9836,
+              "support": 61
+            },
+            "other": {
+              "precision": 0.9464,
+              "recall": 0.8548,
+              "support": 62
+            },
+            "question": {
+              "precision": 0.8939,
+              "recall": 0.9672,
+              "support": 61
+            },
+            "reschedule": {
+              "precision": 0.8615,
+              "recall": 0.918,
+              "support": 61
+            },
+            "wrong_number": {
+              "precision": 1.0,
+              "recall": 0.9016,
+              "support": 61
+            }
+          },
+          "wrong_automatic_steps": 0
+        },
+        "ar": {
+          "accuracy": 0.8969,
+          "always_human_auto_handled": [],
+          "always_human_to_person": 1.0,
+          "auto_handled_n": 64,
+          "auto_precision": 1.0,
+          "auto_precision_ci": [
+            0.9434,
+            1.0
+          ],
+          "coverage": 0.3299,
+          "macro_precision": 0.9229,
+          "macro_recall": 0.9029,
+          "n": 194,
+          "opt_out_caught_by_gate": 0,
+          "opt_out_n": 21,
+          "opt_out_to_person": 21,
+          "per_intent": {
+            "already_done": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "support": 17
+            },
+            "cannot_attend": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "support": 20
+            },
+            "confirm": {
+              "precision": 0.5938,
+              "recall": 0.9048,
+              "support": 21
+            },
+            "dont_understand": {
+              "precision": 1.0,
+              "recall": 0.5238,
+              "support": 21
+            },
+            "opt_out": {
+              "precision": 0.8077,
+              "recall": 1.0,
+              "support": 21
+            },
+            "other": {
+              "precision": 1.0,
+              "recall": 0.8571,
+              "support": 28
+            },
+            "question": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "support": 22
+            },
+            "reschedule": {
+              "precision": 0.9048,
+              "recall": 1.0,
+              "support": 19
+            },
+            "wrong_number": {
+              "precision": 1.0,
+              "recall": 0.84,
+              "support": 25
+            }
+          },
+          "wrong_automatic_steps": 0
+        },
+        "arabizi": {
+          "accuracy": 0.6869,
+          "always_human_auto_handled": [],
+          "always_human_to_person": 1.0,
+          "auto_handled_n": 21,
+          "auto_precision": 1.0,
+          "auto_precision_ci": [
+            0.8454,
+            1.0
+          ],
+          "coverage": 0.2121,
+          "macro_precision": 0.6461,
+          "macro_recall": 0.661,
+          "n": 99,
+          "opt_out_caught_by_gate": 0,
+          "opt_out_n": 10,
+          "opt_out_to_person": 10,
+          "per_intent": {
+            "already_done": {
+              "precision": 0.7333,
+              "recall": 1.0,
+              "support": 11
+            },
+            "cannot_attend": {
+              "precision": 0.6111,
+              "recall": 1.0,
+              "support": 11
+            },
+            "confirm": {
+              "precision": null,
+              "recall": 0.0,
+              "support": 9
+            },
+            "dont_understand": {
+              "precision": 1.0,
+              "recall": 0.3,
+              "support": 10
+            },
+            "opt_out": {
+              "precision": 0.6923,
+              "recall": 0.9,
+              "support": 10
+            },
+            "other": {
+              "precision": 0.75,
+              "recall": 0.5455,
+              "support": 11
+            },
+            "question": {
+              "precision": 0.6111,
+              "recall": 0.8462,
+              "support": 13
+            },
+            "reschedule": {
+              "precision": 0.4167,
+              "recall": 0.5,
+              "support": 10
+            },
+            "wrong_number": {
+              "precision": 1.0,
+              "recall": 0.8571,
+              "support": 14
+            }
+          },
+          "wrong_automatic_steps": 0
+        },
+        "en": {
+          "accuracy": 1.0,
+          "always_human_auto_handled": [],
+          "always_human_to_person": 1.0,
+          "auto_handled_n": 123,
+          "auto_precision": 1.0,
+          "auto_precision_ci": [
+            0.9697,
+            1.0
+          ],
+          "coverage": 0.6833,
+          "macro_precision": 1.0,
+          "macro_recall": 1.0,
+          "n": 180,
+          "opt_out_caught_by_gate": 11,
+          "opt_out_n": 25,
+          "opt_out_to_person": 25,
+          "per_intent": {
+            "already_done": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "support": 21
+            },
+            "cannot_attend": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "support": 21
+            },
+            "confirm": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "support": 22
+            },
+            "dont_understand": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "support": 19
+            },
+            "opt_out": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "support": 25
+            },
+            "other": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "support": 14
+            },
+            "question": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "support": 18
+            },
+            "reschedule": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "support": 22
+            },
+            "wrong_number": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "support": 18
+            }
+          },
+          "wrong_automatic_steps": 0
+        },
+        "mixed": {
+          "accuracy": 0.9231,
+          "always_human_auto_handled": [],
+          "always_human_to_person": 1.0,
+          "auto_handled_n": 32,
+          "auto_precision": 1.0,
+          "auto_precision_ci": [
+            0.8928,
+            1.0
+          ],
+          "coverage": 0.4103,
+          "macro_precision": 0.9333,
+          "macro_recall": 0.9384,
+          "n": 78,
+          "opt_out_caught_by_gate": 3,
+          "opt_out_n": 5,
+          "opt_out_to_person": 5,
+          "per_intent": {
+            "already_done": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "support": 12
+            },
+            "cannot_attend": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "support": 9
+            },
+            "confirm": {
+              "precision": 1.0,
+              "recall": 0.9,
+              "support": 10
+            },
+            "dont_understand": {
+              "precision": 1.0,
+              "recall": 0.5455,
+              "support": 11
+            },
+            "opt_out": {
+              "precision": 0.5,
+              "recall": 1.0,
+              "support": 5
+            },
+            "other": {
+              "precision": 0.9,
+              "recall": 1.0,
+              "support": 9
+            },
+            "question": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "support": 8
+            },
+            "reschedule": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "support": 10
+            },
+            "wrong_number": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "support": 4
+            }
+          },
+          "wrong_automatic_steps": 0
+        }
+      }
+    },
+    "without_rule": {
+      "by_dialect": {
+        "ar_gulf": {
+          "accuracy": 0.7935,
+          "always_human_auto_handled": [
+            "other->confirm",
+            "other->confirm",
+            "other->confirm"
+          ],
+          "always_human_to_person": 0.9118,
+          "auto_handled_n": 45,
+          "auto_precision": 0.9111,
+          "auto_precision_ci": [
+            0.7927,
+            0.9649
+          ],
+          "coverage": 0.4891,
+          "macro_precision": 0.7637,
+          "macro_recall": 0.8093,
+          "n": 92,
+          "opt_out_caught_by_gate": 0,
+          "opt_out_n": 9,
+          "opt_out_to_person": 9,
+          "per_intent": {
+            "already_done": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "support": 7
+            },
+            "cannot_attend": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "support": 10
+            },
+            "confirm": {
+              "precision": 0.381,
+              "recall": 0.8,
+              "support": 10
+            },
+            "dont_understand": {
+              "precision": null,
+              "recall": 0.0,
+              "support": 10
+            },
+            "opt_out": {
+              "precision": 0.6923,
+              "recall": 1.0,
+              "support": 9
+            },
+            "other": {
+              "precision": 1.0,
+              "recall": 0.7143,
+              "support": 14
+            },
+            "question": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "support": 11
+            },
+            "reschedule": {
+              "precision": 0.8,
+              "recall": 1.0,
+              "support": 8
+            },
+            "wrong_number": {
+              "precision": 1.0,
+              "recall": 0.7692,
+              "support": 13
+            }
+          },
+          "wrong_automatic_steps": 4
+        },
+        "ar_msa": {
+          "accuracy": 0.9902,
+          "always_human_auto_handled": [],
+          "always_human_to_person": 1.0,
+          "auto_handled_n": 64,
+          "auto_precision": 1.0,
+          "auto_precision_ci": [
+            0.9434,
+            1.0
+          ],
+          "coverage": 0.6275,
+          "macro_precision": 0.9915,
+          "macro_recall": 0.9907,
+          "n": 102,
+          "opt_out_caught_by_gate": 0,
+          "opt_out_n": 12,
+          "opt_out_to_person": 12,
+          "per_intent": {
+            "already_done": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "support": 10
+            },
+            "cannot_attend": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "support": 10
+            },
+            "confirm": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "support": 11
+            },
+            "dont_understand": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "support": 11
+            },
+            "opt_out": {
+              "precision": 0.9231,
+              "recall": 1.0,
+              "support": 12
+            },
+            "other": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "support": 14
+            },
+            "question": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "support": 11
+            },
+            "reschedule": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "support": 11
+            },
+            "wrong_number": {
+              "precision": 1.0,
+              "recall": 0.9167,
+              "support": 12
+            }
+          },
+          "wrong_automatic_steps": 0
+        }
+      },
+      "by_language": {
+        "all": {
+          "accuracy": 0.8966,
+          "always_human_auto_handled": [
+            "other->confirm",
+            "other->confirm",
+            "other->confirm",
+            "question->reschedule"
+          ],
+          "always_human_to_person": 0.9783,
+          "auto_handled_n": 320,
+          "auto_precision": 0.9625,
+          "auto_precision_ci": [
+            0.9356,
+            0.9784
+          ],
+          "coverage": 0.5808,
+          "macro_precision": 0.9047,
+          "macro_recall": 0.8968,
+          "n": 551,
+          "opt_out_caught_by_gate": 14,
+          "opt_out_n": 61,
+          "opt_out_to_person": 61,
+          "per_intent": {
+            "already_done": {
+              "precision": 0.9385,
+              "recall": 1.0,
+              "support": 61
+            },
+            "cannot_attend": {
+              "precision": 0.8971,
+              "recall": 1.0,
+              "support": 61
+            },
+            "confirm": {
+              "precision": 0.7937,
+              "recall": 0.8065,
+              "support": 62
+            },
+            "dont_understand": {
+              "precision": 1.0,
+              "recall": 0.6393,
+              "support": 61
+            },
+            "opt_out": {
+              "precision": 0.8108,
+              "recall": 0.9836,
+              "support": 61
+            },
+            "other": {
+              "precision": 0.9464,
+              "recall": 0.8548,
+              "support": 62
+            },
+            "question": {
+              "precision": 0.8939,
+              "recall": 0.9672,
+              "support": 61
+            },
+            "reschedule": {
+              "precision": 0.8615,
+              "recall": 0.918,
+              "support": 61
+            },
+            "wrong_number": {
+              "precision": 1.0,
+              "recall": 0.9016,
+              "support": 61
+            }
+          },
+          "wrong_automatic_steps": 12
+        },
+        "ar": {
+          "accuracy": 0.8969,
+          "always_human_auto_handled": [
+            "other->confirm",
+            "other->confirm",
+            "other->confirm"
+          ],
+          "always_human_to_person": 0.9577,
+          "auto_handled_n": 109,
+          "auto_precision": 0.9633,
+          "auto_precision_ci": [
+            0.9094,
+            0.9856
+          ],
+          "coverage": 0.5619,
+          "macro_precision": 0.9229,
+          "macro_recall": 0.9029,
+          "n": 194,
+          "opt_out_caught_by_gate": 0,
+          "opt_out_n": 21,
+          "opt_out_to_person": 21,
+          "per_intent": {
+            "already_done": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "support": 17
+            },
+            "cannot_attend": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "support": 20
+            },
+            "confirm": {
+              "precision": 0.5938,
+              "recall": 0.9048,
+              "support": 21
+            },
+            "dont_understand": {
+              "precision": 1.0,
+              "recall": 0.5238,
+              "support": 21
+            },
+            "opt_out": {
+              "precision": 0.8077,
+              "recall": 1.0,
+              "support": 21
+            },
+            "other": {
+              "precision": 1.0,
+              "recall": 0.8571,
+              "support": 28
+            },
+            "question": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "support": 22
+            },
+            "reschedule": {
+              "precision": 0.9048,
+              "recall": 1.0,
+              "support": 19
+            },
+            "wrong_number": {
+              "precision": 1.0,
+              "recall": 0.84,
+              "support": 25
+            }
+          },
+          "wrong_automatic_steps": 4
+        },
+        "arabizi": {
+          "accuracy": 0.6869,
+          "always_human_auto_handled": [
+            "question->reschedule"
+          ],
+          "always_human_to_person": 0.9706,
+          "auto_handled_n": 42,
+          "auto_precision": 0.8095,
+          "auto_precision_ci": [
+            0.667,
+            0.9002
+          ],
+          "coverage": 0.4242,
+          "macro_precision": 0.6461,
+          "macro_recall": 0.661,
+          "n": 99,
+          "opt_out_caught_by_gate": 0,
+          "opt_out_n": 10,
+          "opt_out_to_person": 10,
+          "per_intent": {
+            "already_done": {
+              "precision": 0.7333,
+              "recall": 1.0,
+              "support": 11
+            },
+            "cannot_attend": {
+              "precision": 0.6111,
+              "recall": 1.0,
+              "support": 11
+            },
+            "confirm": {
+              "precision": null,
+              "recall": 0.0,
+              "support": 9
+            },
+            "dont_understand": {
+              "precision": 1.0,
+              "recall": 0.3,
+              "support": 10
+            },
+            "opt_out": {
+              "precision": 0.6923,
+              "recall": 0.9,
+              "support": 10
+            },
+            "other": {
+              "precision": 0.75,
+              "recall": 0.5455,
+              "support": 11
+            },
+            "question": {
+              "precision": 0.6111,
+              "recall": 0.8462,
+              "support": 13
+            },
+            "reschedule": {
+              "precision": 0.4167,
+              "recall": 0.5,
+              "support": 10
+            },
+            "wrong_number": {
+              "precision": 1.0,
+              "recall": 0.8571,
+              "support": 14
+            }
+          },
+          "wrong_automatic_steps": 8
+        },
+        "en": {
+          "accuracy": 1.0,
+          "always_human_auto_handled": [],
+          "always_human_to_person": 1.0,
+          "auto_handled_n": 123,
+          "auto_precision": 1.0,
+          "auto_precision_ci": [
+            0.9697,
+            1.0
+          ],
+          "coverage": 0.6833,
+          "macro_precision": 1.0,
+          "macro_recall": 1.0,
+          "n": 180,
+          "opt_out_caught_by_gate": 11,
+          "opt_out_n": 25,
+          "opt_out_to_person": 25,
+          "per_intent": {
+            "already_done": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "support": 21
+            },
+            "cannot_attend": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "support": 21
+            },
+            "confirm": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "support": 22
+            },
+            "dont_understand": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "support": 19
+            },
+            "opt_out": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "support": 25
+            },
+            "other": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "support": 14
+            },
+            "question": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "support": 18
+            },
+            "reschedule": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "support": 22
+            },
+            "wrong_number": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "support": 18
+            }
+          },
+          "wrong_automatic_steps": 0
+        },
+        "mixed": {
+          "accuracy": 0.9231,
+          "always_human_auto_handled": [],
+          "always_human_to_person": 1.0,
+          "auto_handled_n": 46,
+          "auto_precision": 1.0,
+          "auto_precision_ci": [
+            0.9229,
+            1.0
+          ],
+          "coverage": 0.5897,
+          "macro_precision": 0.9333,
+          "macro_recall": 0.9384,
+          "n": 78,
+          "opt_out_caught_by_gate": 3,
+          "opt_out_n": 5,
+          "opt_out_to_person": 5,
+          "per_intent": {
+            "already_done": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "support": 12
+            },
+            "cannot_attend": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "support": 9
+            },
+            "confirm": {
+              "precision": 1.0,
+              "recall": 0.9,
+              "support": 10
+            },
+            "dont_understand": {
+              "precision": 1.0,
+              "recall": 0.5455,
+              "support": 11
+            },
+            "opt_out": {
+              "precision": 0.5,
+              "recall": 1.0,
+              "support": 5
+            },
+            "other": {
+              "precision": 0.9,
+              "recall": 1.0,
+              "support": 9
+            },
+            "question": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "support": 8
+            },
+            "reschedule": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "support": 10
+            },
+            "wrong_number": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "support": 4
+            }
+          },
+          "wrong_automatic_steps": 0
+        }
+      }
+    }
+  },
+  "macro_f1": 0.8941647761358575,
+  "mlx_calibration_unchanged": {
+    "accuracy": 0.896551724137931,
+    "auto_precision": 0.9625,
+    "coverage": 0.5807622504537205,
+    "ece_calibrated": 0.05378761963939275
+  },
+  "model_id": "qwen2.5-1.5b-q8_0-gguf+lora-8b5a49fc",
+  "n": {
+    "test": 551,
+    "train": 2147,
+    "val": 371
+  },
+  "opt_out_leaked": 0,
+  "opt_out_total": 61,
+  "per_intent": {
+    "already_done": {
+      "f1": 0.9682539682539683,
+      "precision": 0.9384615384615385,
+      "recall": 1.0,
+      "support": 61
+    },
+    "cannot_attend": {
+      "f1": 0.9457364341085273,
+      "precision": 0.8970588235294118,
+      "recall": 1.0,
+      "support": 61
+    },
+    "confirm": {
+      "f1": 0.7999999999999999,
+      "precision": 0.7936507936507936,
+      "recall": 0.8064516129032258,
+      "support": 62
+    },
+    "dont_understand": {
+      "f1": 0.78,
+      "precision": 1.0,
+      "recall": 0.639344262295082,
+      "support": 61
+    },
+    "opt_out": {
+      "f1": 0.888888888888889,
+      "precision": 0.8108108108108109,
+      "recall": 0.9836065573770492,
+      "support": 61
+    },
+    "other": {
+      "f1": 0.8983050847457628,
+      "precision": 0.9464285714285714,
+      "recall": 0.8548387096774194,
+      "support": 62
+    },
+    "question": {
+      "f1": 0.9291338582677166,
+      "precision": 0.8939393939393939,
+      "recall": 0.9672131147540983,
+      "support": 61
+    },
+    "reschedule": {
+      "f1": 0.8888888888888888,
+      "precision": 0.8615384615384616,
+      "recall": 0.9180327868852459,
+      "support": 61
+    },
+    "wrong_number": {
+      "f1": 0.9482758620689655,
+      "precision": 1.0,
+      "recall": 0.9016393442622951,
+      "support": 61
+    }
+  },
+  "per_language": {
+    "ar": {
+      "accuracy": 0.8969072164948454,
+      "auto_n": 109,
+      "auto_precision": 0.963302752293578,
+      "auto_precision_ci": [
+        0.9094214470792258,
+        0.9856385308012722
+      ],
+      "macro_f1": 0.8982465060766511,
+      "n": 194
+    },
+    "arabizi": {
+      "accuracy": 0.6868686868686869,
+      "auto_n": 42,
+      "auto_precision": 0.8095238095238095,
+      "auto_precision_ci": [
+        0.6669893264500356,
+        0.9001811039014357
+      ],
+      "macro_f1": 0.6186444930383657,
+      "n": 99
+    },
+    "en": {
+      "accuracy": 1.0,
+      "auto_n": 123,
+      "auto_precision": 1.0,
+      "auto_precision_ci": [
+        0.9697134063272616,
+        0.9999999999999999
+      ],
+      "macro_f1": 1.0,
+      "n": 180
+    },
+    "mixed": {
+      "accuracy": 0.9230769230769231,
+      "auto_n": 46,
+      "auto_precision": 1.0,
+      "auto_precision_ci": [
+        0.9229238226702192,
+        1.0
+      ],
+      "macro_f1": 0.9185873179681229,
+      "n": 78
+    }
+  },
+  "quantization": "Q8_0",
+  "reliability": [
+    {
+      "accuracy": 0.333,
+      "bin": "0.2-0.3",
+      "mean_confidence": 0.283,
+      "n": 3
+    },
+    {
+      "accuracy": 0.214,
+      "bin": "0.3-0.4",
+      "mean_confidence": 0.354,
+      "n": 28
+    },
+    {
+      "accuracy": 0.435,
+      "bin": "0.4-0.5",
+      "mean_confidence": 0.45,
+      "n": 23
+    },
+    {
+      "accuracy": 0.524,
+      "bin": "0.5-0.6",
+      "mean_confidence": 0.554,
+      "n": 21
+    },
+    {
+      "accuracy": 0.788,
+      "bin": "0.6-0.7",
+      "mean_confidence": 0.655,
+      "n": 33
+    },
+    {
+      "accuracy": 0.974,
+      "bin": "0.7-0.8",
+      "mean_confidence": 0.755,
+      "n": 39
+    },
+    {
+      "accuracy": 0.976,
+      "bin": "0.8-0.9",
+      "mean_confidence": 0.853,
+      "n": 41
+    },
+    {
+      "accuracy": 0.997,
+      "bin": "0.9-1.0",
+      "mean_confidence": 0.979,
+      "n": 363
+    }
+  ],
+  "temperature": 1.7062,
+  "threshold": 0.5512,
+  "train": {}
+}

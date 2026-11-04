@@ -1,0 +1,40 @@
+{
+  "always_human": [
+    "opt_out",
+    "other",
+    "question"
+  ],
+  "auto_handled": [
+    "already_done",
+    "cannot_attend",
+    "confirm",
+    "dont_understand",
+    "reschedule",
+    "wrong_number"
+  ],
+  "base_model": "Qwen2.5-1.5B-Instruct (4-bit MLX weights, LoRA merged, converted to GGUF)",
+  "group_thresholds": {
+    "ar_gulf": null,
+    "arabizi": 0.915
+  },
+  "labels": [
+    "confirm",
+    "reschedule",
+    "cannot_attend",
+    "wrong_number",
+    "dont_understand",
+    "opt_out",
+    "question",
+    "already_done",
+    "other"
+  ],
+  "mass_floor": 0.5,
+  "model_id": "qwen2.5-1.5b-q8_0-gguf+lora-8b5a49fc",
+  "quantization": "Q8_0",
+  "synthetic_data_only": true,
+  "temperature": 1.7062,
+  "test_coverage": 0.5807622504537205,
+  "test_precision": 0.9625,
+  "threshold": 0.5512,
+  "val_precision_target": 0.97
+}

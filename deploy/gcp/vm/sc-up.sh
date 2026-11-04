@@ -1,0 +1,50 @@
+#!/bin/bash
+# On the VM, as root, on every boot and after every deploy: read the secrets from Secret Manager (with the VM's own service
+# account), render /etc/sc/*.env (0600), make sure the Keycloak database exists, and start the stack in the mode in /var/lib/sc/mode
+# (seed = no public listener; production = fail-closed config behind Caddy). Prints no secret.
+set -euo pipefail
+export SC_REPO=${SC_REPO:-/srv/sc/repo}
+md() { curl -fs -H 'Metadata-Flavor: Google' "http://metadata.google.internal/computeMetadata/v1/$1"; }
+PROJECT=$(md project/project-id)
+HOST=$(md instance/attributes/sc-public-host)
+MODE=$(cat /var/lib/sc/mode 2>/dev/null || echo seed)
+umask 077
+mkdir -p /etc/sc /var/lib/sc
+
+PY=$SC_REPO/deploy/gcp/vm
+secrets_json=$(python3 - "$PROJECT" <<'PYEOF'
+import json, subprocess, sys
+sys.path.insert(0, "/srv/sc/repo/deploy/gcp/vm")
+from render_env import REQUIRED
+out = {}
+for n in REQUIRED:
+    out[n] = subprocess.run(["gcloud", "secrets", "versions", "access", "latest", f"--secret=sc-demo-{n}", f"--project={sys.argv[1]}"],
+                            check=True, capture_output=True, text=True).stdout.strip()
+print(json.dumps(out))
+PYEOF
+)
+ref=""
+[ -f /var/lib/sc/demo_patient_ref ] && ref=$(cat /var/lib/sc/demo_patient_ref)
+printf '%s' "$secrets_json" | python3 "$PY/render_env.py" --host "$HOST" --mode "$MODE" --out-dir /etc/sc --demo-patient-ref "$ref"
+unset secrets_json
+
+mkdir -p /etc/sc/keycloak-import
+python3 "$PY/render_realm.py" "$HOST" "$SC_REPO/config/keycloak/screening-closure-realm.json" /etc/sc/keycloak-import/screening-closure-realm.json
+
+# shellcheck disable=SC1091
+. "$PY/env.sh"
+docker compose up -d postgres db-init
+until [ "$(docker compose ps postgres --format '{{.Health}}')" = healthy ]; do sleep 2; done
+# Keycloak's own role and database (idempotent). The password goes in on stdin, never on a command line.
+kcpw=$(sed -n 's/^KC_DB_PASSWORD=//p' /etc/sc/compose.env)
+docker compose exec -T postgres psql -v ON_ERROR_STOP=1 -U closure -d postgres >/dev/null <<SQL
+DO \$\$ BEGIN
+  IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'keycloak') THEN CREATE ROLE keycloak LOGIN; END IF;
+END \$\$;
+ALTER ROLE keycloak PASSWORD '${kcpw}';
+SELECT 'CREATE DATABASE keycloak OWNER keycloak' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'keycloak')\gexec
+REVOKE CONNECT ON DATABASE keycloak FROM PUBLIC;
+SQL
+unset kcpw
+docker compose up -d --build
+echo "sc-up: mode=$MODE host=$HOST"
