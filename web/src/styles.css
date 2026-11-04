@@ -413,3 +413,40 @@ body.tour-open { padding-bottom: 46vh; }
 .why-detail button.linklike { background: none; border: 0; padding: 1px 0; color: var(--link); text-decoration: underline; cursor: pointer; font: inherit; }
 .why-detail .mono { margin-top: 2px; overflow-wrap: anywhere; }
 .reply-quote { display: block; margin-bottom: var(--s-1); }
+
+/* Hosted judge demo (item 8): the strip on every page, the sign-in role cards and the tour's try-it prompts. */
+.demo-strip { background: var(--warn-bg); color: var(--warn); border: 1px solid var(--warn); border-radius: 4px; padding: 0.3rem 0.75rem; margin-bottom: 0.4rem; font-size: 0.9rem; }
+.demo-strip-note { opacity: 0.85; }
+.role-cards { list-style: none; padding: 0; margin: 0.5rem 0 1rem; display: grid; gap: 0.75rem; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); }
+.role-cards li { border: 1px solid var(--border); border-radius: 8px; padding: 0.75rem; background: var(--surface, transparent); display: flex; flex-direction: column; gap: 0.35rem; }
+.role-cards .role-user { font-size: 0.85rem; }
+.tour-try { border-left: 3px solid var(--warn); padding: 0.25rem 0.75rem; margin: 0.5rem 0; }
+.tour-try ul { margin: 0.25rem 0 0; padding-left: 1.1rem; }
+.tour-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 0.5rem 0; }
+.tour-track { display: inline-flex; gap: 0.25rem; }
+/* Today (C14): the coordinator's landing screen. A card per queue, a card per item; actions stack on a phone. */
+.today-jump ul { display: flex; flex-wrap: wrap; gap: var(--s-2); margin: 0 0 var(--s-3); padding: 0; list-style: none; }
+.today-group { margin: var(--s-4) 0; }
+.today-group h2 { margin: 0 0 var(--s-3); display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); }
+.today-group h2:focus { outline: 3px solid var(--focus); outline-offset: 3px; }
+.today-list { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--s-3); margin: 0; padding: 0; list-style: none; }
+.today-item { min-width: 0; overflow-wrap: anywhere; border: 1px solid var(--border); border-radius: var(--r-md); padding: var(--s-3) var(--s-4); background: var(--surface-2); }
+.today-head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); }
+.today-head .chip { white-space: normal; }
+.today-case { font-weight: 700; font-size: var(--fs-md); padding: var(--s-1) 0; }
+.today-why { margin: var(--s-2) 0 var(--s-1); }
+.today-notes { margin: 0 0 var(--s-1); padding: 0; }
+.today-meta { margin: 0 0 var(--s-2); font-size: var(--fs-sm); }
+.today-actions { display: flex; flex-wrap: wrap; align-items: flex-start; gap: var(--s-2); }
+.today-actions .action { display: flex; flex-direction: column; gap: var(--s-1); max-width: 22rem; }
+.today-actions a.btn { display: inline-flex; align-items: center; text-decoration: none; }
+.today-clear { margin: 0; padding: var(--s-3) var(--s-4); border-radius: var(--r-md); background: var(--ok-bg); color: var(--ok); border: 1px solid var(--ok); }
+.today-tick { font-weight: 700; margin-inline-end: var(--s-1); }
+.today-live { min-height: 0; }
+@media (max-width: 640px) {
+  .today-jump ul { flex-direction: column; }
+  .today-jump .btn { width: 100%; text-align: start; }
+  .today-actions { flex-direction: column; align-items: stretch; }
+  .today-actions .action { max-width: none; }
+  .today-actions .btn { width: 100%; justify-content: center; }
+}

@@ -77,6 +77,7 @@ def _probe(**extra: str) -> dict:
         "from app.main import app\n"
         "c = TestClient(app)\n"
         "print(json.dumps({'paths': sorted(p for p in app.openapi()['paths'] if p.startswith('/clock')),\n"
+        "  'reset_like': sorted(p for p in app.openapi()['paths'] if 'reset' in p or p.startswith('/demo')),\n"
         "  'advance_unauth': c.post('/clock/advance', json={'days': 1}).status_code,\n"
         "  'reset': c.post('/clock/reset').status_code,\n"
         "  'health': c.get('/health').json()}))\n"
@@ -92,11 +93,17 @@ def test_demo_registers_advance_only_and_health_reports_the_demo_clock():
     out = _probe(CLOCK_MODE="sim", DEMO_SIMULATED_CLOCK="1", DEMO_DEPLOYMENT="1")
     assert out["paths"] == ["/clock/advance"] and out["reset"] == 404
     assert out["advance_unauth"] in (401, 403)  # supervisor token required; nothing anonymous
-    assert out["health"]["demo"] == {"simulated_clock": True} and out["health"]["clock_mode"] == "sim"
+    assert out["health"]["demo"] == {"simulated_clock": True, "deployment": True} and out["health"]["clock_mode"] == "sim"
+    # Item 8.3: "Reset demo" is an operator action (deploy/gcp/demo-reset.sh over IAP SSH), never a web route: it stops the API
+    # and replaces both databases, so the API cannot run it, and no HTTP reset or demo-admin path exists in the hosted demo.
+    assert out["reset_like"] == []
 
 
 def test_without_both_flags_production_has_no_clock_route_and_no_demo_marker():
     out = _probe(CLOCK_MODE="sim", DEMO_SIMULATED_CLOCK="1")  # one flag: the route is not registered
     assert out["paths"] == [] and "demo" not in out["health"]
     out = _probe(CLOCK_MODE="wall")
-    assert out["paths"] == [] and "demo" not in out["health"]
+    assert out["paths"] == [] and "demo" not in out["health"] and out["reset_like"] == []
+    # the judge role cards key off `demo.deployment`: a production deployment (flag alone, or none) never reports it
+    out = _probe(CLOCK_MODE="wall", DEMO_DEPLOYMENT="1")
+    assert "demo" not in out["health"]

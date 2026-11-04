@@ -8,7 +8,7 @@
  */
 import type {
   AgencyInboxItem, AgencyOrg, AgencyRun, AgencyTask, AgencyTaskParams, Alert, ApiClient, CaseAgencySummary, CaseDetail, CaseEvent, CaseListParams, CaseSummary, CaseTimeline, ClosureMetrics, ConfirmatoryResult, Draft, DraftApproval,
-  DraftRecord, DraftRejection, DraftRequestBody, EffortMetrics, FunnelMetrics, FunnelParams, IntegrationFeed, Me, PostEventBody, ReplyBody, ReplyResult, Role, TimelineItem,
+  TodayParams, TodayResponse, DraftRecord, DraftRejection, DraftRequestBody, EffortMetrics, FunnelMetrics, FunnelParams, IntegrationFeed, Me, PostEventBody, ReplyBody, ReplyResult, Role, TimelineItem,
 } from "./contract";
 import type { AccessLog } from "./contract";
 import { ApiError, AUTOMATION_ACTOR, BACKEND_ROLE, OWNER_SCOPED_ROLES, REJECT_NOTE_MAX, REJECT_REASONS, ROLES } from "./contract";
@@ -25,6 +25,7 @@ import {
   replayState, reviewOf, slaClock, summarise, triageReplayOf, validateAppend,
 } from "../lib/derive";
 import { effortMetricsOf, effortOf } from "../lib/effort";
+import { todayOf } from "./mockToday";
 
 export { ROLE_NAMES };
 
@@ -534,7 +535,7 @@ export function createMockAdapter(
         append(db, id, "reply_received", "system:triage", { channel: body.channel, text_ref: ref }, { internal: true, eventId: `ev-reply-${n + 1}-received` });
         applied.push("reply_received");
         const classifiedId = `ev-reply-${n + 1}-classified`;
-        append(db, id, "reply_classified", "system:triage", { ...result, text_ref: ref }, { internal: true, eventId: classifiedId });
+        append(db, id, "reply_classified", "system:triage", { ...result, ...(forced_reason ? { forced_reason } : {}), text_ref: ref }, { internal: true, eventId: classifiedId });
         applied.push("reply_classified");
         const reason = result.needs_human ? (result.intent === "opt_out" ? "opt_out" : "triage_uncertain") : result.intent === "wrong_number" ? "wrong_number" : null;
         if (reason) {
@@ -734,6 +735,12 @@ export function createMockAdapter(
       if (!owner) requireAgencyStaff("GET /agency/inbox");
       const db = load();
       return inboxOf(ledgerOf(db), factsOf(db), db.drafts, owner ? actor() : undefined);
+    },
+    async getToday(params: TodayParams = {}): Promise<TodayResponse> {
+      requireAgencyStaff("GET /today"); // coordinator and supervisor, like the API
+      const db = load();
+      const inbox = inboxOf(ledgerOf(db), factsOf(db), db.drafts);
+      return todayOf(Object.keys(db.events).map((id) => detail(db, id)), inbox, params, SIM_NOW);
     },
     async runAgency(): Promise<AgencyRun> {
       requireAgencyStaff("POST /agency/run");

@@ -58,8 +58,9 @@ export function JudgePage() {
       </div>
 
       <p>
-        <button type="button" className="btn btn-primary" onClick={tour.open} data-testid="judge-start-tour">Start the guided tour</button>{" "}
-        <span className="muted">Seven steps on the data you are looking at (the {api.adapter} adapter). It only navigates; it posts nothing.</span>
+        <button type="button" className="btn btn-primary" onClick={() => tour.open("challenge")} data-testid="judge-start-five">Start the five-step tour</button>{" "}
+        <button type="button" className="btn" onClick={() => tour.open("story")} data-testid="judge-start-tour">Demo story (seven steps)</button>{" "}
+        <span className="muted">Both run on the data you are looking at (the {api.adapter} adapter) and only navigate; they post nothing. The five steps are the challenge owner&apos;s loop, with things to try.</span>
       </p>
 
       <section aria-labelledby="headline-h">

@@ -555,7 +555,8 @@ export const STAFF = {
   },
   /** Hosted judge demo (`GET /health` -> `demo.simulated_clock`): every date on screen is simulated, and a supervisor can move it. */
   demoClockBanner: {
-    label: "Demo: simulated time",
+    label: "Demo, synthetic data, simulated time",
+    short: "Nothing here is a real patient or real time.",
     explanation: "All dates and deadlines in this demo run on a simulated clock over synthetic data. Nothing here is real time or a real patient. A supervisor can use \"Advance\" in the header to move the clock forward.",
   },
   contactUpdated: "Contact details confirmed by a person",
@@ -637,4 +638,59 @@ export const STAFF = {
     caveat: "Assumed minutes, to source: the minutes behind these figures are estimates, not measurements.",
     unavailable: "Effort metrics are not available for this role or this server.",
   },
+} as const;
+
+/**
+ * The coordinator's Today screen (C14). Staff console, English only like the rest of it (nothing here is shown to a patient,
+ * so nothing awaits the native-speaker review). Plain words: say what is waiting, why, and what one click does. The
+ * system prepares the work; a person decides.
+ */
+export const TODAY = {
+  heading: "Today",
+  intro: "What needs a person now, longest-waiting first. The system prepares the work and a person decides: nothing here closes a case.",
+  fullWorklist: "Open the full worklist",
+  jumpLabel: "Jump to a queue",
+  loading: "Loading what needs a person...",
+  notForRole: "The Today screen is for the care coordinator and the supervisor. Clinicians work from their own cases in the worklist.",
+  lookFurther: "Look further",
+  lookingFurther: "Reading more cases...",
+  showMore: "Show more",
+  readSoFar: (n: number) => `${n} open ${n === 1 ? "case" : "cases"} read so far; more are still to be read.`,
+  allRead: (n: number) => `All ${n} open ${n === 1 ? "case" : "cases"} read.`,
+  nothingYet: "Nothing found in the cases read so far.",
+  groups: {
+    urgent: { title: "Urgent results not yet acted on", clear: "No urgent result is waiting for a first action." },
+    overdue: { title: "Overdue cases", clear: "No case is past its deadline." },
+    escalations: { title: "Escalations waiting for a person to accept", clear: "No escalation is waiting for anyone." },
+    replies: { title: "Patient replies waiting for a person", clear: "No patient reply is waiting for a person." },
+    flagged: { title: "Nobody is looking at these", clear: "The safety net has flagged nothing." },
+    signatures: { title: "Closures waiting for a clinician's signature", clear: "No closure is waiting for a signature." },
+    agency: { title: "Agency tasks prepared for you", clear: "No agent task is waiting for you." },
+  },
+  actions: {
+    open_case: "Open case",
+    accept_escalation: "Accept escalation",
+    take_ownership: "Take ownership",
+    confirm_contact: "Confirm contact details",
+    record_callback: "Record call-back made",
+  },
+  done: {
+    accept_escalation: "Escalation accepted.",
+    take_ownership: "You now own this case.",
+    confirm_contact: "Contact details confirmed; the hold on automatic messages is lifted.",
+    record_callback: "Call-back recorded.",
+  },
+  denied: {
+    accept_escalation: (roles: string) => `Only ${roles} can accept this rung.`,
+    take_ownership: "Only the case-owner clinician or a supervisor can take ownership.",
+    contact: "Your role cannot record this.",
+  },
+  signatureNote: "Only a physician signs. Open the case to review the evidence.",
+  reasons: {
+    ar_gulf: "Gulf-dialect Arabic: a person always reads these",
+    arabizi: "Arabic in Latin letters: read by a person unless the model is very sure",
+  },
+  agencyBy: (department: string) => `Prepared by the ${department.replace(/_/g, " ")} agent`,
+  waitingSince: "Waiting since",
+  waitingSinceLabel: (when: string) => `Waiting since ${when}`,
 } as const;

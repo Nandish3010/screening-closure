@@ -1,4 +1,4 @@
-/** Hosted judge demo (deploy/gcp): `GET /health` -> `demo.simulated_clock` puts "Demo: simulated time" in the header; nothing otherwise. */
+/** Hosted judge demo (deploy/gcp): `GET /health` -> `demo.simulated_clock` puts "Demo, synthetic data, simulated time" in the header; nothing otherwise. */
 import { screen, waitFor } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import type { ApiClient } from "../src/api/contract";
@@ -13,7 +13,7 @@ describe("the simulated-time banner", () => {
   it("is shown, with the simulated date, while the server reports the demo clock", async () => {
     renderWithApp(<Header />, { api: withHealth(createMockAdapter(null), { simulated_clock: true }), role: "supervisor" });
     const banner = await screen.findByTestId("demo-clock-banner");
-    expect(banner.textContent).toContain("Demo: simulated time");
+    expect(banner.textContent).toContain("Demo, synthetic data, simulated time");
     expect(banner.title).toMatch(/synthetic data/);
   });
 

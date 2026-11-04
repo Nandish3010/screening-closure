@@ -65,6 +65,7 @@ Every cell is what the running API did, not what the policy table says: the scri
 | `POST /scheduler/lease/release` | U | R | R | R | R | R | R | A | R | R | R | R |
 | `POST /scheduler/outbox/drain` | U | R | R | R | R | R | R | A | R | R | R | R |
 | `POST /scheduler/sweep` | U | R | R | R | R | R | R | A | R | R | R | R |
+| `GET /today` | U | R | R | R | A | R | A | R | R | R | R | R |
 | `POST /watchdog/scan` | U | R | R | R | R | R | R | R | A | R | R | R |
 
 Framework routes `/openapi.json`, `/docs`, `/docs/oauth2-redirect` and `/redoc` are served by FastAPI, are not in the OpenAPI document and need no token. They carry no patient data; the route list they expose is this document. Whether to switch them off outside a development environment is a deployment decision.
@@ -139,6 +140,6 @@ None.
 
 ## What was checked
 
-- 47 routes in the OpenAPI document, 47 entries in `ROUTE_POLICY`: every route has a decision and no decision is stale.
+- 48 routes in the OpenAPI document, 48 entries in `ROUTE_POLICY`: every route has a decision and no decision is stale.
 - 33 event types in `EVENT_POLICY`, plus one unknown type that must be refused for every role.
-- 1107 role, route and scope combinations probed with real requests; 0 differ from the policy tables; 0 are documented gaps (see Findings).
+- 1119 role, route and scope combinations probed with real requests; 0 differ from the policy tables; 0 are documented gaps (see Findings).
