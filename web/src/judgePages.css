@@ -50,3 +50,5 @@
 .jp-aside dd { margin: 0; color: var(--muted); font-size: var(--fs-sm); }
 .jp-aside details { margin-top: var(--s-1); }
 .jp-status { font-size: var(--fs-xs); border: 1px solid var(--border-strong); border-radius: 999px; padding: 0 0.5rem; margin-inline-start: var(--s-1); white-space: nowrap; }
+.jp-split > * { min-width: 0; }
+.jp-aside dt, .jp-aside dd { overflow-wrap: anywhere; }
