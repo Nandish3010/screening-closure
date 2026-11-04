@@ -1,0 +1,52 @@
+/* Judge pages: AI and safety, Integrations, Pilot value. Colours and spacing come from styles.css tokens, so both themes work. */
+.jp-lead { font-size: 1.05rem; max-width: 70ch; }
+.jp-section { margin: var(--s-5) 0; }
+.jp-section h2 { margin-bottom: var(--s-2); }
+.jp-note { color: var(--muted); font-size: var(--fs-sm); max-width: 75ch; }
+.jp-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: var(--s-3); margin: var(--s-3) 0; padding: 0; list-style: none; }
+.jp-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-md); padding: var(--s-3) var(--s-4); }
+.jp-card h3 { margin: 0 0 var(--s-1); font-size: 1.05rem; }
+.jp-card p { margin: var(--s-1) 0; line-height: 1.45; }
+.jp-card .jp-example { color: var(--muted); font-size: var(--fs-sm); }
+.jp-kind { display: inline-block; font-size: var(--fs-xs); font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; border: 1px solid var(--border-strong); border-radius: 999px; padding: 0.05rem 0.6rem; margin-bottom: var(--s-1); }
+.jp-kind-rule { background: var(--ok-bg); color: var(--ok); border-color: var(--ok); }
+.jp-kind-calc { background: var(--brand-soft); color: var(--text); border-color: var(--brand); }
+.jp-kind-ai { background: var(--warn-bg); color: var(--warn); border-color: var(--warn); }
+.jp-tablewrap { overflow-x: auto; max-width: 100%; margin: var(--s-2) 0; }
+.jp-table { border-collapse: collapse; width: 100%; min-width: 520px; font-size: var(--fs-sm); background: var(--surface); }
+.jp-table caption { text-align: start; font-weight: 600; padding: var(--s-1) 0; }
+.jp-table th, .jp-table td { border: 1px solid var(--border); padding: var(--s-2) var(--s-3); text-align: start; vertical-align: top; }
+.jp-table thead th { background: var(--surface-2); }
+.jp-table td.num, .jp-table th.num { text-align: end; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.jp-table tr.jp-flag td { background: var(--warn-bg); }
+.jp-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); gap: var(--s-3); margin: var(--s-3) 0; }
+.jp-kpi { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-md); padding: var(--s-3) var(--s-4); }
+.jp-kpi dt { font-size: var(--fs-sm); color: var(--muted); }
+.jp-kpi dd { margin: var(--s-1) 0 0; }
+.jp-kpi .jp-big { display: block; font-size: 1.6rem; font-weight: 700; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.jp-kpi .jp-small { display: block; font-size: var(--fs-sm); color: var(--muted); }
+.jp-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); gap: var(--s-3); margin: var(--s-3) 0; }
+.jp-field label { display: block; font-weight: 600; margin-bottom: var(--s-1); }
+.jp-field input { width: 100%; font: inherit; padding: 0.5rem 0.6rem; min-height: 44px; border: 1.5px solid var(--border-strong); border-radius: 8px; background: var(--surface); color: var(--text); box-sizing: border-box; }
+.jp-field .jp-hint { display: block; font-size: var(--fs-sm); color: var(--muted); margin-top: var(--s-1); }
+.jp-chips { display: flex; flex-wrap: wrap; gap: var(--s-2); margin: var(--s-2) 0; }
+.jp-feed { list-style: none; margin: var(--s-2) 0; padding: 0; }
+.jp-feed li { display: grid; grid-template-columns: auto auto 1fr; gap: var(--s-1) var(--s-3); align-items: baseline; padding: var(--s-2) 0; border-bottom: 1px solid var(--border); }
+.jp-feed .jp-feed-sum { grid-column: 1 / -1; overflow-wrap: anywhere; }
+.jp-diagram { display: grid; grid-template-columns: 1fr; gap: var(--s-2); margin: var(--s-3) 0; }
+@media (min-width: 760px) { .jp-diagram { grid-template-columns: 1fr auto 1fr auto 1fr; align-items: stretch; } }
+.jp-arrow { align-self: center; text-align: center; color: var(--muted); font-size: var(--fs-sm); }
+.jp-links li { padding: var(--s-1) 0; overflow-wrap: anywhere; }
+.jp-pills { display: flex; flex-wrap: wrap; gap: var(--s-2); }
+.jp-built { color: var(--ok); font-weight: 600; }
+.jp-open { color: var(--warn); font-weight: 600; }
+@media (max-width: 520px) { .jp-feed li { grid-template-columns: 1fr; } }
+.jp-split { display: grid; grid-template-columns: 1fr; gap: var(--s-4); }
+@media (min-width: 900px) { .jp-split { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); align-items: start; } }
+.jp-aside { background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--r-md); padding: var(--s-3) var(--s-4); }
+.jp-aside h3 { margin-top: 0; }
+.jp-aside dl { margin: 0; }
+.jp-aside dt { font-weight: 600; margin-top: var(--s-2); }
+.jp-aside dd { margin: 0; color: var(--muted); font-size: var(--fs-sm); }
+.jp-aside details { margin-top: var(--s-1); }
+.jp-status { font-size: var(--fs-xs); border: 1px solid var(--border-strong); border-radius: 999px; padding: 0 0.5rem; margin-inline-start: var(--s-1); white-space: nowrap; }

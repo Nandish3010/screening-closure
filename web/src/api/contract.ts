@@ -1306,6 +1306,26 @@ export interface AgencyTaskParams {
 // The client interface both adapters implement
 // ---------------------------------------------------------------------------------------
 
+/** One line of the integration feed: metadata only (a fixed phrase, a status and a short opaque hash), never message content. */
+export interface IntegrationFeedEntry {
+  seq: number;
+  /** Simulation time. */
+  at: string;
+  kind: "hl7" | "fhir" | "notification";
+  direction: "in" | "out";
+  summary: string;
+  status: string;
+  ref: string | null;
+}
+/** `GET /integrations/feed` (coordinator, supervisor). Always labelled simulated and synthetic. */
+export interface IntegrationFeed {
+  simulated: true;
+  synthetic: true;
+  scope: string;
+  max_entries: number;
+  entries: IntegrationFeedEntry[];
+}
+
 export interface ApiClient {
   /** "mock" | "http" - for display only. */
   readonly adapter: "mock" | "http";
@@ -1364,6 +1384,8 @@ export interface ApiClient {
   getEffortMetrics(): Promise<EffortMetrics | null>;
   /** GET /metrics/funnel (A39, coordinator and supervisor): null when the route is missing (404) or the role may not read it (403). */
   funnelMetrics(params?: FunnelParams): Promise<FunnelMetrics | null>;
+  /** The last integration events (HL7, FHIR, notifications) of the demo stack, newest first; null when the role may not read it. */
+  integrationFeed?(limit?: number): Promise<IntegrationFeed | null>;
   /** GET /alerts: active and cleared platform alerts (scheduler down). */
   listAlerts(): Promise<Alert[]>;
   /** GET /agency/org (A22): the org chart with live counts. Coordinator and supervisor; others 403. */

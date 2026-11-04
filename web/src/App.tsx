@@ -4,6 +4,9 @@ import { CoordinatorPage } from "./pages/CoordinatorPage";
 import { CaseDetailPage } from "./pages/CaseDetailPage";
 import { AgencyPage } from "./pages/AgencyPage";
 import { JudgePage } from "./pages/JudgePage";
+import { SafetyPage } from "./pages/SafetyPage";
+import { IntegrationsPage } from "./pages/IntegrationsPage";
+import { PilotValuePage } from "./pages/PilotValuePage";
 import { TourProvider } from "./judge/JudgeTour";
 import { DashboardPage } from "./pages/DashboardPage";
 import { PatientPage, PatientHome } from "./pages/PatientPage";
@@ -68,6 +71,9 @@ export default function App({ signInError = null }: { signInError?: string | nul
           <Route path="/coordinator/:caseId" element={<CaseDetailPage />} />
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/judge" element={<JudgePage />} />
+          <Route path="/safety" element={<SafetyPage />} />
+          <Route path="/integrations" element={<IntegrationsPage />} />
+          <Route path="/pilot-value" element={<PilotValuePage />} />
           <Route path="/agency" element={<AgencyPage />} />
           <Route path="/patient" element={<PatientHome />} />
           <Route path="/patient/:caseId" element={<PatientPage />} />

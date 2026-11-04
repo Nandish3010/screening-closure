@@ -63,6 +63,8 @@ ROUTE_POLICY: dict[tuple[str, str], object] = {
     ("GET", "/metrics/effort"): frozenset({COORD, SUPER}),
     # The outcome funnel (ADR-052): the loop's five steps, counts, median times and the cases at risk of being lost.
     ("GET", "/metrics/funnel"): frozenset({COORD, SUPER}),
+    # The integration feed (judge Integrations page): the last few HL7, FHIR and notification events, metadata only.
+    ("GET", "/integrations/feed"): frozenset({COORD, SUPER}),
     # Record the confirmatory colonoscopy as FHIR evidence (E8): the case's owner (checked in the handler).
     ("POST", "/cases/{case_id}/confirmatory-result"): frozenset({PCO, SPEC}),
     # Demo clock: supervisor only. The router is registered only when APP_ENV=dev (app.main); outside dev

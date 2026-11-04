@@ -121,6 +121,7 @@ export interface Routes {
   "GET /health": { response: Record<string, unknown>; };
   "GET /heartbeats": { response: Record<string, unknown>; };
   "POST /hl7": { response: unknown; };
+  "GET /integrations/feed": { query: { "limit"?: number; }; response: Record<string, unknown>; };
   "GET /me": { response: Record<string, unknown>; };
   "GET /metrics/abstention": { response: Record<string, unknown>; };
   "GET /metrics/closure": { response: Record<string, unknown>; };
@@ -171,6 +172,7 @@ export const ROUTES: readonly RouteKey[] = [
   "GET /health",
   "GET /heartbeats",
   "POST /hl7",
+  "GET /integrations/feed",
   "GET /me",
   "GET /metrics/abstention",
   "GET /metrics/closure",

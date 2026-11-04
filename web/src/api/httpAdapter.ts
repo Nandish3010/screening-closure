@@ -1,7 +1,7 @@
 /** HTTP adapter: the real API at VITE_API_URL, with bearer-token auth from POST /auth/dev-login. */
 import type {
   AccessLog, AgencyInboxItem, AgencyOrg, AgencyRun, AgencyTask, AgencyTaskParams, Alert, ApiClient, CaseAgencySummary, CaseDetail, CaseEvent, CaseListParams, CaseSummary, CaseTimeline, ClosureMetrics, ConfirmatoryResult, Draft,
-  DraftApproval, DraftRecord, DraftRejection, DraftRequestBody, EffortMetrics, FunnelMetrics, FunnelParams, Me, PostEventBody, ReplyBody, ReplyResult, Role, TimelineItem,
+  DraftApproval, DraftRecord, DraftRejection, DraftRequestBody, EffortMetrics, FunnelMetrics, FunnelParams, IntegrationFeed, Me, PostEventBody, ReplyBody, ReplyResult, Role, TimelineItem,
 } from "./contract";
 import { ApiError, BACKEND_ROLE, OWNER_SCOPED_ROLES, ROLES } from "./contract";
 import type { OidcClient } from "./oidc";
@@ -328,6 +328,15 @@ export function createHttpAdapter(baseUrl: string, fetchImpl: typeof fetch = (..
         return await request<FunnelMetrics>(`/metrics/funnel${qs({ pathway: params.pathway, priority: params.priority })}`);
       } catch (e) {
         // Not shipped yet (404) or not readable by this role (403): the dashboard just leaves the funnel out.
+        if (e instanceof ApiError && (e.status === 404 || e.status === 403)) return null;
+        throw e;
+      }
+    },
+    async integrationFeed(limit = 20): Promise<IntegrationFeed | null> {
+      try {
+        return await request<IntegrationFeed>(`/integrations/feed${qs({ limit: String(limit) })}`);
+      } catch (e) {
+        // An older backend (404) or a role that may not read it (403): the page shows the explanation instead of a feed.
         if (e instanceof ApiError && (e.status === 404 || e.status === 403)) return null;
         throw e;
       }

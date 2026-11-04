@@ -78,6 +78,9 @@ export function Header() {
           {(role === "coordinator" || role === "supervisor") && <NavLink to="/agency">Agency</NavLink>}
           <NavLink to={`/patient/${DEMO_PATIENT_CASE_ID}`}>Patient view</NavLink>
           <NavLink to="/judge">Judge</NavLink>
+          <NavLink to="/safety">AI and safety</NavLink>
+          <NavLink to="/integrations">Integrations</NavLink>
+          <NavLink to="/pilot-value">Pilot value</NavLink>
         </nav>
         <div className="header-tools">
           {api.oidc ? (

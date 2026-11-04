@@ -1,4 +1,4 @@
-.PHONY: k8s-up k8s-down scale-report scale-report-check evaluate-outcomes evaluate-outcomes-check rai-fairness rai-fairness-check rai-oversight rai-oversight-check rai-check claude-smoke claude-record redteam-generate triage-serve up-obs check-full evaluate-smoke test-redteam validate validate-check validate-targets evaluate-refusal evaluate-abudhabi oidc-up oidc-down test-oidc up-scale agency-run test-demo test-e2e-live demo-scenario demo-stage demo-snapshot demo-restore demo-reset demo-kill-scheduler check docs-check docs-numbers tracker-lint test-security test-tools test-load load-check up down logs test test-db test-db-create test-db-reset test-chaos synthea demo-seed demo-seed-cervical demo-seed-chronic demo-seed-clean evaluate evaluate-capacity evaluate-capacity-check simulate evaluate-check sensitivity sensitivity-check reset web-install web-dev web-build web-test web-e2e test-e2e review-packs review-packs-check test-review-packs test-phi-logs rbac-matrix test-offline fresh-clone risk-report risk-check calibrate-fetch calibrate-fit calibrate-check effort effort-check video video-check video-deps verify hl7-demo hl7-samples judge-headline judge-headline-check api-types api-types-check
+.PHONY: k8s-up k8s-down scale-report scale-report-check evaluate-outcomes evaluate-outcomes-check rai-fairness rai-fairness-check rai-oversight rai-oversight-check rai-check claude-smoke claude-record redteam-generate triage-serve up-obs check-full evaluate-smoke test-redteam validate validate-check validate-targets evaluate-refusal evaluate-abudhabi oidc-up oidc-down test-oidc up-scale agency-run test-demo test-e2e-live demo-scenario demo-stage demo-snapshot demo-restore demo-reset demo-kill-scheduler check docs-check docs-numbers tracker-lint test-security test-tools test-load load-check up down logs test test-db test-db-create test-db-reset test-chaos synthea demo-seed demo-seed-cervical demo-seed-chronic demo-seed-clean evaluate evaluate-capacity evaluate-capacity-check simulate evaluate-check sensitivity sensitivity-check reset web-install web-dev web-build web-test web-e2e test-e2e review-packs review-packs-check test-review-packs test-phi-logs rbac-matrix test-offline fresh-clone risk-report risk-check calibrate-fetch calibrate-fit calibrate-check effort effort-check video video-check video-deps verify hl7-demo hl7-samples judge-headline judge-headline-check judge-pages-data judge-pages-data-check api-types api-types-check
 
 up:
 	docker compose up -d --build
@@ -243,6 +243,14 @@ judge-headline:
 
 judge-headline-check:
 	$(PY) tools/judge/make_headline.py --check
+
+# The AI and safety, Integrations and Pilot value pages: web/src/judge/safetyData.json and pilotValue.json come from the committed
+# results files and tools/pilot/inputs.yaml, not from typing. The check also runs in tests/test_judge_pages_data.py (make test-tools).
+judge-pages-data:
+	$(PY) tools/judge/make_pages_data.py
+
+judge-pages-data-check:
+	$(PY) tools/judge/make_pages_data.py --check
 
 effort:
 	$(SIMENV) $(PY) -m simulator.sim.cli effort

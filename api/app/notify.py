@@ -34,7 +34,7 @@ from datetime import datetime
 from typing import Protocol
 from uuid import UUID
 
-from app import outreach_policy, payloads
+from app import integration_feed, outreach_policy, payloads
 from app.clock import clock
 from app.consent import CHANNELS, channel_allowed
 from app.events import CaseNotFound, Event
@@ -213,6 +213,7 @@ def send(
         out.add(row)
         if also is not None:
             also(None, row)
+        _note_feed(row)
         return row
 
     event_id = uuid.uuid5(NOTIFY_NAMESPACE, str(notification_id))
@@ -231,7 +232,15 @@ def send(
         out.add(row)
         if also is not None:
             also(None, row)
+    _note_feed(row)
     return row
+
+
+def _note_feed(row: Notification) -> None:
+    """One metadata entry for the Integrations page's feed: channel, purpose, language, status and a short hash of the case.
+    Never the message body (see `app.integration_feed`)."""
+    integration_feed.record("notification", "out", f"{row.channel} message ({row.purpose}, {row.language})", row.status,
+                            str(row.case_id).replace("-", "")[:8])
 
 
 # ---- the outbox drain (ADR-030) ------------------------------------------------------------------------

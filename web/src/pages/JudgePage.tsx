@@ -97,6 +97,8 @@ export function JudgePage() {
         <p className="muted">The web app on <span className="mono">http://localhost:5173</span> with the mock adapter, fully offline. <span className="mono">make web-test</span> and <span className="mono">make web-e2e</span> run the web unit and browser tests on their own.</p>
       </section>
 
+      <p data-testid="judge-more-pages">More for judges: <Link to="/safety">AI and safety</Link> · <Link to="/integrations">Integrations</Link> · <Link to="/pilot-value">Pilot value calculator</Link></p>
+
       <p><Link to="/coordinator">Open the worklist</Link> · <Link to="/dashboard">Open the dashboard</Link></p>
     </main>
   );
