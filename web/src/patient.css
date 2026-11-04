@@ -5,13 +5,16 @@
  * in styles.css (checked in dark and light by web/e2e/a11y.spec.ts).
  */
 
-.pa-stage { min-height: 100dvh; background: var(--bg); }
+.pa-stage { min-height: 100dvh; background: var(--bg); overflow-x: clip; }
 .pa-phone { min-height: 100dvh; }
 
 .pa {
   display: flex; flex-direction: column; min-height: 100dvh; background: var(--bg); color: var(--text);
   font-size: 1.125rem; line-height: 1.65; max-width: 640px; margin: 0 auto; position: relative;
+  overflow-x: clip; /* never a sideways scroll, whatever font the phone has; clip keeps the sticky bars working */
 }
+.pa * { min-width: 0; }
+.pa-journey li, .pa-lang span { overflow-wrap: anywhere; }
 .pa-bar {
   position: sticky; top: 0; z-index: 5; display: flex; align-items: center; justify-content: space-between; gap: var(--s-3);
   padding: var(--s-3) var(--s-4); background: var(--surface); border-bottom: 1px solid var(--border);
