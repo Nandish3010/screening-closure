@@ -192,7 +192,12 @@ def test_the_patients_worklist_row_is_redacted_and_staff_rows_are_not(world):
     assert_clean(mine, staff_ids())
     assert set(mine[0]) == {"case_id", "pathway", "state", "created_at", "updated_at", "patient_ref", "owner", "consent_frozen", "last_event_at", "risk_score"}
     assert mine[0]["risk_score"] is None
-    staff_row = next(r for r in client.get("/cases", headers=h["coord"]).json() if r["case_id"] == cid)
+    staff_row, cursor = None, None  # a shared test database holds many cases: follow the pages until this one
+    while staff_row is None:
+        page = client.get("/cases", params={"limit": 500, **({"cursor": cursor} if cursor else {})}, headers=h["coord"])
+        staff_row = next((r for r in page.json() if r["case_id"] == cid), None)
+        cursor = page.headers.get("X-Next-Cursor")
+        assert staff_row is not None or cursor, "the case is in no page"
     assert staff_row["owner"]["display_name"] == NAMES["pco"] and staff_row["overdue"] is True and "due_at" in staff_row
 
 
