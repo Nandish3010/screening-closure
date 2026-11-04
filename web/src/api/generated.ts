@@ -14,6 +14,7 @@ export interface CreateCase {
   "patient_ref"?: string | null;
   "registered_provider"?: string | null;
   "result_ref"?: string | null;
+  "results"?: Record<string, unknown>[] | null;
 }
 
 export interface CreateDraft {

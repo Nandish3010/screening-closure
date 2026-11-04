@@ -1,12 +1,12 @@
 /** Derivations shared by the mock adapter and the UI (state, owner, SLA clock, handoffs, consent, drafts). */
 import type {
-  ActorKind, CaseDetail, CaseEvent, ClosureProposal, IncompleteProcedure, CaseSummary, Consent, ConsentChanges, ConsentHistoryEntry, DraftRecord, EscalationRung, Lang,
+  ActorKind, CasePriority, CaseDetail, CaseEvent, ClosureProposal, IncompleteProcedure, CaseSummary, Consent, ConsentChanges, ConsentHistoryEntry, DraftRecord, EscalationRung, Lang,
   InformedRefusal, LastHandoff, MilestoneClock, MilestoneName, PendingHandoff, TimelineItem, WatchdogFlag,
 } from "../api/contract";
 import {
   APPOINTMENT_CANCEL_REASONS, ApiError, AUTOMATION_ACTOR, CONSENT_KEYS, REFUSAL_REASONS, HANDOFF_REJECT_REASONS, OUTREACH_HOLD_REASONS, REVIEW_REASONS, TRIAGE_REVIEW_REASONS } from "../api/contract";
 import {
-  MILESTONES, RE_OFFER_MONTHS, REFERRAL_STATES, SLA_WORKING_DAYS, addWorkingDays, nextTransition,
+  RE_OFFER_MONTHS, REFERRAL_STATES, SLA_WORKING_DAYS, addWorkingDays, milestonesFor, nextTransition,
   rungLevel, transitionFor, wholeDaysBetween,
 } from "./pathway";
 
@@ -257,9 +257,9 @@ export function slaClock(events: CaseEvent[], state: string, simNow: string) {
  * met by the `until_event` and void if the case closes first. `overdue` here is "past due at `simNow`", where the
  * real read model has the scheduler's flag.
  */
-export function milestonesOf(events: CaseEvent[], simNow: string | null = null): Record<MilestoneName, MilestoneClock> {
+export function milestonesOf(events: CaseEvent[], simNow: string | null = null, pathway?: string | null): Record<MilestoneName, MilestoneClock> {
   const out = {} as Record<MilestoneName, MilestoneClock>;
-  for (const def of MILESTONES) {
+  for (const def of milestonesFor(pathway)) {
     let started: string | null = def.from_event === "case_created" ? events[0]?.at ?? null : null;
     let met: string | null = null;
     let isVoid = false;
@@ -431,10 +431,11 @@ export function summarise(
   simNow: string,
   risk: number,
   pathway = "colorectal_fit",
+  priority?: CasePriority | null,
 ): CaseSummary {
   const state = replayState(events);
   const clock = slaClock(events, state, simNow);
-  const due = nextDeadline(clock.due_at, milestonesOf(events, simNow));
+  const due = nextDeadline(clock.due_at, milestonesOf(events, simNow, pathway));
   const watchdog = watchdogFlag(events);
   const h = replayHandoffs(events);
   return {
@@ -457,6 +458,8 @@ export function summarise(
     watchdog_flagged: watchdog,
     // The risk model is the bowel pathway's: the API scores no other pathway's case (its risk_score is null).
     risk_score: pathway === "colorectal_fit" ? risk : undefined,
+    // Priority only when the case has one (staff views); the key is absent otherwise, so a bowel row is unchanged.
+    ...(priority ? { priority } : {}),
   };
 }
 
@@ -649,7 +652,7 @@ export function completeDetail(raw: CaseDetail, simNow: string | null = null): C
     refusal: d.refusal !== undefined ? d.refusal : refusalOf(events),
     re_offer_due_at: d.re_offer_due_at !== undefined ? d.re_offer_due_at : refusalOf(events)?.re_offer_due_at ?? null,
     closure_outcome: d.closure_outcome !== undefined ? d.closure_outcome : closureOutcomeOf(events),
-    milestones: d.milestones ?? milestonesOf(events, simNow),
+    milestones: d.milestones ?? milestonesOf(events, simNow, d.pathway),
     last_event_at: d.last_event_at ?? events.at(-1)?.at ?? d.updated_at ?? "",
     watchdog_flagged: d.watchdog_flagged !== undefined ? d.watchdog_flagged : watchdogFlag(events),
     provider: d.provider !== undefined ? d.provider : h.provider,

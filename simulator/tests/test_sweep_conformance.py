@@ -212,3 +212,30 @@ def test_the_second_pathways_breaches_come_from_its_own_pack(cervical_run):
             if e.type == "mark_overdue" and e.payload.get("milestone"):
                 milestones.add(e.payload["milestone"])
     assert milestones == set(ctx.pathway.milestones), milestones  # both cervical milestones were breached and named
+
+
+# ---- the third pathway (long-term conditions) on the same engine -----------------------------------------------------
+#
+# The same check on the chronic pack (its own milestones and SLAs). A property of the engine honouring a pack as data; NOT an
+# evaluation: the cohort and behaviour parameters are the bowel programme's, nothing of this run is reported, and no impact
+# number exists for the third pathway.
+
+
+@pytest.fixture(scope="module")
+def chronic_run():
+    from pathlib import Path
+
+    from simulator.sim.runner import load_context
+
+    ctx = load_context(pathway_path=Path(__file__).resolve().parents[2] / "config/pathways/chronic_conditions.yaml", warn=False)
+    assert ctx.pathway.name == "chronic_conditions"
+    return ctx, _run(ctx, 1.0, cases=CERVICAL_CASES)
+
+
+def test_the_simulator_runs_the_apis_sweep_event_for_event_on_the_third_pathway(chronic_run):
+    ctx, result = chronic_run
+    calendar = default_calendar()
+    failures = [case.p.idx for case in result.cases
+                if [_key(e) for e in replay(case.mach, ctx.pathway, calendar)] != [_key(e) for e in case.mach.log]]
+    assert not failures, f"{len(failures)} chronic cases differ from the real sweep: {failures[:5]}"
+    assert len(result.cases) == CERVICAL_CASES

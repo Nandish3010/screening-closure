@@ -10,11 +10,11 @@ mkdir -p "$DIR"; cd "$DIR"
 DAYS=2
 mkca() {  # name
   openssl req -x509 -newkey rsa:2048 -nodes -keyout "$1.key" -out "$1.pem" -subj "/CN=$1" -days $DAYS \
-    -addext "basicConstraints=critical,CA:TRUE" -addext "keyUsage=critical,keyCertSign,cRLSign" 2>/dev/null
+    -addext "basicConstraints=critical,CA:TRUE" -addext "keyUsage=critical,keyCertSign,cRLSign" -addext "subjectKeyIdentifier=hash" 2>/dev/null
 }
 mkleaf() {  # name cn ca usage san
   openssl req -newkey rsa:2048 -nodes -keyout "$1.key" -out "$1.csr" -subj "/CN=$2" 2>/dev/null
-  printf "basicConstraints=CA:FALSE\nkeyUsage=digitalSignature,keyEncipherment\nextendedKeyUsage=%s\nsubjectAltName=%s\n" "$4" "$5" > "$1.ext"
+  printf "basicConstraints=CA:FALSE\nkeyUsage=digitalSignature,keyEncipherment\nextendedKeyUsage=%s\nsubjectAltName=%s\nauthorityKeyIdentifier=keyid\n" "$4" "$5" > "$1.ext"
   openssl x509 -req -in "$1.csr" -CA "$3.pem" -CAkey "$3.key" -CAcreateserial -out "$1.pem" -days $DAYS -extfile "$1.ext" 2>/dev/null
   rm -f "$1.csr" "$1.ext"
 }

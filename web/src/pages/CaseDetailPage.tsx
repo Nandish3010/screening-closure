@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { can, isOwnerScoped, useApp } from "../app/AppContext";
 import type {
@@ -22,9 +22,12 @@ import {
   actorName as actorNameOf, allowedChannels, consentOf, draftViews, handoffs, hasCallbackPending, lostContact, overdueDays, overdueInfo,
   patientLang, pendingEscalation, personId, rejectionReasons,
 } from "../lib/derive";
-import { fmtDate, fmtDateTime, titleCase } from "../lib/format";
+import { modelWords } from "../lib/models";
+import { fmtDate, fmtDateTime, plainError, titleCase } from "../lib/format";
 import { STAFF } from "../i18n/strings";
-import { ESCALATION_LADDER, HANDOFF_RESPONSE_WORKING_DAYS, REFUSAL_FROM_STATES, RUNG_LABEL, handoffReasonLabel, milestonesFor, pathwayMeta } from "../lib/pathway";
+import { ESCALATION_LADDER, HANDOFF_RESPONSE_WORKING_DAYS, REFUSAL_FROM_STATES, RUNG_LABEL, handoffReasonLabel, milestonesFor, pathwayMeta, procedurePlural, procedureSlug } from "../lib/pathway";
+import { PriorityBadge } from "../components/PriorityBadge";
+import { PRIORITY_NOT_SLA_NOTE, priorityIsPlaceholder, priorityReason } from "../lib/priority";
 import { PathwayBadge } from "../components/PathwayBadge";
 import type { MilestoneDef } from "../lib/pathway";
 import { WatchdogMarker, watchdogDetail } from "../components/WatchdogMarker";
@@ -99,6 +102,15 @@ export function CaseDetailPage() {
   const [replyChannel, setReplyChannel] = useState<ContactChannel>("whatsapp");
   const [replyText, setReplyText] = useState("");
   const [replyResult, setReplyResult] = useState<ReplyResult | null>(null);
+  const [replyQuote, setReplyQuote] = useState("");
+  // One component serves every /coordinator/:caseId: a reply (and its text) belongs to the case it was recorded on.
+  const currentCase = useRef(caseId);
+  useEffect(() => {
+    currentCase.current = caseId;
+    setReplyResult(null);
+    setReplyQuote("");
+    setReplyText("");
+  }, [caseId]);
   const [appointment, setAppointment] = useState("");
   const [appointmentDate, setAppointmentDate] = useState("");
   const [resultRef, setResultRef] = useState("");
@@ -128,6 +140,7 @@ export function CaseDetailPage() {
     setTimeline(t);
     setDraftRecords(recs);
     setDraftsDenied(denied);
+    setError(null); // a successful fetch clears an earlier failure (for example a 404 answered to the previous login)
     // `role` is a dependency on purpose: a different login sees a different case (the drafts list is owner-scoped, SEC-2).
   }, [api, caseId, role]);
 
@@ -155,7 +168,7 @@ export function CaseDetailPage() {
         refreshSim();
         setFlash(typeof okMessage === "function" ? okMessage(result) : okMessage);
       } catch (e) {
-        setError(e instanceof ApiError ? `The engine refused this: ${e.message}` : `Something went wrong: ${(e as Error).message}`);
+        setError(e instanceof ApiError ? `The engine refused this: ${plainError(e.message)}` : `Something went wrong: ${(e as Error).message}`);
       } finally {
         setBusy(false);
       }
@@ -235,6 +248,15 @@ export function CaseDetailPage() {
       <dl className="facts">
         <div><dt>Owner</dt><dd data-testid="owner">{detail.owner ?? "Unowned"}{detail.provider ? <span className="muted"> · {detail.provider}</span> : null}</dd></div>
         <div><dt>SLA clock</dt><dd data-testid="sla-clock">{closed ? "Closed" : detail.due_at ? <>Due {fmtDateTime(detail.due_at)}{od.overdue ? <> · <span className="chip chip-bad">{od.days > 0 ? `${od.days} day${od.days === 1 ? "" : "s"} overdue` : "overdue"}</span></> : " · on track"}</> : "No SLA for this step"}</dd></div>
+        {detail.priority && (
+          <div>
+            <dt>Priority</dt>
+            <dd data-testid="priority">
+              <PriorityBadge priority={detail.priority} /> <span data-testid="priority-reason">{priorityReason(detail.priority)}</span>
+              <div className="muted" data-testid="priority-note">{PRIORITY_NOT_SLA_NOTE}{priorityIsPlaceholder(detail.priority) ? " The threshold is a placeholder pending clinician sign-off (H1)." : ""}</div>
+            </dd>
+          </div>
+        )}
         {milestonesFor(detail.pathway).map((def) => (
           <MilestoneRow key={def.name} def={def} clock={detail.milestones?.[def.name]} now={timeline?.sim_time ?? simTime} closed={closed} />
         ))}
@@ -366,7 +388,7 @@ export function CaseDetailPage() {
             )}
             {state === "confirmatory_booked" && (
               <>
-                <label className="field"><span>Confirmatory result reference</span><input value={resultRef} onChange={(e) => setResultRef(e.target.value)} placeholder={`Procedure/${procedure}-0001`} /></label>
+                <label className="field"><span>Confirmatory result reference</span><input value={resultRef} onChange={(e) => setResultRef(e.target.value)} placeholder={`Procedure/${procedureSlug(procedure)}-0001`} /></label>
                 <ActionButton testId="record-colonoscopy" busy={busy} disabledReason={why("recordColonoscopy", "owner, specialist or clinician (the case owner)", true)} onClick={() => act(async () => { const r = await api.recordConfirmatoryResult(caseId); setResultRef(r.evidence_ref); return r; }, (r) => `${procedure.charAt(0).toUpperCase()}${procedure.slice(1)} recorded in the FHIR store as ${r.evidence_ref}. Now record the confirmatory result.`)}>
                   Record {procedure} result
                 </ActionButton>
@@ -415,7 +437,7 @@ export function CaseDetailPage() {
                   <strong>The patient declined after counselling.</strong> Counselled by {actorNameOf(detail.refusal.counselled_by) || detail.refusal.counselled_by} on {fmtDate(detail.refusal.recorded_at)};
                   reason: {REFUSAL_LABEL[detail.refusal.reason] ?? titleCase(detail.refusal.reason)}. Record: <span className="mono">{detail.refusal.counselling_ref}</span>.
                 </p>
-                <p className="muted">A physician who did not counsel the patient signs to close the case as declined. A declined closure is counted apart from completed {procedure === "colonoscopy" ? "colonoscopies" : `${procedure}s`}.</p>
+                <p className="muted">A physician who did not counsel the patient signs to close the case as declined. A declined closure is counted apart from completed {procedurePlural(procedure)}.</p>
                 <ActionButton
                   primary
                   testId="sign-declined"
@@ -637,12 +659,17 @@ export function CaseDetailPage() {
             </label>
             <ActionButton
               testId="record-reply"
+              quietWhy={Boolean(replyResult) && !replyText.trim()}
               busy={busy}
               disabledReason={why("recordReply", "coordinator") ?? (replyText.trim() ? null : STAFF.replyForm.needText)}
               onClick={() => act(async () => {
+                const forCase = caseId;
                 const r = await api.postReply(caseId, { channel: replyChannel, text: replyText.trim() });
-                setReplyResult(r);
-                setReplyText("");
+                if (currentCase.current === forCase) { // a reply that comes back after the user moved to another case is not shown there
+                  setReplyResult(r);
+                  setReplyQuote(replyText.trim());
+                  setReplyText("");
+                }
                 return r;
               }, (r: ReplyResult) => (r.needs_human ? STAFF.replyForm.recordedNeedsPerson : STAFF.replyForm.recordedHandled(String(r.intent).replace(/_/g, " "))))}
             >
@@ -650,8 +677,13 @@ export function CaseDetailPage() {
             </ActionButton>
             {replyResult && (
               <p className={`banner ${replyResult.needs_human ? "banner-warn" : "banner-ok"}`} role="status" data-testid="reply-result" data-intent={replyResult.intent} data-needs-human={String(replyResult.needs_human)}>
+                {replyQuote && (
+                  <span className="reply-quote" data-testid="reply-quote">
+                    {STAFF.replyForm.quote} “<bdi dir="auto">{replyQuote}</bdi>”
+                  </span>
+                )}
                 <strong>{STAFF.replyForm.readAs} {String(replyResult.intent).replace(/_/g, " ")}</strong>
-                {" "}({Math.round(replyResult.confidence * 100)}% sure, model: {replyResult.model_id}).{" "}
+                {" "}({Math.round(replyResult.confidence * 100)}% sure, {modelWords(replyResult.model_id)}).{" "}
                 {replyResult.needs_human ? STAFF.replyForm.needsPerson : STAFF.replyForm.handled}
               </p>
             )}

@@ -28,7 +28,7 @@ API = os.environ.get("API_URL", "http://localhost:8000").rstrip("/")
 def main() -> int:
     token = os.environ.get("AGENCY_SERVICE_TOKEN")
     try:
-        with httpx.Client(timeout=300) as http:
+        with httpx.Client(timeout=600) as http:
             if not token:
                 r = http.post(f"{API}/auth/dev-login", json={"role": "supervisor", "name": "Dr. Noura Al Hammadi"})
                 r.raise_for_status()

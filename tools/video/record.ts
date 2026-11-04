@@ -68,6 +68,22 @@ function sh(cmd: string, timeoutS = 120): { code: number; out: string } {
   return { code: r.status ?? 1, out: `${r.stdout ?? ""}${r.stderr ?? ""}` };
 }
 
+/** The agency run budget in seconds for the recording: a whole number from 20 (the API default) to 3600, 600 when unset. */
+function agencyBudget(raw: string | undefined): number {
+  if (raw === undefined || raw === "") return 600;
+  if (!/^\d+$/.test(raw) || Number(raw) < 20 || Number(raw) > 3600) {
+    throw new Error(`VIDEO_AGENCY_BUDGET must be a whole number of seconds from 20 to 3600, got ${JSON.stringify(raw)}`);
+  }
+  return Number(raw);
+}
+
+/** Recreate the API container with the given environment added (no shell: the values travel in the child's environment). */
+function composeApi(env: Record<string, string>): { code: number; out: string } {
+  const { AGENCY_RUN_BUDGET_SECONDS: _inherited, ...base } = process.env; // an inherited value never leaks into the restore
+  const r = spawnSync("docker", ["compose", "up", "-d", "--no-build", "api"], { cwd: REPO, encoding: "utf-8", timeout: 180_000, env: { ...base, ...env } });
+  return { code: r.status ?? 1, out: `${r.stdout ?? ""}${r.stderr ?? ""}` };
+}
+
 function shAsync(cmd: string, timeoutS = 120): Promise<{ code: number; out: string }> {
   return new Promise((res) => {
     const c = spawn("sh", ["-c", cmd], { cwd: REPO });
@@ -142,6 +158,8 @@ const BASE_CSS = `
   .wrap{width:1100px;padding-bottom:70px} h1{font-size:54px;margin:0 0 18px;letter-spacing:-.01em} p.line{font-size:28px;line-height:1.35;margin:0 0 20px;color:#d4e6ee}
   .mark{display:inline-grid;place-items:center;width:46px;height:46px;border-radius:50%;background:#2a9d8f;color:#fff;font-size:28px;margin-right:14px;vertical-align:8px}
   .note{font-size:20px;color:#ffb703;font-weight:700;letter-spacing:.04em;text-transform:uppercase}
+  .brandline{font-size:26px;font-weight:700;letter-spacing:.06em;color:#9fc0cd;text-transform:uppercase;margin-bottom:10px}
+  .cta{font-size:44px;font-weight:800;color:#ffb703;margin:6px 0 22px}
   .big{font-size:190px;font-weight:800;color:#ffb703;line-height:1;margin:0 0 12px} .src{font-size:20px;color:#9fc0cd;margin-top:16px}
   ul{font-size:34px;line-height:1.5;padding-left:34px;margin:10px 0} li{margin-bottom:10px}
   table{border-collapse:collapse;width:100%;font-size:26px} th,td{padding:14px 16px;text-align:left;border-bottom:1px solid #2c4b58;vertical-align:top}
@@ -167,10 +185,13 @@ function parseHeadline(sourceRel: string): { header: string[]; rows: string[][] 
 
 function cardHtml(c: Action): string {
   if (c.kind === "stat") {
-    return pageHtml(`<div class="wrap"><div class="big">${esc(c.value)}</div><p class="line">${esc(c.text)}</p><div class="src">${esc(c.source)}. All data in this video is synthetic.</div></div>`);
+    return pageHtml(`<div class="wrap">${c.brand ? `<div class="brandline">${esc(c.brand)}</div>` : ""}<div class="big">${esc(c.value)}</div><p class="line">${esc(c.text)}</p><div class="src">${esc(c.source)}${c.footer ? `. ${esc(c.footer)}` : ""}</div></div>`);
+  }
+  if (c.kind === "figure") {
+    return pageHtml(`<div class="wrap"><h1 style="font-size:40px;color:#9fc0cd;margin-bottom:6px">${esc(c.heading)}</h1><div class="big" style="font-size:150px">${esc(c.value)}</div><p class="line" style="font-size:32px;max-width:1000px">${esc(c.label)}</p><ul>${((c.bullets ?? []) as string[]).map((b) => `<li>${esc(b)}</li>`).join("")}</ul><div class="note">${esc(c.note)}</div></div>`);
   }
   if (c.kind === "slide") {
-    return pageHtml(`<div class="wrap"><h1>${esc(c.heading)}</h1><ul>${(c.bullets as string[]).map((b) => `<li>${esc(b)}</li>`).join("")}</ul><div class="note">Synthetic data. Pilot plan: docs/pilot-plan.md</div></div>`);
+    return pageHtml(`<div class="wrap"><h1>${esc(c.heading)}</h1><ul>${(c.bullets as string[]).map((b) => `<li>${esc(b)}</li>`).join("")}</ul><div class="note">Synthetic data. All figures from the simulation results.</div></div>`, "body{align-items:flex-start;padding-top:36px}");
   }
   if (c.kind === "text") {
     return pageHtml(`<div class="wrap"><h1>${esc(c.heading)}</h1><p class="line">${esc(c.text)}</p></div>`);
@@ -187,7 +208,7 @@ function cardHtml(c: Action): string {
       if (!row) throw new Error(`results card: no row starting with ${JSON.stringify(name)} in ${c.source}`);
       return `<tr class="hl"><td>${esc(row[0])}</td>${valueCols.map((i) => { const m = /^(\S+%?)\s*(\(.*\))?$/.exec(row[i]); return `<td class="v">${esc(m?.[1] ?? row[i])}${m?.[2] ? `<small>95% CI ${esc(m[2].replace(/[()]/g, ""))}</small>` : ""}</td>`; }).join("")}</tr>`;
     }).join("");
-    return pageHtml(`<div class="wrap" style="width:1160px"><h1 style="font-size:40px">Simulation, synthetic data: baseline vs orchestrated</h1><table><tr><th>Metric</th>${valueCols.map((i) => `<th>${esc(header[i])}</th>`).join("")}</tr>${body}</table><div class="src">Source: ${esc(c.source)}, headline table (literature-anchored scenario). Before capacity limits. Rerun: make evaluate</div></div>`);
+    return pageHtml(`<div class="wrap" style="width:1160px"><h1 style="font-size:40px">Simulation, synthetic data: baseline vs orchestrated</h1><table><tr><th>Metric</th>${valueCols.map((i) => `<th>${esc(header[i])}</th>`).join("")}</tr>${body}</table><div class="src">Simulation results, headline table (literature-anchored scenario). Before capacity limits.</div></div>`);
   }
   throw new Error(`unknown card kind ${c.kind}`);
 }
@@ -200,16 +221,17 @@ function overlayScript(caption: string): string {
   return `(() => {
   const FIRST = ${JSON.stringify(caption)};
   const PREFIX = "__vcap:";
-  const css = "#__vcap_bar{position:fixed;left:50%;transform:translateX(-50%);bottom:34px;width:min(1180px,calc(100vw - 40px));z-index:2147483647;pointer-events:none;background:rgba(8,18,26,.9);color:#fff;font:600 22px/1.3 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;padding:12px 18px;border-radius:10px;text-align:center;box-shadow:0 4px 18px rgba(0,0,0,.35)}"
+  const css = "#__vcap_bar{position:fixed;left:50%;transform:translateX(-50%);bottom:34px;width:min(1180px,calc(100vw - 40px));z-index:2147483647;pointer-events:none;background:rgba(8,18,26,.9);color:#fff;font:600 22px/1.3 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;padding:12px 18px;border-radius:10px;text-align:center;direction:ltr;unicode-bidi:isolate;box-shadow:0 4px 18px rgba(0,0,0,.35)}"
     + "#__vcap_bar.m{font-size:18px}#__vcap_bar.s{font-size:15px;line-height:1.3}"
     + "#__vcap_strip{position:fixed;left:0;right:0;bottom:0;height:26px;z-index:2147483647;pointer-events:none;background:#ffb703;color:#1b1300;font:800 13px/26px -apple-system,Segoe UI,sans-serif;letter-spacing:.08em;text-align:center;text-transform:uppercase}"
+    + "[data-testid=\"consent-withdraw-why\"]{display:none !important}" // a supervisor's disabled-consent note is not what the shot is about (the page still says it to a real user)
     + "body{padding-bottom:170px !important}";
   function ensure() {
     if (!document.documentElement) return;
     if (!document.getElementById("__vcap_style")) { const s = document.createElement("style"); s.id = "__vcap_style"; s.textContent = css; (document.head || document.documentElement).appendChild(s); }
     if (!document.getElementById("__vcap_bar") && document.body) {
-      const b = document.createElement("div"); b.id = "__vcap_bar"; b.setAttribute("role", "note"); document.body.appendChild(b);
-      const t = document.createElement("div"); t.id = "__vcap_strip"; t.textContent = "Synthetic data  \\u00b7  simulated time  \\u00b7  nothing is diagnosed"; document.body.appendChild(t);
+      const b = document.createElement("div"); b.id = "__vcap_bar"; b.setAttribute("role", "note"); b.setAttribute("dir", "ltr"); document.body.appendChild(b);
+      const t = document.createElement("div"); t.id = "__vcap_strip"; t.setAttribute("dir", "ltr"); t.textContent = "Synthetic data  \\u00b7  simulated time  \\u00b7  nothing is diagnosed"; document.body.appendChild(t);
     }
   }
   function current() { return window.name.startsWith(PREFIX) ? window.name.slice(PREFIX.length) : FIRST; }
@@ -289,7 +311,12 @@ async function runAction(page: any, act: Action, ctx: { cases: Record<string, st
     case "scroll": {
       const loc = locator(page, v);
       await loc.waitFor({ timeout: T });
-      await loc.evaluate((el: Element) => el.scrollIntoView({ block: "center", behavior: "smooth" }));
+      if (v.align === "top") {
+        // the element goes just under the header, so the caption bar at the bottom of the frame cannot cover it
+        await loc.evaluate((el: Element) => window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - 150, behavior: "smooth" }));
+      } else {
+        await loc.evaluate((el: Element) => el.scrollIntoView({ block: "center", behavior: "smooth" }));
+      }
       await sleep(900);
       return;
     }
@@ -319,7 +346,7 @@ async function runAction(page: any, act: Action, ctx: { cases: Record<string, st
       return;
     }
     case "shell": {
-      const r = await shAsync(v, 120); // async: a blocked event loop would stall the screencast and shorten the video
+      const r = await shAsync(v, 600); // async: a blocked event loop would stall the screencast and shorten the video
       if (r.code !== 0) throw new Error(`shell ${JSON.stringify(v)} exited ${r.code}: ${r.out.slice(-400)}`);
       return;
     }
@@ -333,13 +360,12 @@ async function runAction(page: any, act: Action, ctx: { cases: Record<string, st
         await page.goto(pathToFileURL(file).href);
       };
       if (!res || v.run) {
-        await show("", null);
-        await sleep(1200);
-        // The run itself is dead time on screen: it is cut from the video (the first second of it stays).
+        // The run itself is dead time on screen and is cut from the video; no empty terminal is shown before it (a viewer
+        // would see only the command line). The page that was up stays, then the terminal appears with the real output.
         const started = (Date.now() - ctx.t0) / 1000;
         const r = await shAsync(v.command, v.timeout ?? 120);
         const ended = (Date.now() - ctx.t0) / 1000;
-        if (ended - started > 2) ctx.marks.cuts.push([started, ended - 0.5]);
+        if (ended - started > 0.5) ctx.marks.cuts.push([started + 0.3, ended]);
         const out = stripAnsi(r.out).trimEnd().split("\n");
         res = { output: out.slice(-lines).join("\n"), ok: r.code === 0 };
         terminalCache.set(key, res);
@@ -399,7 +425,7 @@ async function renderCards(browser: any, sb: Storyboard) {
   mkdirSync(CARDS, { recursive: true });
   const { title, end } = sb.cards;
   const t = pageHtml(`<div class="wrap"><h1><span class="mark">&#10003;</span>${esc(title.heading)}</h1><p class="line">${esc(title.line)}</p><div class="note">${esc(title.note)}</div></div>`);
-  const e = pageHtml(`<div class="wrap"><h1><span class="mark">&#10003;</span>${esc(end.heading)}</h1><p class="line">${esc(end.line)}</p><p class="line">Team: ${esc(end.team)}</p><div class="note">${esc(end.note)}</div></div>`);
+  const e = pageHtml(`<div class="wrap"><h1><span class="mark">&#10003;</span>${esc(end.heading)}</h1>${end.cta ? `<div class="cta">${esc(end.cta)}</div>` : ""}<p class="line">${esc(end.line)}</p><p class="line">Team: ${esc(end.team)}</p><div class="note">${esc(end.note)}</div></div>`);
   for (const [name, html] of [["title", t], ["end", e]] as const) {
     const file = join(PAGES, `${name}-card.html`);
     writeFileSync(file, html);
@@ -445,6 +471,14 @@ async function main() {
   let cases: Record<string, string> = {};
   let simTime = "";
   try {
+    await waitForStack();
+    // The agency recording run needs a 600 s budget (the API default is 20 s): recreate the API container with the override,
+    // and put the default back in `finally`. Production defaults are untouched (docker-compose.yml keeps 20).
+    const budget = agencyBudget(process.env.VIDEO_AGENCY_BUDGET);
+    const rb = composeApi({ AGENCY_RUN_BUDGET_SECONDS: String(budget) });
+    if (rb.code !== 0) throw new Error(`could not set the agency run budget to ${budget} s: ${rb.out.slice(-300)}`);
+    log(`agency run budget: ${budget} s (API recreated)`);
+    for (let i = 0; i < 40 && (await stackProblem()); i++) await sleep(3000); // the recreated API takes a while to answer
     await waitForStack();
     if (!args.has("--no-reset")) {
       make("demo-reset");
@@ -515,6 +549,9 @@ async function main() {
     const up = sh("docker compose start scheduler", 120);
     log(`scheduler start: ${up.code === 0 ? "ok" : "FAILED " + up.out.slice(-200)}`);
     preview?.kill();
+    const rb2 = composeApi({});
+    log(`agency run budget back to the default: ${rb2.code === 0 ? "ok" : "FAILED " + rb2.out.slice(-200)}`);
+    if (rb2.code !== 0 && !failure) failure = new Error(`could not restore the API's default agency run budget (the API may still run with the video budget): ${rb2.out.slice(-300)}`);
     await browser.close().catch(() => undefined);
     writeFileSync(join(OUT, "shots.json"), JSON.stringify({ generated_at: new Date().toISOString(), sim_time_at_start: simTime, cases, shots: results }, null, 2));
     if (!args.has("--no-reset") && !args.has("--keep-state")) {

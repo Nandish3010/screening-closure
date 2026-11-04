@@ -6,7 +6,7 @@ import type { TimelineItem } from "../src/api/contract";
 import { createMockAdapter } from "../src/api/mockAdapter";
 import { DraftsPanel } from "../src/components/DraftsPanel";
 import { Timeline } from "../src/components/Timeline";
-import { TRIAGE_THRESHOLD, whyContent } from "../src/components/WhyPanel";
+import { TRIAGE_THRESHOLD, WhyPanel, whyContent } from "../src/components/WhyPanel";
 import type { DraftView } from "../src/lib/derive";
 import { AgencyPage } from "../src/pages/AgencyPage";
 import { CoordinatorPage } from "../src/pages/CoordinatorPage";
@@ -25,11 +25,31 @@ const renderDrafts = (drafts: DraftView[]) =>
 describe("Why? panel: the language-group rule", () => {
   it("names the Gulf-dialect rule in plain words when the API says it forced a person", () => {
     const c = whyContent({ kind: "triage", model_id: "qwen-lora", confidence: 0.99, needs_human: true, forced_reason: "ar_gulf" });
-    expect(c.rule).toMatch(/^Gulf dialect: a person always checks these replies \(safety rule HZ-43\)/);
+    expect(c.rule).toMatch(/^Gulf dialect: a person always checks these replies \(safety rule\)/);
+    expect(c.rule).not.toMatch(/HZ-43|55\.3/); // the rule id and the threshold are under the technical details
+    expect(c.technical).toMatch(/HZ-43.*55\.3%/);
     expect(c.rule).toMatch(/Handled without a person only if/);
   });
   it("says nothing about a group when there is no forced_reason", () => {
-    expect(whyContent({ kind: "triage", model_id: "qwen-lora", confidence: 0.4, needs_human: true }).rule).not.toMatch(/HZ-43/);
+    expect(whyContent({ kind: "triage", model_id: "qwen-lora", confidence: 0.4, needs_human: true }).technical).not.toMatch(/HZ-43/);
+  });
+  it("calls only the local Qwen model on-premises; any other id is a neutral AI model, and none or a rule say so", () => {
+    expect(whyContent({ kind: "triage", model_id: "qwen2.5-1.5b-4bit+lora-1", confidence: 1 }).model).toMatch(/^On-premises model/);
+    expect(whyContent({ kind: "triage", model_id: "claude-haiku-x", confidence: 1 }).model).toBe("AI model");
+    expect(whyContent({ kind: "triage", model_id: "claude-haiku-x", confidence: 1 }).modelId).toBe("claude-haiku-x");
+    expect(whyContent({ kind: "triage", model_id: "unavailable" }).model).toMatch(/No model available/);
+    expect(whyContent({ kind: "triage", model_id: "rule:optout" }).model).toMatch(/Opt-out rule/);
+  });
+  it("the model id and the rule id sit behind a button, not a nested details element", async () => {
+    const user = userEvent.setup();
+    render(<WhyPanel testId="w" subject="reply label" input={{ kind: "triage", model_id: "qwen-lora", confidence: 0.9, needs_human: true, forced_reason: "ar_gulf" }} />);
+    const panel = screen.getByTestId("w");
+    expect(panel.tagName).toBe("DETAILS");
+    expect(panel.querySelectorAll("details")).toHaveLength(0); // no disclosure nested inside the panel
+    await user.click(screen.getByRole("button", { name: /Model details/ }));
+    expect(screen.getByTestId("w-model-id")).toHaveTextContent("qwen-lora");
+    expect(screen.getByTestId("w-technical")).toHaveTextContent(/HZ-43/);
+    expect(screen.getByRole("button", { name: /Hide model details/ })).toHaveAttribute("aria-expanded", "true");
   });
 });
 
@@ -67,9 +87,10 @@ describe("Why? panel", () => {
     render(<Timeline items={items} />);
     expect(TRIAGE_THRESHOLD).toBe(0.553);
     expect(screen.getByText("Why? (reply label #5)")).toBeInTheDocument();
-    expect(screen.getByTestId("why-triage-5-model")).toHaveTextContent("qwen-lora");
+    expect(screen.getByTestId("why-triage-5-model")).toHaveTextContent("On-premises model");
+    expect(screen.queryByTestId("why-triage-5-model-id")).toBeNull(); // the id only shows after "Model details" is opened
     expect(screen.getByTestId("why-triage-5-confidence")).toHaveTextContent("42%");
-    expect(screen.getByTestId("why-triage-5-rule")).toHaveTextContent(/at least 55\.3% and the intent is not question, other or opt-out/);
+    expect(screen.getByTestId("why-triage-5-rule")).toHaveTextContent(/only if the model is confident enough and the intent is not question, other or opt-out/);
     expect(screen.getByTestId("why-triage-5-rule")).toHaveTextContent(/waiting for a person/);
     expect(screen.getByTestId("why-triage-5-human")).toHaveTextContent(/opt-out is always read by a person/);
   });

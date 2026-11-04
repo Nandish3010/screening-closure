@@ -455,6 +455,29 @@ export interface CaseSummary {
   last_handoff?: LastHandoff | null;
   /** 0..1 loss-to-follow-up risk. Optional. ONLY used to order the worklist; never acts. */
   risk_score?: number;
+  /**
+   * Result priority (staff views only; a patient's rows never carry it). null / absent = the pathway has no priority rule for
+   * this case. It ONLY orders the worklist and explains why: the SLA clock, the escalation ladder and who may close the case do
+   * not depend on it. Thresholds are PLACEHOLDERS pending clinician sign-off (H1); the Arabic reason needs native review (H2).
+   */
+  priority?: CasePriority | null;
+}
+
+/** `priority` on a case row and a case page (api/app/priority.py). `rank` 0 = highest. */
+export interface CasePriority {
+  /** `urgent`, `soon`, `routine` or another code a pathway defines (an unknown code sorts after the known ones). */
+  tier: "urgent" | "soon" | "routine" | (string & {});
+  rank: number;
+  rule: string;
+  reason: { en: string; ar: string };
+  /** Where the threshold comes from; starts with "PLACEHOLDER" while it awaits clinician sign-off (H1). */
+  basis: string;
+}
+
+/** One entered result for `POST /cases` (`results`): the server derives the priority tier from it. */
+export interface CreateCaseResult {
+  kind: string;
+  values: Record<string, number>;
 }
 
 export interface CaseListParams {

@@ -101,6 +101,52 @@ class EvidenceRule:
         ("Procedure", "http://snomed.info/sct|73761001"), ("DiagnosticReport", "http://loinc.org|18746-8"))
 
 
+# Priority tiers (the priority work, ADR-051). A pack may rank a result by rules over the values of the screening result: the
+# pack's `priority` section. The tier is derived once, at intake, by `app.priority`, and only its tier and rule id are recorded
+# (never the values). It orders and explains; it feeds no state, SLA, escalation or closure.
+PRIORITY_OPS = ("gte", "gt", "lte", "lt", "eq")
+
+
+@dataclass(frozen=True)
+class PriorityCondition:
+    field: str
+    op: str
+    value: float | int
+
+
+@dataclass(frozen=True)
+class PriorityRule:
+    """One rule: it matches a result of `kind` when `any` (default) or `all` of its conditions hold. `basis` says where the
+    threshold comes from (a cited source, or "PLACEHOLDER, needs clinician sign-off (H1)"): a rule without one is refused."""
+
+    id: str
+    tier: str
+    kind: str
+    conditions: tuple[PriorityCondition, ...]
+    mode: str  # "any" or "all"
+    reason: dict[str, str]
+    basis: str
+
+
+@dataclass(frozen=True)
+class PriorityConfig:
+    """`tiers` are ordered highest first (the order is the worklist's sort order). `results` maps each result kind the pack
+    knows to its numeric or boolean fields. `default_tier` is the tier of a case whose results matched no rule."""
+
+    tiers: tuple[str, ...]
+    default_tier: str
+    results: dict[str, tuple[str, ...]]
+    rules: tuple[PriorityRule, ...]
+    status: str = ""
+
+    def rank(self, tier: str) -> int:
+        """0 is the highest priority; an unknown tier ranks last."""
+        return self.tiers.index(tier) if tier in self.tiers else len(self.tiers)
+
+    def rule(self, rule_id: str | None) -> PriorityRule | None:
+        return next((r for r in self.rules if r.id == rule_id), None)
+
+
 @dataclass(frozen=True)
 class Pathway:
     name: str
@@ -135,6 +181,8 @@ class Pathway:
     next_steps: dict[str, str] = field(default_factory=dict, repr=False)
     # Shown by the web next to the case: {en, ar} short labels, and the screening the pathway belongs to.
     labels: dict[str, str] = field(default_factory=dict, repr=False)
+    # Result priority (ADR-051). None: the pack ranks nothing and a case of it has no priority.
+    priority: PriorityConfig | None = field(default=None, repr=False)
     raw: dict = field(default_factory=dict, compare=False, repr=False)
 
     @property
@@ -314,6 +362,7 @@ def load_pathway(path: str | Path) -> Pathway:
             evidence=_load_evidence(raw.get("evidence")),
             next_steps=_load_str_map(raw.get("patient_messages"), "next_step", "patient_messages.next_step"),
             labels=_load_str_map(raw, "labels", "labels"),
+            priority=_load_priority(raw.get("priority")),
             raw=raw,
         )
     except KeyError as exc:
@@ -369,6 +418,82 @@ def _load_evidence(raw: object) -> EvidenceRule:
             codes.append((item[0], item[1]))
         codes = tuple(codes)
     return EvidenceRule(procedure, closable, named, codes)
+
+
+_CODE = re.compile(r"[a-z][a-z0-9_]{0,63}")
+MAX_REASON_LENGTH = 90
+
+
+def _load_priority(raw: object) -> PriorityConfig | None:
+    """The pack's `priority` section (ADR-051). Strict: every tier, kind, field, operator and rule is checked, and every rule
+    must say where its threshold comes from (`basis`), so no number enters a pack unlabelled."""
+    if raw is None:
+        return None
+    if not isinstance(raw, dict):
+        raise PathwayError("priority must be a mapping")
+    unknown = set(raw) - {"status", "tiers", "default_tier", "results", "rules"}
+    if unknown:
+        raise PathwayError(f"priority has unknown keys {sorted(unknown)}")
+    tiers = raw.get("tiers")
+    if (not isinstance(tiers, list) or not tiers or len(set(tiers)) != len(tiers)
+            or not all(isinstance(t, str) and _CODE.fullmatch(t) for t in tiers)):
+        raise PathwayError("priority.tiers must be a non-empty list of distinct lower-case codes, highest priority first")
+    default = raw.get("default_tier")
+    if default not in tiers:
+        raise PathwayError("priority.default_tier must be one of priority.tiers")
+    results_raw = raw.get("results")
+    if not isinstance(results_raw, dict) or not results_raw:
+        raise PathwayError("priority.results must map each result kind to its fields")
+    results: dict[str, tuple[str, ...]] = {}
+    for kind, fields in results_raw.items():
+        if (not isinstance(kind, str) or not _CODE.fullmatch(kind) or not isinstance(fields, list) or not fields
+                or len(set(fields)) != len(fields) or not all(isinstance(f, str) and _CODE.fullmatch(f) for f in fields)):
+            raise PathwayError(f"priority.results.{kind}: a lower-case kind with a non-empty list of distinct lower-case fields")
+        results[kind] = tuple(fields)
+    rules_raw = raw.get("rules")
+    if not isinstance(rules_raw, list) or not rules_raw:
+        raise PathwayError("priority.rules must be a non-empty list")
+    rules: list[PriorityRule] = []
+    for item in rules_raw:
+        if not isinstance(item, dict):
+            raise PathwayError("each priority rule must be a mapping")
+        bad = set(item) - {"id", "tier", "kind", "any", "all", "reason", "basis"}
+        if bad:
+            raise PathwayError(f"priority rule has unknown keys {sorted(bad)}")
+        rid = item.get("id")
+        if not isinstance(rid, str) or not _CODE.fullmatch(rid) or any(r.id == rid for r in rules):
+            raise PathwayError(f"priority rule id {rid!r} must be a unique lower-case code")
+        if item.get("tier") not in tiers:
+            raise PathwayError(f"priority rule {rid!r}: tier must be one of {tiers}")
+        kind = item.get("kind")
+        if kind not in results:
+            raise PathwayError(f"priority rule {rid!r}: kind {kind!r} is not in priority.results")
+        if ("any" in item) == ("all" in item):
+            raise PathwayError(f"priority rule {rid!r}: give exactly one of `any` or `all`")
+        mode = "any" if "any" in item else "all"
+        conds = item[mode]
+        if not isinstance(conds, list) or not conds:
+            raise PathwayError(f"priority rule {rid!r}: `{mode}` must be a non-empty list of conditions")
+        parsed = []
+        for c in conds:
+            if (not isinstance(c, dict) or set(c) != {"field", "op", "value"} or c["field"] not in results[kind]
+                    or c["op"] not in PRIORITY_OPS or isinstance(c["value"], bool) or not isinstance(c["value"], (int, float))):
+                raise PathwayError(
+                    f"priority rule {rid!r}: a condition is {{field (one of {list(results[kind])}), op (one of {list(PRIORITY_OPS)}), value (a number)}}")
+            parsed.append(PriorityCondition(c["field"], c["op"], c["value"]))
+        reason = item.get("reason")
+        if (not isinstance(reason, dict) or set(reason) != set(_LANGUAGES)
+                or not all(isinstance(t, str) and t.strip() and len(t) <= MAX_REASON_LENGTH for t in reason.values())):
+            raise PathwayError(f"priority rule {rid!r}: reason needs both languages, at most {MAX_REASON_LENGTH} characters each")
+        reason = {k: v.strip() for k, v in reason.items()}
+        basis = item.get("basis")
+        if not isinstance(basis, str) or not basis.strip():
+            raise PathwayError(f"priority rule {rid!r}: `basis` must say where the threshold comes from (a source, or a placeholder)")
+        rules.append(PriorityRule(rid, item["tier"], kind, tuple(parsed), mode, reason, basis.strip()))
+    status = raw.get("status", "")
+    if not isinstance(status, str):
+        raise PathwayError("priority.status must be text")
+    return PriorityConfig(tuple(tiers), default, results, tuple(rules), status.strip())
 
 
 def _load_milestones(raw: object) -> dict[str, Milestone]:

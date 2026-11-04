@@ -253,6 +253,23 @@ Draft text offered to the coordinator in the demo (mock) app, shown in both lang
 | D02 | Reminder from your care team. Your screening result is ready and your care team still needs to talk with you about the next step. Your care team will call you, or you can reply to book a time. | تذكير من فريق رعايتك. نتيجة فحصك جاهزة، ولا يزال فريق رعايتك بحاجة إلى التحدث معك عن الخطوة التالية. سيتصل بك فريق رعايتك، أو يمكنك الرد على هذه الرسالة لحجز موعد. | Draft text offered to the coordinator in the demo (mock) app, shown in both languages and stored in the `message_drafted` event. It stands in for a model or template draft. A person approves it before anything is "sent". |
 | D03 | Your appointment is booked. Your care team will contact you with the details. Please call us if you cannot come. | تم تأكيد موعدك. سيتواصل معك فريق رعايتك بالتفاصيل. يرجى الاتصال بنا إذا لم تتمكن من الحضور. | Draft text offered to the coordinator in the demo (mock) app, shown in both languages and stored in the `message_drafted` event. It stands in for a model or template draft. A person approves it before anything is "sent". |
 
+### 5.8 Priority reasons (staff worklist)
+
+Short reasons shown to staff next to a case's priority tier (urgent, soon, routine) on the worklist and the case page; never sent to a patient. The thresholds behind them are placeholders pending a clinician (H1); please review only the Arabic wording. Source: the `priority` section of the files in `config/pathways/`.
+
+| ID | English | Arabic | Rule(s) |
+|---|---|---|---|
+| P01 | Positive cancer screening result | نتيجة فحص إيجابية للكشف عن السرطان | cervical_hpv/positive_cancer_screen |
+| P02 | Very high blood pressure | ارتفاع شديد في ضغط الدم | chronic_conditions/bp_very_high |
+| P03 | High blood pressure | ارتفاع في ضغط الدم | chronic_conditions/bp_high |
+| P04 | Raised blood pressure | ارتفاع طفيف في ضغط الدم | chronic_conditions/bp_raised |
+| P05 | High HbA1c | ارتفاع في السكر التراكمي | chronic_conditions/hba1c_high |
+| P06 | Mildly raised HbA1c | ارتفاع طفيف في السكر التراكمي | chronic_conditions/hba1c_raised |
+| P07 | High fasting glucose | ارتفاع في سكر الدم الصائم | chronic_conditions/fasting_glucose_high |
+| P08 | Raised fasting glucose | ارتفاع طفيف في سكر الدم الصائم | chronic_conditions/fasting_glucose_raised |
+| P09 | Raised LDL cholesterol | ارتفاع في الكوليسترول الضار | chronic_conditions/ldl_raised |
+| P10 | Raised body mass index | ارتفاع في مؤشر كتلة الجسم | chronic_conditions/bmi_raised |
+
 ## 6. Arabic forbidden phrases
 
 A model-drafted message containing any of these is rejected and replaced by the template above, so the model can never write them. The list is a keyword filter, not a proof of safety; a person also approves every message. Each entry says why it is blocked.
@@ -549,6 +566,16 @@ One row per text. Write keep or change; if change, write your Arabic wording and
 | F:operator_instruction | Forbidden phrases, category `operator_instruction` (17 entries: operator_directive, approve_and_send, claimed_approval, rtg_inj_3, rtg_inj_4, rtg_inj_5, rtg_inj_6, rtg_inj_7, rtg_inj_8, rtg_inj_9, rtg_inj_10, rtg_inj_11, rtg_inj_12, rtg_inj_13, rtg_inj_14, rtg_inj_15, rtg_inj_16) |  |  |  |
 | F:personal_data | Forbidden phrases, category `personal_data` (8 entries: rtg_pii_20, rtg_pii_21, rtg_pii_22, rtg_pii_23, rtg_pii_24, rtg_pii_25, rtg_pii_26, rtg_pii_27) |  |  |  |
 | F:pressure_or_offer | Forbidden phrases, category `pressure_or_offer` (16 entries: rtg_pres_28, rtg_pres_29, rtg_pres_30, rtg_pres_31, rtg_pres_32, rtg_pres_33, rtg_pres_34, rtg_pres_35, rtg_pres_36, rtg_pres_37, rtg_pres_38, rtg_pres_39, rtg_pres_40, rtg_pres_41, rtg_pres_42, rtg_pres_43) |  |  |  |
+| P01 | Priority reason (cervical_hpv/positive_cancer_screen) |  |  |  |
+| P02 | Priority reason (chronic_conditions/bp_very_high) |  |  |  |
+| P03 | Priority reason (chronic_conditions/bp_high) |  |  |  |
+| P04 | Priority reason (chronic_conditions/bp_raised) |  |  |  |
+| P05 | Priority reason (chronic_conditions/hba1c_high) |  |  |  |
+| P06 | Priority reason (chronic_conditions/hba1c_raised) |  |  |  |
+| P07 | Priority reason (chronic_conditions/fasting_glucose_high) |  |  |  |
+| P08 | Priority reason (chronic_conditions/fasting_glucose_raised) |  |  |  |
+| P09 | Priority reason (chronic_conditions/ldl_raised) |  |  |  |
+| P10 | Priority reason (chronic_conditions/bmi_raised) |  |  |  |
 | F:add | Forbidden phrases to add |  |  |  |
 | C:Accuracy | Checklist: Accuracy |  |  |  |
 | C:Register for Gulf Arabic readers | Checklist: Register for Gulf Arabic readers |  |  |  |

@@ -33,7 +33,7 @@ from dataclasses import dataclass
 from decimal import ROUND_HALF_UP, Decimal
 from pathlib import Path
 
-SCAN_GLOBS = ["README.md", "docs/submission/*.md"]
+SCAN_GLOBS = ["README.md", "docs/submission/*.md", "web/src/i18n/strings.ts", "web/src/lib/programmeFigures.ts"]
 PRIMARY_GLOBS = ["docs/results/**/*.md", "docs/results/**/*.json"]
 SECONDARY_GLOBS = [
     "docs/evidence.md", "docs/evidence-wages.md", "docs/commercial/business-case.md", "docs/pilot-plan.md",
@@ -211,6 +211,36 @@ def run(root: Path, allow_path: Path | None = None):
     return bad, allowed, stale
 
 
+FIGURES_FILE = "web/src/lib/programmeFigures.ts"
+FIGURES_RESULTS = "docs/results/results.json"
+
+
+def figure_findings(root: Path) -> list[str]:
+    """The interface's one shared source of the whole-number programme labour figures (36% per handled case, 20% programme-wide)
+    must be the rounded values in docs/results/results.json: the prose scan above ignores integer percentages, so this is the
+    check that covers them. A missing file or key is a finding too (the check cannot silently stop)."""
+    src, res = Path(root) / FIGURES_FILE, Path(root) / FIGURES_RESULTS
+    if not src.is_file():
+        return [f"{FIGURES_FILE}: [figures] missing: the UI's programme figures have no shared source"]
+    text = src.read_text(encoding="utf-8")
+    try:
+        scen = json.loads(res.read_text(encoding="utf-8"))["effort"]["scenarios"]["literature_anchored"]
+        truth = {"inReachPct": scen["in_reach"]["reduction"]["labour_reduction"]["mean"], "programmePct": scen["all"]["reduction"]["labour_reduction"]["mean"]}
+    except (OSError, KeyError, ValueError):
+        return [f"{FIGURES_RESULTS}: [figures] cannot read effort.scenarios.literature_anchored labour_reduction"]
+    out = []
+    for key, frac in truth.items():
+        m = re.search(rf"\b{key}:\s*(\d+)\b", text)
+        want = int((Decimal(str(frac)) * 100).quantize(Decimal(1), rounding=ROUND_HALF_UP))
+        if not m:
+            out.append(f"{FIGURES_FILE}: [figures] {key} not found")
+        elif int(m.group(1)) != want:
+            out.append(f"{FIGURES_FILE}: [figures] {key} is {m.group(1)} but docs/results gives {want}")
+        if frac >= 0.4:
+            out.append(f"{FIGURES_RESULTS}: [figures] {key} reaches the 40% target; the UI wording 'not met' must be revisited")
+    return out
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--root", default=str(Path(__file__).resolve().parents[2]))
@@ -219,6 +249,9 @@ def main(argv: list[str] | None = None) -> int:
     a = ap.parse_args(argv)
     root = Path(a.root)
     bad, allowed, stale = run(root, Path(a.allow) if a.allow else None)
+    figures = figure_findings(root)
+    for f in figures:
+        print(f)
     for c in bad:
         print(f"{c}: [number] not found in docs/results or the sources it may come from")
     for e in stale:
@@ -226,8 +259,8 @@ def main(argv: list[str] | None = None) -> int:
     if a.list_allowed:
         for c, e in allowed:
             print(f"allowed {c}: {e['reason']}")
-    print(f"docs-numbers: {len(bad)} unmatched, {len(allowed)} allow-listed, {len(stale)} stale allow entries")
-    return 1 if bad or stale else 0
+    print(f"docs-numbers: {len(bad)} unmatched, {len(allowed)} allow-listed, {len(stale)} stale allow entries, {len(figures)} figure findings")
+    return 1 if bad or stale or figures else 0
 
 
 if __name__ == "__main__":

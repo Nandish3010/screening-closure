@@ -85,7 +85,7 @@ def register_procedure(label: str) -> None:
     })
 
 
-for _label in ("colonoscopy", "colposcopy"):  # the shipped packs
+for _label in ("colonoscopy", "colposcopy", "care plan visit"):  # the shipped packs (a procedure label, not a pathway name)
     register_procedure(_label)
 MAX_LINKED_REPORTS = 5
 _PATIENT_REF = re.compile(r"^Patient/[A-Za-z0-9-]{1,64}$")

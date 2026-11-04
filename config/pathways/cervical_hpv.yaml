@@ -67,3 +67,24 @@ patient_messages:
   next_step:
     en: a follow-up examination
     ar: فحص متابعة في العيادة
+# Result priority (ADR-051). The tier a case is ranked in, derived once at intake from the screening result by these rules, and
+# shown on the worklist and the case page. It orders and explains; it changes no state, SLA, escalation or closure.
+# `cancer_screen.positive` is 1 for a positive (abnormal HPV or cytology) screening result. PLACEHOLDER, needs clinician sign-off
+# (H1): the repository holds no cervical standard that ranks a positive result, so "urgent" here is a design choice, not a
+# sourced timeline. The Arabic wording needs native-speaker review (H2).
+priority:
+  status: "PLACEHOLDER, needs clinician sign-off (H1): no tier or threshold in this section is sourced"
+  tiers: [urgent, soon, routine]
+  default_tier: routine
+  results:
+    cancer_screen: [positive]
+  rules:
+    - id: positive_cancer_screen
+      tier: urgent
+      kind: cancer_screen
+      all:
+        - {field: positive, op: eq, value: 1}
+      reason:
+        en: Positive cancer screening result
+        ar: نتيجة فحص إيجابية للكشف عن السرطان
+      basis: "PLACEHOLDER, needs clinician sign-off (H1): no cervical ranking standard is in the repository"
