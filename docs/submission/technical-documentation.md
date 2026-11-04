@@ -400,7 +400,7 @@ A small fine-tuned multilingual classifier (Qwen2.5-1.5B-Instruct, 4-bit, LoRA) 
 
 ## 8. Hazard log summary
 
-[docs/governance/hazard-log.md](../governance/hazard-log.md) lists 48 hazards (HZ-01 to HZ-50; HZ-23 and HZ-24 are unused) with cause, likelihood, impact, control, the test that proves the control, residual risk and owner; `make docs-check` checks that every row has ratings, a control and test ids that exist (T-E7). Ratings are the author's judgement for the clinician review (H1) to revise. The eight with high impact and the most direct patient consequence:
+[docs/governance/hazard-log.md](../governance/hazard-log.md) lists 57 hazards (HZ-01 to HZ-59; HZ-23 and HZ-24 are unused) with cause, likelihood, impact, control, the test that proves the control, residual risk and owner; `make docs-check` checks that every row has ratings, a control and test ids that exist (T-E7). Ratings are the author's judgement for the clinician review (H1) to revise. The eight with high impact and the most direct patient consequence:
 
 | ID | Hazard | Main controls (built unless stated) | Tests |
 |---|---|---|---|
