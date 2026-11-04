@@ -24,7 +24,9 @@ import {
 } from "../lib/derive";
 import { fmtDate, fmtDateTime, titleCase } from "../lib/format";
 import { STAFF } from "../i18n/strings";
-import { ESCALATION_LADDER, HANDOFF_RESPONSE_WORKING_DAYS, REFUSAL_FROM_STATES, RUNG_LABEL, handoffReasonLabel, milestonesFor, pathwayMeta } from "../lib/pathway";
+import { ESCALATION_LADDER, HANDOFF_RESPONSE_WORKING_DAYS, REFUSAL_FROM_STATES, RUNG_LABEL, handoffReasonLabel, milestonesFor, pathwayMeta, procedurePlural, procedureSlug } from "../lib/pathway";
+import { PriorityBadge } from "../components/PriorityBadge";
+import { PRIORITY_NOT_SLA_NOTE, priorityIsPlaceholder, priorityReason } from "../lib/priority";
 import { PathwayBadge } from "../components/PathwayBadge";
 import type { MilestoneDef } from "../lib/pathway";
 import { WatchdogMarker, watchdogDetail } from "../components/WatchdogMarker";
@@ -235,6 +237,15 @@ export function CaseDetailPage() {
       <dl className="facts">
         <div><dt>Owner</dt><dd data-testid="owner">{detail.owner ?? "Unowned"}{detail.provider ? <span className="muted"> · {detail.provider}</span> : null}</dd></div>
         <div><dt>SLA clock</dt><dd data-testid="sla-clock">{closed ? "Closed" : detail.due_at ? <>Due {fmtDateTime(detail.due_at)}{od.overdue ? <> · <span className="chip chip-bad">{od.days > 0 ? `${od.days} day${od.days === 1 ? "" : "s"} overdue` : "overdue"}</span></> : " · on track"}</> : "No SLA for this step"}</dd></div>
+        {detail.priority && (
+          <div>
+            <dt>Priority</dt>
+            <dd data-testid="priority">
+              <PriorityBadge priority={detail.priority} /> <span data-testid="priority-reason">{priorityReason(detail.priority)}</span>
+              <div className="muted" data-testid="priority-note">{PRIORITY_NOT_SLA_NOTE}{priorityIsPlaceholder(detail.priority) ? " The threshold is a placeholder pending clinician sign-off (H1)." : ""}</div>
+            </dd>
+          </div>
+        )}
         {milestonesFor(detail.pathway).map((def) => (
           <MilestoneRow key={def.name} def={def} clock={detail.milestones?.[def.name]} now={timeline?.sim_time ?? simTime} closed={closed} />
         ))}
@@ -366,7 +377,7 @@ export function CaseDetailPage() {
             )}
             {state === "confirmatory_booked" && (
               <>
-                <label className="field"><span>Confirmatory result reference</span><input value={resultRef} onChange={(e) => setResultRef(e.target.value)} placeholder={`Procedure/${procedure}-0001`} /></label>
+                <label className="field"><span>Confirmatory result reference</span><input value={resultRef} onChange={(e) => setResultRef(e.target.value)} placeholder={`Procedure/${procedureSlug(procedure)}-0001`} /></label>
                 <ActionButton testId="record-colonoscopy" busy={busy} disabledReason={why("recordColonoscopy", "owner, specialist or clinician (the case owner)", true)} onClick={() => act(async () => { const r = await api.recordConfirmatoryResult(caseId); setResultRef(r.evidence_ref); return r; }, (r) => `${procedure.charAt(0).toUpperCase()}${procedure.slice(1)} recorded in the FHIR store as ${r.evidence_ref}. Now record the confirmatory result.`)}>
                   Record {procedure} result
                 </ActionButton>
@@ -415,7 +426,7 @@ export function CaseDetailPage() {
                   <strong>The patient declined after counselling.</strong> Counselled by {actorNameOf(detail.refusal.counselled_by) || detail.refusal.counselled_by} on {fmtDate(detail.refusal.recorded_at)};
                   reason: {REFUSAL_LABEL[detail.refusal.reason] ?? titleCase(detail.refusal.reason)}. Record: <span className="mono">{detail.refusal.counselling_ref}</span>.
                 </p>
-                <p className="muted">A physician who did not counsel the patient signs to close the case as declined. A declined closure is counted apart from completed {procedure === "colonoscopy" ? "colonoscopies" : `${procedure}s`}.</p>
+                <p className="muted">A physician who did not counsel the patient signs to close the case as declined. A declined closure is counted apart from completed {procedurePlural(procedure)}.</p>
                 <ActionButton
                   primary
                   testId="sign-declined"

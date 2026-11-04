@@ -25,6 +25,8 @@ registry = load_registry([settings.pathway_path, *(p.strip() for p in settings.p
 pathway = registry.default  # the default pathway: what a route that names none means (bowel screening)
 cases.registry = registry
 cases.pathway = pathway
+for _pack in registry:  # a pack's confirmatory procedure is recognised in report text even if it is not one of the shipped labels
+    evidence.register_procedure(_pack.evidence.procedure)
 
 
 def _start_clock(clock_store) -> None:

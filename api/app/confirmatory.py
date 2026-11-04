@@ -63,12 +63,18 @@ class RecorderUnavailable(Exception):
     """HAPI could not be asked or refused the resources: the result is not recorded (503)."""
 
 
+def _slug(procedure: str) -> str:
+    """A procedure label as it appears in a resource id: spaces become hyphens (`care plan visit` -> `care-plan-visit`); a
+    one-word label (`colonoscopy`, `colposcopy`) is unchanged."""
+    return procedure.replace(" ", "-")
+
+
 def procedure_ref(case_id: UUID, procedure: str = DEFAULT_PROCEDURE) -> str:
-    return f"Procedure/{procedure}-{case_id}"
+    return f"Procedure/{_slug(procedure)}-{case_id}"
 
 
 def report_ref(case_id: UUID, procedure: str = DEFAULT_PROCEDURE) -> str:
-    return f"DiagnosticReport/{procedure}-report-{case_id}"
+    return f"DiagnosticReport/{_slug(procedure)}-report-{case_id}"
 
 
 def _texts(procedure: str, completeness: str) -> tuple[str, str, str]:

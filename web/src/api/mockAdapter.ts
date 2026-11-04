@@ -11,12 +11,12 @@ import type {
   DraftRecord, DraftRejection, DraftRequestBody, EffortMetrics, Me, PostEventBody, ReplyBody, ReplyResult, Role, TimelineItem,
 } from "./contract";
 import { ApiError, AUTOMATION_ACTOR, BACKEND_ROLE, OWNER_SCOPED_ROLES, REJECT_NOTE_MAX, REJECT_REASONS, ROLES } from "./contract";
-import { FIXTURE_RISK, SEED_ALERTS, SEED_METRICS, SIM_NOW, caseIdFor, pathwayOfCase, seedDrafts, seedEvents } from "./fixtures";
+import { FIXTURE_RISK, SEED_ALERTS, SEED_METRICS, SIM_NOW, caseIdFor, pathwayOfCase, priorityOfCase, seedDrafts, seedEvents } from "./fixtures";
 import {
   type AgencyLedger, type CaseFact, caseSummaryOf, executeRun, fakePromptHash, inboxOf, orgOf, runsOf, seedLedger, tasksOf,
 } from "./mockAgency";
 import { PROVIDER_CLINICIANS, ROLE_NAMES, ROLE_PROVIDERS, backendActor } from "./identities";
-import { ESCALATION_LADDER, pathwayMeta } from "../lib/pathway";
+import { ESCALATION_LADDER, pathwayMeta, procedureSlug } from "../lib/pathway";
 import {
   actorKindOf, actorRole, closureOutcomeOf, closureProposalOf, incompleteProcedureOf, refusalOf, completeDetail, consentOf, consentHistoryOf, milestonesOf, overdueDays, pendingEscalation, replayHandoffs,
   replayState, reviewOf, slaClock, summarise, triageReplayOf, validateAppend,
@@ -63,9 +63,14 @@ export interface MockOptions {
   /**
    * Also seed the second pathway's demo cases (cervical screening, ids 30 to 33) next to the bowel cases. Default OFF, so no
    * test or recording that counts cases changes; the worklist and the case page then show both pathways. The shipped app turns
-   * it on with `?pathways=2` (see `mockSecondPathwayFromEnv` in index.ts).
+   * it on with `?pathways=2` (see `mockPathwayCountFromEnv` in index.ts).
    */
   secondPathway?: boolean;
+  /**
+   * Also seed the third pathway's demo cases (long-term conditions, ids 40 to 43) AND the cervical ones (`?pathways=3`). Default
+   * OFF. Each of those cases carries a result priority (urgent, soon, routine); a patient's view never does.
+   */
+  thirdPathway?: boolean;
   decliningProviders?: readonly string[];
 }
 
@@ -143,10 +148,11 @@ export function createMockAdapter(
   options: MockOptions = {},
 ): ApiClient {
   const automation = options.automation === true;
-  const secondPathway = options.secondPathway === true;
+  const thirdPathway = options.thirdPathway === true;
+  const secondPathway = options.secondPathway === true || thirdPathway; // the third pathway's demo also shows the second
   const declining = new Set(options.decliningProviders ?? ["Al Noor Endoscopy Centre"]);
   // A demo with automation has its own seed (cases the automation actor already worked on), so it keeps its own copy of the data.
-  const KEY = `${automation ? `${KEY_BASE}.auto` : KEY_BASE}${secondPathway ? ".p2" : ""}`;
+  const KEY = `${automation ? `${KEY_BASE}.auto` : KEY_BASE}${thirdPathway ? ".p3" : secondPathway ? ".p2" : ""}`;
   let memory: MockDb | null = null;
 
   const storedRole = (): Role => {
@@ -185,7 +191,7 @@ export function createMockAdapter(
   }
   const fresh = (): MockDb => {
     const db: MockDb = {
-      events: seedEvents(automation, secondPathway), drafts: seedDrafts(), alerts: structuredClone(SEED_ALERTS), draftCounter: 0, notificationCounter: 0, tick: 0,
+      events: seedEvents(automation, secondPathway, thirdPathway), drafts: seedDrafts(), alerts: structuredClone(SEED_ALERTS), draftCounter: 0, notificationCounter: 0, tick: 0,
     };
     db.agency = seedLedger(factsOf(db), db.drafts);
     return db;
@@ -202,7 +208,9 @@ export function createMockAdapter(
     if (!evs) throw new ApiError(404, "case not found");
     return evs;
   }
-  const summary = (db: MockDb, id: string): CaseSummary => summarise(id, must(db, id), SIM_NOW, FIXTURE_RISK[id] ?? 0.2, pathwayOfCase(id));
+  // Priority is a staff view: a patient's rows never carry it.
+  const summary = (db: MockDb, id: string): CaseSummary =>
+    summarise(id, must(db, id), SIM_NOW, FIXTURE_RISK[id] ?? 0.2, pathwayOfCase(id), session.role === "patient" ? null : priorityOfCase(id));
   const detail = (db: MockDb, id: string): CaseDetail => {
     const evs = must(db, id);
     const consent = consentOf(evs);
@@ -223,7 +231,7 @@ export function createMockAdapter(
       re_offer_due_at: refusalOf(evs)?.re_offer_due_at ?? null,
       closure_outcome: closureOutcomeOf(evs),
       effort: effortOf(evs),
-      milestones: milestonesOf(evs, SIM_NOW),
+      milestones: milestonesOf(evs, SIM_NOW, pathwayOfCase(id)),
       events: structuredClone(evs).map(withKind),
     };
   };
@@ -374,7 +382,7 @@ export function createMockAdapter(
       if (!OWNER_SCOPED_ROLES.includes(session.role)) throw new ApiError(403, `role '${BACKEND_ROLE[session.role]}' may not call POST /cases/{case_id}/confirmatory-result`);
       const owner = replayHandoffs(evs).owner;
       if (!owner || owner.actor !== actor()) throw new ApiError(403, `${BACKEND_ROLE[session.role]} '${session.name}' may only act on cases they own (this case's owner is ${owner?.name ?? "not yet assigned"})`);
-      const procedure = pathwayMeta(pathwayOfCase(id)).procedure; // colonoscopy, colposcopy
+      const procedure = procedureSlug(pathwayMeta(pathwayOfCase(id)).procedure); // colonoscopy, colposcopy, care-plan-visit (the backend slugs spaces)
       const evidenceRef = `Procedure/${procedure}-${id}`;
       if (automation) {
         autoEvidenceFound(db, id, evidenceRef);
@@ -440,7 +448,7 @@ export function createMockAdapter(
           });
         }
       }
-      for (const [name, m] of Object.entries(milestonesOf(evs, SIM_NOW))) {
+      for (const [name, m] of Object.entries(milestonesOf(evs, SIM_NOW, pathwayOfCase(id)))) {
         if (m.started_at) items.push({ kind: "milestone_started", at: m.started_at, milestone: name, due_at: m.due_at, working_days: m.working_days });
         if (m.overdue && m.due_at) items.push({ kind: "milestone_breached", at: m.due_at, milestone: name, due_at: m.due_at });
         if (m.met_at) items.push({ kind: "milestone_met", at: m.met_at, milestone: name, due_at: m.due_at, late: m.met_late === true });

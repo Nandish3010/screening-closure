@@ -37,29 +37,36 @@ export function mockAutomationFromEnv(search: string = typeof location === "unde
 const PATHWAYS_KEY = "sc.mock.pathways";
 
 /**
- * Whether the mock also seeds the second pathway's cases (cervical screening). OFF by default: `?pathways=2` turns it on (remembered
- * for the browser tab), `?pathways=1` off; the build-time default is `VITE_MOCK_SECOND_PATHWAY=on|off`, else OFF.
+ * How many pathways the mock seeds: 1 = bowel only (default), 2 = also cervical screening, 3 = also long-term conditions (whose
+ * cases carry a result priority). `?pathways=1|2|3` in the URL is remembered for the browser tab; the build-time default is
+ * `VITE_MOCK_SECOND_PATHWAY` (on or 2 = two, 3 = three), else 1. `on`, `true` and `yes` still mean 2 and `off`, `false` and `no` mean 1.
  */
-export function mockSecondPathwayFromEnv(search: string = typeof location === "undefined" ? "" : location.search): boolean {
-  const asBool = (v: string | null | undefined): boolean | null => {
+export function mockPathwayCountFromEnv(search: string = typeof location === "undefined" ? "" : location.search): 1 | 2 | 3 {
+  const asCount = (v: string | null | undefined): 1 | 2 | 3 | null => {
     const t = (v ?? "").trim().toLowerCase();
-    if (["2", "on", "true", "yes"].includes(t)) return true;
-    if (["1", "off", "false", "no"].includes(t)) return false;
+    if (t === "3") return 3;
+    if (["2", "on", "true", "yes"].includes(t)) return 2;
+    if (["1", "off", "false", "no"].includes(t)) return 1;
     return null;
   };
-  const fromUrl = asBool(new URLSearchParams(search).get("pathways"));
+  const fromUrl = asCount(new URLSearchParams(search).get("pathways"));
   try {
     if (fromUrl !== null) {
-      sessionStorage.setItem(PATHWAYS_KEY, fromUrl ? "on" : "off");
+      sessionStorage.setItem(PATHWAYS_KEY, String(fromUrl));
       return fromUrl;
     }
-    const remembered = asBool(sessionStorage.getItem(PATHWAYS_KEY));
+    const remembered = asCount(sessionStorage.getItem(PATHWAYS_KEY));
     if (remembered !== null) return remembered;
   } catch {
     /* no sessionStorage: fall through to the build-time default */
   }
-  return asBool(import.meta.env.VITE_MOCK_SECOND_PATHWAY) ?? false;
+  return asCount(import.meta.env.VITE_MOCK_SECOND_PATHWAY) ?? 1;
 }
+
+/** Whether the mock also seeds the second pathway's cases (cervical screening): `?pathways=2` or `3`. */
+export const mockSecondPathwayFromEnv = (search?: string): boolean => mockPathwayCountFromEnv(search) >= 2;
+/** Whether the mock also seeds the third pathway's cases (long-term conditions, with priorities): `?pathways=3`. */
+export const mockThirdPathwayFromEnv = (search?: string): boolean => mockPathwayCountFromEnv(search) >= 3;
 
 /** Chosen at build time by VITE_API_ADAPTER=mock|http (default mock). */
 export function createClientFromEnv(): ApiClient {
@@ -74,5 +81,5 @@ export function createClientFromEnv(): ApiClient {
     });
     return createHttpAdapter(url, (...a) => fetch(...a), { oidc });
   }
-  return createMockAdapter(undefined, { automation: mockAutomationFromEnv(), secondPathway: mockSecondPathwayFromEnv() });
+  return createMockAdapter(undefined, { automation: mockAutomationFromEnv(), secondPathway: mockSecondPathwayFromEnv(), thirdPathway: mockThirdPathwayFromEnv() });
 }

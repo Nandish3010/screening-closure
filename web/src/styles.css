@@ -127,6 +127,13 @@ input, select { font: inherit; padding: 0.5rem 0.6rem; border-radius: var(--r-sm
 .chip-declined { background: var(--surface-2); color: var(--muted); border-color: var(--muted); text-decoration: line-through; text-decoration-thickness: 1px; font-weight: 600; }
 .chip-pathway { background: var(--surface-2); color: var(--text); border-color: var(--muted); font-weight: 600; }
 .chip-pathway-cervical_hpv { border-style: dashed; }
+/* Result priority: the tier is also in the text and a marker, never colour alone. Built on the theme's own bad / warn / muted pairs (light and dark). */
+.chip-priority { font-weight: 600; }
+.chip-priority-urgent { background: var(--bad-bg); color: var(--bad); border-color: var(--bad); font-weight: 700; }
+.chip-priority-urgent::before { content: "\25B2"; font-size: 0.65em; }
+.chip-priority-soon { background: var(--warn-bg); color: var(--warn); border-color: var(--warn); }
+.chip-priority-soon::before { content: "\25C6"; font-size: 0.6em; }
+.chip-priority-routine { background: var(--surface-2); color: var(--text); border-color: var(--muted); }
 .banner-watchdog { background: var(--bad-bg); color: var(--bad); border: 2px solid var(--alarm-bg); }
 .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .chip-ai { background: var(--warn-bg); color: var(--warn); border-color: var(--warn); font-weight: 600; }

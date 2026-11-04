@@ -153,6 +153,10 @@ class CaseCreated(_Payload):
     pathway: Code | None = None
     # A21: the primary-care provider the patient is registered with (config/providers.yaml maps it to the default owner)
     registered_provider: Provider | None = None
+    # ADR-051: the tier the pack's priority rules gave the result at intake, and the id of the rule that decided it. Both are
+    # codes set by the intake route (system:intake) from the submitted results; the values themselves are never recorded.
+    priority: Code | None = None
+    priority_rule: Code | None = None
 
 
 ERASURE_CATEGORIES = (

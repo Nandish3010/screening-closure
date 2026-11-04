@@ -6,6 +6,7 @@ import { MAIN_STATES } from "../api/contract";
 import { DEFAULT_FILTERS, UNOWNED, ownersOf, pathwaysOf, worklist, type WorklistFilters } from "../lib/worklist";
 import { pathwayMeta } from "../lib/pathway";
 import { PathwayBadge } from "../components/PathwayBadge";
+import { PriorityBadge } from "../components/PriorityBadge";
 import { fmtDate, fmtDateTime, shortId, titleCase } from "../lib/format";
 import { overdueInfo } from "../lib/derive";
 import { WatchdogMarker } from "../components/WatchdogMarker";
@@ -120,7 +121,7 @@ export function CoordinatorPage() {
           <div className="table-wrap">
             <table className="worklist" data-testid="worklist">
               <thead>
-                <tr><th>Case</th><th>Pathway</th><th>Age</th><th>State</th><th>Owner</th><th>Next due</th><th>Flags</th><th>Last activity</th><th>Risk</th></tr>
+                <tr><th>Case</th><th>Pathway</th><th>Priority</th><th>Age</th><th>State</th><th>Owner</th><th>Next due</th><th>Flags</th><th>Last activity</th><th>Risk</th></tr>
               </thead>
               <tbody>
                 {rows.map((c) => {
@@ -132,6 +133,7 @@ export function CoordinatorPage() {
                     <tr key={c.case_id} data-testid="worklist-row" className={`${od.overdue ? "row-overdue" : ""} ${c.watchdog_flagged ? "row-watchdog" : ""}`.trim()}>
                       <td data-label="Case" className="nowrap"><Link to={`/coordinator/${c.case_id}`}>{shortId(c.case_id)}</Link></td>
                       <td data-label="Pathway" className="nowrap"><PathwayBadge pathway={c.pathway} testId="worklist-pathway" /></td>
+                      <td data-label="Priority" className="nowrap"><PriorityBadge priority={c.priority} testId="priority-badge" />{!c.priority && <span className="muted">-</span>}</td>
                       <td data-label="Age" className="nowrap num" title="Days since the result was received">{age === null ? "-" : `${age} d`}</td>
                       <td data-label="State"><StatePill state={c.state} /></td>
                       <td data-label="Owner">
@@ -156,7 +158,7 @@ export function CoordinatorPage() {
                     </tr>
                   );
                 })}
-                {rows.length === 0 && <tr><td colSpan={9}>No cases match these filters.</td></tr>}
+                {rows.length === 0 && <tr><td colSpan={10}>No cases match these filters.</td></tr>}
               </tbody>
             </table>
           </div>
