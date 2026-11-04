@@ -1,6 +1,6 @@
 import type { ClosureProposal } from "../api/contract";
 import { STAFF } from "../i18n/strings";
-import { fmtDateTime } from "../lib/format";
+import { fmtDateTime, plainRefs } from "../lib/format";
 
 /**
  * The closure-proposed banner (A21). The system found the colonoscopy evidence and proposes closing the case; closing is still
@@ -13,7 +13,7 @@ export function ClosureProposalBanner({ proposal, onReview, whyNot }: { proposal
     <section className="banner banner-ok closure-proposal" aria-labelledby="closure-proposal-h" data-testid="closure-proposal-banner">
       <h3 id="closure-proposal-h">{s.heading}</h3>
       <p>
-        {s.found} <code data-testid="closure-proposal-evidence">{proposal.evidence_ref}</code>{" "}
+        {s.found} <strong data-testid="closure-proposal-evidence" title={proposal.evidence_ref}>{plainRefs(proposal.evidence_ref)}<span className="visually-hidden"> ({proposal.evidence_ref})</span></strong>{" "}
         <span className="muted">(proposed {fmtDateTime(proposal.proposed_at)})</span>
       </p>
       <p className="muted">{s.humanStep}</p>

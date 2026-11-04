@@ -17,7 +17,8 @@ test("closure proposed: the banner shows the evidence, one click reaches a prefi
   await page.goto(`/coordinator/${CLOSURE_CASE}`);
   const banner = page.getByTestId("closure-proposal-banner");
   await expect(banner).toContainText("found the colonoscopy evidence");
-  await expect(page.getByTestId("closure-proposal-evidence")).toHaveText("Procedure/colonoscopy-0017");
+  await expect(page.getByTestId("closure-proposal-evidence")).toContainText("the colonoscopy record");
+  await expect(page.getByTestId("closure-proposal-evidence")).toContainText("Procedure/colonoscopy-0017"); // the raw reference stays for screen readers
   // The counter, and the Automated chips on what the system did (and none on what people did).
   await expect(page.getByTestId("effort-counter")).toContainText("Human actions 5 / Automated actions 5");
   const row = (t: string) => page.getByTestId("timeline").locator(`li[data-event-type="${t}"]`);

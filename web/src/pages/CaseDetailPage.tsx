@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { can, isOwnerScoped, useApp } from "../app/AppContext";
 import type {
@@ -22,7 +22,8 @@ import {
   actorName as actorNameOf, allowedChannels, consentOf, draftViews, handoffs, hasCallbackPending, lostContact, overdueDays, overdueInfo,
   patientLang, pendingEscalation, personId, rejectionReasons,
 } from "../lib/derive";
-import { fmtDate, fmtDateTime, titleCase } from "../lib/format";
+import { modelWords } from "../lib/models";
+import { fmtDate, fmtDateTime, plainError, titleCase } from "../lib/format";
 import { STAFF } from "../i18n/strings";
 import { ESCALATION_LADDER, HANDOFF_RESPONSE_WORKING_DAYS, REFUSAL_FROM_STATES, RUNG_LABEL, handoffReasonLabel, milestonesFor, pathwayMeta } from "../lib/pathway";
 import { PathwayBadge } from "../components/PathwayBadge";
@@ -99,6 +100,15 @@ export function CaseDetailPage() {
   const [replyChannel, setReplyChannel] = useState<ContactChannel>("whatsapp");
   const [replyText, setReplyText] = useState("");
   const [replyResult, setReplyResult] = useState<ReplyResult | null>(null);
+  const [replyQuote, setReplyQuote] = useState("");
+  // One component serves every /coordinator/:caseId: a reply (and its text) belongs to the case it was recorded on.
+  const currentCase = useRef(caseId);
+  useEffect(() => {
+    currentCase.current = caseId;
+    setReplyResult(null);
+    setReplyQuote("");
+    setReplyText("");
+  }, [caseId]);
   const [appointment, setAppointment] = useState("");
   const [appointmentDate, setAppointmentDate] = useState("");
   const [resultRef, setResultRef] = useState("");
@@ -128,6 +138,7 @@ export function CaseDetailPage() {
     setTimeline(t);
     setDraftRecords(recs);
     setDraftsDenied(denied);
+    setError(null); // a successful fetch clears an earlier failure (for example a 404 answered to the previous login)
     // `role` is a dependency on purpose: a different login sees a different case (the drafts list is owner-scoped, SEC-2).
   }, [api, caseId, role]);
 
@@ -155,7 +166,7 @@ export function CaseDetailPage() {
         refreshSim();
         setFlash(typeof okMessage === "function" ? okMessage(result) : okMessage);
       } catch (e) {
-        setError(e instanceof ApiError ? `The engine refused this: ${e.message}` : `Something went wrong: ${(e as Error).message}`);
+        setError(e instanceof ApiError ? `The engine refused this: ${plainError(e.message)}` : `Something went wrong: ${(e as Error).message}`);
       } finally {
         setBusy(false);
       }
@@ -637,12 +648,17 @@ export function CaseDetailPage() {
             </label>
             <ActionButton
               testId="record-reply"
+              quietWhy={Boolean(replyResult) && !replyText.trim()}
               busy={busy}
               disabledReason={why("recordReply", "coordinator") ?? (replyText.trim() ? null : STAFF.replyForm.needText)}
               onClick={() => act(async () => {
+                const forCase = caseId;
                 const r = await api.postReply(caseId, { channel: replyChannel, text: replyText.trim() });
-                setReplyResult(r);
-                setReplyText("");
+                if (currentCase.current === forCase) { // a reply that comes back after the user moved to another case is not shown there
+                  setReplyResult(r);
+                  setReplyQuote(replyText.trim());
+                  setReplyText("");
+                }
                 return r;
               }, (r: ReplyResult) => (r.needs_human ? STAFF.replyForm.recordedNeedsPerson : STAFF.replyForm.recordedHandled(String(r.intent).replace(/_/g, " "))))}
             >
@@ -650,8 +666,13 @@ export function CaseDetailPage() {
             </ActionButton>
             {replyResult && (
               <p className={`banner ${replyResult.needs_human ? "banner-warn" : "banner-ok"}`} role="status" data-testid="reply-result" data-intent={replyResult.intent} data-needs-human={String(replyResult.needs_human)}>
+                {replyQuote && (
+                  <span className="reply-quote" data-testid="reply-quote">
+                    {STAFF.replyForm.quote} “<bdi dir="auto">{replyQuote}</bdi>”
+                  </span>
+                )}
                 <strong>{STAFF.replyForm.readAs} {String(replyResult.intent).replace(/_/g, " ")}</strong>
-                {" "}({Math.round(replyResult.confidence * 100)}% sure, model: {replyResult.model_id}).{" "}
+                {" "}({Math.round(replyResult.confidence * 100)}% sure, {modelWords(replyResult.model_id)}).{" "}
                 {replyResult.needs_human ? STAFF.replyForm.needsPerson : STAFF.replyForm.handled}
               </p>
             )}

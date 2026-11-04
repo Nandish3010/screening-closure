@@ -65,8 +65,15 @@ def test_the_default_demo_seed_does_not_create_cervical_cases_and_the_snapshot_f
     assert "demo-seed-cervical:\n\t$(PY) simulator/create_cervical_cases.py" in mk
     snapshot = mk.split("\ndemo-snapshot:", 1)[1].split("\n\n", 1)[0]
     assert "cervical" not in snapshot and "cervical" not in mk.split("\ndemo-stage:", 1)[1].split("\n\n", 1)[0]
-    storyboard = (REPO / "tools/video/storyboard.yaml").read_text()
-    assert "cervical" not in storyboard.lower(), "the video storyboard is not changed by the second pathway"
+    # The video storyboard drives no cervical case: its only mention is the opening shot's caption and narration, which say the
+    # same engine also runs the cervical pathway (the demo data it shows is still the default, bowel-screening seed).
+    import yaml
+    sb = yaml.safe_load((REPO / "tools/video/storyboard.yaml").read_text())
+    for shot in sb["shots"]:
+        text = yaml.safe_dump({k: v for k, v in shot.items() if k not in ("caption", "narration")}).lower()
+        assert "cervical" not in text, f"shot {shot['id']} drives a cervical case: the second pathway must not change the recorded flow"
+        if shot["id"] != 1:
+            assert "cervical" not in (shot["caption"] + shot["narration"]).lower()
 
 
 class FakeApi:

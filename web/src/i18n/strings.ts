@@ -1,3 +1,4 @@
+import { PROGRAMME_LABOUR } from "../lib/programmeFigures";
 /**
  * Patient-facing strings, English and Arabic. Grade-6 reading level: short, plain sentences.
  *
@@ -240,6 +241,7 @@ export const STAFF = {
     button: "Record reply",
     needText: "Enter the patient's reply first.",
     readAs: "Read as",
+    quote: "Reply:",
     needsPerson: "A person must look at this reply: the case is flagged for human review and the system took no other step.",
     handled: "No person was needed for this one; the log shows the one safe step the system took, if any.",
     recordedNeedsPerson: "Reply recorded. The triage did not act on it: a person must read it.",
@@ -284,8 +286,9 @@ export const STAFF = {
     intro: "How much routine work the system now does so that people act only at final decisions.",
     reduction: "Reduction in human time",
     target: "Target",
-    met: "Target met",
-    notMet: "Below target",
+    sampleLabel: "Demo cases, assumed minutes: not a programme result",
+    programme: `Programme estimate (simulation, synthetic): ${PROGRAMME_LABOUR.inReachPct}% fewer staff minutes per handled case and ${PROGRAMME_LABOUR.programmePct}% across the programme; the ${PROGRAMME_LABOUR.targetPct}% target is not met in realistic scenarios.`,
+    notEnoughData: "Not enough data yet",
     noData: "No effort data yet.",
     humanActions: "Human actions",
     automatedActions: "Automated actions",
