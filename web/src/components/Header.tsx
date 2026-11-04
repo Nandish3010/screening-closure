@@ -3,10 +3,10 @@ import { Link, NavLink, matchPath, useLocation, useNavigate } from "react-router
 import { useApp } from "../app/AppContext";
 import { ROLES, type Role } from "../api/contract";
 import { DEMO_PATIENT_CASE_ID } from "../api/fixtures";
-import { DEMO_USERS } from "../api/identities";
+import { DEMO_USERS, JUDGE_ROLES } from "../api/identities";
 import { useTour } from "../judge/JudgeTour";
 import { fmtDateTime } from "../lib/format";
-import { STAFF } from "../i18n/strings";
+import { DemoBanner } from "./DemoBanner";
 
 export function SimBadge() {
   const { simTime } = useApp();
@@ -43,7 +43,7 @@ function ClockControl() {
 }
 
 export function Header() {
-  const { role, setRole, api, actorName, demoClock, simTime } = useApp();
+  const { role, setRole, api, actorName, demoDeployment } = useApp();
   const navigate = useNavigate();
   const tour = useTour();
   const { pathname } = useLocation();
@@ -62,12 +62,13 @@ export function Header() {
 
   return (
     <header className={`app-header${pathname.startsWith("/patient") ? " app-header-patient" : ""}`}>
+      <DemoBanner />
       <div className="header-row">
         <Link className="brand" to="/" aria-label="Screening Closure home">
           <span className="brand-mark" aria-hidden="true">&#10003;</span> Screening Closure
         </Link>
         <div className="header-tools">
-          <button type="button" className="btn btn-small btn-tour" onClick={tour.open} aria-haspopup="dialog" data-testid="judge-tour-button">Judge tour</button>
+          <button type="button" className="btn btn-small btn-tour" onClick={() => tour.open()} aria-haspopup="dialog" data-testid="judge-tour-button">Judge tour</button>
           <SimBadge />
         </div>
       </div>
@@ -90,7 +91,7 @@ export function Header() {
                   onChange={(e) => e.target.value && void api.oidc!.signIn({ loginHint: e.target.value, forceLogin: true })}
                 >
                   <option value="">{role}</option>
-                  {DEMO_USERS.map((u) => (
+                  {(demoDeployment ? JUDGE_ROLES.map((r) => ({ username: r.username, name: r.title, role: r.role })) : DEMO_USERS).map((u) => (
                     <option key={u.username} value={u.username}>{u.name} ({u.role})</option>
                   ))}
                 </select>
@@ -108,7 +109,6 @@ export function Header() {
             </label>
           )}
           <span className="who" title="Acting as">{actorName}</span>
-          {demoClock && <span className="adapter banner-warn" data-testid="demo-clock-banner" title={STAFF.demoClockBanner.explanation}>{STAFF.demoClockBanner.label}{simTime ? ` (${simTime.slice(0, 10)})` : ""}</span>}
           {role === "supervisor" && <ClockControl />}
           <span className={`adapter adapter-${api.adapter}`} title="API adapter">{api.adapter}</span>
           {api.automation !== undefined && (

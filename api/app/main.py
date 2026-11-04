@@ -167,8 +167,8 @@ def health() -> dict:
     `demo_approval` is true while they run only on the demo placeholder, and the web shows an amber banner with
     `approved_by`."""
     body = {"status": "ok", "sim_time": clock.now().isoformat(), "clock_mode": clock.mode, "outreach": outreach_policy.public_status()}
-    if auth.demo_clock_active():  # the web app shows "Demo: simulated time" whenever this is present
-        body["demo"] = {"simulated_clock": True}
+    if auth.demo_clock_active():  # the web app shows the "Demo, synthetic data, simulated time" banner and the judge role cards whenever this is present
+        body["demo"] = {"simulated_clock": True, "deployment": True}
     return body
 
 

@@ -229,6 +229,8 @@ Thresholds marked "proposed" are starting points to be confirmed by the owning t
 | T-E21 | Compliance documents: every ADHICS control row points to a code path, a test or a stated gap. | manual | Reviewer reads docs/governance/ against the code references | Test passes; definition of done in TRACKER.md met. Planned, not written yet. | planned | E18 |
 | T-E22 | Docs refresh: `make docs-check` passes and the numbers quoted in the docs match results.json and the risk report. | unit | `make docs-check` | Test passes; definition of done in TRACKER.md met. Planned, not written yet. | planned | E19 |
 | T-E23 | Re-score: three reviewers each score the six criteria from the submission materials only and the scores are recorded. | manual | Each reviewer scores from README, video and docs; scores collected in docs/ | Three AI reviews scored (CEO/judge, engineering, Codex); scores, means and gaps in docs/submission/rescore.md. Not human judges. | done | E20 |
+| T-E24 | Guided demo: the sign-in page shows four role cards (username pre-filled, each starting the real OIDC flow) and the banner only when `/health` reports `demo.deployment`; no password or secret is in the web source; the Judge tour has the five steps (record, prioritise, refer, remind, outcome) with try-it prompts and deep links, switches role and tracks; the API reports `demo.deployment` only under the full demo gate; no reset or `/demo` route exists in any mode and the http adapter has no reset. | unit | `make web-test` (`web/tests/guided_demo.test.tsx`, `web/tests/demo_clock_banner.test.tsx`) and `pytest api/tests/test_demo_clock_gate.py tests/test_gcp_hosting.py` | All pass. The hosted deployment itself is not exercised. | built | E21 |
+| T-E25 | Submission documents: assumptions-and-limitations.md and evaluation-summary.md exist, are linked from docs/submission/README.md and README.md, cite a source file for each item, make no claim that the 40% target is met, and every number passes the docs-numbers check. | unit | `make docs-check` (includes `tools/check/docs_numbers.py`) | Passes; the 40% target is stated as not met. | built | E22 |
 
 ## Cut F, Hardening and reproducibility
 
@@ -260,4 +262,4 @@ Thresholds marked "proposed" are starting points to be confirmed by the owning t
 | T-F24 | Scale evidence: the M7-8 soak, ladder and metrics benchmark are rendered into docs/results/scale.md with their commits and machine; `make scale-report-check` fails if the report differs from the raw files. | unit | `make scale-report-check` | Report current. | built | F17 |
 | T-F25 | HZ-45: the web client turns a 503 shed under overload (Retry-After, X-Shed) into "The system is busy. Please try again in N seconds. Nothing was changed."; a 503 that is not a shed keeps the server's own message. | unit | `make web-test` (`web/tests/httpAdapter.test.ts`) | N comes from Retry-After; other 503s unchanged. | built | F17 |
 
-Total: 195 test cases.
+Total: 197 test cases.

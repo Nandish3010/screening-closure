@@ -60,6 +60,8 @@ Then:
 
 The scripted walkthrough is [docs/submission/demo-script.md](docs/submission/demo-script.md).
 
+**On the hosted demo** (deploy prepared, see [docs/governance/hosting-gcp.md](docs/governance/hosting-gcp.md)) the sign-in page shows one card per role (coordinator, clinician, supervisor, patient), a banner says "Demo, synthetic data, simulated time", and the Judge tour opens on the challenge owner's five steps with things to try. Passwords are in the submission, not in the page.
+
 ## Quickstart (about 60 seconds, plus the one-time venv)
 
 A fresh clone has no `.venv`. The Makefile uses `.venv` when it exists and otherwise falls back to a bare `python3` with no packages, which is enough for `make up` and `make test` (the latter then runs inside the api container) but not for `make demo-seed`, `make evaluate` or `make demo-scenario`. Create it first, with two lines:
@@ -203,7 +205,8 @@ GitHub Actions runs `.github/workflows/check.yml` on every push and pull request
 
 - [Submission index](docs/submission/README.md), [technical documentation](docs/submission/technical-documentation.md), [demo script](docs/submission/demo-script.md)
 - Results: [results](docs/results/results.md), [metrics](docs/results/metrics.md), [load test](docs/results/load.md), [scalability evidence on a three-node kind cluster](docs/results/scale.md) (1,000,000 cases, leader fail-over, a 2-hour soak, a capacity plan; includes what is not met)
-- Basis: [evidence](docs/evidence.md), [assumptions and limitations](docs/assumptions-limitations.md), [design choices](docs/design-choices.md), [data provenance](docs/data-provenance.md), [pilot plan](docs/pilot-plan.md)
+- **For evaluators:** [evaluation summary](docs/submission/evaluation-summary.md) (one page) and [assumptions and limitations](docs/submission/assumptions-and-limitations.md) (consolidated, with sources)
+- Basis: [evidence](docs/evidence.md), [detailed assumptions register](docs/assumptions-limitations.md), [design choices](docs/design-choices.md), [data provenance](docs/data-provenance.md), [pilot plan](docs/pilot-plan.md)
 - Governance: [decision matrix](docs/governance/decision-matrix.md), [hazard log](docs/governance/hazard-log.md), [AI boundary](docs/governance/ai-boundary.md), [regulatory mapping](docs/governance/regulatory-mapping.md), [Malaffi adapter plan](docs/governance/malaffi-adapter-plan.md), [pilot hardening checklist](docs/governance/pilot-hardening.md) (what must change before real patients), [red-team suite](docs/governance/red-team.md) (731 adversarial cases, `make test-redteam`)
 - Review packs: [clinician pack](docs/review/clinician-pack.md), [Arabic pack](docs/review/arabic-pack.md)
 - Project: [plan](project/PLAN.md), [tracker](project/TRACKER.md), [decisions](project/DECISIONS.md)

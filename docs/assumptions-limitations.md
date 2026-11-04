@@ -1,5 +1,7 @@
 # Assumptions and limitations
 
+> **Submission version:** the consolidated list, with sources, for the evaluators is [submission/assumptions-and-limitations.md](submission/assumptions-and-limitations.md). This file stays the detailed register (L01 to L37, with impact, removal and status).
+
 What this prototype assumes, what it does not do, where each gap would bite, and how to remove it. All data is synthetic (see [data-provenance.md](data-provenance.md)). Items marked "to verify" were not established from a source we could read. Nothing here is a claim about real-world performance.
 
 How to read the table:
