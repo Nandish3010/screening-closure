@@ -15,6 +15,7 @@ describe("patient notice: how we prepare messages", () => {
     const user = userEvent.setup();
     renderWithApp(<PatientView caseId={DEMO_PATIENT_CASE_ID} />, { role: "patient" });
     await screen.findByText(STRINGS.en.resultBody);
+    await user.click(screen.getByTestId("tab-privacy")); // the notice is part of "how we use your data" in the privacy centre
     const notice = screen.getByTestId("ai-notice");
     expect(notice).toHaveTextContent(STRINGS.en.aiNoticeHeading);
     for (const k of KEYS) expect(notice).toHaveTextContent(STRINGS.en[k]);

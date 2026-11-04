@@ -128,6 +128,8 @@ QUERY_REVIEW: dict[tuple[str, str, str], tuple[str, str]] = {
     ("GET", "/pathways", "name"): ("enum", "the name of a loaded pathway pack (`colorectal_fit`, `cervical_hpv`, `chronic_conditions`); any other value is a 404 and is never used (A37)"),
     ("GET", "/alerts", "active"): ("bool", "true or false"),
     ("GET", "/metrics/effort", "limit"): ("int", "a row cap from 1 to 5000 (A21)"),
+    ("GET", "/metrics/funnel", "pathway"): ("enum", "the name of a loaded pathway pack; lowercase letters, digits and underscores only, any other value is a 422 and is never used (ADR-052)"),
+    ("GET", "/metrics/funnel", "priority"): ("enum", "a priority tier of a loaded pack (`urgent`, `soon`, `routine`) or `unranked`; any other value is a 422 and is never used (ADR-052)"),
     # A22: the agency's ledger and runs. Enums, UUIDs and a count only (FastAPI refuses anything else with 422).
     ("GET", "/agency/runs", "limit"): ("int", "how many runs, 1 to 200"),
     ("GET", "/agency/tasks", "status"): ("enum", "a task status: queued, running, done, failed, needs_human"),

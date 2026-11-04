@@ -105,7 +105,7 @@ A reply that needs a person gets `review_requested` (`opt_out` for an opt-out, `
 ## 9. Open items (not built)
 
 - A `system:inbound` service token for the message gateway. Today only a coordinator can post a reply, which keeps the routes behind the existing roles; the token needs changes to the authentication and configuration modules that this ticket does not touch.
-- A "resolved" action for an `already_done` or `triage_uncertain` flag. (The coordinator's Today screen, C14 and ADR-053, now lists the flagged replies and the call-backs waiting; a flag leaves its queue when a person acts on the case, but no event says "reviewed".) A worklist filter on triage flags is covered by that queue.
+- A "resolved" action for an `already_done` or `triage_uncertain` flag. (The coordinator's Today screen, C14 and ADR-054, now lists the flagged replies and the call-backs waiting; a flag leaves its queue when a person acts on the case, but no event says "reviewed".) A worklist filter on triage flags is covered by that queue.
 - Restarting the worker after it dies; a health check in `/health`.
 - Real Arabizi and Gulf-dialect data (the dialect rule above is a stopgap that sends those replies to a person).
 - Seeds, a larger model, or a comparison with a classical classifier on real data. On synthetic data the classical baseline is 5 points behind (84.9% against 89.8%) and has no calibrated confidence; whether the small language model earns its place is open for real data.

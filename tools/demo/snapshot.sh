@@ -96,6 +96,8 @@ start_services() {
 # POST /clock/reset as the demo supervisor: puts the sim clock back at its configured start (a no-op after a
 # restore from a snapshot taken at the start, which is the usual case, but it makes "reset" mean that).
 clock_reset() {
+  # Hosted demo (deploy/gcp): production runs on wall time and has no dev login, so there is no clock to move.
+  [ -n "${SNAPSHOT_SKIP_CLOCK_RESET:-}" ] && { echo "snapshot: clock reset skipped (SNAPSHOT_SKIP_CLOCK_RESET; wall-clock deployment)"; return 0; }
   python3 - "$API_URL" <<'PY'
 import json, sys, urllib.error, urllib.request
 api = sys.argv[1]

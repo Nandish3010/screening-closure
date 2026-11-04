@@ -1,5 +1,5 @@
 /**
- * T-C21 (C14): the Today screen in a browser. The coordinator lands on it, every queue has a count, the worklist is one click
+ * T-C22 (C14): the Today screen in a browser. The coordinator lands on it, every queue has a count, the worklist is one click
  * away, an action is reachable and usable from the keyboard, and it fits a phone.
  */
 import { expect, test } from "@playwright/test";

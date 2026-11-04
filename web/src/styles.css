@@ -191,6 +191,38 @@ table.worklist { width: 100%; border-collapse: collapse; background: var(--surfa
 }
 
 /*
+ * Outcome funnel (A39). A real table; the bar under each step label is a picture of the count and is hidden from assistive technology.
+ * Colours are the tokens, so light and dark both read. At phone width a row becomes a block, as the worklist's does.
+ */
+.funnel-table { width: 100%; border-collapse: collapse; background: var(--surface); font-size: var(--fs-sm); }
+.funnel-table th, .funnel-table td { text-align: start; padding: var(--s-2) var(--s-3); border-bottom: 1px solid var(--border); vertical-align: top; }
+.funnel-table tbody tr:last-child > * { border-bottom: 0; }
+.funnel-table thead th { font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); background: var(--surface-2); }
+.funnel-table tbody th { font-weight: 400; width: 46%; }
+.funnel-table td.num, .funnel-table th.num { font-variant-numeric: tabular-nums; }
+.funnel-table td.num { font-size: var(--fs-md); }
+.funnel-label { display: block; font-weight: 700; }
+.funnel-def { display: block; font-size: var(--fs-xs); margin-top: 2px; }
+.funnel-bar { display: block; height: 8px; margin-top: var(--s-2); background: var(--border); border-radius: 4px; overflow: hidden; }
+.funnel-bar > span { display: block; height: 100%; min-width: 2px; background: var(--brand); }
+.funnel-n { color: var(--muted); font-size: var(--fs-xs); }
+.funnel-note { font-size: var(--fs-xs); }
+.funnel-risk { margin-top: var(--s-4); padding: var(--s-3) var(--s-4); border: 1px solid var(--border-strong); border-inline-start: 4px solid var(--warn); border-radius: var(--r-md); background: var(--surface-2); }
+.funnel-risk h3 { margin: 0 0 var(--s-1); }
+.funnel-risk-count { margin: 0; }
+.funnel-risk-list li { padding: var(--s-1) 0; border-top: 1px solid var(--border); }
+@media (max-width: 640px) {
+  .funnel-table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  .funnel-table tr { display: block; border-bottom: 2px solid var(--border); padding: var(--s-1) 0; }
+  .funnel-table tbody tr:last-child { border-bottom: 0; }
+  .funnel-table th, .funnel-table td, .funnel-table tbody th { display: block; border: 0; width: auto; }
+  .funnel-table td { display: flex; justify-content: space-between; gap: var(--s-4); padding: var(--s-1) var(--s-3); }
+  .funnel-table td::before { content: attr(data-label); color: var(--muted); font-size: var(--fs-xs); text-align: start; }
+  .funnel-table td > span { text-align: end; }
+  .funnel-risk { padding: var(--s-3); }
+}
+
+/*
  * Timeline. Who did it is shown by the node and the left edge, not only by colour:
  *   person        = solid teal dot
  *   automation    = hollow green ring        (the system did it, no person involved)

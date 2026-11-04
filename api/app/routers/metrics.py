@@ -10,9 +10,9 @@ the response says how many do not."""
 
 import logging
 
-from fastapi import APIRouter, Query, Response
+from fastapi import APIRouter, HTTPException, Query, Response
 
-from app import effort, metrics, metrics_index
+from app import effort, metrics, metrics_funnel, metrics_index
 from app.calendar import default_calendar
 from app.clock import clock
 from app.config import settings
@@ -103,3 +103,41 @@ def effort_metrics(response: Response = None, limit: int = Query(default=500, ge
         "replay_failures": {"count": report["failed"]},
         "assumptions": effort.assumptions(),
     }
+
+
+@router.get("/funnel")
+def funnel(
+    response: Response = None,
+    pathway: str | None = Query(default=None, max_length=64, pattern=r"^[a-z0-9_]+$"),
+    priority: str | None = Query(default=None, max_length=32, pattern=r"^[a-z0-9_]+$"),
+) -> dict:
+    """The outcome funnel (ADR-052): the screening loop in five steps, over every loaded pathway or the one named by `pathway`
+    (a pack name from `options.pathways`), optionally only the cases of one priority tier (`priority`: a tier from
+    `options.priorities`, or `unranked` for the cases that were given none). Per step: how many cases reached it, the share of
+    the previous step, and the median calendar days from it on the simulated clock; plus the cases at risk of being lost (the
+    `lost_to_follow_up` rule of `GET /metrics/closure`) with the longest-waiting ones listed. Read from the `case_funnel` table
+    (migration 020), refreshed within the same time budget as the other metrics, so the route is bounded."""
+    pathways = cases.all_pathways()
+    opts = metrics_funnel.options(pathways)
+    if pathway is not None and pathway not in opts["pathways"]:
+        raise HTTPException(422, f"pathway must be one of {opts['pathways']}")
+    if priority is not None and priority not in opts["priorities"]:
+        raise HTTPException(422, f"priority must be one of {opts['priorities']}")
+    now = clock.now()
+    pg = _postgres(cases.store)
+    if pg is None:  # the in-memory store: replay (small by construction)
+        body = metrics_funnel.legacy_funnel(cases.store, pathways, now, pathway=pathway, priority=priority)
+    else:
+        result = metrics_funnel.refresh(pg, pathways, budget_seconds=settings.metrics_refresh_budget_seconds)
+        if result["lag"]:
+            if response is not None:
+                response.headers[LAG_HEADER] = str(result["lag"])
+            log.warning("funnel index is %d case(s) behind after a %.1f s refresh budget", result["lag"],
+                        settings.metrics_refresh_budget_seconds)
+        elif result["busy"] and response is not None:
+            response.headers[LAG_HEADER] = "unknown"
+        body = metrics_funnel.funnel_report(pg, now, pathway=pathway, priority=priority,
+                                            timeout_ms=settings.metrics_query_timeout_ms)
+    if body["replay_failures"]["count"]:
+        log.error("funnel: %d case(s) do not replay and are not counted", body["replay_failures"]["count"])
+    return {"sim_time": now.isoformat(), "filters": {"pathway": pathway, "priority": priority}, "options": opts, **body}

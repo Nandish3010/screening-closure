@@ -78,7 +78,7 @@ def detect(text: str) -> str | None:
     return None
 
 
-def group_reason(result: dict, text: str) -> str | None:
+def group_reason(result: dict, text: str, thresholds: dict | None = None) -> str | None:
     """Why a reply is with a person because of its language group, for display only: the group (`ar_gulf`, `arabizi`) when the
     group rule applies to this reply and it is with a person, else None. Never changes a result; `apply_group_rule` decides.
     An intent that always goes to a person (opt-out, question, other) has its own reason, so no group is named for it."""
@@ -86,20 +86,21 @@ def group_reason(result: dict, text: str) -> str | None:
     group = detect(text)
     if group is None or result.get("needs_human") is not True or result.get("intent") in ALWAYS_HUMAN:
         return None
-    tau = GROUP_THRESHOLDS[group]
+    tau = (thresholds or GROUP_THRESHOLDS).get(group, GROUP_THRESHOLDS[group])
     conf = result.get("confidence")
     if tau is None or not isinstance(conf, (int, float)) or conf < tau:
         return group
     return None
 
 
-def apply_group_rule(result: dict, text: str) -> dict:
+def apply_group_rule(result: dict, text: str, thresholds: dict | None = None) -> dict:
     """The result with `needs_human` forced for a detected group whose confidence does not clear the group's threshold.
-    Same keys as the classifier's contract. Never makes a reply that needed a person not need one."""
+    Same keys as the classifier's contract. Never makes a reply that needed a person not need one. `thresholds` (a calibration's
+    own `group_thresholds`, fitted for ITS model) replaces the module constants, which were fitted on the MLX model."""
     group = detect(text)
     if group is None or result.get("needs_human") is True:
         return result
-    tau = GROUP_THRESHOLDS[group]
+    tau = (thresholds or GROUP_THRESHOLDS).get(group, GROUP_THRESHOLDS[group])
     if tau is None or not isinstance(result.get("confidence"), (int, float)) or result["confidence"] < tau:
         return {**result, "needs_human": True}
     return result

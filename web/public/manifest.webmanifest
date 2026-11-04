@@ -1,16 +1,24 @@
 {
+  "id": "/patient",
   "name": "Screening Closure - Patient",
   "short_name": "My result",
-  "description": "Your screening result, what happens next, and who is looking after you. Arabic and English.",
+  "description": "Your screening result, your next step, your appointment and who is looking after you. Privacy choices. Arabic and English. Synthetic demo data.",
   "start_url": "/patient",
   "scope": "/",
   "display": "standalone",
-  "background_color": "#f6f8f9",
+  "orientation": "portrait",
+  "background_color": "#f4f7f8",
   "theme_color": "#0f5c6e",
   "lang": "en",
+  "dir": "auto",
+  "categories": ["health", "medical"],
   "icons": [
     { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
     { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
     { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ],
+  "shortcuts": [
+    { "name": "My care", "short_name": "My care", "url": "/patient", "description": "Result, next step and appointment" },
+    { "name": "Privacy and choices", "short_name": "Privacy", "url": "/patient?tab=privacy", "description": "Contact choices, who looked at my record, how my data is used" }
   ]
 }

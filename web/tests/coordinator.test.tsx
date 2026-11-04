@@ -303,8 +303,10 @@ describe("Reopen (clinician only, closed cases only)", () => {
 describe("i18n completeness", () => {
   it("Arabic mirrors every English key and step count", () => {
     expect(Object.keys(STRINGS.ar).sort()).toEqual(Object.keys(STRINGS.en).sort());
-    expect(STRINGS.ar.nextSteps).toHaveLength(STRINGS.en.nextSteps.length);
-    expect(STRINGS.ar.progress).toHaveLength(STRINGS.en.progress.length);
+    for (const pack of Object.keys(STRINGS.en.pathways) as (keyof typeof STRINGS.en.pathways)[]) {
+      expect(STRINGS.ar.pathways[pack].nextSteps).toHaveLength(STRINGS.en.pathways[pack].nextSteps.length);
+      expect(STRINGS.ar.pathways[pack].progress).toHaveLength(STRINGS.en.pathways[pack].progress.length);
+    }
     expect(STRINGS.ar.resultBody).toMatch(/[؀-ۿ]/);
   });
 });

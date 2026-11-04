@@ -1,4 +1,4 @@
-"""T-C21 and T-A97 (C14): the coordinator's Today screen, `GET /today`.
+"""T-C22 and T-A102 (C14): the coordinator's Today screen, `GET /today`.
 
 Seven queues of what needs a person now, from the read model. The tests build a seeded population (the agency cohort of
 22 cases walked to a spread of states, then breaches and escalations from the sweep, watchdog flags, patient replies, a
@@ -165,7 +165,7 @@ def seed_everything(ids):
 # ---- membership equals the read model -------------------------------------------------------------------------------
 
 
-def test_t_a97_each_queue_holds_exactly_the_cases_the_read_model_puts_in_it(seeded):
+def test_t_a102_each_queue_holds_exactly_the_cases_the_read_model_puts_in_it(seeded):
     info = seed_everything(seeded)
     details = all_case_details()
     expected = {g: set() for g in CASE_GROUPS}
@@ -185,7 +185,7 @@ def test_t_a97_each_queue_holds_exactly_the_cases_the_read_model_puts_in_it(seed
     assert {str(c) for c in info["replies"][1:]} <= {i["case_id"] for i in got["replies"]}
 
 
-def test_t_a97_the_agency_queue_is_the_inbox(seeded):
+def test_t_a102_the_agency_queue_is_the_inbox(seeded):
     seed_everything(seeded)
     inbox = client.get("/agency/inbox", headers=COORD).json()
     assert inbox, "the agency run must leave tasks that need a person"
@@ -352,7 +352,7 @@ def test_the_groups_module_and_the_route_agree_on_the_seven_queues():
 # ---- the worklist's at_risk is the metrics' lost_to_follow_up (deep link /coordinator?at_risk=1) ----------------------------
 
 
-def test_t_a98_at_risk_rows_are_exactly_the_cases_the_closure_metrics_count_as_lost(seeded):
+def test_t_a103_at_risk_rows_are_exactly_the_cases_the_closure_metrics_count_as_lost(seeded):
     seed_everything(seeded)
     clock.advance(days=40)  # idle past 30 days without progress, on top of the lost-contact case of the cohort
     rows = client.get("/cases", params={"limit": 500}, headers=COORD).json()

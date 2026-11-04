@@ -1,5 +1,5 @@
 /**
- * T-C21 (C14): the coordinator's Today screen. Seven queues of what needs a person now; each item shows the patient's short id,
+ * T-C22 (C14): the coordinator's Today screen. Seven queues of what needs a person now; each item shows the patient's short id,
  * pathway, priority and a plain-words reason; one-click actions use the existing events and respect the role; every queue has a
  * count and an "all clear" state; a scan that is not complete never says all clear.
  */

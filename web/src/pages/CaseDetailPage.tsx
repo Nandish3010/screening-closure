@@ -10,6 +10,7 @@ import {
 } from "../api/contract";
 import { REASSIGN_TARGETS, ROLE_NAMES, ROLE_PROVIDERS } from "../api/identities";
 import { AgencyChip } from "../components/AgencyChip";
+import { AccessLogPanel } from "../components/AccessLogPanel";
 import { ActionButton } from "../components/ActionButton";
 import { DraftsPanel, approvalMessage } from "../components/DraftsPanel";
 import { WhyPanel } from "../components/WhyPanel";
@@ -723,6 +724,8 @@ export function CaseDetailPage() {
           <h2 id="tl-h">Timeline</h2>
           <Timeline items={timeline?.items ?? events.map((e) => ({ kind: "event" as const, ...e }))} drafts={draftList} />
         </section>
+
+        <AccessLogPanel caseId={caseId} />
       </div>
     </main>
   );

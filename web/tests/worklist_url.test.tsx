@@ -1,9 +1,10 @@
-/** T-C22 (C14): the worklist's filters live in the URL, so `/coordinator?at_risk=1` deep-links; at_risk is the metrics' rule. */
+/** T-C23 (C14): the worklist's filters live in the URL, so `/coordinator?at_risk=1` deep-links; at_risk is the metrics' rule. */
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import type { ApiClient, CaseEvent } from "../src/api/contract";
 import { createMockAdapter } from "../src/api/mockAdapter";
 import { atRiskOf } from "../src/lib/derive";
+import { funnelMetricsOf } from "../src/lib/funnel";
 import { DEFAULT_FILTERS, filterWorklist, filtersFromParams, paramsFromFilters } from "../src/lib/worklist";
 import { CoordinatorPage } from "../src/pages/CoordinatorPage";
 import { renderWithApp } from "./helpers";
@@ -57,5 +58,21 @@ describe("filters in the URL", () => {
     await waitFor(() => expect(screen.getAllByTestId("worklist-row")).toHaveLength(all.length));
     fireEvent.change(within(screen.getByRole("form", { name: "Worklist filters" })).getByLabelText("Priority"), { target: { value: "urgent" } });
     await waitFor(() => expect((screen.getByLabelText("Priority") as HTMLSelectElement).value).toBe("urgent"));
+  });
+});
+
+describe("the dashboard funnel and the worklist agree on who is at risk", () => {
+  it("the funnel's at-risk count is the number of cases the worklist's at_risk marks (same rule, same clock)", () => {
+    const day = (n: number) => new Date(Date.parse("2026-09-01T09:00:00.000Z") + n * 86_400_000).toISOString();
+    const E = (type: string, d: number, actor = "coordinator:m", payload: Record<string, unknown> = {}): CaseEvent => ({ seq: 1, type, at: day(d), actor, payload });
+    const idle = [E("case_created", 0, "system:intake"), E("acknowledge", 1, "lab:l")];
+    const recent = [E("case_created", 60, "system:intake"), E("acknowledge", 61, "lab:l")];
+    const lost = [E("case_created", 60, "system:intake"), E("mark_lost_contact", 61)];
+    const done = [...idle, E("complete_confirmatory", 5, "specialist_owner:s")];
+    const sim = "2026-11-04T09:00:00.000Z";
+    const pop = [idle, recent, lost, done].map((events, i) => ({ id: String(i), events, pathway: "colorectal_fit", priority: null }));
+    const funnel = funnelMetricsOf(pop, sim, {}, ["colorectal_fit"]);
+    expect(funnel.at_risk.count).toBe(pop.filter((c) => atRiskOf(c.events, sim)).length);
+    expect(funnel.at_risk.count).toBe(2);
   });
 });

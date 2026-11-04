@@ -4,11 +4,11 @@ Vite + React + TypeScript. Three surfaces on one typed API client:
 
 | Route | Surface |
 |---|---|
-| `/coordinator/today` | The coordinator's and supervisor's landing page (C14): what needs a person now, in seven queues (urgent results not yet acted on, overdue cases, escalations to accept, patient replies waiting, cases nobody is looking at, closures waiting for a signature, agency tasks), with a count, an all-clear state and one-click actions per queue (`GET /today`, ADR-053) |
+| `/coordinator/today` | The coordinator's and supervisor's landing page (C14): what needs a person now, in seven queues (urgent results not yet acted on, overdue cases, escalations to accept, patient replies waiting, cases nobody is looking at, closures waiting for a signature, agency tasks), with a count, an all-clear state and one-click actions per queue (`GET /today`, ADR-054) |
 | `/coordinator`, `/coordinator/:caseId` | Coordinator / owner app: the full worklist (most overdue first, then risk), filters, case timeline, actions |
 | `/patient/:caseId` (and `/patient`) | Patient PWA, Arabic + English, installable, last case renders offline |
 | `/judge` | Judge summary: positioning line, headline with caveats, links to repo docs, `make check`. The header's **Judge tour** button runs a 7-step guided walk (problem, a case timeline, the closure guard, the agency inbox, the effort counter, the numbers, this page) on the current data; it only navigates and reads, posts nothing, and works on both adapters |
-| `/dashboard` | Closure dashboard: P50/P90, open by age, breaches by provider, bottleneck by transition (live: computed by `GET /metrics/closure` from the cases in the database; mock adapter: fixed fixture values, see below) |
+| `/dashboard` | Closure dashboard: an outcome funnel for the screening loop (result recorded, higher-risk people prioritised, referred, attended, outcome documented: counts, share of the previous step, median days on the simulated clock, a pathway and a priority filter, the cases at risk of being lost; live: `GET /metrics/funnel`; mock adapter: derived from the seeded cases; staff only, A39), P50/P90, open by age, breaches by provider, bottleneck by transition (live: computed by `GET /metrics/closure` from the cases in the database; mock adapter: fixed fixture values, see below) |
 
 Every page shows a permanent **SIMULATED TIME** badge in the header (from `sim_time` in `GET /metrics/closure`).
 All data is synthetic. Nothing here diagnoses anyone; the AI draft flow is draft -> human approval, and the risk score only orders the worklist.

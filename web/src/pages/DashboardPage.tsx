@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useApp } from "../app/AppContext";
-import type { AgeBucket, Alert, CaseSummary, ClosureMetrics, EffortMetrics } from "../api/contract";
+import type { AgeBucket, Alert, CaseSummary, ClosureMetrics, EffortMetrics, FunnelMetrics } from "../api/contract";
 import { BarChart } from "../components/BarChart";
 import { EffortCard } from "../components/EffortCard";
+import { FunnelCard, NO_FUNNEL_FILTER, type FunnelFilters } from "../components/FunnelCard";
 import { OutreachDemoBanner } from "../components/OutreachDemoBanner";
 import { WatchdogMarker, watchdogDetail } from "../components/WatchdogMarker";
 import { fmtDateTime, shortId, titleCase } from "../lib/format";
@@ -39,6 +40,11 @@ export function stoppedWording(iso: string, now: number = Date.now()): string {
 export function DashboardPage() {
   const { api, role } = useApp();
   const [effort, setEffort] = useState<EffortMetrics | null>(null);
+  const [funnel, setFunnel] = useState<FunnelMetrics | null>(null);
+  const [funnelFilters, setFunnelFilters] = useState<FunnelFilters>(NO_FUNNEL_FILTER);
+  const [funnelError, setFunnelError] = useState<string | null>(null);
+  const [funnelLoading, setFunnelLoading] = useState(false);
+  const [funnelAbsent, setFunnelAbsent] = useState(false);
   const [m, setM] = useState<ClosureMetrics | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [flagged, setFlagged] = useState<CaseSummary[] | null>(null);
@@ -68,6 +74,35 @@ export function DashboardPage() {
       live = false;
     };
   }, [api, seesEffort, role]);
+
+  // A39: the outcome funnel is for the coordinator and the supervisor too (the API refuses the other roles, and an older server has
+  // no such route: the card is then left out, as the effort card is). The filters re-ask; the previous answer stays on screen,
+  // marked busy, until the new one arrives, so the table does not jump.
+  useEffect(() => {
+    setFunnel(null);
+    setFunnelError(null);
+    setFunnelAbsent(false);
+    setFunnelFilters(NO_FUNNEL_FILTER);
+  }, [api, role]);
+  useEffect(() => {
+    let live = true;
+    if (!seesEffort) return undefined;
+    setFunnelLoading(true);
+    // One tick first, for the same reason as the effort card: the provider's login effect runs after this one in the same commit.
+    Promise.resolve()
+      .then(() => api.funnelMetrics({ pathway: funnelFilters.pathway || undefined, priority: funnelFilters.priority || undefined }))
+      .then((x) => {
+        if (!live) return;
+        setFunnel(x);
+        setFunnelAbsent(x === null);
+        setFunnelError(null);
+      })
+      .catch((e) => live && setFunnelError(String(e.message ?? e)))
+      .finally(() => live && setFunnelLoading(false));
+    return () => {
+      live = false;
+    };
+  }, [api, seesEffort, role, funnelFilters]);
 
   // "Cases nobody is looking at": the watchdog's open flags, longest idle first.
   const loadFlagged = useCallback(() => {
@@ -124,6 +159,7 @@ export function DashboardPage() {
           </button>
         </p>
       )}
+      {seesEffort && !funnelAbsent && <FunnelCard data={funnel} filters={funnelFilters} onFilters={setFunnelFilters} error={funnelError} loading={funnelLoading} />}
       {seesEffort && <EffortCard metrics={effort} />}
       {error && <p className="banner banner-bad" role="alert">Could not load metrics: {error}</p>}
       {!m && !error && <p role="status">Loading metrics...</p>}

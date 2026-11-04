@@ -99,9 +99,22 @@ for (const scheme of ["light", "dark"] as const) {
     test("patient app, Arabic, with consent withdrawn", async ({ page }) => {
       await page.goto(`/patient/${PATIENT_CASE}`);
       await page.getByRole("button", { name: /العربية/ }).click();
+      await page.getByTestId("tab-privacy").click();
       await page.getByTestId("consent-withdraw").click();
+      await page.getByTestId("consent-withdraw-yes").click();
       await page.getByTestId("consent-withdrawn").waitFor();
       await audit(page, `patient ar (${scheme})`);
+    });
+
+    test("patient privacy centre, English and Arabic, with the withdraw confirmation open", async ({ page }) => {
+      await page.goto(`/patient/${PATIENT_CASE}`);
+      await page.getByTestId("tab-privacy").click();
+      await page.getByTestId("access-log").waitFor();
+      await audit(page, `patient privacy en (${scheme})`);
+      await page.getByRole("button", { name: /العربية/ }).click();
+      await page.getByTestId("consent-withdraw").click();
+      await page.getByTestId("consent-confirm").waitFor();
+      await audit(page, `patient privacy ar confirm (${scheme})`);
     });
 
     test("agency page, as coordinator and as supervisor, and the chip on a case", async ({ page }) => {

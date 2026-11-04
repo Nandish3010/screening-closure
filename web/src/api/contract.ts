@@ -370,7 +370,7 @@ export const CONSENT_KEYS = [
 ] as const;
 export type ConsentKey = (typeof CONSENT_KEYS)[number];
 /** A `consent_updated` payload: any non-empty subset of the six booleans. */
-export type ConsentChanges = Partial<Record<ConsentKey, boolean>>;
+export type ConsentChanges = Partial<Record<ConsentKey, boolean>> & { lang?: "en" | "ar" };
 export interface ConsentHistoryEntry {
   at: string;
   actor: string;
@@ -504,7 +504,40 @@ export interface CaseListParams {
  * `owner === owner_actor === owner_role === <role>`; a staff-shaped owner has `owner_actor` of the form `role:id`.
  * `patientOwnerOf` (lib/derive.ts) tells the two apart and the patient page says "your primary care doctor".
  */
+/**
+ * Who a patient can ask, and how (patient app, ADR-053): the owner's name and role with the care team's line. Sent to a
+ * patient login only, and the one place a patient is told a staff name. `synthetic` is true while the number is a placeholder.
+ */
+export interface CareContact {
+  name: string;
+  /** The backend role (`primary_care_owner`, `specialist_owner`, `coordinator`, `supervisor`). */
+  role: string;
+  phone: string;
+  synthetic: boolean;
+}
+
+/**
+ * One row of `GET /cases/{id}/access-log` (access audit): a member of staff opened the record. A patient gets `role`, `name`
+ * and `at` only; staff also get the `actor` (`role:opaque_id`) and `kind` of read (`case`, `timeline`, `messages`, `fhir`, `replies`).
+ */
+export interface AccessEntry {
+  at: string;
+  role: string;
+  name: string;
+  actor?: string;
+  kind?: string;
+}
+export interface AccessLog {
+  case_id: string;
+  /** One row per person and kind per this many minutes. */
+  window_minutes: number;
+  limit: number;
+  entries: AccessEntry[];
+}
+
 export interface CaseDetail extends Omit<CaseSummary, "pathway" | "created_at" | "updated_at"> {
+  /** Patient login only (ADR-053): the owner's name, role and the care team's line, else null/absent. */
+  care_contact?: CareContact | null;
   pathway?: string;
   created_at?: string;
   updated_at?: string;
@@ -994,6 +1027,55 @@ export interface EffortMetrics {
 }
 
 /**
+ * GET /metrics/funnel (coordinator, supervisor; A39, ADR-052, LIVE) -> FunnelMetrics. The screening loop in five steps (the head of
+ * screening's description): result recorded, higher-risk people prioritised, referred to the appropriate service, attended,
+ * outcome documented. `count` is the number of cases that reached the step; `conversion` is that count over the step named in
+ * `from` (prioritised is not a gate, so referred is measured against the recorded); `median_days` is the median calendar days on
+ * the SIMULATED clock from `from` to the step, over the `median_n` cases that reached both (null when none did, and always null
+ * for prioritised: the tier is derived in the same event that records the result). `declined_closures` are informed refusals, counted
+ * apart: nothing was attended and they are not an investigation. `at_risk` follows the closure metrics' `lost_to_follow_up` rule and
+ * lists at most `limit` cases, longest-waiting first (ids only, never a person). The filters take a pack name from
+ * `options.pathways` and a tier from `options.priorities` (`unranked`: no tier was recorded). Synthetic data; it counts cases that
+ * reached a step, not people helped, and says nothing about treatment. The http adapter answers `null` when the route is
+ * missing (404) or the role may not read it (403).
+ */
+export type FunnelStepKey = "recorded" | "prioritised" | "referred" | "attended" | "documented";
+export interface FunnelStep {
+  key: FunnelStepKey;
+  label: string;
+  definition: string;
+  count: number;
+  share_of_recorded: number | null;
+  from: FunnelStepKey | null;
+  conversion: number | null;
+  median_days: number | null;
+  median_n: number;
+}
+export interface FunnelAtRiskCase {
+  case_id: string;
+  pathway: string;
+  priority: string | null;
+  state: string;
+  idle_days: number;
+  reason: "contact_lost" | "no_progress";
+}
+export interface FunnelParams {
+  /** A pack name from `options.pathways`; omitted: every pathway. */
+  pathway?: string;
+  /** A tier from `options.priorities`, or `unranked`; omitted: every case. */
+  priority?: string;
+}
+export interface FunnelMetrics {
+  sim_time: string;
+  filters: { pathway: string | null; priority: string | null };
+  options: { pathways: string[]; priorities: string[] };
+  steps: FunnelStep[];
+  declined_closures: number;
+  at_risk: { count: number; idle_days_threshold: number; cases: FunnelAtRiskCase[]; truncated: boolean; limit: number };
+  replay_failures: { count: number };
+}
+
+/**
  * GET /alerts -> Alert[] (A11). The watchdog raises `scheduler_down` when the scheduler's heartbeat has been
  * missing for 60 seconds and clears it (`cleared_at`) when heartbeats resume. An alert with
  * `cleared_at: null` is active: the dashboard shows the stale-scheduler banner. `since` and `cleared_at` are
@@ -1335,7 +1417,7 @@ export interface ApiClient {
    * GET /health (public): `sim_time` is the simulation clock, readable by every role (`/metrics/closure` is staff-only).
    * `outreach` (A26, ADR-037) says whether automatic patient messages are signed off; absent on an older server.
    */
-  health(): Promise<{ status: string; sim_time?: string; outreach?: OutreachStatus }>;
+  health(): Promise<{ status: string; sim_time?: string; outreach?: OutreachStatus; demo?: { simulated_clock: boolean } }>;
   /**
    * Switch identity. http: POST /auth/dev-login {role (backend role), name, provider?}, keep the bearer
    * token and attach it to every later request (requests wait for a login in flight). `provider` is sent
@@ -1368,6 +1450,11 @@ export interface ApiClient {
   listCases(params?: CaseListParams): Promise<CaseSummary[]>;
   getCase(caseId: string): Promise<CaseDetail>;
   getTimeline(caseId: string): Promise<CaseTimeline>;
+  /**
+   * GET /cases/{id}/access-log (access audit): who read the case, newest first. A patient asks about their own case and sees
+   * role, name and time; staff who may read it (the owner, coordinator, supervisor) also see the actor and the kind of read.
+   */
+  getAccessLog(caseId: string): Promise<AccessLog>;
   /** Returns the updated case. Rejects with ApiError(status 409) on an invalid transition. */
   postEvent(caseId: string, body: PostEventBody): Promise<CaseDetail>;
   requestDraft(caseId: string, body: DraftRequestBody): Promise<Draft>;
@@ -1377,6 +1464,8 @@ export interface ApiClient {
   closureMetrics(): Promise<ClosureMetrics>;
   /** GET /metrics/effort (A21, coordinator and supervisor): null when the route is missing (404) or the role may not read it (403). */
   getEffortMetrics(): Promise<EffortMetrics | null>;
+  /** GET /metrics/funnel (A39, coordinator and supervisor): null when the route is missing (404) or the role may not read it (403). */
+  funnelMetrics(params?: FunnelParams): Promise<FunnelMetrics | null>;
   /** GET /alerts: active and cleared platform alerts (scheduler down). */
   listAlerts(): Promise<Alert[]>;
   /** GET /agency/org (A22): the org chart with live counts. Coordinator and supervisor; others 403. */

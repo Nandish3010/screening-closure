@@ -46,7 +46,7 @@ OUT_PATH = ROOT / "docs/governance/rbac-matrix.md"
 
 from fastapi.testclient import TestClient  # noqa: E402
 
-from app import auth, notify, ops, policy, users  # noqa: E402
+from app import access_audit, auth, notify, ops, policy, users  # noqa: E402
 from app.ai.draft_store import InMemoryDraftStore  # noqa: E402
 from app.clock import clock  # noqa: E402
 from app.config import settings  # noqa: E402
@@ -81,6 +81,8 @@ SCOPE_RULES: dict[tuple[str, str], frozenset[str]] = {
     ("POST", "/cases/{case_id}/events"): frozenset({"patient_own", "owner"}),
     ("GET", "/cases/{case_id}/notifications"): frozenset({"owner"}),
     ("GET", "/cases/{case_id}/fhir"): frozenset({"owner"}),
+    # Who read the case (access audit): a patient only on their own case, a clinician only on a case they own.
+    ("GET", "/cases/{case_id}/access-log"): frozenset({"patient_own", "owner"}),
     # decision-matrix.md: "a clinician only on a case they own".
     ("POST", "/cases/{case_id}/drafts"): frozenset({"owner"}),
     # Reading the drafts of a case (their text is the message to the patient) is owner-scoped too (SEC-2): a clinician
@@ -122,12 +124,13 @@ def world():
     """A fresh in-memory API: stores, notification log, ops store and clock restored afterwards."""
     saved = [(cases, "store", cases.store), (cases, "pathway", cases.pathway), (notify, "log", notify.log),
              (ops, "store", ops.store), (drafts, "store", drafts.store), (users, "directory", users.directory),
-             (replies, "store", replies.store)]
+             (replies, "store", replies.store), (access_audit, "log_store", access_audit.log_store)]
     cases.store = InMemoryEventStore()
     notify.log = notify.InMemoryNotificationLog()
     ops.store = ops.InMemoryOpsStore()
     drafts.store = InMemoryDraftStore()
     replies.store = InMemoryReplyStore()
+    access_audit.log_store = access_audit.InMemoryAccessLog()
     triage.set_backend(None)  # the probes must never start the reply model: unavailable is the fail-safe answer
     users.directory = users.InMemoryUserDirectory()
     clock.reset()

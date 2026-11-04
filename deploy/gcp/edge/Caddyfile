@@ -1,0 +1,20 @@
+# TLS only. Caddy obtains and renews certificates itself (Let's Encrypt, with ZeroSSL as its automatic fallback) for
+# {$SC_PUBLIC_HOST}, which is either the operator's own domain or <ip-with-dashes>.sslip.io, and redirects HTTP to HTTPS.
+# Everything else (static files, routing, rate limits, blocked paths) is the nginx `web` service.
+{
+	admin off
+	servers {
+		protocols h1 h2
+	}
+}
+
+{$SC_PUBLIC_HOST} {
+	encode zstd gzip
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		-Server
+	}
+	reverse_proxy web:8080 {
+		header_up X-Forwarded-Proto https
+	}
+}

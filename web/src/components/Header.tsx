@@ -6,6 +6,7 @@ import { DEMO_PATIENT_CASE_ID } from "../api/fixtures";
 import { DEMO_USERS } from "../api/identities";
 import { useTour } from "../judge/JudgeTour";
 import { fmtDateTime } from "../lib/format";
+import { STAFF } from "../i18n/strings";
 
 export function SimBadge() {
   const { simTime } = useApp();
@@ -42,7 +43,7 @@ function ClockControl() {
 }
 
 export function Header() {
-  const { role, setRole, api, actorName } = useApp();
+  const { role, setRole, api, actorName, demoClock, simTime } = useApp();
   const navigate = useNavigate();
   const tour = useTour();
   const { pathname } = useLocation();
@@ -108,6 +109,7 @@ export function Header() {
             </label>
           )}
           <span className="who" title="Acting as">{actorName}</span>
+          {demoClock && <span className="adapter banner-warn" data-testid="demo-clock-banner" title={STAFF.demoClockBanner.explanation}>{STAFF.demoClockBanner.label}{simTime ? ` (${simTime.slice(0, 10)})` : ""}</span>}
           {role === "supervisor" && <ClockControl />}
           <span className={`adapter adapter-${api.adapter}`} title="API adapter">{api.adapter}</span>
           {api.automation !== undefined && (

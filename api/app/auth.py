@@ -299,6 +299,29 @@ def auth_mode_problems() -> list[str]:
     return []
 
 
+def demo_clock_problems() -> list[str]:
+    """The clock rule outside dev: real time, unless this is explicitly a declared demo deployment (DEMO_SIMULATED_CLOCK=1 and
+    DEMO_DEPLOYMENT=1 together, with CLOCK_MODE=sim). Either flag alone, or either with the wrong clock mode, refuses to start."""
+    problems: list[str] = []
+    if settings.demo_simulated_clock:
+        if not settings.demo_deployment:
+            problems.append("DEMO_SIMULATED_CLOCK is on but DEMO_DEPLOYMENT is not (the simulated clock needs the deployment to be "
+                            "declared a demo)")
+        if settings.clock_mode != "sim":
+            problems.append("DEMO_SIMULATED_CLOCK is on but CLOCK_MODE is not 'sim'")
+        return problems
+    if settings.clock_mode != "wall":
+        problems.append("CLOCK_MODE is not 'wall' (a deployment outside dev must run on real time, not the simulation clock)")
+    return problems
+
+
+def demo_clock_active() -> bool:
+    """True only when the simulated clock runs under the explicit demo gate (both flags, sim mode), outside dev. Used to register
+    the single clock route and to tell the web app to show its banner. `assert_secure_config` has already refused every other mix."""
+    return (settings.app_env != "dev" and settings.demo_simulated_clock and settings.demo_deployment
+            and settings.clock_mode == "sim")
+
+
 MIN_SECRET_BYTES = 32  # DEV_AUTH_SECRET and every service token, outside dev
 
 
@@ -334,8 +357,7 @@ def secure_config_problems() -> list[str]:
     scrape = settings.metrics_scrape_token
     if scrape and scrape != METRICS_TOKEN_DEFAULT and len(scrape.encode()) < MIN_SECRET_BYTES:
         problems.append(f"METRICS_SCRAPE_TOKEN is shorter than {MIN_SECRET_BYTES} bytes")
-    if settings.clock_mode != "wall":
-        problems.append("CLOCK_MODE is not 'wall' (a deployment outside dev must run on real time, not the simulation clock)")
+    problems.extend(demo_clock_problems())
     if not settings.fhir_verify_evidence:
         problems.append("FHIR_VERIFY_EVIDENCE is not true (outside dev closure evidence must resolve in the FHIR store, "
                         "not merely be a well-formed reference)")
