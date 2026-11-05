@@ -221,6 +221,9 @@ function CaseRow({ group, item, role, busy, onAct }: {
 }) {
   const notes = group === "replies" ? replyNotes(item) : [];
   const actions = item.actions.filter((a) => a !== "open_case");
+  // A greyed first button reads as a dead end: when the viewer cannot do the first action, "Open case" is the filled one and the
+  // action stays below it with its reason in view.
+  const anyAllowed = actions.some((a) => actionState(a, role, item).allowed);
   return (
     <li className="today-item" data-testid="today-item" data-case={item.case_id}>
       <div className="today-head">
@@ -243,17 +246,18 @@ function CaseRow({ group, item, role, busy, onAct }: {
         {item.owner ? ` · Owner: ${item.owner.display_name}` : " · Unowned"}
       </p>
       <div className="today-actions">
+        {!anyAllowed && <Link className="btn btn-primary" to={`/coordinator/${item.case_id}`} data-testid="today-open-case">{TODAY.actions.open_case}</Link>}
         {actions.map((a, i) => {
           const st = actionState(a, role, item);
           const id = `${group}:${item.case_id}:${a}`;
           return (
-            <ActionButton key={a} primary={i === 0} testId={`today-${a}`} busy={busy === id || (busy !== null && busy !== "scan" && busy !== "agency")}
+            <ActionButton key={a} primary={i === 0 && st.allowed} testId={`today-${a}`} busy={busy === id || (busy !== null && busy !== "scan" && busy !== "agency")}
               disabledReason={st.allowed ? null : st.why} onClick={() => onAct(group, item, a)}>
               {TODAY.actions[a as keyof typeof TODAY.actions]}
             </ActionButton>
           );
         })}
-        <Link className={`btn ${actions.length === 0 ? "btn-primary" : ""}`} to={`/coordinator/${item.case_id}`} data-testid="today-open-case">{TODAY.actions.open_case}</Link>
+        {anyAllowed && <Link className="btn" to={`/coordinator/${item.case_id}`} data-testid="today-open-case">{TODAY.actions.open_case}</Link>}
       </div>
     </li>
   );

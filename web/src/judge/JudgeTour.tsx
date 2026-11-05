@@ -342,6 +342,8 @@ function TourPanel({ onClose, track, start, onTrack }: { onClose: () => void; tr
   const steps = track === "challenge" ? CHALLENGE_STEPS : TOUR_STEPS;
   const [index, setIndex] = useState(Math.min(start, steps.length - 1));
   const [cases, setCases] = useState<CaseSummary[] | null>(null);
+  // The panel can be folded down to its title and Back/Next, so the screen behind it can be read and used on a phone.
+  const [minimised, setMinimised] = useState(false);
   const { guide, loaded: guideLoaded } = useGuide(api, demoDeployment && track === "challenge");
   const headingRef = useRef<HTMLHeadingElement>(null);
   const step = steps[index];
@@ -393,6 +395,8 @@ function TourPanel({ onClose, track, start, onTrack }: { onClose: () => void; tr
     };
   }, [index, pathname, step]);
 
+  useEffect(() => { document.body.classList.toggle("tour-minimised", minimised); return () => document.body.classList.remove("tour-minimised"); }, [minimised]);
+
   useEffect(() => {
     document.body.classList.add("tour-open");
     return () => document.body.classList.remove("tour-open");
@@ -416,7 +420,7 @@ function TourPanel({ onClose, track, start, onTrack }: { onClose: () => void; tr
   };
 
   return (
-    <section className="tour" role="dialog" aria-modal="false" aria-labelledby="tour-title" aria-describedby="tour-body" data-testid="judge-tour" onKeyDown={onKey}>
+    <section className={`tour${minimised ? " tour-min" : ""}`} role="dialog" aria-modal="false" aria-labelledby="tour-title" aria-describedby="tour-body" data-testid="judge-tour" onKeyDown={onKey}>
       <div className="tour-top">
         <span className="chip chip-synthetic">Judge tour</span>
         <span className="tour-track" role="group" aria-label="Tour">
@@ -424,9 +428,11 @@ function TourPanel({ onClose, track, start, onTrack }: { onClose: () => void; tr
           <button type="button" className="btn btn-small" aria-pressed={track === "story"} onClick={() => onTrack("story")} data-testid="track-story">Demo story</button>
         </span>
         <span className="muted" data-testid="tour-progress" aria-live="polite">Step {index + 1} of {steps.length}</span>
+        <button type="button" className="btn btn-small" onClick={() => setMinimised((m) => !m)} aria-expanded={!minimised} data-testid="tour-fold">{minimised ? "Show details" : "Minimise"}</button>
         <button type="button" className="btn btn-small" onClick={onClose} data-testid="tour-close">End tour</button>
       </div>
       <h2 id="tour-title" tabIndex={-1} ref={headingRef}>{step.title}</h2>
+      <div className="tour-fold">
       <div id="tour-body" className="tour-body">{step.body}</div>
       {step.role && role !== step.role && (
         <p className="muted" data-testid="tour-role-hint">
@@ -464,6 +470,7 @@ function TourPanel({ onClose, track, start, onTrack }: { onClose: () => void; tr
           ))}
         </ul>
       )}
+      </div>
       <div className="tour-nav">
         <button type="button" className="btn" onClick={() => setIndex((i) => Math.max(0, i - 1))} disabled={index === 0} data-testid="tour-back">Back</button>
         {last ? (

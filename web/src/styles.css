@@ -627,3 +627,18 @@ main.container > .lead { max-width: 65ch; color: var(--text); }
 .tour-claim { margin: 0.25rem 0; }
 .tour-look { border-left: 3px solid var(--ok, var(--border)); padding: 0.25rem 0.75rem; margin: 0.5rem 0; }
 .tour-look ul { margin: 0.25rem 0 0; padding-left: 1.1rem; }
+
+/* Narrow screens: a header this tall must not stay stuck over the page (it covered the demo controls), and the guide panel can be minimised. */
+@media (max-width: 640px) {
+  .app-header { position: static; }
+  .tour { max-height: 52vh; }
+}
+.tour-min { max-height: none !important; }
+.tour-min .tour-fold { display: none; }
+body.tour-open.tour-minimised { padding-bottom: 9rem; }
+/* Wide screens: the guide docks to the right edge and the page makes room, so it never covers the panel it points at. */
+@media (min-width: 1000px) {
+  .tour { inset-inline-start: auto; inset-inline-end: var(--s-3); margin-inline: 0; width: 400px; max-height: calc(100vh - 2rem); }
+  body.tour-open, body.tour-open.tour-minimised { padding-bottom: 0; padding-inline-end: 424px; }
+}
+.tour-top { flex-wrap: wrap; }

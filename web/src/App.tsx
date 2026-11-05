@@ -133,6 +133,22 @@ function Home() {
   return role === "coordinator" || role === "supervisor" ? <Navigate to="/coordinator/today" replace /> : <Landing />;
 }
 
+/** Keyboard access to horizontally scrollable tables (axe: scrollable-region-focusable): every `.jp-tablewrap` becomes a focusable, labelled region. */
+function ScrollRegions() {
+  useEffect(() => {
+    const fix = () => document.querySelectorAll<HTMLElement>(".jp-tablewrap:not([tabindex])").forEach((el) => {
+      el.tabIndex = 0;
+      el.setAttribute("role", "region");
+      if (!el.hasAttribute("aria-label")) el.setAttribute("aria-label", "Table (scrolls sideways on a narrow screen)");
+    });
+    fix();
+    const mo = new MutationObserver(fix);
+    mo.observe(document.body, { childList: true, subtree: true });
+    return () => mo.disconnect();
+  }, []);
+  return null;
+}
+
 export default function App({ signInError = null }: { signInError?: string | null }) {
   const { api } = useApp();
   const signedIn = useSyncExternalStore(
@@ -142,6 +158,7 @@ export default function App({ signInError = null }: { signInError?: string | nul
   if (api.oidc && !signedIn) return <SignInPage error={signInError} />;
   return (
     <TourProvider>
+      <ScrollRegions />
       <a className="skip-link" href="#main">Skip to content</a>
       <Header />
       <div id="main">
