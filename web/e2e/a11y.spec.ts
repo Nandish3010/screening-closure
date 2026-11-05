@@ -38,7 +38,7 @@ for (const scheme of ["light", "dark"] as const) {
 
     test("coordinator app: Today (C14)", async ({ page }) => {
       await page.goto("/coordinator/today");
-      await page.getByTestId("today-group-overdue").waitFor();
+      await page.getByTestId("today-list").waitFor();
       await page.getByTestId("today-item").first().waitFor();
       await audit(page, `today (${scheme})`);
     });

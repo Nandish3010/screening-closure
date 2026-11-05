@@ -656,6 +656,26 @@ export const TODAY = {
   intro: "What needs a person now, longest-waiting first. The system prepares the work and a person decides: nothing here closes a case.",
   fullWorklist: "Open the full worklist",
   jumpLabel: "Jump to a queue",
+  filterLabel: "Filter the list",
+  all: "All",
+  listTitle: "Needs a person, most urgent first",
+  empty: "Nobody is waiting on you. Every open case is inside its deadline or already with the right person.",
+  summary: (parts: { g: string; n: number; plus: boolean }[], complete: boolean) => {
+    const words: Record<string, [string, string]> = {
+      urgent: ["urgent result not yet acted on", "urgent results not yet acted on"], overdue: ["overdue case", "overdue cases"],
+      escalations: ["escalation to accept", "escalations to accept"], replies: ["patient reply to read", "patient replies to read"],
+      flagged: ["case nobody is looking at", "cases nobody is looking at"], signatures: ["closure waiting for a signature", "closures waiting for a signature"],
+      agency: ["task prepared by an agent", "tasks prepared by an agent"],
+    };
+    if (parts.length === 0) return complete ? "Nobody is waiting on you." : "Nothing found in the cases read so far.";
+    const bits = parts.map((p) => `${p.n}${p.plus ? "+" : ""} ${words[p.g][p.n === 1 ? 0 : 1]}`);
+    return `${bits.length === 1 ? bits[0] : bits.slice(0, -1).join(", ") + " and " + bits[bits.length - 1]}. One list, most urgent first; a person decides each one.`;
+  },
+  busy: { accept_escalation: "Accepting...", take_ownership: "Taking ownership...", confirm_contact: "Confirming...", record_callback: "Recording..." },
+  conflict: {
+    take_ownership: "Someone else took this case first. The list has been refreshed; open the case to see who owns it.",
+    default: "Someone else changed this case first. The list has been refreshed.",
+  } as Record<string, string>,
   loading: "Loading what needs a person...",
   notForRole: "The Today screen is for the care coordinator and the supervisor. Clinicians work from their own cases in the worklist.",
   lookFurther: "Look further",
@@ -665,13 +685,13 @@ export const TODAY = {
   allRead: (n: number) => `All ${n} open ${n === 1 ? "case" : "cases"} read.`,
   nothingYet: "Nothing found in the cases read so far.",
   groups: {
-    urgent: { title: "Urgent results not yet acted on", clear: "No urgent result is waiting for a first action." },
-    overdue: { title: "Overdue cases", clear: "No case is past its deadline." },
-    escalations: { title: "Escalations waiting for a person to accept", clear: "No escalation is waiting for anyone." },
-    replies: { title: "Patient replies waiting for a person", clear: "No patient reply is waiting for a person." },
-    flagged: { title: "Nobody is looking at these", clear: "The safety net has flagged nothing." },
-    signatures: { title: "Closures waiting for a clinician's signature", clear: "No closure is waiting for a signature." },
-    agency: { title: "Agency tasks prepared for you", clear: "No agent task is waiting for you." },
+    urgent: { short: "Urgent", title: "Urgent results not yet acted on", clear: "No urgent result is waiting for a first action." },
+    overdue: { short: "Overdue", title: "Overdue cases", clear: "No case is past its deadline." },
+    escalations: { short: "Escalation", title: "Escalations waiting for a person to accept", clear: "No escalation is waiting for anyone." },
+    replies: { short: "Reply to read", title: "Patient replies waiting for a person", clear: "No patient reply is waiting for a person." },
+    flagged: { short: "Nobody looking", title: "Nobody is looking at these", clear: "The safety net has flagged nothing." },
+    signatures: { short: "Needs signature", title: "Closures waiting for a clinician's signature", clear: "No closure is waiting for a signature." },
+    agency: { short: "Prepared by agent", title: "Agency tasks prepared for you", clear: "No agent task is waiting for you." },
   },
   actions: {
     open_case: "Open case",

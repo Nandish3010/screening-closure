@@ -524,9 +524,9 @@ nav a:hover:not(.active) { background: var(--brand-soft); }
 .kpi { border-top: 3px solid var(--brand); }
 .kpi-label { font-weight: 600; }
 .today-item { background: var(--surface); box-shadow: var(--shadow); border-inline-start: 4px solid var(--border-strong); }
-.today-group[data-testid="today-group-overdue"] .today-item, .today-group[data-testid="today-group-urgent"] .today-item, .today-group[data-testid="today-group-flagged"] .today-item { border-inline-start-color: var(--bad); }
-.today-group[data-testid="today-group-escalations"] .today-item, .today-group[data-testid="today-group-replies"] .today-item, .today-group[data-testid="today-group-signatures"] .today-item { border-inline-start-color: var(--warn); }
-.today-group[data-testid="today-group-agency"] .today-item { border-inline-start-color: var(--brand); }
+.today-item[data-group="overdue"], .today-item[data-group="urgent"], .today-item[data-group="flagged"] { border-inline-start-color: var(--bad); }
+.today-item[data-group="escalations"], .today-item[data-group="replies"], .today-item[data-group="signatures"] { border-inline-start-color: var(--warn); }
+.today-item[data-group="agency"] { border-inline-start-color: var(--brand); }
 .today-case { font-family: var(--font-mono); }
 .today-group h2 { font-size: var(--fs-lg); }
 .today-jump .btn { background: var(--surface); }
@@ -670,3 +670,11 @@ table, pre, .mono { max-width: 100%; }
   .app-header nav[aria-label="Main"] a { white-space: nowrap; }
   .proto-strip { justify-content: flex-start; text-align: start; padding-inline: var(--s-3); }
 }
+
+/* Today: one list, a summary sentence and filter chips */
+.today-summary { font-size: var(--fs-lg); font-weight: 600; margin: var(--s-3) 0; }
+.today-filters { display: flex; flex-wrap: wrap; gap: var(--s-2); align-items: center; margin: 0 0 var(--s-3); }
+.chip-btn { font: inherit; font-size: var(--fs-sm); min-height: 44px; padding: 0 var(--s-3); border-radius: var(--r-pill); border: 1.5px solid var(--border-strong); background: var(--surface); color: var(--text); cursor: pointer; display: inline-flex; align-items: center; gap: var(--s-2); }
+.chip-btn[aria-pressed="true"] { background: var(--brand); color: var(--brand-contrast); border-color: var(--brand); font-weight: 700; }
+.chip-count { font-variant-numeric: tabular-nums; font-weight: 700; }
+.chip-group { background: var(--surface-2); color: var(--text); border-color: var(--muted); font-weight: 600; }

@@ -12,9 +12,9 @@ test("the coordinator lands on Today; the full worklist is one click away", asyn
   await expect(page).toHaveURL(/\/coordinator\/today$/);
   await expect(page.getByRole("heading", { level: 1, name: "Today" })).toBeVisible();
   await expect(page.getByText("Synthetic data").first()).toBeVisible();
-  for (const g of ["urgent", "overdue", "escalations", "replies", "flagged", "signatures", "agency"]) {
-    await expect(page.getByTestId(`today-count-${g}`)).toBeVisible();
-  }
+  await expect(page.getByTestId("today-summary")).toBeVisible();
+  await expect(page.getByTestId("today-filter-all")).toBeVisible();
+  await expect(page.getByTestId("today-filter-overdue")).toBeVisible();
   await page.getByTestId("full-worklist").click();
   await expect(page).toHaveURL(/\/coordinator$/);
   await expect(page.getByTestId("worklist-row").first()).toBeVisible();
@@ -22,14 +22,14 @@ test("the coordinator lands on Today; the full worklist is one click away", asyn
 
 test("an action works from the keyboard and moves focus to its queue", async ({ page }) => {
   await page.goto("/coordinator/today");
-  const row = page.getByTestId("today-group-replies").getByTestId("today-item").filter({ hasText: "number is wrong" });
+  const row = page.locator('[data-testid="today-item"][data-group="replies"]').filter({ hasText: "number is wrong" });
   const confirm = row.getByTestId("today-confirm_contact");
   await confirm.focus();
   await expect(confirm).toBeFocused();
   await page.keyboard.press("Enter");
   await expect(page.getByTestId("today-flash")).toContainText("Contact details confirmed");
-  await expect(page.getByTestId("today-group-replies").getByTestId("today-item").filter({ hasText: "number is wrong" })).toHaveCount(0);
-  await expect(page.getByRole("heading", { name: /Patient replies waiting/ })).toBeFocused();
+  await expect(page.locator('[data-testid="today-item"][data-group="replies"]').filter({ hasText: "number is wrong" })).toHaveCount(0);
+  await expect(page.locator("#today-h-list")).toBeFocused();
 });
 
 test("it fits a phone: no sideways scroll", async ({ page }) => {
