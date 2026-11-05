@@ -1,4 +1,4 @@
-"""ADR-057: the hosted demo's judge-experience controls: the gate, the fresh-case picker, the reset request and the simulated missed
+"""ADR-058: the hosted demo's judge-experience controls: the gate, the fresh-case picker, the reset request and the simulated missed
 follow-up. The functional tests mount the real router on a small app behind the real policy table; the gate tests start the real
 app in a subprocess under each configuration."""
 

@@ -30,7 +30,7 @@ export interface AppState {
   demoClock: boolean;
   /** `GET /health` -> `demo.deployment`: this is the declared hosted judge demo (DEMO_DEPLOYMENT=1 with the simulated clock). Role cards and the guided steps key off it; a production deployment never reports it. */
   demoDeployment: boolean;
-  /** `GET /health` -> `demo` as a whole (ADR-057): when the demo was last reset and by whom, when the next scheduled reset is due. null outside the demo. */
+  /** `GET /health` -> `demo` as a whole (ADR-058): when the demo was last reset and by whom, when the next scheduled reset is due. null outside the demo. */
   demoStatus: DemoHealth | null;
   /** True once `GET /health` has answered (or failed) at least once: whether this is the demo is not known before. */
   healthKnown: boolean;

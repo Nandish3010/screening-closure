@@ -1,4 +1,4 @@
-# EXAMPLE timer (ADR-057): reset the demo every 6 hours (and once after boot if one was missed). Set DEMO_AUTO_RESET_HOURS in the
+# EXAMPLE timer (ADR-058): reset the demo every 6 hours (and once after boot if one was missed). Set DEMO_AUTO_RESET_HOURS in the
 # api env to the same number so the web's "next reset" line is right.
 [Unit]
 Description=Reset the judge demo every 6 hours

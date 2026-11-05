@@ -1,6 +1,6 @@
-# EXAMPLE unit (ADR-057): the scheduled reset. Pair with sc-demo-reset-scheduled.timer.
+# EXAMPLE unit (ADR-058): the scheduled reset. Pair with sc-demo-reset-scheduled.timer.
 [Unit]
-Description=Scheduled reset of the judge demo to its seeded snapshot (ADR-057)
+Description=Scheduled reset of the judge demo to its seeded snapshot (ADR-058)
 After=docker.service
 Requires=docker.service
 

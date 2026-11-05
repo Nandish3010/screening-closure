@@ -155,7 +155,7 @@ const guidedCase = (g: GuidedCase | null | undefined, fallback: string) => (g ? 
 
 /**
  * The challenge owner's five steps, plus the safety net and privacy and consent, each deep-linked into the real screens. On the hosted
- * demo each step opens an UNTOUCHED case picked for this browser session (`GET /demo/guide`, ADR-057), so two judges do not collide;
+ * demo each step opens an UNTOUCHED case picked for this browser session (`GET /demo/guide`, ADR-058), so two judges do not collide;
  * elsewhere it falls back to the first fitting case. `claim` is the one line this step proves; `lookFor` says what to see on the
  * destination. The wording stays with what the screens show; every number is on the screen or in the repository, none is typed here.
  */

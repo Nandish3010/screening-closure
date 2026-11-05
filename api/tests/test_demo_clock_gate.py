@@ -95,7 +95,7 @@ def test_demo_registers_advance_only_and_health_reports_the_demo_clock():
     assert out["advance_unauth"] in (401, 403)  # supervisor token required; nothing anonymous
     assert out["health"]["demo"]["simulated_clock"] is True and out["health"]["demo"]["deployment"] is True
     assert out["health"]["clock_mode"] == "sim"
-    # ADR-057 (amends ADR-055): the API still never restores a database itself (it stops and replaces both). The one reset-like path
+    # ADR-058 (amends ADR-055): the API still never restores a database itself (it stops and replaces both). The one reset-like path
     # is a supervisor's REQUEST, which writes a file the host script acts on; the clock's own /clock/reset stays absent.
     assert out["reset_like"] == ["/demo/guide", "/demo/missed-followup", "/demo/reset"]
 

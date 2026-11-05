@@ -13,7 +13,7 @@ services:
       - path: /etc/sc/api.env
         required: true
     # HAPI and the API stay on the private compose network; no new ports.
-    # ADR-057: the folder through which the web's "Reset the demo" asks the host (deploy/gcp/vm/demo-reset-watch.sh) and the host
+    # ADR-058: the folder through which the web's "Reset the demo" asks the host (deploy/gcp/vm/demo-reset-watch.sh) and the host
     # answers (status.json). Create it on the VM first (the watch script does): it must be writable by uid 10001.
     volumes:
       - /var/lib/sc-demo:/var/lib/sc-demo

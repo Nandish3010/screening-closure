@@ -11,7 +11,7 @@ const EVENT_WORDS: Record<string, string> = {
 };
 
 /**
- * "Simulate a missed follow-up" (hosted demo, ADR-057). Moves the shared simulated clock just past this case's follow-up date and
+ * "Simulate a missed follow-up" (hosted demo, ADR-058). Moves the shared simulated clock just past this case's follow-up date and
  * the supervisor rung, then the engine's own scheduler and watchdog do what they always do. The page then shows the events they
  * wrote on the timeline and the pending escalation, which a person accepts. This panel writes nothing itself.
  */

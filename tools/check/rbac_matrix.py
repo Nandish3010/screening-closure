@@ -307,7 +307,7 @@ class Result:
     requests: int = 0
 
 
-# The hosted demo's `/demo/*` routes (ADR-057) exist only under the demo flags, so a normal process (this tool, the unit tests) does not
+# The hosted demo's `/demo/*` routes (ADR-058) exist only under the demo flags, so a normal process (this tool, the unit tests) does not
 # serve them. Their policy rows are proved by tests/test_demo_controls.py (the gate, in a process that has the flags) and
 # tests/test_rbac.py; they are left out of this matrix on purpose.
 def gated_free_policy() -> dict:

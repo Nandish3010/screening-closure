@@ -1,5 +1,5 @@
 /**
- * ADR-057: the hosted demo's guided path ("Start here") on the mock adapter's demo mode (`?demo=1`, which plays the judge controls):
+ * ADR-058: the hosted demo's guided path ("Start here") on the mock adapter's demo mode (`?demo=1`, which plays the judge controls):
  * the first screen, one fresh case per judge tab, the safety-net demonstration, a reset, axe-clean, and no horizontal scroll on a phone.
  */
 import AxeBuilder from "@axe-core/playwright";

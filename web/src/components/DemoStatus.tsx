@@ -10,7 +10,7 @@ export function lastResetText(s: { last_reset_at?: string | null; last_reset_by?
 }
 
 /**
- * The hosted demo's status line (ADR-057): when the demo was last reset and by whom, the simulated time, and when the next scheduled
+ * The hosted demo's status line (ADR-058): when the demo was last reset and by whom, the simulated time, and when the next scheduled
  * reset is due. Judges share one demo, so they need to know what state they are walking into. Rendered only in the demo.
  */
 export function DemoStatusLine() {

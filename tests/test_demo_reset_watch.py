@@ -1,4 +1,4 @@
-"""ADR-057: the host side of the web reset (deploy/gcp/vm/demo-reset-watch.sh), run against a stub of the real reset."""
+"""ADR-058: the host side of the web reset (deploy/gcp/vm/demo-reset-watch.sh), run against a stub of the real reset."""
 
 import json
 import os

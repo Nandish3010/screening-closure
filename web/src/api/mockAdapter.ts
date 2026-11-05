@@ -78,7 +78,7 @@ export interface MockOptions {
    */
   thirdPathway?: boolean;
   decliningProviders?: readonly string[];
-  /** Play the hosted demo's judge controls (ADR-057): `/health` reports `demo`, and the guide, reset request and missed follow-up exist. `?demo=1`. */
+  /** Play the hosted demo's judge controls (ADR-058): `/health` reports `demo`, and the guide, reset request and missed follow-up exist. `?demo=1`. */
   demo?: boolean;
 }
 
@@ -402,7 +402,7 @@ export function createMockAdapter(
     }
   }
 
-  // ADR-057, `?demo=1`: the judge controls of the hosted demo, played by the mock (no real clock moves).
+  // ADR-058, `?demo=1`: the judge controls of the hosted demo, played by the mock (no real clock moves).
   const demoOn = options.demo === true;
   const demoClaims = new Map<string, string>();
   let demoReset: { at: string; by: string; reason: string } | null = null;

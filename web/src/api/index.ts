@@ -70,7 +70,7 @@ export const mockThirdPathwayFromEnv = (search?: string): boolean => mockPathway
 
 const DEMO_KEY = "sc.mock.demo";
 
-/** Whether the mock plays the hosted demo's judge controls (ADR-057): `?demo=1` (or `=0` to leave), remembered for the browser tab. */
+/** Whether the mock plays the hosted demo's judge controls (ADR-058): `?demo=1` (or `=0` to leave), remembered for the browser tab. */
 export function mockDemoFromEnv(search: string = typeof location === "undefined" ? "" : location.search): boolean {
   const v = new URLSearchParams(search).get("demo");
   try {

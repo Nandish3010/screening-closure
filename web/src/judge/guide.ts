@@ -1,5 +1,5 @@
 /**
- * The guided path's fresh cases (ADR-057). `GET /demo/guide?session=` gives each browser session one untouched case per step, held
+ * The guided path's fresh cases (ADR-058). `GET /demo/guide?session=` gives each browser session one untouched case per step, held
  * for it for a while, so two judges walking the same step are given different cases. The session id is random, lives in
  * sessionStorage (one per tab) and identifies no one. Outside the hosted demo the API has no such route and `api.demoGuide` is absent.
  */

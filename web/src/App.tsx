@@ -98,7 +98,7 @@ function Landing() {
 /** The coordinator's and the supervisor's landing page is Today (C14); everyone else sees the entry cards. */
 function Home() {
   const { role, demoDeployment, healthKnown } = useApp();
-  // ADR-057: on the hosted demo the first screen after sign-in is "Start here" (staff roles; the patient's first screen is their app).
+  // ADR-058: on the hosted demo the first screen after sign-in is "Start here" (staff roles; the patient's first screen is their app).
   if (!healthKnown) return <main className="container"><p role="status">Loading...</p></main>;
   if (demoDeployment) return <Navigate to={role === "patient" ? "/patient" : "/start"} replace />;
   return role === "coordinator" || role === "supervisor" ? <Navigate to="/coordinator/today" replace /> : <Landing />;

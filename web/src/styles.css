@@ -611,7 +611,7 @@ main.container > .lead { max-width: 65ch; color: var(--text); }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 @media (max-width: 640px) { .chip { white-space: normal; max-width: 100%; } .effort-headline { gap: var(--s-1); } }
 
-/* Start here (ADR-057): the guided judge path */
+/* Start here (ADR-058): the guided judge path */
 .start-here { max-width: 60rem; }
 .start-steps { list-style: none; padding: 0; margin: var(--s-3) 0; display: grid; gap: var(--s-3); grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr)); counter-reset: none; }
 .start-card { border: 1px solid var(--border); border-radius: var(--r-md); padding: var(--s-3); background: var(--surface, transparent); display: flex; flex-direction: column; gap: var(--s-2); }

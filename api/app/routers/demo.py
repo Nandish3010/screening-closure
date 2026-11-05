@@ -1,4 +1,4 @@
-"""The hosted demo's judge-experience routes (ADR-057). Registered ONLY when `auth.demo_controls_active()` (DEMO_SIMULATED_CLOCK=1 and
+"""The hosted demo's judge-experience routes (ADR-058). Registered ONLY when `auth.demo_controls_active()` (DEMO_SIMULATED_CLOCK=1 and
 DEMO_DEPLOYMENT=1 with the simulation clock); in any other configuration these paths do not exist (404).
 
     GET  /demo/guide?session=<random id>   every role   one fresh case per guided step for this browser session

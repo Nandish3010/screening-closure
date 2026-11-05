@@ -7,7 +7,7 @@ import { DemoStatusLine, ResetDemoControl } from "../components/DemoStatus";
 import { BrandLockup } from "../components/Brand";
 
 /**
- * "Start here" (ADR-057): the first screen a judge sees after signing in to the hosted demo. One card per step of the challenge
+ * "Start here" (ADR-058): the first screen a judge sees after signing in to the hosted demo. One card per step of the challenge
  * owner's loop (record, prioritise, refer, remind, track the outcome) plus the safety net and privacy and consent. Each card has a
  * one-line claim and one button that opens the exact screen and an untouched case for this browser session; the guided panel there says
  * what to look for. About five minutes in all, and skippable: nothing is locked.

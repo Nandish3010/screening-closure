@@ -93,7 +93,7 @@ describe("the five-step tour", () => {
 });
 
 describe("outside the demo", () => {
-  it("the http adapter never rewinds the clock or runs the operator script: the web only REQUESTS a reset (ADR-057), the host acts", () => {
+  it("the http adapter never rewinds the clock or runs the operator script: the web only REQUESTS a reset (ADR-058), the host acts", () => {
     expect(readFileSync("src/api/httpAdapter.ts", "utf8")).not.toMatch(/resetDemo|demo-reset\.sh|\/clock\/reset/);
   });
 

@@ -30,7 +30,7 @@ server {
         proxy_set_header Host $host;
     }
     location ~ ^/api/clock { return 404; }
-    # Demo controls that move shared state (ADR-057): supervisor token, checked by the API, which also rate limits a reset; the edge adds a tight burst.
+    # Demo controls that move shared state (ADR-058): supervisor token, checked by the API, which also rate limits a reset; the edge adds a tight burst.
     location ~ ^/api/demo/(reset|missed-followup)$ {
         limit_req zone=api_ip burst=3 nodelay;
         rewrite ^/api/(.*)$ /$1 break;

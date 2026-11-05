@@ -1,5 +1,5 @@
 #!/bin/bash
-# The host side of the web "Reset the demo" button and of the scheduled reset (ADR-057). On the VM, as root.
+# The host side of the web "Reset the demo" button and of the scheduled reset (ADR-058). On the VM, as root.
 #
 #   demo-reset-watch.sh             one pass: if the API left a reset request, act on it (restore the snapshot), record who and when
 #   demo-reset-watch.sh --scheduled the scheduled reset (the timer calls this every DEMO_AUTO_RESET_HOURS, default 6)
@@ -13,7 +13,7 @@
 #   status.json         written by this script: {last_reset_at, last_reset_by, last_reset_reason, last_request_at, duration_s}
 #   baseline.json       written by the API (the event count of every case just after a reset); removed here so it is re-taken
 #
-# Run it from a systemd timer every 15 s for the request check and every 6 h with --scheduled (units: see the PR notes of ADR-057;
+# Run it from a systemd timer every 15 s for the request check and every 6 h with --scheduled (units: see the PR notes of ADR-058;
 # deploy/gcp/vm/sc-demo-reset-watch.{service,timer} are examples). Safe to run twice at once: a lock directory serialises passes.
 set -euo pipefail
 export SC_REPO=${SC_REPO:-/srv/sc/repo}

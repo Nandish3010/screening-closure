@@ -154,7 +154,7 @@ if settings.app_env == "dev" and clock.mode == "sim":  # the demo clock exists o
     app.include_router(clock_router.router)
 elif auth.demo_clock_active():  # the declared hosted demo (both flags, sim clock): advance only, supervisor only; no reset
     app.include_router(clock_router.demo_router)
-if auth.demo_controls_active():  # ADR-057: the judge-experience controls exist only under the two demo flags with the sim clock
+if auth.demo_controls_active():  # ADR-058: the judge-experience controls exist only under the two demo flags with the sim clock
     from app.routers import demo as demo_router
 
     app.include_router(demo_router.router)

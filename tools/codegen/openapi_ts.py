@@ -37,7 +37,7 @@ def build_schema() -> dict:
     from app.main import app  # importing builds the app; the lifespan (DB, secrets) only runs when a server starts
 
     spec = app.openapi()
-    # The hosted demo's routes (ADR-057) are registered only under the demo gate (APP_ENV not dev, both flags), which is never this
+    # The hosted demo's routes (ADR-058) are registered only under the demo gate (APP_ENV not dev, both flags), which is never this
     # process, yet the web contract covers them: merge their schema from a throw-away app that mounts the same router.
     from fastapi import FastAPI
 

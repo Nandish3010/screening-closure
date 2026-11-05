@@ -1570,7 +1570,7 @@ export interface ApiClient {
   caseAgency(caseId: string): Promise<CaseAgencySummary | null>;
   /** Mock only: restore the seeded fixtures. No-op for http. */
   resetDemo?(): Promise<void>;
-  /** GET /demo/guide (hosted demo only, ADR-057): one untouched case per guided step for this browser session. Absent outside the demo. */
+  /** GET /demo/guide (hosted demo only, ADR-058): one untouched case per guided step for this browser session. Absent outside the demo. */
   demoGuide?(session: string): Promise<DemoGuide>;
   /** POST /demo/reset (hosted demo, supervisor): ask the host to restore the seeded snapshot. Rejects with the server's plain-language reason (too soon, already pending). */
   requestDemoReset?(): Promise<DemoResetRequested>;

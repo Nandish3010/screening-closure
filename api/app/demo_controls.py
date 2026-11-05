@@ -1,4 +1,4 @@
-"""Judge-experience controls of the hosted demo (ADR-057). Registered only under `auth.demo_controls_active()`.
+"""Judge-experience controls of the hosted demo (ADR-058). Registered only under `auth.demo_controls_active()`.
 
 Four small pieces, none of which touches the state machine:
 

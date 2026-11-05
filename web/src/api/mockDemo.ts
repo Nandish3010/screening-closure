@@ -1,5 +1,5 @@
 /**
- * The mock's stand-in for the hosted demo's judge controls (ADR-057), switched on with `?demo=1` (see `mockDemoFromEnv`). It mirrors
+ * The mock's stand-in for the hosted demo's judge controls (ADR-058), switched on with `?demo=1` (see `mockDemoFromEnv`). It mirrors
  * what api/app/demo_controls.py does so the guided path can be walked, tested and recorded without the stack: a fresh case per step
  * per browser session, a reset that restores the seed, and a missed follow-up whose events the mock "engine" (the scheduler actor)
  * writes. The mock's clock does not move; the real API's does.

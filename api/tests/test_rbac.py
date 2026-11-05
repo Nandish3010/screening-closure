@@ -354,7 +354,7 @@ def test_every_real_route_has_a_policy_entry_and_no_entry_is_stale():
         for path, item in app.openapi()["paths"].items()
         for method in item
     }
-    # The judge-experience routes (ADR-057) exist only under the demo gate: a test process does not run under it, so they are
+    # The judge-experience routes (ADR-058) exist only under the demo gate: a test process does not run under it, so they are
     # compared against their own router instead (tests/test_demo_controls.py proves the gate).
     from app.routers import demo as demo_router
 
