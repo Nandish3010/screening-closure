@@ -7,3 +7,4 @@ allow:
   - {file: docs/submission/video.md, number: "169.95", reason: "Measured duration (s) of submission-3min.mp4 in the 18 Oct proof run; a build artefact of make video."}
   - {file: docs/submission/video.md, number: "179.95", reason: "Measured duration (s) of backup-demo.mp4 in the 18 Oct proof run; a build artefact of make video."}
   - {file: docs/submission/video.md, number: "22.18", reason: "Node.js version (22.18 or later) required by the recorder; a version string, not a result."}
+  - {file: docs/submission/rescore.md, number: "6.75", reason: "The engineering AI reviewer's own unweighted mean in the 5 November 2026 re-score (40.5 / 6); an AI reviewer's score, not a result."}

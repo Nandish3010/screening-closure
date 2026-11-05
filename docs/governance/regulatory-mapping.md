@@ -1,6 +1,6 @@
 # Regulatory mapping
 
-Status: draft for human review. This is a design-time mapping, not legal advice and not a compliance claim. The prototype holds synthetic data only (see [data-provenance](../data-provenance.md)), so none of these regimes applies to the prototype itself. The mapping describes how the design would meet them in a deployment, and lists what has not been verified.
+Status: complete as an AI-prepared design-time mapping; human legal and clinical review is pending. This is a design-time mapping, not legal advice and not a compliance claim. The prototype holds synthetic data only (see [data-provenance](../data-provenance.md)), so none of these regimes applies to the prototype itself. The mapping describes how the design would meet them in a deployment, and lists what has not been verified.
 
 Reading rules used throughout:
 
