@@ -75,9 +75,11 @@ def test_the_spoken_figures_match_the_committed_results():
     assert round(arms["baseline"]["silent_loss_rate"]["mean"] * 100) == 45
     assert round(arms["orchestrated"]["silent_loss_rate"]["mean"] * 100) == 21
     assert arms["orchestrated"]["silent_loss_rate_in_reach"]["mean"] == 0
-    for text in (TELE, SCRIPT, (ROOT / "tools/video/storyboard.yaml").read_text(encoding="utf-8")):
+    for text in (TELE, SCRIPT):
         assert "fifty-three" in text or "53%" in text
         assert "sixty-eight" in text or "68%" in text
+    # v7: the video's single results slide speaks only the 180-day completion range and the programme-level labour figure
+    # (see test_the_video_results_slide_speaks_committed_figures_only)
 
 
 def test_the_labour_figures_are_the_committed_ones_and_the_target_is_said_to_be_not_met_in_realistic_scenarios():
@@ -92,7 +94,7 @@ def test_the_labour_figures_are_the_committed_ones_and_the_target_is_said_to_be_
     assert "thirty-six percent" in TELE and "twenty percent" in TELE and "not met" in TELE
     assert "36% fewer" in SCRIPT and "20% across the programme" in SCRIPT and "not met" in SCRIPT
     storyboard_text = (ROOT / "tools/video/storyboard.yaml").read_text(encoding="utf-8")
-    assert "36%" in storyboard_text and "20%" in storyboard_text and "not met" in storyboard_text
+    assert "20%" in storyboard_text and "not met" in storyboard_text  # v7: one results slide; the 36% in-reach figure stays in the script and teleprompter
     tech = (ROOT / "docs/submission/technical-documentation.md").read_text(encoding="utf-8")
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
     for name, text in (("teleprompter", TELE), ("script", SCRIPT), ("storyboard", storyboard_text), ("README", readme),
@@ -115,9 +117,22 @@ def test_the_headline_is_the_180_day_ratio_and_the_docs_link_the_validation():
     assert "45.3% to 20.6%" in readme and "by construction" in readme and "about 12%" in readme and "about 6 weeks" in readme
     assert "1.31" in tech and "(../results/validation.md)" in tech and "about 12%" in tech and "about 6 weeks" in tech
     assert "failed for timing" not in readme and "failed for timing" not in tech
-    for text in (TELE, SCRIPT, (ROOT / "tools/video/storyboard.yaml").read_text(encoding="utf-8")):
+    for text in (TELE, SCRIPT):
         assert "1.31" in text or "one point three one" in text
     assert "one point three one" in TELE
+    video = (ROOT / "tools/video/storyboard.yaml").read_text(encoding="utf-8")  # v7: the slide says the range, not the ratio
+    assert "fifty-one to sixty-seven percent" in video and "51% to 67%" in video
+
+
+def test_the_video_results_slide_speaks_committed_figures_only():
+    """The v7 results slide: 51% to 67% colonoscopy within 180 days (51.0 and 66.8) and a 20% programme-wide labour fall, target not met."""
+    eff = RESULTS["effort"]["scenarios"]["literature_anchored"]["all"]["reduction"]["labour_reduction"]["mean"]
+    arms = LA["arms"]
+    assert round(arms["baseline"]["completion_180d"]["mean"] * 100) == 51 and round(arms["orchestrated"]["completion_180d"]["mean"] * 100) == 67
+    assert round(eff * 100) == 20 and eff < 0.40
+    video = (ROOT / "tools/video/storyboard.yaml").read_text(encoding="utf-8")
+    assert "the 40% target is not met" in video and "target met" not in video.replace("target is not met", "").replace("target not met", "")
+    assert "on-device" not in video.lower()
 
 
 def test_no_spoken_line_makes_a_speed_claim():

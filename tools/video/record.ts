@@ -45,7 +45,7 @@ const { chromium } = requireFromWeb("playwright");
 type Action = Record<string, any>;
 interface Shot {
   id: number; title: string; beat: string; route: string; caption: string; narration: string; duration: number;
-  actions: Action[]; optional?: boolean; submission?: boolean; requires?: { route: string; testid?: string };
+  actions: Action[]; caption_pos?: string; optional?: boolean; submission?: boolean; requires?: { route: string; testid?: string };
 }
 interface Storyboard { meta: { width: number; height: number }; cards: Record<string, any>; shots: Shot[] }
 
@@ -141,14 +141,16 @@ async function apiLogin(role: string, name: string) {
 }
 
 /** The named patient's case (owner accepted, by the pre-run) and the prepared second case (confirmatory completed). */
-async function findCases(): Promise<{ case: string; case2: string }> {
+async function findCases(): Promise<{ case: string; case2: string; ltc: string }> {
   const { token } = await apiLogin("coordinator", "Maryam Al Suwaidi");
   const rows = (await (await retryFetch(`${API}/cases`, { headers: { Authorization: `Bearer ${token}` } })).json()) as any[];
   const first = rows.find((r) => r.state === "owner_accepted");
   const second = rows.find((r) => r.state === "confirmatory_completed");
+  const urgent = rows.find((r) => r.pathway === "chronic_conditions" && r.priority?.tier === "urgent" && r.state !== "closed");
+  if (!urgent) throw new Error("no urgent long-term-conditions case: `make demo-seed-chronic` did not run");
   if (!first) throw new Error("no case at owner_accepted: `make demo-scenario UNTIL=owner_accepted` did not run, or the demo was not reset");
   if (!second) throw new Error("no case at confirmatory_completed: run `make demo-stage` and `make demo-snapshot` (the second case is part of the snapshot)");
-  return { case: first.case_id, case2: second.case_id };
+  return { case: first.case_id, case2: second.case_id, ltc: urgent.case_id };
 }
 
 // ---- page rendering: cards, terminal ---------------------------------------------------------------------------------
@@ -190,6 +192,9 @@ function cardHtml(c: Action): string {
   if (c.kind === "figure") {
     return pageHtml(`<div class="wrap"><h1 style="font-size:40px;color:#9fc0cd;margin-bottom:6px">${esc(c.heading)}</h1><div class="big" style="font-size:150px">${esc(c.value)}</div><p class="line" style="font-size:32px;max-width:1000px">${esc(c.label)}</p><ul>${((c.bullets ?? []) as string[]).map((b) => `<li>${esc(b)}</li>`).join("")}</ul><div class="note">${esc(c.note)}</div></div>`);
   }
+  if (c.kind === "bignum") {
+    return pageHtml(`<div class="wrap"><div class="big" style="font-size:170px">${esc(c.value)}</div>${((c.lines ?? []) as string[]).slice(0, 2).map((l) => `<p class="line" style="font-size:36px;margin:0 0 14px">${esc(l)}</p>`).join("")}</div>`);
+  }
   if (c.kind === "slide") {
     return pageHtml(`<div class="wrap"><h1>${esc(c.heading)}</h1><ul>${(c.bullets as string[]).map((b) => `<li>${esc(b)}</li>`).join("")}</ul><div class="note">Synthetic data. All figures from the simulation results.</div></div>`, "body{align-items:flex-start;padding-top:36px}");
   }
@@ -217,15 +222,20 @@ function terminalHtml(cmd: string, output: string, ok: boolean | null): string {
   return pageHtml(`<div class="term"><span class="ps">$</span> ${esc(cmd)}\n${esc(output)}${ok === null ? "" : ok ? "" : "\n(command exited with an error)"}</div>`, "body{align-items:flex-start;padding-top:40px}");
 }
 
-function overlayScript(caption: string): string {
+function overlayScript(caption: string, pos = "bottom"): string {
   return `(() => {
   const FIRST = ${JSON.stringify(caption)};
+  const POS = ${JSON.stringify(pos)};
   const PREFIX = "__vcap:";
-  const css = "#__vcap_bar{position:fixed;left:50%;transform:translateX(-50%);bottom:34px;width:min(1180px,calc(100vw - 40px));z-index:2147483647;pointer-events:none;background:rgba(8,18,26,.9);color:#fff;font:600 22px/1.3 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;padding:12px 18px;border-radius:10px;text-align:center;direction:ltr;unicode-bidi:isolate;box-shadow:0 4px 18px rgba(0,0,0,.35)}"
+  const css = "#__vcap_bar{position:fixed;left:50%;transform:translateX(-50%);" + (POS === "top" ? "top:12px;" : "bottom:34px;") + "width:min(1180px,calc(100vw - 40px));z-index:2147483647;pointer-events:none;background:rgba(8,18,26,.9);color:#fff;font:600 22px/1.3 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;padding:12px 18px;border-radius:10px;text-align:center;direction:ltr;unicode-bidi:isolate;box-shadow:0 4px 18px rgba(0,0,0,.35)}"
     + "#__vcap_bar.m{font-size:18px}#__vcap_bar.s{font-size:15px;line-height:1.3}"
     + "#__vcap_strip{position:fixed;left:0;right:0;bottom:0;height:26px;z-index:2147483647;pointer-events:none;background:#ffb703;color:#1b1300;font:800 13px/26px -apple-system,Segoe UI,sans-serif;letter-spacing:.08em;text-align:center;text-transform:uppercase}"
-    + "[data-testid=\"consent-withdraw-why\"]{display:none !important}" // a supervisor's disabled-consent note is not what the shot is about (the page still says it to a real user)
-    + "body{padding-bottom:170px !important}";
+    + '[data-testid="consent-withdraw-why"]{display:none !important}' // a supervisor's disabled-consent note is not what the shot is about (the page still says it to a real user)
+    + "body{padding-bottom:170px !important}"
+    // The sign-off panel's read-only signer field holds a practitioner id: hide it behind a plain label (the page still has the value).
+    + 'input[data-testid="signer"]{color:transparent !important;background:#fff url("data:image/svg+xml;utf8,<svg xmlns=%27http://www.w3.org/2000/svg%27 width=%27300%27 height=%2740%27><text x=%2712%27 y=%2726%27 font-family=%27sans-serif%27 font-size=%2716%27 fill=%27%23444%27>You, signed in</text></svg>") no-repeat left center !important}'
+    // The patient app's language switch wraps its two names letter by letter at phone width; keep each word whole.
+    + ".pa-lang span{overflow-wrap:normal !important;white-space:nowrap !important;padding:0 10px !important}";
   function ensure() {
     if (!document.documentElement) return;
     if (!document.getElementById("__vcap_style")) { const s = document.createElement("style"); s.id = "__vcap_style"; s.textContent = css; (document.head || document.documentElement).appendChild(s); }
@@ -239,6 +249,30 @@ function overlayScript(caption: string): string {
     ensure(); const b = document.getElementById("__vcap_bar"); if (!b) return;
     const t = current(); b.textContent = t; b.className = t.length > 200 ? "s" : t.length > 110 ? "m" : "";
   }
+  // What the viewer must not see: raw case ids (a short case number instead, the same for the same id on every page) and the
+  // internal ticket tag "H1" in the demo banner and the priority note. Only text nodes are touched; the page's own data is not.
+  const ID = /\\b(?=[0-9a-f]*[0-9])[0-9a-f]{8}\\b(?:-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})?/g;
+  function alias(m) { return "#" + (1000 + (parseInt(m.slice(0, 8), 16) % 9000)); }
+  function clean(root) {
+    if (!root || !document.body) return;
+    const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    for (let n = w.nextNode(); n; n = w.nextNode()) {
+      const t = n.nodeValue; if (!t) continue;
+      const u = t.replace(/,\\s*H1\\)/g, ")").replace(/\\s*\\(H1\\)/g, "").replace(/\\s*\\(\u2026[0-9a-f]{4,}\\)/g, "").replace(ID, alias);
+      if (u !== t) n.nodeValue = u;
+    }
+  }
+  // A field whose value holds a raw record id (the evidence reference after "Record colonoscopy result") is covered by a plain label.
+  const FIELD_BG = '#fff url("data:image/svg+xml;utf8,<svg xmlns=%27http://www.w3.org/2000/svg%27 width=%27360%27 height=%2740%27><text x=%2712%27 y=%2726%27 font-family=%27sans-serif%27 font-size=%2716%27 fill=%27%23444%27>Colonoscopy record on file</text></svg>") no-repeat left center';
+  setInterval(() => {
+    document.querySelectorAll("input:not([data-testid=signer]), textarea").forEach((el) => {
+      const hit = new RegExp(ID.source).test(el.value || "");
+      if (hit && !el.dataset.vcapMask) { el.dataset.vcapMask = "1"; el.style.setProperty("color", "transparent", "important"); el.style.setProperty("background", FIELD_BG, "important"); }
+      else if (!hit && el.dataset.vcapMask) { delete el.dataset.vcapMask; el.style.removeProperty("color"); el.style.removeProperty("background"); }
+    });
+  }, 250);
+  let pending = false;
+  new MutationObserver(() => { if (pending) return; pending = true; requestAnimationFrame(() => { pending = false; clean(document.body); }); }).observe(document, { childList: true, subtree: true, characterData: true });
   window.__setCaption = (t) => { window.name = PREFIX + t; render(); };
   if (!window.name.startsWith(PREFIX)) window.name = PREFIX + FIRST;
   document.addEventListener("DOMContentLoaded", render);
@@ -257,7 +291,7 @@ const terminalCache = new Map<string, { output: string; ok: boolean }>();
 let pageSeq = 0;
 
 function fill(s: string, cases: Record<string, string>): string {
-  return s.replace(/\{(case2?)\}/g, (_, k) => cases[k]);
+  return s.replace(/\{(case2?|ltc)\}/g, (_, k) => cases[k]);
 }
 
 function locator(page: any, t: Action) {
@@ -311,7 +345,14 @@ async function runAction(page: any, act: Action, ctx: { cases: Record<string, st
     case "scroll": {
       const loc = locator(page, v);
       await loc.waitFor({ timeout: T });
-      if (v.align === "top") {
+      if (v.inner) {
+        // only the element's own scroll container moves (the phone frame's screen); the page itself stays where it is
+        await loc.evaluate((el: Element) => {
+          let a: Element | null = el.parentElement;
+          while (a && !(a.scrollHeight > a.clientHeight + 4 && /(auto|scroll)/.test(getComputedStyle(a).overflowY))) a = a.parentElement;
+          if (a) a.scrollTo({ top: a.scrollTop + el.getBoundingClientRect().top - a.getBoundingClientRect().top - 16, behavior: "smooth" });
+        });
+      } else if (v.align === "top") {
         // the element goes just under the header, so the caption bar at the bottom of the frame cannot cover it
         await loc.evaluate((el: Element) => window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - 150, behavior: "smooth" }));
       } else {
@@ -320,6 +361,10 @@ async function runAction(page: any, act: Action, ctx: { cases: Record<string, st
       await sleep(900);
       return;
     }
+    case "scroll_page":
+      await page.evaluate((y: number) => window.scrollTo({ top: y, behavior: "smooth" }), v);
+      await sleep(900);
+      return;
     case "wait_for": {
       let loc = locator(page, v);
       if (v.contains) loc = loc.filter({ hasText: v.contains });
@@ -483,6 +528,7 @@ async function main() {
     if (!args.has("--no-reset")) {
       make("demo-reset");
       make("demo-scenario", ["UNTIL=owner_accepted"]);
+      make("demo-seed-chronic"); // the urgent long-term-conditions case of shots 2 and 3 (opt-in seed; the final demo-reset removes it)
     }
     cases = await findCases();
     simTime = (await (await retryFetch(`${API}/health`)).json()).sim_time;
@@ -507,7 +553,7 @@ async function main() {
         recordVideo: { dir, size: { width: sb.meta.width, height: sb.meta.height } },
         storageState: state,
       });
-      await ctx.addInitScript({ content: overlayScript(shot.caption) });
+      await ctx.addInitScript({ content: overlayScript(shot.caption, shot.caption_pos ?? "bottom") });
       const tPage = Date.now();
       const page = await ctx.newPage();
       const marks = { cuts: [] as [number, number][], open: null as number | null };
