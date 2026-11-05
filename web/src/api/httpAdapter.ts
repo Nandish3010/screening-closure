@@ -53,7 +53,7 @@ export function createHttpAdapter(baseUrl: string, fetchImpl: typeof fetch = (..
         },
       });
     } catch (e) {
-      throw new ApiError(0, `Network error: ${(e as Error).message}`);
+      throw new ApiError(0, "The server cannot be reached right now. Check the connection and try again in a moment. Nothing was changed.");
     }
   }
 
@@ -71,6 +71,11 @@ export function createHttpAdapter(baseUrl: string, fetchImpl: typeof fetch = (..
     } catch {
       /* keep statusText */
     }
+    // Plain language for what a person cannot act on: a server fault, or a route refusal worded for developers. Engine refusals
+    // (409, 422: "the case cannot close without evidence") are the useful part and stay verbatim.
+    if (res.status >= 500) msg = "Something went wrong on the server. Nothing was changed. Please try again in a moment.";
+    else if (res.status === 403 && /^(role '|no access policy)/.test(msg)) msg = "Your role cannot do this here. Switch to a role that can, or ask a colleague who can.";
+    else if (res.status === 404 && /^(Not Found|not found)$/i.test(msg)) msg = "That could not be found. It may have been removed when the demo was reset.";
     return new ApiError(res.status, msg);
   }
 

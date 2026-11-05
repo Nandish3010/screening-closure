@@ -196,7 +196,7 @@ describe("navigation and the judge page", () => {
     for (const [name, href] of [["AI and safety", "/safety"], ["Integrations", "/integrations"], ["Pilot value", "/pilot-value"]]) {
       expect(within(nav).getByRole("link", { name })).toHaveAttribute("href", href);
     }
-    const more = screen.getByTestId("judge-more-pages");
+    const more = await screen.findByTestId("judge-more-pages");
     expect(within(more).getAllByRole("link").map((a) => a.getAttribute("href"))).toEqual(["/safety", "/integrations", "/pilot-value"]);
   });
 

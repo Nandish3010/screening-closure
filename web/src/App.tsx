@@ -3,17 +3,18 @@ import { Header } from "./components/Header";
 import { CoordinatorPage } from "./pages/CoordinatorPage";
 import { TodayPage } from "./pages/TodayPage";
 import { CaseDetailPage } from "./pages/CaseDetailPage";
-import { AgencyPage } from "./pages/AgencyPage";
-import { JudgePage } from "./pages/JudgePage";
-import { SafetyPage } from "./pages/SafetyPage";
-import { IntegrationsPage } from "./pages/IntegrationsPage";
-import { PilotValuePage } from "./pages/PilotValuePage";
+const AgencyPage = lazy(() => import("./pages/AgencyPage").then((m) => ({ default: m.AgencyPage })));
+const JudgePage = lazy(() => import("./pages/JudgePage").then((m) => ({ default: m.JudgePage })));
+const SafetyPage = lazy(() => import("./pages/SafetyPage").then((m) => ({ default: m.SafetyPage })));
+const IntegrationsPage = lazy(() => import("./pages/IntegrationsPage").then((m) => ({ default: m.IntegrationsPage })));
+const PilotValuePage = lazy(() => import("./pages/PilotValuePage").then((m) => ({ default: m.PilotValuePage })));
 import { TourProvider } from "./judge/JudgeTour";
-import { DashboardPage } from "./pages/DashboardPage";
+const DashboardPage = lazy(() => import("./pages/DashboardPage").then((m) => ({ default: m.DashboardPage })));
 import { StartHerePage } from "./pages/StartHerePage";
-import { PatientPage, PatientHome } from "./pages/PatientPage";
+const PatientPage = lazy(() => import("./pages/PatientPage").then((m) => ({ default: m.PatientPage })));
+const PatientHome = lazy(() => import("./pages/PatientPage").then((m) => ({ default: m.PatientHome })));
 import { DEMO_PATIENT_CASE_ID } from "./api/fixtures";
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { Suspense, lazy, useEffect, useState, useSyncExternalStore } from "react";
 import { useApp } from "./app/AppContext";
 import { DEMO_USERS, JUDGE_ROLES } from "./api/identities";
 import type { DemoCredential } from "./api/contract";
@@ -162,6 +163,7 @@ export default function App({ signInError = null }: { signInError?: string | nul
       <a className="skip-link" href="#main">Skip to content</a>
       <Header />
       <div id="main">
+        <Suspense fallback={<main className="container"><p role="status">Loading this page...</p></main>}>
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/start" element={<StartHerePage />} />
@@ -178,6 +180,7 @@ export default function App({ signInError = null }: { signInError?: string | nul
           <Route path="/patient/:caseId" element={<PatientPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
+        </Suspense>
       </div>
     </TourProvider>
   );
