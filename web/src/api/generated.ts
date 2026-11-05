@@ -51,6 +51,10 @@ export interface LeaseRequest {
   "holder": string;
 }
 
+export interface MalaffiReplay {
+  "redeliver"?: boolean;
+}
+
 export interface PostEvent {
   "at"?: string | null;
   "event_id"?: string | null;
@@ -74,6 +78,11 @@ export interface RejectDraft {
 export interface RequestErasure {
   "patient_ref": string;
   "reason": string;
+}
+
+export interface SahatnaCallback {
+  "case_id": string;
+  "slot_start"?: string | null;
 }
 
 export interface Scan {
@@ -123,6 +132,9 @@ export interface Routes {
   "GET /heartbeats": { response: Record<string, unknown>; };
   "POST /hl7": { response: unknown; };
   "GET /integrations/feed": { query: { "limit"?: number; }; response: Record<string, unknown>; };
+  "GET /integrations/mock": { response: Record<string, unknown>; };
+  "POST /integrations/mock/malaffi/replay": { body?: MalaffiReplay | null; response: Record<string, unknown>; };
+  "POST /integrations/mock/sahatna/booking-callback": { body: SahatnaCallback; response: Record<string, unknown>; };
   "GET /me": { response: Record<string, unknown>; };
   "GET /metrics/abstention": { response: Record<string, unknown>; };
   "GET /metrics/closure": { response: Record<string, unknown>; };
@@ -175,6 +187,9 @@ export const ROUTES: readonly RouteKey[] = [
   "GET /heartbeats",
   "POST /hl7",
   "GET /integrations/feed",
+  "GET /integrations/mock",
+  "POST /integrations/mock/malaffi/replay",
+  "POST /integrations/mock/sahatna/booking-callback",
   "GET /me",
   "GET /metrics/abstention",
   "GET /metrics/closure",

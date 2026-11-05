@@ -135,10 +135,11 @@ demo-seed:
 demo-seed-cervical:
 	$(PY) simulator/create_cervical_cases.py
 
-# The third pathway's demo cases (long-term conditions, config/pathways/chronic_conditions.yaml): a few synthetic cases at
-# different stages, each created with a synthetic result so it carries a priority tier, through the API. OPT-IN and kept out of
-# the demo snapshot and the video: the storyboard says "all 22 open cases" and finds its cases by state. `make demo-reset`
-# removes them. Needs the stack up and `make demo-seed` done.
+# The third pathway's demo cases (long-term conditions, config/pathways/chronic_conditions.yaml): four synthetic, Emirati-named
+# patients written to HAPI, each with a case created with a synthetic result (blood pressure twice, HbA1c, BMI) so it carries a
+# priority tier, at different stages, through the API. Part of the demo snapshot (`make demo-snapshot` runs it) and of the hosted
+# demo's seed (deploy/gcp/vm/seed-on-vm.sh); rerunning is safe. Also usable by itself, and `make demo-seed DEMO_THIRD_PATHWAY=1`
+# runs it after the cohort. Needs the stack up and `make demo-seed` done.
 demo-seed-chronic:
 	$(PY) simulator/create_chronic_cases.py
 
@@ -320,8 +321,9 @@ demo-stage:
 
 # Save the current database (cases, events, drafts, notifications, the sim clock AND HAPI's FHIR data) as the demo
 # snapshot, on a clean seeded stack: `make reset && make demo-seed && make demo-snapshot`. It stages the second case
-# first (demo-stage), so `make demo-reset` brings that case back with everything else.
-demo-snapshot: demo-stage
+# first (demo-stage) and then seeds the long-term-conditions cases (demo-seed-chronic: blood pressure, HbA1c, BMI), so
+# `make demo-reset` brings both back with everything else and the Today screen shows them.
+demo-snapshot: demo-stage demo-seed-chronic
 	tools/demo/snapshot.sh save
 
 demo-restore:

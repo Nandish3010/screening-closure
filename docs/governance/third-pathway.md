@@ -78,7 +78,7 @@ Model checker (state counts for the pack on its own): 23,730 abstract states (me
 
 ## Demo
 
-`make demo-seed-chronic` (or `make demo-seed DEMO_THIRD_PATHWAY=1`) creates four synthetic cases with different tiers on the running stack. Opt-in and kept out of the demo snapshot and the video, like the cervical seed: its stages never include `owner_accepted` or `confirmatory_completed`, the states `tools/video/record.ts` finds its cases by. `make demo-reset` removes them. The web mock shows them with `?pathways=3`.
+`make demo-seed-chronic` (or `make demo-seed DEMO_THIRD_PATHWAY=1`) writes four SYNTHETIC patients with Emirati-style names to HAPI (fixed ids, tagged SYNTHETIC, no identifier) and creates one case each: very high blood pressure twice (urgent, left at `acknowledged` so both are on the coordinator's Today screen), a high HbA1c (soon, `patient_contacted`) and a raised BMI (routine, `patient_acknowledged`). **They are part of the demo snapshot** (`make demo-snapshot` runs the seed, and so does `deploy/gcp/vm/seed-on-vm.sh` before it saves the hosted demo's snapshot), so `make demo-reset` brings them back (ADR-057). The Today screen shows each with a plain-language reason ("Very high blood pressure") and a visible chip that the threshold is a placeholder pending clinician sign-off (H1). Its stages never include `owner_accepted` or `confirmatory_completed`, the states `tools/video/record.ts` finds its cases by. The web mock shows them with `?pathways=3`.
 
 ## What not to infer
 

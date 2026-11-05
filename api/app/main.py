@@ -17,6 +17,7 @@ from app.routers import cases, drafts, erasure as erasure_router, replies, sched
 from app.routers import hl7 as hl7_router
 from app.routers import integrations as integrations_router
 from app.routers import clock as clock_router
+from app.routers import mock_integrations as mock_integrations_router
 from app.routers import metrics as metrics_router
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s:     %(name)s: %(message)s")
@@ -163,6 +164,7 @@ app.include_router(agency_router.router)  # A22: the agency (labour, not authori
 app.include_router(erasure_router.router)  # A32: erasure of a patient's personal data (ADR-025)
 app.include_router(hl7_router.router)  # A28: the HL7 v2 adapter's transport (ADR-039)
 app.include_router(integrations_router.router)  # judge Integrations page: bounded metadata feed
+app.include_router(mock_integrations_router.router)  # ADR-057: MOCK Malaffi replay and Sahatna callback (dev or declared demo only; 404 elsewhere)
 
 
 @app.get("/health")

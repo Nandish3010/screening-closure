@@ -8,6 +8,7 @@ import { PathwayBadge } from "../components/PathwayBadge";
 import { PriorityBadge } from "../components/PriorityBadge";
 import { TODAY } from "../i18n/strings";
 import { fmtDateTime, plainError, shortId, titleCase } from "../lib/format";
+import { PRIORITY_PLACEHOLDER_NOTE, priorityIsPlaceholder, priorityReason } from "../lib/priority";
 import { actionState, isAgencyItem, mergeGroups, replyNotes, whyText, type TodayAnyItem } from "../lib/today";
 import { StatePill } from "./CoordinatorPage";
 
@@ -229,6 +230,12 @@ function CaseRow({ group, item, role, busy, onAct }: {
         <StatePill state={item.state} />
       </div>
       <p className="today-why" data-testid="today-why">{whyText(item)}</p>
+      {item.priority && (
+        <p className="today-priority" data-testid="today-priority-reason">
+          <strong>Why this priority:</strong> <span data-testid="today-priority-text">{priorityReason(item.priority)}.</span>{" "}
+          {priorityIsPlaceholder(item.priority) && <span className="chip chip-warn" data-testid="today-priority-placeholder">{PRIORITY_PLACEHOLDER_NOTE}</span>}
+        </p>
+      )}
       {notes.length > 0 && <ul className="plain today-notes">{notes.map((n) => <li key={n} className="muted">{n}</li>)}</ul>}
       {group === "signatures" && <p className="muted">{TODAY.signatureNote}</p>}
       <p className="muted today-meta">

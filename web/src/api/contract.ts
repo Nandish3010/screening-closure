@@ -1453,6 +1453,41 @@ export interface IntegrationFeed {
   entries: IntegrationFeedEntry[];
 }
 
+/** `GET /integrations/mock` (coordinator, supervisor; dev or declared demo only). Everything under it is a MOCK (ADR-057). */
+export interface IntegrationMockStatus {
+  mock: true;
+  enabled: true;
+  note: string;
+  malaffi: { label: string; replays_used: number; replays_max: number };
+  sahatna: { label: string; eligible_cases: { case_id: string; state: string; pathway: string }[] };
+}
+interface IntegrationMockResultBase {
+  mock: true;
+  label: string;
+  note: string;
+  /** The synthetic HL7 v2 message that was sent to the adapter, segments on separate lines. */
+  message: string;
+  ack: { code: "AA" | "AE" | "AR"; reason: string | null };
+  case_id: string | null;
+  state: string | null;
+}
+/** `POST /integrations/mock/malaffi/replay`. */
+export interface MalaffiReplayResult extends IntegrationMockResultBase {
+  message_type: "ORU^R01";
+  control_id: string;
+  outcome: "case_created" | "duplicate" | "rejected";
+  replays_used: number;
+  replays_max: number;
+}
+/** `POST /integrations/mock/sahatna/booking-callback`. */
+export interface SahatnaCallbackResult extends IntegrationMockResultBase {
+  callback: { callback_id: string; status: string; case_id: string; appointment_ref: string; slot_start: string };
+  translated_to: "HL7 SIU^S12";
+  outcome: "booked" | "duplicate" | "unchanged" | "rejected";
+  event: "book_confirmatory" | null;
+  state_before: string | null;
+}
+
 export interface ApiClient {
   /** "mock" | "http" - for display only. */
   readonly adapter: "mock" | "http";
@@ -1513,6 +1548,10 @@ export interface ApiClient {
   funnelMetrics(params?: FunnelParams): Promise<FunnelMetrics | null>;
   /** The last integration events (HL7, FHIR, notifications) of the demo stack, newest first; null when the role may not read it. */
   integrationFeed?(limit?: number): Promise<IntegrationFeed | null>;
+  /** The MOCK Malaffi replay and Sahatna callback (ADR-057): http only. Status is null where the routes do not exist (not a dev or demo deployment) or the role may not call them. */
+  integrationMockStatus?(): Promise<IntegrationMockStatus | null>;
+  replayMalaffiResult?(redeliver?: boolean): Promise<MalaffiReplayResult>;
+  sahatnaBookingCallback?(caseId: string): Promise<SahatnaCallbackResult>;
   /** GET /alerts: active and cleared platform alerts (scheduler down). */
   listAlerts(): Promise<Alert[]>;
   /** GET /agency/org (A22): the org chart with live counts. Coordinator and supervisor; others 403. */

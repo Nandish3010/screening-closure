@@ -107,7 +107,8 @@ describe("Integrations page", () => {
     expect(screen.getByText(/mutual TLS|client certificate/i, { selector: "td" })).toBeInTheDocument();
     expect(screen.getByRole("rowheader", { name: "FHIR evidence lookup" })).toBeInTheDocument();
     const pilot = screen.getByTestId("integrations-pilot-work");
-    expect(pilot).toHaveTextContent(/There is no interface to Sahatna of any kind/);
+    expect(pilot).toHaveTextContent(/There is no connection to Sahatna/);
+    expect(pilot).toHaveTextContent(/shape we made up/);
     expect(pilot).toHaveTextContent(/No real message has ever been sent/);
   });
 

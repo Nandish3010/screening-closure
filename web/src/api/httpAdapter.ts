@@ -1,7 +1,7 @@
 /** HTTP adapter: the real API at VITE_API_URL, with bearer-token auth from POST /auth/dev-login. */
 import type {
   AccessLog, AgencyInboxItem, AgencyOrg, AgencyRun, AgencyTask, AgencyTaskParams, Alert, ApiClient, CaseAgencySummary, CaseDetail, CaseEvent, CaseListParams, CaseSummary, CaseTimeline, ClosureMetrics, ConfirmatoryResult, Draft, TodayParams, TodayResponse,
-  DraftApproval, DraftRecord, DraftRejection, DraftRequestBody, EffortMetrics, FunnelMetrics, FunnelParams, IntegrationFeed, Me, PostEventBody, ReplyBody, ReplyResult, Role, TimelineItem,
+  DraftApproval, DraftRecord, DraftRejection, DraftRequestBody, EffortMetrics, FunnelMetrics, FunnelParams, IntegrationFeed, IntegrationMockStatus, MalaffiReplayResult, SahatnaCallbackResult, Me, PostEventBody, ReplyBody, ReplyResult, Role, TimelineItem,
 } from "./contract";
 import { ApiError, BACKEND_ROLE, OWNER_SCOPED_ROLES, ROLES } from "./contract";
 import type { OidcClient } from "./oidc";
@@ -344,6 +344,19 @@ export function createHttpAdapter(baseUrl: string, fetchImpl: typeof fetch = (..
         throw e;
       }
     },
+    async integrationMockStatus(): Promise<IntegrationMockStatus | null> {
+      try {
+        return await request<IntegrationMockStatus>("/integrations/mock");
+      } catch (e) {
+        // 404: this deployment is not a development or declared demo one, so the routes do not exist; 403: not this role's.
+        if (e instanceof ApiError && (e.status === 404 || e.status === 403)) return null;
+        throw e;
+      }
+    },
+    replayMalaffiResult: (redeliver = false) =>
+      request<MalaffiReplayResult>("/integrations/mock/malaffi/replay", { method: "POST", body: JSON.stringify({ redeliver }) }),
+    sahatnaBookingCallback: (caseId: string) =>
+      request<SahatnaCallbackResult>("/integrations/mock/sahatna/booking-callback", { method: "POST", body: JSON.stringify({ case_id: caseId }) }),
     // A22 agency layer. A backend without it answers 404: the lists degrade to empty, the case summary to null, and
     // agencyOrg / runAgency let the ApiError through so the page can say "agency not available".
     agencyOrg: () => request<AgencyOrg>("/agency/org"),
