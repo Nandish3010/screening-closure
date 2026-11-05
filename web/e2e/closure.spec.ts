@@ -35,7 +35,7 @@ for (const lang of ["en", "ar"] as const) {
     await page.getByLabel("Channel").selectOption("sms");
     await page.getByTestId("request-draft").click();
     const draft = page.getByTestId(/^draft-d-mock-/);
-    await expect(draft).toContainText("AI draft");
+    await expect(draft).toContainText("Template message");
     await expect(draft).toContainText("Prompt hash");
     const text = draft.locator(`[lang="${lang}"]`);
     await expect(text).toContainText(s.draft);

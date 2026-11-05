@@ -52,7 +52,7 @@ describe("Case detail actions", () => {
     await waitFor(() => expect(screen.getByTestId("flash")).toHaveTextContent(/escalated/i));
     await user.click(screen.getByTestId("request-draft"));
     const draftItem = await screen.findByTestId(/^draft-d-mock/);
-    expect(draftItem).toHaveTextContent(/AI draft/);
+    expect(draftItem).toHaveTextContent(/Template message/); // the mock drafts from a template, and says so
     // The patient answered in Arabic, so the draft form defaults to Arabic and the text is right-to-left.
     expect(within(draftItem).getByText(/تنظير القولون/).closest("p")).toHaveAttribute("dir", "rtl");
     // The event carries no text: the timeline loads it from GET /cases/{id}/drafts.

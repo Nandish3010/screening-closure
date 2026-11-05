@@ -3,7 +3,9 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import { DEMO_OVERDUE_CASE_ID } from "../src/api/fixtures";
 import { createMockAdapter } from "../src/api/mockAdapter";
-import { abstentionText, approvalMessage, blockedText } from "../src/components/DraftsPanel";
+import { DraftsPanel, abstentionText, approvalMessage, blockedText, provenanceLine } from "../src/components/DraftsPanel";
+import type { DraftView } from "../src/lib/derive";
+import { render } from "@testing-library/react";
 import { CaseDetailPage } from "../src/pages/CaseDetailPage";
 import type { Role } from "../src/api/contract";
 import { renderWithApp } from "./helpers";
@@ -327,5 +329,62 @@ describe("SEC-2: the owner-scoped drafts list", () => {
       expect(screen.queryByTestId("drafts-hidden-why")).toBeNull();
       view.unmount();
     }
+  });
+});
+
+const aiDraft = (over: Partial<DraftView> = {}): DraftView => ({
+  draft_id: "d-ai", case_id: "c1", purpose: "result_notification", channel: "sms", language: "en",
+  text: "Your screening result is ready.", text_ar: null, text_en: "Your screening result is ready.",
+  provider: "anthropic", model_id: "claude-haiku-5-5", fallback_used: false, abstention_reason: null, prompt_hash: "a".repeat(64),
+  created_by: "coordinator:x", created_at: "2026-11-05T08:00:00Z",
+  approved_at: null, approved_by: null, rejected_at: null, rejected_by: null, rejection_reason: null, status: "pending", ...over,
+});
+const panel = (drafts: DraftView[], ownerName: string | null = "Dr. Huda Rahman") =>
+  render(<DraftsPanel drafts={drafts} ownerName={ownerName} canRequest canDecide onRequest={() => {}} onApprove={() => {}} onReject={() => {}} />);
+
+describe("provenance of a model draft and of a template", () => {
+  it("a model draft names the model and the owner who approves it before sending", () => {
+    panel([aiDraft()]);
+    const item = screen.getByTestId("draft-d-ai");
+    expect(within(item).getByTestId("provenance-d-ai")).toHaveTextContent("Drafted by AI (model claude-haiku-5-5), approved by Dr. Huda Rahman before sending.");
+    expect(item).toHaveTextContent("AI draft");
+    expect(within(item).queryByTestId("template-d-ai")).toBeNull();
+    expect(within(item).queryByTestId("ar-review-d-ai")).toBeNull();
+  });
+
+  it("a template says template, not AI, and still names who approves", () => {
+    panel([aiDraft({ draft_id: "d-t", provider: "template", model_id: null })]);
+    const item = screen.getByTestId("draft-d-t");
+    expect(within(item).getByTestId("provenance-d-t")).toHaveTextContent("Template message (reviewed wording, no AI model), approved by Dr. Huda Rahman before sending.");
+    expect(within(item).getByTestId("template-d-t")).toHaveTextContent("Template");
+    expect(item).not.toHaveTextContent("AI draft");
+    expect(item.textContent).not.toMatch(/Drafted by AI/);
+  });
+
+  it("a fallback after an abstention is shown as a template, with the reason", () => {
+    panel([aiDraft({ draft_id: "d-f", provider: "template", model_id: "template-v1", fallback_used: true, abstention_reason: "cache_miss" })]);
+    const item = screen.getByTestId("draft-d-f");
+    expect(within(item).getByTestId("provenance-d-f")).toHaveTextContent(/^Template message \(the AI could not draft this one\), approved by Dr\. Huda Rahman before sending\./);
+    expect(within(item).getByTestId("abstention-d-f")).toHaveTextContent(/no recorded AI output/);
+    expect(item).not.toHaveTextContent("Drafted by AI");
+  });
+
+  it("an Arabic draft is marked as pending native-speaker review, an English one is not", () => {
+    panel([aiDraft({ draft_id: "d-ar", language: "ar", text: "نتيجة فحصك جاهزة." })]);
+    expect(screen.getByTestId("ar-review-d-ar")).toHaveTextContent("pending native-speaker review (H2)");
+  });
+
+  it("after a decision the person who decided is named; with no owner it says the case owner", () => {
+    const approved = aiDraft({ status: "approved", approved_by: "primary_care_owner:abc", approved_at: "2026-11-05T09:00:00Z" });
+    expect(provenanceLine(approved, "Someone Else")).toContain("approved by abc before sending");
+    expect(provenanceLine(aiDraft({ status: "rejected", rejected_by: "specialist_owner:x9" }), null)).toBe("Drafted by AI (model claude-haiku-5-5), rejected by x9. Nothing was sent.");
+    expect(provenanceLine(aiDraft(), null)).toContain("approved by the case owner before sending");
+    expect(provenanceLine(aiDraft({ model_id: null }), "A")).toContain("model not recorded");
+  });
+
+  it("the case page passes the owner's name through", async () => {
+    openCase(cid(2), "coordinator");
+    const item = await screen.findByTestId("draft-d-seed-2");
+    expect(within(item).getByTestId("provenance-d-seed-2")).toHaveTextContent(/approved by .+ before sending\./);
   });
 });
