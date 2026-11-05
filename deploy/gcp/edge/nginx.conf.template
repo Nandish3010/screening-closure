@@ -30,6 +30,14 @@ server {
         proxy_set_header Host $host;
     }
     location ~ ^/api/clock { return 404; }
+    # Demo controls that move shared state (ADR-057): supervisor token, checked by the API, which also rate limits a reset; the edge adds a tight burst.
+    location ~ ^/api/demo/(reset|missed-followup)$ {
+        limit_req zone=api_ip burst=3 nodelay;
+        rewrite ^/api/(.*)$ /$1 break;
+        proxy_pass http://api:8000;
+        proxy_set_header Host $host;
+        proxy_read_timeout 60s;
+    }
     location = /api/metrics { return 404; }
     location = /api/auth/dev-login { return 404; }          # 404 in production anyway; refuse it before the API sees it
     location /api/ {

@@ -116,8 +116,12 @@ def request_reset(identity: Identity) -> dict:
         left = int(wait - (now - last).total_seconds())
         raise DemoError(429, f"The demo was reset a moment ago. Please wait {max(1, left // 60 + (1 if left % 60 else 0))} minute(s) before resetting again.")
     body = {"requested_at": now.isoformat(), "requested_by": f"{identity.name} ({identity.role})"}
-    _write("reset-request.json", body)
-    _write("status.json", {**st, "last_request_at": now.isoformat()})
+    try:
+        _write("reset-request.json", body)
+        _write("status.json", {**st, "last_request_at": now.isoformat()})
+    except OSError as exc:
+        log.error("demo reset request could not be written to %s: %s", settings.demo_control_dir, exc.strerror)
+        raise DemoError(503, "Reset is not available on this server right now. Ask the operator to reset it (make gcp-reset).") from exc
     log.info("demo reset requested by role=%s", identity.role)
     return {"requested": True, **body, "message": "Reset requested. The demo restarts in about a minute and comes back at the same sign-in."}
 

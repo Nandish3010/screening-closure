@@ -222,3 +222,11 @@ def test_a_missed_followup_refuses_with_plain_words():
     assert demo.post("/demo/missed-followup", json={"case_id": "x"}, headers=SUP).status_code == 422
     (cid,) = new_case()
     assert demo.post("/demo/missed-followup", json={"case_id": cid, "extra": 1}, headers=SUP).status_code == 422
+
+
+def test_an_unwritable_control_folder_is_a_plain_503_not_a_stack_trace(monkeypatch, tmp_path):
+    blocker = tmp_path / "file"
+    blocker.write_text("x")
+    monkeypatch.setattr(settings, "demo_control_dir", str(blocker / "sub"))  # a path under a file cannot be created
+    r = demo.post("/demo/reset", headers=SUP)
+    assert r.status_code == 503 and "operator" in r.json()["detail"] and "Traceback" not in r.text
