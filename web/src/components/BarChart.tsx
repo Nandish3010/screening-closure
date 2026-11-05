@@ -30,6 +30,7 @@ export function BarChart({
             return (
               <g key={d.label} transform={`translate(0 ${i * rowH + 4})`}>
                 <text x={labelW - 8} y={rowH / 2} textAnchor="end" dominantBaseline="middle" className="chart-label">{d.label}</text>
+                <rect x={labelW} y={4} width={w - labelW - 40} height={rowH - 12} rx={3} className="chart-track" />
                 <rect x={labelW} y={4} width={Math.max(bw, 1)} height={rowH - 12} rx={3} style={{ fill: `var(${colorVar})` }} />
                 <text x={labelW + bw + 6} y={rowH / 2} dominantBaseline="middle" className="chart-value">{d.value}</text>
               </g>

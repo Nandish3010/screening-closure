@@ -7,6 +7,7 @@ import { DEMO_USERS, JUDGE_ROLES } from "../api/identities";
 import { useTour } from "../judge/JudgeTour";
 import { fmtDateTime } from "../lib/format";
 import { DemoBanner } from "./DemoBanner";
+import { BrandLockup } from "./Brand";
 
 export function SimBadge() {
   const { simTime } = useApp();
@@ -64,8 +65,8 @@ export function Header() {
     <header className={`app-header${pathname.startsWith("/patient") ? " app-header-patient" : ""}`}>
       <DemoBanner />
       <div className="header-row">
-        <Link className="brand" to="/" aria-label="Screening Closure home">
-          <span className="brand-mark" aria-hidden="true">&#10003;</span> Screening Closure
+        <Link className="brand" to="/">
+          <BrandLockup /><span className="visually-hidden"> home</span>
         </Link>
         <div className="header-tools">
           <button type="button" className="btn btn-small btn-tour" onClick={() => tour.open()} aria-haspopup="dialog" data-testid="judge-tour-button">Judge tour</button>

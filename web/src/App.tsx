@@ -16,6 +16,7 @@ import { useSyncExternalStore } from "react";
 import { useApp } from "./app/AppContext";
 import { DEMO_USERS, JUDGE_ROLES } from "./api/identities";
 import { DemoBanner } from "./components/DemoBanner";
+import { BrandLockup } from "./components/Brand";
 
 /** OIDC mode (A29): shown until someone has signed in at the identity provider. Demo users are listed to pre-fill the login form. */
 export function SignInPage({ error }: { error?: string | null }) {
@@ -25,6 +26,7 @@ export function SignInPage({ error }: { error?: string | null }) {
   return (
     <main className="container" id="main">
       <DemoBanner />
+      <p className="signin-brand"><BrandLockup large /></p>
       <h1>Sign in</h1>
       <p className="lead">Identity comes from the identity provider (a local stand-in for UAE PASS in this build). The demo users' passwords are printed by <code>make oidc-up</code> and never shown here.</p>
       {error && <p role="alert" className="why">{error}</p>}
@@ -55,6 +57,7 @@ function JudgeSignIn({ error }: { error?: string | null }) {
   return (
     <main className="container" id="main" data-testid="judge-signin">
       <DemoBanner />
+      <p className="signin-brand"><BrandLockup large /></p>
       <h1>Screening Closure: judge demo</h1>
       <p className="lead">Pick a role. You sign in through the real identity provider; the username is filled in and the <strong>password for each role is in the submission</strong>. Everything here is synthetic.</p>
       {error && <p role="alert" className="why">{error}</p>}
@@ -77,6 +80,7 @@ function JudgeSignIn({ error }: { error?: string | null }) {
 function Landing() {
   return (
     <main className="container">
+      <p className="signin-brand"><BrandLockup large /></p>
       <h1>Screening Closure</h1>
       <p className="lead">Every positive screening result has an owner, a clock and a signed closure. Nothing here diagnoses anyone.</p>
       <ul className="cards">

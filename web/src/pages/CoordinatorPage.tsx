@@ -132,7 +132,7 @@ export function CoordinatorPage() {
             <li><span className="chip chip-watchdog">{rows.filter((c) => c.watchdog_flagged).length} with nobody looking</span></li>
             <li><span className="chip chip-held">{rows.filter((c) => c.consent_frozen || c.pending_handoff).length} held</span></li>
           </ul>
-          <div className="table-wrap">
+          <div className="table-wrap" role="region" aria-label="Worklist table" tabIndex={0}>
             <table className="worklist" data-testid="worklist">
               <thead>
                 <tr><th>Case</th><th>Pathway</th><th>Priority</th><th>Age</th><th>State</th><th>Owner</th><th>Next due</th><th>Flags</th><th>Last activity</th><th>Risk</th></tr>
