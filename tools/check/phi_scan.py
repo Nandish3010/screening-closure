@@ -32,6 +32,7 @@ from __future__ import annotations
 import argparse
 import base64
 import logging
+import os
 import re
 import subprocess
 import sys
@@ -41,6 +42,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
+# The scan covers the hosted demo's routes (ADR-057), which exist only under these flags with the sim clock.
+os.environ.update(DEMO_SIMULATED_CLOCK="1", DEMO_DEPLOYMENT="1", CLOCK_MODE="sim")
 MARKER = "PHIMARKER"
 PHONE_DIGITS = "971501234567"
 EMAIL = "marker.patient@example.org"
@@ -139,6 +142,8 @@ QUERY_REVIEW: dict[tuple[str, str, str], tuple[str, str]] = {
     ("GET", "/agency/tasks", "run_id"): ("opaque", "a run UUID"),
     ("GET", "/agency/tasks", "limit"): ("int", "how many tasks, 1 to 5000"),
     # C14: the coordinator's Today screen. A count, queue names and two opaque cursors the API itself returned.
+    # ADR-057 (hosted demo only): a random id the browser makes for the tab, 8 to 64 of [A-Za-z0-9_-]; it identifies no person.
+    ("GET", "/demo/guide", "session"): ("opaque", "random per-tab id matching ^[A-Za-z0-9_-]{8,64}$, made by the browser; anything else is a 422"),
     ("GET", "/today", "limit"): ("int", "items per queue, 1 to 50"),
     ("GET", "/today", "group"): ("enum", "one of the seven queue names (urgent, overdue, escalations, replies, flagged, signatures, agency); any other value is a 422"),
     ("GET", "/today", "cursor"): ("opaque", "url-safe base64 of {pathway, state, case UUID} returned by the API as `cursor`; anything else is a 422"),

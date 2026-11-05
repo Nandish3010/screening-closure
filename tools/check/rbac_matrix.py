@@ -32,6 +32,7 @@ from __future__ import annotations
 import argparse
 import difflib
 import logging
+import os
 import sys
 from contextlib import contextmanager
 from dataclasses import dataclass, field
@@ -43,6 +44,9 @@ if str(ROOT / "api") not in sys.path:
     sys.path.insert(0, str(ROOT / "api"))
 
 OUT_PATH = ROOT / "docs/governance/rbac-matrix.md"
+
+# The matrix covers the hosted demo's routes (ADR-057), which exist only under these flags with the sim clock.
+os.environ.update(DEMO_SIMULATED_CLOCK="1", DEMO_DEPLOYMENT="1", CLOCK_MODE="sim")
 
 from fastapi.testclient import TestClient  # noqa: E402
 
