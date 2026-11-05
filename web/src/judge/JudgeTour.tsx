@@ -2,10 +2,11 @@ import headline from "./headline.json";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useApp } from "../app/AppContext";
-import type { ApiClient, CaseSummary, Role } from "../api/contract";
+import type { ApiClient, CaseSummary, GuideStepId, GuidedCase, Role } from "../api/contract";
 import { JUDGE_ROLES } from "../api/identities";
 import { DEFAULT_FILTERS, worklist } from "../lib/worklist";
 import { DOCS, docHref, type DocLink } from "./links";
+import { markSeen, useGuide } from "./guide";
 
 /**
  * Judge tour (C13): a guided, step-by-step walk through the demo story on whatever data the app currently has.
@@ -20,7 +21,7 @@ import { DOCS, docHref, type DocLink } from "./links";
  * through the demo story. Both only navigate and read: nothing in a tour posts an event.
  */
 export type TourTrack = "challenge" | "story";
-interface TourControl { open: (track?: TourTrack) => void; isOpen: boolean }
+interface TourControl { open: (track?: TourTrack, index?: number) => void; isOpen: boolean }
 const TourContext = createContext<TourControl>({ open: () => undefined, isOpen: false });
 export const useTour = () => useContext(TourContext);
 
@@ -29,7 +30,15 @@ interface Step {
   title: string;
   body: ReactNode;
   /** The route to show, resolved from the current data. `null` keeps the page where it is. */
-  route: (cases: CaseSummary[], now: string | null) => string | null;
+  route: (cases: CaseSummary[], now: string | null, guided?: GuidedCase | null) => string | null;
+  /** Challenge track: which guided step this is (its fresh case comes from `GET /demo/guide`). */
+  guide?: GuideStepId;
+  /** Challenge track: the one line this step proves, shown on the Start here card. */
+  claim?: string;
+  /** Challenge track: roughly how long the step takes. */
+  seconds?: number;
+  /** Challenge track: what to look for on the destination screen. */
+  lookFor?: string[];
   /** CSS selector of the element to outline once the page has rendered. */
   target?: string;
   links?: DocLink[];
@@ -142,87 +151,147 @@ export const TODAY_ROUTE = "/coordinator/today";
 /** The patient app's privacy centre (the access log and the patient's rights). */
 export const PRIVACY_ROUTE = "/patient?tab=privacy";
 
+const guidedCase = (g: GuidedCase | null | undefined, fallback: string) => (g ? `/coordinator/${g.case_id}` : fallback);
+
 /**
- * The challenge owner's five steps, each deep-linked into the real screens. The wording stays with what the screens show;
- * every number is on the screen or in the repository, none is typed here.
+ * The challenge owner's five steps, plus the safety net and privacy and consent, each deep-linked into the real screens. On the hosted
+ * demo each step opens an UNTOUCHED case picked for this browser session (`GET /demo/guide`, ADR-057), so two judges do not collide;
+ * elsewhere it falls back to the first fitting case. `claim` is the one line this step proves; `lookFor` says what to see on the
+ * destination. The wording stays with what the screens show; every number is on the screen or in the repository, none is typed here.
  */
 export const CHALLENGE_STEPS: Step[] = [
   {
     id: "record",
+    guide: "record",
     title: "1. Record: every positive result gets an owner and a clock",
+    claim: "A positive result becomes a case with a named owner and a deadline the moment it arrives.",
+    seconds: 40,
     role: "coordinator",
     body: (
       <>
-        <p>A positive screening result enters as a case. The system acknowledges it, names an owner and starts the clock, so nothing waits for someone to remember. The Today screen shows what needs a person today; each case page shows its whole history.</p>
+        <p>A positive screening result enters as a case. The system acknowledges it, names an owner and starts the clock, so nothing waits for someone to remember. The case page shows its whole history; the Today screen shows what needs a person today.</p>
         <p>Nothing here diagnoses anyone. The record is an append-only log of who did what and when.</p>
       </>
     ),
-    route: () => TODAY_ROUTE,
-    target: '[data-testid="today-screen"], [data-testid="worklist"]',
-    tryIt: ["Open the first case from the Today screen and read its timeline from the top: who acted, and what is due next.", "On the worklist, find the owner and next-due columns for every open case."],
-    also: [{ label: "Open the worklist", to: "/coordinator" }],
+    route: (_c, _n, g) => guidedCase(g, TODAY_ROUTE),
+    target: '[data-testid="timeline"]',
+    lookFor: ["The first events in the timeline were written by the system, not a person: the result was acknowledged and an owner was named.", "The SLA clock line near the top says when the next step is due."],
+    tryIt: ["Read the timeline from the top: who acted, and what is due next."],
+    also: [{ label: "Open Today", to: TODAY_ROUTE }, { label: "Open the worklist", to: "/coordinator" }],
     links: [DOCS.evidence],
   },
   {
     id: "prioritise",
+    guide: "prioritise",
     title: "2. Prioritise: the people most at risk come first",
+    claim: "Every case has a priority tier from a published rule, and the screen says why.",
+    seconds: 40,
     role: "coordinator",
     body: (
       <>
-        <p>Each case carries a priority tier (urgent, soon, routine) set at intake from a published rule; only the tier and the rule are stored, never the values. The risk score only orders the worklist. It never closes, escalates or decides care, and its thresholds are clinician placeholders until a clinical lead signs them off.</p>
+        <p>Each case carries a priority tier (urgent, soon, routine) set at intake from a published rule; only the tier and the rule are stored, never the values. The tier only orders the worklist. It never closes, escalates or decides care, and its thresholds are clinician placeholders until a clinical lead signs them off.</p>
       </>
     ),
-    route: () => "/coordinator",
-    target: '[data-testid="worklist"]',
-    tryIt: ["Look at the Priority column: urgent cases sort above routine ones.", "Open a case and read why it has that tier (the explanation panel names the rule)."],
+    route: (_c, _n, g) => guidedCase(g, "/coordinator"),
+    target: '[data-testid="priority"], [data-testid="worklist"]',
+    lookFor: ["The Priority line: the tier, and the rule that gave it in plain words.", "The note under it: priority orders the list but never changes the clock or closes a case.", "On the worklist, urgent cases sort above routine ones."],
+    tryIt: ["Open the worklist and compare the Priority column with the order of the rows."],
+    also: [{ label: "Open the worklist", to: "/coordinator" }],
     links: [DOCS.riskCard, DOCS.limits],
   },
   {
     id: "refer",
-    title: "3. Refer: ask the right service, and keep the owner until it accepts",
+    guide: "refer",
+    title: "3. Refer, considering insurance: the right service, and an owner until it accepts",
+    claim: "A referral prefers a service in the patient's insurance network and says why; ownership stays until the other side accepts.",
+    seconds: 50,
     role: "clinician",
     body: (
       <>
-        <p>The case owner books a colonoscopy or hands the case to another service. A hand-off is a request: ownership stays with the referrer until the other side accepts, and a refusal or silence is re-routed rather than lost.</p>
+        <p>The case owner books a colonoscopy or hands the case to another service. The patient&apos;s insurance scheme decides which services are offered first. A hand-off is a request: ownership stays with the referrer until the other side accepts, and a refusal or silence is re-routed rather than lost.</p>
       </>
     ),
-    route: caseRoute(caseIn(["patient_contacted", "patient_acknowledged", "owner_accepted", "referral_rejected"])),
-    target: '[data-testid="timeline"]',
-    tryIt: ["Sign in as the clinician and, on a case you own, request a hand-off to a service; the timeline shows the request and who is waited on.", "Look for the Hand-off pending chip on the worklist."],
-    also: [{ label: "Open the worklist", to: "/coordinator" }],
+    route: (cases, now, g) => (g ? `/coordinator/${g.case_id}` : caseRoute(caseIn(["patient_contacted", "patient_acknowledged", "owner_accepted", "referral_rejected"]))(cases, now)),
+    target: '[data-testid="insurance"], [data-testid="timeline"]',
+    lookFor: ["The Insurance line: the scheme (for example Thiqa, Enhanced or Basic) and which providers are in its network.", "An out-of-network choice is flagged with a reason; it is never blocked.", "In the timeline, a hand-off is a request: the owner does not change until the other service accepts."],
+    tryIt: ["Sign in as the clinician who owns the case, pick a provider in the hand-off panel and watch the network note change."],
     links: [DOCS.clinician],
   },
   {
     id: "remind",
-    title: "4. Reminders and navigation: the patient is reached, and a quiet case is caught",
-    role: "supervisor",
+    guide: "remind",
+    title: "4. Remind and navigate: the patient is reached in their language",
+    claim: "The patient gets a short reminder in Arabic or English and one clear next step; a person approves what goes out.",
+    seconds: 50,
+    role: "coordinator",
     body: (
       <>
-        <p>The patient gets short reminders in Arabic or English and a page that says the one next step. If nobody acts, the clock escalates the case up a ladder to the supervisor and the programme coordinator, and a watchdog flags a case that has stopped moving.</p>
-        <p>The demo runs on a simulated clock so you can see weeks pass.</p>
+        <p>Messages to the patient are short, in their language, and say one next step. A draft is approved by the case owner before it is sent, and the pre-approved reminders the system sends on its own are marked as automatic. The patient app shows the same next step in plain words.</p>
       </>
     ),
-    route: () => "/coordinator",
-    target: '[data-testid="worklist"]',
-    tryIt: ["Sign in as the supervisor, type 15 in Advance clock (days) in the header and press Advance. Watch the safety net flag the case: overdue chips, then escalations.", "Then open the patient app to see the plain next step in the patient's language, and the privacy centre for who has looked at the record."],
-    also: [{ label: "Patient app", to: "/patient" }, { label: "Privacy centre", to: PRIVACY_ROUTE }],
+    route: (_c, _n, g) => guidedCase(g, "/coordinator"),
+    target: '[data-testid="drafts-panel"], [data-testid="worklist"]',
+    lookFor: ["The Messages panel: drafts show who wrote them and wait for a person to approve.", "Reminders the system sent itself carry an automatic marker in the timeline."],
+    tryIt: ["Open the patient app (link below) to see the next step as the patient reads it, then switch the language."],
+    also: [{ label: "Patient app", to: "/patient" }],
     links: [DOCS.agency],
   },
   {
     id: "outcome",
-    title: "5. Outcome: a case closes only with evidence and a clinician's signature",
+    guide: "outcome",
+    title: "5. Track the outcome: closed only with evidence and a clinician's signature",
+    claim: "The dashboard counts the loop's five steps; a case closes only with complete evidence and a named clinician's signature.",
+    seconds: 50,
     role: "supervisor",
     body: (
       <>
         <p>The dashboard funnel counts the five steps for the whole programme (result recorded, prioritised, referred, attended, outcome documented) with the share kept at each step and the median days between them, plus the cases at risk of being lost. A case closes only when a named clinician signs and the evidence exists and is complete; the guard refuses anything else.</p>
-        <p>All figures are synthetic and come from the cases in this demo.</p>
+        <p>All figures are synthetic and come from the cases in this demo. A step with too few cases to compare says so instead of showing a percentage.</p>
       </>
     ),
     route: () => "/dashboard",
     target: '[data-testid="funnel-card"], [data-testid="kpi-p50"]',
-    tryIt: ["Change the priority filter on the funnel and watch the counts follow.", "As the clinician, open a case at the sign-off stage and try a made-up evidence reference: the guard refuses it and the case stays open."],
-    also: [{ label: "Judge summary", to: "/judge" }],
+    lookFor: ["Five funnel steps with counts, and the cases at risk of being lost.", "Where there are too few cases to compare, the share is replaced by a note instead of a percentage."],
+    tryIt: ["Change the priority filter on the funnel and watch the counts follow.", "Then open the sign-off case (link below) as the clinician and try a made-up evidence reference: the guard refuses it and the case stays open."],
+    also: [{ label: "Open a case at sign-off", to: "/coordinator?state=confirmatory_completed" }, { label: "Judge summary", to: "/judge" }],
     links: [DOCS.results, DOCS.limits],
+  },
+  {
+    id: "safety",
+    guide: "safety",
+    title: "Safety net: a missed follow-up is caught, and a person must act",
+    claim: "If a follow-up is missed the scheduler and watchdog catch it, escalate it, and wait for a person to accept the escalation.",
+    seconds: 75,
+    role: "supervisor",
+    body: (
+      <>
+        <p>Silence is the dangerous failure. Press <strong>Simulate a missed follow-up</strong> on this case: the demo clock skips past its due date and the real scheduler and watchdog run. Nothing is faked: the engine writes the overdue marker and the escalations, and no machine can accept them.</p>
+      </>
+    ),
+    route: (_c, _n, g) => guidedCase(g, "/coordinator"),
+    target: '[data-testid="missed-followup"], [data-testid="worklist"]',
+    lookFor: ["After the button: an overdue chip, then a reminder and a supervisor escalation on the timeline, each written by the system.", "The escalation shows as waiting for a human to accept.", "Accept it as the supervisor (the panel further down): it clears, and the log keeps who accepted."],
+    tryIt: ["Press the button, read the result, then accept the escalation."],
+    links: [DOCS.agency],
+  },
+  {
+    id: "privacy",
+    guide: "privacy",
+    title: "Privacy and consent: the patient decides, and can see who looked",
+    claim: "The patient controls how they are contacted and can see everyone who opened their record.",
+    seconds: 40,
+    role: "coordinator",
+    body: (
+      <>
+        <p>Every staff read of a case is recorded outside the clinical log, and the patient can read that list in their privacy centre. If the patient withdraws consent, contact stops at once and nobody can message them until it is restored.</p>
+      </>
+    ),
+    route: (_c, _n, g) => guidedCase(g, "/coordinator"),
+    target: '[data-testid="access-audit"], [data-testid="consent-state"]',
+    lookFor: ["The access log: who opened this case and when (one row per person per 15 minutes).", "The Consent line: the channels allowed, and a Frozen chip if consent was withdrawn."],
+    tryIt: ["Open the patient's privacy centre (link below) to see the same list from the patient's side."],
+    also: [{ label: "Patient privacy centre", to: PRIVACY_ROUTE }],
+    links: [DOCS.provenance],
   },
 ];
 
@@ -255,13 +324,13 @@ export function TourProvider({ children }: { children: ReactNode }) {
   const [resume] = useState<Resume | null>(takeResume);
   const [state, setState] = useState<{ track: TourTrack; start: number } | null>(resume ? { track: resume.track, start: resume.index } : null);
   const { demoDeployment } = useApp();
-  const open = useCallback((track?: TourTrack) => setState({ track: track ?? (demoDeployment ? "challenge" : "story"), start: 0 }), [demoDeployment]);
+  const open = useCallback((track?: TourTrack, index?: number) => setState({ track: track ?? (demoDeployment ? "challenge" : "story"), start: index ?? 0 }), [demoDeployment]);
   const isOpen = state !== null;
   const value = useMemo(() => ({ open, isOpen }), [open, isOpen]);
   return (
     <TourContext.Provider value={value}>
       {children}
-      {state && <TourPanel key={state.track} track={state.track} start={state.start} onTrack={(t) => setState({ track: t, start: 0 })} onClose={() => setState(null)} />}
+      {state && <TourPanel key={`${state.track}:${state.start}`} track={state.track} start={state.start} onTrack={(t) => setState({ track: t, start: 0 })} onClose={() => setState(null)} />}
     </TourContext.Provider>
   );
 }
@@ -273,6 +342,7 @@ function TourPanel({ onClose, track, start, onTrack }: { onClose: () => void; tr
   const steps = track === "challenge" ? CHALLENGE_STEPS : TOUR_STEPS;
   const [index, setIndex] = useState(Math.min(start, steps.length - 1));
   const [cases, setCases] = useState<CaseSummary[] | null>(null);
+  const { guide, loaded: guideLoaded } = useGuide(api, demoDeployment && track === "challenge");
   const headingRef = useRef<HTMLHeadingElement>(null);
   const step = steps[index];
   const last = index === steps.length - 1;
@@ -290,13 +360,14 @@ function TourPanel({ onClose, track, start, onTrack }: { onClose: () => void; tr
     return () => { live = false; };
   }, [api, role]);
 
-  // Go to the step's page once the data it depends on has been read.
+  // Go to the step's page once the data it depends on has been read (the cases, and on the hosted demo this session's fresh case).
   useEffect(() => {
-    if (cases === null) return;
-    const to = step.route(cases, simTime);
+    if (cases === null || !guideLoaded) return;
+    markSeen(step.id);
+    const to = step.route(cases, simTime, step.guide ? guide?.[step.guide] : null);
     if (to && to !== pathname + search) navigate(to);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [index, cases]);
+  }, [index, cases, guideLoaded]);
 
   useEffect(() => { headingRef.current?.focus(); }, [index]);
 
@@ -362,6 +433,16 @@ function TourPanel({ onClose, track, start, onTrack }: { onClose: () => void; tr
           This step is clearest as the <strong>{step.role}</strong> (you are the {role}).{" "}
           <button type="button" className="btn btn-small" onClick={switchTo} data-testid="tour-switch-role">Sign in as {step.role}</button>
         </p>
+      )}
+      {step.claim && <p className="tour-claim" data-testid="tour-claim"><strong>{step.claim}</strong></p>}
+      {demoDeployment && track === "challenge" && step.guide && guideLoaded && guide && !guide[step.guide] && (
+        <p className="muted" data-testid="tour-no-fresh">No untouched case is left for this step, so this shows the first fitting case. A supervisor can use &quot;Reset the demo&quot; to start clean.</p>
+      )}
+      {step.lookFor && (
+        <div className="tour-look" data-testid="tour-look">
+          <strong>What to look for</strong>
+          <ul>{step.lookFor.map((t) => <li key={t}>{t}</li>)}</ul>
+        </div>
       )}
       {step.tryIt && (
         <div className="tour-try" data-testid="tour-try">

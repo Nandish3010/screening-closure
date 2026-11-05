@@ -2,6 +2,7 @@
 DEMO_DEPLOYMENT=1 with the simulation clock); in any other configuration these paths do not exist (404).
 
     GET  /demo/guide?session=<random id>   every role   one fresh case per guided step for this browser session
+    GET  /demo/credentials                 public      the four judge logins; 404 unless the operator opted in at deploy time
     POST /demo/reset                       supervisor   ask the host to restore the seeded snapshot (rate limited; who and when kept)
     POST /demo/missed-followup             supervisor   move the sim clock past a case's follow-up and let the real engine catch it
 
@@ -13,7 +14,7 @@ from __future__ import annotations
 import re
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from pydantic import BaseModel, ConfigDict
 
 from app import demo_controls
@@ -38,6 +39,17 @@ def guide(session: str = Query(..., description="a random id the browser keeps f
     if not SESSION.fullmatch(session):
         raise HTTPException(422, "session must be 8 to 64 letters, digits, '-' or '_'")
     return {"steps": demo_controls.pick_cases(session), "status": demo_controls.status()}
+
+
+@router.get("/credentials")
+def credentials(response: Response) -> dict:
+    """PUBLIC and OFF by default: the four judge logins, only when the operator opted in at deploy time (DEMO_SHOW_CREDENTIALS=1 with the
+    logins rendered from Secret Manager). 404 otherwise, so a deployment that did not opt in is indistinguishable from one without it."""
+    logins = demo_controls.judge_logins()
+    if logins is None:
+        raise HTTPException(404, "not offered")
+    response.headers["Cache-Control"] = "no-store"
+    return {"logins": logins}
 
 
 @router.post("/reset", status_code=202)

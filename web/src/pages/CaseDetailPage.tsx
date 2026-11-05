@@ -14,6 +14,7 @@ import { AccessLogPanel } from "../components/AccessLogPanel";
 import { ActionButton } from "../components/ActionButton";
 import { DraftsPanel, approvalMessage } from "../components/DraftsPanel";
 import { WhyPanel } from "../components/WhyPanel";
+import { MissedFollowupPanel } from "../components/MissedFollowupPanel";
 import { ClosureProposalBanner } from "../components/ClosureProposalBanner";
 import { EffortCounter } from "../components/EffortCounter";
 import { OutreachDemoBanner } from "../components/OutreachDemoBanner";
@@ -84,7 +85,7 @@ function MilestoneRow({ def, clock, now, closed }: { def: MilestoneDef; clock: M
 
 export function CaseDetailPage() {
   const { caseId = "" } = useParams();
-  const { api, role, actor, actorName, provider: myProvider, userId, refreshSim, simTime } = useApp();
+  const { api, role, actor, actorName, provider: myProvider, userId, refreshSim, simTime, demoDeployment } = useApp();
   const [detail, setDetail] = useState<CaseDetail | null>(null);
   const [timeline, setTimeline] = useState<CaseTimeline | null>(null);
   const [draftRecords, setDraftRecords] = useState<DraftRecord[]>([]);
@@ -278,6 +279,8 @@ export function CaseDetailPage() {
           </dd>
         </div>
       </dl>
+
+      {demoDeployment && <MissedFollowupPanel caseId={detail.case_id} closed={closed} onDone={reload} />}
 
       {proposal && (
         <ClosureProposalBanner

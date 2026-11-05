@@ -34,6 +34,8 @@ def build_schema() -> dict:
         if str(p) not in sys.path:
             sys.path.insert(0, str(p))
     os.environ.setdefault("LOG_FORMAT", "text")
+    # The schema includes the hosted demo's routes (ADR-057), which exist only under these two flags with the sim clock.
+    os.environ.update(DEMO_SIMULATED_CLOCK="1", DEMO_DEPLOYMENT="1", CLOCK_MODE="sim")
     from app.main import app  # importing builds the app; the lifespan (DB, secrets) only runs when a server starts
 
     return json.loads(json.dumps(app.openapi(), sort_keys=True))

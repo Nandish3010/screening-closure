@@ -19,6 +19,7 @@ Four small pieces, none of which touches the state machine:
 
 from __future__ import annotations
 
+import base64
 import json
 import logging
 import os
@@ -82,6 +83,25 @@ def _parse(ts: str | None) -> datetime | None:
         return datetime.fromisoformat(ts) if ts else None
     except ValueError:
         return None
+
+
+# ---- judge credentials (opt-in) ----------------------------------------------------------------------------------------
+
+JUDGE_ROLES = ("coordinator", "clinician", "supervisor", "patient")
+
+
+def judge_logins() -> list[dict] | None:
+    """The four judge logins from the deploy-time config, or None when the operator did not opt in (the default) or the value is not
+    well formed. Never read from the repository: `DEMO_JUDGE_LOGINS_B64` is rendered from Secret Manager by render_env.py."""
+    if not settings.demo_show_credentials or not settings.demo_judge_logins_b64:
+        return None
+    try:
+        rows = json.loads(base64.b64decode(settings.demo_judge_logins_b64, validate=True))
+        out = [{"role": r["role"], "username": str(r["username"]), "password": str(r["password"])} for r in rows]
+    except (ValueError, KeyError, TypeError):
+        log.error("DEMO_JUDGE_LOGINS_B64 is not valid; the credentials page stays off")
+        return None
+    return out if out and all(r["role"] in JUDGE_ROLES and r["username"] and r["password"] for r in out) else None
 
 
 # ---- status and reset -------------------------------------------------------------------------------------------------

@@ -68,6 +68,23 @@ export const mockSecondPathwayFromEnv = (search?: string): boolean => mockPathwa
 /** Whether the mock also seeds the third pathway's cases (long-term conditions, with priorities): `?pathways=3`. */
 export const mockThirdPathwayFromEnv = (search?: string): boolean => mockPathwayCountFromEnv(search) >= 3;
 
+const DEMO_KEY = "sc.mock.demo";
+
+/** Whether the mock plays the hosted demo's judge controls (ADR-057): `?demo=1` (or `=0` to leave), remembered for the browser tab. */
+export function mockDemoFromEnv(search: string = typeof location === "undefined" ? "" : location.search): boolean {
+  const v = new URLSearchParams(search).get("demo");
+  try {
+    if (v !== null) {
+      const on = ["1", "on", "true", "yes"].includes(v.toLowerCase());
+      sessionStorage.setItem(DEMO_KEY, on ? "on" : "off");
+      return on;
+    }
+    return sessionStorage.getItem(DEMO_KEY) === "on";
+  } catch {
+    return false;
+  }
+}
+
 /** Chosen at build time by VITE_API_ADAPTER=mock|http (default mock). */
 export function createClientFromEnv(): ApiClient {
   const env = import.meta.env;
@@ -81,5 +98,5 @@ export function createClientFromEnv(): ApiClient {
     });
     return createHttpAdapter(url, (...a) => fetch(...a), { oidc });
   }
-  return createMockAdapter(undefined, { automation: mockAutomationFromEnv(), secondPathway: mockSecondPathwayFromEnv(), thirdPathway: mockThirdPathwayFromEnv() });
+  return createMockAdapter(undefined, { automation: mockAutomationFromEnv(), secondPathway: mockSecondPathwayFromEnv(), thirdPathway: mockThirdPathwayFromEnv(), demo: mockDemoFromEnv() });
 }

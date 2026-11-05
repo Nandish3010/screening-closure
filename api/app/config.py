@@ -53,6 +53,11 @@ class Settings(BaseSettings):
     # which also writes status.json: when, by whom). Bind-mount it read-write into the api container.
     demo_control_dir: str = "/var/lib/sc-demo"
     demo_reset_min_interval_seconds: int = Field(default=600, ge=60, le=86400)  # one accepted reset request per this long
+    # Opt-in (default OFF) public "judge credentials" on the sign-in page: the operator sets DEMO_SHOW_CREDENTIALS=1 and gives the four
+    # judge logins as base64 JSON, rendered at deploy time from Secret Manager (deploy/gcp/vm/render_env.py --show-judge-credentials).
+    # Nothing is in the repository or the web bundle. Off, GET /demo/credentials answers 404 and passwords stay in the submission.
+    demo_show_credentials: bool = False
+    demo_judge_logins_b64: str = ""
     demo_auto_reset_hours: float = Field(default=6.0, ge=0, le=168)  # informational: when the scheduled reset is due (0 = none)
     leader_lease_ttl_seconds: float = Field(default=30.0, gt=1, le=3600)
     watchdog_idle_days: int = 7
