@@ -59,6 +59,9 @@ def _start_clock(clock_store) -> None:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     auth.assert_secure_config()
+    if settings.app_env == "dev":
+        log.warning("APP_ENV=dev: DEVELOPMENT MODE. Passwordless dev login%s, simulation clock and unverified evidence are allowed. "
+                    "Never run this against real data.", "" if settings.dev_login_enabled else " (disabled)")
     # Read the process environment (not .env/settings): a stray .env must never silently
     # switch a local run onto a database. Unset means the in-memory store.
     database_url = os.environ.get("DATABASE_URL")

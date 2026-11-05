@@ -200,7 +200,7 @@ def test_the_event_and_the_approval_roll_back_together(client, pool):
 def test_a_frozen_case_is_409_and_writes_nothing(client, pool):
     cid = owned_case(client)
     did = make_draft(client, cid)
-    post_event(client, cid, "consent_updated", "patient", {"withdrawn": True}, patient_ref="Patient/pg")
+    post_event(client, cid, "consent_updated", "patient", {"withdrawn": True, "source": {"channel": "patient_app"}}, patient_ref="Patient/pg")
     n = q(pool, "SELECT count(*) FROM events WHERE case_id = %s", (cid,))[0][0]
     assert approve(client, did).status_code == 409
     assert q(pool, "SELECT count(*) FROM events WHERE case_id = %s", (cid,))[0][0] == n
@@ -210,7 +210,7 @@ def test_a_frozen_case_is_409_and_writes_nothing(client, pool):
 
 def test_a_blocked_channel_logs_a_blocked_row_and_no_message_sent(client, pool):
     cid = owned_case(client)
-    post_event(client, cid, "consent_updated", "patient", {"channel_sms": False}, patient_ref="Patient/pg")
+    post_event(client, cid, "consent_updated", "patient", {"channel_sms": False, "source": {"channel": "patient_app"}}, patient_ref="Patient/pg")
     did = make_draft(client, cid)
     out = approve(client, did).json()
     assert out["sent"] is False and out["blocked_reason"] == "consent"

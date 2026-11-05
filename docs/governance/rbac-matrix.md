@@ -28,7 +28,7 @@ Every cell is what the running API did, not what the policy table says: the scri
 | `POST /auth/dev-login` | A | A | A | A | A | A | A | A | A | A | A | A |
 | `GET /cases` | U | A | A | A | A | A | A | R | R | R | R | R |
 | `POST /cases` | U | A | R | R | A | R | A | R | R | R | R | R |
-| `GET /cases/{case_id}` | U | A | A | A | A | A/S | A | R | R | R | R | R |
+| `GET /cases/{case_id}` | U | A | A/S | A/S | A | A/S | A | R | R | R | R | R |
 | `GET /cases/{case_id}/access-log` | U | R | A/S | A/S | A | A/S | A | R | R | R | R | R |
 | `GET /cases/{case_id}/agency` | U | R | A/S | A/S | A | R | A | R | R | R | R | R |
 | `POST /cases/{case_id}/confirmatory-result` | U | R | A/S | A/S | R | R | R | R | R | R | R | R |
@@ -39,7 +39,7 @@ Every cell is what the running API did, not what the policy table says: the scri
 | `GET /cases/{case_id}/notifications` | U | R | A/S | A/S | A | R | A | R | R | R | R | R |
 | `GET /cases/{case_id}/replies` | U | R | R | R | A | R | A | R | R | R | R | R |
 | `POST /cases/{case_id}/replies` | U | R | R | R | A | R | R | R | R | R | R | R |
-| `GET /cases/{case_id}/timeline` | U | A | A | A | A | A/S | A | R | R | R | R | R |
+| `GET /cases/{case_id}/timeline` | U | R | A/S | A/S | A | A/S | A | R | R | R | R | R |
 | `POST /clock/advance` | U | R | R | R | R | R | A | R | R | R | R | R |
 | `POST /clock/reset` | U | R | R | R | R | R | A | R | R | R | R | R |
 | `POST /drafts/{draft_id}/approve` | U | R | A/S | A/S | R | R | A | R | R | R | R | R |
@@ -120,7 +120,7 @@ Routes that name a case or a draft, with the scope rule the matrix enforces (dec
 
 | Route | Scope rule |
 |---|---|
-| `GET /cases/{case_id}` | a patient only for their own case |
+| `GET /cases/{case_id}` | a patient only for their own case; a clinician only for a case they own |
 | `GET /cases/{case_id}/access-log` | a patient only for their own case; a clinician only for a case they own |
 | `GET /cases/{case_id}/agency` | a clinician only for a case they own |
 | `POST /cases/{case_id}/confirmatory-result` | a clinician only for a case they own |
@@ -131,7 +131,7 @@ Routes that name a case or a draft, with the scope rule the matrix enforces (dec
 | `GET /cases/{case_id}/notifications` | a clinician only for a case they own |
 | `GET /cases/{case_id}/replies` | none (the role gate is the whole rule) |
 | `POST /cases/{case_id}/replies` | none (the role gate is the whole rule) |
-| `GET /cases/{case_id}/timeline` | a patient only for their own case |
+| `GET /cases/{case_id}/timeline` | a patient only for their own case; a clinician only for a case they own |
 | `POST /drafts/{draft_id}/approve` | a clinician only for a case they own |
 | `POST /drafts/{draft_id}/reject` | a clinician only for a case they own |
 | `GET /erasures/{erasure_id}` | none (the role gate is the whole rule) |

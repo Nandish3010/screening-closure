@@ -431,6 +431,30 @@ def care_contact(name: str, role: str) -> dict:
     return {"name": name, "role": role, "phone": CARE_TEAM_PHONE, "synthetic": True}
 
 
+LAB_ROW_KEYS = ("case_id", "pathway", "state", "created_at", "updated_at")
+
+
+def lab_case_row(row: dict) -> dict:
+    """ADR-059 (F5): a worklist row for the lab. The lab reports results and sees that they were acknowledged: the case, its
+    pathway and state, and when it was created and last moved. No patient, owner, priority or risk."""
+    return {k: row.get(k) for k in LAB_ROW_KEYS}
+
+
+def lab_case_json(row: dict, model: CaseModel, events: list[Event]) -> dict:
+    """ADR-059 (F5): `GET /cases/{id}` for the lab (also what posting an event returns to it): state, the result reference it
+    reported and when the result was acknowledged. Nothing else: no events, owner, patient, notes or risk."""
+    genesis = events[0].payload if events else {}
+    acknowledged = next((e for e in events if e.type == "acknowledge"), None)
+    return {
+        **lab_case_row(row),
+        "result_ref": genesis.get("result_ref"),
+        "acknowledged_at": iso(acknowledged.at) if acknowledged is not None else None,
+        "read_model": {"state": model.state, "last_event_at": iso(model.last_event_at)},
+        "events": [],
+        "risk": None,
+    }
+
+
 def patient_case_json(row: dict, model: CaseModel, events: list[Event], care_contact: dict | None = None) -> dict:
     """`GET /cases/{id}` for a patient (also what posting an event returns to them). `care_contact` is the owner's name and
     role with the care-team line, or null while nobody owns the case; it is the only staff name in a patient's answer."""

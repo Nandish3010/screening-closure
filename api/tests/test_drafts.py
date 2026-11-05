@@ -123,7 +123,7 @@ def test_g1_coordinator_and_supervisor_draft_on_any_case(role):
 def test_g1_the_scope_check_comes_before_the_409_states():
     """A non-owner clinician gets 403 on a frozen case too, not a 409 that would reveal its state."""
     cid = owned_case("Dr Sara Khan")
-    post_event(cid, "consent_updated", "coordinator", {"withdrawn": True})
+    post_event(cid, "consent_updated", "coordinator", {"withdrawn": True, "source": {"channel": "phone_call", "reference": "call-1"}})
     assert create(cid, role="primary_care_owner", name="Dr Someone Else").status_code == 403
     assert create(cid, role="primary_care_owner", name="Dr Sara Khan").status_code == 409
 
@@ -305,14 +305,14 @@ def test_a_reminder_includes_the_date_when_there_is_one():
 
 def test_consent_frozen_case_is_409_and_writes_nothing():
     cid = owned_case()
-    post_event(cid, "consent_updated", "coordinator", {"withdrawn": True})
+    post_event(cid, "consent_updated", "coordinator", {"withdrawn": True, "source": {"channel": "phone_call", "reference": "call-1"}})
     assert client.get(f"/cases/{cid}", headers=H("coordinator")).json()["read_model"]["consent_frozen"]
     before = len(events(cid))
     r = create(cid)
     assert r.status_code == 409 and "consent" in r.json()["detail"]
     assert len(events(cid)) == before and drafts.store.list_for_case(UUID(cid)) == []
     # and again once consent is restored
-    post_event(cid, "consent_updated", "coordinator", {"withdrawn": False})
+    post_event(cid, "consent_updated", "coordinator", {"withdrawn": False, "source": {"channel": "phone_call", "reference": "call-1"}})
     assert create(cid).status_code == 201
 
 

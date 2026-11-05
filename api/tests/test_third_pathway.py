@@ -279,10 +279,10 @@ def test_t_cp15_the_consent_hold_applies_to_a_chronic_case(three):
     cid = new_chronic("Patient/cp9")
     drive_to(cid, last="patient_acknowledge", patient_ref="Patient/cp9")
     patient = H("patient", "pat", "Patient/cp9")
-    r = post(cid, "consent_updated", patient, {"withdrawn": True})
+    r = post(cid, "consent_updated", patient, {"withdrawn": True, "source": {"channel": "patient_app"}})
     assert r.status_code == 201 and r.json()["state"] == "consent_withdrawn"
     assert post(cid, "handoff_requested", H("primary_care_owner", "Dr Referrer"), {"to_provider": "endo-sp"}).status_code == 409
-    assert post(cid, "consent_updated", patient, {"withdrawn": False}).json()["state"] == "patient_acknowledged"
+    assert post(cid, "consent_updated", patient, {"withdrawn": False, "source": {"channel": "patient_app"}}).json()["state"] == "patient_acknowledged"
 
 
 def test_t_cp16_the_recorder_writes_a_care_plan_visit_with_a_slugged_id_and_no_terminology_code(hapi):

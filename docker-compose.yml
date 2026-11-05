@@ -149,6 +149,9 @@ services:
       # `close` needs an evidence_ref (DiagnosticReport/<id> or Procedure/<id>) that exists in HAPI (A15, ADR-021).
       FHIR_BASE_URL: http://fhir:8080/fhir
       FHIR_VERIFY_EVIDENCE: "true"
+      # ADR-059 (F6): the API refuses to start with APP_ENV unset. The local stack is a development stack, so it says so here
+      # (a `.env` copied from .env.example says it too); a deployment sets its own value (deploy/gcp, helm, bicep do).
+      APP_ENV: ${APP_ENV:-dev}
       # Project every event to HAPI (Task, ServiceRequest, Appointment, Communication, Consent, Provenance; A12).
       FHIR_PROJECTION: "true"
       # Sweep worker processes behind POST /scheduler/sweep (A17); empty = min(4, cpus), 1 = single process.

@@ -252,3 +252,42 @@ def test_the_app_refuses_to_start_on_the_in_memory_store_outside_dev(monkeypatch
     with pytest.raises(RuntimeError, match="DATABASE_URL"):
         with TestClient(app):
             pass
+
+
+# ---- ADR-059 (F6): APP_ENV is never left to a default ---------------------------------------------------------------------
+
+
+def test_f6_the_api_refuses_to_start_when_app_env_was_never_set(monkeypatch, tmp_path):
+    from app.config import Settings
+    monkeypatch.delenv("APP_ENV", raising=False)
+    monkeypatch.chdir(tmp_path)  # no .env here
+    unset = Settings()
+    assert unset.app_env == "dev"  # the code's value when nothing is given ...
+    assert auth.app_env_explicit(unset) is False  # ... which the start-up check does not accept
+    monkeypatch.setattr(auth, "settings", unset)
+    with pytest.raises(RuntimeError, match="APP_ENV is not set"):
+        auth.assert_secure_config()
+
+
+def test_f6_an_explicit_value_is_accepted_and_a_blank_one_is_not_dev(monkeypatch, tmp_path):
+    from app.config import Settings
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("APP_ENV", "dev")
+    assert auth.app_env_explicit(Settings()) is True
+    monkeypatch.setenv("APP_ENV", "production")
+    assert auth.app_env_explicit(Settings()) is True
+    monkeypatch.setenv("APP_ENV", "")  # given but blank: not "dev", so the whole non-dev rule set applies (the matrix above)
+    assert auth.app_env_explicit(Settings()) is True and Settings().app_env != "dev"
+    (tmp_path / ".env").write_text("APP_ENV=dev\n")  # a .env counts as set: it is how the local stack is configured
+    monkeypatch.delenv("APP_ENV")
+    assert auth.app_env_explicit(Settings()) is True
+
+
+def test_f6_the_test_sessions_and_the_local_stack_say_dev_out_loud():
+    """`make up` and the tests keep working because they set APP_ENV=dev themselves, not because the code assumes it."""
+    import os
+    from pathlib import Path
+    assert os.environ.get("APP_ENV") == "dev"
+    compose = (Path(__file__).resolve().parents[2] / "docker-compose.yml").read_text(encoding="utf-8")
+    assert "APP_ENV: ${APP_ENV:-dev}" in compose
+    assert "APP_ENV=dev" in (Path(__file__).resolve().parents[2] / ".env.example").read_text(encoding="utf-8")

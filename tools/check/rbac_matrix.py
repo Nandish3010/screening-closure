@@ -76,8 +76,11 @@ FRAMEWORK_ROUTES = frozenset({"/openapi.json", "/docs", "/docs/oauth2-redirect",
 # `owner`: a primary_care_owner / specialist_owner acts only on cases they own (policy.authorize_owner_scope).
 # A route with a path parameter that is not listed here fails the run: the decision has to be made, in this file.
 SCOPE_RULES: dict[tuple[str, str], frozenset[str]] = {
-    ("GET", "/cases/{case_id}"): frozenset({"patient_own"}),
-    ("GET", "/cases/{case_id}/timeline"): frozenset({"patient_own"}),
+    # ADR-059 (F5): need-to-know reads. The "other case" of a clinician is a case another clinician owns, that is not up for the
+    # taking, has no referral waiting for them and that they never acted on (policy.can_view). The lab is not in the timeline's
+    # route policy, and on the case page it gets a minimal projection (state, result reference, acknowledgement time).
+    ("GET", "/cases/{case_id}"): frozenset({"patient_own", "owner"}),
+    ("GET", "/cases/{case_id}/timeline"): frozenset({"patient_own", "owner"}),
     ("POST", "/cases/{case_id}/events"): frozenset({"patient_own", "owner"}),
     ("GET", "/cases/{case_id}/notifications"): frozenset({"owner"}),
     ("GET", "/cases/{case_id}/fhir"): frozenset({"owner"}),
@@ -248,7 +251,7 @@ def classify(resp) -> str:
     if resp.status_code == 403:
         if "may not call" in detail or "no access policy" in detail or "may not emit" in detail or "no policy for event type" in detail:
             return "R"
-        if "may only act on cases they own" in detail:
+        if "may only act on cases they own" in detail or "may only read cases they own" in detail:
             return "S"
         return "?"  # some other 403: not an access decision this matrix knows about
     if resp.status_code == 404 and detail == "case not found":

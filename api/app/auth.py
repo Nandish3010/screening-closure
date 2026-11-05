@@ -390,8 +390,22 @@ def store_config_problems(app_env: str, database_url: str | None) -> list[str]:
     return [f"DATABASE_URL is not set (APP_ENV={app_env!r} must not run on the in-memory store: nothing would be durable)"]
 
 
+def app_env_explicit(s=None) -> bool:
+    """ADR-059 (F6): was APP_ENV given (process environment or .env), rather than left to the code's default of `dev`?
+    A deployment that forgets it would otherwise run the passwordless dev login, the simulation clock with /clock/reset and
+    unverified evidence without anyone having chosen that."""
+    s = settings if s is None else s
+    return "app_env" in s.model_fields_set  # a blank value is a value: it is not "dev", so every non-dev check applies
+
+
 def assert_secure_config() -> None:
-    """Fail closed: refuse to start outside APP_ENV=dev with development settings (SEC-1, ADR-029)."""
+    """Fail closed: refuse to start outside APP_ENV=dev with development settings (SEC-1, ADR-029), and refuse to start at all
+    when APP_ENV was never set (ADR-059, F6): development is a choice, `APP_ENV=dev`, never a default."""
+    if not app_env_explicit():
+        raise RuntimeError(
+            "APP_ENV is not set. Set APP_ENV=production (or the environment's name), or APP_ENV=dev explicitly for a "
+            "development run: the API does not guess, because a forgotten APP_ENV would start it with dev login, "
+            "the simulation clock and unverified evidence.")
     if _is_dev():
         problems = auth_mode_problems()
         if problems:

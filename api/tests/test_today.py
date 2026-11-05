@@ -227,13 +227,13 @@ def test_every_item_says_who_what_and_why_and_offers_only_known_actions(seeded):
 def test_a_reply_item_carries_the_triage_reason_and_never_the_text(seeded, monkeypatch):
     secret = "ابي اغير الموعد وايد"  # a Gulf-dialect message
     monkeypatch.setattr(replies.triage, "classify", lambda text, hint=None: {
-        "intent": "reschedule", "confidence": 0.41, "model_id": "test-model", "needs_human": True})
+        "intent": "reschedule", "confidence": 0.95, "model_id": "test-model", "needs_human": True})
     cid = [i for i, s in zip(seeded, world.TARGETS, strict=True) if s == "patient_contacted"][0]
     add_reply(cid, secret)
     got, _, _ = pull(limit=50, group=["replies"])
     item = next(i for i in got["replies"] if i["case_id"] == str(cid))
     assert item["reply"]["reason"] == "triage_uncertain"
-    assert item["reply"]["confidence"] == 0.41 and item["reply"]["intent"] == "reschedule"
+    assert item["reply"]["confidence"] == 0.95 and item["reply"]["holds"] == [] and item["reply"]["intent"] == "reschedule"
     assert item["reply"]["forced_reason"] == "ar_gulf"  # why a person reads it: the Gulf-dialect rule
     assert secret not in client.get("/today", params={"group": "replies", "limit": 50}, headers=COORD).text
 

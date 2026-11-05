@@ -4942,7 +4942,7 @@
     },
     {
       "abuse_case": "RT-R-04",
-      "actual": "intent=confirm, needs_human=True, events=['reply_received', 'reply_classified', 'review_requested']",
+      "actual": "intent=opt_out, needs_human=True, events=['reply_received', 'reply_classified', 'review_requested']",
       "category": "replies",
       "expected": "intent opt_out, or a review request (a person reads all of it); never a silent auto-handling",
       "id": "RT-R-04.6",
@@ -5237,6 +5237,236 @@
       "expected": "same, in Arabic",
       "id": "RT-R-10.3",
       "input": "'an Arabic injection reply, then an agency run'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-R-12",
+      "actual": "intent=opt_out, model_id=rule:opt-out-gate-v2, holds=('opt_out',)",
+      "category": "replies",
+      "expected": "opt_out hold with no model",
+      "id": "RT-R-12.1",
+      "input": "\"don't text me again\"",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-R-12",
+      "actual": "intent=opt_out, model_id=rule:opt-out-gate-v2, holds=('opt_out',)",
+      "category": "replies",
+      "expected": "opt_out hold with no model",
+      "id": "RT-R-12.2",
+      "input": "\"Please don't contact me\"",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-R-12",
+      "actual": "intent=opt_out, model_id=rule:opt-out-gate-v2, holds=('opt_out',)",
+      "category": "replies",
+      "expected": "opt_out hold with no model",
+      "id": "RT-R-12.3",
+      "input": "'please don’t contact me'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-R-12",
+      "actual": "intent=opt_out, model_id=rule:opt-out-gate-v2, holds=('opt_out',)",
+      "category": "replies",
+      "expected": "opt_out hold with no model",
+      "id": "RT-R-12.4",
+      "input": "'DON’T TEXT ME'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-R-12",
+      "actual": "intent=opt_out, model_id=rule:opt-out-gate-v2, holds=('opt_out',)",
+      "category": "replies",
+      "expected": "opt_out hold with no model",
+      "id": "RT-R-12.5",
+      "input": "\"I don't want these messages\"",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-R-12",
+      "actual": "intent=opt_out, model_id=rule:opt-out-gate-v2, holds=('opt_out',)",
+      "category": "replies",
+      "expected": "opt_out hold with no model",
+      "id": "RT-R-12.6",
+      "input": "'I don‘t want to receive any more'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-R-12",
+      "actual": "intent=opt_out, model_id=rule:opt-out-gate-v2, holds=('opt_out',)",
+      "category": "replies",
+      "expected": "opt_out hold with no model",
+      "id": "RT-R-12.7",
+      "input": "'enough messages'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-R-12",
+      "actual": "intent=opt_out, model_id=rule:opt-out-gate-v2, holds=('opt_out',)",
+      "category": "replies",
+      "expected": "opt_out hold with no model",
+      "id": "RT-R-12.8",
+      "input": "\"do n't call me\"",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-R-12",
+      "actual": "intent=opt_out, model_id=rule:opt-out-gate-v2, holds=('opt_out',)",
+      "category": "replies",
+      "expected": "opt_out hold with no model",
+      "id": "RT-R-12.9",
+      "input": "'I no longer wish to receive texts from you'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-R-12",
+      "actual": "intent=opt_out, model_id=rule:opt-out-gate-v2, holds=('opt_out',)",
+      "category": "replies",
+      "expected": "opt_out hold with no model",
+      "id": "RT-R-12.10",
+      "input": "'اوقفوا الرسائل'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-R-12",
+      "actual": "intent=opt_out, model_id=rule:opt-out-gate-v2, holds=('opt_out',)",
+      "category": "replies",
+      "expected": "opt_out hold with no model",
+      "id": "RT-R-12.11",
+      "input": "'ابي اوقف الرسائل'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-R-12",
+      "actual": "intent=opt_out, model_id=rule:opt-out-gate-v2, holds=('opt_out',)",
+      "category": "replies",
+      "expected": "opt_out hold with no model",
+      "id": "RT-R-12.12",
+      "input": "'أوقفوا الرسائل من فضلكم'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-R-12",
+      "actual": "intent=opt_out, model_id=rule:opt-out-gate-v2, holds=('opt_out',)",
+      "category": "replies",
+      "expected": "opt_out hold with no model",
+      "id": "RT-R-12.13",
+      "input": "'وقفوا التواصل معي'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-R-12",
+      "actual": "intent=opt_out, model_id=rule:opt-out-gate-v2, holds=('opt_out',)",
+      "category": "replies",
+      "expected": "opt_out hold with no model",
+      "id": "RT-R-12.14",
+      "input": "'كفاية رسائل'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-R-12",
+      "actual": "intent=opt_out, model_id=rule:opt-out-gate-v2, holds=('opt_out',)",
+      "category": "replies",
+      "expected": "opt_out hold with no model",
+      "id": "RT-R-12.15",
+      "input": "'w2fo el rasayel'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-R-12",
+      "actual": "intent=opt_out, model_id=rule:opt-out-gate-v2, holds=('opt_out',)",
+      "category": "replies",
+      "expected": "opt_out hold with no model",
+      "id": "RT-R-12.16",
+      "input": "'wa2fo l rasayel plz'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-R-12",
+      "actual": "intent=opt_out, model_id=rule:opt-out-gate-v2, holds=('opt_out',)",
+      "category": "replies",
+      "expected": "opt_out hold with no model",
+      "id": "RT-R-12.17",
+      "input": "'waqqfo rasael'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-R-12",
+      "actual": "intent=opt_out, model_id=rule:opt-out-gate-v2, holds=('opt_out',)",
+      "category": "replies",
+      "expected": "opt_out hold with no model",
+      "id": "RT-R-12.18",
+      "input": "'bas rasayel'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-R-12",
+      "actual": "gate=False",
+      "category": "replies",
+      "expected": "not an opt-out",
+      "id": "RT-R-12.19",
+      "input": "\"please don't stop the reminders\"",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-R-12",
+      "actual": "gate=False",
+      "category": "replies",
+      "expected": "not an opt-out",
+      "id": "RT-R-12.20",
+      "input": "\"I don't know the address\"",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-R-12",
+      "actual": "gate=False",
+      "category": "replies",
+      "expected": "not an opt-out",
+      "id": "RT-R-12.21",
+      "input": "'can you text me the address?'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-R-12",
+      "actual": "gate=False",
+      "category": "replies",
+      "expected": "not an opt-out",
+      "id": "RT-R-12.22",
+      "input": "'لا توقفوا الرسائل'",
+      "reason": "",
+      "status": "pass"
+    },
+    {
+      "abuse_case": "RT-R-12",
+      "actual": "gate=False",
+      "category": "replies",
+      "expected": "not an opt-out",
+      "id": "RT-R-12.23",
+      "input": "'وقفت السيارة قدام العيادة'",
       "reason": "",
       "status": "pass"
     },
@@ -9588,11 +9818,11 @@
       "pass": 53
     },
     "replies": {
-      "cases": 71,
+      "cases": 94,
       "exposed": 0,
       "fail": 0,
       "known-limitation": 0,
-      "pass": 71
+      "pass": 94
     },
     "validator": {
       "cases": 400,

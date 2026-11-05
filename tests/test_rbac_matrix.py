@@ -104,3 +104,15 @@ def test_g1_clinicians_are_owner_scoped_on_create_draft(result):
     assert m.KNOWN_GAPS == {} and m.GAP_NOTES == [] and result.gaps_seen == []
     cell = result.route_cells[("POST", "/cases/{case_id}/drafts", "primary_care_owner")]
     assert cell.text() == "A/S"
+
+
+def test_f5_case_and_timeline_reads_are_need_to_know(result):
+    """ADR-059 (F5): a clinician reads only a case they need to know (other cases: S), the lab has no timeline (R) and a minimal
+    case page (A), a coordinator and a supervisor read every case."""
+    for path in ("/cases/{case_id}", "/cases/{case_id}/timeline"):
+        for role in ("primary_care_owner", "specialist_owner"):
+            assert result.route_cells[("GET", path, role)].text() == "A/S", (path, role)
+        for role in ("coordinator", "supervisor"):
+            assert result.route_cells[("GET", path, role)].text() == "A", (path, role)
+    assert result.route_cells[("GET", "/cases/{case_id}/timeline", "lab")].text() == "R"
+    assert result.route_cells[("GET", "/cases/{case_id}", "lab")].text() == "A"

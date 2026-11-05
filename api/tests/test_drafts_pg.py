@@ -111,7 +111,7 @@ def test_list_route_reads_from_postgres(client):
 
 def test_consent_frozen_is_409_and_writes_nothing(client, pool):
     cid = owned_case(client)
-    r = client.post(f"/cases/{cid}/events", json={"type": "consent_updated", "payload": {"withdrawn": True}},
+    r = client.post(f"/cases/{cid}/events", json={"type": "consent_updated", "payload": {"withdrawn": True, "source": {"channel": "phone_call", "reference": "call-1"}}},
                     headers=H(client, "coordinator"))
     assert r.status_code == 201
     r = client.post(f"/cases/{cid}/drafts", json=BODY, headers=H(client, "coordinator"))

@@ -164,10 +164,15 @@ def drive(cid, depth):
 def test_get_cases_fills_risk_score_for_staff_and_leaves_it_null_for_patients():
     cid = new_case()
     drive(cid, 3)
-    for role in ("coordinator", "supervisor", "lab", "primary_care_owner", "specialist_owner"):
-        rows = client.get("/cases", headers=H(role, f"rk {role}")).json()
+    # ADR-059 (F5): the owner is the clinician who reads it; another clinician's worklist does not hold the case, and the lab's
+    # rows are the minimal projection (no risk, no people)
+    for role, name in (("coordinator", "rk coordinator"), ("supervisor", "rk supervisor"), ("primary_care_owner", "rk pco")):
+        rows = client.get("/cases", headers=H(role, name)).json()
         assert [r["case_id"] for r in rows] == [cid]
         assert isinstance(rows[0]["risk_score"], float) and 0.0 <= rows[0]["risk_score"] <= 1.0, role
+    assert client.get("/cases", headers=H("specialist_owner", "rk specialist_owner")).json() == []
+    lab_rows = client.get("/cases", headers=H("lab", "rk lab")).json()
+    assert [r["case_id"] for r in lab_rows] == [cid] and "risk_score" not in lab_rows[0]
     patient = client.get("/cases", headers=H("patient", "rk pat", "Patient/rk-1")).json()
     assert [r["case_id"] for r in patient] == [cid] and patient[0]["risk_score"] is None
 
@@ -185,7 +190,7 @@ def test_a_case_page_carries_the_explanation_for_staff_only():
     patient = client.get(f"/cases/{cid}", headers=H("patient", "rk pat", "Patient/rk-1")).json()
     assert patient["risk"] is None and patient["risk_score"] is None
     # a response to a patient's own event does not leak it either
-    r = post(cid, "consent_updated", H("patient", "rk pat", "Patient/rk-1"), {"channel_sms": False})
+    r = post(cid, "consent_updated", H("patient", "rk pat", "Patient/rk-1"), {"channel_sms": False, "source": {"channel": "patient_app"}})
     assert r["risk"] is None and r["risk_score"] is None
     assert post(cid, "patient_acknowledge", H("coordinator", "rk coord"))["risk"]["score"] >= 0.0  # staff do get it back
 
@@ -200,7 +205,7 @@ def test_the_score_moves_with_what_the_log_shows_but_the_worklist_order_does_not
     rows = client.get("/cases", headers=H("coordinator", "rk coord")).json()
     assert [r["case_id"] for r in rows] == order            # the API never reorders by risk: the web's concern
     assert {r["case_id"]: r["risk_score"] for r in rows}[a] != r0[a]  # but the score itself moved (more days since the result)
-    post(a, "consent_updated", H("patient", "rk pat", "Patient/rk-a"), {"withdrawn": True})
+    post(a, "consent_updated", H("patient", "rk pat", "Patient/rk-a"), {"withdrawn": True, "source": {"channel": "patient_app"}})
     after = {r["case_id"]: r["risk_score"] for r in client.get("/cases", headers=H("coordinator", "rk coord")).json()}
     assert after[a] > {r["case_id"]: r["risk_score"] for r in rows}[a]
 

@@ -135,10 +135,10 @@ describe("Patient page", () => {
     // Everything is allowed until the patient says otherwise.
     for (const c of ["Text message", "WhatsApp", "Phone call", "Letter"]) expect(screen.getByRole("checkbox", { name: c })).toBeChecked();
     await user.click(screen.getByRole("checkbox", { name: "Text message" }));
-    await waitFor(async () => expect((await last()).payload).toEqual({ channel_sms: false }));
+    await waitFor(async () => expect((await last()).payload).toEqual({ channel_sms: false, source: { channel: "patient_app" } }));
     expect((await last()).type).toBe("consent_updated");
     await user.click(screen.getByRole("checkbox", { name: STRINGS.en.shareLabel }));
-    await waitFor(async () => expect((await last()).payload).toEqual({ share_with_specialist: false }));
+    await waitFor(async () => expect((await last()).payload).toEqual({ share_with_specialist: false, source: { channel: "patient_app" } }));
     const detail = await staffCase(api);
     expect(detail.consent).toMatchObject({ channel_sms: false, channel_whatsapp: true, share_with_specialist: false, withdrawn: false });
     expect(detail.consent_history).toHaveLength(2);

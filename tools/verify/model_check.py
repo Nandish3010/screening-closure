@@ -94,6 +94,11 @@ HUMAN_DECISIONS = frozenset({
 })
 # A33 (ADR-042): the counselling record a refusal cites and a declined closure must cite back.
 COUNSELLING = "DocumentReference/counsel-1"
+# ADR-059 (F1): what the refusal's route gate must refuse. The directory the gate reads holds the cast only, and the FHIR
+# lookup resolves COUNSELLING only: a counsellor nobody is, or a record that does not exist, is a fabricated refusal.
+GHOST_COUNSELLOR = "specialist_owner:ghost0000"
+GHOST_RECORD = "DocumentReference/ghost-1"
+GHOST_REFUSALS = frozenset({"ghost-counsellor", "ghost-record"})
 PHYSICIANS = ("primary_care_owner", "specialist_owner")  # who may review and close (either outcome; E20a F1)
 # I4: outreach (contacting the patient, or handing them to someone new).
 OUTREACH = frozenset({"contact_patient", "message_drafted", "message_approved", "message_sent", "handoff_requested"})
@@ -195,6 +200,10 @@ def alphabet(pathway: Pathway) -> list[tuple[str, str, Builder, bool]]:
     add("record_informed_refusal", "bad-reason", {"counselling_ref": COUNSELLING, "counselled_by": SPEC, "reason": "because"})
     add("record_informed_refusal", "no-counselling", {"counselled_by": SPEC, "reason": "personal_choice"})
     add("record_informed_refusal", "no-counsellor", {"counselling_ref": COUNSELLING, "reason": "personal_choice"})
+    add("record_informed_refusal", "ghost-counsellor", {"counselling_ref": COUNSELLING, "counselled_by": GHOST_COUNSELLOR,
+                                                       "reason": "personal_choice"})
+    add("record_informed_refusal", "ghost-record", {"counselling_ref": GHOST_RECORD, "counselled_by": SPEC,
+                                                   "reason": "personal_choice"})
     add("record_informed_refusal", "coordinator-counsellor", {"counselling_ref": COUNSELLING, "counselled_by": COORD,
                                                             "reason": "personal_choice"})
     add("appointment_cancelled", "by-patient", {"reason": "patient_request", "by_patient": True})
@@ -235,12 +244,15 @@ def alphabet(pathway: Pathway) -> list[tuple[str, str, Builder, bool]]:
     add("reassign", "to-spec", {"owner": SPEC})
     add("reassign", "to-pco", {"owner": PCO})
     add("reassign", "no-owner", {})
-    add("consent_updated", "withdraw", {"withdrawn": True})
-    add("consent_updated", "restore", {"withdrawn": False})
-    add("consent_updated", "sms-off", {"channel_sms": False})
-    add("consent_updated", "sms-on", {"channel_sms": True})
-    add("consent_updated", "share-off", {"share_with_specialist": False})  # A36: the referral is held
-    add("consent_updated", "share-on", {"share_with_specialist": True})
+    # ADR-059 (F4): a consent change carries how the patient asked (the events route refuses one without it), so the
+    # representatives carry the staff form; the checker's people who may write consent are staff
+    how = {"source": {"channel": "phone_call", "reference": "call-1"}}
+    add("consent_updated", "withdraw", {"withdrawn": True, **how})
+    add("consent_updated", "restore", {"withdrawn": False, **how})
+    add("consent_updated", "sms-off", {"channel_sms": False, **how})
+    add("consent_updated", "sms-on", {"channel_sms": True, **how})
+    add("consent_updated", "share-off", {"share_with_specialist": False, **how})  # A36: the referral is held
+    add("consent_updated", "share-on", {"share_with_specialist": True, **how})
     add("consent_updated", "empty", {})
     add("consent_updated", "not-bool", {"withdrawn": "yes"})
     add("contact_updated", "valid", {"contact_valid": True})
@@ -282,12 +294,16 @@ def alphabet(pathway: Pathway) -> list[tuple[str, str, Builder, bool]]:
 # ---- slices -----------------------------------------------------------------------------------------------------------
 
 ALL = "*"
+# The refusal variants every slice tries; the ghost ones (ADR-059) only the ownership slice does, which keeps the others small.
+REFUSAL_LABELS = frozenset({"by-spec", "by-pco", "by-spec-practitioner", "other-needs-note", "bad-reason", "no-counselling",
+                            "no-counsellor", "coordinator-counsellor"})
 # Every slice has the main path, closure and reopening, consent withdrawal and restoration (a state change that every
 # feature must survive), lost contact, ownership, and the annotations that touch no abstract field.
 BASE = {
     "acknowledge": ALL, "accept_ownership": ALL, "assign_ownership": ALL, "contact_patient": ALL,
     "patient_acknowledge": ALL, "book_confirmatory": ALL, "complete_confirmatory": ALL, "clinician_review": ALL,
-    "close": ALL, "reopen": ALL, "mark_lost_contact": ALL, "record_informed_refusal": ALL, "appointment_cancelled": ALL, "watchdog_flagged": ALL, "closure_proposed": ALL,
+    "close": ALL, "reopen": ALL, "mark_lost_contact": ALL,
+    "record_informed_refusal": REFUSAL_LABELS, "appointment_cancelled": ALL, "watchdog_flagged": ALL, "closure_proposed": ALL,
     "reply_received": ALL, "reply_classified": ALL, "bogus_event": ALL, sm.ERASURE_EVENT: ALL,
     "consent_updated": {"withdraw", "restore", "empty", "not-bool"},
 }
@@ -318,6 +334,7 @@ SLICES = {
     "ownership": Slice(
         "ownership", "owner, referral handoff (request, accept, reject, bounce), reassignment, re-route flags",
         {**BASE, "handoff_requested": ALL, "handoff_accepted": ALL, "handoff_rejected": ALL, "reassign": ALL,
+         "record_informed_refusal": ALL,
          # A36: sharing refused and restored, so a referral is held and released in every ownership situation
          "consent_updated": {*BASE["consent_updated"], "share-off", "share-on"},
          "review_requested": {"reroute_exhausted", "consent_withdrawn", "incomplete_procedure", "triage_uncertain",
@@ -414,6 +431,8 @@ def human_admitted(identity: auth.Identity, type_: str, payload: dict, model: sm
     signed = payload.get("signed_by")
     if type_ in ("clinician_review", "close") and signed is not None and not evidence.signed_by_matches(identity, signed):
         return False
+    if type_ == "record_informed_refusal" and refusal_gate_refusal(identity.actor, payload) is not None:
+        return False  # ADR-059: a ghost counsellor, a record that does not resolve, a physician naming another
     return not (type_ == "close" and not evidence.well_formed_ref(payload["evidence_ref"]))
 
 
@@ -437,6 +456,55 @@ def physician_not_counsellor(pre: sm.CaseModel, actor: str, p: dict) -> list:
         if uid(who) == counsellor:
             bad.append(("I1", f"declined closure signed by {who!r}, who is the counsellor"))
     return bad
+
+
+_REFUSAL_WORLD: dict = {}
+
+
+def refusal_gate_refusal(actor: str, payload: dict) -> str | None:
+    """ADR-059 (F1): run the REAL route gate for an informed refusal (`routers.cases._check_signature_and_evidence`) against a
+    world the checker controls: the user directory holds the cast and nobody else, and the FHIR lookup resolves the one
+    counselling record the alphabet names. The HTTP status it refuses with, or None if it lets the refusal through."""
+    from unittest import mock
+
+    from app import users
+    from app.routers import cases
+    identity = HUMAN_BY_ACTOR.get(actor)
+    if identity is None:
+        return "no person (services are refused by the route policy)"
+    if not _REFUSAL_WORLD:
+        directory = users.InMemoryUserDirectory()
+        for person in IDENTITIES.values():
+            directory.upsert(users.record_for(person))
+        _REFUSAL_WORLD.update(directory=directory, verifier=evidence.StaticVerifier({COUNSELLING}))
+    with mock.patch.object(users, "directory", _REFUSAL_WORLD["directory"]), \
+            mock.patch.object(evidence, "verifier", _REFUSAL_WORLD["verifier"]):
+        try:
+            cases._check_signature_and_evidence(identity, "record_informed_refusal", dict(payload), CASE)
+        except HTTPException as exc:
+            return str(exc.status_code)
+    return None
+
+
+def fabricated_refusal(ev: Event, label: str) -> bool:
+    """A refusal of the alphabet's ghost kind: the machine accepts it, the route never lets a person write it. It is checked
+    (I1) and not explored further, so the graph holds the states a real deployment can reach."""
+    return ev.type == "record_informed_refusal" and label in GHOST_REFUSALS
+
+
+def refusal_must_be_refused(actor: str, payload: dict) -> str | None:
+    """The checker's OWN reading of when the gate must refuse (never the gate's code): why a refusal is fabricated, or None.
+    The counsellor must be a physician of the cast, the record must be the one that resolves, and a physician who records
+    the refusal records their own counselling."""
+    counsellor = payload.get("counselled_by")
+    physicians = {_uid(PCO), _uid(SPEC)}
+    if not isinstance(counsellor, str) or _uid(counsellor) not in physicians:
+        return f"counsellor {counsellor!r} is not a known physician"
+    if payload.get("counselling_ref") != COUNSELLING:
+        return f"counselling record {payload.get('counselling_ref')!r} does not resolve"
+    if actor.split(":", 1)[0] in PHYSICIANS and _uid(actor) != _uid(counsellor):
+        return f"{actor!r} recorded another physician's counselling"
+    return None
 
 
 def route_gate_refusal(actor: str, payload: dict, pathway: Pathway | None = None) -> str | None:
@@ -652,6 +720,15 @@ class Checker:
                 _bump(self.r.delegated, "I1: malformed evidence -> refused by the route gate (ADR-021)")
                 if route_gate_refusal(actor, p, self.pw) is None:
                     out.append(("I1", f"close with evidence {ref!r} passes the machine AND the route gate"))
+        # ADR-059 (F1): a refusal the machine accepted must be refused by the REAL route gate when it is fabricated (a counsellor
+        # nobody is, a record that does not resolve, a physician naming another physician). Without it one physician, a ghost
+        # and a made-up reference close a case as declined: the machine alone compares strings.
+        if t == "record_informed_refusal":
+            why = refusal_must_be_refused(actor, p)
+            if why is not None:
+                _bump(self.r.delegated, "I1: fabricated refusal -> refused by the route gate (ADR-059)")
+                if refusal_gate_refusal(actor, p) is None:
+                    out.append(("I1", f"a fabricated informed refusal ({why}) passes the machine AND the route gate"))
         if t == "clinician_review" and post.state != pre.state:
             _bump(c, "I1 clinician reviews")
             if actor.split(":", 1)[0] not in PHYSICIANS:  # E20a F1: the review is a physician's, signed or not
@@ -787,6 +864,9 @@ class Checker:
                     move = (ev.type, ev.actor, label, ev.payload)
                     if stop([(inv, msg, trace_of(i, move)) for inv, msg in self.check_transition(m, ev, post)]):
                         return finish()
+                    if fabricated_refusal(ev, label):
+                        beh[key] = None  # checked above, never followed: no route lets a person write it (ADR-059)
+                        continue
                     s = signature(post)
                     beh[key] = s
                     j = sigs.get(s)
@@ -824,7 +904,7 @@ class Checker:
     def _behaviour(self, m: sm.CaseModel, drop: tuple = ()) -> dict:
         out = {}
         for label, ev in self.moves(m):
-            post = self.try_step(m, ev)
+            post = None if fabricated_refusal(ev, label) else self.try_step(m, ev)
             out[(ev.type, ev.actor, label)] = None if post is None else project(signature(post), drop)
         return out
 

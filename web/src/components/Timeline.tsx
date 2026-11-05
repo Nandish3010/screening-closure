@@ -60,11 +60,25 @@ const CONSENT_LABEL: Record<string, string> = {
   share_with_specialist: "sharing with the specialist", withdrawn: "consent withdrawn",
 };
 
+const SOURCE_LABEL: Record<string, string> = {
+  patient_app: "the patient, in the app", phone_call: "phone call", in_person: "in person", written: "in writing", reply_review: "a reply a person read",
+};
+
+/** ADR-059 (F4): how the patient asked, as the timeline shows it ("asked by: phone call, ref call-0412"); "" when the event carries none. */
+export function consentSourceText(source: unknown): string {
+  if (typeof source !== "object" || source === null) return "";
+  const s = source as { channel?: unknown; reference?: unknown };
+  const how = SOURCE_LABEL[String(s.channel)] ?? String(s.channel ?? "unknown");
+  return `asked by: ${how}${typeof s.reference === "string" && s.reference ? `, ref ${s.reference}` : ""}`;
+}
+
 function payloadSummary(type: string, p: Record<string, unknown>): string {
   if (type === "consent_updated") {
-    return Object.entries(p)
-      .map(([k, v]) => (k === "withdrawn" ? (v ? "consent withdrawn" : "consent restored") : `${CONSENT_LABEL[k] ?? k.replace(/_/g, " ")}: ${v ? "allowed" : "not allowed"}`))
-      .join(" · ");
+    const changes = Object.entries(p)
+      .filter(([k]) => k !== "source")
+      .map(([k, v]) => (k === "withdrawn" ? (v ? "consent withdrawn" : "consent restored") : `${CONSENT_LABEL[k] ?? k.replace(/_/g, " ")}: ${v ? "allowed" : "not allowed"}`));
+    const src = consentSourceText(p.source);
+    return (src ? [...changes, src] : changes).join(" · ");
   }
   if (type === "reply_received") {
     // D13: only the channel is shown. The reply text is never in an event (`text_ref` is just the id that finds it elsewhere).
