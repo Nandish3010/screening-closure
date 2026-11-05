@@ -152,6 +152,17 @@ export const TODAY_ROUTE = "/coordinator/today";
 export const PRIVACY_ROUTE = "/patient?tab=privacy";
 
 const guidedCase = (g: GuidedCase | null | undefined, fallback: string) => (g ? `/coordinator/${g.case_id}` : fallback);
+/** Without a fresh guided case, each step still opens its own fitting case (not one shared page), so the steps stay distinct. */
+const guidedOr = (g: GuidedCase | null | undefined, pick: (cases: CaseSummary[], now: string | null) => CaseSummary | undefined, cases: CaseSummary[], now: string | null, none = "/coordinator") => {
+  if (g) return `/coordinator/${g.case_id}`;
+  const c = pick(cases, now);
+  return c ? `/coordinator/${c.case_id}` : none;
+};
+const nth = (states: string[], n: number) => (cases: CaseSummary[], now: string | null) => {
+  const list = worklist(cases, DEFAULT_FILTERS, now);
+  const fit = list.filter((c) => states.includes(c.state));
+  return fit[n] ?? list[n] ?? list[0];
+};
 
 /**
  * The challenge owner's five steps, plus the safety net and privacy and consent, each deep-linked into the real screens. On the hosted
@@ -173,7 +184,7 @@ export const CHALLENGE_STEPS: Step[] = [
         <p>Nothing here diagnoses anyone. The record is an append-only log of who did what and when.</p>
       </>
     ),
-    route: (_c, _n, g) => guidedCase(g, TODAY_ROUTE),
+    route: (c, n, g) => guidedOr(g, nth(["acknowledged", "result_received", "owner_accepted"], 0), c, n, TODAY_ROUTE),
     target: '[data-testid="timeline"]',
     lookFor: ["The first events in the timeline were written by the system, not a person: the result was acknowledged and an owner was named.", "The SLA clock line near the top says when the next step is due."],
     tryIt: ["Read the timeline from the top: who acted, and what is due next."],
@@ -229,7 +240,7 @@ export const CHALLENGE_STEPS: Step[] = [
         <p>Messages to the patient are short, in their language, and say one next step. A draft is approved by the case owner before it is sent, and the pre-approved reminders the system sends on its own are marked as automatic. The patient app shows the same next step in plain words.</p>
       </>
     ),
-    route: (_c, _n, g) => guidedCase(g, "/coordinator"),
+    route: (c, n, g) => guidedOr(g, nth(["patient_contacted", "owner_accepted"], 1), c, n),
     target: '[data-testid="drafts-panel"], [data-testid="worklist"]',
     lookFor: ["The Messages panel: drafts show who wrote them and wait for a person to approve.", "Reminders the system sent itself carry an automatic marker in the timeline."],
     tryIt: ["Open the patient app (link below) to see the next step as the patient reads it, then switch the language."],
@@ -268,7 +279,7 @@ export const CHALLENGE_STEPS: Step[] = [
         <p>Silence is the dangerous failure. Press <strong>Simulate a missed follow-up</strong> on this case: the demo clock skips past its due date and the real scheduler and watchdog run. Nothing is faked: the engine writes the overdue marker and the escalations, and no machine can accept them.</p>
       </>
     ),
-    route: (_c, _n, g) => guidedCase(g, "/coordinator"),
+    route: (c, n, g) => guidedOr(g, nth(["owner_accepted", "patient_contacted"], 2), c, n),
     target: '[data-testid="missed-followup"], [data-testid="worklist"]',
     lookFor: ["After the button: an overdue chip, then a reminder and a supervisor escalation on the timeline, each written by the system.", "The escalation shows as waiting for a human to accept.", "Accept it as the supervisor (the panel further down): it clears, and the log keeps who accepted."],
     tryIt: ["Press the button, read the result, then accept the escalation."],
@@ -286,7 +297,7 @@ export const CHALLENGE_STEPS: Step[] = [
         <p>Every staff read of a case is recorded outside the clinical log, and the patient can read that list in their privacy centre. If the patient withdraws consent, contact stops at once and nobody can message them until it is restored.</p>
       </>
     ),
-    route: (_c, _n, g) => guidedCase(g, "/coordinator"),
+    route: (c, n, g) => guidedOr(g, nth(["patient_contacted", "owner_accepted"], 3), c, n),
     target: '[data-testid="access-audit"], [data-testid="consent-state"]',
     lookFor: ["The access log: who opened this case and when (one row per person per 15 minutes).", "The Consent line: the channels allowed, and a Frozen chip if consent was withdrawn."],
     tryIt: ["Open the patient's privacy centre (link below) to see the same list from the patient's side."],

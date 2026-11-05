@@ -25,6 +25,7 @@
   --link: #0b5a8a;
   --focus: #0a4655; --focus-halo: #ffffff;
   --ring-dark: #ffffff; --ring-dark-halo: #0a2a33;
+  --ink-band: #0a2f3a; --ink-band-text: #ffffff;
   /* Status pairs (background, foreground) */
   --bad-bg: #fde8e6; --bad: #9b1c14;
   --warn-bg: #fff3d6; --warn: #7a4b00;
@@ -68,6 +69,7 @@
     --link: #8ec9f0;
     --focus: #fbbf24; --focus-halo: #0e171c;
     --ring-dark: #ffffff; --ring-dark-halo: #0a2a33;
+    --ink-band: #06222b; --ink-band-text: #ffffff;
     --bad-bg: #4a1b17; --bad: #ffb4ab;
     --warn-bg: #46340a; --warn: #ffd98a;
     --ok-bg: #123a20; --ok: #9fe3b4;
@@ -705,3 +707,17 @@ table, pre, .mono { max-width: 100%; }
 .receipt h3 { margin: 0 0 var(--s-2); }
 .receipt .muted { color: var(--ok); }
 .role-denied { margin-top: 0; }
+
+/* Start here: honest-result band (dark teal, so focus rings on it use the on-dark colours), progress and step status */
+.honest-band { background: var(--ink-band); color: var(--ink-band-text); border-radius: var(--r-lg); padding: var(--s-4) var(--s-5); margin: var(--s-4) 0; }
+.honest-band h2 { margin: 0 0 var(--s-2); font-size: var(--fs-sm); text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-band-text); }
+.honest-band .honest-big { font-size: var(--fs-xl); line-height: 1.3; margin: var(--s-1) 0; }
+.honest-band .honest-tag { font-size: var(--fs-sm); border: 1.5px solid var(--ink-band-text); border-radius: var(--r-pill); padding: 0 var(--s-2); vertical-align: middle; }
+.honest-band .honest-note { font-size: var(--fs-sm); margin: var(--s-2) 0 0; }
+.honest-band a { color: var(--ink-band-text); }
+.start-progress { margin: var(--s-3) 0; }
+.start-progress p { margin: var(--s-1) 0 0; }
+.start-bar { height: 10px; border-radius: var(--r-pill); background: var(--chart-track); overflow: hidden; }
+.start-bar span { display: block; height: 100%; background: var(--brand); }
+.start-card[data-status="next"] { border-color: var(--brand); border-width: 2px; }
+.start-then { margin-top: var(--s-5); }
