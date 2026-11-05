@@ -24,7 +24,7 @@ def run(tmp_path, *args, status=None, request=None):
     if request is not None:
         (ctl / "reset-request.json").write_text(json.dumps(request))
     (ctl / "baseline.json").write_text("{}")
-    env = {**os.environ, "SC_REPO": str(repo), "DEMO_CONTROL_DIR": str(ctl)}
+    env = {**os.environ, "SC_REPO": str(repo), "DEMO_CONTROL_DIR": str(ctl), "DEMO_API_UID": str(os.getuid())}
     out = subprocess.run(["bash", str(SCRIPT), *args], env=env, capture_output=True, text=True, timeout=60)
     assert out.returncode == 0, out.stderr
     resets = (tmp_path / "resets.log").read_text().count("reset") if (tmp_path / "resets.log").exists() else 0
@@ -56,3 +56,40 @@ def test_the_scheduled_reset_runs_unless_one_just_happened_or_a_request_is_waiti
     third.mkdir()
     r, st2, _ = run(third, "--scheduled", status={"last_reset_at": old}, request={"requested_by": "x"})
     assert r == 0  # a pending manual request wins; this pass does nothing
+
+
+def test_the_request_is_data_never_code(tmp_path):
+    """Shell metacharacters in the requester's name are kept as text; nothing in the file is ever run."""
+    pwned = tmp_path / "pwned"
+    evil = f"$(touch {pwned}) `touch {pwned}` ; touch {pwned} #"
+    resets, st, _ = run(tmp_path, request={"requested_at": "x", "requested_by": evil})
+    assert resets == 1 and not pwned.exists()
+    assert "touch" in st["last_reset_by"]  # recorded as text
+
+
+def test_a_symlinked_or_foreign_request_is_ignored_and_removed(tmp_path):
+    target = tmp_path / "elsewhere.json"
+    target.write_text(json.dumps({"requested_by": "x"}))
+    ctl = tmp_path / "ctl"
+    ctl.mkdir()
+    os.symlink(target, ctl / "reset-request.json")
+    repo = tmp_path / "repo"
+    (repo / "deploy/gcp/vm").mkdir(parents=True)
+    stub = repo / "deploy/gcp/vm/demo-reset-on-vm.sh"
+    stub.write_text(f"#!/bin/bash\necho reset >> {tmp_path}/resets.log\n")
+    stub.chmod(0o755)
+    env = {**os.environ, "SC_REPO": str(repo), "DEMO_CONTROL_DIR": str(ctl), "DEMO_API_UID": str(os.getuid())}
+    assert subprocess.run(["bash", str(SCRIPT)], env=env, capture_output=True, text=True, timeout=60).returncode == 0
+    assert not (tmp_path / "resets.log").exists() and not (ctl / "reset-request.json").is_symlink()
+    # a plain file owned by someone other than the API user (here: the API uid is declared to be a different one)
+    (ctl / "reset-request.json").write_text(json.dumps({"requested_by": "x"}))
+    env["DEMO_API_UID"] = str(os.getuid() + 12345)
+    subprocess.run(["bash", str(SCRIPT)], env=env, capture_output=True, text=True, timeout=60)
+    assert not (tmp_path / "resets.log").exists()
+
+
+def test_the_watcher_runs_only_the_fixed_restore():
+    text = "\n".join(l for l in SCRIPT.read_text().splitlines() if not l.lstrip().startswith("#"))
+    for banned in ("eval ", "bash -c", "sh -c", "source ", "xargs", "$(cat", "`cat"):
+        assert banned not in text, banned
+    assert text.count("demo-reset-on-vm.sh") == 1 and '"$SC_REPO/deploy/gcp/vm/demo-reset-on-vm.sh"' in text

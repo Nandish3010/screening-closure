@@ -28,9 +28,6 @@ USER_SECRETS = ("pw-coordinator", "pw-clinician", "pw-supervisor", "pw-patient",
 REQUIRED = TOKEN_SECRETS + DB_SECRETS + USER_SECRETS
 
 REALM = "screening-closure"
-# The four logins a judge is given (deploy/gcp/credentials.sh prints the same four; web/src/api/identities.ts JUDGE_ROLES lists them).
-JUDGE_LOGINS = (("coordinator", "maryam.alsuwaidi", "pw-coordinator"), ("clinician", "huda.rahman", "pw-clinician"),
-                ("supervisor", "noura.alhammadi", "pw-supervisor"), ("patient", "demo.patient", "pw-patient"))
 
 
 def _lines(d: dict[str, str]) -> str:
@@ -40,8 +37,7 @@ def _lines(d: dict[str, str]) -> str:
     return "".join(f"{k}={v}\n" for k, v in d.items())
 
 
-def build_files(host: str, secrets: dict[str, str], mode: str = "production", demo_patient_ref: str = "",
-                show_judge_credentials: bool = False) -> dict[str, dict[str, str]]:
+def build_files(host: str, secrets: dict[str, str], mode: str = "production", demo_patient_ref: str = "") -> dict[str, dict[str, str]]:
     missing = [n for n in REQUIRED if not secrets.get(n)]
     if missing:
         raise ValueError("missing secrets: " + ", ".join(missing))
@@ -100,14 +96,6 @@ def build_files(host: str, secrets: dict[str, str], mode: str = "production", de
         api["DEMO_SIMULATED_CLOCK"] = "1"
         api["DEMO_DEPLOYMENT"] = "1"
         api["DEMO_AUTO_RESET_HOURS"] = "6"  # informational: the web's "next scheduled reset" line (the timer is deploy/gcp/vm/sc-demo-reset-scheduled.timer)
-        if show_judge_credentials:
-            # OPT-IN (ADR-057): the sign-in page lists the four judge logins WITH passwords, read from GET /demo/credentials. The passwords are
-            # the generated Secret Manager ones, base64-encoded so no character is special to docker compose; they are in no repository file.
-            import base64
-
-            logins = [{"role": role, "username": user, "password": s[secret]} for role, user, secret in JUDGE_LOGINS]
-            api["DEMO_SHOW_CREDENTIALS"] = "1"
-            api["DEMO_JUDGE_LOGINS_B64"] = base64.b64encode(json.dumps(logins, separators=(",", ":")).encode()).decode()
     return {
         "compose.env": compose,
         "api.env": api,
@@ -122,9 +110,8 @@ def main() -> int:
     ap.add_argument("--mode", default="production")
     ap.add_argument("--out-dir", required=True)
     ap.add_argument("--demo-patient-ref", default="")
-    ap.add_argument("--show-judge-credentials", action="store_true", help="opt in: the sign-in page lists the judge logins with passwords (ADR-057)")
     a = ap.parse_args()
-    files = build_files(a.host, json.load(sys.stdin), a.mode, a.demo_patient_ref, a.show_judge_credentials)
+    files = build_files(a.host, json.load(sys.stdin), a.mode, a.demo_patient_ref)
     out = Path(a.out_dir)
     out.mkdir(parents=True, exist_ok=True)
     for name, values in files.items():

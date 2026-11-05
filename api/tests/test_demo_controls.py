@@ -84,10 +84,11 @@ def _probe(**extra: str) -> dict:
     return json.loads(done.stdout.strip().splitlines()[-1])
 
 
-ROUTES = ["/demo/credentials", "/demo/guide", "/demo/missed-followup", "/demo/reset"]
+ALL_ROLES = ["lab", "primary_care_owner", "specialist_owner", "coordinator", "patient", "supervisor"]
+ROUTES = ["/demo/guide", "/demo/missed-followup", "/demo/reset"]
 
 
-def test_the_controls_exist_only_under_both_flags_with_the_sim_clock():
+def test_the_controls_exist_only_under_both_flags_with_the_sim_clock_outside_dev():
     for extra in (dict(APP_ENV="dev"),  # a developer's stack: none
                   dict(APP_ENV="dev", DEMO_SIMULATED_CLOCK="1"),  # one flag
                   dict(APP_ENV="dev", DEMO_DEPLOYMENT="1"),
@@ -95,7 +96,7 @@ def test_the_controls_exist_only_under_both_flags_with_the_sim_clock():
                   dict(APP_ENV="production", CLOCK_MODE="wall")):
         out = _probe(**extra)
         assert out["paths"] == [] and "demo" not in out["health"], extra
-        assert out["guide"] == out["reset"] == out["missed"] == 404 or out["guide"] in (401, 403, 404)
+        assert out["guide"] in (401, 403, 404) and out["reset"] in (401, 403, 404) and out["missed"] in (401, 403, 404)
 
 
 def test_the_hosted_demo_gate_registers_them_and_health_reports_the_status():
@@ -108,9 +109,9 @@ def test_the_hosted_demo_gate_registers_them_and_health_reports_the_status():
     assert {"last_reset_at", "last_reset_by", "next_auto_reset_at", "reset_pending"} <= set(demo_block)
 
 
-def test_a_dev_stack_with_both_flags_previews_the_demo():
+def test_a_dev_stack_with_both_flags_still_has_none_of_it():
     out = _probe(APP_ENV="dev", CLOCK_MODE="sim", DEMO_SIMULATED_CLOCK="1", DEMO_DEPLOYMENT="1")
-    assert out["paths"] == ROUTES and out["health"]["demo"]["deployment"] is True
+    assert out["paths"] == [] and "demo" not in out["health"]  # the gate is the existing one: APP_ENV is not dev
 
 
 # ---- roles ----------------------------------------------------------------------------------------------------------
@@ -232,15 +233,87 @@ def test_an_unwritable_control_folder_is_a_plain_503_not_a_stack_trace(monkeypat
     assert r.status_code == 503 and "operator" in r.json()["detail"] and "Traceback" not in r.text
 
 
-def test_credentials_are_404_by_default_and_come_only_from_deploy_time_config(monkeypatch):
-    import base64
+# ---- security review (coordinator): every /demo/* path, every role ------------------------------------------------------------
 
-    assert demo.get("/demo/credentials").status_code == 404
-    rows = [{"role": "supervisor", "username": "noura.alhammadi", "password": "generated-at-deploy"}]
-    monkeypatch.setattr(settings, "demo_judge_logins_b64", base64.b64encode(json.dumps(rows).encode()).decode())
-    assert demo.get("/demo/credentials").status_code == 404  # the value alone is not enough: the operator must opt in
-    monkeypatch.setattr(settings, "demo_show_credentials", True)
-    r = demo.get("/demo/credentials")
-    assert r.status_code == 200 and r.json()["logins"] == rows and r.headers["cache-control"] == "no-store"
-    monkeypatch.setattr(settings, "demo_judge_logins_b64", "not-base64!!")
-    assert demo.get("/demo/credentials").status_code == 404  # malformed: stays off
+def _demo_rows():
+    return sorted((m, p) for (m, p) in policy.ROUTE_POLICY if p.startswith("/demo/"))
+
+
+def test_every_demo_path_is_404_without_the_gate_for_every_method_and_caller():
+    """The policy table lists the /demo/* paths; a process without the gate must not serve any of them, to anyone."""
+    rows = _demo_rows()
+    assert [p for _, p in rows] == ["/demo/guide", "/demo/missed-followup", "/demo/reset"]
+    for extra in (dict(APP_ENV="dev"), dict(APP_ENV="dev", DEMO_SIMULATED_CLOCK="1", DEMO_DEPLOYMENT="1", CLOCK_MODE="sim"),
+                  dict(APP_ENV="production", CLOCK_MODE="sim", DEMO_SIMULATED_CLOCK="1"),
+                  dict(APP_ENV="production", CLOCK_MODE="wall", DEMO_DEPLOYMENT="1"), dict(APP_ENV="production", CLOCK_MODE="wall")):
+        code = (
+            "import json\nfrom fastapi.testclient import TestClient\nfrom app.main import app\nfrom app import auth\n"
+            "c = TestClient(app)\n"
+            "tok = {r: c.post('/auth/dev-login', json={'role': r, 'name': 'x'}).json().get('token') for r in "
+            "['coordinator','supervisor','patient']} if app.openapi() else {}\n"
+            "out = {}\n"
+            "for m, p in [('GET','/demo/guide?session=abcdefgh'),('POST','/demo/reset'),('POST','/demo/missed-followup'),('GET','/demo/credentials')]:\n"
+            "    out[m+p] = [c.request(m, p, json={} if m == 'POST' else None).status_code] + [c.request(m, p, json={} if m == 'POST' else None, headers={'Authorization': 'Bearer ' + t}).status_code for t in tok.values() if t]\n"
+            "print(json.dumps({'out': out, 'paths': [p for p in app.openapi()['paths'] if p.startswith('/demo')]}))\n")
+        env = {k: v for k, v in os.environ.items() if k not in ("APP_ENV", "DATABASE_URL", "DEV_LOGIN_ENABLED", "CLOCK_MODE", "DEMO_SIMULATED_CLOCK", "DEMO_DEPLOYMENT")}
+        env.update(PYTHONPATH=str(API_DIR), DEV_AUTH_SECRET="k" * 40, **extra)
+        done = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, env=env, cwd=API_DIR, timeout=120)
+        got = json.loads(done.stdout.strip().splitlines()[-1]) if done.returncode == 0 else {"stderr": done.stderr[-400:]}
+        assert got.get("paths") == [], (extra, got)
+        for route, codes in got["out"].items():
+            # an authenticated caller gets 404 (no such route); an anonymous one may get 401/403 from the policy gate first, never data
+            assert all(c in (404, 401, 403) for c in codes), (extra, route, codes)
+            assert 200 not in codes and 202 not in codes
+
+
+def test_the_demo_routes_are_probed_for_every_role_in_the_rbac_matrix_sense():
+    """The matrix tool leaves /demo/* out (they are not served in its process); this is their matrix: each row of the policy table,
+    every role and anonymous, against the real router behind the real policy dependency."""
+    (cid,) = new_case()
+    bodies = {("GET", "/demo/guide"): (None, "?session=abcdefgh"), ("POST", "/demo/reset"): (None, ""),
+              ("POST", "/demo/missed-followup"): ({"case_id": cid}, "")}
+    for (method, path), allowed in sorted((k, v) for k, v in policy.ROUTE_POLICY.items() if k[1].startswith("/demo/")):
+        body, qs = bodies[(method, path)]
+        anon = demo.request(method, path + qs, json=body)
+        assert anon.status_code == 401, (path, anon.status_code)  # nothing anonymous
+        for role in ALL_ROLES:
+            demo_controls.forget()
+            headers = login_headers(main, role, f"matrix {role}", patient_ref="Patient/1" if role == "patient" else None)
+            r = demo.request(method, path + qs, json=body, headers=headers)
+            if role in allowed:
+                assert r.status_code not in (401, 403), (path, role, r.status_code, r.text)
+            else:
+                assert r.status_code == 403, (path, role, r.status_code)
+            clock_module.clock.reset()
+    assert policy.ROUTE_POLICY[("POST", "/demo/reset")] == frozenset({"supervisor"})
+    assert policy.ROUTE_POLICY[("POST", "/demo/missed-followup")] == frozenset({"supervisor"})
+
+
+def test_missed_followup_is_rate_limited_and_names_who_asked(caplog):
+    import logging
+
+    (cid,) = new_case()
+    with caplog.at_level(logging.INFO, logger="app.demo"):
+        first = demo.post("/demo/missed-followup", json={"case_id": cid}, headers=SUP)
+    assert first.status_code == 200 and "demo sup" in first.json()["requested_by"]
+    assert any("demo sup" in r.getMessage() for r in caplog.records)  # who, in the log with the clock move
+    second = demo.post("/demo/missed-followup", json={"case_id": cid}, headers=SUP)
+    assert second.status_code == 429 and "few seconds" in second.json()["detail"]
+
+
+def test_no_committed_config_turns_the_credentials_route_on_and_the_route_does_not_exist():
+    repo = API_DIR.parent
+    assert "/demo/credentials" not in policy.ROUTE_POLICY and not hasattr(demo_controls, "judge_logins")
+    assert "/demo/credentials" not in [r.path for r in demo_router.router.routes]
+    offenders = []
+    for root in ("deploy", "docker-compose.yml", "docker-compose.offline.yml", "docker", "config", "tools/k8s", "k8s", "helm"):
+        base = repo / root
+        files = [base] if base.is_file() else [f for f in base.rglob("*") if f.is_file()] if base.exists() else []
+        for f in files:
+            try:
+                text = f.read_text(errors="ignore")
+            except OSError:
+                continue
+            if "DEMO_SHOW_CREDENTIALS" in text or "DEMO_JUDGE_LOGINS" in text:
+                offenders.append(str(f.relative_to(repo)))
+    assert offenders == []

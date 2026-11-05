@@ -34,11 +34,21 @@ def build_schema() -> dict:
         if str(p) not in sys.path:
             sys.path.insert(0, str(p))
     os.environ.setdefault("LOG_FORMAT", "text")
-    # The schema includes the hosted demo's routes (ADR-057), which exist only under these two flags with the sim clock.
-    os.environ.update(DEMO_SIMULATED_CLOCK="1", DEMO_DEPLOYMENT="1", CLOCK_MODE="sim")
     from app.main import app  # importing builds the app; the lifespan (DB, secrets) only runs when a server starts
 
-    return json.loads(json.dumps(app.openapi(), sort_keys=True))
+    spec = app.openapi()
+    # The hosted demo's routes (ADR-057) are registered only under the demo gate (APP_ENV not dev, both flags), which is never this
+    # process, yet the web contract covers them: merge their schema from a throw-away app that mounts the same router.
+    from fastapi import FastAPI
+
+    from app.routers import demo as demo_router
+
+    extra = FastAPI()
+    extra.include_router(demo_router.router)
+    more = extra.openapi()
+    spec["paths"].update(more["paths"])
+    spec.setdefault("components", {}).setdefault("schemas", {}).update(more.get("components", {}).get("schemas", {}))
+    return json.loads(json.dumps(spec, sort_keys=True))
 
 
 def ref_name(ref: str) -> str:

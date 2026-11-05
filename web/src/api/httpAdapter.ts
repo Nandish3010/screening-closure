@@ -1,6 +1,6 @@
 /** HTTP adapter: the real API at VITE_API_URL, with bearer-token auth from POST /auth/dev-login. */
 import type {
-  DemoCredential, DemoGuide, DemoResetRequested, MissedFollowupResult,
+  DemoGuide, DemoResetRequested, MissedFollowupResult,
   AccessLog, AgencyInboxItem, AgencyOrg, AgencyRun, AgencyTask, AgencyTaskParams, Alert, ApiClient, CaseAgencySummary, CaseDetail, CaseEvent, CaseListParams, CaseSummary, CaseTimeline, ClosureMetrics, ConfirmatoryResult, Draft, TodayParams, TodayResponse,
   DraftApproval, DraftRecord, DraftRejection, DraftRequestBody, EffortMetrics, FunnelMetrics, FunnelParams, IntegrationFeed, IntegrationMockStatus, MalaffiReplayResult, SahatnaCallbackResult, Me, PostEventBody, ReplyBody, ReplyResult, Role, TimelineItem,
 } from "./contract";
@@ -240,13 +240,6 @@ export function createHttpAdapter(baseUrl: string, fetchImpl: typeof fetch = (..
     demoGuide: (session) => request<DemoGuide>(`/demo/guide?session=${encodeURIComponent(session)}`),
     requestDemoReset: () => request<DemoResetRequested>("/demo/reset", { method: "POST" }),
     missedFollowup: (caseId) => request<MissedFollowupResult>("/demo/missed-followup", { method: "POST", body: JSON.stringify({ case_id: caseId }) }),
-    async demoCredentials() {
-      try {
-        return (await request<{ logins: DemoCredential[] }>("/demo/credentials")).logins;
-      } catch {
-        return null; // not offered on this deployment (404) or not reachable: the sign-in page just does not show passwords
-      }
-    },
     async advanceClock(by) {
       const j = await request<{ sim_time: string }>("/clock/advance", { method: "POST", body: JSON.stringify(by) });
       return j.sim_time;

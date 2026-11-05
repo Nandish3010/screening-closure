@@ -81,8 +81,6 @@ ROUTE_POLICY: dict[tuple[str, str], object] = {
     # The hosted demo's judge-experience routes (ADR-057), registered only under app.auth.demo_controls_active(): the guided path's
     # fresh cases (any signed-in role), and the two controls that move shared demo state (supervisor only, like /clock/advance).
     ("GET", "/demo/guide"): ALL_USERS,
-    # PUBLIC but opt-in at deploy time and 404 by default (the sign-in page cannot know who is looking yet).
-    ("GET", "/demo/credentials"): PUBLIC,
     ("POST", "/demo/reset"): frozenset({SUPER}),
     ("POST", "/demo/missed-followup"): frozenset({SUPER}),
     # The scheduler service's periodic sweep and its heartbeat.

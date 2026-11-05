@@ -14,10 +14,9 @@ import { StartHerePage } from "./pages/StartHerePage";
 const PatientPage = lazy(() => import("./pages/PatientPage").then((m) => ({ default: m.PatientPage })));
 const PatientHome = lazy(() => import("./pages/PatientPage").then((m) => ({ default: m.PatientHome })));
 import { DEMO_PATIENT_CASE_ID } from "./api/fixtures";
-import { Suspense, lazy, useEffect, useState, useSyncExternalStore } from "react";
+import { Suspense, lazy, useEffect, useSyncExternalStore } from "react";
 import { useApp } from "./app/AppContext";
 import { DEMO_USERS, JUDGE_ROLES } from "./api/identities";
-import type { DemoCredential } from "./api/contract";
 import { DemoBanner } from "./components/DemoBanner";
 import { BrandLockup } from "./components/Brand";
 
@@ -57,21 +56,12 @@ export function SignInPage({ error }: { error?: string | null }) {
 function JudgeSignIn({ error }: { error?: string | null }) {
   const { api } = useApp();
   const oidc = api.oidc!;
-  // ADR-057, opt-in: when the operator enabled it at deploy time the server lists the four logins WITH their generated passwords
-  // (GET /demo/credentials), so a judge can copy one and sign in without leaving this page. Otherwise (the default) the password is
-  // in the submission. None of it is in the web bundle or this repository.
-  const [logins, setLogins] = useState<DemoCredential[] | null>(null);
-  useEffect(() => {
-    let live = true;
-    void api.demoCredentials?.().then((l) => live && setLogins(l)).catch(() => undefined);
-    return () => { live = false; };
-  }, [api]);
   return (
     <main className="container" id="main" data-testid="judge-signin">
       <DemoBanner />
       <p className="signin-brand"><BrandLockup large /></p>
       <h1>Screening Closure: judge demo</h1>
-      <p className="lead">Pick a role. You sign in through the real identity provider; the username is filled in and {logins ? <>the passwords are shown on the cards (copy one, then paste it at the sign-in)</> : <>the <strong>password for each role is in the submission</strong></>}. Everything here is synthetic.</p>
+      <p className="lead">Pick a role. You sign in through the real identity provider; the username is filled in and the <strong>password for each role is in the submission</strong>. Everything here is synthetic.</p>
       {error && <p role="alert" className="why">{error}</p>}
       <ul className="role-cards" data-testid="role-cards">
         {JUDGE_ROLES.map((r) => (
@@ -80,32 +70,12 @@ function JudgeSignIn({ error }: { error?: string | null }) {
             <span>{r.does}</span>
             <span className="muted">{r.tryThis}</span>
             <span className="mono role-user">Username: {r.username}</span>
-            {logins?.find((l) => l.role === r.role) && (
-              <PasswordRow password={logins.find((l) => l.role === r.role)!.password} label={r.title} />
-            )}
             <button className="btn btn-primary" onClick={() => void oidc.signIn({ loginHint: r.username, forceLogin: true })}>Sign in as {r.title.toLowerCase()}</button>
           </li>
         ))}
       </ul>
       <p className="muted">Once in, use <strong>Judge tour</strong> in the header for the five steps of the programme (record, prioritise, refer, reminders and navigation, outcome). You can switch role at any time with &quot;Sign in as&quot; in the header.</p>
     </main>
-  );
-}
-
-/** One judge password, hidden until asked for, with a copy button. Comes from the server's deploy-time config, never from this bundle. */
-const MASK = "••••••••••••";
-function PasswordRow({ password, label }: { password: string; label: string }) {
-  const [shown, setShown] = useState(false);
-  const [copied, setCopied] = useState(false);
-  const copy = () => {
-    void navigator.clipboard?.writeText(password).then(() => { setCopied(true); window.setTimeout(() => setCopied(false), 2000); }, () => setShown(true));
-  };
-  return (
-    <span className="role-pw" data-testid="role-password">
-      <span className="mono">Password: {shown ? password : MASK}</span>{" "}
-      <button type="button" className="btn btn-small" onClick={() => setShown((v) => !v)} aria-label={`${shown ? "Hide" : "Show"} the ${label} password`}>{shown ? "Hide" : "Show"}</button>{" "}
-      <button type="button" className="btn btn-small" onClick={copy} aria-label={`Copy the ${label} password`}>{copied ? "Copied" : "Copy"}</button>
-    </span>
   );
 }
 

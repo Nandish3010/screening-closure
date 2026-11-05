@@ -1576,8 +1576,7 @@ export interface ApiClient {
   requestDemoReset?(): Promise<DemoResetRequested>;
   /** POST /demo/missed-followup (hosted demo, supervisor): move the simulated clock past this case's follow-up date and let the engine catch it. */
   missedFollowup?(caseId: string): Promise<MissedFollowupResult>;
-  /** GET /demo/credentials (hosted demo, only when the operator opted in at deploy time): the four judge logins. null when not offered. */
-  demoCredentials?(): Promise<DemoCredential[] | null>;
+
   /** Mock only: file a new positive result (`case_created`); with automation on the mock then acknowledges and assigns it. Returns the case id. */
   createCase?(): Promise<string>;
   /** Mock only: raise or clear the scheduler-down alert so the dashboard banner can be demonstrated. */
@@ -1603,7 +1602,6 @@ export type GuideStepId = (typeof GUIDE_STEPS)[number];
 export interface GuidedCase { case_id: string; state: string; due_at: string | null; priority: string | null; scheme: string | null; fresh: boolean }
 export interface DemoGuide { steps: Record<GuideStepId, GuidedCase | null>; status?: DemoHealth }
 export interface DemoResetRequested { requested: boolean; requested_at: string; requested_by: string; message: string }
-export interface DemoCredential { role: Role; username: string; password: string }
 /** What "Simulate a missed follow-up" did: the clock move and the events the engine itself wrote (never this route). */
 export interface MissedFollowupResult {
   case_id: string;

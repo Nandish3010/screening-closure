@@ -50,10 +50,19 @@ PY
 }
 
 REQ="$CTL/reset-request.json"
+API_UID=${DEMO_API_UID:-10001}   # the api container's user: the only one whose request file is honoured
+owner_uid() { stat -c %u "$1" 2>/dev/null || stat -f %u "$1"; }
 by=""; reason=""
 if [ "$mode" = request ]; then
-  [ -f "$REQ" ] || exit 0
-  by=$(json_get "$REQ" requested_by); reason=manual
+  [ -e "$REQ" ] || [ -L "$REQ" ] || exit 0
+  # The request is DATA, never code: it must be a plain file written by the API user (not a link, not someone else's file), and
+  # only the requester's name is read from it, through python's json parser into a variable that is quoted wherever it is used and
+  # never interpolated into a command. What runs after it is the one fixed script below, whatever the file says.
+  if [ -L "$REQ" ] || [ ! -f "$REQ" ] || { [ "$(owner_uid "$REQ")" != "$API_UID" ] && [ "$(owner_uid "$REQ")" != 0 ]; }; then
+    echo "demo-reset-watch: ignoring a reset request that is not a plain file owned by the API user" >&2
+    rm -f -- "$REQ"; exit 0
+  fi
+  by=$(json_get "$REQ" requested_by | head -c 120 | tr -cd '[:print:]'); reason=manual
   [ -n "$by" ] || by="a supervisor"
 else
   [ -f "$REQ" ] && { echo "demo-reset-watch: a manual request is pending; it will reset the demo"; exit 0; }

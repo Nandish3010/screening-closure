@@ -19,7 +19,6 @@ Four small pieces, none of which touches the state machine:
 
 from __future__ import annotations
 
-import base64
 import json
 import logging
 import os
@@ -85,25 +84,6 @@ def _parse(ts: str | None) -> datetime | None:
         return None
 
 
-# ---- judge credentials (opt-in) ----------------------------------------------------------------------------------------
-
-JUDGE_ROLES = ("coordinator", "clinician", "supervisor", "patient")
-
-
-def judge_logins() -> list[dict] | None:
-    """The four judge logins from the deploy-time config, or None when the operator did not opt in (the default) or the value is not
-    well formed. Never read from the repository: `DEMO_JUDGE_LOGINS_B64` is rendered from Secret Manager by render_env.py."""
-    if not settings.demo_show_credentials or not settings.demo_judge_logins_b64:
-        return None
-    try:
-        rows = json.loads(base64.b64decode(settings.demo_judge_logins_b64, validate=True))
-        out = [{"role": r["role"], "username": str(r["username"]), "password": str(r["password"])} for r in rows]
-    except (ValueError, KeyError, TypeError):
-        log.error("DEMO_JUDGE_LOGINS_B64 is not valid; the credentials page stays off")
-        return None
-    return out if out and all(r["role"] in JUDGE_ROLES and r["username"] and r["password"] for r in out) else None
-
-
 # ---- status and reset -------------------------------------------------------------------------------------------------
 
 def status() -> dict:
@@ -156,8 +136,9 @@ _picks: dict[tuple[str, str], str] = {}  # (session, step) -> case_id
 
 def forget() -> None:
     """Drop in-process memory (tests)."""
-    global _baseline
+    global _baseline, _last_missed
     with _lock:
+        _last_missed = 0.0
         _baseline = None
         _claims.clear()
         _picks.clear()
@@ -301,10 +282,21 @@ def _case_row(case_id: UUID) -> dict:
     return row
 
 
-def missed_followup(case_id: UUID) -> dict:
+_last_missed = 0.0
+MISSED_MIN_INTERVAL_SECONDS = 10  # the clock is shared: one skip per 10 s, so a held-down button cannot run it forward
+
+
+def missed_followup(case_id: UUID, who: str = "") -> dict:
     """Move the sim clock just past the case's follow-up date and its supervisor rung, running the REAL sweep after each move and
     the watchdog's idle scan at the end. Writes nothing itself."""
     from app.routers.scheduler import _sweep  # the very sweep the scheduler calls
+
+    global _last_missed
+    with _lock:
+        t = _mono()
+        if t - _last_missed < MISSED_MIN_INTERVAL_SECONDS:
+            raise DemoError(429, "That was just done. Give it a few seconds, then try again.")
+        _last_missed = t
 
     row = _case_row(case_id)
     pw = row["_pathway"]
@@ -331,6 +323,7 @@ def missed_followup(case_id: UUID) -> dict:
             clock.advance(days=(target - clock.now()).total_seconds() / 86400)
         sweeps.append(_sweep(clock.now()))
     scan = watchdog.run_idle_scan(cases.store, pw, clock.now(), settings.watchdog_idle_days, only=[case_id]).to_json()
+    log.info("demo missed follow-up by %s: clock %s to %s", who or "unknown", clock_from.isoformat(), clock.now().isoformat())
     after = _case_row(case_id)
     events = cases.store.events_for(case_id)[before_events:]
     return {
@@ -343,6 +336,7 @@ def missed_followup(case_id: UUID) -> dict:
         "escalation_level": after["escalation_level"],
         "escalation_level_before": before_level,
         "watchdog_flagged": after.get("watchdog_flagged") is not None,
+        "requested_by": who or None,
         "sweeps": len(sweeps),
         "watchdog_scan": {"flagged": scan.get("flagged", 0)},
     }

@@ -4,10 +4,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { MemoryRouter } from "react-router-dom";
 import type { ApiClient, Role } from "../src/api/contract";
 import { ApiError } from "../src/api/contract";
-import type { OidcClient } from "../src/api/oidc";
 import { createMockAdapter } from "../src/api/mockAdapter";
 import { AppProvider } from "../src/app/AppContext";
-import App, { SignInPage } from "../src/App";
+import App from "../src/App";
 import { CaseDetailPage } from "../src/pages/CaseDetailPage";
 import { Route, Routes } from "react-router-dom";
 
@@ -155,36 +154,5 @@ describe("Simulate a missed follow-up", () => {
     renderCase(api, g.steps.safety!.case_id, "supervisor");
     fireEvent.click(await screen.findByTestId("simulate-missed"));
     expect(await screen.findByTestId("missed-error")).toHaveTextContent("too far to skip");
-  });
-});
-
-describe("judge credentials on the sign-in page (opt-in)", () => {
-  function oidcApi(logins: { role: Role; username: string; password: string }[] | null) {
-    const signIn = vi.fn(async () => undefined);
-    const oidc = { config: {}, signedIn: () => false, signIn, handleRedirect: async () => false, accessToken: async () => null, signOut: () => undefined, subscribe: () => () => undefined } as unknown as OidcClient;
-    const base = createMockAdapter(null);
-    const api = { ...base, resetDemo: undefined, oidc, demoCredentials: async () => logins,
-      health: async () => ({ status: "ok", sim_time: "2026-01-05T08:00:00Z", demo: { simulated_clock: true, deployment: true } }) } as unknown as ApiClient;
-    return { api, signIn };
-  }
-
-  it("lists the passwords hidden, shows one on request, and the sign-in still starts with the username", async () => {
-    const { api, signIn } = oidcApi([{ role: "supervisor", username: "noura.alhammadi", password: "s3cret-from-deploy" }]);
-    render(<MemoryRouter><AppProvider api={api}><SignInPage /></AppProvider></MemoryRouter>);
-    const rows = await screen.findAllByTestId("role-password");
-    expect(rows).toHaveLength(1);
-    expect(rows[0].textContent).not.toContain("s3cret-from-deploy");
-    fireEvent.click(screen.getByRole("button", { name: /show the Supervisor password/i }));
-    expect(rows[0].textContent).toContain("s3cret-from-deploy");
-    fireEvent.click(screen.getByRole("button", { name: /sign in as supervisor/i }));
-    expect(signIn).toHaveBeenCalledWith({ loginHint: "noura.alhammadi", forceLogin: true });
-  });
-
-  it("shows no password, and says where it is, when the operator did not opt in", async () => {
-    const { api } = oidcApi(null);
-    render(<MemoryRouter><AppProvider api={api}><SignInPage /></AppProvider></MemoryRouter>);
-    await screen.findByTestId("role-cards");
-    expect(screen.queryByTestId("role-password")).toBeNull();
-    expect(screen.getByTestId("judge-signin").textContent).toMatch(/password for each role is in the submission/);
   });
 });
