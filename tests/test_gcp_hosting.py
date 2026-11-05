@@ -163,3 +163,10 @@ def test_demo_clock_banner_and_gate_are_wired():
     assert "demo-clock-banner" in (REPO_ROOT / "web/src/components/DemoBanner.tsx").read_text()
     assert "DemoBanner" in (REPO_ROOT / "web/src/components/Header.tsx").read_text()
     assert "Demo, synthetic data, simulated time" in (REPO_ROOT / "web/src/i18n/strings.ts").read_text()
+
+
+def test_keycloak_import_dir_is_readable_by_the_container_user():
+    # sc-up.sh runs under umask 077; Keycloak (uid 1000) must still read the import dir or it crash-loops with "directory not found".
+    up = (GCP / "vm" / "sc-up.sh").read_text()
+    assert "chmod 0755 /etc/sc/keycloak-import" in up
+    assert "chmod 0644 /etc/sc/keycloak-import/screening-closure-realm.json" in up

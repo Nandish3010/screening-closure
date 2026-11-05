@@ -540,6 +540,8 @@ export const STAFF = {
     channel: "Reply arrived by",
     text: "Patient's reply",
     button: "Record reply",
+    classifying: "Reading the reply…",
+    classifyingNote: "The on-premises model is reading the reply; this can take a few seconds.",
     needText: "Enter the patient's reply first.",
     readAs: "Read as",
     quote: "Reply:",

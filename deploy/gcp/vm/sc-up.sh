@@ -30,6 +30,10 @@ unset secrets_json
 
 mkdir -p /etc/sc/keycloak-import
 python3 "$PY/render_realm.py" "$HOST" "$SC_REPO/config/keycloak/screening-closure-realm.json" /etc/sc/keycloak-import/screening-closure-realm.json
+# The umask above makes these root-only, but Keycloak runs as uid 1000 in its container and must READ the import directory (otherwise:
+# "Failed to start server ... directory not found"). The file holds only ${KC_PW_*} placeholders, no secret, so it is world-readable.
+chmod 0755 /etc/sc/keycloak-import
+chmod 0644 /etc/sc/keycloak-import/screening-closure-realm.json
 
 # shellcheck disable=SC1091
 . "$PY/env.sh"

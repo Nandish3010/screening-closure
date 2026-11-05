@@ -53,6 +53,24 @@ describe("Record patient reply across cases", () => {
   });
 });
 
+describe("Record patient reply while the model is reading", () => {
+  it("shows a visible 'Reading the reply' state until the answer arrives (a slow CPU model must not look stuck)", async () => {
+    const user = userEvent.setup();
+    const base = createMockAdapter(null, { automation: true });
+    let release: () => void = () => {};
+    const gate = new Promise<void>((resolve) => { release = resolve; });
+    const slow: ApiClient = { ...base, postReply: async (...args: Parameters<ApiClient["postReply"]>) => { await gate; return base.postReply(...args); } };
+    await openCase("coordinator", slow);
+    await user.type(screen.getByTestId("reply-text"), "yes I will come on Sunday");
+    await user.click(screen.getByTestId("record-reply"));
+    expect(await screen.findByTestId("reply-classifying")).toHaveTextContent(/few seconds/);
+    expect(screen.getByTestId("record-reply")).toHaveTextContent("Reading the reply");
+    release();
+    await screen.findByTestId("reply-result");
+    expect(screen.queryByTestId("reply-classifying")).toBeNull();
+  });
+});
+
 describe("Record patient reply", () => {
   it("a Gulf-Arabic confirmation is read as confirm but always goes to a person, and the Why panel says the rule", async () => {
     const user = userEvent.setup();
