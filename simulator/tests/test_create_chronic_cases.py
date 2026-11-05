@@ -169,6 +169,7 @@ def test_the_seeder_creates_chronic_cases_walks_them_to_their_stages_and_a_rerun
     assert states == list(seed.STAGES)
     assert all(b["pathway"] == "chronic_conditions" and b["case_id"] == i["case_id"] and b["results"] == i["results"] for b, i in zip(api.created_with, items))
     assert all(b.get("registered_provider") for b in api.created_with)
+    assert all(b["insurance_scheme"] in ("thiqa", "enhanced", "basic", "unknown") for b in api.created_with)  # ADR-056
     assert all(b["results"] for b in api.created_with)
     assert not {c["state"] for c in api.cases.values()} & set(seed.RECORDER_STATES)
     n_events = len(api.events)

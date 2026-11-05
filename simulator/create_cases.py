@@ -25,6 +25,8 @@ from pathlib import Path
 
 import httpx
 
+from insurance_mix import insurance_scheme_for
+
 log = logging.getLogger("create_cases")
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -92,6 +94,7 @@ def create_case(client: httpx.Client, api: str, entry: dict, providers: list[str
     registered = registered_provider_for(entry["patient_id"], providers if providers is not None else registration_providers())
     if registered is not None:
         body["registered_provider"] = registered  # A21: the automation assigns the registered provider's default owner
+    body["insurance_scheme"] = insurance_scheme_for(entry["patient_id"])  # ADR-056: a synthetic, deterministic mix for the demo
     delay = 1.0
     for attempt in range(1, 6):
         try:

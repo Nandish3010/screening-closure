@@ -1,4 +1,4 @@
-/** C18 (T-C28): the design system. Colours live in tokens, every var() is defined, the brand lockup and the effort chart render. */
+/** C18 (T-C29): the design system. Colours live in tokens, every var() is defined, the brand lockup and the effort chart render. */
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { render, screen, waitFor } from "@testing-library/react";

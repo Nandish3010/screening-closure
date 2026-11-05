@@ -9,12 +9,13 @@ id and never the name.
 from __future__ import annotations
 
 import hashlib
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from functools import lru_cache
 from pathlib import Path
 
 import yaml
 
+from app import insurance
 from app.auth import opaque_user_id
 
 
@@ -44,6 +45,8 @@ class Providers:
     specialty_by_pathway: dict[str, str]
     reroute_reasons: tuple[str, ...]
     reroute_order: dict[str, tuple[str, ...]]
+    # ADR-056: provider -> the insurance schemes it accepts (SYNTHETIC). A provider with no entry accepts every scheme.
+    networks: dict[str, frozenset[str]] = field(default_factory=dict)
 
     @property
     def registration_providers(self) -> tuple[str, ...]:
@@ -64,8 +67,56 @@ class Providers:
         done = {t.strip().casefold() for t in tried if isinstance(t, str)}
         return next((p for p in self.reroute_list(pathway_name) if p.casefold() not in done), None)
 
+    def accepts(self, provider: str, scheme: str | None) -> bool | None:
+        """Does `provider` accept `scheme`? None when the scheme is not a known one (no scheme, `unknown`): the question does
+        not arise and routing is as it was. A provider the file gives no network accepts every scheme."""
+        if not insurance.is_known(scheme):
+            return None
+        accepted = next((s for p, s in self.networks.items() if p.casefold() == provider.casefold()), None)
+        return True if accepted is None else scheme in accepted
+
+    def network_of(self, provider: str, scheme: str | None) -> str | None:
+        """`in_network`, `out_of_network`, or None when the scheme is not a known one."""
+        ok = self.accepts(provider, scheme)
+        return None if ok is None else insurance.IN_NETWORK if ok else insurance.OUT_OF_NETWORK
+
+    def in_network_providers(self, pathway_name: str, scheme: str | None) -> tuple[str, ...]:
+        """The pathway's referral providers that accept `scheme`, in referral order; empty for a scheme that is not known."""
+        return tuple(p for p in self.reroute_list(pathway_name) if self.accepts(p, scheme))
+
+    def route(self, pathway_name: str, scheme: str | None, tried) -> Route | None:
+        """The next referral provider for a case: the first not-yet-asked provider IN NETWORK for the case's scheme; when none
+        is left in network, the first not-yet-asked provider out of it (flagged, never blocked); None only when every
+        provider has been asked. A scheme that is not known (none, `unknown`) gives the first not-yet-asked provider, as
+        `next_provider` does."""
+        done = {t.strip().casefold() for t in tried if isinstance(t, str)}
+        left = [p for p in self.reroute_list(pathway_name) if p.casefold() not in done]
+        if not left:
+            return None
+        if not insurance.is_known(scheme):
+            return Route(left[0], None)
+        for provider in left:
+            if self.accepts(provider, scheme):
+                return Route(provider, insurance.IN_NETWORK)
+        return Route(left[0], insurance.OUT_OF_NETWORK)
+
+    def order_for(self, names, scheme: str | None) -> list[str]:
+        """`names` with the providers in network for `scheme` first (stable); unchanged for a scheme that is not known."""
+        names = list(names)
+        if not insurance.is_known(scheme):
+            return names
+        return [p for p in names if self.accepts(p, scheme)] + [p for p in names if not self.accepts(p, scheme)]
+
     def reroutes_reason(self, reason: str | None) -> bool:
         return reason in self.reroute_reasons
+
+
+@dataclass(frozen=True)
+class Route:
+    """A referral choice: the provider, and `in_network` / `out_of_network` (None when the case has no known scheme)."""
+
+    provider: str
+    network: str | None
 
 
 def provider_for_patient(patient_id: str, providers) -> str:
@@ -110,8 +161,25 @@ def parse_providers(raw: object) -> Providers:
     reasons = referral.get("reroute_reasons") or []
     if not isinstance(reasons, list) or not all(isinstance(r, str) and r for r in reasons):
         raise ProvidersError("providers: referral.reroute_reasons must be a list of reason codes")
+    networks = _parse_networks(referral.get("networks"), order)
     return Providers(default, owners, dict(specialty), tuple(reasons),
-                     {k: tuple(v) for k, v in order.items()})
+                     {k: tuple(v) for k, v in order.items()}, networks)
+
+
+def _parse_networks(raw: object, order: dict) -> dict[str, frozenset[str]]:
+    if raw is None:
+        return {}
+    if not isinstance(raw, dict):
+        raise ProvidersError("providers: referral.networks must map a provider to the schemes it accepts")
+    known = {n for names in order.values() for n in names}
+    out: dict[str, frozenset[str]] = {}
+    for provider, schemes in raw.items():
+        if provider not in known:
+            raise ProvidersError(f"providers: networks names {provider!r}, which is in no reroute order")
+        if not isinstance(schemes, list) or not all(s in insurance.SCHEMES for s in schemes):
+            raise ProvidersError(f"providers: networks for {provider!r} must be a list drawn from {list(insurance.SCHEMES)}")
+        out[provider] = frozenset(schemes)
+    return out
 
 
 def load_providers(path: str | Path) -> Providers:

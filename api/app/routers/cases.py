@@ -25,6 +25,7 @@ from app.events import (
     replay_model,
 )
 from app.pathway import Pathway, PathwayRegistry
+from app.providers import get_providers
 from app.risk import score as risk
 from app.state_machine import InvalidTransition, PayloadError, validate_payload
 
@@ -82,6 +83,9 @@ class CreateCase(BaseModel):
     contact_valid: bool | dict[str, bool] | None = None
     # A21: the primary-care provider the patient is registered with (config/providers.yaml maps it to a default owner).
     registered_provider: str | None = None
+    # ADR-056: the patient's insurance scheme (thiqa, enhanced, basic or unknown; generic codes). Optional, additive, never a
+    # hold condition; the referral routing prefers providers in the scheme's network. Omitted: routed as before.
+    insurance_scheme: str | None = None
     # Which pathway the case runs on. Omitted: the default pathway (bowel screening). It is the case's row, not an event
     # payload: the log is the same shape for every pathway.
     pathway: str | None = None
@@ -211,7 +215,7 @@ def create_case(body: CreateCase) -> dict:
     if pw is None:
         raise HTTPException(422, f"unknown pathway {body.pathway!r}; loaded: {[p.name for p in all_pathways()]}")
     payload = body.model_dump(exclude={"case_id", "pathway", "results"})
-    for key in ("patient_ref", "result_ref", "contact_valid", "registered_provider"):
+    for key in ("patient_ref", "result_ref", "contact_valid", "registered_provider", "insurance_scheme"):
         if payload.get(key) is None:
             payload.pop(key, None)
     if body.results is not None:
@@ -415,6 +419,22 @@ def _retry_time(case_id: UUID, event_id) -> datetime | None:
     return next((e.at for e in store.events_for(case_id) if e.event_id == event_id), None)
 
 
+def _stamp_network(case_id: UUID, type_: str, payload: dict) -> dict:
+    """ADR-056: a referral request records whether the chosen provider is in the case's insurance network, worked out here from
+    the genesis event's scheme and config/providers.yaml, never taken from the client. Nothing is added (and a value the
+    client sent is dropped) when the case has no known scheme, so a case without one logs exactly what it did before."""
+    if type_ != "handoff_requested":
+        return payload
+    out = {k: v for k, v in payload.items() if k != "network"}
+    provider = out.get("to_provider")
+    events = store.events_for(case_id)
+    if events and isinstance(provider, str):
+        network = get_providers().network_of(provider.strip(), events[0].payload.get("insurance_scheme"))
+        if network is not None:
+            out["network"] = network
+    return out
+
+
 @router.post("/{case_id}/events", status_code=201)
 def post_event(
     case_id: UUID, body: PostEvent, identity: Identity = Depends(require_identity)
@@ -436,11 +456,12 @@ def post_event(
     if at > clock.now():
         raise HTTPException(422, "event time cannot be later than the simulation clock")
     extra = {"event_id": body.event_id} if body.event_id is not None else {}
-    event = Event(case_id, body.type, at, identity.actor, body.payload, **extra)
+    payload = _stamp_network(case_id, body.type, body.payload)
+    event = Event(case_id, body.type, at, identity.actor, payload, **extra)
     try:
-        payloads.validate(body.type, body.payload)  # free text cannot enter the log (A14)
+        payloads.validate(body.type, payload)  # free text cannot enter the log (A14)
         validate_payload(event, pw)  # malformed payload: 422 before anything is written
-        _check_signature_and_evidence(identity, body.type, body.payload, case_id, pw)
+        _check_signature_and_evidence(identity, body.type, payload, case_id, pw)
         store.append(event, pw, guard=_event_guard(identity, body.type, at))
     except CaseNotFound:
         raise HTTPException(404, "case not found")

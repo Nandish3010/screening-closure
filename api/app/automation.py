@@ -250,10 +250,13 @@ def _reroute(store, pathway: Pathway, case_id: UUID, model, now: datetime, resul
         return
     tried = [e.payload.get("to_provider") for e in events if e.type == "handoff_requested"]
     tried.append(model.provider)
-    nxt = providers.next_provider(pathway.name, tried)
-    if nxt is not None:
-        _append(store, pathway, Event(case_id, "handoff_requested", now, AUTOMATION_ACTOR,
-                                      {"to_provider": nxt, "auto": True}, eid(case_id, rejection.event_id, "reroute")),
+    # ADR-056: a case with a known insurance scheme goes to the next provider IN NETWORK; when none is left, to the best one
+    # out of it, flagged (never blocked). No scheme, or `unknown`: the order alone, as before.
+    route = providers.route(pathway.name, events[0].payload.get("insurance_scheme"), tried)
+    if route is not None:
+        payload = {"to_provider": route.provider, "auto": True, **({"network": route.network} if route.network else {})}
+        _append(store, pathway, Event(case_id, "handoff_requested", now, AUTOMATION_ACTOR, payload,
+                                      eid(case_id, rejection.event_id, "reroute")),
                 result, "rerouted")
     else:
         _append(store, pathway, Event(case_id, "review_requested", now, AUTOMATION_ACTOR,

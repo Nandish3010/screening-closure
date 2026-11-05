@@ -298,6 +298,20 @@ It is bounded the way the closure metrics are (4.x, ADR-049): the numbers come f
 
 **What it does not say.** It counts cases that reached a step, not people helped, and the medians are of the cases that reached both ends, so they understate the slow steps. It is not a measure of health outcomes, and no impact, labour or outcome number is claimed (the 40% target is not met in realistic scenarios, section 9). All data on it are synthetic. The card is a real table with the bar under each step hidden from assistive technology, correct in light and dark, and stacks into one block per step at phone width (T-C21).
 
+### 4.18 Insurance-aware referral routing
+
+At the organisers' session the head of screening said a referral should take "the person health needs and insurance cover" into account: residents have different schemes and networks, and each person must reach a service their cover allows. The engine now routes a referral with the patient's **insurance scheme** in view (A40, ADR-056).
+
+**The scheme** is an optional field of the genesis event, `insurance_scheme`: `thiqa`, `enhanced`, `basic` or `unknown`. The names are generic; Thiqa is the one real scheme the repository already cites with sources (docs/commercial/buyer-map.md). `POST /cases` takes it and the payload schema validates it. It is **additive and never a hold condition**: no state, SLA, escalation, consent rule or closure reads it, and a case without one, or with `unknown`, is routed exactly as before. A patient never sees it: the patient's rows, case page and timeline are allow-lists that carry none of it.
+
+**The networks** are configuration: `config/providers.yaml` lists, per referral provider, the schemes it accepts. **This data is synthetic** and replaced by the payers' lists before any pilot. One function, `Providers.route`, decides: the first not-yet-asked provider **in network**; when none is left in network, the first not-yet-asked provider **out of network**, flagged; nothing only when every provider has been asked (the existing exhausted-reroute review). The automation's re-route after a rejection or a bounce uses it, as do the agency's re-route and referral-pack recommendations; a person may still choose any unit.
+
+**The record.** The `handoff_requested` event carries an optional `network` (`in_network` or `out_of_network`), set by the server (a client-sent value is replaced) from the genesis scheme and the file, so replay never depends on the live file. A case without a known scheme logs the event it always did.
+
+**What staff see.** The case page has an **Insurance** line with the plan and, once a referral has been requested, **Why this unit** in plain words: "Chosen because it accepts the patient's Basic plan and is the first such unit in the programme's referral order", or, out of network, "Out of network: no remaining unit for this service accepts the patient's Enhanced plan, so the referral goes to the best available unit outside it. A coordinator should check the cover with the patient. The referral is not blocked." An out-of-network referral carries a chip on the case page and in the coordinator's worklist flags, and the hand-off picker marks the units outside the plan. "Nearest" is not modelled: the order is the programme's referral order.
+
+**Demo.** The cohort pipelines assign a deterministic synthetic mix of schemes. The shipped networks make the first unit in each bowel and gynaecology order accept every scheme, so the named patient's route and the video storyboard are unchanged for any scheme and a bowel case is never out of network; a Basic family-medicine case is, to show the flag. Tests: T-A105 to T-A109, T-C28. Hazards: HZ-58 (a wrong or stale scheme or network read as verified cover; there is no eligibility check) and HZ-59 (routing by plan could disadvantage narrower plans; not yet measured).
+
 ## 5. Automated-versus-human decision matrix
 
 [docs/governance/decision-matrix.md](../governance/decision-matrix.md) has one row for each of the 24 event types and the routes that matter for control: who may emit it, whether any automated actor may, what evidence or payload it needs, what it changes, and the test that proves the restriction. `make docs-check` fails if the event rows differ from `EVENT_POLICY` in `api/app/policy.py` (T-E6). The short version:
@@ -386,7 +400,7 @@ A small fine-tuned multilingual classifier (Qwen2.5-1.5B-Instruct, 4-bit, LoRA) 
 
 ## 8. Hazard log summary
 
-[docs/governance/hazard-log.md](../governance/hazard-log.md) lists 48 hazards (HZ-01 to HZ-50; HZ-23 and HZ-24 are unused) with cause, likelihood, impact, control, the test that proves the control, residual risk and owner; `make docs-check` checks that every row has ratings, a control and test ids that exist (T-E7). Ratings are the author's judgement for the clinician review (H1) to revise. The eight with high impact and the most direct patient consequence:
+[docs/governance/hazard-log.md](../governance/hazard-log.md) lists 57 hazards (HZ-01 to HZ-59; HZ-23 and HZ-24 are unused) with cause, likelihood, impact, control, the test that proves the control, residual risk and owner; `make docs-check` checks that every row has ratings, a control and test ids that exist (T-E7). Ratings are the author's judgement for the clinician review (H1) to revise. The eight with high impact and the most direct patient consequence:
 
 | ID | Hazard | Main controls (built unless stated) | Tests |
 |---|---|---|---|

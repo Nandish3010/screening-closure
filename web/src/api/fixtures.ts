@@ -15,9 +15,20 @@ export const DEMO_OVERDUE_CASE_ID = "c0000001-0000-4000-8000-000000000001";
 
 type Step = [type: string, daysAgo: number, actor: string, payload?: Record<string, unknown>];
 
+/**
+ * The synthetic insurance scheme a seeded bowel case carries on its genesis event (ADR-056): a mix of the three schemes and an
+ * `unknown`, by case number. Every first-choice unit accepts every scheme, so no seeded referral changes provider. Staff only.
+ */
+const SEEDED_SCHEMES = ["thiqa", "enhanced", "basic", "thiqa", "enhanced", "thiqa", "basic", "unknown"] as const;
+const schemeOfCase = (id: string): string | null => {
+  const n = Number(id.slice(1, 8));
+  return n >= 1 && n <= 21 ? SEEDED_SCHEMES[(n - 1) % SEEDED_SCHEMES.length] : null; // the bowel cases; the other pathways' have none
+};
+
 function build(id: string, createdDaysAgo: number, steps: Step[]): CaseEvent[] {
+  const scheme = schemeOfCase(id);
   const evs: CaseEvent[] = [
-    { seq: 1, type: "case_created", at: at(createdDaysAgo), actor: "system:intake", payload: { patient_ref: `synthetic-patient-${id.slice(-3)}` } },
+    { seq: 1, type: "case_created", at: at(createdDaysAgo), actor: "system:intake", payload: { patient_ref: `synthetic-patient-${id.slice(-3)}`, ...(scheme ? { insurance_scheme: scheme } : {}) } },
   ];
   steps.forEach(([type, d, actor, payload], i) =>
     evs.push({ seq: i + 2, type, at: at(d), actor, payload: payload ?? {} }),
