@@ -15,9 +15,9 @@
 | 5 | 6 Forbidden phrases | Is the Arabic list right and complete? |
 | 5 | 7 and 8 Checklist, feedback table | Tick the checklist and fill the feedback table. |
 
-There are 179 Arabic texts (every one is also in English, with the same ID) and 147 Arabic forbidden-phrase entries. Every Arabic text in the prototype's sources is in this pack. All of it was written by the engineering team and has not been reviewed by a native speaker. Please correct freely; suggest better wording in the feedback table.
+There are 187 Arabic texts (every one is also in English, with the same ID) and 147 Arabic forbidden-phrase entries. Every Arabic text in the prototype's sources is in this pack. All of it was written by the engineering team and has not been reviewed by a native speaker. Please correct freely; suggest better wording in the feedback table.
 
-**New, please read first (H2, needs a native Arabic speaker).** The mobile patient app and the privacy and consent centre added texts that have had no review of any kind, not even the earlier AI-assisted pass: My appointment and calendar (W53 to W65), What has happened (status timeline) (W95 to W109), Privacy centre: who looked at my record, how we use your data, this phone (W129 to W151). Also new in the older groups: the per-pathway wording of the next step (bowel, cervical, long-term conditions) and the role names. The privacy texts matter most: they tell the patient how to stop contact, who looked at the record and how the data is used.
+**New, please read first (H2, needs a native Arabic speaker).** The mobile patient app and the privacy and consent centre added texts that have had no review of any kind, not even the earlier AI-assisted pass: My appointment and calendar (W57 to W69), What has happened (status timeline) (W100 to W114), Privacy centre: who looked at my record, how we use your data, this phone (W134 to W159). Also new in the older groups: the per-pathway wording of the next step (bowel, cervical, long-term conditions) and the role names. The privacy texts matter most: they tell the patient how to stop contact, who looked at the record and how the data is used.
 
 ## 1. What these texts are for
 
@@ -34,7 +34,7 @@ Hard rules the Arabic must keep:
 
 | Source | Where | Reading level | Length limit |
 |---|---|---|---|
-| Patient page (IDs W01 to W155) | Web app at `/patient`, Arabic with right-to-left layout | About grade 6: short sentences, everyday words. | None on the page; short lines for a phone screen |
+| Patient page (IDs W01 to W163) | Web app at `/patient`, Arabic with right-to-left layout | About grade 6: short sentences, everyday words. | None on the page; short lines for a phone screen |
 | Messages (IDs T01 to T21) | SMS, WhatsApp or letter, chosen from the patient's preferred channel | About grade 6: short sentences, everyday words. | SMS 320, WhatsApp 600, letter 1200 characters |
 | Demo drafts (IDs D01 to D03) | Coordinator app, demo data only | About grade 6: short sentences, everyday words. | None |
 
@@ -48,21 +48,21 @@ Placeholders in braces are filled in by the system: `{owner_name}` (the care own
 
 **Dates and names.** The sample date uses Gregorian month and weekday names in the Gulf style (نوفمبر, الثلاثاء), not the Levantine month names. Titles such as "الدكتورة" are part of the owner's name, supplied by the clinic.
 
-**Orthography we noticed.** The patient page and demo drafts write tanween as ـًا (for example تشخيصًا): 0 cases there against 16 of the other form. The templates write ـاً (for example دماً): 16 cases against 0 of the other form. The Arabic comma ، appears 48 times (letter greetings and closings); sentences end with a Latin full stop. Choose one convention.
+**Orthography we noticed.** The patient page and demo drafts write tanween as ـًا (for example تشخيصًا): 0 cases there against 16 of the other form. The templates write ـاً (for example دماً): 16 cases against 0 of the other form. The Arabic comma ، appears 51 times (letter greetings and closings); sentences end with a Latin full stop. Choose one convention.
 
 **Terminology we use today.** Counts are generated from the texts below. Where one idea has several wordings, please choose one.
 
 | Concept | Arabic wording in use, with the strings that contain it |
 |---|---|
-| colonoscopy | تنظير القولون : 4 strings (W38, W53, W54, D01) |
-| camera test (friendly term) | فحص بالكاميرا : 6 strings (W14, W38, W40, W54, W116, D01)<br>الفحص بالكاميرا : 3 strings (W14, W40, W116)<br>فحص متابعة بالكاميرا : not used |
-| screening test | فحص الكشف المبكر : 12 strings (W01, W07, W10, T01, T02, T03, T04, T06 and 4 more) |
-| test (generic) | فحصك : 4 strings (W53, T03, D01, D02)<br>الفحص : 3 strings (W14, W40, W116) |
-| care team | فريق الرعاية : 2 strings (W75, W77)<br>فريق رعايتك : 69 strings (W08, W10, W11, W13, W17, W21, W25, W30 and 61 more)<br>فريق رعايتي : 1 string (W116) |
-| care coordinator | منسق الرعاية : 3 strings (W74, W80, W84)<br>منسق رعاية : 1 string (W68) |
-| care owner (the responsible person) | المسؤول عن رعايتك : 13 strings (W67, T05, T07, T09, T10, T11, T12, T16 and 5 more)<br>المسؤول عن متابعة حالتك : not used<br>من يتابع حالتك : not used |
-| result | نتيجة : 18 strings (W01, W07, W10, W12, W16, W20, W24, T01 and 10 more)<br>نتيجتك : 10 strings (W08, W11, W37, W41, W45, W49, W97, W98 and 2 more)<br>نتيجتي : 2 strings (W09, W116) |
-| appointment | موعد : 38 strings (W26, W32, W33, W38, W39, W40, W42, W43 and 30 more) |
+| colonoscopy | تنظير القولون : 4 strings (W39, W57, W58, D01) |
+| camera test (friendly term) | فحص بالكاميرا : 6 strings (W15, W39, W41, W58, W121, D01)<br>الفحص بالكاميرا : 3 strings (W15, W41, W121)<br>فحص متابعة بالكاميرا : not used |
+| screening test | فحص الكشف المبكر : 12 strings (W01, W08, W11, T01, T02, T03, T04, T06 and 4 more) |
+| test (generic) | فحصك : 4 strings (W57, T03, D01, D02)<br>الفحص : 3 strings (W15, W41, W121) |
+| care team | فريق الرعاية : 4 strings (W74, W79, W81, W93)<br>فريق رعايتك : 68 strings (W09, W11, W12, W14, W18, W22, W26, W31 and 60 more)<br>فريق رعايتي : 1 string (W121) |
+| care coordinator | منسق الرعاية : 3 strings (W78, W84, W88)<br>منسق رعاية : 1 string (W72) |
+| care owner (the responsible person) | المسؤول عن رعايتك : 13 strings (W71, T05, T07, T09, T10, T11, T12, T16 and 5 more)<br>المسؤول عن متابعة حالتك : not used<br>من يتابع حالتك : not used |
+| result | نتيجة : 18 strings (W01, W08, W11, W13, W17, W21, W25, T01 and 10 more)<br>نتيجتك : 10 strings (W09, W12, W38, W42, W46, W50, W102, W103 and 2 more)<br>نتيجتي : 2 strings (W10, W121) |
+| appointment | موعد : 38 strings (W27, W33, W34, W39, W40, W41, W43, W44 and 30 more) |
 
 ## 4. Patient page strings, by screen section
 
@@ -80,8 +80,9 @@ Title, language switch, bottom menu and start page.
 | W04 | Main menu | القائمة الرئيسية | Not shown. Accessible name of the bottom menu with two tabs. |
 | W05 | My care | رعايتي | First tab of the bottom menu: the page with the result, the next step, the appointment and the status. |
 | W06 | Privacy | الخصوصية | Second tab of the bottom menu: the privacy centre (choices, who looked at my record, how we use your data). |
-| W07 | Your screening result | نتيجة فحص الكشف المبكر | Heading of the app start page (/patient) when no case has been opened on this device. |
-| W08 | Open the link your care team sent you to see your next steps. You can add this page to your home screen. | يرجى فتح الرابط الذي أرسله لك فريق رعايتك لرؤية نتيجتك. يمكنك إضافة هذه الصفحة إلى الشاشة الرئيسية. | Text under that heading: how to open the result and add the page to the home screen. |
+| W07 | Arabic wording is pending native-speaker review. | الصياغة العربية بانتظار مراجعة متحدث أصلي. | Visible note at the bottom of the Arabic page: the Arabic wording has not yet been reviewed by a native speaker. |
+| W08 | Your screening result | نتيجة فحص الكشف المبكر | Heading of the app start page (/patient) when no case has been opened on this device. |
+| W09 | Open the link your care team sent you to see your next steps. You can add this page to your home screen. | يرجى فتح الرابط الذي أرسله لك فريق رعايتك لرؤية نتيجتك. يمكنك إضافة هذه الصفحة إلى الشاشة الرئيسية. | Text under that heading: how to open the result and add the page to the home screen. |
 
 ### 4.2 My result: what the result means
 
@@ -89,9 +90,9 @@ The first thing the patient reads.
 
 | ID | English | Arabic | Where it appears |
 |---|---|---|---|
-| W09 | My result | نتيجتي | Heading of the first card. |
-| W10 | Your screening result is ready. Your care team needs to talk with you about it and about the next step. | نتيجة فحص الكشف المبكر جاهزة. يحتاج فريق رعايتك إلى التحدث معك عنها وعن الخطوة التالية. | Large paragraph under the heading. It says the result is ready and that the care team needs to talk with the patient. It states no finding. |
-| W11 | Your care team will explain your result in person or by phone. | سيشرح لك فريق رعايتك نتيجتك وجهاً لوجه أو عبر الهاتف. | Line under the paragraph: the care team explains the result in person or by phone (IFHAS: abnormal results are given with the participant present). |
+| W10 | My result | نتيجتي | Heading of the first card. |
+| W11 | Your screening result is ready. Your care team needs to talk with you about it and about the next step. | نتيجة فحص الكشف المبكر جاهزة. يحتاج فريق رعايتك إلى التحدث معك عنها وعن الخطوة التالية. | Large paragraph under the heading. It says the result is ready and that the care team needs to talk with the patient. It states no finding. |
+| W12 | Your care team will explain your result in person or by phone. | سيشرح لك فريق رعايتك نتيجتك وجهاً لوجه أو عبر الهاتف. | Line under the paragraph: the care team explains the result in person or by phone (IFHAS: abnormal results are given with the participant present). |
 
 ### 4.3 Where you are now
 
@@ -99,23 +100,23 @@ Four-step journey strip, worded for each pathway.
 
 | ID | English | Arabic | Where it appears |
 |---|---|---|---|
-| W12 | Result received | وصلت النتيجة | Step 1 of 4 of the journey strip, in the wording of the bowel screening pathway (a camera test, colonoscopy). |
-| W13 | Care team ready | فريق رعايتك جاهز | Step 2 of 4 of the journey strip, in the wording of the bowel screening pathway (a camera test, colonoscopy). |
-| W14 | Camera test | الفحص بالكاميرا | Step 3 of 4 of the journey strip, in the wording of the bowel screening pathway (a camera test, colonoscopy). |
-| W15 | Doctor review | مراجعة الطبيب | Step 4 of 4 of the journey strip, in the wording of the bowel screening pathway (a camera test, colonoscopy). |
-| W16 | Result received | وصلت النتيجة | Step 1 of 4 of the journey strip, in the wording of the cervical screening pathway (a follow-up examination; placeholder wording, H1). |
-| W17 | Care team ready | فريق رعايتك جاهز | Step 2 of 4 of the journey strip, in the wording of the cervical screening pathway (a follow-up examination; placeholder wording, H1). |
-| W18 | Follow-up examination | فحص المتابعة | Step 3 of 4 of the journey strip, in the wording of the cervical screening pathway (a follow-up examination; placeholder wording, H1). |
-| W19 | Doctor review | مراجعة الطبيب | Step 4 of 4 of the journey strip, in the wording of the cervical screening pathway (a follow-up examination; placeholder wording, H1). |
-| W20 | Result received | وصلت النتيجة | Step 1 of 4 of the journey strip, in the wording of the long-term conditions pathway (a visit with the family doctor; placeholder wording, H1). |
-| W21 | Care team ready | فريق رعايتك جاهز | Step 2 of 4 of the journey strip, in the wording of the long-term conditions pathway (a visit with the family doctor; placeholder wording, H1). |
-| W22 | Family doctor visit | زيارة طبيب الأسرة | Step 3 of 4 of the journey strip, in the wording of the long-term conditions pathway (a visit with the family doctor; placeholder wording, H1). |
-| W23 | Care plan | خطة الرعاية | Step 4 of 4 of the journey strip, in the wording of the long-term conditions pathway (a visit with the family doctor; placeholder wording, H1). |
-| W24 | Result received | وصلت النتيجة | Step 1 of 4 of the journey strip, in the wording of the any pathway the app does not know by name (a plain appointment). |
-| W25 | Care team ready | فريق رعايتك جاهز | Step 2 of 4 of the journey strip, in the wording of the any pathway the app does not know by name (a plain appointment). |
-| W26 | Appointment | الموعد | Step 3 of 4 of the journey strip, in the wording of the any pathway the app does not know by name (a plain appointment). |
-| W27 | Doctor review | مراجعة الطبيب | Step 4 of 4 of the journey strip, in the wording of the any pathway the app does not know by name (a plain appointment). |
-| W28 | Where you are now | أين وصلت الآن | Heading of the journey strip. |
+| W13 | Result received | وصلت النتيجة | Step 1 of 4 of the journey strip, in the wording of the bowel screening pathway (a camera test, colonoscopy). |
+| W14 | Care team ready | فريق رعايتك جاهز | Step 2 of 4 of the journey strip, in the wording of the bowel screening pathway (a camera test, colonoscopy). |
+| W15 | Camera test | الفحص بالكاميرا | Step 3 of 4 of the journey strip, in the wording of the bowel screening pathway (a camera test, colonoscopy). |
+| W16 | Doctor review | مراجعة الطبيب | Step 4 of 4 of the journey strip, in the wording of the bowel screening pathway (a camera test, colonoscopy). |
+| W17 | Result received | وصلت النتيجة | Step 1 of 4 of the journey strip, in the wording of the cervical screening pathway (a follow-up examination; placeholder wording, H1). |
+| W18 | Care team ready | فريق رعايتك جاهز | Step 2 of 4 of the journey strip, in the wording of the cervical screening pathway (a follow-up examination; placeholder wording, H1). |
+| W19 | Follow-up examination | فحص المتابعة | Step 3 of 4 of the journey strip, in the wording of the cervical screening pathway (a follow-up examination; placeholder wording, H1). |
+| W20 | Doctor review | مراجعة الطبيب | Step 4 of 4 of the journey strip, in the wording of the cervical screening pathway (a follow-up examination; placeholder wording, H1). |
+| W21 | Result received | وصلت النتيجة | Step 1 of 4 of the journey strip, in the wording of the long-term conditions pathway (a visit with the family doctor; placeholder wording, H1). |
+| W22 | Care team ready | فريق رعايتك جاهز | Step 2 of 4 of the journey strip, in the wording of the long-term conditions pathway (a visit with the family doctor; placeholder wording, H1). |
+| W23 | Family doctor visit | زيارة طبيب الأسرة | Step 3 of 4 of the journey strip, in the wording of the long-term conditions pathway (a visit with the family doctor; placeholder wording, H1). |
+| W24 | Care plan | خطة الرعاية | Step 4 of 4 of the journey strip, in the wording of the long-term conditions pathway (a visit with the family doctor; placeholder wording, H1). |
+| W25 | Result received | وصلت النتيجة | Step 1 of 4 of the journey strip, in the wording of the any pathway the app does not know by name (a plain appointment). |
+| W26 | Care team ready | فريق رعايتك جاهز | Step 2 of 4 of the journey strip, in the wording of the any pathway the app does not know by name (a plain appointment). |
+| W27 | Appointment | الموعد | Step 3 of 4 of the journey strip, in the wording of the any pathway the app does not know by name (a plain appointment). |
+| W28 | Doctor review | مراجعة الطبيب | Step 4 of 4 of the journey strip, in the wording of the any pathway the app does not know by name (a plain appointment). |
+| W29 | Where you are now | أين وصلت الآن | Heading of the journey strip. |
 
 ### 4.4 My next step
 
@@ -123,30 +124,33 @@ What the patient is told to do next, in each situation and for each pathway, wit
 
 | ID | English | Arabic | Where it appears |
 |---|---|---|---|
-| W29 | My next step | خطوتي التالية | Heading of the next-step card. |
-| W30 | Your care team is getting ready to contact you. You do not need to do anything yet. | يستعد فريق رعايتك للتواصل معك. لا تحتاج إلى فعل شيء الآن. | Shown before the care team has contacted the patient. No button: nothing to do yet. |
-| W31 | Your care team sent you a message. Tap the button when you have read it. | أرسل لك فريق رعايتك رسالة. اضغط على الزر بعد قراءتها. | Shown after the care team contacted the patient. The one main button (key understand) sits under it. |
-| W32 | Your appointment is booked. Please check the date and add it to your calendar. | تم حجز موعدك. يرجى التأكد من التاريخ وإضافته إلى التقويم. | Shown once an appointment is booked. The main button is "Add to my calendar" (key addToCalendar). |
-| W33 | Your appointment is done. A doctor from your care team will go over it with you. | تم الموعد. سيراجع معك طبيب من فريق رعايتك ما جرى. | Shown after the appointment has taken place and a doctor reviews it. States no finding. |
-| W34 | Your care team has finished this step. Call your care team if you have a question. | أنهى فريق رعايتك هذه الخطوة. اتصل بفريق رعايتك إذا كان لديك سؤال. | Shown when the care team has finished the step. |
-| W35 | You asked us to stop contact. You can allow contact again in Privacy. | طلبت إيقاف التواصل. يمكنك السماح بالتواصل من جديد في قسم الخصوصية. | Shown while the patient has stopped all contact; points to the Privacy tab. |
-| W36 | Your care team is working on your next step. Call your care team if you have a question. | يعمل فريق رعايتك على خطوتك التالية. اتصل بفريق رعايتك إذا كان لديك سؤال. | Shown for any case that is being handled in a way the other lines do not describe (a referral being re-routed, a step reopened). Neutral: no finding. |
-| W37 | Your care team will talk with you about your result. | سيتحدث معك فريق رعايتك عن نتيجتك. | Numbered step 1 of 3 in the plain explainer of the next step, in the wording of the bowel screening pathway (a camera test, colonoscopy). |
-| W38 | The next step is an appointment for a camera test called a colonoscopy. | الخطوة التالية هي موعد لفحص بالكاميرا اسمه تنظير القولون. | Numbered step 2 of 3 in the plain explainer of the next step, in the wording of the bowel screening pathway (a camera test, colonoscopy). |
-| W39 | You will get a date and clear steps to get ready. | سيصلك موعد وخطوات سهلة للتحضير. | Numbered step 3 of 3 in the plain explainer of the next step, in the wording of the bowel screening pathway (a camera test, colonoscopy). |
-| W40 | Your care team is arranging your camera test. You will get a date soon. | يجهّز فريق رعايتك موعد الفحص بالكاميرا. سيصلك التاريخ قريباً. | Shown under "My next step" after the patient confirmed, while the care team arranges the appointment (bowel screening pathway (a camera test, colonoscopy)). |
-| W41 | Your care team will talk with you about your result. | سيتحدث معك فريق رعايتك عن نتيجتك. | Numbered step 1 of 3 in the plain explainer of the next step, in the wording of the cervical screening pathway (a follow-up examination; placeholder wording, H1). |
-| W42 | The next step is an appointment for a follow-up examination. | الخطوة التالية هي موعد لفحص متابعة في العيادة. | Numbered step 2 of 3 in the plain explainer of the next step, in the wording of the cervical screening pathway (a follow-up examination; placeholder wording, H1). |
-| W43 | You will get a date and clear steps to get ready. | سيصلك موعد وخطوات سهلة للتحضير. | Numbered step 3 of 3 in the plain explainer of the next step, in the wording of the cervical screening pathway (a follow-up examination; placeholder wording, H1). |
-| W44 | Your care team is arranging your follow-up examination. You will get a date soon. | يجهّز فريق رعايتك موعد فحص المتابعة. سيصلك التاريخ قريباً. | Shown under "My next step" after the patient confirmed, while the care team arranges the appointment (cervical screening pathway (a follow-up examination; placeholder wording, H1)). |
-| W45 | Your care team will talk with you about your result. | سيتحدث معك فريق رعايتك عن نتيجتك. | Numbered step 1 of 3 in the plain explainer of the next step, in the wording of the long-term conditions pathway (a visit with the family doctor; placeholder wording, H1). |
-| W46 | The next step is a visit with your family doctor. | الخطوة التالية هي زيارة طبيب الأسرة. | Numbered step 2 of 3 in the plain explainer of the next step, in the wording of the long-term conditions pathway (a visit with the family doctor; placeholder wording, H1). |
-| W47 | You will get a date and clear steps to get ready. | سيصلك موعد وخطوات سهلة للتحضير. | Numbered step 3 of 3 in the plain explainer of the next step, in the wording of the long-term conditions pathway (a visit with the family doctor; placeholder wording, H1). |
-| W48 | Your care team is arranging your visit with your family doctor. You will get a date soon. | يجهّز فريق رعايتك موعد زيارتك لطبيب الأسرة. سيصلك التاريخ قريباً. | Shown under "My next step" after the patient confirmed, while the care team arranges the appointment (long-term conditions pathway (a visit with the family doctor; placeholder wording, H1)). |
-| W49 | Your care team will talk with you about your result. | سيتحدث معك فريق رعايتك عن نتيجتك. | Numbered step 1 of 3 in the plain explainer of the next step, in the wording of the any pathway the app does not know by name (a plain appointment). |
-| W50 | The next step is an appointment. | الخطوة التالية هي موعد. | Numbered step 2 of 3 in the plain explainer of the next step, in the wording of the any pathway the app does not know by name (a plain appointment). |
-| W51 | You will get a date and clear steps to get ready. | سيصلك موعد وخطوات سهلة للتحضير. | Numbered step 3 of 3 in the plain explainer of the next step, in the wording of the any pathway the app does not know by name (a plain appointment). |
-| W52 | Your care team is arranging your appointment. You will get a date soon. | يجهّز فريق رعايتك موعدك. سيصلك التاريخ قريباً. | Shown under "My next step" after the patient confirmed, while the care team arranges the appointment (any pathway the app does not know by name (a plain appointment)). |
+| W30 | My next step | خطوتي التالية | Heading of the next-step card. |
+| W31 | Your care team is getting ready to contact you. You do not need to do anything yet. | يستعد فريق رعايتك للتواصل معك. لا تحتاج إلى فعل شيء الآن. | Shown before the care team has contacted the patient. No button: nothing to do yet. |
+| W32 | Your care team sent you a message. Tap the button when you have read it. | أرسل لك فريق رعايتك رسالة. اضغط على الزر بعد قراءتها. | Shown after the care team contacted the patient. The one main button (key understand) sits under it. |
+| W33 | Your appointment is booked. Please check the date and add it to your calendar. | تم حجز موعدك. يرجى التأكد من التاريخ وإضافته إلى التقويم. | Shown once an appointment is booked. The main button is "Add to my calendar" (key addToCalendar). |
+| W34 | Your appointment is done. A doctor from your care team will go over it with you. | تم الموعد. سيراجع معك طبيب من فريق رعايتك ما جرى. | Shown after the appointment has taken place and a doctor reviews it. States no finding. |
+| W35 | Your care team has finished this step. Call your care team if you have a question. | أنهى فريق رعايتك هذه الخطوة. اتصل بفريق رعايتك إذا كان لديك سؤال. | Shown when the care team has finished the step. |
+| W36 | You asked us to stop contact. You can allow contact again in Privacy. | طلبت إيقاف التواصل. يمكنك السماح بالتواصل من جديد في قسم الخصوصية. | Shown while the patient has stopped all contact; points to the Privacy tab. |
+| W37 | Your care team is working on your next step. Call your care team if you have a question. | يعمل فريق رعايتك على خطوتك التالية. اتصل بفريق رعايتك إذا كان لديك سؤال. | Shown for any case that is being handled in a way the other lines do not describe (a referral being re-routed, a step reopened). Neutral: no finding. |
+| W38 | Your care team will talk with you about your result. | سيتحدث معك فريق رعايتك عن نتيجتك. | Numbered step 1 of 3 in the plain explainer of the next step, in the wording of the bowel screening pathway (a camera test, colonoscopy). |
+| W39 | The next step is an appointment for a camera test called a colonoscopy. | الخطوة التالية هي موعد لفحص بالكاميرا اسمه تنظير القولون. | Numbered step 2 of 3 in the plain explainer of the next step, in the wording of the bowel screening pathway (a camera test, colonoscopy). |
+| W40 | You will get a date and clear steps to get ready. | سيصلك موعد وخطوات سهلة للتحضير. | Numbered step 3 of 3 in the plain explainer of the next step, in the wording of the bowel screening pathway (a camera test, colonoscopy). |
+| W41 | Your care team is arranging your camera test. You will get a date soon. | يجهّز فريق رعايتك موعد الفحص بالكاميرا. سيصلك التاريخ قريباً. | Shown under "My next step" after the patient confirmed, while the care team arranges the appointment (bowel screening pathway (a camera test, colonoscopy)). |
+| W42 | Your care team will talk with you about your result. | سيتحدث معك فريق رعايتك عن نتيجتك. | Numbered step 1 of 3 in the plain explainer of the next step, in the wording of the cervical screening pathway (a follow-up examination; placeholder wording, H1). |
+| W43 | The next step is an appointment for a follow-up examination. | الخطوة التالية هي موعد لفحص متابعة في العيادة. | Numbered step 2 of 3 in the plain explainer of the next step, in the wording of the cervical screening pathway (a follow-up examination; placeholder wording, H1). |
+| W44 | You will get a date and clear steps to get ready. | سيصلك موعد وخطوات سهلة للتحضير. | Numbered step 3 of 3 in the plain explainer of the next step, in the wording of the cervical screening pathway (a follow-up examination; placeholder wording, H1). |
+| W45 | Your care team is arranging your follow-up examination. You will get a date soon. | يجهّز فريق رعايتك موعد فحص المتابعة. سيصلك التاريخ قريباً. | Shown under "My next step" after the patient confirmed, while the care team arranges the appointment (cervical screening pathway (a follow-up examination; placeholder wording, H1)). |
+| W46 | Your care team will talk with you about your result. | سيتحدث معك فريق رعايتك عن نتيجتك. | Numbered step 1 of 3 in the plain explainer of the next step, in the wording of the long-term conditions pathway (a visit with the family doctor; placeholder wording, H1). |
+| W47 | The next step is a visit with your family doctor. | الخطوة التالية هي زيارة طبيب الأسرة. | Numbered step 2 of 3 in the plain explainer of the next step, in the wording of the long-term conditions pathway (a visit with the family doctor; placeholder wording, H1). |
+| W48 | You will get a date and clear steps to get ready. | سيصلك موعد وخطوات سهلة للتحضير. | Numbered step 3 of 3 in the plain explainer of the next step, in the wording of the long-term conditions pathway (a visit with the family doctor; placeholder wording, H1). |
+| W49 | Your care team is arranging your visit with your family doctor. You will get a date soon. | يجهّز فريق رعايتك موعد زيارتك لطبيب الأسرة. سيصلك التاريخ قريباً. | Shown under "My next step" after the patient confirmed, while the care team arranges the appointment (long-term conditions pathway (a visit with the family doctor; placeholder wording, H1)). |
+| W50 | Your care team will talk with you about your result. | سيتحدث معك فريق رعايتك عن نتيجتك. | Numbered step 1 of 3 in the plain explainer of the next step, in the wording of the any pathway the app does not know by name (a plain appointment). |
+| W51 | The next step is an appointment. | الخطوة التالية هي موعد. | Numbered step 2 of 3 in the plain explainer of the next step, in the wording of the any pathway the app does not know by name (a plain appointment). |
+| W52 | You will get a date and clear steps to get ready. | سيصلك موعد وخطوات سهلة للتحضير. | Numbered step 3 of 3 in the plain explainer of the next step, in the wording of the any pathway the app does not know by name (a plain appointment). |
+| W53 | Your care team is arranging your appointment. You will get a date soon. | يجهّز فريق رعايتك موعدك. سيصلك التاريخ قريباً. | Shown under "My next step" after the patient confirmed, while the care team arranges the appointment (any pathway the app does not know by name (a plain appointment)). |
+| W54 | In an emergency | في حالات الطوارئ | Heading of the emergency box on the home page. |
+| W55 | If you feel very unwell, call 998 (ambulance). | في حال الشعور بتعب شديد، يرجى الاتصال بالرقم 998 (الإسعاف). | Emergency line: what to do if the person feels very unwell. 998 is the UAE ambulance number; the line is shown pending clinician review. |
+| W56 | Pending clinician review: this is the national ambulance number, shown here for the prototype. | بانتظار مراجعة الطبيب: هذا هو رقم الإسعاف الوطني، ويظهر هنا للنموذج الأولي. | Small grey text under the emergency line: the number is pending clinician review in this prototype. |
 
 ### 4.5 My appointment and calendar
 
@@ -154,19 +158,19 @@ The booked appointment, in each pathway's own wording, and the calendar file (.i
 
 | ID | English | Arabic | Where it appears |
 |---|---|---|---|
-| W53 | Your camera test (colonoscopy) | فحصك بالكاميرا (تنظير القولون) | Heading of the appointment card, naming the appointment as the bowel screening pathway (a camera test, colonoscopy) does. |
-| W54 | Camera test (colonoscopy) | فحص بالكاميرا (تنظير القولون) | Title of the calendar entry the patient saves, for the bowel screening pathway (a camera test, colonoscopy). |
-| W55 | Your follow-up examination | فحص المتابعة في العيادة | Heading of the appointment card, naming the appointment as the cervical screening pathway (a follow-up examination; placeholder wording, H1) does. |
-| W56 | Follow-up examination | فحص متابعة في العيادة | Title of the calendar entry the patient saves, for the cervical screening pathway (a follow-up examination; placeholder wording, H1). |
-| W57 | Your visit with your family doctor | زيارتك لطبيب الأسرة | Heading of the appointment card, naming the appointment as the long-term conditions pathway (a visit with the family doctor; placeholder wording, H1) does. |
-| W58 | Visit with your family doctor | زيارة طبيب الأسرة | Title of the calendar entry the patient saves, for the long-term conditions pathway (a visit with the family doctor; placeholder wording, H1). |
-| W59 | Your appointment | موعدك | Heading of the appointment card, naming the appointment as the any pathway the app does not know by name (a plain appointment) does. |
-| W60 | Appointment | موعد | Title of the calendar entry the patient saves, for the any pathway the app does not know by name (a plain appointment). |
-| W61 | My appointment | موعدي | Heading of the appointment card (shown once an appointment is booked). |
-| W62 | Your care team will tell you the time. | سيخبرك فريق رعايتك بالوقت. | Under the date when the booking carries a date but no time. |
-| W63 | Add to my calendar | أضف الموعد إلى التقويم | The main button once an appointment is booked. Saves a calendar file (.ics) on the phone. |
-| W64 | This saves a small file on your phone. Open it to add the date to your calendar. | يحفظ هذا ملفاً صغيراً على هاتفك. افتح الملف لإضافة التاريخ إلى التقويم. | Small grey text under that button. |
-| W65 | Booked by your care team. Please call your care team if you cannot come. | حجزه فريق رعايتك. يرجى الاتصال بفريق رعايتك إذا لم تتمكن من الحضور. | Description inside the calendar file the patient saves. Names no finding. |
+| W57 | Your camera test (colonoscopy) | فحصك بالكاميرا (تنظير القولون) | Heading of the appointment card, naming the appointment as the bowel screening pathway (a camera test, colonoscopy) does. |
+| W58 | Camera test (colonoscopy) | فحص بالكاميرا (تنظير القولون) | Title of the calendar entry the patient saves, for the bowel screening pathway (a camera test, colonoscopy). |
+| W59 | Your follow-up examination | فحص المتابعة في العيادة | Heading of the appointment card, naming the appointment as the cervical screening pathway (a follow-up examination; placeholder wording, H1) does. |
+| W60 | Follow-up examination | فحص متابعة في العيادة | Title of the calendar entry the patient saves, for the cervical screening pathway (a follow-up examination; placeholder wording, H1). |
+| W61 | Your visit with your family doctor | زيارتك لطبيب الأسرة | Heading of the appointment card, naming the appointment as the long-term conditions pathway (a visit with the family doctor; placeholder wording, H1) does. |
+| W62 | Visit with your family doctor | زيارة طبيب الأسرة | Title of the calendar entry the patient saves, for the long-term conditions pathway (a visit with the family doctor; placeholder wording, H1). |
+| W63 | Your appointment | موعدك | Heading of the appointment card, naming the appointment as the any pathway the app does not know by name (a plain appointment) does. |
+| W64 | Appointment | موعد | Title of the calendar entry the patient saves, for the any pathway the app does not know by name (a plain appointment). |
+| W65 | My appointment | موعدي | Heading of the appointment card (shown once an appointment is booked). |
+| W66 | Your care team will tell you the time. | سيخبرك فريق رعايتك بالوقت. | Under the date when the booking carries a date but no time. |
+| W67 | Add to my calendar | أضف الموعد إلى التقويم | The main button once an appointment is booked. Saves a calendar file (.ics) on the phone. |
+| W68 | This saves a small file on your phone. Open it to add the date to your calendar. | يحفظ هذا ملفاً صغيراً على هاتفك. افتح الملف لإضافة التاريخ إلى التقويم. | Small grey text under that button. |
+| W69 | Booked by your care team. Please call your care team if you cannot come. | حجزه فريق رعايتك. يرجى الاتصال بفريق رعايتك إذا لم تتمكن من الحضور. | Description inside the calendar file the patient saves. Names no finding. |
 
 ### 4.6 Who is looking after you
 
@@ -174,25 +178,25 @@ The care owner by name and role, how to reach the care team, and role names.
 
 | ID | English | Arabic | Where it appears |
 |---|---|---|---|
-| W66 | Who is looking after you | من يتابعك | Heading of the care-owner card. |
-| W67 | {name} ({role}) is looking after your care. You can ask them any question. | الشخص المسؤول عن رعايتك:<br>{name} ({role}).<br>يمكنك طرح أي سؤال. | Large text under that heading. {name} is the owner's name (Latin or Arabic script), {role} the role from the role names below. In Arabic the sentence is split over three lines so a Latin name does not scramble the line. |
-| W68 | A person in your care team will be chosen to look after you soon. | سنعيّن لك منسق رعاية قريباً. | Shown instead of the line above while nobody has accepted the case. |
-| W69 | How to reach your care team | كيف تتواصل مع فريق رعايتك | Small heading above the call button. |
-| W70 | Call your care team | اتصل بفريق رعايتك | Button that starts a phone call to the care team. |
-| W71 | Demo number. All data here is synthetic. | رقم تجريبي. كل البيانات هنا بيانات اصطناعية. | Small grey text under the call button: the number is a placeholder and the data is synthetic. |
-| W72 | Primary care doctor | طبيب الرعاية الأولية | Role name shown with a staff member's name, for a primary care doctor. Also used in the list of who looked at the record. |
-| W73 | Specialist doctor | الطبيب الأخصائي | Same, for the specialist doctor. |
-| W74 | Care coordinator | منسق الرعاية | Same, for a care coordinator. |
-| W75 | Senior member of the care team | أحد كبار أعضاء فريق الرعاية | Same, for a senior member of the care team. |
-| W76 | Laboratory team | فريق المختبر | Same, for the laboratory team. |
-| W77 | Care team | فريق الرعاية | Same, for any role not listed above. |
-| W78 | Your primary care doctor is looking after your care. You can ask them any question. | يتابعك طبيبك في الرعاية الأولية. يمكنك طرح أي سؤال. | Shown instead of the owner line when the server sends the role but no name (the owner is the patient's primary care physician). |
-| W79 | Your specialist doctor is looking after your care. You can ask them any question. | يتابعك طبيبك الأخصائي. يمكنك طرح أي سؤال. | Same, when the owner is the specialist who will do the test. |
-| W80 | Your care coordinator is looking after your care. You can ask them any question. | يتابعك منسق الرعاية الخاص بك. يمكنك طرح أي سؤال. | Same, when the owner is a care coordinator. |
-| W81 | A senior member of your care team is looking after your care. You can ask them any question. | يتابعك أحد كبار أعضاء فريق رعايتك. يمكنك طرح أي سؤال. | Same, when the case is with a senior member of the care team. |
-| W82 | Your care team is looking after your care. You can ask them any question. | يتابعك فريق رعايتك. يمكنك طرح أي سؤال. | Same, for any role not listed above. |
-| W83 | Primary care physician | طبيب الرعاية الأولية | Role shown in brackets after the owner's name in the line "Who is looking after you". The English role is the value stored in the case; unknown roles are shown as stored. |
-| W84 | Care coordinator | منسق الرعاية | Role shown in brackets after the owner's name in the line "Who is looking after you". The English role is the value stored in the case; unknown roles are shown as stored. |
+| W70 | Who is looking after you | من يتابعك | Heading of the care-owner card. |
+| W71 | {name} ({role}) is looking after your care. You can ask them any question. | الشخص المسؤول عن رعايتك:<br>{name} ({role}).<br>يمكنك طرح أي سؤال. | Large text under that heading. {name} is the owner's name (Latin or Arabic script), {role} the role from the role names below. In Arabic the sentence is split over three lines so a Latin name does not scramble the line. |
+| W72 | A person in your care team will be chosen to look after you soon. | سنعيّن لك منسق رعاية قريباً. | Shown instead of the line above while nobody has accepted the case. |
+| W73 | How to reach your care team | كيف تتواصل مع فريق رعايتك | Small heading above the call button. |
+| W74 | Call your care team | الاتصال بفريق الرعاية | Button that starts a phone call to the care team. |
+| W75 | Demo number. All data here is synthetic. | رقم تجريبي. كل البيانات هنا بيانات اصطناعية. | Small grey text under the call button: the number is a placeholder and the data is synthetic. |
+| W76 | Primary care doctor | طبيب الرعاية الأولية | Role name shown with a staff member's name, for a primary care doctor. Also used in the list of who looked at the record. |
+| W77 | Specialist doctor | الطبيب الأخصائي | Same, for the specialist doctor. |
+| W78 | Care coordinator | منسق الرعاية | Same, for a care coordinator. |
+| W79 | Senior member of the care team | أحد كبار أعضاء فريق الرعاية | Same, for a senior member of the care team. |
+| W80 | Laboratory team | فريق المختبر | Same, for the laboratory team. |
+| W81 | Care team | فريق الرعاية | Same, for any role not listed above. |
+| W82 | Your primary care doctor is looking after your care. You can ask them any question. | يتابعك طبيبك في الرعاية الأولية. يمكنك طرح أي سؤال. | Shown instead of the owner line when the server sends the role but no name (the owner is the patient's primary care physician). |
+| W83 | Your specialist doctor is looking after your care. You can ask them any question. | يتابعك طبيبك الأخصائي. يمكنك طرح أي سؤال. | Same, when the owner is the specialist who will do the test. |
+| W84 | Your care coordinator is looking after your care. You can ask them any question. | يتابعك منسق الرعاية الخاص بك. يمكنك طرح أي سؤال. | Same, when the owner is a care coordinator. |
+| W85 | A senior member of your care team is looking after your care. You can ask them any question. | يتابعك أحد كبار أعضاء فريق رعايتك. يمكنك طرح أي سؤال. | Same, when the case is with a senior member of the care team. |
+| W86 | Your care team is looking after your care. You can ask them any question. | يتابعك فريق رعايتك. يمكنك طرح أي سؤال. | Same, for any role not listed above. |
+| W87 | Primary care physician | طبيب الرعاية الأولية | Role shown in brackets after the owner's name in the line "Who is looking after you". The English role is the value stored in the case; unknown roles are shown as stored. |
+| W88 | Care coordinator | منسق الرعاية | Role shown in brackets after the owner's name in the line "Who is looking after you". The English role is the value stored in the case; unknown roles are shown as stored. |
 
 ### 4.7 I understand / I don't understand / another date
 
@@ -200,16 +204,17 @@ The buttons and their confirmations.
 
 | ID | English | Arabic | Where it appears |
 |---|---|---|---|
-| W85 | Ask for another date | اطلب تاريخاً آخر | Secondary button once an appointment is booked: asks a person to call about another date (callback_requested, reason reschedule). |
-| W86 | Thank you. A person from your care team will call you about a new date. | شكراً لك. سيتصل بك أحد أفراد فريق رعايتك بخصوص تاريخ جديد. | Green confirmation after that button. |
-| W87 | I cannot come | لا أستطيع الحضور | Secondary button once an appointment is booked: asks a person to call because the patient cannot come (callback_requested, reason cannot_attend). |
-| W88 | Thank you. A person from your care team will call you. | شكراً لك. سيتصل بك أحد أفراد فريق رعايتك. | Green confirmation after that button. |
-| W89 | I understand, please contact me | فهمت، يرجى التواصل معي | The one main button after the patient was contacted (the patient has read the message and asks the care team to contact them). Disabled until the patient has been contacted. |
-| W90 | Thank you. We saved this. Your care team will contact you. | شكراً لك. سجلنا طلبك. سيتواصل معك فريق رعايتك. | Green confirmation that replaces the button once the patient has acknowledged. |
-| W91 | You can tap this button after your care team has sent you a message. | يمكنك الضغط على هذا الزر بعد أن يرسل لك فريق رعايتك رسالة. | Hint under the disabled button. |
-| W92 | I don't understand, call me | لا أفهم، يرجى الاتصال بي | Second button, always present. Asks a person from the care team to call. |
-| W93 | Thank you. A person from your care team will call you. | شكراً لك. سيتصل بك أحد أفراد فريق رعايتك. | Green confirmation after that button is pressed, or while a callback is pending. |
-| W94 | That did not work. Please try again or call your care team. | لم تنجح العملية. يرجى المحاولة مرة أخرى أو الاتصال بفريق رعايتك. | Red banner if a button fails. |
+| W89 | Ask for another date | اطلب تاريخاً آخر | Secondary button once an appointment is booked: asks a person to call about another date (callback_requested, reason reschedule). |
+| W90 | Thank you. A person from your care team will call you about a new date. | شكراً لك. سيتصل بك أحد أفراد فريق رعايتك بخصوص تاريخ جديد. | Green confirmation after that button. |
+| W91 | I cannot come | لا أستطيع الحضور | Secondary button once an appointment is booked: asks a person to call because the patient cannot come (callback_requested, reason cannot_attend). |
+| W92 | Thank you. A person from your care team will call you. | شكراً لك. سيتصل بك أحد أفراد فريق رعايتك. | Green confirmation after that button. |
+| W93 | We got your message. A person on your care team is reading it. Nothing has changed yet: your plan stays as it is until they call you. | وصلتنا رسالتك. أحد أفراد فريق الرعاية يقرؤها الآن. لم يتغير شيء بعد، وتبقى خطتك كما هي حتى يتصل بك. | Yellow note shown after the patient asked for a call, while a person on the care team has not yet answered. It must not say the request was confirmed or granted. |
+| W94 | I understand, please contact me | فهمت، يرجى التواصل معي | The one main button after the patient was contacted (the patient has read the message and asks the care team to contact them). Disabled until the patient has been contacted. |
+| W95 | Thank you. We saved this. Your care team will contact you. | شكراً لك. سجلنا طلبك. سيتواصل معك فريق رعايتك. | Green confirmation that replaces the button once the patient has acknowledged. |
+| W96 | You can tap this button after your care team has sent you a message. | يمكنك الضغط على هذا الزر بعد أن يرسل لك فريق رعايتك رسالة. | Hint under the disabled button. |
+| W97 | I don't understand, call me | لا أفهم، يرجى الاتصال بي | Second button, always present. Asks a person from the care team to call. |
+| W98 | Thank you. A person from your care team will call you. | شكراً لك. سيتصل بك أحد أفراد فريق رعايتك. | Green confirmation after that button is pressed, or while a callback is pending. |
+| W99 | That did not work. Please try again or call your care team. | لم تنجح العملية. يرجى المحاولة مرة أخرى أو الاتصال بفريق رعايتك. | Red banner if a button fails. |
 
 ### 4.8 What has happened (status timeline)
 
@@ -217,21 +222,21 @@ One plain sentence for each step the patient is allowed to see.
 
 | ID | English | Arabic | Where it appears |
 |---|---|---|---|
-| W95 | What has happened | ما الذي جرى | Heading of the status timeline. |
-| W96 | Nothing yet. | لا شيء بعد. | Shown when there is nothing to list yet. |
-| W97 | Your result was received. | وصلت نتيجتك. | Timeline line for the first step. Plain, no finding. |
-| W98 | Your care team saw your result. | اطلع فريق رعايتك على نتيجتك. | Timeline line: the care team saw the result. |
-| W99 | A member of your care team took charge of your care. | تولى أحد أفراد فريق رعايتك متابعتك. | Timeline line: a member of the care team took charge. |
-| W100 | Your care team contacted you. | تواصل معك فريق رعايتك. | Timeline line: the care team contacted the patient. |
-| W101 | You said you understood. | أخبرتنا أنك فهمت. | Timeline line: the patient said they understood. |
-| W102 | Your appointment was booked. | تم حجز موعدك. | Timeline line: the appointment was booked. |
-| W103 | Your appointment took place. | تم موعدك. | Timeline line: the appointment took place. |
-| W104 | A doctor went over it. | راجع طبيب ما جرى. | Timeline line: a doctor went over it. States no finding. |
-| W105 | Your care team finished this step. | أنهى فريق رعايتك هذه الخطوة. | Timeline line: the care team finished the step. |
-| W106 | Your care team opened this step again. | فتح فريق رعايتك هذه الخطوة من جديد. | Timeline line: the care team opened the step again. |
-| W107 | You changed your contact choices. | غيّرت اختياراتك للتواصل. | Timeline line: the patient changed contact choices. |
-| W108 | You asked for a call. | طلبت أن نتصل بك. | Timeline line: the patient asked for a call. |
-| W109 | We sent you a message. | أرسلنا لك رسالة. | Timeline line: a message was sent to the patient. |
+| W100 | What has happened | ما الذي جرى | Heading of the status timeline. |
+| W101 | Nothing yet. | لا شيء بعد. | Shown when there is nothing to list yet. |
+| W102 | Your result was received. | وصلت نتيجتك. | Timeline line for the first step. Plain, no finding. |
+| W103 | Your care team saw your result. | اطلع فريق رعايتك على نتيجتك. | Timeline line: the care team saw the result. |
+| W104 | A member of your care team took charge of your care. | تولى أحد أفراد فريق رعايتك متابعتك. | Timeline line: a member of the care team took charge. |
+| W105 | Your care team contacted you. | تواصل معك فريق رعايتك. | Timeline line: the care team contacted the patient. |
+| W106 | You said you understood. | أخبرتنا أنك فهمت. | Timeline line: the patient said they understood. |
+| W107 | Your appointment was booked. | تم حجز موعدك. | Timeline line: the appointment was booked. |
+| W108 | Your appointment took place. | تم موعدك. | Timeline line: the appointment took place. |
+| W109 | A doctor went over it. | راجع طبيب ما جرى. | Timeline line: a doctor went over it. States no finding. |
+| W110 | Your care team finished this step. | أنهى فريق رعايتك هذه الخطوة. | Timeline line: the care team finished the step. |
+| W111 | Your care team opened this step again. | فتح فريق رعايتك هذه الخطوة من جديد. | Timeline line: the care team opened the step again. |
+| W112 | You changed your contact choices. | غيّرت اختياراتك للتواصل. | Timeline line: the patient changed contact choices. |
+| W113 | You asked for a call. | طلبت أن نتصل بك. | Timeline line: the patient asked for a call. |
+| W114 | We sent you a message. | أرسلنا لك رسالة. | Timeline line: a message was sent to the patient. |
 
 ### 4.9 Your choices (contact, language, sharing, stopping contact)
 
@@ -239,25 +244,25 @@ Channel, language, sharing, stopping and restoring contact, and their save statu
 
 | ID | English | Arabic | Where it appears |
 |---|---|---|---|
-| W110 | Your choices | اختياراتك | Heading of the choices section. |
-| W111 | How may we contact you? | كيف يمكننا التواصل معك؟ | Legend of the group of contact-channel check boxes. Each box is on unless the patient turned it off (an opt-out default); changing one saves at once. |
-| W112 | Phone call | مكالمة هاتفية | Label of the check box for phone calls. |
-| W113 | Text message | رسالة نصية | Label of the check box for text messages. |
-| W114 | WhatsApp | واتساب | Label of the check box for WhatsApp messages. |
-| W115 | Letter | رسالة مكتوبة | Label of the check box for letters. |
-| W116 | My care team may share my result with the specialist who will do my test. | أسمح لفريق رعايتي بمشاركة نتيجتي مع الطبيب الأخصائي الذي سيجري لي الفحص بالكاميرا. | Label of the check box that lets the care team share the result with the specialist. |
-| W117 | Language for this app and your messages | لغة هذا التطبيق ورسائلك | Label of the English / Arabic choice inside the choices section. |
-| W118 | Kept on this phone and told to your care team. We use it for the messages we send you. | تُحفظ على هذا الهاتف ونخبر بها فريق رعايتك. نستعملها في الرسائل التي نرسلها إليك. | Small grey text under it: the language is saved on the phone and told to the care team (a consent_updated carrying only the language), which uses it for messages. |
-| W119 | Stop all contact | أوقفوا كل تواصل معي | Button under the choices. Opens the confirmation below; confirming withdraws all consent to contact at once: the case is frozen for outreach and a person is asked to review it. Hidden after withdrawal. |
-| W120 | If you stop contact, your care team will not message or call you. A person will check your case. You can still call your care team. | إذا أوقفت التواصل، فلن يرسل لك فريق رعايتك رسائل ولن يتصل بك. سيراجع أحد أفراد فريق رعايتك ملفك. | Small grey text above that button. It says what stopping contact means and that a person will check the case. |
-| W121 | You asked us to stop contact. We will not message or call you. A person on your care team will check your case. You can still call your care team. | طلبت إيقاف التواصل. لن نرسل لك رسائل ولن نتصل بك. سيراجع أحد أفراد فريق رعايتك ملفك. | Yellow banner at the top of the choices section after the patient has stopped all contact. |
-| W122 | Stop all contact? | هل تريد إيقاف كل تواصل؟ | Heading of the confirmation shown after pressing the stop button. |
-| W123 | Your care team will not message or call you. A person will check your case. You can turn contact back on here at any time. | لن يرسل لك فريق رعايتك رسائل ولن يتصل بك. سيراجع أحد أفراد الفريق ملفك. يمكنك إعادة التواصل من هنا في أي وقت. | Text of that confirmation: what stopping means and that it can be undone here. |
-| W124 | Yes, stop all contact | نعم، أوقفوا كل تواصل | Button that confirms stopping all contact. |
-| W125 | No, keep contact | لا، أبقوا التواصل | Button that cancels and keeps contact. |
-| W126 | You may contact me again | يمكنكم التواصل معي مرة أخرى | Replaces the stop button after withdrawal. Pressing it records that the patient may be contacted again. |
-| W127 | Saved | تم الحفظ | Status line under the choices after a successful save. |
-| W128 | We could not save this. Please try again. | لم نتمكن من الحفظ. يرجى المحاولة مرة أخرى. | Status line if saving the choices fails. |
+| W115 | Your choices | اختياراتك | Heading of the choices section. |
+| W116 | How may we contact you? | كيف يمكننا التواصل معك؟ | Legend of the group of contact-channel check boxes. Each box is on unless the patient turned it off (an opt-out default); changing one saves at once. |
+| W117 | Phone call | مكالمة هاتفية | Label of the check box for phone calls. |
+| W118 | Text message | رسالة نصية | Label of the check box for text messages. |
+| W119 | WhatsApp | واتساب | Label of the check box for WhatsApp messages. |
+| W120 | Letter | رسالة مكتوبة | Label of the check box for letters. |
+| W121 | My care team may share my result with the specialist who will do my test. | أسمح لفريق رعايتي بمشاركة نتيجتي مع الطبيب الأخصائي الذي سيجري لي الفحص بالكاميرا. | Label of the check box that lets the care team share the result with the specialist. |
+| W122 | Language for this app and your messages | لغة هذا التطبيق ورسائلك | Label of the English / Arabic choice inside the choices section. |
+| W123 | Kept on this phone and told to your care team. We use it for the messages we send you. | تُحفظ على هذا الهاتف ونخبر بها فريق رعايتك. نستعملها في الرسائل التي نرسلها إليك. | Small grey text under it: the language is saved on the phone and told to the care team (a consent_updated carrying only the language), which uses it for messages. |
+| W124 | Stop all contact | أوقفوا كل تواصل معي | Button under the choices. Opens the confirmation below; confirming withdraws all consent to contact at once: the case is frozen for outreach and a person is asked to review it. Hidden after withdrawal. |
+| W125 | If you stop contact, your care team will not message or call you. A person will check your case. You can still call your care team. | إذا أوقفت التواصل، فلن يرسل لك فريق رعايتك رسائل ولن يتصل بك. سيراجع أحد أفراد فريق رعايتك ملفك. | Small grey text above that button. It says what stopping contact means and that a person will check the case. |
+| W126 | You asked us to stop contact. We will not message or call you. A person on your care team will check your case. You can still call your care team. | طلبت إيقاف التواصل. لن نرسل لك رسائل ولن نتصل بك. سيراجع أحد أفراد فريق رعايتك ملفك. | Yellow banner at the top of the choices section after the patient has stopped all contact. |
+| W127 | Stop all contact? | هل تريد إيقاف كل تواصل؟ | Heading of the confirmation shown after pressing the stop button. |
+| W128 | Your care team will not message or call you. A person will check your case. You can turn contact back on here at any time. | لن يرسل لك فريق رعايتك رسائل ولن يتصل بك. سيراجع أحد أفراد الفريق ملفك. يمكنك إعادة التواصل من هنا في أي وقت. | Text of that confirmation: what stopping means and that it can be undone here. |
+| W129 | Yes, stop all contact | نعم، أوقفوا كل تواصل | Button that confirms stopping all contact. |
+| W130 | No, keep contact | لا، أبقوا التواصل | Button that cancels and keeps contact. |
+| W131 | You may contact me again | يمكنكم التواصل معي مرة أخرى | Replaces the stop button after withdrawal. Pressing it records that the patient may be contacted again. |
+| W132 | Saved | تم الحفظ | Status line under the choices after a successful save. |
+| W133 | We could not save this. Please try again. | لم نتمكن من الحفظ. يرجى المحاولة مرة أخرى. | Status line if saving the choices fails. |
 
 ### 4.10 Privacy centre: who looked at my record, how we use your data, this phone
 
@@ -265,29 +270,32 @@ Access log, the data panel and the notice about messages.
 
 | ID | English | Arabic | Where it appears |
 |---|---|---|---|
-| W129 | Privacy and choices | الخصوصية والاختيارات | Heading of the Privacy tab (h1). |
-| W130 | You decide how we contact you. You can see who opened your record. You can change your mind at any time. | أنت من يقرر كيف نتواصل معك. يمكنك معرفة من اطلع على ملفك. يمكنك تغيير رأيك في أي وقت. | Text under that heading. |
-| W131 | How we prepare messages | كيف نُعِدّ الرسائل | Heading of a short notice: how messages are prepared (software helps, a member of staff approves each one). |
-| W132 | We use software to help prepare our messages to you. | نستعين ببرنامج حاسوبي في إعداد رسائلنا إليك. | First line of that notice. Says software helps prepare the messages. Says nothing about results. |
-| W133 | A member of staff checks and approves each message before we send it. | يراجع أحد أفراد فريقنا كل رسالة ويوافق عليها قبل إرسالها. | Second line of that notice. A member of staff checks and approves each message before it is sent. |
-| W134 | To speak to a person, press "I don't understand, call me". You can also call your care team. | للتحدث مع شخص، يرجى الضغط على «لا أفهم، يرجى الاتصال بي». ويمكنك أيضاً الاتصال بفريق رعايتك. | Third line of that notice. Names the button "I don't understand, call me" exactly as translated for the key dontUnderstand. |
-| W135 | You can stop messages at any time. Use "Stop all contact" in "Your choices" below. | يمكنك إيقاف الرسائل في أي وقت. يمكنك ذلك من خلال «أوقفوا كل تواصل معي» في قسم «اختياراتك» أدناه. | Fourth line of that notice. Points to the "Stop all contact" button (key withdrawButton) in the choices section; the quoted names must match that key and the heading consentHeading. |
-| W136 | How we use your data | كيف نتعامل مع بياناتك | Heading of the "how we use your data" panel. |
-| W137 | This is a demonstration. All the information here is synthetic. It is not about a real person. | هذا عرض تجريبي. كل المعلومات هنا اصطناعية. وليست عن شخص حقيقي. | Panel line 1: the data is synthetic (this is a demonstration). |
-| W138 | Software only prepares and sorts messages. It never decides anything about your care. | البرنامج الحاسوبي يُعِدّ الرسائل ويرتبها فقط. ولا يقرر شيئاً عن رعايتك. | Panel line 2: software only prepares and sorts messages; it never decides about care (the reply triage only flags or relays, the drafting model only drafts). |
-| W139 | A person on your care team makes every decision about your care. | أحد أفراد فريق رعايتك هو من يتخذ كل قرار عن رعايتك. | Panel line 3: a person decides everything about care (closure always needs a physician's signature). |
-| W140 | We keep only what we need. What you write to us is kept apart from your care record, and it can be erased. | نحتفظ بما نحتاج إليه فقط. ما تكتبه لنا يُحفظ بعيداً عن سجل رعايتك، ويمكن مسحه. | Panel line 4: data minimisation. What the patient writes is kept apart from the care record (patient_replies table) and can be erased. |
-| W141 | Your care record lists steps, dates and roles. It does not hold names, phone numbers or free text. | يسرد سجل رعايتك الخطوات والتواريخ والأدوار. ولا يحتوي على أسماء أو أرقام هواتف أو نصوص حرة. | Panel line 5: data minimisation. The event log holds steps, dates and roles; its payload schemas hold no free text, and contact details are not logged. |
-| W142 | When your case is finished, you can ask for your personal data to be erased. Two supervisors must agree. | عند انتهاء حالة رعايتك، يمكنك طلب مسح بياناتك الشخصية. ويجب أن يوافق مشرفان. | Panel line 6: erasure after the case is finished needs two supervisors (A32, ADR-025). |
-| W143 | Who looked at my record | من اطلع على ملفي | Heading of the list of staff who opened the record. |
-| W144 | Each time a member of staff opens your record, it is written here with their name, their role and the time. | في كل مرة يفتح أحد العاملين ملفك، يُكتب هنا اسمه ودوره والوقت. | Text under that heading. |
-| W145 | Nobody on your care team has opened your record yet. | لم يفتح أحد من فريق رعايتك ملفك بعد. | Shown when nobody has opened the record yet. |
-| W146 | We list each person once every 15 minutes, even if they look more than once. Computer systems that keep time or send reminders are not listed. | نسجل كل شخص مرة واحدة كل ١٥ دقيقة حتى لو نظر أكثر من مرة. الأنظمة الحاسوبية التي تحسب الوقت أو ترسل التذكيرات لا تظهر هنا. | Small grey text under the list: one line per person every 15 minutes; services are not listed. |
-| W147 | We could not load this list. Please try again. | لم نتمكن من تحميل هذه القائمة. يرجى المحاولة مرة أخرى. | Shown if the list cannot be loaded. |
-| W148 | On this phone | على هذا الهاتف | Heading of the section about what the phone stores. |
-| W149 | To work without internet, this phone keeps the last information it loaded. It stays on this phone only. | ليعمل التطبيق بلا إنترنت، يحتفظ هذا الهاتف بآخر معلومات حمّلها. وتبقى على هذا الهاتف فقط. | Says the phone keeps the last loaded information so the app works without internet, and only on the phone. |
-| W150 | Remove saved information from this phone | احذف المعلومات المحفوظة من هذا الهاتف | Button that removes the saved information from the phone. |
-| W151 | Removed. Open the link from your care team again to load your page. | تم الحذف. افتح الرابط الذي أرسله فريق رعايتك من جديد لتحميل صفحتك. | Confirmation after that button. |
+| W134 | Who opened your record | من اطلع على سجلك | Heading of the small 'who opened my record' card on the home page. |
+| W135 | See the full list and your choices | عرض القائمة الكاملة وخياراتك | Button under that card that opens the Privacy tab with the full list. |
+| W136 | Names are in the Privacy tab. | الأسماء في تبويب الخصوصية. | Small grey note under that card: names are shown in the Privacy tab only. |
+| W137 | Privacy and choices | الخصوصية والاختيارات | Heading of the Privacy tab (h1). |
+| W138 | You decide how we contact you. You can see who opened your record. You can change your mind at any time. | أنت من يقرر كيف نتواصل معك. يمكنك معرفة من اطلع على ملفك. يمكنك تغيير رأيك في أي وقت. | Text under that heading. |
+| W139 | How we prepare messages | كيف نُعِدّ الرسائل | Heading of a short notice: how messages are prepared (software helps, a member of staff approves each one). |
+| W140 | We use software to help prepare our messages to you. | نستعين ببرنامج حاسوبي في إعداد رسائلنا إليك. | First line of that notice. Says software helps prepare the messages. Says nothing about results. |
+| W141 | A member of staff checks and approves each message before we send it. | يراجع أحد أفراد فريقنا كل رسالة ويوافق عليها قبل إرسالها. | Second line of that notice. A member of staff checks and approves each message before it is sent. |
+| W142 | To speak to a person, press "I don't understand, call me". You can also call your care team. | للتحدث مع شخص، يرجى الضغط على «لا أفهم، يرجى الاتصال بي». ويمكنك أيضاً الاتصال بفريق رعايتك. | Third line of that notice. Names the button "I don't understand, call me" exactly as translated for the key dontUnderstand. |
+| W143 | You can stop messages at any time. Use "Stop all contact" in "Your choices" below. | يمكنك إيقاف الرسائل في أي وقت. يمكنك ذلك من خلال «أوقفوا كل تواصل معي» في قسم «اختياراتك» أدناه. | Fourth line of that notice. Points to the "Stop all contact" button (key withdrawButton) in the choices section; the quoted names must match that key and the heading consentHeading. |
+| W144 | How we use your data | كيف نتعامل مع بياناتك | Heading of the "how we use your data" panel. |
+| W145 | This is a demonstration. All the information here is synthetic. It is not about a real person. | هذا عرض تجريبي. كل المعلومات هنا اصطناعية. وليست عن شخص حقيقي. | Panel line 1: the data is synthetic (this is a demonstration). |
+| W146 | Software only prepares and sorts messages. It never decides anything about your care. | البرنامج الحاسوبي يُعِدّ الرسائل ويرتبها فقط. ولا يقرر شيئاً عن رعايتك. | Panel line 2: software only prepares and sorts messages; it never decides about care (the reply triage only flags or relays, the drafting model only drafts). |
+| W147 | A person on your care team makes every decision about your care. | أحد أفراد فريق رعايتك هو من يتخذ كل قرار عن رعايتك. | Panel line 3: a person decides everything about care (closure always needs a physician's signature). |
+| W148 | We keep only what we need. What you write to us is kept apart from your care record, and it can be erased. | نحتفظ بما نحتاج إليه فقط. ما تكتبه لنا يُحفظ بعيداً عن سجل رعايتك، ويمكن مسحه. | Panel line 4: data minimisation. What the patient writes is kept apart from the care record (patient_replies table) and can be erased. |
+| W149 | Your care record lists steps, dates and roles. It does not hold names, phone numbers or free text. | يسرد سجل رعايتك الخطوات والتواريخ والأدوار. ولا يحتوي على أسماء أو أرقام هواتف أو نصوص حرة. | Panel line 5: data minimisation. The event log holds steps, dates and roles; its payload schemas hold no free text, and contact details are not logged. |
+| W150 | When your case is finished, you can ask for your personal data to be erased. Two supervisors must agree. | عند انتهاء حالة رعايتك، يمكنك طلب مسح بياناتك الشخصية. ويجب أن يوافق مشرفان. | Panel line 6: erasure after the case is finished needs two supervisors (A32, ADR-025). |
+| W151 | Who looked at my record | من اطلع على ملفي | Heading of the list of staff who opened the record. |
+| W152 | Each time a member of staff opens your record, it is written here with their name, their role and the time. | في كل مرة يفتح أحد العاملين ملفك، يُكتب هنا اسمه ودوره والوقت. | Text under that heading. |
+| W153 | Nobody on your care team has opened your record yet. | لم يفتح أحد من فريق رعايتك ملفك بعد. | Shown when nobody has opened the record yet. |
+| W154 | We list each person once every 15 minutes, even if they look more than once. Computer systems that keep time or send reminders are not listed. | نسجل كل شخص مرة واحدة كل ١٥ دقيقة حتى لو نظر أكثر من مرة. الأنظمة الحاسوبية التي تحسب الوقت أو ترسل التذكيرات لا تظهر هنا. | Small grey text under the list: one line per person every 15 minutes; services are not listed. |
+| W155 | We could not load this list. Please try again. | لم نتمكن من تحميل هذه القائمة. يرجى المحاولة مرة أخرى. | Shown if the list cannot be loaded. |
+| W156 | On this phone | على هذا الهاتف | Heading of the section about what the phone stores. |
+| W157 | To work without internet, this phone keeps the last information it loaded. It stays on this phone only. | ليعمل التطبيق بلا إنترنت، يحتفظ هذا الهاتف بآخر معلومات حمّلها. وتبقى على هذا الهاتف فقط. | Says the phone keeps the last loaded information so the app works without internet, and only on the phone. |
+| W158 | Remove saved information from this phone | احذف المعلومات المحفوظة من هذا الهاتف | Button that removes the saved information from the phone. |
+| W159 | Removed. Open the link from your care team again to load your page. | تم الحذف. افتح الرابط الذي أرسله فريق رعايتك من جديد لتحميل صفحتك. | Confirmation after that button. |
 
 ### 4.11 Loading, offline and errors
 
@@ -295,10 +303,10 @@ System messages.
 
 | ID | English | Arabic | Where it appears |
 |---|---|---|---|
-| W152 | Loading... | جارٍ التحميل... | Shown instead of the page while the case loads. |
-| W153 | We could not load your information. Please try again. | لم نتمكن من تحميل معلوماتك. يرجى المحاولة مرة أخرى. | Shown if the case cannot be loaded and nothing is saved on the device. |
-| W154 | You are offline. This is the last information we saved. | لا يوجد اتصال بالإنترنت. هذه آخر معلومات حفظناها. | Banner above the result when the device is offline. The last saved information is shown. |
-| W155 | You are offline. You can read what is saved. You can send something when you are back online. | لا يوجد اتصال بالإنترنت. يمكنك قراءة المعلومات المحفوظة. يمكنك الإرسال عند عودة الاتصال. | Hint shown beside the buttons while the device is offline: they work again when the connection returns. |
+| W160 | Loading... | جارٍ التحميل... | Shown instead of the page while the case loads. |
+| W161 | We could not load your information. Please try again. | لم نتمكن من تحميل معلوماتك. يرجى المحاولة مرة أخرى. | Shown if the case cannot be loaded and nothing is saved on the device. |
+| W162 | You are offline. This is the last information we saved. | لا يوجد اتصال بالإنترنت. هذه آخر معلومات حفظناها. | Banner above the result when the device is offline. The last saved information is shown. |
+| W163 | You are offline. You can read what is saved. You can send something when you are back online. | لا يوجد اتصال بالإنترنت. يمكنك قراءة المعلومات المحفوظة. يمكنك الإرسال عند عودة الاتصال. | Hint shown beside the buttons while the device is offline: they work again when the connection returns. |
 
 ## 5. Messages, by purpose
 
@@ -581,8 +589,8 @@ We ran the list over every Arabic text above. These texts contain a forbidden en
 
 | ID | Arabic | Matching entries |
 |---|---|---|
-| W64 | يحفظ هذا ملفاً صغيراً على هاتفك. افتح الملف لإضافة التاريخ إلى التقويم. | `rtg_pii_24` |
-| W142 | عند انتهاء حالة رعايتك، يمكنك طلب مسح بياناتك الشخصية. ويجب أن يوافق مشرفان. | `must` |
+| W68 | يحفظ هذا ملفاً صغيراً على هاتفك. افتح الملف لإضافة التاريخ إلى التقويم. | `rtg_pii_24` |
+| W150 | عند انتهاء حالة رعايتك، يمكنك طلب مسح بياناتك الشخصية. ويجب أن يوافق مشرفان. | `must` |
 
 ## 7. Checklist
 
@@ -612,155 +620,163 @@ One row per text. Write keep or change; if change, write your Arabic wording and
 | W04 | web: navLabel |  |  |  |
 | W05 | web: navHome |  |  |  |
 | W06 | web: navPrivacy |  |  |  |
-| W07 | web: homeTitle |  |  |  |
-| W08 | web: homeBody |  |  |  |
-| W09 | web: resultHeading |  |  |  |
-| W10 | web: resultBody |  |  |  |
-| W11 | web: explainInPerson |  |  |  |
-| W12 | web: pathways.colorectal_fit.progress[0] |  |  |  |
-| W13 | web: pathways.colorectal_fit.progress[1] |  |  |  |
-| W14 | web: pathways.colorectal_fit.progress[2] |  |  |  |
-| W15 | web: pathways.colorectal_fit.progress[3] |  |  |  |
-| W16 | web: pathways.cervical_hpv.progress[0] |  |  |  |
-| W17 | web: pathways.cervical_hpv.progress[1] |  |  |  |
-| W18 | web: pathways.cervical_hpv.progress[2] |  |  |  |
-| W19 | web: pathways.cervical_hpv.progress[3] |  |  |  |
-| W20 | web: pathways.chronic_conditions.progress[0] |  |  |  |
-| W21 | web: pathways.chronic_conditions.progress[1] |  |  |  |
-| W22 | web: pathways.chronic_conditions.progress[2] |  |  |  |
-| W23 | web: pathways.chronic_conditions.progress[3] |  |  |  |
-| W24 | web: pathways.other.progress[0] |  |  |  |
-| W25 | web: pathways.other.progress[1] |  |  |  |
-| W26 | web: pathways.other.progress[2] |  |  |  |
-| W27 | web: pathways.other.progress[3] |  |  |  |
-| W28 | web: progressHeading |  |  |  |
-| W29 | web: nextHeading |  |  |  |
-| W30 | web: nextState.preContact |  |  |  |
-| W31 | web: nextState.contacted |  |  |  |
-| W32 | web: nextState.booked |  |  |  |
-| W33 | web: nextState.done |  |  |  |
-| W34 | web: nextState.closed |  |  |  |
-| W35 | web: nextState.withdrawn |  |  |  |
-| W36 | web: nextState.working |  |  |  |
-| W37 | web: pathways.colorectal_fit.nextSteps[0] |  |  |  |
-| W38 | web: pathways.colorectal_fit.nextSteps[1] |  |  |  |
-| W39 | web: pathways.colorectal_fit.nextSteps[2] |  |  |  |
-| W40 | web: pathways.colorectal_fit.waiting |  |  |  |
-| W41 | web: pathways.cervical_hpv.nextSteps[0] |  |  |  |
-| W42 | web: pathways.cervical_hpv.nextSteps[1] |  |  |  |
-| W43 | web: pathways.cervical_hpv.nextSteps[2] |  |  |  |
-| W44 | web: pathways.cervical_hpv.waiting |  |  |  |
-| W45 | web: pathways.chronic_conditions.nextSteps[0] |  |  |  |
-| W46 | web: pathways.chronic_conditions.nextSteps[1] |  |  |  |
-| W47 | web: pathways.chronic_conditions.nextSteps[2] |  |  |  |
-| W48 | web: pathways.chronic_conditions.waiting |  |  |  |
-| W49 | web: pathways.other.nextSteps[0] |  |  |  |
-| W50 | web: pathways.other.nextSteps[1] |  |  |  |
-| W51 | web: pathways.other.nextSteps[2] |  |  |  |
-| W52 | web: pathways.other.waiting |  |  |  |
-| W53 | web: pathways.colorectal_fit.appointmentTitle |  |  |  |
-| W54 | web: pathways.colorectal_fit.calendarTitle |  |  |  |
-| W55 | web: pathways.cervical_hpv.appointmentTitle |  |  |  |
-| W56 | web: pathways.cervical_hpv.calendarTitle |  |  |  |
-| W57 | web: pathways.chronic_conditions.appointmentTitle |  |  |  |
-| W58 | web: pathways.chronic_conditions.calendarTitle |  |  |  |
-| W59 | web: pathways.other.appointmentTitle |  |  |  |
-| W60 | web: pathways.other.calendarTitle |  |  |  |
-| W61 | web: appointmentHeading |  |  |  |
-| W62 | web: appointmentTimeLater |  |  |  |
-| W63 | web: addToCalendar |  |  |  |
-| W64 | web: calendarNote |  |  |  |
-| W65 | web: calendarDescription |  |  |  |
-| W66 | web: ownerHeading |  |  |  |
-| W67 | web: ownerLine |  |  |  |
-| W68 | web: ownerPending |  |  |  |
-| W69 | web: ownerReach |  |  |  |
-| W70 | web: callCareTeam |  |  |  |
-| W71 | web: demoNumber |  |  |  |
-| W72 | web: roles.primary_care_owner |  |  |  |
-| W73 | web: roles.specialist_owner |  |  |  |
-| W74 | web: roles.coordinator |  |  |  |
-| W75 | web: roles.supervisor |  |  |  |
-| W76 | web: roles.lab |  |  |  |
-| W77 | web: roles.other |  |  |  |
-| W78 | web: ownerByRole.primary_care_owner |  |  |  |
-| W79 | web: ownerByRole.specialist_owner |  |  |  |
-| W80 | web: ownerByRole.coordinator |  |  |  |
-| W81 | web: ownerByRole.supervisor |  |  |  |
-| W82 | web: ownerByRole.other |  |  |  |
-| W83 | web: role:Primary care physician |  |  |  |
-| W84 | web: role:Care coordinator |  |  |  |
-| W85 | web: reschedule |  |  |  |
-| W86 | web: rescheduleDone |  |  |  |
-| W87 | web: cannotAttend |  |  |  |
-| W88 | web: cannotAttendDone |  |  |  |
-| W89 | web: understand |  |  |  |
-| W90 | web: understandDone |  |  |  |
-| W91 | web: understandWait |  |  |  |
-| W92 | web: dontUnderstand |  |  |  |
-| W93 | web: callbackDone |  |  |  |
-| W94 | web: actionFailed |  |  |  |
-| W95 | web: historyHeading |  |  |  |
-| W96 | web: historyEmpty |  |  |  |
-| W97 | web: history.case_created |  |  |  |
-| W98 | web: history.acknowledge |  |  |  |
-| W99 | web: history.accept_ownership |  |  |  |
-| W100 | web: history.contact_patient |  |  |  |
-| W101 | web: history.patient_acknowledge |  |  |  |
-| W102 | web: history.book_confirmatory |  |  |  |
-| W103 | web: history.complete_confirmatory |  |  |  |
-| W104 | web: history.clinician_review |  |  |  |
-| W105 | web: history.close |  |  |  |
-| W106 | web: history.reopen |  |  |  |
-| W107 | web: history.consent_updated |  |  |  |
-| W108 | web: history.callback_requested |  |  |  |
-| W109 | web: history.message_sent |  |  |  |
-| W110 | web: consentHeading |  |  |  |
-| W111 | web: channelLabel |  |  |  |
-| W112 | web: channels.phone |  |  |  |
-| W113 | web: channels.sms |  |  |  |
-| W114 | web: channels.whatsapp |  |  |  |
-| W115 | web: channels.letter |  |  |  |
-| W116 | web: shareLabel |  |  |  |
-| W117 | web: languageLabel |  |  |  |
-| W118 | web: languageNote |  |  |  |
-| W119 | web: withdrawButton |  |  |  |
-| W120 | web: withdrawHint |  |  |  |
-| W121 | web: withdrawnNotice |  |  |  |
-| W122 | web: withdrawConfirmTitle |  |  |  |
-| W123 | web: withdrawConfirmBody |  |  |  |
-| W124 | web: withdrawConfirmYes |  |  |  |
-| W125 | web: withdrawConfirmNo |  |  |  |
-| W126 | web: resumeButton |  |  |  |
-| W127 | web: saved |  |  |  |
-| W128 | web: saveFailed |  |  |  |
-| W129 | web: privacyHeading |  |  |  |
-| W130 | web: privacyIntro |  |  |  |
-| W131 | web: aiNoticeHeading |  |  |  |
-| W132 | web: aiNoticeSoftware |  |  |  |
-| W133 | web: aiNoticeStaff |  |  |  |
-| W134 | web: aiNoticePerson |  |  |  |
-| W135 | web: aiNoticeStop |  |  |  |
-| W136 | web: dataHeading |  |  |  |
-| W137 | web: data[0] |  |  |  |
-| W138 | web: data[1] |  |  |  |
-| W139 | web: data[2] |  |  |  |
-| W140 | web: data[3] |  |  |  |
-| W141 | web: data[4] |  |  |  |
-| W142 | web: data[5] |  |  |  |
-| W143 | web: accessHeading |  |  |  |
-| W144 | web: accessIntro |  |  |  |
-| W145 | web: accessEmpty |  |  |  |
-| W146 | web: accessNote |  |  |  |
-| W147 | web: accessLoadError |  |  |  |
-| W148 | web: deviceHeading |  |  |  |
-| W149 | web: deviceBody |  |  |  |
-| W150 | web: deviceClear |  |  |  |
-| W151 | web: deviceCleared |  |  |  |
-| W152 | web: loading |  |  |  |
-| W153 | web: loadError |  |  |  |
-| W154 | web: offline |  |  |  |
-| W155 | web: offlineAction |  |  |  |
+| W07 | web: arabicReviewNote |  |  |  |
+| W08 | web: homeTitle |  |  |  |
+| W09 | web: homeBody |  |  |  |
+| W10 | web: resultHeading |  |  |  |
+| W11 | web: resultBody |  |  |  |
+| W12 | web: explainInPerson |  |  |  |
+| W13 | web: pathways.colorectal_fit.progress[0] |  |  |  |
+| W14 | web: pathways.colorectal_fit.progress[1] |  |  |  |
+| W15 | web: pathways.colorectal_fit.progress[2] |  |  |  |
+| W16 | web: pathways.colorectal_fit.progress[3] |  |  |  |
+| W17 | web: pathways.cervical_hpv.progress[0] |  |  |  |
+| W18 | web: pathways.cervical_hpv.progress[1] |  |  |  |
+| W19 | web: pathways.cervical_hpv.progress[2] |  |  |  |
+| W20 | web: pathways.cervical_hpv.progress[3] |  |  |  |
+| W21 | web: pathways.chronic_conditions.progress[0] |  |  |  |
+| W22 | web: pathways.chronic_conditions.progress[1] |  |  |  |
+| W23 | web: pathways.chronic_conditions.progress[2] |  |  |  |
+| W24 | web: pathways.chronic_conditions.progress[3] |  |  |  |
+| W25 | web: pathways.other.progress[0] |  |  |  |
+| W26 | web: pathways.other.progress[1] |  |  |  |
+| W27 | web: pathways.other.progress[2] |  |  |  |
+| W28 | web: pathways.other.progress[3] |  |  |  |
+| W29 | web: progressHeading |  |  |  |
+| W30 | web: nextHeading |  |  |  |
+| W31 | web: nextState.preContact |  |  |  |
+| W32 | web: nextState.contacted |  |  |  |
+| W33 | web: nextState.booked |  |  |  |
+| W34 | web: nextState.done |  |  |  |
+| W35 | web: nextState.closed |  |  |  |
+| W36 | web: nextState.withdrawn |  |  |  |
+| W37 | web: nextState.working |  |  |  |
+| W38 | web: pathways.colorectal_fit.nextSteps[0] |  |  |  |
+| W39 | web: pathways.colorectal_fit.nextSteps[1] |  |  |  |
+| W40 | web: pathways.colorectal_fit.nextSteps[2] |  |  |  |
+| W41 | web: pathways.colorectal_fit.waiting |  |  |  |
+| W42 | web: pathways.cervical_hpv.nextSteps[0] |  |  |  |
+| W43 | web: pathways.cervical_hpv.nextSteps[1] |  |  |  |
+| W44 | web: pathways.cervical_hpv.nextSteps[2] |  |  |  |
+| W45 | web: pathways.cervical_hpv.waiting |  |  |  |
+| W46 | web: pathways.chronic_conditions.nextSteps[0] |  |  |  |
+| W47 | web: pathways.chronic_conditions.nextSteps[1] |  |  |  |
+| W48 | web: pathways.chronic_conditions.nextSteps[2] |  |  |  |
+| W49 | web: pathways.chronic_conditions.waiting |  |  |  |
+| W50 | web: pathways.other.nextSteps[0] |  |  |  |
+| W51 | web: pathways.other.nextSteps[1] |  |  |  |
+| W52 | web: pathways.other.nextSteps[2] |  |  |  |
+| W53 | web: pathways.other.waiting |  |  |  |
+| W54 | web: emergencyHeading |  |  |  |
+| W55 | web: emergencyLine |  |  |  |
+| W56 | web: emergencyPending |  |  |  |
+| W57 | web: pathways.colorectal_fit.appointmentTitle |  |  |  |
+| W58 | web: pathways.colorectal_fit.calendarTitle |  |  |  |
+| W59 | web: pathways.cervical_hpv.appointmentTitle |  |  |  |
+| W60 | web: pathways.cervical_hpv.calendarTitle |  |  |  |
+| W61 | web: pathways.chronic_conditions.appointmentTitle |  |  |  |
+| W62 | web: pathways.chronic_conditions.calendarTitle |  |  |  |
+| W63 | web: pathways.other.appointmentTitle |  |  |  |
+| W64 | web: pathways.other.calendarTitle |  |  |  |
+| W65 | web: appointmentHeading |  |  |  |
+| W66 | web: appointmentTimeLater |  |  |  |
+| W67 | web: addToCalendar |  |  |  |
+| W68 | web: calendarNote |  |  |  |
+| W69 | web: calendarDescription |  |  |  |
+| W70 | web: ownerHeading |  |  |  |
+| W71 | web: ownerLine |  |  |  |
+| W72 | web: ownerPending |  |  |  |
+| W73 | web: ownerReach |  |  |  |
+| W74 | web: callCareTeam |  |  |  |
+| W75 | web: demoNumber |  |  |  |
+| W76 | web: roles.primary_care_owner |  |  |  |
+| W77 | web: roles.specialist_owner |  |  |  |
+| W78 | web: roles.coordinator |  |  |  |
+| W79 | web: roles.supervisor |  |  |  |
+| W80 | web: roles.lab |  |  |  |
+| W81 | web: roles.other |  |  |  |
+| W82 | web: ownerByRole.primary_care_owner |  |  |  |
+| W83 | web: ownerByRole.specialist_owner |  |  |  |
+| W84 | web: ownerByRole.coordinator |  |  |  |
+| W85 | web: ownerByRole.supervisor |  |  |  |
+| W86 | web: ownerByRole.other |  |  |  |
+| W87 | web: role:Primary care physician |  |  |  |
+| W88 | web: role:Care coordinator |  |  |  |
+| W89 | web: reschedule |  |  |  |
+| W90 | web: rescheduleDone |  |  |  |
+| W91 | web: cannotAttend |  |  |  |
+| W92 | web: cannotAttendDone |  |  |  |
+| W93 | web: pendingPerson |  |  |  |
+| W94 | web: understand |  |  |  |
+| W95 | web: understandDone |  |  |  |
+| W96 | web: understandWait |  |  |  |
+| W97 | web: dontUnderstand |  |  |  |
+| W98 | web: callbackDone |  |  |  |
+| W99 | web: actionFailed |  |  |  |
+| W100 | web: historyHeading |  |  |  |
+| W101 | web: historyEmpty |  |  |  |
+| W102 | web: history.case_created |  |  |  |
+| W103 | web: history.acknowledge |  |  |  |
+| W104 | web: history.accept_ownership |  |  |  |
+| W105 | web: history.contact_patient |  |  |  |
+| W106 | web: history.patient_acknowledge |  |  |  |
+| W107 | web: history.book_confirmatory |  |  |  |
+| W108 | web: history.complete_confirmatory |  |  |  |
+| W109 | web: history.clinician_review |  |  |  |
+| W110 | web: history.close |  |  |  |
+| W111 | web: history.reopen |  |  |  |
+| W112 | web: history.consent_updated |  |  |  |
+| W113 | web: history.callback_requested |  |  |  |
+| W114 | web: history.message_sent |  |  |  |
+| W115 | web: consentHeading |  |  |  |
+| W116 | web: channelLabel |  |  |  |
+| W117 | web: channels.phone |  |  |  |
+| W118 | web: channels.sms |  |  |  |
+| W119 | web: channels.whatsapp |  |  |  |
+| W120 | web: channels.letter |  |  |  |
+| W121 | web: shareLabel |  |  |  |
+| W122 | web: languageLabel |  |  |  |
+| W123 | web: languageNote |  |  |  |
+| W124 | web: withdrawButton |  |  |  |
+| W125 | web: withdrawHint |  |  |  |
+| W126 | web: withdrawnNotice |  |  |  |
+| W127 | web: withdrawConfirmTitle |  |  |  |
+| W128 | web: withdrawConfirmBody |  |  |  |
+| W129 | web: withdrawConfirmYes |  |  |  |
+| W130 | web: withdrawConfirmNo |  |  |  |
+| W131 | web: resumeButton |  |  |  |
+| W132 | web: saved |  |  |  |
+| W133 | web: saveFailed |  |  |  |
+| W134 | web: accessHomeHeading |  |  |  |
+| W135 | web: accessHomeMore |  |  |  |
+| W136 | web: accessHomeNote |  |  |  |
+| W137 | web: privacyHeading |  |  |  |
+| W138 | web: privacyIntro |  |  |  |
+| W139 | web: aiNoticeHeading |  |  |  |
+| W140 | web: aiNoticeSoftware |  |  |  |
+| W141 | web: aiNoticeStaff |  |  |  |
+| W142 | web: aiNoticePerson |  |  |  |
+| W143 | web: aiNoticeStop |  |  |  |
+| W144 | web: dataHeading |  |  |  |
+| W145 | web: data[0] |  |  |  |
+| W146 | web: data[1] |  |  |  |
+| W147 | web: data[2] |  |  |  |
+| W148 | web: data[3] |  |  |  |
+| W149 | web: data[4] |  |  |  |
+| W150 | web: data[5] |  |  |  |
+| W151 | web: accessHeading |  |  |  |
+| W152 | web: accessIntro |  |  |  |
+| W153 | web: accessEmpty |  |  |  |
+| W154 | web: accessNote |  |  |  |
+| W155 | web: accessLoadError |  |  |  |
+| W156 | web: deviceHeading |  |  |  |
+| W157 | web: deviceBody |  |  |  |
+| W158 | web: deviceClear |  |  |  |
+| W159 | web: deviceCleared |  |  |  |
+| W160 | web: loading |  |  |  |
+| W161 | web: loadError |  |  |  |
+| W162 | web: offline |  |  |  |
+| W163 | web: offlineAction |  |  |  |
 | T01 | template: result_notification/sms |  |  |  |
 | T02 | template: result_notification/whatsapp |  |  |  |
 | T03 | template: result_notification/letter |  |  |  |
