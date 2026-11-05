@@ -1,0 +1,11 @@
+# EXAMPLE unit (ADR-058), not installed by anything yet: the deploy wiring is the deploy agent's. One pass of the host side of the
+# web "Reset the demo" button. Pair with sc-demo-reset-watch.timer (every 15 s).
+[Unit]
+Description=Act on a demo reset request left by the API (ADR-058)
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/srv/sc/repo/deploy/gcp/vm/demo-reset-watch.sh
+TimeoutStartSec=300

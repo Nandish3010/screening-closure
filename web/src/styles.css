@@ -610,3 +610,35 @@ main.container > .lead { max-width: 65ch; color: var(--text); }
 /* Print and motion */
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 @media (max-width: 640px) { .chip { white-space: normal; max-width: 100%; } .effort-headline { gap: var(--s-1); } }
+
+/* Start here (ADR-058): the guided judge path */
+.start-here { max-width: 60rem; }
+.start-steps { list-style: none; padding: 0; margin: var(--s-3) 0; display: grid; gap: var(--s-3); grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr)); counter-reset: none; }
+.start-card { border: 1px solid var(--border); border-radius: var(--r-md); padding: var(--s-3); background: var(--surface, transparent); display: flex; flex-direction: column; gap: var(--s-2); }
+.start-card h2 { font-size: 1.05rem; margin: 0; }
+.start-card .btn { align-self: flex-start; margin-top: auto; }
+.start-claim { margin: 0; }
+.start-done { border-color: var(--ok, var(--border)); }
+.start-meta { font-size: 0.9rem; margin: 0; }
+.start-skip { display: flex; flex-wrap: wrap; gap: var(--s-3); align-items: center; }
+.demo-status { display: inline-block; margin-left: 0.5rem; }
+.reset-demo { margin-left: 0.5rem; }
+.demo-panel { border-left: 4px solid var(--warn); }
+.tour-claim { margin: 0.25rem 0; }
+.tour-look { border-left: 3px solid var(--ok, var(--border)); padding: 0.25rem 0.75rem; margin: 0.5rem 0; }
+.tour-look ul { margin: 0.25rem 0 0; padding-left: 1.1rem; }
+
+/* Narrow screens: a header this tall must not stay stuck over the page (it covered the demo controls), and the guide panel can be minimised. */
+@media (max-width: 640px) {
+  .app-header { position: static; }
+  .tour { max-height: 52vh; }
+}
+.tour-min { max-height: none !important; }
+.tour-min .tour-fold { display: none; }
+body.tour-open.tour-minimised { padding-bottom: 9rem; }
+/* Wide screens: the guide docks to the right edge and the page makes room, so it never covers the panel it points at. */
+@media (min-width: 1000px) {
+  .tour { inset-inline-start: auto; inset-inline-end: var(--s-3); margin-inline: 0; width: 400px; max-height: calc(100vh - 2rem); }
+  body.tour-open, body.tour-open.tour-minimised { padding-bottom: 0; padding-inline-end: 424px; }
+}
+.tour-top { flex-wrap: wrap; }

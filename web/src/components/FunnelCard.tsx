@@ -33,7 +33,10 @@ function MedianCell({ step }: { step: FunnelStep }) {
   );
 }
 
-function StepRow({ step, max }: { step: FunnelStep; max: number }) {
+/** A share of fewer cases than this is not shown as a percentage: 1 of 1 is not "100%". */
+export const MIN_N_FOR_SHARE = 10;
+
+function StepRow({ step, max, denominator }: { step: FunnelStep; max: number; denominator: number }) {
   const s = STAFF.funnel;
   const width = max ? Math.round((step.count / max) * 100) : 0;
   const of = step.from ? s.ofWord[step.from] : null;
@@ -49,8 +52,14 @@ function StepRow({ step, max }: { step: FunnelStep; max: number }) {
       <td className="num" data-label={s.colConversion}>
         {step.from === null ? <span className="muted">n/a</span> : (
           <span>
-            <span data-testid={`funnel-conversion-${step.key}`}>{pctOf(step.conversion)}</span>
-            {of && <small className="funnel-n"> {of}</small>}
+            {denominator < MIN_N_FOR_SHARE && step.conversion !== null ? (
+              <span data-testid={`funnel-conversion-${step.key}`} className="muted" title={`${step.count} of ${denominator} ${of ?? ""}`}>n={denominator}, too few to compare</span>
+            ) : (
+              <>
+                <span data-testid={`funnel-conversion-${step.key}`}>{pctOf(step.conversion)}</span>
+                {of && <small className="funnel-n"> {of}</small>}
+              </>
+            )}
           </span>
         )}
       </td>
@@ -126,7 +135,7 @@ export function FunnelCard({
                   <th scope="col" className="num">{s.colMedian}</th>
                 </tr>
               </thead>
-              <tbody>{data.steps.map((step) => <StepRow key={step.key} step={step} max={max} />)}</tbody>
+              <tbody>{data.steps.map((step) => <StepRow key={step.key} step={step} max={max} denominator={data.steps.find((x) => x.key === step.from)?.count ?? 0} />)}</tbody>
             </table>
           </div>
           {data.declined_closures > 0 && <p className="muted" data-testid="funnel-declined">{s.declined(data.declined_closures)}</p>}

@@ -307,6 +307,13 @@ class Result:
     requests: int = 0
 
 
+# The hosted demo's `/demo/*` routes (ADR-058) exist only under the demo flags, so a normal process (this tool, the unit tests) does not
+# serve them. Their policy rows are proved by tests/test_demo_controls.py (the gate, in a process that has the flags) and
+# tests/test_rbac.py; they are left out of this matrix on purpose.
+def gated_free_policy() -> dict:
+    return {k: v for k, v in policy.ROUTE_POLICY.items() if not k[1].startswith("/demo/")}
+
+
 def openapi_routes() -> list[tuple[str, str]]:
     out = []
     for path, item in app.openapi()["paths"].items():
@@ -323,7 +330,7 @@ def structural_problems(routes: list[tuple[str, str]]) -> list[str]:
             problems.append(f"route {route[0]} {route[1]} has no ROUTE_POLICY decision")
         if ("{" in route[1]) and route not in SCOPE_RULES:
             problems.append(f"route {route[0]} {route[1]} names a case or draft but has no scope decision in SCOPE_RULES")
-    for entry in policy.ROUTE_POLICY:
+    for entry in gated_free_policy():
         if entry not in routes:
             problems.append(f"ROUTE_POLICY entry {entry[0]} {entry[1]} names no route in the OpenAPI document (stale decision)")
     for entry in SCOPE_RULES:
@@ -474,7 +481,7 @@ def render(result: Result) -> str:
         "",
         "## What was checked",
         "",
-        f"- {len(result.routes)} routes in the OpenAPI document, {len(policy.ROUTE_POLICY)} entries in `ROUTE_POLICY`: "
+        f"- {len(result.routes)} routes in the OpenAPI document, {len(gated_free_policy())} entries in `ROUTE_POLICY`: "
         "every route has a decision and no decision is stale.",
         f"- {len(policy.EVENT_POLICY)} event types in `EVENT_POLICY`, plus one unknown type that must be refused for every role.",
         f"- {result.probes} role, route and scope combinations probed with real requests; "

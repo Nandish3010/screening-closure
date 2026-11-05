@@ -7,6 +7,7 @@ import { DEMO_USERS, JUDGE_ROLES } from "../api/identities";
 import { useTour } from "../judge/JudgeTour";
 import { fmtDateTime } from "../lib/format";
 import { DemoBanner } from "./DemoBanner";
+import { ResetDemoControl } from "./DemoStatus";
 import { BrandLockup } from "./Brand";
 
 export function SimBadge() {
@@ -75,6 +76,7 @@ export function Header() {
       </div>
       <div className="header-row">
         <nav aria-label="Main">
+          {demoDeployment && role !== "patient" && <NavLink to="/start">Start here</NavLink>}
           {(role === "coordinator" || role === "supervisor") && <NavLink to="/coordinator/today">Today</NavLink>}
           <NavLink to="/coordinator" className={({ isActive }) => (isActive && pathname !== "/coordinator/today" ? "active" : undefined)}>Coordinator</NavLink>
           <NavLink to="/dashboard">Dashboard</NavLink>
@@ -115,13 +117,14 @@ export function Header() {
           )}
           <span className="who" title="Acting as">{actorName}</span>
           {role === "supervisor" && <ClockControl />}
+          {role === "supervisor" && demoDeployment && <ResetDemoControl />}
           <span className={`adapter adapter-${api.adapter}`} title="API adapter">{api.adapter}</span>
           {api.automation !== undefined && (
             <span className="adapter" title="The mock plays the automation actor (system:automation); add ?automation=off to the URL to switch it off" data-testid="automation-mode">
               automation {api.automation ? "on" : "off"}
             </span>
           )}
-          {api.resetDemo && (
+          {api.resetDemo && !demoDeployment && (
             <button className="btn btn-small" onClick={() => api.resetDemo!().then(() => location.reload())}>
               Reset demo
             </button>

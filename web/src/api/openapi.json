@@ -339,6 +339,21 @@
         "title": "MalaffiReplay",
         "type": "object"
       },
+      "MissedFollowup": {
+        "additionalProperties": false,
+        "properties": {
+          "case_id": {
+            "format": "uuid",
+            "title": "Case Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "case_id"
+        ],
+        "title": "MissedFollowup",
+        "type": "object"
+      },
       "PostEvent": {
         "additionalProperties": false,
         "properties": {
@@ -1911,6 +1926,133 @@
         "summary": "Reset",
         "tags": [
           "clock"
+        ]
+      }
+    },
+    "/demo/guide": {
+      "get": {
+        "operationId": "guide_demo_guide_get",
+        "parameters": [
+          {
+            "description": "a random id the browser keeps for this tab",
+            "in": "query",
+            "name": "session",
+            "required": true,
+            "schema": {
+              "description": "a random id the browser keeps for this tab",
+              "title": "Session",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Guide Demo Guide Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Guide",
+        "tags": [
+          "demo"
+        ]
+      }
+    },
+    "/demo/missed-followup": {
+      "post": {
+        "operationId": "missed_followup_demo_missed_followup_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MissedFollowup"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Missed Followup Demo Missed Followup Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Missed Followup",
+        "tags": [
+          "demo"
+        ]
+      }
+    },
+    "/demo/reset": {
+      "post": {
+        "operationId": "reset_demo_reset_post",
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Reset Demo Reset Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Reset",
+        "tags": [
+          "demo"
         ]
       }
     },

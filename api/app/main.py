@@ -154,6 +154,10 @@ if settings.app_env == "dev" and clock.mode == "sim":  # the demo clock exists o
     app.include_router(clock_router.router)
 elif auth.demo_clock_active():  # the declared hosted demo (both flags, sim clock): advance only, supervisor only; no reset
     app.include_router(clock_router.demo_router)
+if auth.demo_controls_active():  # ADR-058: the judge-experience controls exist only under the two demo flags with the sim clock
+    from app.routers import demo as demo_router
+
+    app.include_router(demo_router.router)
 app.include_router(scheduler.router)
 app.include_router(watchdog.router)
 app.include_router(metrics_router.router)
@@ -173,8 +177,10 @@ def health() -> dict:
     `demo_approval` is true while they run only on the demo placeholder, and the web shows an amber banner with
     `approved_by`."""
     body = {"status": "ok", "sim_time": clock.now().isoformat(), "clock_mode": clock.mode, "outreach": outreach_policy.public_status()}
-    if auth.demo_clock_active():  # the web app shows the "Demo, synthetic data, simulated time" banner and the judge role cards whenever this is present
-        body["demo"] = {"simulated_clock": True, "deployment": True}
+    if auth.demo_controls_active():  # the web app shows the "Demo, synthetic data, simulated time" banner and the judge role cards whenever this is present
+        from app import demo_controls
+
+        body["demo"] = {"simulated_clock": True, "deployment": True, **demo_controls.status()}
     return body
 
 

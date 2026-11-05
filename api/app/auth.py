@@ -322,6 +322,13 @@ def demo_clock_active() -> bool:
             and settings.clock_mode == "sim")
 
 
+def demo_controls_active() -> bool:
+    """The judge-experience controls (ADR-058: guided path, simulated missed follow-up, reset request, demo status)
+    exist ONLY under the existing demo gate: both DEMO_SIMULATED_CLOCK and DEMO_DEPLOYMENT with the simulation clock, and APP_ENV not
+    dev. It is `demo_clock_active()` exactly; `assert_secure_config` refuses every other mix, so no other configuration has them."""
+    return demo_clock_active()
+
+
 MIN_SECRET_BYTES = 32  # DEV_AUTH_SECRET and every service token, outside dev
 
 

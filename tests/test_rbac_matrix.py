@@ -17,13 +17,13 @@ def result():
 
 def test_every_openapi_route_has_a_policy_decision_and_no_decision_is_stale():
     assert m.structural_problems(m.openapi_routes()) == []
-    assert set(m.openapi_routes()) == set(policy.ROUTE_POLICY)
+    assert set(m.openapi_routes()) == set(m.gated_free_policy())  # the /demo/* rows are proved in test_demo_controls.py
 
 
 def test_every_role_route_and_scope_behaves_as_the_policy_tables_say(result):
     assert result.problems == []
     # 29 routes + 28 event types x 10 callers, own and other where scope applies: a sanity floor, not a count to maintain
-    assert result.probes > 400 and len(result.routes) == len(policy.ROUTE_POLICY)
+    assert result.probes > 400 and len(result.routes) == len(m.gated_free_policy())
 
 
 def test_the_committed_matrix_document_is_current(result):

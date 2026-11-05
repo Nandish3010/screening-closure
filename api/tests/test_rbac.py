@@ -354,7 +354,13 @@ def test_every_real_route_has_a_policy_entry_and_no_entry_is_stale():
         for path, item in app.openapi()["paths"].items()
         for method in item
     }
-    assert routes == set(policy.ROUTE_POLICY), routes ^ set(policy.ROUTE_POLICY)
+    # The judge-experience routes (ADR-058) exist only under the demo gate: a test process does not run under it, so they are
+    # compared against their own router instead (tests/test_demo_controls.py proves the gate).
+    from app.routers import demo as demo_router
+
+    gated = {(m.upper(), r.path) for r in demo_router.router.routes for m in r.methods}
+    assert gated and gated <= set(policy.ROUTE_POLICY) and not (gated & routes)
+    assert routes == set(policy.ROUTE_POLICY) - gated, routes ^ (set(policy.ROUTE_POLICY) - gated)
 
 
 def test_event_policy_covers_exactly_the_pathway_vocabulary():

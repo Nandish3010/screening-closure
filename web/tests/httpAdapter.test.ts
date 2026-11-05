@@ -306,6 +306,6 @@ describe("http adapter: agency (A22)", () => {
     await expect(api1.getCase("c1")).rejects.toThrow("Please try again in 1 second.");
     // a 503 that is not a shed keeps the server's own words
     const plain = vi.fn(async () => new Response(JSON.stringify({ detail: "database down" }), { status: 503 }));
-    await expect(createHttpAdapter("http://api.test", plain as unknown as typeof fetch).getCase("c1")).rejects.toMatchObject({ message: "database down" });
+    await expect(createHttpAdapter("http://api.test", plain as unknown as typeof fetch).getCase("c1")).rejects.toMatchObject({ message: expect.stringMatching(/^Something went wrong on the server\. Nothing was changed/) }); // plain words, no internals;
   });
 });
