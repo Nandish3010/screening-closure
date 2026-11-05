@@ -233,9 +233,7 @@ function overlayScript(caption: string, pos = "bottom"): string {
     + '[data-testid="consent-withdraw-why"]{display:none !important}' // a supervisor's disabled-consent note is not what the shot is about (the page still says it to a real user)
     + "body{padding-bottom:170px !important}"
     // The sign-off panel's read-only signer field holds a practitioner id: hide it behind a plain label (the page still has the value).
-    + 'input[data-testid="signer"]{color:transparent !important;background:#fff url("data:image/svg+xml;utf8,<svg xmlns=%27http://www.w3.org/2000/svg%27 width=%27300%27 height=%2740%27><text x=%2712%27 y=%2726%27 font-family=%27sans-serif%27 font-size=%2716%27 fill=%27%23444%27>You, signed in</text></svg>") no-repeat left center !important}'
-    // The patient app's language switch wraps its two names letter by letter at phone width; keep each word whole.
-    + ".pa-lang span{overflow-wrap:normal !important;white-space:nowrap !important;padding:0 10px !important}";
+    + 'input[data-testid="signer"]{color:transparent !important;background:#fff url("data:image/svg+xml;utf8,<svg xmlns=%27http://www.w3.org/2000/svg%27 width=%27300%27 height=%2740%27><text x=%2712%27 y=%2726%27 font-family=%27sans-serif%27 font-size=%2716%27 fill=%27%23444%27>You, signed in</text></svg>") no-repeat left center !important}';
   function ensure() {
     if (!document.documentElement) return;
     if (!document.getElementById("__vcap_style")) { const s = document.createElement("style"); s.id = "__vcap_style"; s.textContent = css; (document.head || document.documentElement).appendChild(s); }

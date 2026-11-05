@@ -14,7 +14,7 @@
   overflow-x: clip; /* never a sideways scroll, whatever font the phone has; clip keeps the sticky bars working */
 }
 .pa * { min-width: 0; }
-.pa-journey li, .pa-lang span { overflow-wrap: anywhere; }
+.pa-journey li { overflow-wrap: anywhere; }
 .pa-bar {
   position: sticky; top: 0; z-index: 5; display: flex; align-items: center; justify-content: space-between; gap: var(--s-3);
   padding: var(--s-3) var(--s-4); background: var(--surface); border-bottom: 1px solid var(--border);
@@ -46,8 +46,8 @@
 .pa-reach .btn { text-decoration: none; }
 
 /* language toggle: both names are always visible, each in its own script; the current one is filled */
-.pa-lang { display: inline-flex; padding: 3px; gap: 2px; min-height: 48px; min-width: 48px; border-radius: 999px; }
-.pa-lang span { display: inline-flex; align-items: center; padding: 0 var(--s-3); min-height: 40px; border-radius: 999px; font-size: 1rem; color: var(--muted); }
+.pa-lang { display: inline-flex; flex: none; padding: 3px; gap: 2px; min-height: 48px; min-width: 48px; border-radius: 999px; } /* flex: none, because `.pa * { min-width: 0 }` would otherwise let the bar squeeze the pill */
+.pa-lang span { display: inline-flex; align-items: center; padding: 0 var(--s-3); min-height: 40px; border-radius: 999px; font-size: 1rem; color: var(--muted); white-space: nowrap; overflow-wrap: normal; } /* a language name is one word: never broken letter by letter */
 .pa-lang span.on { background: var(--brand); color: var(--brand-contrast); font-weight: 700; }
 
 /* journey strip */
