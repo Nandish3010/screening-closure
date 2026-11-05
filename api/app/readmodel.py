@@ -127,11 +127,26 @@ def case_row(lc: LoadedCase, pathway: Pathway, calendar: WorkingCalendar) -> dic
         # ADR-051: {tier, rank, rule, reason: {en, ar}, basis} from the genesis event and the pack's rules; null when the case
         # has none. Staff only: a patient's rows do not carry it. It orders and explains; nothing is derived from it.
         "priority": priority_of(lc.events, pathway),
-        # ADR-054: the insurance scheme and the referral's network, from the genesis event and the referral requests; null when the
+        # ADR-056: the insurance scheme and the referral's network, from the genesis event and the referral requests; null when the
         # case has no recorded scheme. Staff only: a patient's rows and case page do not carry it (`patient_case_row` is an
         # allow-list). It decides where a referral goes (providers.route) and explains it; it never holds a case.
         "insurance": insurance_of(lc.events, pathway),
     }
+
+
+def at_risk(lc: LoadedCase, pathway: Pathway, now: datetime) -> bool:
+    """The worklist's `at_risk`: exactly the case `GET /metrics/closure` counts in `lost_to_follow_up` (no confirmatory
+    completed, no informed refusal on record, and an explicit lost-contact flag or no pathway progress for 30 days at `now`),
+    from the same fold (`metrics.build_record`, `metrics.lost_cases`), so a link to the at-risk cases lists the cases the
+    dashboard counts. False for a log that does not replay."""
+    from app import metrics
+
+    if lc.model is None:
+        return False
+    try:
+        return metrics.lost_cases([metrics.build_record(lc.events, pathway)], now)["lost_to_follow_up"] == 1
+    except Exception:  # noqa: BLE001 - an ordering/filter aid must never take the worklist down
+        return False
 
 
 def priority_of(events, pathway: Pathway) -> dict | None:

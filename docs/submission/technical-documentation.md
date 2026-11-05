@@ -300,7 +300,7 @@ It is bounded the way the closure metrics are (4.x, ADR-049): the numbers come f
 
 ### 4.18 Insurance-aware referral routing
 
-At the organisers' session the head of screening said a referral should take "the person health needs and insurance cover" into account: residents have different schemes and networks, and each person must reach a service their cover allows. The engine now routes a referral with the patient's **insurance scheme** in view (A40, ADR-054).
+At the organisers' session the head of screening said a referral should take "the person health needs and insurance cover" into account: residents have different schemes and networks, and each person must reach a service their cover allows. The engine now routes a referral with the patient's **insurance scheme** in view (A40, ADR-056).
 
 **The scheme** is an optional field of the genesis event, `insurance_scheme`: `thiqa`, `enhanced`, `basic` or `unknown`. The names are generic; Thiqa is the one real scheme the repository already cites with sources (docs/commercial/buyer-map.md). `POST /cases` takes it and the payload schema validates it. It is **additive and never a hold condition**: no state, SLA, escalation, consent rule or closure reads it, and a case without one, or with `unknown`, is routed exactly as before. A patient never sees it: the patient's rows, case page and timeline are allow-lists that carry none of it.
 
@@ -310,7 +310,7 @@ At the organisers' session the head of screening said a referral should take "th
 
 **What staff see.** The case page has an **Insurance** line with the plan and, once a referral has been requested, **Why this unit** in plain words: "Chosen because it accepts the patient's Basic plan and is the first such unit in the programme's referral order", or, out of network, "Out of network: no remaining unit for this service accepts the patient's Enhanced plan, so the referral goes to the best available unit outside it. A coordinator should check the cover with the patient. The referral is not blocked." An out-of-network referral carries a chip on the case page and in the coordinator's worklist flags, and the hand-off picker marks the units outside the plan. "Nearest" is not modelled: the order is the programme's referral order.
 
-**Demo.** The cohort pipelines assign a deterministic synthetic mix of schemes. The shipped networks make the first unit in each bowel and gynaecology order accept every scheme, so the named patient's route and the video storyboard are unchanged for any scheme and a bowel case is never out of network; a Basic family-medicine case is, to show the flag. Tests: T-A102 to T-A106, T-C22. Hazards: HZ-58 (a wrong or stale scheme or network read as verified cover; there is no eligibility check) and HZ-59 (routing by plan could disadvantage narrower plans; not yet measured).
+**Demo.** The cohort pipelines assign a deterministic synthetic mix of schemes. The shipped networks make the first unit in each bowel and gynaecology order accept every scheme, so the named patient's route and the video storyboard are unchanged for any scheme and a bowel case is never out of network; a Basic family-medicine case is, to show the flag. Tests: T-A105 to T-A109, T-C28. Hazards: HZ-58 (a wrong or stale scheme or network read as verified cover; there is no eligibility check) and HZ-59 (routing by plan could disadvantage narrower plans; not yet measured).
 
 ## 5. Automated-versus-human decision matrix
 

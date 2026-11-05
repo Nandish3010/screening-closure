@@ -58,8 +58,9 @@ export function JudgePage() {
       </div>
 
       <p>
-        <button type="button" className="btn btn-primary" onClick={tour.open} data-testid="judge-start-tour">Start the guided tour</button>{" "}
-        <span className="muted">Seven steps on the data you are looking at (the {api.adapter} adapter). It only navigates; it posts nothing.</span>
+        <button type="button" className="btn btn-primary" onClick={() => tour.open("challenge")} data-testid="judge-start-five">Start the five-step tour</button>{" "}
+        <button type="button" className="btn" onClick={() => tour.open("story")} data-testid="judge-start-tour">Demo story (seven steps)</button>{" "}
+        <span className="muted">Both run on the data you are looking at (the {api.adapter} adapter) and only navigate; they post nothing. The five steps are the challenge owner&apos;s loop, with things to try.</span>
       </p>
 
       <section aria-labelledby="headline-h">
@@ -96,6 +97,8 @@ export function JudgePage() {
         <code className="judge-cmd mono">make web-install &amp;&amp; make web-dev</code>
         <p className="muted">The web app on <span className="mono">http://localhost:5173</span> with the mock adapter, fully offline. <span className="mono">make web-test</span> and <span className="mono">make web-e2e</span> run the web unit and browser tests on their own.</p>
       </section>
+
+      <p data-testid="judge-more-pages">More for judges: <Link to="/safety">AI and safety</Link> · <Link to="/integrations">Integrations</Link> · <Link to="/pilot-value">Pilot value calculator</Link></p>
 
       <p><Link to="/coordinator">Open the worklist</Link> · <Link to="/dashboard">Open the dashboard</Link></p>
     </main>

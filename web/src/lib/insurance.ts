@@ -1,5 +1,5 @@
 /**
- * Insurance-aware referral routing, as the web shows it (ADR-054). The server decides and records the network of each referral
+ * Insurance-aware referral routing, as the web shows it (ADR-056). The server decides and records the network of each referral
  * request; this file holds the words, and the mock adapter's mirror of the server's rule so a demo without a backend behaves the
  * same. The networks below are SYNTHETIC and mirror config/providers.yaml for the bowel list only.
  */

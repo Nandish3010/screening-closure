@@ -50,6 +50,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Protocol
 
+from app import integration_feed
 from app.auth import Identity
 from app.pathway import DEFAULT_PROCEDURE
 
@@ -286,6 +287,17 @@ class FhirVerifier:
         self.timeout = timeout
 
     def _get(self, ref: str) -> dict | None:
+        """`_fetch`, plus one metadata entry for the Integrations page's feed (type and outcome only, never the id)."""
+        kind = ref.partition("/")[0][:30] if well_formed_ref(ref) else "reference"
+        try:
+            body = self._fetch(ref)
+        except EvidenceUnavailable:
+            integration_feed.record("fhir", "in", f"FHIR evidence lookup: {kind}", "unavailable")
+            raise
+        integration_feed.record("fhir", "in", f"FHIR evidence lookup: {kind}", "found" if body is not None else "not_found")
+        return body
+
+    def _fetch(self, ref: str) -> dict | None:
         """The resource `ref` names, or None (not found, or a body that is not that very resource)."""
         if not well_formed_ref(ref):
             return None

@@ -2,7 +2,7 @@ import type { CaseInsurance } from "../api/contract";
 import { INSURANCE_NOTE } from "../lib/insurance";
 
 /**
- * A case's insurance plan and why its referral went where it did (ADR-054), for the case page's facts list. Staff only (a patient's
+ * A case's insurance plan and why its referral went where it did (ADR-056), for the case page's facts list. Staff only (a patient's
  * page carries no `insurance`). The reason is the server's plain words; an out-of-network referral is flagged for a coordinator and
  * is never blocked. Renders nothing for a case with no recorded scheme.
  */

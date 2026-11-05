@@ -1,4 +1,4 @@
-"""T-A102 to T-A106 (A40, ADR-054): insurance-aware referral routing.
+"""T-A105 to T-A109 (A40, ADR-056): insurance-aware referral routing.
 
 A case may carry a synthetic insurance scheme on its genesis event. Routing and re-routing prefer providers in the scheme's
 network (config/providers.yaml `referral.networks`); when none is left in network the referral goes to the best provider out
@@ -68,7 +68,7 @@ def reject_pending(cid):
 
 
 # ---------------------------------------------------------------------------------------------------------------------
-# T-A102 routing unit tests (app.providers)
+# T-A105 routing unit tests (app.providers)
 # ---------------------------------------------------------------------------------------------------------------------
 
 
@@ -109,7 +109,7 @@ def test_reroute_after_a_rejection_skips_the_tried_and_stays_in_network(shipped)
 
 
 def test_the_demo_seed_routes_are_unchanged_for_every_scheme(shipped):
-    """ADR-054: the named patient's story (Al Noor declines, the automation asks Corniche) and the second case (handed to
+    """ADR-056: the named patient's story (Al Noor declines, the automation asks Corniche) and the second case (handed to
     Corniche) do not move whatever scheme a seeded case carries; Corniche accepts every scheme."""
     for scheme in (None, *insurance.SCHEME_CODES):
         assert shipped.route(GASTRO, scheme, [AL_NOOR]).provider == "Corniche Gastro Unit"
@@ -148,7 +148,7 @@ def test_a_file_without_networks_still_loads_and_accepts_every_scheme(shipped):
 
 
 # ---------------------------------------------------------------------------------------------------------------------
-# T-A103 the scheme on the genesis event
+# T-A106 the scheme on the genesis event
 # ---------------------------------------------------------------------------------------------------------------------
 
 
@@ -181,7 +181,7 @@ def test_the_scheme_never_holds_a_case(fresh):
 
 
 # ---------------------------------------------------------------------------------------------------------------------
-# T-A104 the referral request records the network; reroute after rejection (the API and the automation)
+# T-A107 the referral request records the network; reroute after rejection (the API and the automation)
 # ---------------------------------------------------------------------------------------------------------------------
 
 
@@ -250,7 +250,7 @@ def test_reroute_is_idempotent_with_a_scheme(fresh):
 
 
 # ---------------------------------------------------------------------------------------------------------------------
-# T-A105 the read model, the coordinator and the patient
+# T-A108 the read model, the coordinator and the patient
 # ---------------------------------------------------------------------------------------------------------------------
 
 
@@ -321,7 +321,7 @@ def test_the_scheme_is_in_the_staff_page_for_every_staff_role_that_may_read_the_
 
 
 # ---------------------------------------------------------------------------------------------------------------------
-# T-A106 the agency recommends in network first
+# T-A109 the agency recommends in network first
 # ---------------------------------------------------------------------------------------------------------------------
 
 

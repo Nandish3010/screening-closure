@@ -6,7 +6,7 @@ import type {
 import {
   APPOINTMENT_CANCEL_REASONS, ApiError, AUTOMATION_ACTOR, CONSENT_KEYS, REFUSAL_REASONS, HANDOFF_REJECT_REASONS, OUTREACH_HOLD_REASONS, REVIEW_REASONS, TRIAGE_REVIEW_REASONS } from "../api/contract";
 import {
-  RE_OFFER_MONTHS, REFERRAL_STATES, SLA_WORKING_DAYS, addWorkingDays, milestonesFor, nextTransition,
+  RE_OFFER_MONTHS, REFERRAL_STATES, TRANSITIONS, SLA_WORKING_DAYS, addWorkingDays, milestonesFor, nextTransition,
   rungLevel, transitionFor, wholeDaysBetween,
 } from "./pathway";
 
@@ -425,6 +425,20 @@ export function lostContact(events: CaseEvent[]): boolean {
   return lost;
 }
 
+/**
+ * The worklist's `at_risk`, the same rule as `lost_to_follow_up` in `GET /metrics/closure` (api/app/metrics.py `lost_cases`): no
+ * confirmatory completed, no informed refusal on record, and either a lost-contact flag or no pathway progress (a main-path event)
+ * for 30 days or more at `simNow`.
+ */
+export const LTFU_IDLE_DAYS = 30;
+export function atRiskOf(events: CaseEvent[], simNow: string): boolean {
+  if (events.length === 0 || events.some((e) => e.type === "complete_confirmatory") || refusalOf(events)) return false;
+  if (events.some((e) => e.type === "mark_lost_contact")) return true;
+  const progress = new Set(TRANSITIONS.map((t) => t.event));
+  const last = [...events].reverse().find((e) => progress.has(e.type))?.at ?? events[0]!.at;
+  return (new Date(simNow).getTime() - new Date(last).getTime()) / 86_400_000 >= LTFU_IDLE_DAYS;
+}
+
 export function summarise(
   caseId: string,
   events: CaseEvent[],
@@ -458,6 +472,7 @@ export function summarise(
     watchdog_flagged: watchdog,
     // The risk model is the bowel pathway's: the API scores no other pathway's case (its risk_score is null).
     risk_score: pathway === "colorectal_fit" ? risk : undefined,
+    at_risk: atRiskOf(events, simNow),
     // Priority only when the case has one (staff views); the key is absent otherwise, so a bowel row is unchanged.
     ...(priority ? { priority } : {}),
   };

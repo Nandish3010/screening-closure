@@ -1,7 +1,7 @@
 /** HTTP adapter: the real API at VITE_API_URL, with bearer-token auth from POST /auth/dev-login. */
 import type {
-  AccessLog, AgencyInboxItem, AgencyOrg, AgencyRun, AgencyTask, AgencyTaskParams, Alert, ApiClient, CaseAgencySummary, CaseDetail, CaseEvent, CaseListParams, CaseSummary, CaseTimeline, ClosureMetrics, ConfirmatoryResult, Draft,
-  DraftApproval, DraftRecord, DraftRejection, DraftRequestBody, EffortMetrics, FunnelMetrics, FunnelParams, Me, PostEventBody, ReplyBody, ReplyResult, Role, TimelineItem,
+  AccessLog, AgencyInboxItem, AgencyOrg, AgencyRun, AgencyTask, AgencyTaskParams, Alert, ApiClient, CaseAgencySummary, CaseDetail, CaseEvent, CaseListParams, CaseSummary, CaseTimeline, ClosureMetrics, ConfirmatoryResult, Draft, TodayParams, TodayResponse,
+  DraftApproval, DraftRecord, DraftRejection, DraftRequestBody, EffortMetrics, FunnelMetrics, FunnelParams, IntegrationFeed, Me, PostEventBody, ReplyBody, ReplyResult, Role, TimelineItem,
 } from "./contract";
 import { ApiError, BACKEND_ROLE, OWNER_SCOPED_ROLES, ROLES } from "./contract";
 import type { OidcClient } from "./oidc";
@@ -155,9 +155,12 @@ export function createHttpAdapter(baseUrl: string, fetchImpl: typeof fetch = (..
     return (await requestFull<T>(path, init)).data;
   }
 
-  function qs(params: Record<string, string | undefined>): string {
+  function qs(params: Record<string, string | string[] | undefined>): string {
     const u = new URLSearchParams();
-    for (const [k, v] of Object.entries(params)) if (v !== undefined && v !== "") u.set(k, v);
+    for (const [k, v] of Object.entries(params)) {
+      if (Array.isArray(v)) v.forEach((x) => u.append(k, x));
+      else if (v !== undefined && v !== "") u.set(k, v);
+    }
     const s = u.toString();
     return s ? `?${s}` : "";
   }
@@ -332,6 +335,15 @@ export function createHttpAdapter(baseUrl: string, fetchImpl: typeof fetch = (..
         throw e;
       }
     },
+    async integrationFeed(limit = 20): Promise<IntegrationFeed | null> {
+      try {
+        return await request<IntegrationFeed>(`/integrations/feed${qs({ limit: String(limit) })}`);
+      } catch (e) {
+        // An older backend (404) or a role that may not read it (403): the page shows the explanation instead of a feed.
+        if (e instanceof ApiError && (e.status === 404 || e.status === 403)) return null;
+        throw e;
+      }
+    },
     // A22 agency layer. A backend without it answers 404: the lists degrade to empty, the case summary to null, and
     // agencyOrg / runAgency let the ApiError through so the page can say "agency not available".
     agencyOrg: () => request<AgencyOrg>("/agency/org"),
@@ -345,6 +357,11 @@ export function createHttpAdapter(baseUrl: string, fetchImpl: typeof fetch = (..
         [],
       ),
     agencyInbox: () => notFoundAs<AgencyInboxItem[]>(request("/agency/inbox"), []),
+    getToday: (p: TodayParams = {}) =>
+      request<TodayResponse>(`/today${qs({
+        limit: p.limit === undefined ? undefined : String(p.limit), cursor: p.cursor ?? undefined,
+        agency_cursor: p.agencyCursor ?? undefined, group: p.groups,
+      })}`),
     runAgency: () => request<AgencyRun>("/agency/run", { method: "POST", body: JSON.stringify({}) }),
     caseAgency: (id: string) => notFoundAs<CaseAgencySummary | null>(request(`/cases/${encodeURIComponent(id)}/agency`), null),
   };

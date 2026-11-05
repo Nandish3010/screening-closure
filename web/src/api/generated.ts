@@ -122,6 +122,7 @@ export interface Routes {
   "GET /health": { response: Record<string, unknown>; };
   "GET /heartbeats": { response: Record<string, unknown>; };
   "POST /hl7": { response: unknown; };
+  "GET /integrations/feed": { query: { "limit"?: number; }; response: Record<string, unknown>; };
   "GET /me": { response: Record<string, unknown>; };
   "GET /metrics/abstention": { response: Record<string, unknown>; };
   "GET /metrics/closure": { response: Record<string, unknown>; };
@@ -136,6 +137,7 @@ export interface Routes {
   "POST /scheduler/lease/release": { body: LeaseRequest; response: Record<string, unknown>; };
   "POST /scheduler/outbox/drain": { response: Record<string, unknown>; };
   "POST /scheduler/sweep": { response: Record<string, unknown>; };
+  "GET /today": { query: { "agency_cursor"?: string | null; "cursor"?: string | null; "group"?: string[] | null; "limit"?: number; }; response: Record<string, unknown>; };
   "POST /watchdog/scan": { body?: Scan | null; response: Record<string, unknown>; };
 }
 
@@ -172,6 +174,7 @@ export const ROUTES: readonly RouteKey[] = [
   "GET /health",
   "GET /heartbeats",
   "POST /hl7",
+  "GET /integrations/feed",
   "GET /me",
   "GET /metrics/abstention",
   "GET /metrics/closure",
@@ -186,5 +189,6 @@ export const ROUTES: readonly RouteKey[] = [
   "POST /scheduler/lease/release",
   "POST /scheduler/outbox/drain",
   "POST /scheduler/sweep",
+  "GET /today",
   "POST /watchdog/scan",
 ];

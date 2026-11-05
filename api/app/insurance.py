@@ -1,4 +1,4 @@
-"""The insurance scheme of a case and what it means for a referral (ADR-054).
+"""The insurance scheme of a case and what it means for a referral (ADR-056).
 
 Pure vocabulary and wording; nothing here reads a file, a clock or a store. The scheme codes are generic and the network
 data that goes with them (config/providers.yaml `referral.networks`) is SYNTHETIC. Only `thiqa` is a real scheme's name:

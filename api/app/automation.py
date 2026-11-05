@@ -250,7 +250,7 @@ def _reroute(store, pathway: Pathway, case_id: UUID, model, now: datetime, resul
         return
     tried = [e.payload.get("to_provider") for e in events if e.type == "handoff_requested"]
     tried.append(model.provider)
-    # ADR-054: a case with a known insurance scheme goes to the next provider IN NETWORK; when none is left, to the best one
+    # ADR-056: a case with a known insurance scheme goes to the next provider IN NETWORK; when none is left, to the best one
     # out of it, flagged (never blocked). No scheme, or `unknown`: the order alone, as before.
     route = providers.route(pathway.name, events[0].payload.get("insurance_scheme"), tried)
     if route is not None:

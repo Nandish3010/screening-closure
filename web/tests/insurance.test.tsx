@@ -8,7 +8,7 @@ import { CaseDetailPage } from "../src/pages/CaseDetailPage";
 import { CoordinatorPage } from "../src/pages/CoordinatorPage";
 import { renderWithApp } from "./helpers";
 
-/** Insurance-aware referral routing (ADR-054) on the web: the plan on the case page, the plain reason, the out-of-network flag. */
+/** Insurance-aware referral routing (ADR-056) on the web: the plan on the case page, the plain reason, the out-of-network flag. */
 
 const SARA = "primary_care_owner:Sara Al Mansoori";
 const CORNICHE = "Corniche Gastro Unit", AL_NOOR = "Al Noor Endoscopy Centre", MARINA = "Marina Digestive Health";

@@ -8,7 +8,7 @@
  */
 import type {
   AgencyInboxItem, AgencyOrg, AgencyRun, AgencyTask, AgencyTaskParams, Alert, ApiClient, CaseAgencySummary, CaseDetail, CaseEvent, CaseListParams, CaseSummary, CaseTimeline, ClosureMetrics, ConfirmatoryResult, Draft, DraftApproval,
-  DraftRecord, DraftRejection, DraftRequestBody, EffortMetrics, FunnelMetrics, FunnelParams, Me, PostEventBody, ReplyBody, ReplyResult, Role, TimelineItem,
+  TodayParams, TodayResponse, DraftRecord, DraftRejection, DraftRequestBody, EffortMetrics, FunnelMetrics, FunnelParams, IntegrationFeed, Me, PostEventBody, ReplyBody, ReplyResult, Role, TimelineItem,
 } from "./contract";
 import type { AccessLog } from "./contract";
 import { ApiError, AUTOMATION_ACTOR, BACKEND_ROLE, OWNER_SCOPED_ROLES, REJECT_NOTE_MAX, REJECT_REASONS, ROLES } from "./contract";
@@ -19,12 +19,14 @@ import {
 import { PROVIDER_CLINICIANS, ROLE_NAMES, ROLE_PROVIDERS, backendActor } from "./identities";
 import { funnelMetricsOf } from "../lib/funnel";
 import { insuranceOfEvents, networkOf, routeNext } from "../lib/insurance";
+import { mockIntegrationFeed } from "../lib/integrationFeed";
 import { ESCALATION_LADDER, pathwayMeta, procedureSlug } from "../lib/pathway";
 import {
   actorKindOf, actorRole, closureOutcomeOf, closureProposalOf, incompleteProcedureOf, refusalOf, completeDetail, consentOf, consentHistoryOf, milestonesOf, overdueDays, pendingEscalation, replayHandoffs,
   replayState, reviewOf, slaClock, summarise, triageReplayOf, validateAppend,
 } from "../lib/derive";
 import { effortMetricsOf, effortOf } from "../lib/effort";
+import { todayOf } from "./mockToday";
 
 export { ROLE_NAMES };
 
@@ -224,7 +226,7 @@ export function createMockAdapter(
   const summary = (db: MockDb, id: string): CaseSummary => {
     const staff = session.role !== "patient";
     const row = summarise(id, must(db, id), SIM_NOW, FIXTURE_RISK[id] ?? 0.2, pathwayOfCase(id), staff ? priorityOfCase(id) : null);
-    const insurance = staff && pathwayOfCase(id) === "colorectal_fit" ? insuranceOfEvents(must(db, id), REROUTE_LIST) : null; // ADR-054: staff only
+    const insurance = staff && pathwayOfCase(id) === "colorectal_fit" ? insuranceOfEvents(must(db, id), REROUTE_LIST) : null; // ADR-056: staff only
     return insurance ? { ...row, insurance } : row;
   };
   const detail = (db: MockDb, id: string): CaseDetail => {
@@ -291,7 +293,7 @@ export function createMockAdapter(
     const evs = must(db, id);
     if (opts.eventId && evs.some((e) => e.event_id === opts.eventId)) return; // idempotent retry
     validateAppend(evs, type, who, payload, { internal: opts.internal, provider: session.provider });
-    if (type === "handoff_requested") { // ADR-054: the server records the network; a value the client sends is replaced
+    if (type === "handoff_requested") { // ADR-056: the server records the network; a value the client sends is replaced
       const { network: _sent, ...rest } = payload;
       const network = networkOf(String(rest.to_provider ?? "").trim(), evs[0]?.payload?.insurance_scheme as string | undefined);
       payload = network ? { ...rest, network } : rest;
@@ -360,7 +362,7 @@ export function createMockAdapter(
       const evs = must(db, id);
       if (replayState(evs) !== "referral_rejected" || consentOf(evs).withdrawn) return; // outreach is frozen: a human decides
       const asked = new Set(evs.filter((e) => e.type === "handoff_requested").map((e) => String(e.payload.to_provider)));
-      const route = routeNext(REROUTE_LIST, evs[0]?.payload?.insurance_scheme as string | undefined, asked); // ADR-054: in network first
+      const route = routeNext(REROUTE_LIST, evs[0]?.payload?.insurance_scheme as string | undefined, asked); // ADR-056: in network first
       const next = route?.provider;
       if (!next) {
         const last = evs.at(-1)!;
@@ -544,7 +546,7 @@ export function createMockAdapter(
         append(db, id, "reply_received", "system:triage", { channel: body.channel, text_ref: ref }, { internal: true, eventId: `ev-reply-${n + 1}-received` });
         applied.push("reply_received");
         const classifiedId = `ev-reply-${n + 1}-classified`;
-        append(db, id, "reply_classified", "system:triage", { ...result, text_ref: ref }, { internal: true, eventId: classifiedId });
+        append(db, id, "reply_classified", "system:triage", { ...result, ...(forced_reason ? { forced_reason } : {}), text_ref: ref }, { internal: true, eventId: classifiedId });
         applied.push("reply_classified");
         const reason = result.needs_human ? (result.intent === "opt_out" ? "opt_out" : "triage_uncertain") : result.intent === "wrong_number" ? "wrong_number" : null;
         if (reason) {
@@ -682,6 +684,10 @@ export function createMockAdapter(
       if (session.role !== "coordinator" && session.role !== "supervisor") return null; // the API answers 403
       return effortMetricsOf(load().events, SIM_NOW);
     },
+    async integrationFeed(limit = 20): Promise<IntegrationFeed | null> {
+      if (session.role !== "coordinator" && session.role !== "supervisor") return null; // the API answers 403
+      return mockIntegrationFeed(limit, SIM_NOW);
+    },
     async funnelMetrics(params: FunnelParams = {}): Promise<FunnelMetrics | null> {
       if (session.role !== "coordinator" && session.role !== "supervisor") return null; // the API answers 403
       const db = load();
@@ -740,6 +746,12 @@ export function createMockAdapter(
       if (!owner) requireAgencyStaff("GET /agency/inbox");
       const db = load();
       return inboxOf(ledgerOf(db), factsOf(db), db.drafts, owner ? actor() : undefined);
+    },
+    async getToday(params: TodayParams = {}): Promise<TodayResponse> {
+      requireAgencyStaff("GET /today"); // coordinator and supervisor, like the API
+      const db = load();
+      const inbox = inboxOf(ledgerOf(db), factsOf(db), db.drafts);
+      return todayOf(Object.keys(db.events).map((id) => detail(db, id)), inbox, params, SIM_NOW);
     },
     async runAgency(): Promise<AgencyRun> {
       requireAgencyStaff("POST /agency/run");

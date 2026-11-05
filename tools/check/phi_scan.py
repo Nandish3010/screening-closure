@@ -132,11 +132,17 @@ QUERY_REVIEW: dict[tuple[str, str, str], tuple[str, str]] = {
     ("GET", "/metrics/funnel", "priority"): ("enum", "a priority tier of a loaded pack (`urgent`, `soon`, `routine`) or `unranked`; any other value is a 422 and is never used (ADR-052)"),
     # A22: the agency's ledger and runs. Enums, UUIDs and a count only (FastAPI refuses anything else with 422).
     ("GET", "/agency/runs", "limit"): ("int", "how many runs, 1 to 200"),
+    ("GET", "/integrations/feed", "limit"): ("int", "how many feed entries, 1 to 50 (judge Integrations page)"),
     ("GET", "/agency/tasks", "status"): ("enum", "a task status: queued, running, done, failed, needs_human"),
     ("GET", "/agency/tasks", "department"): ("enum", "one of the six agency department keys"),
     ("GET", "/agency/tasks", "case_id"): ("opaque", "a case UUID"),
     ("GET", "/agency/tasks", "run_id"): ("opaque", "a run UUID"),
     ("GET", "/agency/tasks", "limit"): ("int", "how many tasks, 1 to 5000"),
+    # C14: the coordinator's Today screen. A count, queue names and two opaque cursors the API itself returned.
+    ("GET", "/today", "limit"): ("int", "items per queue, 1 to 50"),
+    ("GET", "/today", "group"): ("enum", "one of the seven queue names (urgent, overdue, escalations, replies, flagged, signatures, agency); any other value is a 422"),
+    ("GET", "/today", "cursor"): ("opaque", "url-safe base64 of {pathway, state, case UUID} returned by the API as `cursor`; anything else is a 422"),
+    ("GET", "/today", "agency_cursor"): ("opaque", "url-safe base64 of a row offset returned by the API as `agency_cursor`; anything else is a 422"),
 }
 GAP_PARAMS = {key for key, (kind, _) in QUERY_REVIEW.items() if kind == "gap"}
 

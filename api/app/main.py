@@ -12,8 +12,10 @@ from app.events import InMemoryEventStore
 from app.pathway import load_registry
 from app.routers import auth as auth_router
 from app.routers import agency as agency_router
+from app.routers import today as today_router
 from app.routers import cases, drafts, erasure as erasure_router, replies, scheduler, watchdog
 from app.routers import hl7 as hl7_router
+from app.routers import integrations as integrations_router
 from app.routers import clock as clock_router
 from app.routers import metrics as metrics_router
 
@@ -156,9 +158,11 @@ app.include_router(watchdog.router)
 app.include_router(metrics_router.router)
 app.include_router(drafts.router)
 app.include_router(replies.router)
+app.include_router(today_router.router)  # C14: the coordinator's Today screen (read-only, bounded)
 app.include_router(agency_router.router)  # A22: the agency (labour, not authority, ADR-033)
 app.include_router(erasure_router.router)  # A32: erasure of a patient's personal data (ADR-025)
 app.include_router(hl7_router.router)  # A28: the HL7 v2 adapter's transport (ADR-039)
+app.include_router(integrations_router.router)  # judge Integrations page: bounded metadata feed
 
 
 @app.get("/health")
@@ -167,8 +171,8 @@ def health() -> dict:
     `demo_approval` is true while they run only on the demo placeholder, and the web shows an amber banner with
     `approved_by`."""
     body = {"status": "ok", "sim_time": clock.now().isoformat(), "clock_mode": clock.mode, "outreach": outreach_policy.public_status()}
-    if auth.demo_clock_active():  # the web app shows "Demo: simulated time" whenever this is present
-        body["demo"] = {"simulated_clock": True}
+    if auth.demo_clock_active():  # the web app shows the "Demo, synthetic data, simulated time" banner and the judge role cards whenever this is present
+        body["demo"] = {"simulated_clock": True, "deployment": True}
     return body
 
 

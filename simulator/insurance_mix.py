@@ -1,4 +1,4 @@
-"""A deterministic, SYNTHETIC mix of insurance schemes for the demo cohort (ADR-054).
+"""A deterministic, SYNTHETIC mix of insurance schemes for the demo cohort (ADR-056).
 
 Like the registration provider, the scheme is picked from the Synthea patient id (sha256, then a bucket), so a rerun gives
 the same patient the same scheme. The mix is an invented demo mix, not a population estimate: 40% thiqa, 30% enhanced,

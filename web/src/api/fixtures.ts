@@ -16,7 +16,7 @@ export const DEMO_OVERDUE_CASE_ID = "c0000001-0000-4000-8000-000000000001";
 type Step = [type: string, daysAgo: number, actor: string, payload?: Record<string, unknown>];
 
 /**
- * The synthetic insurance scheme a seeded bowel case carries on its genesis event (ADR-054): a mix of the three schemes and an
+ * The synthetic insurance scheme a seeded bowel case carries on its genesis event (ADR-056): a mix of the three schemes and an
  * `unknown`, by case number. Every first-choice unit accepts every scheme, so no seeded referral changes provider. Staff only.
  */
 const SEEDED_SCHEMES = ["thiqa", "enhanced", "basic", "thiqa", "enhanced", "thiqa", "basic", "unknown"] as const;

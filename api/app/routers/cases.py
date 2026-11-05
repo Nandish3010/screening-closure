@@ -83,7 +83,7 @@ class CreateCase(BaseModel):
     contact_valid: bool | dict[str, bool] | None = None
     # A21: the primary-care provider the patient is registered with (config/providers.yaml maps it to a default owner).
     registered_provider: str | None = None
-    # ADR-054: the patient's insurance scheme (thiqa, enhanced, basic or unknown; generic codes). Optional, additive, never a
+    # ADR-056: the patient's insurance scheme (thiqa, enhanced, basic or unknown; generic codes). Optional, additive, never a
     # hold condition; the referral routing prefers providers in the scheme's network. Omitted: routed as before.
     insurance_scheme: str | None = None
     # Which pathway the case runs on. Omitted: the default pathway (bowel screening). It is the case's row, not an event
@@ -178,15 +178,15 @@ def _case_json(case_id: UUID, identity: Identity | None = None) -> dict:
     pw = pathway_of(case_id)
     events = store.events_for(case_id)
     model = replay_model(events, pw)
-    row = readmodel.case_row(
-        LoadedCase(case_id, pw.name, events[0].at, events, model), pw, default_calendar()
-    )
+    lc = LoadedCase(case_id, pw.name, events[0].at, events, model)
+    row = readmodel.case_row(lc, pw, default_calendar())
     if identity is not None and identity.role == "patient":
         # SEC-2: a patient's case page is the redacted one (no staff notes or reasons, no escalation
         # internals, no staff names: roles only).
         return readmodel.patient_case_json(row, model, events, care_contact=_care_contact(model))
     explained = _risk_explained(model, events, clock.now(), pw.name) if _sees_risk(identity) else None
     row["risk_score"] = explained["score"] if explained else None
+    row["at_risk"] = readmodel.at_risk(lc, pw, clock.now())
     return {
         # The worklist fields (owner as {actor, display_name, role}, due_at, ...) so a case page
         # needs no second request; the keys below it are the case itself.
@@ -326,10 +326,12 @@ def list_cases(
         for lc in page:
             if identity.role == "patient" and (identity.patient_ref is None or lc.patient_ref != identity.patient_ref):
                 continue
-            row = readmodel.case_row(lc, pathway_by_name(lc.pathway) or pathway, calendar)
+            lc_pw = pathway_by_name(lc.pathway) or pathway
+            row = readmodel.case_row(lc, lc_pw, calendar)
             if row is not None and readmodel.matches(row, owner=owner, overdue=overdue, provider=provider, flagged=flagged):
                 if with_risk:  # D9: filled last, so no filter or order above depends on it
                     row["risk_score"] = _risk_score(lc, now)
+                    row["at_risk"] = readmodel.at_risk(lc, lc_pw, now)  # staff only; the metrics' lost_to_follow_up rule
                 rows.append(readmodel.patient_case_row(row) if identity.role == "patient" else row)  # SEC-2: redacted for a patient
         after = next_after
         if next_after is None or len(rows) >= limit or scanned >= MAX_SCAN_PER_REQUEST:
@@ -418,7 +420,7 @@ def _retry_time(case_id: UUID, event_id) -> datetime | None:
 
 
 def _stamp_network(case_id: UUID, type_: str, payload: dict) -> dict:
-    """ADR-054: a referral request records whether the chosen provider is in the case's insurance network, worked out here from
+    """ADR-056: a referral request records whether the chosen provider is in the case's insurance network, worked out here from
     the genesis event's scheme and config/providers.yaml, never taken from the client. Nothing is added (and a value the
     client sent is dropped) when the case has no known scheme, so a case without one logs exactly what it did before."""
     if type_ != "handoff_requested":

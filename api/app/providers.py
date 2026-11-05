@@ -45,7 +45,7 @@ class Providers:
     specialty_by_pathway: dict[str, str]
     reroute_reasons: tuple[str, ...]
     reroute_order: dict[str, tuple[str, ...]]
-    # ADR-054: provider -> the insurance schemes it accepts (SYNTHETIC). A provider with no entry accepts every scheme.
+    # ADR-056: provider -> the insurance schemes it accepts (SYNTHETIC). A provider with no entry accepts every scheme.
     networks: dict[str, frozenset[str]] = field(default_factory=dict)
 
     @property

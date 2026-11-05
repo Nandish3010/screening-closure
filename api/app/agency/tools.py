@@ -228,7 +228,7 @@ def explain_factors(ctx, case_id: UUID) -> dict | None:
 
 
 def read_providers(ctx, case_id: UUID | None = None) -> list[str]:
-    """The receiving providers for referrals. Given a case whose genesis event records a known insurance scheme (ADR-054), the
+    """The receiving providers for referrals. Given a case whose genesis event records a known insurance scheme (ADR-056), the
     providers in that scheme's network come first (config/providers.yaml); otherwise the configured order, unchanged."""
     from app.agency import config as agency_config
     from app.providers import get_providers

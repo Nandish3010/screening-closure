@@ -27,7 +27,7 @@ referral:
     cervical_hpv: gynaecology  # second pathway; the provider names below are synthetic, like the rest of this file
     chronic_conditions: family_medicine  # third pathway: the referral goes to the person's family physician (synthetic names)
   reroute_reasons: [capacity, wrong_service, timeout]
-  # Insurance networks (ADR-054): the schemes each referral provider accepts. SYNTHETIC, like every name here; replace with the
+  # Insurance networks (ADR-056): the schemes each referral provider accepts. SYNTHETIC, like every name here; replace with the
   # payers' real network lists before any pilot. Scheme codes are generic (thiqa, enhanced, basic; only `thiqa` is a real
   # scheme's name, cited in docs/commercial/buyer-map.md). A case with a known scheme is referred to the first provider in
   # the reroute order that accepts it; when none does, to the first one that does not, flagged `out_of_network` for a

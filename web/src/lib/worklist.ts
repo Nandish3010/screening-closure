@@ -13,9 +13,37 @@ export interface WorklistFilters {
   flaggedOnly: boolean;
   /** "" = every pathway; else the pathway name (`colorectal_fit`, `cervical_hpv`, `chronic_conditions`). */
   pathway: string;
+  /** "" = any; else a result priority tier (`urgent`, `soon`, `routine`). A case with no priority matches no tier. */
+  priority: string;
+  /** Only cases `GET /metrics/closure` counts as lost to follow-up (the row's `at_risk`). */
+  atRisk: boolean;
 }
 
-export const DEFAULT_FILTERS: WorklistFilters = { state: "open", owner: "", overdueOnly: false, flaggedOnly: false, pathway: "" };
+export const DEFAULT_FILTERS: WorklistFilters = { state: "open", owner: "", overdueOnly: false, flaggedOnly: false, pathway: "", priority: "", atRisk: false };
+
+/**
+ * The filters in the URL, so a link can deep-link to a filtered worklist (`/coordinator?at_risk=1`, `?pathway=cervical_hpv&priority=urgent`).
+ * Keys: `state`, `owner`, `pathway`, `priority`, and `overdue`, `flagged`, `at_risk` as `1`. A default is left out of the URL.
+ */
+export function filtersFromParams(p: URLSearchParams): WorklistFilters {
+  const on = (k: string) => p.get(k) === "1" || p.get(k) === "true";
+  return {
+    state: p.get("state") || DEFAULT_FILTERS.state, owner: p.get("owner") ?? "", pathway: p.get("pathway") ?? "",
+    priority: p.get("priority") ?? "", overdueOnly: on("overdue"), flaggedOnly: on("flagged"), atRisk: on("at_risk"),
+  };
+}
+
+export function paramsFromFilters(f: WorklistFilters): URLSearchParams {
+  const p = new URLSearchParams();
+  if (f.state !== DEFAULT_FILTERS.state) p.set("state", f.state);
+  if (f.owner) p.set("owner", f.owner);
+  if (f.pathway) p.set("pathway", f.pathway);
+  if (f.priority) p.set("priority", f.priority);
+  if (f.overdueOnly) p.set("overdue", "1");
+  if (f.flaggedOnly) p.set("flagged", "1");
+  if (f.atRisk) p.set("at_risk", "1");
+  return p;
+}
 export const UNOWNED = "__unowned__";
 
 /**
@@ -46,6 +74,8 @@ export function filterWorklist(cases: CaseSummary[], f: WorklistFilters): CaseSu
     if (f.owner === UNOWNED ? !!c.owner : f.owner !== "" && c.owner !== f.owner) return false;
     if (f.overdueOnly && !c.overdue) return false;
     if (f.flaggedOnly && !c.watchdog_flagged) return false;
+    if (f.priority !== "" && c.priority?.tier !== f.priority) return false;
+    if (f.atRisk && !c.at_risk) return false;
     if (f.pathway !== "" && (c.pathway || DEFAULT_PATHWAY) !== f.pathway) return false;
     return true;
   });

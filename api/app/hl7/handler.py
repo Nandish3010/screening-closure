@@ -32,7 +32,7 @@ from uuid import UUID
 
 from fastapi import HTTPException
 
-from app import confirmatory, payloads, policy
+from app import confirmatory, integration_feed, payloads, policy
 from app.clock import clock
 from app.events import Event, EventContentConflict, EventIdConflict
 from app.hl7 import contacts
@@ -142,6 +142,7 @@ def handle(raw: str) -> str:
         outcome = Outcome("AE", "207", R_INTERNAL, "internal")
     mt = f"{msg.message_type[0]}^{msg.message_type[1]}" if msg is not None else "-"
     log.info("hl7 type=%s kind=%s ack=%s reason=%s cid=%s", mt[:12], outcome.kind, outcome.ack, outcome.reason or "-", _cid(msg))
+    integration_feed.record("hl7", "in", f"HL7 {mt[:12]} received: {outcome.reason or outcome.kind}", f"ACK {outcome.ack}", _cid(msg))
     return build_ack(msg, outcome.ack, outcome.error_code, outcome.reason, clock.now())
 
 
