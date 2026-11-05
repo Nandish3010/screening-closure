@@ -18,7 +18,8 @@ import { MissedFollowupPanel } from "../components/MissedFollowupPanel";
 import { ClosureProposalBanner } from "../components/ClosureProposalBanner";
 import { EffortCounter } from "../components/EffortCounter";
 import { OutreachDemoBanner } from "../components/OutreachDemoBanner";
-import { SignOffPanel } from "../components/SignOffPanel";
+import { ClosedReceipt, SignOffPanel } from "../components/SignOffPanel";
+import { LoopStrip } from "../components/LoopStrip";
 import { Timeline } from "../components/Timeline";
 import {
   actorName as actorNameOf, allowedChannels, consentOf, draftViews, handoffs, hasCallbackPending, lostContact, overdueDays, overdueInfo,
@@ -95,6 +96,7 @@ export function CaseDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [flash, setFlash] = useState<string | null>(null);
+  const [signoffRefusal, setSignoffRefusal] = useState<string | null>(null);
 
   // Local form state
   const [provider, setProvider] = useState<string>(PROVIDERS[0]);
@@ -161,7 +163,7 @@ export function CaseDetailPage() {
 
   /** Every action goes through the client, then refreshes. Engine refusals are shown verbatim. */
   const act = useCallback(
-    async <T,>(fn: () => Promise<T>, okMessage: string | ((result: T) => string)) => {
+    async <T,>(fn: () => Promise<T>, okMessage: string | ((result: T) => string), onRefused?: (msg: string) => void) => {
       setBusy(true);
       setFlash(null);
       setError(null);
@@ -171,7 +173,10 @@ export function CaseDetailPage() {
         refreshSim();
         setFlash(typeof okMessage === "function" ? okMessage(result) : okMessage);
       } catch (e) {
-        setError(e instanceof ApiError ? `The engine refused this: ${plainError(e.message)}` : `Something went wrong: ${(e as Error).message}`);
+        // A step may have gone through before the refusal (the review before a refused close): read the case again so the screen matches.
+        await reload().catch(() => undefined);
+        const msg = e instanceof ApiError ? `The engine refused this: ${plainError(e.message)}` : `Something went wrong: ${(e as Error).message}`;
+        if (onRefused) onRefused(msg); else setError(msg);
       } finally {
         setBusy(false);
       }
@@ -243,6 +248,7 @@ export function CaseDetailPage() {
     <main className="container">
       <p><Link to="/coordinator">&larr; Worklist</Link></p>
       <h1>Case <span className="mono">{detail.case_id.slice(0, 8)}</span> <StatePill state={state} /> <PathwayBadge pathway={detail.pathway} /></h1>
+      <LoopStrip events={events} prioritised={!!detail.priority} closed={closed} declined={detail.closure_outcome === "declined"} />
       <OutreachDemoBanner />
       <AgencyChip caseId={detail.case_id} version={`${detail.state}:${events.length}`} />
 
@@ -425,15 +431,19 @@ export function CaseDetailPage() {
                 defaultEvidence={proposal?.evidence_ref ?? recordedEvidence}
                 signer={userId ? `Practitioner/${userId}` : undefined}
                 procedure={procedure}
+                caseId={detail.case_id}
+                refusal={signoffRefusal}
+                onClearRefusal={() => setSignoffRefusal(null)}
                 onRecordResult={can(role, "recordColonoscopy") && !scopeWhy ? async () => {
                   const r = await api.recordConfirmatoryResult(caseId);
                   return r.evidence_ref;
                 } : undefined}
                 onSignOff={(evidence, signer) =>
                   act(async () => {
+                    setSignoffRefusal(null);
                     if (state !== "clinician_reviewed") await post("clinician_review", { signed_by: signer });
                     await post("close", { evidence_ref: evidence, signed_by: signer });
-                  }, "Case closed with evidence and sign-off.")
+                  }, "Case closed with evidence and sign-off.", (msg) => setSignoffRefusal(msg))
                 }
               />
             )}
@@ -483,7 +493,8 @@ export function CaseDetailPage() {
             {closed && detail.closure_outcome === "declined" && (
               <p data-testid="closed-declined">Closed as <strong>declined</strong>: the patient decided against the {procedure} after counselling and a physician signed. This is not a completed {procedure}. Re-offer date: {fmtDate(detail.re_offer_due_at)}.</p>
             )}
-            {closed && <p>This case is closed. The audit trail below is final unless a clinician reopens it.</p>}
+            {closed && detail.closure_outcome !== "declined" && <ClosedReceipt events={events} caseId={detail.case_id} />}
+            {closed && detail.closure_outcome === "declined" && <p>This case is closed. The audit trail below is final unless a clinician reopens it.</p>}
             {!closed && (
               <>
                 <label className="field"><span>Failed contact attempts (at least 3)</span>

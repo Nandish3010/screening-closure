@@ -36,7 +36,7 @@ describe("SignOffPanel", () => {
     await user.type(screen.getByLabelText("Evidence reference"), "x");
     await user.type(screen.getByLabelText("Signed by"), "y");
     expect(screen.getByTestId("signoff")).toBeDisabled();
-    expect(screen.getByTestId("signoff-why")).toHaveTextContent(/only a clinician/i);
+    expect(screen.getByTestId("signoff-why")).toHaveTextContent(/only a physician/i);
   });
 
   it("trims whitespace-only input as missing", async () => {
@@ -74,5 +74,47 @@ describe("Case detail: sign-off through the client", () => {
     await screen.findByTestId("signoff");
     expect(screen.getByTestId("signoff")).toBeDisabled();
     expect(screen.getByTestId("signoff-why")).toHaveTextContent(/do not own this case.*Dr\. Layla Haddad/i);
+  });
+});
+
+describe("Case sign-off design states", () => {
+  const route = { route: `/coordinator/${DEMO_OVERDUE_CASE_ID}`, path: "/coordinator/:caseId" };
+
+  it("a made-up reference is refused with the engine's words, nothing is closed, and a real one then closes", async () => {
+    const user = userEvent.setup();
+    const { api } = renderWithApp(<CaseDetailPage />, { role: "owner", ...route });
+    await screen.findByTestId("signoff");
+    expect(screen.getByTestId("check-answers")).toBeInTheDocument();
+    await user.click(screen.getByTestId("evidence-fake"));
+    expect(screen.getByLabelText("Evidence reference")).toHaveValue("DiagnosticReport/made-up-0000");
+    expect(screen.getByTestId("check-evidence")).toHaveTextContent("made-up-0000");
+    await user.type(screen.getByLabelText("Signed by"), "Dr. Layla Haddad");
+    await user.click(screen.getByTestId("signoff"));
+    const refusal = await screen.findByTestId("signoff-refusal");
+    expect(refusal).toHaveAttribute("role", "alert");
+    expect(refusal).toHaveTextContent(/Nothing was closed/);
+    expect(refusal).toHaveTextContent(/does not resolve to a resource of this case/);
+    expect((await api.getCase(DEMO_OVERDUE_CASE_ID)).state).not.toBe("closed");
+    await user.click(screen.getByTestId("evidence-real")); // clears the refusal and fills the real report
+    expect(screen.queryByTestId("signoff-refusal")).toBeNull();
+    await user.click(screen.getByTestId("signoff"));
+    const receipt = await screen.findByTestId("closed-receipt");
+    expect(receipt).toHaveTextContent(/is closed/);
+    expect(receipt).toHaveTextContent("Dr. Layla Haddad");
+    expect(screen.getByTestId("loop-strip").querySelector('[data-step="documented"]')).toHaveAttribute("data-status", "done");
+  });
+
+  it("the loop strip names the five steps and marks where this case is", async () => {
+    renderWithApp(<CaseDetailPage />, { role: "owner", ...route });
+    const strip = await screen.findByTestId("loop-strip");
+    expect(strip.querySelectorAll("li")).toHaveLength(5);
+    expect(strip.querySelector('[data-step="attended"]')).toHaveAttribute("data-status", "done");
+    expect(strip.querySelector('[data-step="documented"]')).toHaveAttribute("data-status", "current");
+  });
+
+  it("a coordinator sees why they cannot sign, in words, and the button stays off", async () => {
+    renderWithApp(<CaseDetailPage />, { role: "coordinator", ...route });
+    expect(await screen.findByTestId("signoff-role-denied")).toHaveTextContent(/physician who owns this case signs/i);
+    expect(screen.getByTestId("signoff")).toBeDisabled();
   });
 });
