@@ -305,3 +305,58 @@ describe("the privacy and consent centre", () => {
   });
 });
 
+
+describe("design port: emergency line, pending person, access log on home, Arabic parity", () => {
+  it("shows the emergency line with its review status, in English and in Arabic", async () => {
+    const user = userEvent.setup();
+    await openAs(createMockAdapter(null));
+    const box = screen.getByTestId("emergency-line");
+    expect(box).toHaveTextContent("If you feel very unwell, call 998 (ambulance)");
+    expect(screen.getByTestId("emergency-pending")).toHaveTextContent(/pending clinician review/i);
+    expect(within(box).getByRole("link")).toHaveAttribute("href", "tel:998");
+    await user.click(screen.getByRole("button", { name: /Language/ }));
+    expect(screen.getByTestId("emergency-line")).toHaveTextContent(STRINGS.ar.emergencyLine);
+    expect(screen.getByTestId("emergency-pending")).toHaveTextContent(STRINGS.ar.emergencyPending);
+    expect(screen.getByTestId("arabic-review-note")).toHaveTextContent(/pending native-speaker review/);
+    expect(screen.getByTestId("patient-root")).toHaveAttribute("dir", "rtl");
+  });
+
+  it("every English string has an Arabic one (parity), and none is empty", () => {
+    const keys = (o: object): string[] => Object.entries(o).flatMap(([k, v]) => (v && typeof v === "object" && !Array.isArray(v) ? keys(v).map((x) => `${k}.${x}`) : [k]));
+    expect(keys(STRINGS.ar).sort()).toEqual(keys(STRINGS.en).sort());
+    for (const k of ["emergencyLine", "emergencyPending", "pendingPerson", "accessHomeHeading", "arabicReviewNote"] as const) expect(STRINGS.ar[k].length).toBeGreaterThan(5);
+  });
+
+  it("after a request for a call the app says a person is reading it, and stays that way until a person records contact", async () => {
+    const user = userEvent.setup();
+    const api = createMockAdapter(null);
+    await openAs(api);
+    expect(screen.queryByTestId("person-pending")).toBeNull();
+    await user.click(screen.getByRole("button", { name: STRINGS.en.dontUnderstand }));
+    expect(await screen.findByTestId("person-pending")).toHaveTextContent(/person on your care team is reading it/i);
+    expect(screen.getByTestId("person-pending").textContent).not.toMatch(/confirmed/i);
+    cleanup();
+    await openAs(api); // it comes from the log, so it survives a reload
+    expect(screen.getByTestId("person-pending")).toBeInTheDocument();
+  });
+
+  it("the pending state ends when a person records contact (derived from the log)", async () => {
+    const { hasCallbackPending } = await import("../src/lib/derive");
+    const ev = (type: string) => ({ type, at: "2026-11-05T08:00:00Z", actor: "x", payload: {}, event_id: type }) as never;
+    expect(hasCallbackPending([ev("callback_requested")])).toBe(true);
+    expect(hasCallbackPending([ev("callback_requested"), ev("contact_patient")])).toBe(false);
+    expect(hasCallbackPending([ev("callback_requested"), ev("appointment_cancelled")])).toBe(false);
+  });
+
+  it("the home screen shows who opened the record, with a way to the full list", async () => {
+    await openAs(createMockAdapter(null));
+    expect(screen.getByTestId("access-home")).toHaveTextContent(STRINGS.en.accessHomeHeading);
+    expect(screen.getByTestId("access-home-more")).toBeInTheDocument();
+  });
+
+  it("the patient styles use logical properties only, so one stylesheet serves RTL", async () => {
+    const { readFileSync } = await import("node:fs");
+    const css = readFileSync("src/patient.css", "utf8");
+    expect(css).not.toMatch(/(margin|padding|border)-(left|right)\b|(^|[\s;{])(left|right)\s*:|text-align:\s*(left|right)/m);
+  });
+});

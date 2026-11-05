@@ -71,6 +71,16 @@ export interface PatientStrings {
   ownerPending: string;
   ownerReach: string;
   callCareTeam: string;
+  /** Emergency line: shown with its review status; the number is pending clinician review in this prototype. */
+  emergencyHeading: string;
+  emergencyLine: string;
+  emergencyPending: string;
+  /** A request is waiting for a person to read it: nothing has changed until they act. */
+  pendingPerson: string;
+  accessHomeHeading: string;
+  accessHomeMore: string;
+  /** Visible on the Arabic screen: the wording has not had a native-speaker review yet (H2). */
+  arabicReviewNote: string;
   demoNumber: string;
   /** Plain names for the roles a patient is told about (the owner, and who looked at the record). */
   roles: { primary_care_owner: string; specialist_owner: string; coordinator: string; supervisor: string; lab: string; other: string };
@@ -220,6 +230,13 @@ export const STRINGS: Record<Lang, PatientStrings> = {
     ownerPending: "A person in your care team will be chosen to look after you soon.",
     ownerReach: "How to reach your care team",
     callCareTeam: "Call your care team",
+    emergencyHeading: "In an emergency",
+    emergencyLine: "If you feel very unwell, call 998 (ambulance).",
+    emergencyPending: "Pending clinician review: this is the national ambulance number, shown here for the prototype.",
+    pendingPerson: "We got your message. A person on your care team is reading it. Nothing has changed yet: your plan stays as it is until they call you.",
+    accessHomeHeading: "Who opened your record",
+    accessHomeMore: "See the full list and your choices",
+    arabicReviewNote: "Arabic wording is pending native-speaker review.",
     demoNumber: "Demo number. All data here is synthetic.",
     roles: {
       primary_care_owner: "Primary care doctor",
@@ -400,7 +417,14 @@ export const STRINGS: Record<Lang, PatientStrings> = {
     ownerLine: (name, role) => `الشخص المسؤول عن رعايتك:\n${iso(name)} (${role}).\nيمكنك طرح أي سؤال.`,
     ownerPending: "سنعيّن لك منسق رعاية قريباً.",
     ownerReach: "كيف تتواصل مع فريق رعايتك",
-    callCareTeam: "اتصل بفريق رعايتك",
+    callCareTeam: "الاتصال بفريق الرعاية",
+    emergencyHeading: "في حالات الطوارئ",
+    emergencyLine: "في حال الشعور بتعب شديد، يرجى الاتصال بالرقم 998 (الإسعاف).",
+    emergencyPending: "بانتظار مراجعة الطبيب: هذا هو رقم الإسعاف الوطني، ويظهر هنا للنموذج الأولي.",
+    pendingPerson: "وصلتنا رسالتك. أحد أفراد فريق الرعاية يقرؤها الآن. لم يتغير شيء بعد، وتبقى خطتك كما هي حتى يتصل بك.",
+    accessHomeHeading: "من اطلع على سجلك",
+    accessHomeMore: "عرض القائمة الكاملة وخياراتك",
+    arabicReviewNote: "الصياغة العربية بانتظار مراجعة متحدث أصلي.",
     demoNumber: "رقم تجريبي. كل البيانات هنا بيانات اصطناعية.",
     roles: {
       primary_care_owner: "طبيب الرعاية الأولية",
