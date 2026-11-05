@@ -12,6 +12,16 @@ umask 077
 mkdir -p /etc/sc /var/lib/sc
 
 PY=$SC_REPO/deploy/gcp/vm
+
+# BUG-77 workaround: the gated API restart (every 15 min) and its daily fallback. Installed here, not in startup.sh, because this runs
+# on every boot AND after every deploy, once the bundle exists. Idempotent: install overwrites, enable --now is a no-op if enabled.
+if command -v systemctl >/dev/null 2>&1 && [ -d /run/systemd/system ]; then
+  install -m 0644 "$PY"/sc-api-restart.service "$PY"/sc-api-restart.timer "$PY"/sc-api-restart-daily.service "$PY"/sc-api-restart-daily.timer /etc/systemd/system/
+  systemctl daemon-reload
+  systemctl enable --now sc-api-restart.timer sc-api-restart-daily.timer
+  systemctl try-restart sc-api-restart.timer sc-api-restart-daily.timer
+  # the earlier fixed 22:30 UTC timer was the same unit name as the gate timer, so it is replaced above; nothing else to remove
+fi
 secrets_json=$(python3 - "$PROJECT" <<'PYEOF'
 import json, subprocess, sys
 sys.path.insert(0, "/srv/sc/repo/deploy/gcp/vm")

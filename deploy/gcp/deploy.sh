@@ -52,7 +52,8 @@ if ! gcloud compute instances describe "$SC_VM_NAME" --zone "$GCP_ZONE" "${P[@]}
     --shielded-secure-boot --shielded-vtpm --shielded-integrity-monitoring \
     --metadata "enable-oslogin=TRUE,sc-public-host=$HOST" --metadata-from-file "startup-script=$here/vm/startup.sh" "${P[@]}"
 else
-  gcloud compute instances add-metadata "$SC_VM_NAME" --zone "$GCP_ZONE" --metadata "sc-public-host=$HOST" "${P[@]}" >/dev/null
+  gcloud compute instances add-metadata "$SC_VM_NAME" --zone "$GCP_ZONE" --metadata "sc-public-host=$HOST" \
+    --metadata-from-file "startup-script=$here/vm/startup.sh" "${P[@]}" >/dev/null
 fi
 
 echo "== budget alert (email to billing admins at 50/90/100 percent of ${SC_BUDGET_USD} USD; an alert, not a spending cap)"

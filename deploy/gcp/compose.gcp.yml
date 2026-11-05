@@ -13,6 +13,8 @@ services:
       - path: /etc/sc/api.env
         required: true
     # HAPI and the API stay on the private compose network; no new ports.
+    # BUG-77: a limit makes "memory is high" mean something. deploy/gcp/vm/sc-api-restart.sh restarts the API at 70% of it (about
+    # 717 MiB) and, once a day, at 40%; an OOM kill at the limit would also be restarted by the policy above, but abruptly.
     mem_limit: 1024m
 
   scheduler:

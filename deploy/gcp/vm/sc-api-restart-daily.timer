@@ -1,0 +1,11 @@
+[Unit]
+Description=Daily fallback restart of the Screening Closure API container, only if memory is above the lower threshold
+
+[Timer]
+# 08:00 UTC = 12:00 Gulf, 04:00 US Eastern, 01:00 US Pacific: the quietest hour for the likely judges (the 15-minute gate does the real work).
+OnCalendar=*-*-* 08:00:00 UTC
+Persistent=false
+RandomizedDelaySec=300
+
+[Install]
+WantedBy=timers.target
