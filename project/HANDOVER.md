@@ -25,6 +25,8 @@ Written 18 Oct 2026. The build is done; what remains needs a person. Items 1 to 
 
 ## 2. Clinician reviewer
 
+Longer option (about 2 hours, covers the placeholder thresholds, priority tiers and timings of all three pathways): [docs/reviews/clinician-review-pack.md](../docs/reviews/clinician-review-pack.md). Ready-to-edit recruiting messages for both reviewers: [docs/reviews/recruiting-messages.md](../docs/reviews/recruiting-messages.md).
+
 Send to a GP, gastroenterologist or screening lead. Print [docs/review/clinician-pack.md](../docs/review/clinician-pack.md) to PDF from a rendered view (so the chart shows) and attach it.
 
 > **Subject:** 30 minutes of clinical review for a screening follow-up prototype
@@ -49,6 +51,8 @@ Record the session in `docs/governance/clinician-review.md` (T-E13). Apply:
 Finish with `make review-packs && make check`.
 
 ## 3. Arabic reviewer
+
+Longer option (about 1.5 hours, every Arabic string in a sheet): [docs/reviews/arabic-review-sheet.md](../docs/reviews/arabic-review-sheet.md) and [CSV](../docs/reviews/arabic-review-sheet.csv).
 
 Attach [docs/review/arabic-pack.md](../docs/review/arabic-pack.md) (PDF).
 

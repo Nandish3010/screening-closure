@@ -1,0 +1,383 @@
+﻿id,where used (file:key),English source,current Arabic,reviewer: OK / corrected text / note
+W01,web/src/i18n/strings.ts:appTitle,Your screening result,نتيجة فحص الكشف المبكر,
+W02,web/src/i18n/strings.ts:language,Language,اللغة,
+W03,web/src/i18n/strings.ts:switchTo,العربية,English,
+W04,web/src/i18n/strings.ts:navLabel,Main menu,القائمة الرئيسية,
+W05,web/src/i18n/strings.ts:navHome,My care,رعايتي,
+W06,web/src/i18n/strings.ts:navPrivacy,Privacy,الخصوصية,
+W07,web/src/i18n/strings.ts:homeTitle,Your screening result,نتيجة فحص الكشف المبكر,
+W08,web/src/i18n/strings.ts:homeBody,Open the link your care team sent you to see your next steps. You can add this page to your home screen.,يرجى فتح الرابط الذي أرسله لك فريق رعايتك لرؤية نتيجتك. يمكنك إضافة هذه الصفحة إلى الشاشة الرئيسية.,
+W09,web/src/i18n/strings.ts:resultHeading,My result,نتيجتي,
+W10,web/src/i18n/strings.ts:resultBody,Your screening result is ready. Your care team needs to talk with you about it and about the next step.,نتيجة فحص الكشف المبكر جاهزة. يحتاج فريق رعايتك إلى التحدث معك عنها وعن الخطوة التالية.,
+W11,web/src/i18n/strings.ts:explainInPerson,Your care team will explain your result in person or by phone.,سيشرح لك فريق رعايتك نتيجتك وجهاً لوجه أو عبر الهاتف.,
+W12,web/src/i18n/strings.ts:pathways.colorectal_fit.progress[0],Result received,وصلت النتيجة,
+W13,web/src/i18n/strings.ts:pathways.colorectal_fit.progress[1],Care team ready,فريق رعايتك جاهز,
+W14,web/src/i18n/strings.ts:pathways.colorectal_fit.progress[2],Camera test,الفحص بالكاميرا,
+W15,web/src/i18n/strings.ts:pathways.colorectal_fit.progress[3],Doctor review,مراجعة الطبيب,
+W16,web/src/i18n/strings.ts:pathways.cervical_hpv.progress[0],Result received,وصلت النتيجة,
+W17,web/src/i18n/strings.ts:pathways.cervical_hpv.progress[1],Care team ready,فريق رعايتك جاهز,
+W18,web/src/i18n/strings.ts:pathways.cervical_hpv.progress[2],Follow-up examination,فحص المتابعة,
+W19,web/src/i18n/strings.ts:pathways.cervical_hpv.progress[3],Doctor review,مراجعة الطبيب,
+W20,web/src/i18n/strings.ts:pathways.chronic_conditions.progress[0],Result received,وصلت النتيجة,
+W21,web/src/i18n/strings.ts:pathways.chronic_conditions.progress[1],Care team ready,فريق رعايتك جاهز,
+W22,web/src/i18n/strings.ts:pathways.chronic_conditions.progress[2],Family doctor visit,زيارة طبيب الأسرة,
+W23,web/src/i18n/strings.ts:pathways.chronic_conditions.progress[3],Care plan,خطة الرعاية,
+W24,web/src/i18n/strings.ts:pathways.other.progress[0],Result received,وصلت النتيجة,
+W25,web/src/i18n/strings.ts:pathways.other.progress[1],Care team ready,فريق رعايتك جاهز,
+W26,web/src/i18n/strings.ts:pathways.other.progress[2],Appointment,الموعد,
+W27,web/src/i18n/strings.ts:pathways.other.progress[3],Doctor review,مراجعة الطبيب,
+W28,web/src/i18n/strings.ts:progressHeading,Where you are now,أين وصلت الآن,
+W29,web/src/i18n/strings.ts:nextHeading,My next step,خطوتي التالية,
+W30,web/src/i18n/strings.ts:nextState.preContact,Your care team is getting ready to contact you. You do not need to do anything yet.,يستعد فريق رعايتك للتواصل معك. لا تحتاج إلى فعل شيء الآن.,
+W31,web/src/i18n/strings.ts:nextState.contacted,Your care team sent you a message. Tap the button when you have read it.,أرسل لك فريق رعايتك رسالة. اضغط على الزر بعد قراءتها.,
+W32,web/src/i18n/strings.ts:nextState.booked,Your appointment is booked. Please check the date and add it to your calendar.,تم حجز موعدك. يرجى التأكد من التاريخ وإضافته إلى التقويم.,
+W33,web/src/i18n/strings.ts:nextState.done,Your appointment is done. A doctor from your care team will go over it with you.,تم الموعد. سيراجع معك طبيب من فريق رعايتك ما جرى.,
+W34,web/src/i18n/strings.ts:nextState.closed,Your care team has finished this step. Call your care team if you have a question.,أنهى فريق رعايتك هذه الخطوة. اتصل بفريق رعايتك إذا كان لديك سؤال.,
+W35,web/src/i18n/strings.ts:nextState.withdrawn,You asked us to stop contact. You can allow contact again in Privacy.,طلبت إيقاف التواصل. يمكنك السماح بالتواصل من جديد في قسم الخصوصية.,
+W36,web/src/i18n/strings.ts:nextState.working,Your care team is working on your next step. Call your care team if you have a question.,يعمل فريق رعايتك على خطوتك التالية. اتصل بفريق رعايتك إذا كان لديك سؤال.,
+W37,web/src/i18n/strings.ts:pathways.colorectal_fit.nextSteps[0],Your care team will talk with you about your result.,سيتحدث معك فريق رعايتك عن نتيجتك.,
+W38,web/src/i18n/strings.ts:pathways.colorectal_fit.nextSteps[1],The next step is an appointment for a camera test called a colonoscopy.,الخطوة التالية هي موعد لفحص بالكاميرا اسمه تنظير القولون.,
+W39,web/src/i18n/strings.ts:pathways.colorectal_fit.nextSteps[2],You will get a date and clear steps to get ready.,سيصلك موعد وخطوات سهلة للتحضير.,
+W40,web/src/i18n/strings.ts:pathways.colorectal_fit.waiting,Your care team is arranging your camera test. You will get a date soon.,يجهّز فريق رعايتك موعد الفحص بالكاميرا. سيصلك التاريخ قريباً.,
+W41,web/src/i18n/strings.ts:pathways.cervical_hpv.nextSteps[0],Your care team will talk with you about your result.,سيتحدث معك فريق رعايتك عن نتيجتك.,
+W42,web/src/i18n/strings.ts:pathways.cervical_hpv.nextSteps[1],The next step is an appointment for a follow-up examination.,الخطوة التالية هي موعد لفحص متابعة في العيادة.,
+W43,web/src/i18n/strings.ts:pathways.cervical_hpv.nextSteps[2],You will get a date and clear steps to get ready.,سيصلك موعد وخطوات سهلة للتحضير.,
+W44,web/src/i18n/strings.ts:pathways.cervical_hpv.waiting,Your care team is arranging your follow-up examination. You will get a date soon.,يجهّز فريق رعايتك موعد فحص المتابعة. سيصلك التاريخ قريباً.,
+W45,web/src/i18n/strings.ts:pathways.chronic_conditions.nextSteps[0],Your care team will talk with you about your result.,سيتحدث معك فريق رعايتك عن نتيجتك.,
+W46,web/src/i18n/strings.ts:pathways.chronic_conditions.nextSteps[1],The next step is a visit with your family doctor.,الخطوة التالية هي زيارة طبيب الأسرة.,
+W47,web/src/i18n/strings.ts:pathways.chronic_conditions.nextSteps[2],You will get a date and clear steps to get ready.,سيصلك موعد وخطوات سهلة للتحضير.,
+W48,web/src/i18n/strings.ts:pathways.chronic_conditions.waiting,Your care team is arranging your visit with your family doctor. You will get a date soon.,يجهّز فريق رعايتك موعد زيارتك لطبيب الأسرة. سيصلك التاريخ قريباً.,
+W49,web/src/i18n/strings.ts:pathways.other.nextSteps[0],Your care team will talk with you about your result.,سيتحدث معك فريق رعايتك عن نتيجتك.,
+W50,web/src/i18n/strings.ts:pathways.other.nextSteps[1],The next step is an appointment.,الخطوة التالية هي موعد.,
+W51,web/src/i18n/strings.ts:pathways.other.nextSteps[2],You will get a date and clear steps to get ready.,سيصلك موعد وخطوات سهلة للتحضير.,
+W52,web/src/i18n/strings.ts:pathways.other.waiting,Your care team is arranging your appointment. You will get a date soon.,يجهّز فريق رعايتك موعدك. سيصلك التاريخ قريباً.,
+W53,web/src/i18n/strings.ts:pathways.colorectal_fit.appointmentTitle,Your camera test (colonoscopy),فحصك بالكاميرا (تنظير القولون),
+W54,web/src/i18n/strings.ts:pathways.colorectal_fit.calendarTitle,Camera test (colonoscopy),فحص بالكاميرا (تنظير القولون),
+W55,web/src/i18n/strings.ts:pathways.cervical_hpv.appointmentTitle,Your follow-up examination,فحص المتابعة في العيادة,
+W56,web/src/i18n/strings.ts:pathways.cervical_hpv.calendarTitle,Follow-up examination,فحص متابعة في العيادة,
+W57,web/src/i18n/strings.ts:pathways.chronic_conditions.appointmentTitle,Your visit with your family doctor,زيارتك لطبيب الأسرة,
+W58,web/src/i18n/strings.ts:pathways.chronic_conditions.calendarTitle,Visit with your family doctor,زيارة طبيب الأسرة,
+W59,web/src/i18n/strings.ts:pathways.other.appointmentTitle,Your appointment,موعدك,
+W60,web/src/i18n/strings.ts:pathways.other.calendarTitle,Appointment,موعد,
+W61,web/src/i18n/strings.ts:appointmentHeading,My appointment,موعدي,
+W62,web/src/i18n/strings.ts:appointmentTimeLater,Your care team will tell you the time.,سيخبرك فريق رعايتك بالوقت.,
+W63,web/src/i18n/strings.ts:addToCalendar,Add to my calendar,أضف الموعد إلى التقويم,
+W64,web/src/i18n/strings.ts:calendarNote,This saves a small file on your phone. Open it to add the date to your calendar.,يحفظ هذا ملفاً صغيراً على هاتفك. افتح الملف لإضافة التاريخ إلى التقويم.,
+W65,web/src/i18n/strings.ts:calendarDescription,Booked by your care team. Please call your care team if you cannot come.,حجزه فريق رعايتك. يرجى الاتصال بفريق رعايتك إذا لم تتمكن من الحضور.,
+W66,web/src/i18n/strings.ts:ownerHeading,Who is looking after you,من يتابعك,
+W67,web/src/i18n/strings.ts:ownerLine,{name} ({role}) is looking after your care. You can ask them any question.,"الشخص المسؤول عن رعايتك:
+{name} ({role}).
+يمكنك طرح أي سؤال.",
+W68,web/src/i18n/strings.ts:ownerPending,A person in your care team will be chosen to look after you soon.,سنعيّن لك منسق رعاية قريباً.,
+W69,web/src/i18n/strings.ts:ownerReach,How to reach your care team,كيف تتواصل مع فريق رعايتك,
+W70,web/src/i18n/strings.ts:callCareTeam,Call your care team,اتصل بفريق رعايتك,
+W71,web/src/i18n/strings.ts:demoNumber,Demo number. All data here is synthetic.,رقم تجريبي. كل البيانات هنا بيانات اصطناعية.,
+W72,web/src/i18n/strings.ts:roles.primary_care_owner,Primary care doctor,طبيب الرعاية الأولية,
+W73,web/src/i18n/strings.ts:roles.specialist_owner,Specialist doctor,الطبيب الأخصائي,
+W74,web/src/i18n/strings.ts:roles.coordinator,Care coordinator,منسق الرعاية,
+W75,web/src/i18n/strings.ts:roles.supervisor,Senior member of the care team,أحد كبار أعضاء فريق الرعاية,
+W76,web/src/i18n/strings.ts:roles.lab,Laboratory team,فريق المختبر,
+W77,web/src/i18n/strings.ts:roles.other,Care team,فريق الرعاية,
+W78,web/src/i18n/strings.ts:ownerByRole.primary_care_owner,Your primary care doctor is looking after your care. You can ask them any question.,يتابعك طبيبك في الرعاية الأولية. يمكنك طرح أي سؤال.,
+W79,web/src/i18n/strings.ts:ownerByRole.specialist_owner,Your specialist doctor is looking after your care. You can ask them any question.,يتابعك طبيبك الأخصائي. يمكنك طرح أي سؤال.,
+W80,web/src/i18n/strings.ts:ownerByRole.coordinator,Your care coordinator is looking after your care. You can ask them any question.,يتابعك منسق الرعاية الخاص بك. يمكنك طرح أي سؤال.,
+W81,web/src/i18n/strings.ts:ownerByRole.supervisor,A senior member of your care team is looking after your care. You can ask them any question.,يتابعك أحد كبار أعضاء فريق رعايتك. يمكنك طرح أي سؤال.,
+W82,web/src/i18n/strings.ts:ownerByRole.other,Your care team is looking after your care. You can ask them any question.,يتابعك فريق رعايتك. يمكنك طرح أي سؤال.,
+W83,web/src/i18n/strings.ts:role:Primary care physician,Primary care physician,طبيب الرعاية الأولية,
+W84,web/src/i18n/strings.ts:role:Care coordinator,Care coordinator,منسق الرعاية,
+W85,web/src/i18n/strings.ts:reschedule,Ask for another date,اطلب تاريخاً آخر,
+W86,web/src/i18n/strings.ts:rescheduleDone,Thank you. A person from your care team will call you about a new date.,شكراً لك. سيتصل بك أحد أفراد فريق رعايتك بخصوص تاريخ جديد.,
+W87,web/src/i18n/strings.ts:cannotAttend,I cannot come,لا أستطيع الحضور,
+W88,web/src/i18n/strings.ts:cannotAttendDone,Thank you. A person from your care team will call you.,شكراً لك. سيتصل بك أحد أفراد فريق رعايتك.,
+W89,web/src/i18n/strings.ts:understand,"I understand, please contact me",فهمت، يرجى التواصل معي,
+W90,web/src/i18n/strings.ts:understandDone,Thank you. We saved this. Your care team will contact you.,شكراً لك. سجلنا طلبك. سيتواصل معك فريق رعايتك.,
+W91,web/src/i18n/strings.ts:understandWait,You can tap this button after your care team has sent you a message.,يمكنك الضغط على هذا الزر بعد أن يرسل لك فريق رعايتك رسالة.,
+W92,web/src/i18n/strings.ts:dontUnderstand,"I don't understand, call me",لا أفهم، يرجى الاتصال بي,
+W93,web/src/i18n/strings.ts:callbackDone,Thank you. A person from your care team will call you.,شكراً لك. سيتصل بك أحد أفراد فريق رعايتك.,
+W94,web/src/i18n/strings.ts:actionFailed,That did not work. Please try again or call your care team.,لم تنجح العملية. يرجى المحاولة مرة أخرى أو الاتصال بفريق رعايتك.,
+W95,web/src/i18n/strings.ts:historyHeading,What has happened,ما الذي جرى,
+W96,web/src/i18n/strings.ts:historyEmpty,Nothing yet.,لا شيء بعد.,
+W97,web/src/i18n/strings.ts:history.case_created,Your result was received.,وصلت نتيجتك.,
+W98,web/src/i18n/strings.ts:history.acknowledge,Your care team saw your result.,اطلع فريق رعايتك على نتيجتك.,
+W99,web/src/i18n/strings.ts:history.accept_ownership,A member of your care team took charge of your care.,تولى أحد أفراد فريق رعايتك متابعتك.,
+W100,web/src/i18n/strings.ts:history.contact_patient,Your care team contacted you.,تواصل معك فريق رعايتك.,
+W101,web/src/i18n/strings.ts:history.patient_acknowledge,You said you understood.,أخبرتنا أنك فهمت.,
+W102,web/src/i18n/strings.ts:history.book_confirmatory,Your appointment was booked.,تم حجز موعدك.,
+W103,web/src/i18n/strings.ts:history.complete_confirmatory,Your appointment took place.,تم موعدك.,
+W104,web/src/i18n/strings.ts:history.clinician_review,A doctor went over it.,راجع طبيب ما جرى.,
+W105,web/src/i18n/strings.ts:history.close,Your care team finished this step.,أنهى فريق رعايتك هذه الخطوة.,
+W106,web/src/i18n/strings.ts:history.reopen,Your care team opened this step again.,فتح فريق رعايتك هذه الخطوة من جديد.,
+W107,web/src/i18n/strings.ts:history.consent_updated,You changed your contact choices.,غيّرت اختياراتك للتواصل.,
+W108,web/src/i18n/strings.ts:history.callback_requested,You asked for a call.,طلبت أن نتصل بك.,
+W109,web/src/i18n/strings.ts:history.message_sent,We sent you a message.,أرسلنا لك رسالة.,
+W110,web/src/i18n/strings.ts:consentHeading,Your choices,اختياراتك,
+W111,web/src/i18n/strings.ts:channelLabel,How may we contact you?,كيف يمكننا التواصل معك؟,
+W112,web/src/i18n/strings.ts:channels.phone,Phone call,مكالمة هاتفية,
+W113,web/src/i18n/strings.ts:channels.sms,Text message,رسالة نصية,
+W114,web/src/i18n/strings.ts:channels.whatsapp,WhatsApp,واتساب,
+W115,web/src/i18n/strings.ts:channels.letter,Letter,رسالة مكتوبة,
+W116,web/src/i18n/strings.ts:shareLabel,My care team may share my result with the specialist who will do my test.,أسمح لفريق رعايتي بمشاركة نتيجتي مع الطبيب الأخصائي الذي سيجري لي الفحص بالكاميرا.,
+W117,web/src/i18n/strings.ts:languageLabel,Language for this app and your messages,لغة هذا التطبيق ورسائلك,
+W118,web/src/i18n/strings.ts:languageNote,Kept on this phone and told to your care team. We use it for the messages we send you.,تُحفظ على هذا الهاتف ونخبر بها فريق رعايتك. نستعملها في الرسائل التي نرسلها إليك.,
+W119,web/src/i18n/strings.ts:withdrawButton,Stop all contact,أوقفوا كل تواصل معي,
+W120,web/src/i18n/strings.ts:withdrawHint,"If you stop contact, your care team will not message or call you. A person will check your case. You can still call your care team.",إذا أوقفت التواصل، فلن يرسل لك فريق رعايتك رسائل ولن يتصل بك. سيراجع أحد أفراد فريق رعايتك ملفك.,
+W121,web/src/i18n/strings.ts:withdrawnNotice,You asked us to stop contact. We will not message or call you. A person on your care team will check your case. You can still call your care team.,طلبت إيقاف التواصل. لن نرسل لك رسائل ولن نتصل بك. سيراجع أحد أفراد فريق رعايتك ملفك.,
+W122,web/src/i18n/strings.ts:withdrawConfirmTitle,Stop all contact?,هل تريد إيقاف كل تواصل؟,
+W123,web/src/i18n/strings.ts:withdrawConfirmBody,Your care team will not message or call you. A person will check your case. You can turn contact back on here at any time.,لن يرسل لك فريق رعايتك رسائل ولن يتصل بك. سيراجع أحد أفراد الفريق ملفك. يمكنك إعادة التواصل من هنا في أي وقت.,
+W124,web/src/i18n/strings.ts:withdrawConfirmYes,"Yes, stop all contact",نعم، أوقفوا كل تواصل,
+W125,web/src/i18n/strings.ts:withdrawConfirmNo,"No, keep contact",لا، أبقوا التواصل,
+W126,web/src/i18n/strings.ts:resumeButton,You may contact me again,يمكنكم التواصل معي مرة أخرى,
+W127,web/src/i18n/strings.ts:saved,Saved,تم الحفظ,
+W128,web/src/i18n/strings.ts:saveFailed,We could not save this. Please try again.,لم نتمكن من الحفظ. يرجى المحاولة مرة أخرى.,
+W129,web/src/i18n/strings.ts:privacyHeading,Privacy and choices,الخصوصية والاختيارات,
+W130,web/src/i18n/strings.ts:privacyIntro,You decide how we contact you. You can see who opened your record. You can change your mind at any time.,أنت من يقرر كيف نتواصل معك. يمكنك معرفة من اطلع على ملفك. يمكنك تغيير رأيك في أي وقت.,
+W131,web/src/i18n/strings.ts:aiNoticeHeading,How we prepare messages,كيف نُعِدّ الرسائل,
+W132,web/src/i18n/strings.ts:aiNoticeSoftware,We use software to help prepare our messages to you.,نستعين ببرنامج حاسوبي في إعداد رسائلنا إليك.,
+W133,web/src/i18n/strings.ts:aiNoticeStaff,A member of staff checks and approves each message before we send it.,يراجع أحد أفراد فريقنا كل رسالة ويوافق عليها قبل إرسالها.,
+W134,web/src/i18n/strings.ts:aiNoticePerson,"To speak to a person, press ""I don't understand, call me"". You can also call your care team.",للتحدث مع شخص، يرجى الضغط على «لا أفهم، يرجى الاتصال بي». ويمكنك أيضاً الاتصال بفريق رعايتك.,
+W135,web/src/i18n/strings.ts:aiNoticeStop,"You can stop messages at any time. Use ""Stop all contact"" in ""Your choices"" below.",يمكنك إيقاف الرسائل في أي وقت. يمكنك ذلك من خلال «أوقفوا كل تواصل معي» في قسم «اختياراتك» أدناه.,
+W136,web/src/i18n/strings.ts:dataHeading,How we use your data,كيف نتعامل مع بياناتك,
+W137,web/src/i18n/strings.ts:data[0],This is a demonstration. All the information here is synthetic. It is not about a real person.,هذا عرض تجريبي. كل المعلومات هنا اصطناعية. وليست عن شخص حقيقي.,
+W138,web/src/i18n/strings.ts:data[1],Software only prepares and sorts messages. It never decides anything about your care.,البرنامج الحاسوبي يُعِدّ الرسائل ويرتبها فقط. ولا يقرر شيئاً عن رعايتك.,
+W139,web/src/i18n/strings.ts:data[2],A person on your care team makes every decision about your care.,أحد أفراد فريق رعايتك هو من يتخذ كل قرار عن رعايتك.,
+W140,web/src/i18n/strings.ts:data[3],"We keep only what we need. What you write to us is kept apart from your care record, and it can be erased.",نحتفظ بما نحتاج إليه فقط. ما تكتبه لنا يُحفظ بعيداً عن سجل رعايتك، ويمكن مسحه.,
+W141,web/src/i18n/strings.ts:data[4],"Your care record lists steps, dates and roles. It does not hold names, phone numbers or free text.",يسرد سجل رعايتك الخطوات والتواريخ والأدوار. ولا يحتوي على أسماء أو أرقام هواتف أو نصوص حرة.,
+W142,web/src/i18n/strings.ts:data[5],"When your case is finished, you can ask for your personal data to be erased. Two supervisors must agree.",عند انتهاء حالة رعايتك، يمكنك طلب مسح بياناتك الشخصية. ويجب أن يوافق مشرفان.,
+W143,web/src/i18n/strings.ts:accessHeading,Who looked at my record,من اطلع على ملفي,
+W144,web/src/i18n/strings.ts:accessIntro,"Each time a member of staff opens your record, it is written here with their name, their role and the time.",في كل مرة يفتح أحد العاملين ملفك، يُكتب هنا اسمه ودوره والوقت.,
+W145,web/src/i18n/strings.ts:accessEmpty,Nobody on your care team has opened your record yet.,لم يفتح أحد من فريق رعايتك ملفك بعد.,
+W146,web/src/i18n/strings.ts:accessNote,"We list each person once every 15 minutes, even if they look more than once. Computer systems that keep time or send reminders are not listed.",نسجل كل شخص مرة واحدة كل ١٥ دقيقة حتى لو نظر أكثر من مرة. الأنظمة الحاسوبية التي تحسب الوقت أو ترسل التذكيرات لا تظهر هنا.,
+W147,web/src/i18n/strings.ts:accessLoadError,We could not load this list. Please try again.,لم نتمكن من تحميل هذه القائمة. يرجى المحاولة مرة أخرى.,
+W148,web/src/i18n/strings.ts:deviceHeading,On this phone,على هذا الهاتف,
+W149,web/src/i18n/strings.ts:deviceBody,"To work without internet, this phone keeps the last information it loaded. It stays on this phone only.",ليعمل التطبيق بلا إنترنت، يحتفظ هذا الهاتف بآخر معلومات حمّلها. وتبقى على هذا الهاتف فقط.,
+W150,web/src/i18n/strings.ts:deviceClear,Remove saved information from this phone,احذف المعلومات المحفوظة من هذا الهاتف,
+W151,web/src/i18n/strings.ts:deviceCleared,Removed. Open the link from your care team again to load your page.,تم الحذف. افتح الرابط الذي أرسله فريق رعايتك من جديد لتحميل صفحتك.,
+W152,web/src/i18n/strings.ts:loading,Loading...,جارٍ التحميل...,
+W153,web/src/i18n/strings.ts:loadError,We could not load your information. Please try again.,لم نتمكن من تحميل معلوماتك. يرجى المحاولة مرة أخرى.,
+W154,web/src/i18n/strings.ts:offline,You are offline. This is the last information we saved.,لا يوجد اتصال بالإنترنت. هذه آخر معلومات حفظناها.,
+W155,web/src/i18n/strings.ts:offlineAction,You are offline. You can read what is saved. You can send something when you are back online.,لا يوجد اتصال بالإنترنت. يمكنك قراءة المعلومات المحفوظة. يمكنك الإرسال عند عودة الاتصال.,
+T01,"api/app/ai/templates/{en,ar}.yaml:result_notification/sms","Your screening result is ready and your care team needs to talk with you about the next step. {owner_name} will call you, or you can reply to book a time. The next step is {next_step}.",نتيجة فحص الكشف المبكر جاهزة. يحتاج فريق رعايتك إلى التحدث معك عن الخطوة التالية، وهي {next_step}. سيصلك اتصال من {owner_name}، أو يمكنك الرد على هذه الرسالة لحجز موعد.,
+T02,"api/app/ai/templates/{en,ar}.yaml:result_notification/whatsapp","Hello. This is a message from your care team.
+
+Your screening result is ready and your care team needs to talk with you about the next step.
+
+The next step is {next_step}. Your care team will explain your result in person or by phone.
+
+{owner_name} will call you, or you can reply to book a time.","مرحباً، هذه رسالة من فريق رعايتك.
+
+نتيجة فحص الكشف المبكر جاهزة. يحتاج فريق رعايتك إلى التحدث معك عن الخطوة التالية.
+
+الخطوة التالية هي {next_step}. سيشرح لك فريق رعايتك نتيجتك وجهاً لوجه أو عبر الهاتف.
+
+سيصلك اتصال من {owner_name}، أو يمكنك الرد على هذه الرسالة لحجز موعد.",
+T03,"api/app/ai/templates/{en,ar}.yaml:result_notification/letter","Hello,
+
+We are writing about the screening test you did recently.
+
+Your screening result is ready and your care team needs to talk with you about the next step.
+
+The next step is {next_step}. Your care team will explain your result in person or by phone.
+
+{owner_name} will call you, or you can contact your care team to book a time.
+{owner_name} is the person in your care team who is responsible for your next step.
+
+Kind regards,
+Your care team","تحية طيبة،
+
+نكتب إليك بخصوص فحص الكشف المبكر الذي أجريته مؤخراً.
+
+نتيجة فحصك جاهزة. يحتاج فريق رعايتك إلى التحدث معك عن الخطوة التالية.
+
+الخطوة التالية هي {next_step}. سيشرح لك فريق رعايتك نتيجتك وجهاً لوجه أو عبر الهاتف.
+
+سيصلك اتصال من {owner_name}، أو يمكنك التواصل مع فريق رعايتك لحجز موعد.
+الشخص المسؤول عن خطوتك التالية في فريق رعايتك: {owner_name}.
+
+مع تحياتنا،
+فريق رعايتك",
+T04,"api/app/ai/templates/{en,ar}.yaml:reminder/sms","Reminder from your care team. Your screening result is ready and your care team still needs to talk with you about the next step. {owner_name} will call you, or you can reply to book a time. The next step is {next_step}.",تذكير من فريق رعايتك. نتيجة فحص الكشف المبكر جاهزة. لا يزال فريق رعايتك بحاجة إلى التحدث معك عن الخطوة التالية، وهي {next_step}. سيصلك اتصال من {owner_name}، أو يمكنك الرد على هذه الرسالة لحجز موعد.,
+T05,"api/app/ai/templates/{en,ar}.yaml:reminder/sms_with_date",Reminder from your care team. Your appointment for {next_step} is on {appointment_date}. Your care owner is {owner_name}. Reply to this message to change the time.,تذكير من فريق رعايتك. موعدك لإجراء {next_step} يوم {appointment_date}. الشخص المسؤول عن رعايتك: {owner_name}. يمكنك الرد على هذه الرسالة إذا أردت تغيير الموعد.,
+T06,"api/app/ai/templates/{en,ar}.yaml:reminder/whatsapp","Hello. This is a reminder from your care team.
+
+Your screening result is ready and your care team still needs to talk with you about the next step.
+
+The next step is {next_step}. {owner_name} will call you, or you can reply to book a time.","مرحباً، هذا تذكير من فريق رعايتك.
+
+نتيجة فحص الكشف المبكر جاهزة. لا يزال فريق رعايتك بحاجة إلى التحدث معك عن الخطوة التالية.
+
+الخطوة التالية هي {next_step}. سيصلك اتصال من {owner_name}، أو يمكنك الرد على هذه الرسالة لحجز موعد.",
+T07,"api/app/ai/templates/{en,ar}.yaml:reminder/whatsapp_with_date","Hello. This is a reminder from your care team.
+
+Your appointment for {next_step} is on {appointment_date}.
+
+Your care owner is {owner_name}. Reply to this message to change the time.","مرحباً، هذا تذكير من فريق رعايتك.
+
+موعدك لإجراء {next_step} يوم {appointment_date}.
+
+الشخص المسؤول عن رعايتك: {owner_name}. يمكنك الرد على هذه الرسالة إذا أردت تغيير الموعد.",
+T08,"api/app/ai/templates/{en,ar}.yaml:reminder/letter","Hello,
+
+This is a reminder from your care team.
+
+Your screening result is ready and your care team still needs to talk with you about the next step.
+The next step is {next_step}.
+
+{owner_name} will call you, or you can contact your care team to book a time.
+
+Kind regards,
+Your care team","تحية طيبة،
+
+هذا تذكير من فريق رعايتك.
+
+نتيجة فحص الكشف المبكر جاهزة. لا يزال فريق رعايتك بحاجة إلى التحدث معك عن الخطوة التالية.
+الخطوة التالية هي {next_step}.
+
+سيصلك اتصال من {owner_name}، أو يمكنك التواصل مع فريق رعايتك لحجز موعد.
+
+مع تحياتنا،
+فريق رعايتك",
+T09,"api/app/ai/templates/{en,ar}.yaml:reminder/letter_with_date","Hello,
+
+This is a reminder from your care team. Your appointment for {next_step} is on {appointment_date}.
+
+Your care owner is {owner_name}. Please contact your care team to change the time.
+
+Kind regards,
+Your care team","تحية طيبة،
+
+هذا تذكير من فريق رعايتك. موعدك لإجراء {next_step} يوم {appointment_date}.
+
+الشخص المسؤول عن رعايتك: {owner_name}. يرجى التواصل مع فريق رعايتك إذا أردت تغيير الموعد.
+
+مع تحياتنا،
+فريق رعايتك",
+T10,"api/app/ai/templates/{en,ar}.yaml:appointment_confirmation/sms",Your appointment for {next_step} is on {appointment_date}. Your care team will contact you with the details. Your care owner is {owner_name}.,تم تأكيد موعدك لإجراء {next_step} يوم {appointment_date}. سيتواصل معك فريق رعايتك لإبلاغك بالتفاصيل. الشخص المسؤول عن رعايتك: {owner_name}.,
+T11,"api/app/ai/templates/{en,ar}.yaml:appointment_confirmation/whatsapp","Hello. This is a message from your care team.
+
+Your appointment for {next_step} is on {appointment_date}.
+
+Your care team will contact you with the details. Your care owner is {owner_name}.","مرحباً، هذه رسالة من فريق رعايتك.
+
+تم تأكيد موعدك لإجراء {next_step} يوم {appointment_date}.
+
+سيتواصل معك فريق رعايتك لإبلاغك بالتفاصيل. الشخص المسؤول عن رعايتك: {owner_name}.",
+T12,"api/app/ai/templates/{en,ar}.yaml:appointment_confirmation/letter","Hello,
+
+We are writing to confirm your appointment for {next_step}. It is on {appointment_date}.
+
+Your care team will contact you with the details.
+
+Your care owner is {owner_name}.
+
+Kind regards,
+Your care team","تحية طيبة،
+
+نكتب إليك لتأكيد موعدك لإجراء {next_step}. الموعد يوم {appointment_date}.
+
+سيتواصل معك فريق رعايتك لإبلاغك بالتفاصيل.
+
+الشخص المسؤول عن رعايتك: {owner_name}.
+
+مع تحياتنا،
+فريق رعايتك",
+T13,"api/app/ai/templates/{en,ar}.yaml:escalation_notice/sms","Your screening result is ready. We want to make sure your next step is not delayed. A senior member of your care team has been told. The next step is {next_step}. {owner_name} will call you, or you can reply to book a time.",نتيجة فحص الكشف المبكر جاهزة. نريد التأكد من ألا تتأخر خطوتك التالية. تم إبلاغ أحد كبار أعضاء فريق رعايتك. الخطوة التالية هي {next_step}. سيصلك اتصال من {owner_name}، أو يمكنك الرد على هذه الرسالة لحجز موعد.,
+T14,"api/app/ai/templates/{en,ar}.yaml:escalation_notice/whatsapp","Hello. This is a message from your care team.
+
+Your screening result is ready. We want to make sure your next step is not delayed. A senior member of your care team has been told.
+
+The next step is {next_step}. {owner_name} will call you, or you can reply to book a time.","مرحباً، هذه رسالة من فريق رعايتك.
+
+نتيجة فحص الكشف المبكر جاهزة. نريد التأكد من ألا تتأخر خطوتك التالية. تم إبلاغ أحد كبار أعضاء فريق رعايتك.
+
+الخطوة التالية هي {next_step}. سيصلك اتصال من {owner_name}، أو يمكنك الرد على هذه الرسالة لحجز موعد.",
+T15,"api/app/ai/templates/{en,ar}.yaml:escalation_notice/letter","Hello,
+
+Your screening result is ready. We want to make sure your next step is not delayed. A senior member of your care team has been told.
+
+The next step is {next_step}. {owner_name} will call you, or you can contact your care team to book a time.
+
+Kind regards,
+Your care team","تحية طيبة،
+
+نتيجة فحص الكشف المبكر جاهزة. نريد التأكد من ألا تتأخر خطوتك التالية. تم إبلاغ أحد كبار أعضاء فريق رعايتك.
+
+الخطوة التالية هي {next_step}. سيصلك اتصال من {owner_name}، أو يمكنك التواصل مع فريق رعايتك لحجز موعد.
+
+مع تحياتنا،
+فريق رعايتك",
+T16,"api/app/ai/templates/{en,ar}.yaml:callback_ack/sms",Thank you for telling us you need help to understand. A person from your care team will call you to explain. The next step is {next_step}. Your care owner is {owner_name}.,شكراً لإخبارنا أنك بحاجة إلى مساعدة لفهم الرسالة. سيتصل بك أحد أفراد فريق رعايتك ليشرح لك. الخطوة التالية هي {next_step}. الشخص المسؤول عن رعايتك: {owner_name}.,
+T17,"api/app/ai/templates/{en,ar}.yaml:callback_ack/whatsapp","Hello. Thank you for telling us you need help to understand.
+
+A person from your care team will call you to explain. The next step is {next_step}.
+
+Your care owner is {owner_name}.","مرحباً، شكراً لإخبارنا أنك بحاجة إلى مساعدة لفهم الرسالة.
+
+سيتصل بك أحد أفراد فريق رعايتك ليشرح لك. الخطوة التالية هي {next_step}.
+
+الشخص المسؤول عن رعايتك: {owner_name}.",
+T18,"api/app/ai/templates/{en,ar}.yaml:callback_ack/letter","Hello,
+
+Thank you for telling us you need help to understand our message.
+
+A person from your care team will call you to explain. The next step is {next_step}.
+
+Your care owner is {owner_name}.
+
+Kind regards,
+Your care team","تحية طيبة،
+
+شكراً لإخبارنا أنك بحاجة إلى مساعدة لفهم رسالتنا.
+
+سيتصل بك أحد أفراد فريق رعايتك ليشرح لك. الخطوة التالية هي {next_step}.
+
+الشخص المسؤول عن رعايتك: {owner_name}.
+
+مع تحياتنا،
+فريق رعايتك",
+T19,"api/app/ai/templates/{en,ar}.yaml:refusal_acknowledgement/sms",Thank you for talking with your care team. Your decision about the next step ({next_step}) has been recorded and your own doctor has been told. You can change your mind at any time: contact {owner_name}.,شكراً لحديثك مع فريق رعايتك. تم تسجيل قرارك بشأن الخطوة التالية ({next_step}) وتم إبلاغ طبيبك. يمكنك تغيير رأيك في أي وقت. الشخص المسؤول عن رعايتك: {owner_name}.,
+T20,"api/app/ai/templates/{en,ar}.yaml:refusal_acknowledgement/whatsapp","Hello. This is a message from your care team.
+
+Thank you for talking with us. Your decision about the next step ({next_step}) has been recorded, and your own doctor has been told.
+
+You can change your mind at any time. Your care owner is {owner_name}.","مرحباً، شكراً لحديثك مع فريق رعايتك.
+
+تم تسجيل قرارك بشأن الخطوة التالية ({next_step}) وتم إبلاغ طبيبك.
+
+يمكنك تغيير رأيك في أي وقت. الشخص المسؤول عن رعايتك: {owner_name}.",
+T21,"api/app/ai/templates/{en,ar}.yaml:refusal_acknowledgement/letter","Hello,
+
+Thank you for talking with your care team.
+
+Your decision about the next step ({next_step}) has been recorded, and your own doctor has been told.
+
+You can change your mind at any time. Please contact your care team and ask for {owner_name}.
+
+Kind regards,
+Your care team","تحية طيبة،
+
+شكراً لحديثك مع فريق رعايتك.
+
+تم تسجيل قرارك بشأن الخطوة التالية ({next_step}) وتم إبلاغ طبيبك.
+
+يمكنك تغيير رأيك في أي وقت. يرجى التواصل مع فريق رعايتك. الشخص المسؤول عن رعايتك: {owner_name}.
+
+مع تحياتنا،
+فريق رعايتك",
+D01,"web/src/api/fixtures.ts, web/src/api/mockAdapter.ts:web/src/api/mockAdapter.ts","Your screening result is ready and your care team needs to talk with you about the next step. Your care team will call you, or you can reply to book a time. The next step is a camera test called a colonoscopy.",نتيجة فحصك جاهزة، ويحتاج فريق رعايتك إلى التحدث معك عن الخطوة التالية، وهي فحص بالكاميرا اسمه تنظير القولون. سيتصل بك فريق رعايتك، أو يمكنك الرد على هذه الرسالة لحجز موعد.,
+D02,"web/src/api/fixtures.ts, web/src/api/mockAdapter.ts:web/src/api/mockAdapter.ts","Reminder from your care team. Your screening result is ready and your care team still needs to talk with you about the next step. Your care team will call you, or you can reply to book a time.",تذكير من فريق رعايتك. نتيجة فحصك جاهزة، ولا يزال فريق رعايتك بحاجة إلى التحدث معك عن الخطوة التالية. سيتصل بك فريق رعايتك، أو يمكنك الرد على هذه الرسالة لحجز موعد.,
+D03,"web/src/api/fixtures.ts, web/src/api/mockAdapter.ts:web/src/api/mockAdapter.ts",Your appointment is booked. Your care team will contact you with the details. Please call us if you cannot come.,تم تأكيد موعدك. سيتواصل معك فريق رعايتك بالتفاصيل. يرجى الاتصال بنا إذا لم تتمكن من الحضور.,
+A01,config/agency.yaml:call_script[0],"Hello, I am calling from your screening programme care team.",مرحباً، أتصل بك من فريق رعايتك في برنامج الفحص.,
+A02,config/agency.yaml:call_script[1],Your screening result is ready and your care team needs to talk with you about the next step.,نتيجة فحصك جاهزة، ويحتاج فريق رعايتك إلى التحدث معك عن الخطوة التالية.,
+A03,config/agency.yaml:call_script[2],The next step is a camera test. Can we find a time that suits you?,الخطوة التالية هي فحص بالكاميرا. هل يمكننا اختيار موعد يناسبك؟,
+A04,config/agency.yaml:call_script[3],"If you would rather speak with a clinician, I can arrange a call back.",إذا كنت تفضل التحدث مع طبيب، يمكنني ترتيب اتصال لاحق.,
+P01,config/pathways/cervical_hpv/positive_cancer_screen,Positive cancer screening result,نتيجة فحص إيجابية للكشف عن السرطان,
+P02,config/pathways/chronic_conditions/bp_very_high,Very high blood pressure,ارتفاع شديد في ضغط الدم,
+P03,config/pathways/chronic_conditions/bp_high,High blood pressure,ارتفاع في ضغط الدم,
+P04,config/pathways/chronic_conditions/bp_raised,Raised blood pressure,ارتفاع طفيف في ضغط الدم,
+P05,config/pathways/chronic_conditions/hba1c_high,High HbA1c,ارتفاع في السكر التراكمي,
+P06,config/pathways/chronic_conditions/hba1c_raised,Mildly raised HbA1c,ارتفاع طفيف في السكر التراكمي,
+P07,config/pathways/chronic_conditions/fasting_glucose_high,High fasting glucose,ارتفاع في سكر الدم الصائم,
+P08,config/pathways/chronic_conditions/fasting_glucose_raised,Raised fasting glucose,ارتفاع طفيف في سكر الدم الصائم,
+P09,config/pathways/chronic_conditions/ldl_raised,Raised LDL cholesterol,ارتفاع في الكوليسترول الضار,
+P10,config/pathways/chronic_conditions/bmi_raised,Raised body mass index,ارتفاع في مؤشر كتلة الجسم,
+P11,api/app/priority.py:describe (no-rule default),No priority rule matched the result; the pathway's default tier applies,لم تنطبق أي قاعدة أولوية على النتيجة؛ يُطبَّق المستوى الافتراضي للمسار,
