@@ -38,7 +38,7 @@ test("coordinator escalates and requests a draft; the owner approves it; the own
   // The coordinator can request a draft but not approve it.
   await page.getByTestId("request-draft").click();
   const draft = page.getByTestId(/^draft-d-mock-/);
-  await expect(draft).toContainText("AI draft");
+  await expect(draft).toContainText("Template message");
   await expect(draft.getByRole("button", { name: "Approve draft" })).toBeDisabled();
 
   // The case owner approves; the backend sends only after the approval (message_approved, then message_sent).

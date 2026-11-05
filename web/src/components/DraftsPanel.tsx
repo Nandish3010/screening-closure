@@ -75,17 +75,40 @@ export function abstentionText(reason: string): string {
   return `${label[code] ?? code.replace(/_/g, " ")}${detail ? ` (${detail.replace(/[:,]/g, " ").replace(/_/g, " ").trim()})` : ""}`;
 }
 
+/** True when the text came from a model (a recorded or live Claude output that passed the checks), not from a reviewed template. */
+export const isModelDraft = (d: Pick<DraftView, "provider" | "fallback_used">): boolean => d.provider !== "template" && !d.fallback_used;
+
+/**
+ * The provenance sentence under every draft: what wrote it, and who approves (or approved) it before anything is sent.
+ * `ownerName` is the case owner; once a draft is decided, the person who decided it is named instead.
+ */
+export function provenanceLine(
+  d: Pick<DraftView, "provider" | "model_id" | "fallback_used" | "status" | "approved_by" | "rejected_by">,
+  ownerName?: string | null,
+): string {
+  const author = isModelDraft(d)
+    ? `Drafted by AI (model ${d.model_id || "not recorded"})`
+    : d.fallback_used
+      ? "Template message (the AI could not draft this one)"
+      : "Template message (reviewed wording, no AI model)";
+  if (d.status === "rejected") return `${author}, rejected by ${actorName(d.rejected_by ?? "") || d.rejected_by || "the case owner"}. Nothing was sent.`;
+  const who = d.status === "approved" ? actorName(d.approved_by ?? "") || d.approved_by : ownerName;
+  return `${author}, approved by ${who || "the case owner"} before sending.`;
+}
+
 /**
  * AI drafts with provenance. The model drafts; the case owner approves or rejects; nothing is "sent" before
  * approval. A coordinator can request a draft but not decide on it, and the panel says why.
  */
 export function DraftsPanel({
-  drafts, outcomes = {}, defaultLanguage = "en", canRequest, canDecide, busy, onRequest, onApprove, onReject, requestWhy, decideWhy, approveWhy, listWhy,
+  drafts, outcomes = {}, defaultLanguage = "en", ownerName = null, canRequest, canDecide, busy, onRequest, onApprove, onReject, requestWhy, decideWhy, approveWhy, listWhy,
 }: {
   drafts: DraftView[];
   /** What the approve call answered this session (sent or blocked and why): the draft list alone cannot say. */
   outcomes?: Record<string, DraftApproval>;
   defaultLanguage?: Lang;
+  /** The case owner, who approves every draft before it is sent; named in each draft's provenance line. */
+  ownerName?: string | null;
   canRequest: boolean;
   canDecide: boolean;
   busy?: boolean;
@@ -166,7 +189,7 @@ export function DraftsPanel({
           return (
             <li key={d.draft_id} data-testid={`draft-${d.draft_id}`}>
               <p className="prov">
-                <span className="chip chip-ai">AI draft</span>{" "}
+                {isModelDraft(d) ? <span className="chip chip-ai">AI draft</span> : <span className="chip" data-testid={`template-${d.draft_id}`}>Template</span>}{" "}
                 Provider: <strong data-testid={`provider-${d.draft_id}`}>{d.provider}</strong>
                 {d.fallback_used && <> · <span className="chip" data-testid={`fallback-${d.draft_id}`}>template fallback used</span></>}
                 {d.purpose || d.channel ? <> · {PURPOSE_LABEL[d.purpose as DraftPurpose] ?? d.purpose}, {CHANNEL_LABEL[d.channel as DraftChannel] ?? d.channel}, {LANG_LABEL[d.language]}</> : null}
@@ -177,6 +200,10 @@ export function DraftsPanel({
                   ? <code className="mono" title={d.prompt_hash} data-testid={`hash-${d.draft_id}`}>{d.prompt_hash.slice(0, 12)}</code>
                   : "unavailable"}
                 {" "}· generated {fmtDateTime(d.created_at)} by <ActorTag actor={d.created_by} />
+              </p>
+              <p className="prov" data-testid={`provenance-${d.draft_id}`}>
+                {provenanceLine(d, ownerName)}
+                {d.language === "ar" && <> <span className="chip" data-testid={`ar-review-${d.draft_id}`}>Arabic wording pending native-speaker review (H2)</span></>}
               </p>
               {d.abstention_reason && (
                 <p className="banner banner-warn" data-testid={`abstention-${d.draft_id}`} title={d.abstention_reason}>

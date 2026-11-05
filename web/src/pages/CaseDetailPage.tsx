@@ -702,6 +702,7 @@ export function CaseDetailPage() {
             canRequest={!closed && !frozen && can(role, "draft") && !draftsDenied && !scopeWhy}
             listWhy={draftsDenied ? DRAFTS_OWNER_ONLY : null}
             defaultLanguage={patientLang(events) ?? "en"}
+            ownerName={detail.owner ?? null}
             canDecide={can(role, "decideDraft") && !scopeWhy}
             requestWhy={closedWhy ?? frozenWhy ?? why("draft", "coordinator or owner", true)}
             decideWhy={why("decideDraft", "owner, specialist or clinician (the case owner)", true)}
