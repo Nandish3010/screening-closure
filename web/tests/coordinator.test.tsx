@@ -180,7 +180,7 @@ describe("Case detail: vocabulary and markers", () => {
   it("frozen consent also blocks recording a patient contact", async () => {
     // Case 14 is at patient_contacted, so exercise the owner_accepted button via a case that is frozen there.
     const api = (await import("../src/api/mockAdapter")).createMockAdapter(null);
-    await api.postEvent(cid(3), { type: "consent_updated", actor: "patient:c3", payload: { withdrawn: true } });
+    await api.postEvent(cid(3), { type: "consent_updated", actor: "patient:c3", payload: { withdrawn: true, source: { channel: "patient_app" } } });
     renderWithApp(<CaseDetailPage />, { api, route: `/coordinator/${cid(3)}`, path: "/coordinator/:caseId" });
     const btn = await screen.findByTestId("contact-patient");
     expect(btn).toBeDisabled();

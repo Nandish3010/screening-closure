@@ -1195,7 +1195,8 @@ def _consent_after(model: CaseModel, event: Event, was_frozen: bool) -> CaseMode
     consent["withdrawn"] = model.state == CONSENT_WITHDRAWN  # the state is the authority
     history = (
         *model.consent_history,
-        {"at": at.isoformat(), "actor": event.actor, "changes": changes},
+        {"at": at.isoformat(), "actor": event.actor, "changes": changes,
+         **({"source": dict(event.payload["source"])} if isinstance(event.payload.get("source"), dict) else {})},
     )
     out = replace(model, consent=consent, consent_history=history)
     if was_frozen and not consent["withdrawn"]:  # consent restored: the review flag is moot

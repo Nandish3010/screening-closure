@@ -55,24 +55,33 @@ describe("role cards on the hosted demo's sign-in page", () => {
 
 describe("the five-step tour", () => {
   it("is the challenge owner's loop, deep-linked into the real screens, with try-it prompts", () => {
-    expect(CHALLENGE_STEPS.map((s) => s.id)).toEqual(["record", "prioritise", "refer", "remind", "outcome"]);
+    expect(CHALLENGE_STEPS.map((s) => s.id)).toEqual(["record", "prioritise", "refer", "remind", "outcome", "safety", "privacy"]);
     expect(TODAY_ROUTE).toBe("/coordinator/today");
-    expect(CHALLENGE_STEPS[0].route([], null)).toBe(TODAY_ROUTE);
-    expect(CHALLENGE_STEPS[3].also?.map((a) => a.to)).toEqual(["/patient", PRIVACY_ROUTE]);
+    expect(CHALLENGE_STEPS[0].route([], null)).toBe(TODAY_ROUTE); // no fresh case known: the screen, not a case
+    expect(CHALLENGE_STEPS[3].also?.map((a) => a.to)).toEqual(["/patient"]);
+    expect(CHALLENGE_STEPS[6].also?.map((a) => a.to)).toEqual([PRIVACY_ROUTE]);
     expect(CHALLENGE_STEPS[4].route([], null)).toBe("/dashboard");
     expect(CHALLENGE_STEPS[4].target).toContain("funnel-card");
-    for (const s of CHALLENGE_STEPS) expect((s.tryIt ?? []).length).toBeGreaterThan(0);
-    expect(CHALLENGE_STEPS[3].tryIt!.join(" ")).toMatch(/15/);
-    expect(CHALLENGE_STEPS[3].tryIt!.join(" ")).toMatch(/safety net flag/);
+    for (const s of CHALLENGE_STEPS) {
+      expect((s.tryIt ?? []).length).toBeGreaterThan(0);
+      expect(s.claim, s.id).toBeTruthy(); // one line the step proves
+      expect((s.lookFor ?? []).length, s.id).toBeGreaterThan(0); // and what to look for on the destination
+    }
+    expect(CHALLENGE_STEPS[5].target).toContain("missed-followup");
+    expect(CHALLENGE_STEPS[5].lookFor!.join(" ")).toMatch(/accept/i);
+    // about five minutes in all
+    const seconds = CHALLENGE_STEPS.reduce((n, s) => n + (s.seconds ?? 0), 0);
+    expect(seconds).toBeGreaterThanOrEqual(240);
+    expect(seconds).toBeLessThanOrEqual(420);
   });
 
-  it("opens on the five steps in the demo deployment, offers the role switch, and can swap to the story", async () => {
+  it("opens on the guided steps in the demo deployment, offers the role switch, and can swap to the story", async () => {
     const base = createMockAdapter(null);
     const api = { ...base, health: async () => ({ status: "ok", sim_time: "2026-01-05T08:00:00Z", demo: { simulated_clock: true, deployment: true } }) } as ApiClient;
     render(<MemoryRouter initialEntries={["/coordinator"]}><AppProvider api={api} initialRole="coordinator"><App /></AppProvider></MemoryRouter>);
     await screen.findByTestId("demo-clock-banner");
     fireEvent.click(screen.getByTestId("judge-tour-button"));
-    expect(await screen.findByTestId("tour-progress")).toHaveTextContent("Step 1 of 5");
+    expect(await screen.findByTestId("tour-progress")).toHaveTextContent("Step 1 of 7");
     expect(screen.getByTestId("tour-try")).toHaveTextContent("Try it");
     fireEvent.click(screen.getByTestId("tour-next")); fireEvent.click(screen.getByTestId("tour-next"));
     expect(screen.getByTestId("tour-role-hint")).toHaveTextContent("clinician"); // step 3 is clearest as the clinician
@@ -84,8 +93,8 @@ describe("the five-step tour", () => {
 });
 
 describe("outside the demo", () => {
-  it("the http adapter has no reset: Reset demo is an operator action (deploy/gcp/demo-reset.sh), not a web action", () => {
-    expect(readFileSync("src/api/httpAdapter.ts", "utf8")).not.toMatch(/resetDemo|demo-reset|\/clock\/reset/);
+  it("the http adapter never rewinds the clock or runs the operator script: the web only REQUESTS a reset (ADR-058), the host acts", () => {
+    expect(readFileSync("src/api/httpAdapter.ts", "utf8")).not.toMatch(/resetDemo|demo-reset\.sh|\/clock\/reset/);
   });
 
   it("shows no banner and no demo reset in the header", async () => {

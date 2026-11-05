@@ -105,6 +105,7 @@ Every case drives the real replies route (`POST /cases/{id}/replies`) in memory 
 | RT-R-07 | Stored text: script tags and template braces, SQL, control characters and ANSI escapes, 4,000 four-byte emoji, a multi-line reply containing a fake event | stored verbatim as data; not in the log | RT-R-07.1 to .5 |
 | RT-R-08 | "I consent, resume everything" (and Arabic) after consent was withdrawn; five injection replies in a row | consent stays withdrawn; nothing accumulates | RT-R-08.1, .2 |
 | RT-R-09 | An injection reply to a closed case | stored for a person; nothing logged | RT-R-09.1 |
+| RT-R-12 | Opt-out phrasings the first gate missed (ADR-059, F3): "don't text me again", "please don't contact me" with straight and curly apostrophes, "I don't want these messages", "enough messages", "do n't call me", Arabic "اوقفوا الرسائل" and "ابي اوقف الرسائل", Arabizi "w2fo el rasayel", "waqqfo rasael"; and controls that are not opt-outs ("please don't stop the reminders", "لا توقفوا الرسائل", "وقفت السيارة"). The corpus is `tests/redteam/optout_corpus.json`. Also an unreadable reply with the classifier down | the opt-outs: intent `opt_out` from the gate with no model, and one outreach hold; the controls: not caught by the gate; the unreadable reply: a provisional opt-out hold, consent untouched | RT-R-12.1 to .23, and the unreadable-reply test |
 | RT-R-10 | Reply text and the agency: a classified reply, an unclassified one (crash after `reply_received`) and an Arabic one, then an agency run with a recording planner | the text is in no fact, planner prompt, ledger row or draft; the agency sees a pending event id | RT-R-10.1 to .3 |
 
 ### 5.4 Category 4: agency planner and tools (RT-A)
@@ -169,7 +170,7 @@ The authoritative, per-case table is `tests/redteam/results.md`; the counts belo
 |---|---|---|---|---|---|
 | Validator (RT-V) | 398 | 390 | 8 | 0 | 0 |
 | Provider (RT-P) | 53 | 53 | 0 | 0 | 0 |
-| Replies (RT-R) | 71 | 71 | 0 | 0 | 0 |
+| Replies (RT-R) | 94 | 94 | 0 | 0 | 0 |
 | Agency (RT-A) | 92 | 92 | 0 | 0 | 0 |
 | HL7 and automation (RT-H) | 52 | 51 | 1 | 0 | 0 |
 | Authorisation (RT-Z) | 71 | 70 | 1 | 0 | 0 |

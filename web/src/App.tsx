@@ -3,16 +3,18 @@ import { Header } from "./components/Header";
 import { CoordinatorPage } from "./pages/CoordinatorPage";
 import { TodayPage } from "./pages/TodayPage";
 import { CaseDetailPage } from "./pages/CaseDetailPage";
-import { AgencyPage } from "./pages/AgencyPage";
-import { JudgePage } from "./pages/JudgePage";
-import { SafetyPage } from "./pages/SafetyPage";
-import { IntegrationsPage } from "./pages/IntegrationsPage";
-import { PilotValuePage } from "./pages/PilotValuePage";
+const AgencyPage = lazy(() => import("./pages/AgencyPage").then((m) => ({ default: m.AgencyPage })));
+const JudgePage = lazy(() => import("./pages/JudgePage").then((m) => ({ default: m.JudgePage })));
+const SafetyPage = lazy(() => import("./pages/SafetyPage").then((m) => ({ default: m.SafetyPage })));
+const IntegrationsPage = lazy(() => import("./pages/IntegrationsPage").then((m) => ({ default: m.IntegrationsPage })));
+const PilotValuePage = lazy(() => import("./pages/PilotValuePage").then((m) => ({ default: m.PilotValuePage })));
 import { TourProvider } from "./judge/JudgeTour";
-import { DashboardPage } from "./pages/DashboardPage";
-import { PatientPage, PatientHome } from "./pages/PatientPage";
+const DashboardPage = lazy(() => import("./pages/DashboardPage").then((m) => ({ default: m.DashboardPage })));
+import { StartHerePage } from "./pages/StartHerePage";
+const PatientPage = lazy(() => import("./pages/PatientPage").then((m) => ({ default: m.PatientPage })));
+const PatientHome = lazy(() => import("./pages/PatientPage").then((m) => ({ default: m.PatientHome })));
 import { DEMO_PATIENT_CASE_ID } from "./api/fixtures";
-import { useSyncExternalStore } from "react";
+import { Suspense, lazy, useEffect, useSyncExternalStore } from "react";
 import { useApp } from "./app/AppContext";
 import { DEMO_USERS, JUDGE_ROLES } from "./api/identities";
 import { DemoBanner } from "./components/DemoBanner";
@@ -95,8 +97,27 @@ function Landing() {
 
 /** The coordinator's and the supervisor's landing page is Today (C14); everyone else sees the entry cards. */
 function Home() {
-  const { role } = useApp();
+  const { role, demoDeployment, healthKnown } = useApp();
+  // ADR-058: on the hosted demo the first screen after sign-in is "Start here" (staff roles; the patient's first screen is their app).
+  if (!healthKnown) return <main className="container"><p role="status">Loading...</p></main>;
+  if (demoDeployment) return <Navigate to={role === "patient" ? "/patient" : "/start"} replace />;
   return role === "coordinator" || role === "supervisor" ? <Navigate to="/coordinator/today" replace /> : <Landing />;
+}
+
+/** Keyboard access to horizontally scrollable tables (axe: scrollable-region-focusable): every `.jp-tablewrap` becomes a focusable, labelled region. */
+function ScrollRegions() {
+  useEffect(() => {
+    const fix = () => document.querySelectorAll<HTMLElement>(".jp-tablewrap:not([tabindex])").forEach((el) => {
+      el.tabIndex = 0;
+      el.setAttribute("role", "region");
+      if (!el.hasAttribute("aria-label")) el.setAttribute("aria-label", "Table (scrolls sideways on a narrow screen)");
+    });
+    fix();
+    const mo = new MutationObserver(fix);
+    mo.observe(document.body, { childList: true, subtree: true });
+    return () => mo.disconnect();
+  }, []);
+  return null;
 }
 
 export default function App({ signInError = null }: { signInError?: string | null }) {
@@ -108,11 +129,14 @@ export default function App({ signInError = null }: { signInError?: string | nul
   if (api.oidc && !signedIn) return <SignInPage error={signInError} />;
   return (
     <TourProvider>
+      <ScrollRegions />
       <a className="skip-link" href="#main">Skip to content</a>
       <Header />
       <div id="main">
+        <Suspense fallback={<main className="container"><p role="status">Loading this page...</p></main>}>
         <Routes>
           <Route path="/" element={<Home />} />
+          <Route path="/start" element={<StartHerePage />} />
           <Route path="/coordinator" element={<CoordinatorPage />} />
           <Route path="/coordinator/today" element={<TodayPage />} />
           <Route path="/coordinator/:caseId" element={<CaseDetailPage />} />
@@ -126,6 +150,7 @@ export default function App({ signInError = null }: { signInError?: string | nul
           <Route path="/patient/:caseId" element={<PatientPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
+        </Suspense>
       </div>
     </TourProvider>
   );

@@ -107,7 +107,8 @@ describe("Integrations page", () => {
     expect(screen.getByText(/mutual TLS|client certificate/i, { selector: "td" })).toBeInTheDocument();
     expect(screen.getByRole("rowheader", { name: "FHIR evidence lookup" })).toBeInTheDocument();
     const pilot = screen.getByTestId("integrations-pilot-work");
-    expect(pilot).toHaveTextContent(/There is no interface to Sahatna of any kind/);
+    expect(pilot).toHaveTextContent(/There is no connection to Sahatna/);
+    expect(pilot).toHaveTextContent(/shape we made up/);
     expect(pilot).toHaveTextContent(/No real message has ever been sent/);
   });
 
@@ -195,7 +196,7 @@ describe("navigation and the judge page", () => {
     for (const [name, href] of [["AI and safety", "/safety"], ["Integrations", "/integrations"], ["Pilot value", "/pilot-value"]]) {
       expect(within(nav).getByRole("link", { name })).toHaveAttribute("href", href);
     }
-    const more = screen.getByTestId("judge-more-pages");
+    const more = await screen.findByTestId("judge-more-pages");
     expect(within(more).getAllByRole("link").map((a) => a.getAttribute("href"))).toEqual(["/safety", "/integrations", "/pilot-value"]);
   });
 

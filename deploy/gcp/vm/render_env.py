@@ -95,6 +95,7 @@ def build_files(host: str, secrets: dict[str, str], mode: str = "production", de
         # The narrow, explicit demo gate: BOTH flags, and the API refuses to start with one alone or with another clock mode.
         api["DEMO_SIMULATED_CLOCK"] = "1"
         api["DEMO_DEPLOYMENT"] = "1"
+        api["DEMO_AUTO_RESET_HOURS"] = "6"  # informational: the web's "next scheduled reset" line (the timer is deploy/gcp/vm/sc-demo-reset-scheduled.timer)
     return {
         "compose.env": compose,
         "api.env": api,

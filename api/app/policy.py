@@ -44,9 +44,11 @@ ROUTE_POLICY: dict[tuple[str, str], object] = {
     ("POST", "/hl7"): HL7,
     # Staff see every case; a patient sees only their own (filtered in the handler, A9).
     ("GET", "/cases"): ALL_USERS,
-    # The audit view of a case: same access as the case itself (patients: their own only).
-    ("GET", "/cases/{case_id}/timeline"): ALL_USERS,
-    # Patients may read their own case only (checked in the handler).
+    # The audit view of a case: same access as the case itself (patients: their own only; clinicians: need to know, see
+    # `can_view`), and not the lab, whose whole need is the minimal projection of the case page (ADR-059, F5).
+    ("GET", "/cases/{case_id}/timeline"): ALL_USERS - {LAB},
+    # Patients may read their own case only (checked in the handler); a clinician only a case they need to know (`can_view`);
+    # the lab gets a minimal projection (state, result reference, acknowledgement time) and nothing else (ADR-059, F5).
     ("GET", "/cases/{case_id}"): ALL_USERS,
     # The notification log of a case: owners (of that case), coordinators, supervisors (A7).
     ("GET", "/cases/{case_id}/notifications"): frozenset({PCO, SPEC, COORD, SUPER}),
@@ -65,6 +67,12 @@ ROUTE_POLICY: dict[tuple[str, str], object] = {
     ("GET", "/metrics/funnel"): frozenset({COORD, SUPER}),
     # The integration feed (judge Integrations page): the last few HL7, FHIR and notification events, metadata only.
     ("GET", "/integrations/feed"): frozenset({COORD, SUPER}),
+    # The MOCK Malaffi result replay and Sahatna booking callback (ADR-057): a message of our own adapter's shape is built in the
+    # API and applied by the HL7 handler, as `system:hl7`. Coordinator and supervisor; the routes exist only on a development or a
+    # declared demo deployment (app.mock_integrations.enabled) and answer 404 anywhere else.
+    ("GET", "/integrations/mock"): frozenset({COORD, SUPER}),
+    ("POST", "/integrations/mock/malaffi/replay"): frozenset({COORD, SUPER}),
+    ("POST", "/integrations/mock/sahatna/booking-callback"): frozenset({COORD, SUPER}),
     # Record the confirmatory colonoscopy as FHIR evidence (E8): the case's owner (checked in the handler).
     ("POST", "/cases/{case_id}/confirmatory-result"): frozenset({PCO, SPEC}),
     # Demo clock: supervisor only. The router is registered only when APP_ENV=dev (app.main); outside dev
@@ -72,6 +80,11 @@ ROUTE_POLICY: dict[tuple[str, str], object] = {
     # DEMO_DEPLOYMENT, app.auth.demo_clock_active) registers /clock/advance only.
     ("POST", "/clock/advance"): frozenset({SUPER}),
     ("POST", "/clock/reset"): frozenset({SUPER}),
+    # The hosted demo's judge-experience routes (ADR-058), registered only under app.auth.demo_controls_active(): the guided path's
+    # fresh cases (any signed-in role), and the two controls that move shared demo state (supervisor only, like /clock/advance).
+    ("GET", "/demo/guide"): ALL_USERS,
+    ("POST", "/demo/reset"): frozenset({SUPER}),
+    ("POST", "/demo/missed-followup"): frozenset({SUPER}),
     # The scheduler service's periodic sweep and its heartbeat.
     ("POST", "/scheduler/sweep"): SCHEDULER,
     ("POST", "/scheduler/heartbeat"): SCHEDULER,
@@ -293,6 +306,34 @@ def owner_guard(identity: Identity, event_type: str):
         authorize_owner_scope(identity, event_type, model)
 
     return guard
+
+
+def can_view(identity: Identity, model, events=()) -> bool:
+    """Need-to-know read of a case for a clinician (ADR-059, F5). Coordinators and supervisors work every case and read all of
+    them; a patient reads their own (`authorize_case_access`); the lab has its own minimal projection. A primary_care_owner or
+    specialist_owner reads a case when they own it, when nobody owns it yet (they may take it), when a referral of it is
+    waiting for their provider or was requested by them, or when they have acted on it (the person who handed it off, the
+    one who counselled). `events` is the case's log, read only when the cheaper tests fail."""
+    if identity.role not in OWNER_SCOPED:
+        return True
+    actor = identity.actor
+    if model.owner is None or model.owner == actor:
+        return True
+    pending = model.pending_handoff
+    if pending is not None and (pending.get("to_provider") == identity.effective_provider
+                                or actor in (pending.get("requested_by"), pending.get("from_owner"))):
+        return True
+    return any(e.actor == actor for e in events)
+
+
+def authorize_view(identity: Identity, model, events=()) -> None:
+    """403 unless `can_view`: the same answer `/fhir`, `/notifications` and `/agency` give a clinician for a case that is not theirs."""
+    if not can_view(identity, model, events):
+        raise HTTPException(
+            403,
+            f"{identity.role} {identity.name!r} may only read cases they own, have acted on, or may take "
+            f"(this case's owner is {model.owner or 'not yet assigned'})",
+        )
 
 
 def authorize_owner_scope(identity: Identity, event_type: str, model) -> None:

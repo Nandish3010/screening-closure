@@ -44,7 +44,7 @@ def stored(case_id):
 def test_the_actor_is_role_and_an_opaque_id_never_the_name():
     cid = new_case()
     r = post(cid, "acknowledge", H("lab", MARKER))
-    actor = r.json()["events"][-1]["actor"]
+    actor = client.get(f"/cases/{cid}", headers=H("coordinator")).json()["events"][-1]["actor"]  # (the lab's own answer carries no log, ADR-059)
     role, _, uid = actor.partition(":")
     assert role == "lab" and len(uid) == 12 and all(c in "0123456789abcdef" for c in uid)
     assert uid == opaque_user_id("lab", MARKER) == user_id_of("lab", MARKER)
@@ -112,7 +112,7 @@ SAMPLES = {
     "escalate": {"rung": "reminder", "state": "acknowledged"},
     "escalation_accepted": {"rung": "reminder"}, "handoff_requested": {"to_provider": "endo-1"},
     "handoff_accepted": {"provider": "endo-1"}, "handoff_rejected": {"reason": "capacity"},
-    "reassign": {"owner": "primary_care_owner:abc123def456"}, "consent_updated": {"withdrawn": True},
+    "reassign": {"owner": "primary_care_owner:abc123def456"}, "consent_updated": {"withdrawn": True, "source": {"channel": "patient_app"}},
     "contact_updated": {"contact_valid": True},
     "mark_lost_contact": {"failed_attempts": 3},
     "review_requested": {"reason": "consent_withdrawn", "source_event_id": UUID_A},
@@ -253,8 +253,8 @@ def test_scheduler_and_consent_and_notify_events_pass_the_schema_too():
     post(cid, "acknowledge", H("lab"))
     owner = H("primary_care_owner", "Dr Scan")
     post(cid, "accept_ownership", owner)
-    post(cid, "consent_updated", H("patient", "pat", "Patient/77"), {"withdrawn": True})
-    post(cid, "consent_updated", H("coordinator"), {"withdrawn": False})
+    post(cid, "consent_updated", H("patient", "pat", "Patient/77"), {"withdrawn": True, "source": {"channel": "patient_app"}})
+    post(cid, "consent_updated", H("coordinator"), {"withdrawn": False, "source": {"channel": "phone_call", "reference": "call-1"}})
     post(cid, "contact_patient", owner)
     draft = "5b6c1f3e-8d2a-4c47-9e10-2a7f4b9d3c11"
     cases.store.append(Event(UUID(cid), "message_approved", clock.now(), actor_of("primary_care_owner", "Dr Scan"),
@@ -277,8 +277,8 @@ def test_no_name_ever_reaches_the_log():
     post(cid, "contact_patient", H("primary_care_owner", names["primary_care_owner"]))
     post(cid, "patient_acknowledge", pat, {"lang": "en"})
     post(cid, "callback_requested", pat, {"reason": "patient_does_not_understand"})
-    post(cid, "consent_updated", pat, {"channel_sms": False})
-    post(cid, "consent_updated", H("coordinator", names["coordinator"]), {"channel_sms": True})
+    post(cid, "consent_updated", pat, {"channel_sms": False, "source": {"channel": "patient_app"}})
+    post(cid, "consent_updated", H("coordinator", names["coordinator"]), {"channel_sms": True, "source": {"channel": "phone_call", "reference": "call-1"}})
     post(cid, "handoff_requested", H("primary_care_owner", names["primary_care_owner"]), {"to_provider": "endo-1"})
     spec = client.post("/auth/dev-login", json={"role": "specialist_owner", "name": names["specialist_owner"], "provider": "endo-1"}).json()
     r = post(cid, "handoff_accepted", {"Authorization": f"Bearer {spec['token']}"})

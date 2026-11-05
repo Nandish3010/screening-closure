@@ -243,6 +243,8 @@ jobs:
           helm template rel deploy/helm/screening-closure --set secrets.create=true > /dev/null
           helm template rel deploy/helm/screening-closure --set secrets.create=true --set api.ingress.enabled=true \
             --set app.otlpEndpoint=http://otel-collector:4318 --set networkPolicy.enabled=false > /dev/null
+      - name: GKE load-test charts (values-gke-loadtest.yaml, the support chart, HPA and NetworkPolicy renders; kubeconform is skipped when absent)
+        run: bash deploy/gke/lint.sh
       - name: bicep build (main and the example parameter file)
         run: |
           az bicep install

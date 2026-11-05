@@ -58,9 +58,15 @@ from app.store_pg import PostgresEventStore, idle_anchor  # noqa: E402
 from app.sweep import NEVER, next_due_at, plan_case, run_sweep, timing_fingerprint  # noqa: E402
 
 ROOT = sc.REPO_ROOT
-CTX = "kind-sc-m76"
-NS = "closure"
-PG_HOSTPORT = "127.0.0.1:15476"
+# The defaults are the local kind cluster. The GKE load test runs this file in a pod INSIDE the cluster: SC_K8S_CONTEXT="" (kubectl's
+# in-cluster config), SC_PG_HOSTPORT=postgres:5432, SC_PG_SSLMODE, and SC_RUN_INFO (machine_spec.json / chart_values.json written by the
+# orchestrator: no helm, docker or sysctl in the pod). SC_SEED_PROCS sets the default number of seeding processes.
+CTX = os.environ.get("SC_K8S_CONTEXT", "kind-sc-m76")
+NS = os.environ.get("SC_K8S_NAMESPACE", "closure")
+PG_HOSTPORT = os.environ.get("SC_PG_HOSTPORT", "127.0.0.1:15476")
+PG_SSLMODE = os.environ.get("SC_PG_SSLMODE", "disable")
+RUN_INFO = os.environ.get("SC_RUN_INFO", "")
+SEED_PROCS = int(os.environ.get("SC_SEED_PROCS", "4"))
 DEFAULT_OUT = ROOT / "docs/results/scale/sweep.json"
 TARGET_LOOP_SECONDS = 10.0
 
@@ -83,7 +89,7 @@ METHOD = (
 
 
 def kubectl(*args: str, timeout: float = 120) -> str:
-    return subprocess.run(["kubectl", "--context", CTX, "-n", NS, *args], capture_output=True, text=True, check=True,
+    return subprocess.run(["kubectl", *(["--context", CTX] if CTX else []), "-n", NS, *args], capture_output=True, text=True, check=True,
                           timeout=timeout).stdout
 
 
@@ -95,7 +101,7 @@ def configure_admin_url() -> None:
     """Point seed_cases (and the spawned seeding processes, through the environment) at the in-cluster Postgres."""
     if os.environ.get("SCALE_LOCAL_PG"):  # a development check against the compose Postgres (LOAD_PG_ADMIN_URL as seed_cases reads it)
         return
-    os.environ["LOAD_PG_ADMIN_URL"] = f"postgresql://closure_owner:{pg_password()}@{PG_HOSTPORT}/postgres?sslmode=disable"
+    os.environ["LOAD_PG_ADMIN_URL"] = f"postgresql://closure_owner:{pg_password()}@{PG_HOSTPORT}/postgres?sslmode={PG_SSLMODE}"
 
 
 def closure_url() -> str:
@@ -602,7 +608,19 @@ def run_watchdog_cell(size: int, tpl_stats: dict, label: str, budget_seconds: fl
 # ------------------------------------------------------------------------------------------------------------ driver
 
 
+def run_info(name: str) -> dict | None:
+    if not RUN_INFO:
+        return None
+    try:
+        return json.loads((Path(RUN_INFO) / name).read_text())
+    except (OSError, ValueError):
+        return {}
+
+
 def git_info() -> dict:
+    if os.environ.get("SC_GIT_COMMIT"):  # no git checkout in the load-generator pod: the orchestrator passes the commit it built
+        return {"commit": os.environ["SC_GIT_COMMIT"], "branch": os.environ.get("SC_GIT_BRANCH", ""), "dirty_files": []}
+
     def g(*a: str) -> str:
         return subprocess.run(["git", "-C", str(ROOT), *a], capture_output=True, text=True).stdout.strip()
     return {"commit": g("rev-parse", "HEAD"), "branch": g("rev-parse", "--abbrev-ref", "HEAD"),
@@ -610,10 +628,16 @@ def git_info() -> dict:
 
 
 def machine_spec() -> dict:
+    info = run_info("machine_spec.json")
+    if info is not None:
+        return info
     return json.loads(subprocess.run(["bash", str(ROOT / "tools/k8s/machine_spec.sh")], capture_output=True, text=True, check=True).stdout)
 
 
 def chart_values() -> dict:
+    info = run_info("chart_values.json")
+    if info is not None:
+        return {k: info[k] for k in ("images", "api", "scheduler", "watchdog", "app") if k in info}
     vals = json.loads(subprocess.run(["helm", "--kube-context", CTX, "-n", NS, "get", "values", "closure", "--all", "-o", "json"],
                                      capture_output=True, text=True, check=True).stdout)
     keep = ("images", "api", "scheduler", "watchdog", "app")
@@ -754,7 +778,7 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--sizes", default="100000,500000,1000000")
     p.add_argument("--workers", default="1,4")
     p.add_argument("--label", default="baseline", help="free text kept in the results (e.g. before / after a change)")
-    p.add_argument("--procs", type=int, default=4, help="seeding processes")
+    p.add_argument("--procs", type=int, default=SEED_PROCS, help="seeding processes (env SC_SEED_PROCS)")
     p.add_argument("--profile", action="store_true", help="also run one cProfile cell (workers=1) at the largest size")
     p.add_argument("--reseed", action="store_true")
     p.add_argument("--keep-templates", action="store_true")
@@ -773,7 +797,7 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--out", default=str(DEFAULT_OUT))
     s = sub.add_parser("seed-closure")
     s.add_argument("--size", type=int, required=True)
-    s.add_argument("--procs", type=int, default=4)
+    s.add_argument("--procs", type=int, default=SEED_PROCS)
     s.add_argument("--seed", type=int, default=7_600_001)
     s.add_argument("--worklist-cases", type=int, default=300, help="extra lost_contact cases (the bounded worklist)")
     s.add_argument("--out", default=str(DEFAULT_OUT))

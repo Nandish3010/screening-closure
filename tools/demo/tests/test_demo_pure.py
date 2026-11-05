@@ -192,3 +192,26 @@ def test_agency_run_uses_the_service_token_when_given_and_exits_2_when_the_api_i
     monkeypatch.setattr(agency_run.httpx, "Client", lambda **kw: real(transport=httpx.MockTransport(down), **kw))
     assert agency_run.main() == 2
     assert "not reachable" in capsys.readouterr().err
+
+
+# ---- ADR-059: the synthetic counselling record the refusal checks accept ---------------------------------------------------
+
+
+def test_the_counselling_record_is_this_cases_and_resolves_under_the_closure_evidence_rules():
+    import importlib.util
+    from datetime import UTC, datetime
+    from pathlib import Path
+    from uuid import uuid4
+
+    from app import evidence
+
+    path = Path(__file__).resolve().parents[1] / "create_counselling_record.py"
+    spec = importlib.util.spec_from_file_location("create_counselling_record", path)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    case_id = uuid4()
+    res = mod.build_resource(case_id, "Patient/p1", "u-1", datetime(2026, 1, 5, tzinfo=UTC))
+    assert mod.counselling_ref(case_id) == f"DocumentReference/{res['id']}"
+    assert evidence.belongs_to_case(res, case_id, "Patient/p1")           # the verifier's own test for "this case's"
+    assert not evidence.belongs_to_case(res, uuid4(), "Patient/p1")       # another case's record does not resolve
+    assert res["author"] == [{"reference": "Practitioner/u-1"}] and "clinical" in res["description"]

@@ -27,7 +27,7 @@ from app.events import (
 from app.pathway import Pathway, PathwayRegistry
 from app.providers import get_providers
 from app.risk import score as risk
-from app.state_machine import InvalidTransition, PayloadError, validate_payload
+from app.state_machine import PHYSICIAN_ROLES, InvalidTransition, PayloadError, _person_id, validate_payload
 
 log = logging.getLogger("app.cases")
 router = APIRouter(prefix="/cases", tags=["cases"])
@@ -180,6 +180,10 @@ def _case_json(case_id: UUID, identity: Identity | None = None) -> dict:
     model = replay_model(events, pw)
     lc = LoadedCase(case_id, pw.name, events[0].at, events, model)
     row = readmodel.case_row(lc, pw, default_calendar())
+    if identity is not None and identity.role == policy.LAB:
+        return readmodel.lab_case_json(row, model, events)  # ADR-059 (F5): state, result reference, acknowledgement time
+    if identity is not None:
+        policy.authorize_view(identity, model, events)  # ADR-059 (F5): a clinician reads the cases they need to know
     if identity is not None and identity.role == "patient":
         # SEC-2: a patient's case page is the redacted one (no staff notes or reasons, no escalation
         # internals, no staff names: roles only).
@@ -328,6 +332,11 @@ def list_cases(
                 continue
             lc_pw = pathway_by_name(lc.pathway) or pathway
             row = readmodel.case_row(lc, lc_pw, calendar)
+            if row is not None and lc.model is not None and not policy.can_view(identity, lc.model, lc.events):
+                continue  # ADR-059 (F5): a clinician's worklist holds the cases they need to know
+            if row is not None and identity.role == policy.LAB:
+                rows.append(readmodel.lab_case_row(row))  # ADR-059 (F5): the lab sees state, not people
+                continue
             if row is not None and readmodel.matches(row, owner=owner, overdue=overdue, provider=provider, flagged=flagged):
                 if with_risk:  # D9: filled last, so no filter or order above depends on it
                     row["risk_score"] = _risk_score(lc, now)
@@ -347,6 +356,41 @@ def _patient_ref(case_id: UUID) -> str | None:
     return events[0].payload.get("patient_ref") if events else None
 
 
+def _resolve_counselling_record(ref: str, case_id: UUID) -> None:
+    """ADR-059 (F1): the counselling DocumentReference of an informed refusal must resolve to a resource of this case, by the
+    same verifier closure evidence uses. 422 when it does not resolve, 503 when the FHIR server cannot answer (fail closed)."""
+    if not evidence.well_formed_ref(ref):
+        raise HTTPException(422, f"counselling_ref {ref!r} is not a resource reference")
+    try:
+        found = evidence.verifier.exists(ref, case_id=case_id, patient_ref=_patient_ref(case_id))
+    except evidence.EvidenceUnavailable as exc:
+        raise HTTPException(503, f"cannot verify the counselling record: {exc}")
+    if not found:
+        raise HTTPException(422, f"counselling_ref {ref!r} does not resolve to a record of this case")
+
+
+def _check_informed_refusal(identity: Identity, payload: dict, case_id: UUID) -> None:
+    """ADR-059 (F1): an informed refusal names a real counselling record and a real physician.
+
+    * `counselled_by` is identified by user id: it must be a user in the directory whose role is a physician's (and, in the
+      `role:user_id` form, the role the directory holds), never a typed name that nobody is.
+    * A physician who records the refusal records their own counselling (the counsellor is the recorder). A coordinator may
+      record the conversation a physician had, naming a physician who exists.
+    * The counselling record must resolve in FHIR as a resource of this case (`_resolve_counselling_record`).
+    The declined closure then needs a second physician: the machine refuses the counsellor as closer (A33)."""
+    counsellor = payload["counselled_by"]
+    user_id = _person_id(counsellor)
+    record = users.directory.get(user_id)
+    if record is None or record.role not in PHYSICIAN_ROLES:
+        raise HTTPException(422, "counselled_by must be a physician who is a known user of this system (by user id)")
+    if not counsellor.startswith("Practitioner/") and counsellor.split(":", 1)[0] != record.role:
+        raise HTTPException(422, "counselled_by names a role that is not the physician's role in the user directory")
+    if identity.role in PHYSICIAN_ROLES and user_id != identity.user_id:
+        raise HTTPException(403, "a physician records their own counselling: counselled_by must be you; a coordinator "
+                                 "records the conversation of another physician")
+    _resolve_counselling_record(payload["counselling_ref"], case_id)
+
+
 def _check_signature_and_evidence(identity: Identity, event_type: str, payload: dict, case_id: UUID,
                                   pw: Pathway | None = None) -> None:
     """A15 (ADR-021): a signature is the signer's own, and closure evidence must resolve AND be this
@@ -361,14 +405,24 @@ def _check_signature_and_evidence(identity: Identity, event_type: str, payload: 
                 f"signed_by must be your own identity ({identity.actor} or "
                 f"Practitioner/{identity.user_id}), not {signed_by!r}",
             )
+    if event_type == "record_informed_refusal":
+        _check_informed_refusal(identity, payload, case_id)
+    if event_type == "consent_updated" and isinstance(payload.get("source"), dict):
+        # ADR-059 (F4): the patient's own change is self-service; staff record how the patient asked, and cannot claim the app
+        self_service = payload["source"].get("channel") == "patient_app"
+        if (identity.role == "patient") != self_service:
+            raise HTTPException(403, "source.channel patient_app is for the patient's own change; staff record how the "
+                                     "patient asked (phone_call, in_person, written, reply_review)")
     if event_type == "close":
         ref = payload["evidence_ref"]  # shape already checked by the payload schema
         if not evidence.well_formed_ref(ref):  # `Procedure/.`: the URL would collapse to a search
             raise HTTPException(422, f"evidence_ref {ref!r} is not a resource reference")
         if payload.get("outcome") == "declined":
-            # A33 (ADR-042): the evidence is the counselling record of an informed refusal, not a colonoscopy. It is a
-            # reference held by the clinical record, not a FHIR resource this system writes, so nothing is looked up in HAPI;
-            # the state machine requires it to be exactly the counselling_ref recorded with the refusal.
+            # A33 (ADR-042, amended by ADR-059): the evidence is the counselling record of an informed refusal, a
+            # DocumentReference. It is resolved against FHIR exactly as a colonoscopy's evidence is (same verifier, same
+            # FHIR_VERIFY_EVIDENCE switch, 503 when HAPI cannot answer): a made-up reference does not close a case. The
+            # state machine requires it to be exactly the counselling_ref recorded with the refusal.
+            _resolve_counselling_record(ref, case_id)
             return
         try:
             verdict = evidence.verifier.assess(ref, case_id=case_id, patient_ref=_patient_ref(case_id),
@@ -510,6 +564,7 @@ def case_timeline(case_id: UUID, identity: Identity = Depends(require_identity))
                 "actors": readmodel.patient_actors(events)}
     pw = pathway_of(case_id)
     model = replay_model(events, pw)
+    policy.authorize_view(identity, model, events)  # ADR-059 (F5)
     return {
         "case_id": str(case_id),
         **readmodel.timeline(events, pw, default_calendar(), clock.now()),

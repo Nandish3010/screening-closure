@@ -134,7 +134,7 @@ describe("mock automation: the sequence", () => {
     const api = auto();
     await api.login("coordinator", "Maryam Al Suwaidi");
     const id = await api.createCase!();
-    await api.postEvent(id, { type: "consent_updated", actor: "patient:x", payload: { channel_sms: false } });
+    await api.postEvent(id, { type: "consent_updated", actor: "patient:x", payload: { channel_sms: false, source: { channel: "patient_app" } } });
     await api.login("owner", "Dr. Layla Haddad", ROLE_PROVIDERS.owner);
     const accepted = await api.postEvent(id, { type: "accept_ownership", actor: LAYLA, payload: {} });
     expect(types(accepted.events)).not.toContain("message_sent");

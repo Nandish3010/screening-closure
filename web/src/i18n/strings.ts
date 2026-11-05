@@ -682,7 +682,7 @@ export const TODAY = {
   },
   denied: {
     accept_escalation: (roles: string) => `Only ${roles} can accept this rung.`,
-    take_ownership: "Only the case-owner clinician or a supervisor can take ownership.",
+    take_ownership: "Only the case-owner clinician or a supervisor can take ownership. You can open the case and see who owns it.",
     contact: "Your role cannot record this.",
   },
   signatureNote: "Only a physician signs. Open the case to review the evidence.",

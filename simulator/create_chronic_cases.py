@@ -1,34 +1,35 @@
 #!/usr/bin/env python3
-"""Create a few chronic-conditions demo cases (the third pathway, `config/pathways/chronic_conditions.yaml`) on the running stack.
+"""Create the long-term-conditions demo cases (the third pathway, `config/pathways/chronic_conditions.yaml`) on the running stack.
 
-An OPT-IN extra of the demo seed: `make demo-seed-chronic`, or `make demo-seed DEMO_THIRD_PATHWAY=1`. It is not part of the
-default seed, the demo snapshot or the video: the storyboard's captions say "all 22 open cases", the recorder looks for the
-first case at `owner_accepted` and at `confirmatory_completed`, and the agency reads every loaded pathway's cases, so cases of
-another pathway on the snapshotted stack would change what the video shows. (`make demo-reset` restores the snapshot, which
-removes them.)
+Part of the demo seed and of the demo snapshot: `make demo-snapshot` runs it, `deploy/gcp/vm/seed-on-vm.sh` runs it before the
+hosted demo's snapshot is taken, and `make demo-seed-chronic` (or `make demo-seed DEMO_THIRD_PATHWAY=1`) runs it by itself.
+Rerunning is safe (deterministic ids, 409 = exists). The point is that a judge who opens the Today screen of the hosted demo
+sees the cardiometabolic half of the challenge brief (blood pressure, HbA1c, BMI) and not only bowel screening.
+Cases of this pathway never sit in `owner_accepted` or `confirmatory_completed`, the two states the video recorder looks for
+(tools/video/record.ts `findCases`).
 
   API_URL         default http://localhost:8000
-  FHIR_BASE_URL   default http://localhost:8080/fhir   (Synthea patients of any gender, to give the cases a real Patient)
+  FHIR_BASE_URL   default http://localhost:8080/fhir
 
 What it does, all through the real API, as the demo logins:
 
-  * picks `--cases` (default 4) patients of any gender aged 30 to 70 from HAPI, NOT in the colorectal manifest, in id order
-    (the age range is a range for this demo cohort, NOT a statement of who is eligible for anything);
+  * writes `DEMO_PATIENTS` to HAPI if they are not there: four SYNTHETIC patients with Emirati-style names (like the staff of the
+    demo cast), a gender and a birth date, tagged SYNTHETIC. They are not in the Synthea cohort and not in the colorectal
+    manifest (the Synthea names are US-shaped). Fixed ids (`demo-chronic-1` ...), so a rerun writes nothing twice;
   * creates one case each with `pathway: chronic_conditions`, a deterministic id (uuid5, so a rerun is idempotent: 409 = exists)
-    and a synthetic `results` list, from which the server derives the case's priority tier. The plan cycles through four result
-    sets: very high blood pressure (urgent), a high HbA1c (soon), a mildly raised HbA1c (routine), a raised BMI (routine);
-  * walks them to different stages so the worklist shows the pathway at work. The stages are chosen so that none of them is
-    `owner_accepted` or `confirmatory_completed` (the two states the video recorder looks for, tools/video/record.ts
-    `findCases`): acknowledged, patient_contacted, patient_acknowledged, patient_contacted.
+    and a synthetic `results` list, from which the server derives the case's priority tier: two very high blood pressures
+    (urgent, so both are on the coordinator's Today screen), a high HbA1c (soon) and a raised BMI (routine);
+  * walks them to different stages so the worklist shows the pathway at work. The urgent ones stay at `acknowledged` (no person
+    has acted yet: that is what puts an urgent case on Today); the others are at `patient_contacted` and
+    `patient_acknowledged` (the last is ready for the mock Sahatna booking callback on the Integrations page).
 
 The result values are SYNTHETIC: made-up numbers chosen only to fall in the placeholder rules of the pack, which are themselves
 pending clinician sign-off (H1). They appear only in the POST body of the intake. The server keeps only the tier and the id of
 the rule that decided it, never the values (ADR-051), and this script prints no value anywhere: its summary line gives counts
-of states and of tiers.
+of states and of tiers. The web shows the tier, a plain-language reason and the placeholder flag.
 
 No clinical content beyond that: the patients are synthetic, nothing is diagnosed, no impact number is produced.
 """
-
 from __future__ import annotations
 
 import argparse
@@ -38,7 +39,6 @@ import logging
 import os
 import sys
 import uuid
-from datetime import date
 from pathlib import Path
 
 import httpx
@@ -50,25 +50,31 @@ log = logging.getLogger("create_chronic_cases")
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_API = "http://localhost:8000"
 DEFAULT_FHIR = "http://localhost:8080/fhir"
-MANIFEST = REPO_ROOT / "data" / "results" / "manifest.json"
 PATHWAY = "chronic_conditions"
 # Fixed namespace for deterministic case ids (never change: it would break idempotency).
 CASE_NAMESPACE = uuid.UUID("753efb6d-8d82-4d5b-92b8-3dde584651a1")
-MIN_AGE, MAX_AGE = 30, 70  # synthetic cohort range for the demo; NOT an eligibility statement (H1)
+SYNTHETIC_TAG = {"system": "https://screening-closure.example/tags", "code": "SYNTHETIC", "display": "Synthetic demo patient, not a real person"}
+PATIENT_ID_SYSTEM = "https://screening-closure.example/demo-patient"
 
-# The synthetic result sets, cycled in this order. Each is {name, tier, results}: `tier` is the tier the pack's rules give them
-# (simulator/tests/test_create_chronic_cases.py runs app.priority.derive over the real pack and asserts it). The numbers are
-# invented, sit in the pack's PLACEHOLDER bands (H1) and mean nothing clinically. They are sent once, in the intake body.
-RESULT_SETS = (
-    {"name": "very_high_blood_pressure", "tier": "urgent",
-     "results": [{"kind": "blood_pressure", "values": {"systolic_mmhg": 186, "diastolic_mmhg": 122}}]},
-    {"name": "high_hba1c", "tier": "soon", "results": [{"kind": "hba1c", "values": {"mmol_per_mol": 80}}]},
-    {"name": "mildly_raised_hba1c", "tier": "routine", "results": [{"kind": "hba1c", "values": {"mmol_per_mol": 52}}]},
-    {"name": "raised_bmi", "tier": "routine", "results": [{"kind": "bmi", "values": {"kg_per_m2": 33}}]},
+# The demo patients: SYNTHETIC, with Emirati-style names like the demo's staff (Sara Al Mansoori, Maryam Al Suwaidi ...). Fixed ids.
+# Each carries the result set and the stage of its case. The numbers inside a result set are invented, sit in the pack's PLACEHOLDER
+# bands (H1) and mean nothing clinically; they are sent once, in the intake body (simulator/tests/test_create_chronic_cases.py runs
+# app.priority.derive over the real pack and asserts each tier).
+RESULT_SETS = {
+    "very_high_blood_pressure": {"tier": "urgent", "results": [{"kind": "blood_pressure", "values": {"systolic_mmhg": 186, "diastolic_mmhg": 122}}]},
+    "very_high_blood_pressure_b": {"tier": "urgent", "results": [{"kind": "blood_pressure", "values": {"systolic_mmhg": 182, "diastolic_mmhg": 108}}]},
+    "high_hba1c": {"tier": "soon", "results": [{"kind": "hba1c", "values": {"mmol_per_mol": 80}}]},
+    "raised_bmi": {"tier": "routine", "results": [{"kind": "bmi", "values": {"kg_per_m2": 33}}]},
+}
+DEMO_PATIENTS = (
+    {"id": "demo-chronic-1", "given": "Fatima", "family": "Al Dhaheri", "gender": "female", "birth": "1971-03-14", "result_set": "very_high_blood_pressure", "stage": "acknowledged"},
+    {"id": "demo-chronic-2", "given": "Khalid", "family": "Al Mazrouei", "gender": "male", "birth": "1966-09-02", "result_set": "very_high_blood_pressure_b", "stage": "acknowledged"},
+    {"id": "demo-chronic-3", "given": "Mariam", "family": "Al Shamsi", "gender": "female", "birth": "1979-11-23", "result_set": "high_hba1c", "stage": "patient_contacted"},
+    {"id": "demo-chronic-4", "given": "Hamdan", "family": "Al Ketbi", "gender": "male", "birth": "1983-05-08", "result_set": "raised_bmi", "stage": "patient_acknowledged"},
 )
 
-# The stage each case is walked to, in order. Never `owner_accepted` or `confirmatory_completed`: see the module docstring.
-STAGES = ("acknowledged", "patient_contacted", "patient_acknowledged", "patient_contacted")
+# The stages used. Never `owner_accepted` or `confirmatory_completed`: see the module docstring.
+STAGES = tuple(dict.fromkeys(p["stage"] for p in DEMO_PATIENTS))
 RECORDER_STATES = ("owner_accepted", "confirmatory_completed")  # what tools/video/record.ts findCases looks for
 # The state a step is made from. A step whose state is not current is skipped: an earlier run did it, or the case moved on.
 FROM_STATE = {"accept_ownership": "acknowledged", "contact_patient": "owner_accepted", "patient_acknowledge": "patient_contacted"}
@@ -88,34 +94,6 @@ def event_id_for(case_id: str, step: str) -> str:
     return str(uuid.uuid5(CASE_NAMESPACE, f"{case_id}|{step}"))
 
 
-def age_on(birth: str, today: date) -> int | None:
-    try:
-        y, m, d = (int(x) for x in birth[:10].split("-"))
-        born = date(y, m, d)
-    except (ValueError, TypeError):
-        return None
-    return today.year - born.year - ((today.month, today.day) < (born.month, born.day))
-
-
-def pick_patients(bundle_entries: list[dict], exclude: set[str], count: int, today: date) -> list[str]:
-    """Patient ids of patients of any gender aged MIN_AGE..MAX_AGE who are not in `exclude`, in id order, at most `count`."""
-    ids = []
-    for entry in bundle_entries:
-        res = entry.get("resource", entry)
-        pid = str(res.get("id", ""))
-        age = age_on(res.get("birthDate", ""), today)
-        if pid and pid not in exclude and age is not None and MIN_AGE <= age <= MAX_AGE:
-            ids.append(pid)
-    return sorted(set(ids), key=lambda s: (len(s), s))[:count]
-
-
-def manifest_patients(path: Path = MANIFEST) -> set[str]:
-    try:
-        return {str(r["patient_id"]) for r in json.loads(path.read_text())["results"]}
-    except (OSError, ValueError, KeyError):
-        return set()
-
-
 def registered_provider_for(patient_id: str, providers: list[str]) -> str | None:
     """The same arithmetic as simulator/create_cases.py and app.providers.provider_for_patient."""
     if not providers:
@@ -123,14 +101,22 @@ def registered_provider_for(patient_id: str, providers: list[str]) -> str | None
     return sorted(providers)[int(hashlib.sha256(patient_id.encode()).hexdigest(), 16) % len(providers)]
 
 
-def plan(patient_ids: list[str]) -> list[dict]:
-    """Deterministic plan: one case per patient with its target stage (cycling through STAGES) and its synthetic result set
-    (cycling through RESULT_SETS). `results` goes in the intake body only; `tier` is what the pack gives it."""
+def fhir_patient(p: dict) -> dict:
+    """The FHIR Patient written for a demo patient: a name, a gender, a birth date, a tag that says SYNTHETIC. No Emirates ID,
+    no address, no phone: nothing that could belong to a real person."""
+    return {"resourceType": "Patient", "id": p["id"], "meta": {"tag": [SYNTHETIC_TAG]},
+            "identifier": [{"system": PATIENT_ID_SYSTEM, "value": p["id"]}],
+            "name": [{"use": "official", "family": p["family"], "given": [p["given"]]}], "gender": p["gender"], "birthDate": p["birth"]}
+
+
+def plan(patients: tuple[dict, ...] | list[dict] = DEMO_PATIENTS) -> list[dict]:
+    """Deterministic plan: one case per demo patient with its target stage and its synthetic result set. `results` goes in the
+    intake body only; `tier` is what the pack gives it."""
     out = []
-    for i, pid in enumerate(patient_ids):
-        stage, rs = STAGES[i % len(STAGES)], RESULT_SETS[i % len(RESULT_SETS)]
-        out.append({"patient_id": pid, "case_id": case_id_for(pid), "stage": stage, "steps": STEPS_TO[stage],
-                    "result_set": rs["name"], "tier": rs["tier"], "results": rs["results"]})
+    for p in patients:
+        rs = RESULT_SETS[p["result_set"]]
+        out.append({"patient_id": p["id"], "case_id": case_id_for(p["id"]), "stage": p["stage"], "steps": STEPS_TO[p["stage"]],
+                    "result_set": p["result_set"], "tier": rs["tier"], "results": rs["results"]})
     return out
 
 
@@ -200,29 +186,41 @@ class Seeder:
         return self.case(case_id)["state"]
 
 
+def ensure_patients(client: httpx.Client, fhir: str, patients: tuple[dict, ...] | list[dict]) -> int:
+    """Write the demo patients that HAPI does not have yet (a GET, and a PUT only on 404); returns how many were written."""
+    written = 0
+    for p in patients:
+        r = client.get(f"{fhir}/Patient/{p['id']}")
+        if r.status_code == 200:
+            continue
+        if r.status_code != 404:
+            r.raise_for_status()
+        client.put(f"{fhir}/Patient/{p['id']}", json=fhir_patient(p), headers={"Content-Type": "application/fhir+json"}).raise_for_status()
+        written += 1
+    return written
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--cases", type=int, default=4, help="how many chronic-conditions demo cases (default 4)")
-    ap.add_argument("--show", action="store_true", help="print the plan (without result values) and exit (no API call except the HAPI patient search)")
+    ap.add_argument("--cases", type=int, default=len(DEMO_PATIENTS), help=f"how many demo cases, at most {len(DEMO_PATIENTS)} (default all)")
+    ap.add_argument("--show", action="store_true", help="print the plan (without result values) and exit (no network call)")
     args = ap.parse_args(argv)
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     api = os.environ.get("API_URL", DEFAULT_API).rstrip("/")
     fhir = os.environ.get("FHIR_BASE_URL", DEFAULT_FHIR).rstrip("/")
+    chosen = DEMO_PATIENTS[: max(0, min(args.cases, len(DEMO_PATIENTS)))]
+    items = plan(chosen)
+    if args.show:
+        print(json.dumps(redacted(items), indent=2))
+        return 0
     with httpx.Client(timeout=30.0) as client:
         try:
-            r = client.get(f"{fhir}/Patient", params={"_count": 200})
-            r.raise_for_status()
-            entries = r.json().get("entry", [])
-        except (httpx.HTTPError, ValueError) as exc:
-            log.error("cannot read patients from HAPI at %s (%s); run `make demo-seed` first", fhir, exc)
+            written = ensure_patients(client, fhir, chosen)
+        except httpx.HTTPError as exc:
+            log.error("cannot write the demo patients to HAPI at %s (%s); is the stack up?", fhir, exc)
             return 2
-        chosen = pick_patients(entries, manifest_patients(), args.cases, date.today())
-        if len(chosen) < args.cases:
-            log.warning("only %d suitable patients found for %d cases", len(chosen), args.cases)
-        items = plan(chosen)
-        if args.show:
-            print(json.dumps(redacted(items), indent=2))
-            return 0
+        if written:
+            log.info("wrote %d synthetic demo patient(s) to HAPI", written)
         try:
             import yaml
 

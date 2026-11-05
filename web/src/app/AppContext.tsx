@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from "react";
-import type { ApiClient, Me, OutreachStatus, Role } from "../api/contract";
+import type { ApiClient, DemoHealth, Me, OutreachStatus, Role } from "../api/contract";
 import { BACKEND_ROLE, OWNER_SCOPED_ROLES, ROLES } from "../api/contract";
 import { ROLE_NAMES, ROLE_PROVIDERS, backendActor } from "../api/identities";
 
@@ -30,6 +30,10 @@ export interface AppState {
   demoClock: boolean;
   /** `GET /health` -> `demo.deployment`: this is the declared hosted judge demo (DEMO_DEPLOYMENT=1 with the simulated clock). Role cards and the guided steps key off it; a production deployment never reports it. */
   demoDeployment: boolean;
+  /** `GET /health` -> `demo` as a whole (ADR-058): when the demo was last reset and by whom, when the next scheduled reset is due. null outside the demo. */
+  demoStatus: DemoHealth | null;
+  /** True once `GET /health` has answered (or failed) at least once: whether this is the demo is not known before. */
+  healthKnown: boolean;
 }
 
 const Ctx = createContext<AppState | null>(null);
@@ -50,6 +54,8 @@ export function AppProvider({ api, children, initialRole }: { api: ApiClient; ch
   const [outreach, setOutreach] = useState<OutreachStatus | null>(null);
   const [demoClock, setDemoClock] = useState(false);
   const [demoDeployment, setDemoDeployment] = useState(false);
+  const [demoStatus, setDemoStatus] = useState<DemoHealth | null>(null);
+  const [healthKnown, setHealthKnown] = useState(false);
 
   // OIDC mode (A29): signed in or not is the provider's session, not a role pick. Re-read /me when it changes.
   const signedIn = useSyncExternalStore(
@@ -86,8 +92,10 @@ export function AppProvider({ api, children, initialRole }: { api: ApiClient; ch
       setOutreach(h.outreach ?? null);
       setDemoClock(h.demo?.simulated_clock === true);
       setDemoDeployment(h.demo?.deployment === true);
+      setDemoStatus(h.demo ?? null);
+      setHealthKnown(true);
       return h.sim_time ? setSimTime(h.sim_time) : api.closureMetrics().then((m) => setSimTime(m.sim_time));
-    }).catch(() => setSimTime(null));
+    }).catch(() => { setHealthKnown(true); setSimTime(null); });
   }, [api]);
   useEffect(refreshSim, [refreshSim]);
 
@@ -105,8 +113,8 @@ export function AppProvider({ api, children, initialRole }: { api: ApiClient; ch
     // Against the real API the actor is `role:user_id` (opaque id, A14): compared with `owner.actor` to tell "mine".
     const userId = api.adapter === "http" && me && me.role === role ? me.user_id : undefined;
     const actor = userId ? `${BACKEND_ROLE[role]}:${userId}` : backendActor(role, actorName);
-    return { api, role, setRole, me, actorName, actor, provider: ROLE_PROVIDERS[role], userId, simTime, refreshSim, outreach, demoClock, demoDeployment };
-  }, [api, role, setRole, me, simTime, refreshSim, outreach, demoClock, demoDeployment]);
+    return { api, role, setRole, me, actorName, actor, provider: ROLE_PROVIDERS[role], userId, simTime, refreshSim, outreach, demoClock, demoDeployment, demoStatus, healthKnown };
+  }, [api, role, setRole, me, simTime, refreshSim, outreach, demoClock, demoDeployment, demoStatus, healthKnown]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

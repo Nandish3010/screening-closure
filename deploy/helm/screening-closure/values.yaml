@@ -39,6 +39,20 @@ api:
   # while the other serves; with workers 1 the whole container would exit and restart). 0 = never recycle. See docs/results/scale.md.
   server: { workers: 1, limitMaxRequests: 0 }
   podDisruptionBudget: { minAvailable: 1 }
+  # Seconds the pod gets to finish in-flight requests after SIGTERM; preStopSleepSeconds (> 0 to enable) delays SIGTERM so the Service
+  # stops routing to the pod first (a node drain or rolling update then drops no connection). The sleep must be shorter than the grace period.
+  terminationGracePeriodSeconds: 30
+  preStopSleepSeconds: 5
+  # HorizontalPodAutoscaler (autoscaling/v2) on CPU utilisation of the requests. When enabled, `replicas` above is NOT rendered (the HPA owns the
+  # count; a fixed value would reset it on every `helm upgrade`) and minReplicas/maxReplicas rule. Needs a metrics-server (GKE and AKS have one) and
+  # nodes with room for maxReplicas pods. Off by default: the measured topology is a fixed number of pods (docs/results/scale.md). Replicas beyond
+  # the database pool (10 connections per pod) only help until Postgres max_connections is reached.
+  autoscaling:
+    enabled: false
+    minReplicas: 3
+    maxReplicas: 6
+    targetCPUUtilizationPercentage: 70
+    scaleDownStabilizationSeconds: 300   # a long window: a flapping count would move the leader's pod and reset connection pools
   probes:
     startup:   { initialDelaySeconds: 5, periodSeconds: 5, failureThreshold: 36 }   # migrations run in the lifespan: allow 3 min
     liveness:  { periodSeconds: 10, timeoutSeconds: 3, failureThreshold: 6 }

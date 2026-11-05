@@ -8,6 +8,7 @@ import { PathwayBadge } from "../components/PathwayBadge";
 import { PriorityBadge } from "../components/PriorityBadge";
 import { TODAY } from "../i18n/strings";
 import { fmtDateTime, plainError, shortId, titleCase } from "../lib/format";
+import { PRIORITY_PLACEHOLDER_NOTE, priorityIsPlaceholder, priorityReason } from "../lib/priority";
 import { actionState, isAgencyItem, mergeGroups, replyNotes, whyText, type TodayAnyItem } from "../lib/today";
 import { StatePill } from "./CoordinatorPage";
 
@@ -220,6 +221,9 @@ function CaseRow({ group, item, role, busy, onAct }: {
 }) {
   const notes = group === "replies" ? replyNotes(item) : [];
   const actions = item.actions.filter((a) => a !== "open_case");
+  // A greyed first button reads as a dead end: when the viewer cannot do the first action, "Open case" is the filled one and the
+  // action stays below it with its reason in view.
+  const anyAllowed = actions.some((a) => actionState(a, role, item).allowed);
   return (
     <li className="today-item" data-testid="today-item" data-case={item.case_id}>
       <div className="today-head">
@@ -229,6 +233,12 @@ function CaseRow({ group, item, role, busy, onAct }: {
         <StatePill state={item.state} />
       </div>
       <p className="today-why" data-testid="today-why">{whyText(item)}</p>
+      {item.priority && (
+        <p className="today-priority" data-testid="today-priority-reason">
+          <strong>Why this priority:</strong> <span data-testid="today-priority-text">{priorityReason(item.priority)}.</span>{" "}
+          {priorityIsPlaceholder(item.priority) && <span className="chip chip-warn" data-testid="today-priority-placeholder">{PRIORITY_PLACEHOLDER_NOTE}</span>}
+        </p>
+      )}
       {notes.length > 0 && <ul className="plain today-notes">{notes.map((n) => <li key={n} className="muted">{n}</li>)}</ul>}
       {group === "signatures" && <p className="muted">{TODAY.signatureNote}</p>}
       <p className="muted today-meta">
@@ -236,17 +246,18 @@ function CaseRow({ group, item, role, busy, onAct }: {
         {item.owner ? ` · Owner: ${item.owner.display_name}` : " · Unowned"}
       </p>
       <div className="today-actions">
+        {!anyAllowed && <Link className="btn btn-primary" to={`/coordinator/${item.case_id}`} data-testid="today-open-case">{TODAY.actions.open_case}</Link>}
         {actions.map((a, i) => {
           const st = actionState(a, role, item);
           const id = `${group}:${item.case_id}:${a}`;
           return (
-            <ActionButton key={a} primary={i === 0} testId={`today-${a}`} busy={busy === id || (busy !== null && busy !== "scan" && busy !== "agency")}
+            <ActionButton key={a} primary={i === 0 && st.allowed} testId={`today-${a}`} busy={busy === id || (busy !== null && busy !== "scan" && busy !== "agency")}
               disabledReason={st.allowed ? null : st.why} onClick={() => onAct(group, item, a)}>
               {TODAY.actions[a as keyof typeof TODAY.actions]}
             </ActionButton>
           );
         })}
-        <Link className={`btn ${actions.length === 0 ? "btn-primary" : ""}`} to={`/coordinator/${item.case_id}`} data-testid="today-open-case">{TODAY.actions.open_case}</Link>
+        {anyAllowed && <Link className="btn" to={`/coordinator/${item.case_id}`} data-testid="today-open-case">{TODAY.actions.open_case}</Link>}
       </div>
     </li>
   );

@@ -358,6 +358,26 @@ class Reassign(_Human):
     provider: Provider | None = None
 
 
+# ADR-059 (F4): how the patient asked. A consent change (a withdrawal, a re-grant, a channel switched, sharing refused) carries
+# its source, so the log says whether the patient did it themselves in the app, or a member of staff recorded a phone call, a
+# visit, a signed paper, or the reading of a reply. Staff-recorded sources name a reference: an opaque id of the record that
+# holds the detail (call-log id, visit id, scan id, or the `reply_id` of the reply a person read), never a name or a number.
+CONSENT_SOURCE_CHANNELS = ("patient_app", "phone_call", "in_person", "written", "reply_review")
+CONSENT_KEYS = ("channel_sms", "channel_whatsapp", "channel_phone", "channel_letter", "share_with_specialist", "withdrawn")
+SourceRef = Annotated[str, StringConstraints(pattern=r"^[A-Za-z0-9][A-Za-z0-9._:/-]{0,63}$"), AfterValidator(_no_dot_segment)]
+
+
+class ConsentSource(_Payload):
+    channel: Literal["patient_app", "phone_call", "in_person", "written", "reply_review"]
+    reference: SourceRef | None = None
+
+    @model_validator(mode="after")
+    def _reference_unless_self_service(self) -> "ConsentSource":
+        if self.channel != "patient_app" and self.reference is None:
+            raise ValueError("a consent change recorded by staff needs the reference of the record of how the patient asked")
+        return self
+
+
 class ConsentUpdated(_Human):
     channel_sms: bool | None = None
     channel_whatsapp: bool | None = None
@@ -368,6 +388,17 @@ class ConsentUpdated(_Human):
     # ADR-053: the patient's language preference ("en" or "ar"). Alone it is a pure preference: no consent changes, no hold
     # cleared, no history entry; the automation reads it for the language of its messages.
     lang: Literal["en", "ar"] | None = None
+    # ADR-059 (F4): required with any consent change; the events route also checks who may claim which channel
+    source: ConsentSource | None = None
+
+    @model_validator(mode="after")
+    def _source_with_a_consent_change(self) -> "ConsentUpdated":
+        changes = any(getattr(self, k) is not None for k in CONSENT_KEYS)
+        if changes and self.source is None:
+            raise ValueError("a consent change needs `source` (channel, and the reference of the record unless it is patient_app)")
+        if self.source is not None and not changes:
+            raise ValueError("`source` goes with a consent change, not with a language preference alone")
+        return self
 
 
 class MarkLostContact(_Human):
@@ -390,11 +421,16 @@ class ReviewRequested(_Payload):
     source_event_id: Uuid
     # incomplete_procedure only (A24): the colonoscopy record in HAPI that is not closure evidence, by reference.
     evidence_ref: EvidenceRef | None = None
+    # ADR-059 (F3), opt_out only: the reply triage could not tell whether the patient said stop (the classifier was
+    # unavailable or unsure), so the outreach hold is provisional. Same hold, same way to clear it; the flag says why it is there.
+    provisional: Literal[True] | None = None
 
     @model_validator(mode="after")
     def _evidence_ref_iff_incomplete(self) -> "ReviewRequested":
         if (self.reason == "incomplete_procedure") != (self.evidence_ref is not None):
             raise ValueError("evidence_ref belongs to reason incomplete_procedure, and that reason needs it")
+        if self.provisional is not None and self.reason != "opt_out":
+            raise ValueError("provisional belongs to reason opt_out")
         return self
 
 

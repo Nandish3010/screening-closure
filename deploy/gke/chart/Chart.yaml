@@ -1,0 +1,6 @@
+apiVersion: v2
+name: sc-loadtest
+description: Throw-away load-test support for the screening-closure chart - Postgres, the JWKS stand-in, the load generator pod and its RBAC (not for production)
+type: application
+version: 0.1.0
+appVersion: "0.1.0"

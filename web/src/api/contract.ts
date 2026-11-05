@@ -369,12 +369,23 @@ export const CONSENT_KEYS = [
   "channel_sms", "channel_whatsapp", "channel_phone", "channel_letter", "share_with_specialist", "withdrawn",
 ] as const;
 export type ConsentKey = (typeof CONSENT_KEYS)[number];
-/** A `consent_updated` payload: any non-empty subset of the six booleans. */
-export type ConsentChanges = Partial<Record<ConsentKey, boolean>> & { lang?: "en" | "ar" };
+/** ADR-059 (F4): how the patient asked. `patient_app` is the patient's own change; staff record `phone_call`, `in_person`,
+ *  `written` or `reply_review` (a person read the patient's reply) and name the record that holds the detail. */
+export const CONSENT_SOURCE_CHANNELS = ["patient_app", "phone_call", "in_person", "written", "reply_review"] as const;
+export type ConsentSourceChannel = (typeof CONSENT_SOURCE_CHANNELS)[number];
+export interface ConsentSource {
+  channel: ConsentSourceChannel;
+  /** An opaque id of the record (call-log id, visit id, scan id, reply id): required unless the channel is `patient_app`. */
+  reference?: string;
+}
+/** A `consent_updated` payload: any non-empty subset of the six booleans, with the `source` of the change (required with them). */
+export type ConsentChanges = Partial<Record<ConsentKey, boolean>> & { lang?: "en" | "ar"; source?: ConsentSource };
 export interface ConsentHistoryEntry {
   at: string;
   actor: string;
   changes: ConsentChanges;
+  /** How the patient asked (ADR-059); absent on entries written before it. */
+  source?: ConsentSource;
 }
 
 /** `pending_handoff` on the read model while a request is unanswered, else null (A5). */
@@ -1453,6 +1464,41 @@ export interface IntegrationFeed {
   entries: IntegrationFeedEntry[];
 }
 
+/** `GET /integrations/mock` (coordinator, supervisor; dev or declared demo only). Everything under it is a MOCK (ADR-057). */
+export interface IntegrationMockStatus {
+  mock: true;
+  enabled: true;
+  note: string;
+  malaffi: { label: string; replays_used: number; replays_max: number };
+  sahatna: { label: string; eligible_cases: { case_id: string; state: string; pathway: string }[] };
+}
+interface IntegrationMockResultBase {
+  mock: true;
+  label: string;
+  note: string;
+  /** The synthetic HL7 v2 message that was sent to the adapter, segments on separate lines. */
+  message: string;
+  ack: { code: "AA" | "AE" | "AR"; reason: string | null };
+  case_id: string | null;
+  state: string | null;
+}
+/** `POST /integrations/mock/malaffi/replay`. */
+export interface MalaffiReplayResult extends IntegrationMockResultBase {
+  message_type: "ORU^R01";
+  control_id: string;
+  outcome: "case_created" | "duplicate" | "rejected";
+  replays_used: number;
+  replays_max: number;
+}
+/** `POST /integrations/mock/sahatna/booking-callback`. */
+export interface SahatnaCallbackResult extends IntegrationMockResultBase {
+  callback: { callback_id: string; status: string; case_id: string; appointment_ref: string; slot_start: string };
+  translated_to: "HL7 SIU^S12";
+  outcome: "booked" | "duplicate" | "unchanged" | "rejected";
+  event: "book_confirmatory" | null;
+  state_before: string | null;
+}
+
 export interface ApiClient {
   /** "mock" | "http" - for display only. */
   readonly adapter: "mock" | "http";
@@ -1462,7 +1508,7 @@ export interface ApiClient {
    * GET /health (public): `sim_time` is the simulation clock, readable by every role (`/metrics/closure` is staff-only).
    * `outreach` (A26, ADR-037) says whether automatic patient messages are signed off; absent on an older server.
    */
-  health(): Promise<{ status: string; sim_time?: string; outreach?: OutreachStatus; demo?: { simulated_clock: boolean; deployment?: boolean } }>;
+  health(): Promise<{ status: string; sim_time?: string; outreach?: OutreachStatus; demo?: DemoHealth }>;
   /**
    * Switch identity. http: POST /auth/dev-login {role (backend role), name, provider?}, keep the bearer
    * token and attach it to every later request (requests wait for a login in flight). `provider` is sent
@@ -1513,6 +1559,10 @@ export interface ApiClient {
   funnelMetrics(params?: FunnelParams): Promise<FunnelMetrics | null>;
   /** The last integration events (HL7, FHIR, notifications) of the demo stack, newest first; null when the role may not read it. */
   integrationFeed?(limit?: number): Promise<IntegrationFeed | null>;
+  /** The MOCK Malaffi replay and Sahatna callback (ADR-057): http only. Status is null where the routes do not exist (not a dev or demo deployment) or the role may not call them. */
+  integrationMockStatus?(): Promise<IntegrationMockStatus | null>;
+  replayMalaffiResult?(redeliver?: boolean): Promise<MalaffiReplayResult>;
+  sahatnaBookingCallback?(caseId: string): Promise<SahatnaCallbackResult>;
   /** GET /alerts: active and cleared platform alerts (scheduler down). */
   listAlerts(): Promise<Alert[]>;
   /** GET /agency/org (A22): the org chart with live counts. Coordinator and supervisor; others 403. */
@@ -1531,10 +1581,49 @@ export interface ApiClient {
   caseAgency(caseId: string): Promise<CaseAgencySummary | null>;
   /** Mock only: restore the seeded fixtures. No-op for http. */
   resetDemo?(): Promise<void>;
+  /** GET /demo/guide (hosted demo only, ADR-058): one untouched case per guided step for this browser session. Absent outside the demo. */
+  demoGuide?(session: string): Promise<DemoGuide>;
+  /** POST /demo/reset (hosted demo, supervisor): ask the host to restore the seeded snapshot. Rejects with the server's plain-language reason (too soon, already pending). */
+  requestDemoReset?(): Promise<DemoResetRequested>;
+  /** POST /demo/missed-followup (hosted demo, supervisor): move the simulated clock past this case's follow-up date and let the engine catch it. */
+  missedFollowup?(caseId: string): Promise<MissedFollowupResult>;
+
   /** Mock only: file a new positive result (`case_created`); with automation on the mock then acknowledges and assigns it. Returns the case id. */
   createCase?(): Promise<string>;
   /** Mock only: raise or clear the scheduler-down alert so the dashboard banner can be demonstrated. */
   setSchedulerDown?(down: boolean): Promise<void>;
+}
+
+/** `GET /health` -> `demo` (api/app/main.py; present only under the two demo flags with the simulated clock). */
+export interface DemoHealth {
+  simulated_clock: boolean;
+  deployment?: boolean;
+  /** When the seeded snapshot was last restored, by whom ("the schedule" or a supervisor) and why; null/absent until the first reset is recorded. */
+  last_reset_at?: string | null;
+  last_reset_by?: string | null;
+  last_reset_reason?: "manual" | "scheduled" | string | null;
+  /** When the scheduled reset is next due (last reset + the interval); null when none is scheduled. */
+  next_auto_reset_at?: string | null;
+  reset_pending?: boolean;
+}
+
+/** The guided path's steps, in order (also the keys of `DemoGuide.steps`). */
+export const GUIDE_STEPS = ["record", "prioritise", "refer", "remind", "outcome", "safety", "privacy"] as const;
+export type GuideStepId = (typeof GUIDE_STEPS)[number];
+export interface GuidedCase { case_id: string; state: string; due_at: string | null; priority: string | null; scheme: string | null; fresh: boolean }
+export interface DemoGuide { steps: Record<GuideStepId, GuidedCase | null>; status?: DemoHealth }
+export interface DemoResetRequested { requested: boolean; requested_at: string; requested_by: string; message: string }
+/** What "Simulate a missed follow-up" did: the clock move and the events the engine itself wrote (never this route). */
+export interface MissedFollowupResult {
+  case_id: string;
+  clock_from: string;
+  clock_to: string;
+  days_skipped: number;
+  new_events: { type: string; actor_kind: "system" | "person" }[];
+  overdue: boolean;
+  escalation_level: number;
+  escalation_level_before: number;
+  watchdog_flagged: boolean;
 }
 
 export class ApiError extends Error {

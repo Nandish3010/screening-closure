@@ -17,13 +17,13 @@ def result():
 
 def test_every_openapi_route_has_a_policy_decision_and_no_decision_is_stale():
     assert m.structural_problems(m.openapi_routes()) == []
-    assert set(m.openapi_routes()) == set(policy.ROUTE_POLICY)
+    assert set(m.openapi_routes()) == set(m.gated_free_policy())  # the /demo/* rows are proved in test_demo_controls.py
 
 
 def test_every_role_route_and_scope_behaves_as_the_policy_tables_say(result):
     assert result.problems == []
     # 29 routes + 28 event types x 10 callers, own and other where scope applies: a sanity floor, not a count to maintain
-    assert result.probes > 400 and len(result.routes) == len(policy.ROUTE_POLICY)
+    assert result.probes > 400 and len(result.routes) == len(m.gated_free_policy())
 
 
 def test_the_committed_matrix_document_is_current(result):
@@ -104,3 +104,15 @@ def test_g1_clinicians_are_owner_scoped_on_create_draft(result):
     assert m.KNOWN_GAPS == {} and m.GAP_NOTES == [] and result.gaps_seen == []
     cell = result.route_cells[("POST", "/cases/{case_id}/drafts", "primary_care_owner")]
     assert cell.text() == "A/S"
+
+
+def test_f5_case_and_timeline_reads_are_need_to_know(result):
+    """ADR-059 (F5): a clinician reads only a case they need to know (other cases: S), the lab has no timeline (R) and a minimal
+    case page (A), a coordinator and a supervisor read every case."""
+    for path in ("/cases/{case_id}", "/cases/{case_id}/timeline"):
+        for role in ("primary_care_owner", "specialist_owner"):
+            assert result.route_cells[("GET", path, role)].text() == "A/S", (path, role)
+        for role in ("coordinator", "supervisor"):
+            assert result.route_cells[("GET", path, role)].text() == "A", (path, role)
+    assert result.route_cells[("GET", "/cases/{case_id}/timeline", "lab")].text() == "R"
+    assert result.route_cells[("GET", "/cases/{case_id}", "lab")].text() == "A"

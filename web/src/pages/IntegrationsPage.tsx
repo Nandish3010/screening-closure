@@ -4,6 +4,7 @@ import { useApp } from "../app/AppContext";
 import type { IntegrationFeed } from "../api/contract";
 import { DOCS, docHref, type DocLink } from "../judge/links";
 import { PAGE_DOCS } from "../judge/pageLinks";
+import { MockIntegrations } from "../components/MockIntegrations";
 import { fmtDateTime } from "../lib/format";
 import "../judgePages.css";
 
@@ -11,7 +12,8 @@ import "../judgePages.css";
  * Integrations (item 12). Static explanation plus one live panel: the last few HL7, FHIR and notification events of the demo
  * stack (`GET /integrations/feed`, coordinator and supervisor; the browser mock shows a fixed sample). Every statement of what is
  * built and what is not is taken from docs/governance/hl7-adapter.md, malaffi-adapter-plan.md, patient-app.md and
- * docs/submission/technical-documentation.md. There is no number on this page that is not a count of items shown.
+ * docs/submission/technical-documentation.md. There is no number on this page that is not a count of items shown. The "Try the
+ * message shapes" panel (ADR-057) runs two MOCKS against the demo stack's own HL7 adapter; it never claims a connection.
  */
 interface Row { piece: string; what: string; where: string }
 
@@ -22,24 +24,26 @@ const MALAFFI_BUILT: Row[] = [
   { piece: "Contact details (HL7 ADT A08, A31)", what: "Judged only as valid or not. The phone number is not stored, logged or returned. An existing case is not changed; that is a person's decision.", where: "api/app/hl7/contacts.py" },
   { piece: "Transport and mutual TLS", what: "POST /hl7 for the message with the ACK as the answer, plus an optional MLLP listener. The listener can require TLS and a client certificate signed by a named authority, with an allow-list of client names. It fails closed: it never falls back to clear text.", where: "api/app/hl7/mllp.py, api/app/hl7/tls.py" },
   { piece: "Safety of the adapter", what: "Redelivery of the same message changes nothing. The sender must be on an allow-list. Exact identifier matching only; no fuzzy match. Logs hold the message type, the ACK code and a short hash, no content. The adapter's token reaches one route and cannot close, sign or change consent.", where: "api/tests/test_hl7_*.py" },
+  { piece: "Replay of a result (mock)", what: "A button on this page sends one synthetic positive FIT result, as an HL7 ORU message, to the adapter above. It shows the shape of an inbound result and what the engine does with it. It is not a feed from Malaffi.", where: "api/app/mock_integrations.py, api/tests/test_mock_integrations.py" },
   { piece: "FHIR evidence lookup", what: "To close a case the clinician cites evidence. The server checks that it exists in the FHIR server, belongs to this case and is complete evidence, and refuses with an error otherwise.", where: "api/app/evidence.py" },
 ];
 
 const SAHATNA_BUILT: Row[] = [
   { piece: "Notification adapter (mock)", what: "The only outbound path. Channels are SMS, WhatsApp, phone and letter. A message is sent only after a person approved the draft, and consent and contact validity are checked again at send time. It writes to a log and opens no network connection.", where: "api/app/notify.py" },
   { piece: "Patient app (installable web app)", what: "Arabic and English, at /patient. It shows one plain paragraph, the next step, the appointment (with a calendar file made on the phone) and a privacy centre with who looked at the record.", where: "web/src/pages/PatientPage.tsx" },
+  { piece: "Booking callback (mock)", what: "A button on this page sends an invented 'the patient confirmed a slot' callback. The server turns it into an HL7 appointment message and the adapter books the case through the event it already writes. The callback's shape is ours; nothing is known of Sahatna's.", where: "api/app/mock_integrations.py, api/tests/test_mock_integrations.py" },
   { piece: "Deep links", what: "Each case has its own patient address, and the app's manifest defines two shortcuts: My care, and Privacy and choices.", where: "web/public/manifest.webmanifest" },
 ];
 
 const PILOT_WORK: { item: string; why: string }[] = [
   { item: "The exchange's real message specifications", why: "The operator's segment-level specifications were not seen. Every field mapping is our reading of the standard, and the real profiles, trigger events and code sets are to be confirmed." },
-  { item: "A connection to Malaffi and an agreement with its operator", why: "The adapter has not been connected to or tested with Malaffi. Whether a non-EMR workflow system may receive these messages directly or only through a provider's system is open." },
+  { item: "A connection to Malaffi and an agreement with its operator", why: "The adapter has not been connected to or tested with Malaffi; the replay button on this page is a mock that sends our own message to our own adapter. Whether a non-EMR workflow system may receive these messages directly or only through a provider's system is open." },
   { item: "Certificates, network path and security assessment", why: "Mutual TLS is built, but the production certificates, any VPN or gateway, and the operator's assessment material come from the operator. None is in the repository." },
   { item: "Patient identity", why: "Matching is by one exact identifier. There is no Emirates ID lookup, no name and date-of-birth match, no human queue for ambiguous matches, and no handling of Arabic transliteration." },
   { item: "Anything sent back out", why: "The only thing sent is an acknowledgement. No status, owner or due date goes to Malaffi or a provider system, so there is also no outbox, dead-letter queue or alert for a failed delivery, and no alert for a silent interface." },
   { item: "Durability and scale", why: "The contact registry is in memory and lost on restart. A patient's open cases are found by a pass over the open cases, which is fine for a pilot cohort but needs an index before volume." },
   { item: "FHIR record of the FIT result", why: "The adapter does not create the observation and report of the FIT result; the case holds a reference to a report that does not exist in the FHIR server." },
-  { item: "Sahatna", why: "There is no interface to Sahatna of any kind. It appears in the repository only as one way a booking can be made in the screening programme (IFHAS). Using it as a channel would need an agreement and an integration that does not exist yet." },
+  { item: "Sahatna", why: "There is no connection to Sahatna. The only thing here is the mock booking callback above, whose shape we made up. Sahatna appears in the repository otherwise only as one way a booking can be made in the screening programme (IFHAS). Using it as a channel would need its real interface specification, an agreement and an integration that does not exist yet." },
   { item: "A real message channel", why: "No real message has ever been sent. A pilot needs an approved provider for SMS or WhatsApp, and native-speaker review of the Arabic text." },
 ];
 
@@ -135,7 +139,7 @@ export function IntegrationsPage() {
         toward the people the programme serves, where the Sahatna app is the patient-facing route the challenge owner named. This page says what is built and tested here, and what a pilot would still have to do.
       </p>
       <div className="banner banner-warn" data-testid="integrations-honesty">
-        <strong>Not connected.</strong> Nothing in this repository is connected to Malaffi or Sahatna, has been tested with them, or has an agreement with their operators. Everything below was built and tested against synthetic messages.
+        <strong>Not connected.</strong> Nothing in this repository is connected to Malaffi or Sahatna, has been tested with them, or has an agreement with their operators. Everything below was built and tested against synthetic messages. Two buttons further down run <strong>mocks</strong> of the message shapes so you can see what the engine does with an inbound result and an inbound booking; they are labelled MOCK because we had no access to either system's specification.
       </div>
 
       <section aria-labelledby={`${uid}-flow`} className="jp-section">
@@ -157,9 +161,11 @@ export function IntegrationsPage() {
 
       <section aria-labelledby={`${uid}-s`} className="jp-section">
         <h2 id={`${uid}-s`}>Sahatna and the patient: messages and app out</h2>
-        <p className="jp-note"><span className="jp-built">Built and tested on synthetic data.</span> <span className="jp-open">No interface to Sahatna exists.</span></p>
+        <p className="jp-note"><span className="jp-built">Built and tested on synthetic data.</span> <span className="jp-open">Not connected to Sahatna: there is a mock callback only.</span></p>
         <RowsTable caption="What goes out toward patients today" rows={SAHATNA_BUILT} />
       </section>
+
+      <MockIntegrations />
 
       <LiveFeed />
 

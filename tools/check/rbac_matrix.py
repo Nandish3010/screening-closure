@@ -76,8 +76,11 @@ FRAMEWORK_ROUTES = frozenset({"/openapi.json", "/docs", "/docs/oauth2-redirect",
 # `owner`: a primary_care_owner / specialist_owner acts only on cases they own (policy.authorize_owner_scope).
 # A route with a path parameter that is not listed here fails the run: the decision has to be made, in this file.
 SCOPE_RULES: dict[tuple[str, str], frozenset[str]] = {
-    ("GET", "/cases/{case_id}"): frozenset({"patient_own"}),
-    ("GET", "/cases/{case_id}/timeline"): frozenset({"patient_own"}),
+    # ADR-059 (F5): need-to-know reads. The "other case" of a clinician is a case another clinician owns, that is not up for the
+    # taking, has no referral waiting for them and that they never acted on (policy.can_view). The lab is not in the timeline's
+    # route policy, and on the case page it gets a minimal projection (state, result reference, acknowledgement time).
+    ("GET", "/cases/{case_id}"): frozenset({"patient_own", "owner"}),
+    ("GET", "/cases/{case_id}/timeline"): frozenset({"patient_own", "owner"}),
     ("POST", "/cases/{case_id}/events"): frozenset({"patient_own", "owner"}),
     ("GET", "/cases/{case_id}/notifications"): frozenset({"owner"}),
     ("GET", "/cases/{case_id}/fhir"): frozenset({"owner"}),
@@ -248,7 +251,7 @@ def classify(resp) -> str:
     if resp.status_code == 403:
         if "may not call" in detail or "no access policy" in detail or "may not emit" in detail or "no policy for event type" in detail:
             return "R"
-        if "may only act on cases they own" in detail:
+        if "may only act on cases they own" in detail or "may only read cases they own" in detail:
             return "S"
         return "?"  # some other 403: not an access decision this matrix knows about
     if resp.status_code == 404 and detail == "case not found":
@@ -307,6 +310,13 @@ class Result:
     requests: int = 0
 
 
+# The hosted demo's `/demo/*` routes (ADR-058) exist only under the demo flags, so a normal process (this tool, the unit tests) does not
+# serve them. Their policy rows are proved by tests/test_demo_controls.py (the gate, in a process that has the flags) and
+# tests/test_rbac.py; they are left out of this matrix on purpose.
+def gated_free_policy() -> dict:
+    return {k: v for k, v in policy.ROUTE_POLICY.items() if not k[1].startswith("/demo/")}
+
+
 def openapi_routes() -> list[tuple[str, str]]:
     out = []
     for path, item in app.openapi()["paths"].items():
@@ -323,7 +333,7 @@ def structural_problems(routes: list[tuple[str, str]]) -> list[str]:
             problems.append(f"route {route[0]} {route[1]} has no ROUTE_POLICY decision")
         if ("{" in route[1]) and route not in SCOPE_RULES:
             problems.append(f"route {route[0]} {route[1]} names a case or draft but has no scope decision in SCOPE_RULES")
-    for entry in policy.ROUTE_POLICY:
+    for entry in gated_free_policy():
         if entry not in routes:
             problems.append(f"ROUTE_POLICY entry {entry[0]} {entry[1]} names no route in the OpenAPI document (stale decision)")
     for entry in SCOPE_RULES:
@@ -474,7 +484,7 @@ def render(result: Result) -> str:
         "",
         "## What was checked",
         "",
-        f"- {len(result.routes)} routes in the OpenAPI document, {len(policy.ROUTE_POLICY)} entries in `ROUTE_POLICY`: "
+        f"- {len(result.routes)} routes in the OpenAPI document, {len(gated_free_policy())} entries in `ROUTE_POLICY`: "
         "every route has a decision and no decision is stale.",
         f"- {len(policy.EVENT_POLICY)} event types in `EVENT_POLICY`, plus one unknown type that must be refused for every role.",
         f"- {result.probes} role, route and scope combinations probed with real requests; "
