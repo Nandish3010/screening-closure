@@ -105,7 +105,7 @@ export function SignOffPanel({
         <input value={evidence} onChange={(e) => { setEvidence(e.target.value); onClearRefusal?.(); }} placeholder={`Procedure/${procedureSlug(procedure)}-0001`} aria-describedby="evidence-hint" autoComplete="off" spellCheck={false} />
       </label>
       <p id="evidence-hint" className="muted evidence-hint">Type a reference, or pick an example. The made-up one shows what the system does when a reference does not exist.</p>
-      <div className="evidence-chips" role="group" aria-label="Example evidence references">
+      <div className="evidence-chips" role="group" aria-label="Evidence examples">
         <button type="button" className="chip-btn" data-testid="evidence-real" disabled={!defaultEvidence} onClick={() => { setEvidence(defaultEvidence ?? ""); onClearRefusal?.(); }}>
           <span className="chip chip-ok">Real</span> {defaultEvidence ? `The report on this case (${defaultEvidence})` : `No ${procedure} report on this case yet`}
         </button>

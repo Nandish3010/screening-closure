@@ -79,6 +79,8 @@ export interface PatientStrings {
   pendingPerson: string;
   accessHomeHeading: string;
   accessHomeMore: string;
+  /** The home card names roles and times only; the names are in the Privacy tab. */
+  accessHomeNote: string;
   /** Visible on the Arabic screen: the wording has not had a native-speaker review yet (H2). */
   arabicReviewNote: string;
   demoNumber: string;
@@ -236,6 +238,7 @@ export const STRINGS: Record<Lang, PatientStrings> = {
     pendingPerson: "We got your message. A person on your care team is reading it. Nothing has changed yet: your plan stays as it is until they call you.",
     accessHomeHeading: "Who opened your record",
     accessHomeMore: "See the full list and your choices",
+    accessHomeNote: "Names are in the Privacy tab.",
     arabicReviewNote: "Arabic wording is pending native-speaker review.",
     demoNumber: "Demo number. All data here is synthetic.",
     roles: {
@@ -424,6 +427,7 @@ export const STRINGS: Record<Lang, PatientStrings> = {
     pendingPerson: "وصلتنا رسالتك. أحد أفراد فريق الرعاية يقرؤها الآن. لم يتغير شيء بعد، وتبقى خطتك كما هي حتى يتصل بك.",
     accessHomeHeading: "من اطلع على سجلك",
     accessHomeMore: "عرض القائمة الكاملة وخياراتك",
+    accessHomeNote: "الأسماء في تبويب الخصوصية.",
     arabicReviewNote: "الصياغة العربية بانتظار مراجعة متحدث أصلي.",
     demoNumber: "رقم تجريبي. كل البيانات هنا بيانات اصطناعية.",
     roles: {

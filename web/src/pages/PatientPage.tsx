@@ -403,14 +403,14 @@ export function PatientView({ caseId }: { caseId: string }) {
         {access && access !== "error" && access.entries.length > 0 ? (
           <ul className="pa-access">
             {access.entries.slice(0, 3).map((e, i) => (
-              <li key={`${e.at}-${e.name}-${i}`}>
-                <strong>{iso(e.name)}</strong>
-                <span>{roleName(t, e.role)}</span>
+              <li key={`${e.at}-${e.role}-${i}`}>
+                <strong>{roleName(t, e.role)}</strong>
                 <time dateTime={e.at}>{formatWhen(e.at, lang)}</time>
               </li>
             ))}
           </ul>
         ) : access && access !== "error" ? <p className="muted">{t.accessEmpty}</p> : null}
+        <p className="muted">{t.accessHomeNote}</p>
         <button type="button" className="btn btn-xl" onClick={() => setTab("privacy")} data-testid="access-home-more">{t.accessHomeMore}</button>
       </section>
 
