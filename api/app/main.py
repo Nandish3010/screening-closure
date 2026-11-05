@@ -15,6 +15,7 @@ from app.routers import agency as agency_router
 from app.routers import today as today_router
 from app.routers import cases, drafts, erasure as erasure_router, replies, scheduler, watchdog
 from app.routers import hl7 as hl7_router
+from app.routers import integrations as integrations_router
 from app.routers import clock as clock_router
 from app.routers import metrics as metrics_router
 
@@ -161,6 +162,7 @@ app.include_router(today_router.router)  # C14: the coordinator's Today screen (
 app.include_router(agency_router.router)  # A22: the agency (labour, not authority, ADR-033)
 app.include_router(erasure_router.router)  # A32: erasure of a patient's personal data (ADR-025)
 app.include_router(hl7_router.router)  # A28: the HL7 v2 adapter's transport (ADR-039)
+app.include_router(integrations_router.router)  # judge Integrations page: bounded metadata feed
 
 
 @app.get("/health")

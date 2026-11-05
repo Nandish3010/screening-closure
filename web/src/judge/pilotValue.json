@@ -1,0 +1,226 @@
+{
+  "completion": {
+    "baseline_360d": 0.30575,
+    "orchestrated_360d": 0.387975,
+    "published_followed_up": 436,
+    "published_positives": 1429,
+    "published_target_360d": 0.305,
+    "ratio_360d": 1.2689288634505314,
+    "scenario": "literature_anchored"
+  },
+  "defaults": {
+    "annual_positives": 17696.0,
+    "current_completion": 0.30575,
+    "pilot_cases": 155.34246575342468,
+    "staff_cost_per_hour": 120
+  },
+  "effort": {
+    "all": {
+      "baseline": {
+        "coordinator": 46.560662,
+        "owner_clinician": 4.46915,
+        "specialist": 6.05625
+      },
+      "engine": {
+        "coordinator": 29.755945,
+        "owner_clinician": 8.666145,
+        "specialist": 7.423538
+      },
+      "reduction": {
+        "coordinator": 0.360908,
+        "labour_reduction": 0.196853,
+        "owner_clinician": -0.940643,
+        "specialist": -0.225977
+      }
+    },
+    "in_reach": {
+      "baseline": {
+        "coordinator": 46.505326,
+        "owner_clinician": 4.496712,
+        "specialist": 6.076215
+      },
+      "engine": {
+        "coordinator": 15.79306,
+        "owner_clinician": 12.164096,
+        "specialist": 8.575493
+      },
+      "reduction": {
+        "coordinator": 0.660382,
+        "labour_reduction": 0.359847,
+        "owner_clinician": -1.708556,
+        "specialist": -0.411762
+      }
+    },
+    "roles": [
+      "coordinator",
+      "owner_clinician",
+      "specialist"
+    ],
+    "scenario": "literature_anchored",
+    "target_reduction": 0.4
+  },
+  "inputs": {
+    "abu_dhabi_population_40_to_75": {
+      "basis": "Statistics Centre Abu Dhabi 2024 estimate as reproduced by citypopulation.de (https://www.citypopulation.de/en/uae/abudhabi/admin/): 40-49 811,235; 50-59 333,260; 60-69 101,990; 70-79 29,995. Ages 70 to 74 taken as 60 percent of the 70-79 band (about 18,000; the split is assumed). Sum 1,264,485. Third-party reproduction of the SCAD table; the SCAD portal itself could not be read. To verify at census.scad.gov.ae.",
+      "status": "sourced-adjacent",
+      "unit": "residents aged 40 to 75, Abu Dhabi emirate, 2024",
+      "value": 1264000
+    },
+    "coordinator_cost_aed_per_hour": {
+      "basis": "Loaded cost of a screening or referral coordinator. The 120 is an assumption and looks high against the pay band in docs/evidence-wages.md section 5 (about AED 55 to 75 per hour loaded for a coordinator at about AED 6,500 a month, unless the model's coordinator is a nurse-coordinator); not re-estimated here. The wage ratios below are used only by the wage-weighted section of the script, which reports coordinator-equivalent minutes and does not convert them to AED.",
+      "status": "assumed",
+      "unit": "AED per hour",
+      "value": 120
+    },
+    "fit_participation_annual": {
+      "basis": "Evidence for the level: 23.5 percent of 45,147 eligible Emirati nationals screened by FIT or gFOBT in 2015-2016 (BMC Cancer 2021, PMC8343888); regular screening below 20 percent in the general population (The National, 15 December 2024); 88 percent of over-40s in a UAE survey never screened (Khaleej Times, 9 March 2022, sponsor Sheikh Shakhbout Medical City). The high end is a programme target, not an observation. FIT is only one of three tests offered, so the FIT share is lower than overall screening.",
+      "status": "assumed",
+      "unit": "share of the eligible population with a FIT result in a year",
+      "value": 0.2
+    },
+    "fit_positivity_market": {
+      "basis": "Gulf programmes: Qatar 6.8 percent (758 of 11,130, PMC9822526); Saudi Ministry of Health pilot 6.6 percent and Al-Kharj 6.3 percent (PMC11161890); Bahrain 716 of 11,000, 6.5 percent (MDPI Gastrointestinal Disorders 2024). Abu Dhabi ambulatory clinics 2015-2016 reported 13.5 percent among screened Emirati nationals (PMC8343888), used as the high end. Central 0.07 matches positivity_rate above.",
+      "status": "sourced-adjacent",
+      "unit": "share of FIT results that are positive",
+      "value": 0.07
+    },
+    "hosting_fixed_aed_per_month": {
+      "basis": "In-country hosting of the full stack with a standby copy (database, API, scheduler, watchdog, FHIR server, web). Not a quote.",
+      "status": "assumed",
+      "unit": "AED per month",
+      "value": 9000
+    },
+    "hosting_variable_aed_per_1000_cases_per_year": {
+      "basis": "Storage and compute growth with case volume. Not a quote.",
+      "status": "assumed",
+      "unit": "AED per 1,000 actionable cases per year",
+      "value": 400
+    },
+    "licence_pathways": {
+      "basis": "FIT, blood-based colorectal, breast recall, cervical recall.",
+      "status": "assumed",
+      "unit": "pathways covered by the licence",
+      "value": 4
+    },
+    "pilot_fit_screened_per_provider_per_year": {
+      "basis": "Placeholder until providers supply their real volumes (a data request in the pilot plan).",
+      "status": "assumed",
+      "unit": "FIT results per provider per year",
+      "value": 3000
+    },
+    "pilot_providers": {
+      "basis": "Pilot plan asks for two to three providers; the upper end is used.",
+      "status": "assumed",
+      "unit": "providers",
+      "value": 3
+    },
+    "positivity_rate": {
+      "basis": "Same value as simulator/params.yaml fit_positivity_rate (assumed there too; published ranges around 5-8 percent are to verify in docs/evidence.md).",
+      "status": "assumed",
+      "unit": "share of screened members with a positive FIT",
+      "value": 0.07
+    },
+    "programme_licence_aed_per_year": {
+      "basis": "Illustrative: FIT positives, blood-based positives, breast recall and cervical recall for one programme owner. Set near the operator's modelled cost plus a margin, not against any benchmark.",
+      "status": "assumed",
+      "unit": "AED per year, programme licence, four pathways, one emirate",
+      "value": 2000000
+    },
+    "shadow_days": {
+      "basis": "Length of the shadow-only run. Cases are not followed to closure by the engine, so no follow-up tail is funded.",
+      "status": "assumed",
+      "unit": "days",
+      "value": 90
+    },
+    "shadow_governance_review_one_off_aed": {
+      "basis": "Data sharing agreement and security assessment for a read-only export; no clinical safety review of outbound wording. Lower than the 60,000 of the full pilot.",
+      "status": "assumed",
+      "unit": "AED, one-off",
+      "value": 25000
+    },
+    "shadow_hosting_share_of_full": {
+      "basis": "A single copy without a standby, and no messaging or web channel. Applied to both the fixed and the variable hosting inputs.",
+      "status": "assumed",
+      "unit": "share of the full-stack hosting cost",
+      "value": 0.4
+    },
+    "shadow_integration_one_off_aed_per_provider": {
+      "basis": "Mapping and validating one periodic export (flat file or HL7 v2) per provider; no live interface, no outbound channel, no role set-up for messaging. Much lower than the 120,000 for a full integration. Not a quote.",
+      "status": "assumed",
+      "unit": "AED per participating provider, one-off",
+      "value": 15000
+    },
+    "shadow_licences_share_of_full": {
+      "basis": "Monitoring, backup and logging for a smaller footprint.",
+      "status": "assumed",
+      "unit": "share of the third-party licence cost",
+      "value": 0.5
+    },
+    "shadow_support_fte": {
+      "basis": "Loading and checking the periodic export, tuning flags and a weekly review with the coordinator. Lower than the 1.0 FTE of the full pilot because nothing is sent or assigned.",
+      "status": "assumed",
+      "unit": "FTE during the shadow run",
+      "value": 0.3
+    },
+    "support_fte_loaded_cost_aed_per_year": {
+      "basis": "Fully loaded engineer or support analyst cost.",
+      "status": "assumed",
+      "unit": "AED per FTE per year",
+      "value": 300000
+    },
+    "third_party_licences_aed_per_year": {
+      "basis": "Monitoring, backup and logging tools. Excludes our own product fee, which is modelled separately under pricing.",
+      "status": "assumed",
+      "unit": "AED per year",
+      "value": 24000
+    }
+  },
+  "reference": [
+    {
+      "cases": 155.34246575342468,
+      "shadow": {
+        "cases": 155.34246575342468,
+        "cost_per_case": 681.2534744268078,
+        "days": 90,
+        "fits": 2219.178082191781,
+        "governance": 25000,
+        "hosting": 10676.909589041097,
+        "integration": 45000,
+        "licences": 2958.904109589041,
+        "support": 22191.780821917808,
+        "total": 105827.59452054795
+      }
+    },
+    {
+      "cases": 60.0,
+      "shadow": {
+        "cases": 60.0,
+        "cost_per_case": 1763.53899543379,
+        "days": 90,
+        "fits": 857.1428571428571,
+        "governance": 25000,
+        "hosting": 10661.65479452055,
+        "integration": 45000,
+        "licences": 2958.904109589041,
+        "support": 22191.780821917808,
+        "total": 105812.33972602739
+      }
+    },
+    {
+      "cases": 300.0,
+      "shadow": {
+        "cases": 300.00000000000006,
+        "cost_per_case": 352.83579908675796,
+        "days": 90,
+        "fits": 4285.714285714286,
+        "governance": 25000,
+        "hosting": 10700.054794520549,
+        "integration": 45000,
+        "licences": 2958.904109589041,
+        "support": 22191.780821917808,
+        "total": 105850.7397260274
+      }
+    }
+  ],
+  "synthetic": true
+}

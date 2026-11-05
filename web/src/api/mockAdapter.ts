@@ -8,7 +8,7 @@
  */
 import type {
   AgencyInboxItem, AgencyOrg, AgencyRun, AgencyTask, AgencyTaskParams, Alert, ApiClient, CaseAgencySummary, CaseDetail, CaseEvent, CaseListParams, CaseSummary, CaseTimeline, ClosureMetrics, ConfirmatoryResult, Draft, DraftApproval,
-  TodayParams, TodayResponse, DraftRecord, DraftRejection, DraftRequestBody, EffortMetrics, FunnelMetrics, FunnelParams, Me, PostEventBody, ReplyBody, ReplyResult, Role, TimelineItem,
+  TodayParams, TodayResponse, DraftRecord, DraftRejection, DraftRequestBody, EffortMetrics, FunnelMetrics, FunnelParams, IntegrationFeed, Me, PostEventBody, ReplyBody, ReplyResult, Role, TimelineItem,
 } from "./contract";
 import type { AccessLog } from "./contract";
 import { ApiError, AUTOMATION_ACTOR, BACKEND_ROLE, OWNER_SCOPED_ROLES, REJECT_NOTE_MAX, REJECT_REASONS, ROLES } from "./contract";
@@ -18,6 +18,7 @@ import {
 } from "./mockAgency";
 import { PROVIDER_CLINICIANS, ROLE_NAMES, ROLE_PROVIDERS, backendActor } from "./identities";
 import { funnelMetricsOf } from "../lib/funnel";
+import { mockIntegrationFeed } from "../lib/integrationFeed";
 import { ESCALATION_LADDER, pathwayMeta, procedureSlug } from "../lib/pathway";
 import {
   actorKindOf, actorRole, closureOutcomeOf, closureProposalOf, incompleteProcedureOf, refusalOf, completeDetail, consentOf, consentHistoryOf, milestonesOf, overdueDays, pendingEscalation, replayHandoffs,
@@ -671,6 +672,10 @@ export function createMockAdapter(
     async getEffortMetrics(): Promise<EffortMetrics | null> {
       if (session.role !== "coordinator" && session.role !== "supervisor") return null; // the API answers 403
       return effortMetricsOf(load().events, SIM_NOW);
+    },
+    async integrationFeed(limit = 20): Promise<IntegrationFeed | null> {
+      if (session.role !== "coordinator" && session.role !== "supervisor") return null; // the API answers 403
+      return mockIntegrationFeed(limit, SIM_NOW);
     },
     async funnelMetrics(params: FunnelParams = {}): Promise<FunnelMetrics | null> {
       if (session.role !== "coordinator" && session.role !== "supervisor") return null; // the API answers 403

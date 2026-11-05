@@ -42,7 +42,7 @@ from datetime import datetime
 from typing import Protocol
 from uuid import UUID
 
-from app import users
+from app import integration_feed, users
 from app.calendar import WorkingCalendar
 from app.events import Event
 from app.pathway import Pathway, PathwayRegistry
@@ -584,6 +584,8 @@ class Projector:
         bundle = {"resourceType": "Bundle", "type": "transaction", "entry": [
             {"resource": r, "request": {"method": "PUT", "url": f"{r['resourceType']}/{r['id']}"}} for r in resources]}
         self.client.transaction(bundle)
+        kinds = sorted({r["resourceType"] for r in resources})
+        integration_feed.record("fhir", "out", f"FHIR transaction: {len(resources)} resources ({', '.join(kinds)[:70]})", "ok")
 
     def project(self, case_id: UUID, event: Event) -> bool:
         """Best effort: True if projected now, False if queued for retry. Never raises."""
@@ -598,6 +600,7 @@ class Projector:
             if isinstance(exc, FhirError) and "unreachable" in str(exc):
                 self._down_until = time.monotonic() + self.backoff_seconds  # wall-clock-ok: outage backoff only
             log.warning("FHIR projection of event %s queued for retry: %s", event.event_id, exc)
+            integration_feed.record("fhir", "out", "FHIR transaction not written; queued for retry", "queued")
             try:
                 self.queue.add(event.event_id, case_id, str(exc)[:500])
             except Exception:  # the queue itself is unavailable: the log is still safe, say so loudly

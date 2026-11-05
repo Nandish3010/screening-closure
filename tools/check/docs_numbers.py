@@ -33,7 +33,8 @@ from dataclasses import dataclass
 from decimal import ROUND_HALF_UP, Decimal
 from pathlib import Path
 
-SCAN_GLOBS = ["README.md", "docs/submission/*.md", "web/src/i18n/strings.ts", "web/src/lib/programmeFigures.ts"]
+SCAN_GLOBS = ["README.md", "docs/submission/*.md", "web/src/i18n/strings.ts", "web/src/lib/programmeFigures.ts",
+              "web/src/pages/SafetyPage.tsx", "web/src/pages/IntegrationsPage.tsx", "web/src/pages/PilotValuePage.tsx"]
 PRIMARY_GLOBS = ["docs/results/**/*.md", "docs/results/**/*.json"]
 SECONDARY_GLOBS = [
     "docs/evidence.md", "docs/evidence-wages.md", "docs/commercial/business-case.md", "docs/pilot-plan.md",
