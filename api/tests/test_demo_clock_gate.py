@@ -93,10 +93,11 @@ def test_demo_registers_advance_only_and_health_reports_the_demo_clock():
     out = _probe(CLOCK_MODE="sim", DEMO_SIMULATED_CLOCK="1", DEMO_DEPLOYMENT="1")
     assert out["paths"] == ["/clock/advance"] and out["reset"] == 404
     assert out["advance_unauth"] in (401, 403)  # supervisor token required; nothing anonymous
-    assert out["health"]["demo"] == {"simulated_clock": True, "deployment": True} and out["health"]["clock_mode"] == "sim"
-    # Item 8.3: "Reset demo" is an operator action (deploy/gcp/demo-reset.sh over IAP SSH), never a web route: it stops the API
-    # and replaces both databases, so the API cannot run it, and no HTTP reset or demo-admin path exists in the hosted demo.
-    assert out["reset_like"] == []
+    assert out["health"]["demo"]["simulated_clock"] is True and out["health"]["demo"]["deployment"] is True
+    assert out["health"]["clock_mode"] == "sim"
+    # ADR-057 (amends ADR-055): the API still never restores a database itself (it stops and replaces both). The one reset-like path
+    # is a supervisor's REQUEST, which writes a file the host script acts on; the clock's own /clock/reset stays absent.
+    assert out["reset_like"] == ["/demo/guide", "/demo/missed-followup", "/demo/reset"]
 
 
 def test_without_both_flags_production_has_no_clock_route_and_no_demo_marker():

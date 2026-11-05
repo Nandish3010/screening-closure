@@ -78,6 +78,11 @@ ROUTE_POLICY: dict[tuple[str, str], object] = {
     # DEMO_DEPLOYMENT, app.auth.demo_clock_active) registers /clock/advance only.
     ("POST", "/clock/advance"): frozenset({SUPER}),
     ("POST", "/clock/reset"): frozenset({SUPER}),
+    # The hosted demo's judge-experience routes (ADR-057), registered only under app.auth.demo_controls_active(): the guided path's
+    # fresh cases (any signed-in role), and the two controls that move shared demo state (supervisor only, like /clock/advance).
+    ("GET", "/demo/guide"): ALL_USERS,
+    ("POST", "/demo/reset"): frozenset({SUPER}),
+    ("POST", "/demo/missed-followup"): frozenset({SUPER}),
     # The scheduler service's periodic sweep and its heartbeat.
     ("POST", "/scheduler/sweep"): SCHEDULER,
     ("POST", "/scheduler/heartbeat"): SCHEDULER,

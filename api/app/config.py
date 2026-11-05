@@ -47,6 +47,13 @@ class Settings(BaseSettings):
     # and GET /health reports `demo.simulated_clock`, which the web app turns into the "Demo, synthetic data, simulated time" banner (and, with `demo.deployment`, the judge role cards on the sign-in page).
     demo_simulated_clock: bool = False
     demo_deployment: bool = False
+    # Judge-experience controls (ADR-057). They exist ONLY under the same two flags with the sim clock (app.auth.demo_controls_active):
+    # the guided path's fresh-case picker, "Simulate a missed follow-up" and the reset REQUEST. The API cannot restore a database
+    # under itself, so a reset is a request file in this directory that a host-side script acts on (deploy/gcp/vm/demo-reset-watch.sh,
+    # which also writes status.json: when, by whom). Bind-mount it read-write into the api container.
+    demo_control_dir: str = "/var/lib/sc-demo"
+    demo_reset_min_interval_seconds: int = Field(default=600, ge=60, le=86400)  # one accepted reset request per this long
+    demo_auto_reset_hours: float = Field(default=6.0, ge=0, le=168)  # informational: when the scheduled reset is due (0 = none)
     leader_lease_ttl_seconds: float = Field(default=30.0, gt=1, le=3600)
     watchdog_idle_days: int = 7
     # M7-7: bounded work per scheduler sweep (app.sweep.run_sweep). At most this many due cases are evaluated per sweep
