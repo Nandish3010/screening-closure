@@ -1,0 +1,44 @@
+# The stand-in for an OIDC provider's key endpoint (see tools/k8s/jwks.yaml): serves the public JWKS from the ConfigMap sc-jwks.
+# No `app.kubernetes.io/instance` label, so the product chart's default-deny policy (if enabled) does not apply to it.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sc-jwks
+  labels:
+    app: sc-jwks
+    {{- include "slt.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: sc-jwks } }
+  template:
+    metadata:
+      labels:
+        app: sc-jwks
+        {{- include "slt.labels" . | nindent 8 }}
+    spec:
+      automountServiceAccountToken: false
+      nodeSelector: {{ toYaml .Values.jwks.nodeSelector | nindent 8 }}
+      securityContext: { runAsNonRoot: true, runAsUser: 10001, runAsGroup: 10001, seccompProfile: { type: RuntimeDefault } }
+      containers:
+        - name: jwks
+          image: {{ .Values.images.api | quote }}
+          imagePullPolicy: {{ .Values.images.pullPolicy }}
+          command: ["python", "-m", "http.server", "8080", "--directory", "/jwks", "--bind", "0.0.0.0"]
+          ports: [{ name: http, containerPort: 8080 }]
+          securityContext: { allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: { drop: [ALL] } }
+          resources: { requests: { cpu: 10m, memory: 32Mi }, limits: { cpu: 100m, memory: 64Mi } }
+          readinessProbe: { httpGet: { path: /jwks.json, port: http }, periodSeconds: 5 }
+          volumeMounts: [{ name: jwks, mountPath: /jwks, readOnly: true }]
+      volumes:
+        - { name: jwks, configMap: { name: sc-jwks } }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sc-jwks
+  labels:
+    app: sc-jwks
+    {{- include "slt.labels" . | nindent 4 }}
+spec:
+  selector: { app: sc-jwks }
+  ports: [{ name: http, port: 8080, targetPort: http }]

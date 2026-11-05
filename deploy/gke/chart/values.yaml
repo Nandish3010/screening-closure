@@ -1,0 +1,52 @@
+# Support chart of the GKE / kind load test (deploy/gke/loadtest.sh). Installed into the same namespace as the screening-closure release.
+# Not part of the product chart: production uses a managed database and a real identity provider (docs/governance/deployment.md).
+# The Secrets it reads (sc-postgres, sc-oidc-signing and the ConfigMap sc-jwks) are created by the script, never rendered here.
+label: sc-loadtest                 # every object carries <label>=true so `make gke-teardown` can find it
+runId: local
+# must equal app.oidcIssuer of deploy/helm/screening-closure/values-gke-loadtest.yaml (mint_token.py signs tokens for it)
+oidcIssuer: https://idp.gke-loadtest.invalid/realms/sc-gke
+
+images:
+  postgres: mirror.gcr.io/library/postgres:16         # Google's Docker Hub mirror (no anonymous-pull rate limit on GKE nodes)
+  api: REGISTRY/screening-closure-api:gke              # the JWKS pod runs python's http.server from the API image
+  loadgen: REGISTRY/screening-closure-loadgen:gke
+  pullPolicy: IfNotPresent
+
+storageClass:
+  create: true                      # GKE: a pd-ssd class whose disks carry the label. kind: create=false and the default class is used.
+  name: sc-loadtest-ssd
+  provisioner: pd.csi.storage.gke.io
+  type: pd-ssd
+
+postgres:
+  nodeSelector: { sc-pool: data }
+  storage: 120Gi
+  resources:
+    requests: { cpu: "4", memory: 16Gi }
+    limits:   { memory: 24Gi }       # no cpu limit: the database may use the whole data node
+  shmSize: 2Gi
+  # tuned like tools/k8s/postgres.yaml (M7-6: docs/results/scale/sweep.json), scaled to the node (e2-standard-8, 32 GB)
+  args: ["-c", "max_connections=300", "-c", "shared_buffers=6GB", "-c", "effective_cache_size=18GB", "-c", "random_page_cost=1.1",
+         "-c", "work_mem=16MB", "-c", "maintenance_work_mem=1GB", "-c", "max_wal_size=8GB", "-c", "checkpoint_timeout=15min"]
+
+jwks:
+  nodeSelector: { sc-pool: app }
+
+loadgen:
+  enabled: false                    # the script switches it on after the product chart is up (helm upgrade --set loadgen.enabled=true)
+  nodeSelector: { sc-pool: load }
+  resources:
+    requests: { cpu: "3", memory: 4Gi }
+    limits:   { cpu: "4", memory: 8Gi }
+  # The scenario knobs (deploy/gke/scenarios.sh); overridden by the script from its own environment.
+  env:
+    SEED_SIZE: "1000000"
+    SWEEP_SIZES: "1000000"
+    SWEEP_WORKERS: "1,4"
+    LADDER_RATES: "50,100,175,250,300,400,500"
+    LADDER_SECONDS: "180"
+    SOAK_RATE: "50"
+    SOAK_SECONDS: "4500"
+    SC_SEED_PROCS: "4"
+    GIT_COMMIT: ""
+    GIT_BRANCH: ""

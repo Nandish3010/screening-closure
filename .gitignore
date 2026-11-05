@@ -23,6 +23,9 @@ data/
 # M7-5's replayed triage scores are committed inputs, not generated data (tools/rai/fairness.py)
 !tools/rai/data/
 
+# GKE load test runs (deploy/gke/loadtest.sh): kubeconfig-free raw outputs; a finished run is imported with `make gke-import`
+results/
+
 # E16 video outputs (recordings, audio, the web build, the two mp4s)
 tools/video/out/
 
