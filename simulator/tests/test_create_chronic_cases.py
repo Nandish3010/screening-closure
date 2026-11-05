@@ -72,8 +72,11 @@ def test_the_default_demo_seed_does_not_create_chronic_cases_and_the_snapshot_fl
     assert " demo-seed-chronic " in mk.splitlines()[0]
     snapshot = mk.split("\ndemo-snapshot:", 1)[1].split("\n\n", 1)[0]
     assert "chronic" not in snapshot and "chronic" not in mk.split("\ndemo-stage:", 1)[1].split("\n\n", 1)[0]
-    storyboard = (REPO / "tools/video/storyboard.yaml").read_text()
-    assert "chronic" not in storyboard.lower(), "the video storyboard is not changed by the third pathway"
+    # v7: the video features the urgent long-term-conditions case, so the RECORDER seeds it (after the scenario, before the shots);
+    # the snapshot and `make demo-reset` stay untouched, and the final demo-reset removes the cases again.
+    recorder = (REPO / "tools/video/record.ts").read_text()
+    assert 'make("demo-seed-chronic")' in recorder and recorder.index('make("demo-scenario"') < recorder.index('make("demo-seed-chronic")')
+    assert 'r.priority?.tier === "urgent"' in recorder
 
 
 def pack_priority():

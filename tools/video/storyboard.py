@@ -24,7 +24,7 @@ import yaml
 HERE = Path(__file__).resolve().parent
 STORYBOARD = HERE / "storyboard.yaml"
 
-VERBS = {"goto", "role", "click", "select", "fill", "scroll", "wait_for", "hold", "caption", "cut", "shell",
+VERBS = {"goto", "role", "click", "select", "fill", "scroll", "scroll_page", "wait_for", "hold", "caption", "cut", "shell",
          "terminal", "card", "advance_clock"}
 ROLES = {"coordinator", "owner", "specialist", "clinician", "supervisor", "patient"}
 REQUIRED = ("id", "route", "actions", "caption", "narration", "duration")
@@ -84,9 +84,14 @@ def card_seconds(card: dict) -> float:
     return secs
 
 
+def shot_seconds(shot: dict) -> float:
+    """A shot is at least its `duration`, and as long as its narration (estimated from the word count, as for a card) plus the lead and tail."""
+    return max(float(shot["duration"]), len(str(shot.get("narration", "")).split()) / WORDS_PER_SECOND + 0.4)
+
+
 def budget(sb: dict) -> dict:
     submission = [s for s in sb["shots"] if s.get("submission")]
-    shots = sum(float(s["duration"]) for s in submission)
+    shots = sum(shot_seconds(s) for s in submission)
     cards = card_seconds(sb["cards"]["title"]) + card_seconds(sb["cards"]["end"])
     return {
         "submission_shots": len(submission),
@@ -95,7 +100,7 @@ def budget(sb: dict) -> dict:
         "submission_total": shots + cards,
         "cap": float(sb["meta"].get("submission_cap_seconds", 180)),
         "backup_shots": len(sb["shots"]),
-        "backup_total": sum(float(s["duration"]) for s in sb["shots"]) + cards,
+        "backup_total": sum(shot_seconds(s) for s in sb["shots"]) + cards,
     }
 
 

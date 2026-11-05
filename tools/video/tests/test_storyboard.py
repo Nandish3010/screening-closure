@@ -132,3 +132,28 @@ def test_record_passes_the_agency_budget_through_the_environment_and_fails_when_
     assert "env: { ...base, ...env }" in text and "agencyBudget(process.env.VIDEO_AGENCY_BUDGET)" in text
     assert "20 to 3600" in text
     assert "if (rb2.code !== 0 && !failure) failure = new Error(" in text
+
+
+def test_the_recorders_page_overlay_is_valid_javascript():
+    """The caption bar, the synthetic strip and the id clean-up are one injected script; a quote inside its template literal once
+    broke it silently (shots recorded without captions). Extract it with node and check its syntax."""
+    import shutil
+    import subprocess
+    import tempfile
+
+    node = shutil.which("node")
+    if not node:
+        import pytest
+        pytest.skip("node is not installed")
+    text = (Path(__file__).resolve().parents[1] / "record.ts").read_text(encoding="utf-8")
+    fn = text[text.index("function overlayScript"):text.index("// ---- running a shot")]
+    fn = fn.replace('function overlayScript(caption: string, pos = "bottom"): string', 'function overlayScript(caption, pos = "bottom")')
+    with tempfile.TemporaryDirectory() as d:
+        gen = Path(d) / "gen.mjs"
+        out = Path(d) / "overlay.js"
+        gen.write_text(fn + f"\nimport fs from 'fs'; fs.writeFileSync({str(out)!r}, overlayScript('a caption', 'top'));", encoding="utf-8")
+        assert subprocess.run([node, str(gen)], capture_output=True, text=True).returncode == 0
+        r = subprocess.run([node, "--check", str(out)], capture_output=True, text=True)
+        assert r.returncode == 0, r.stderr
+        js = out.read_text(encoding="utf-8")
+        assert "__vcap_bar" in js and "H1" in js
