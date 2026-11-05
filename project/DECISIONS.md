@@ -1063,7 +1063,7 @@ These are not decisions. Each is a question the M6 work surfaced that needs an o
 - Option 2: keep AE and rely on a person who reads the sender's log to correct the case.
 - Option 3: map S15 to `review_requested` so a person is told, without a new pathway event.
 
-## ADR-058: The judge experience: a guided "Start here" path on fresh cases, a request-based demo reset, a simulated missed follow-up, and opt-in credentials, all behind the demo gate
+## ADR-058: The judge experience: a guided "Start here" path on fresh cases, a request-based demo reset, a simulated missed follow-up, all behind the demo gate
 
 **Context.** Judges (DoH, Microsoft, G42, MBZUAI) test the hosted demo hands-on, several at once, for a few minutes each, through four shared logins. Three things went wrong in the re-scores: the first screen was a worklist with a greyed button, there was no path through the challenge owner's five steps, and the safety net (the scheduler and watchdog catching a missed follow-up) was only shown off camera. With shared state, one judge's actions also change what the next judge sees. ADR-055 had left "Reset demo" an operator-only action because the API cannot restore a database under itself.
 
