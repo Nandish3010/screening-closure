@@ -19,4 +19,9 @@ mkdir -p /srv/sc /var/lib/sc
 # 2 GB swap: a safety net for the JVMs on a small instance (not a substitute for the memory sizing in hosting-gcp.md).
 if [ ! -f /swapfile ]; then fallocate -l 2G /swapfile && chmod 600 /swapfile && mkswap /swapfile >/dev/null && swapon /swapfile && echo '/swapfile none swap sw 0 0' >> /etc/fstab; fi
 touch /var/lib/sc/ready-for-bundle
+# BUG-77 workaround: a daily restart of the API container (units ship in the repository bundle; absent before the first deploy).
+if [ -f /srv/sc/repo/deploy/gcp/vm/sc-api-restart.timer ]; then
+  install -m 0644 /srv/sc/repo/deploy/gcp/vm/sc-api-restart.service /srv/sc/repo/deploy/gcp/vm/sc-api-restart.timer /etc/systemd/system/
+  systemctl daemon-reload && systemctl enable --now sc-api-restart.timer
+fi
 if [ -x /srv/sc/repo/deploy/gcp/vm/sc-up.sh ]; then /srv/sc/repo/deploy/gcp/vm/sc-up.sh; fi
