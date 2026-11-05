@@ -5,7 +5,8 @@ set -euo pipefail
 : "${GCP_REGION:=me-central1}"            # Doha; see docs/governance/hosting-gcp.md "Region": synthetic data only
 : "${GCP_ZONE:=${GCP_REGION}-a}"          # me-central1-a/b/c all offer E2 (Google zone table)
 : "${SC_VM_NAME:=sc-demo}"
-: "${SC_MACHINE_TYPE:=e2-standard-2}"      # 2 vCPU / 8 GB
+: "${SC_MACHINE_TYPE:=e2-medium}"           # 2 shared vCPU / 4 GB (owner budget about INR 3,000 a month)
+: "${SC_QUANT:=q5_k_m}"                      # the GGUF quantization delivered by deploy.sh --model (Q5_K_M: about 1.1 GB, fits 4 GB)
 : "${SC_DISK_GB:=40}"
 : "${SC_BUDGET_USD:=80}"                   # monthly budget ALERT (email), not a cap
 : "${SC_DOMAIN:=}"                         # optional own domain pointing at the static IP; else <ip-with-dashes>.sslip.io (later: SC_DOMAIN=demo.example.org)

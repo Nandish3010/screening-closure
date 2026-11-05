@@ -1,7 +1,7 @@
 #!/bin/bash
 # Creates the hosted demo's cloud resources and delivers the code. THIS SPENDS MONEY: run it only after you approved the cost in
 # docs/governance/hosting-gcp.md. It refuses to run without --yes-spend. Idempotent (re-running reuses what exists).
-#   deploy.sh --yes-spend [--model tools/triage/gguf/triage-q8_0.gguf]
+#   deploy.sh --yes-spend [--model tools/triage/gguf/triage-q5_k_m.gguf]
 # --model uploads the converted triage model (about 1-1.7 GB, over IAP SSH) to the VM; without it replies fail safe to a person.
 # Creates: APIs enabled, a service account with NO project roles, secrets in Secret Manager (generated here, never printed),
 # firewall (80/443 from anywhere, SSH only through IAP), one static IP, one VM, a billing budget alert. It does NOT start serving

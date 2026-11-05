@@ -10,7 +10,7 @@ model_args=()
 case "${2:-}" in
   --no-model) echo "No triage model: replies will fail safe to a person." ;;
   --model) model_args=(--model "${3:?--model needs a file}") ;;
-  "") f="$here/../../tools/triage/gguf/triage-${SC_QUANT:-q8_0}.gguf"
+  "") f="$here/../../tools/triage/gguf/triage-${SC_QUANT:-q5_k_m}.gguf"
       [ -f "$f" ] || { echo "No GGUF model at $f. Build it first (make triage-gguf) or pass --no-model." >&2; exit 2; }
       model_args=(--model "$f") ;;
   *) echo "unknown argument $2" >&2; exit 2 ;;

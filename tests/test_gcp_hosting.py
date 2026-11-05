@@ -170,3 +170,26 @@ def test_keycloak_import_dir_is_readable_by_the_container_user():
     up = (GCP / "vm" / "sc-up.sh").read_text()
     assert "chmod 0755 /etc/sc/keycloak-import" in up
     assert "chmod 0644 /etc/sc/keycloak-import/screening-closure-realm.json" in up
+
+
+def test_sized_for_the_4gb_e2_medium():
+    import re
+
+    lib = (GCP / "lib.sh").read_text()
+    assert ': "${SC_MACHINE_TYPE:=e2-medium}"' in lib and ': "${SC_QUANT:=q5_k_m}"' in lib
+    data = yaml.load((GCP / "compose.gcp.yml").read_text(), Loader=cl._Loader)
+    mb = lambda name: int(re.fullmatch(r"(\d+)m", data["services"][name]["mem_limit"]).group(1))  # noqa: E731
+    assert (mb("api"), mb("fhir"), mb("keycloak-prod"), mb("triage-llama")) == (1024, 1300, 700, 1500)
+    assert "-Xmx${FHIR_HEAP_MB:-768}m" in data["services"]["fhir"]["environment"]["JAVA_TOOL_OPTIONS"]
+    assert "-Xmx384m" in data["services"]["keycloak-prod"]["environment"]["JAVA_OPTS_KC_HEAP"]
+    # each heap leaves room for the JVM's own overhead inside its container limit, and the limits together fit 4 GB with Postgres and the OS
+    assert 768 + 400 <= mb("fhir") and 384 + 250 <= mb("keycloak-prod")
+    startup = (GCP / "vm" / "startup.sh").read_text()
+    assert "fallocate -l 4G /swapfile" in startup  # 4 GB swap, grown from an older 2 GB file
+
+
+def test_llama_healthcheck_uses_the_port_it_listens_on():
+    data = yaml.load((GCP / "compose.gcp.yml").read_text(), Loader=cl._Loader)
+    llama = data["services"]["triage-llama"]
+    port = llama["command"][llama["command"].index("--port") + 1]
+    assert port == "8081" and f"localhost:{port}/health" in " ".join(llama["healthcheck"]["test"])

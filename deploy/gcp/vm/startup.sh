@@ -16,8 +16,11 @@ if ! command -v docker >/dev/null 2>&1; then
   systemctl restart docker
 fi
 mkdir -p /srv/sc /var/lib/sc
-# 2 GB swap: a safety net for the JVMs on a small instance (not a substitute for the memory sizing in hosting-gcp.md).
-if [ ! -f /swapfile ]; then fallocate -l 2G /swapfile && chmod 600 /swapfile && mkswap /swapfile >/dev/null && swapon /swapfile && echo '/swapfile none swap sw 0 0' >> /etc/fstab; fi
+# 4 GB swap: a safety net for the JVMs on the 4 GB e2-medium (not a substitute for the memory sizing in hosting-gcp.md).
+if [ -f /swapfile ] && [ "$(stat -c %s /swapfile)" -lt $((4096*1024*1024)) ]; then  # an older 2 GB swapfile: grow it
+  swapoff /swapfile && rm -f /swapfile
+fi
+if [ ! -f /swapfile ]; then fallocate -l 4G /swapfile && chmod 600 /swapfile && mkswap /swapfile >/dev/null && swapon /swapfile && echo '/swapfile none swap sw 0 0' >> /etc/fstab; fi
 touch /var/lib/sc/ready-for-bundle
 # BUG-77 workaround: a daily restart of the API container (units ship in the repository bundle; absent before the first deploy).
 if [ -f /srv/sc/repo/deploy/gcp/vm/sc-api-restart.timer ]; then

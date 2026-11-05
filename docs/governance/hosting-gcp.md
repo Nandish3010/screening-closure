@@ -42,24 +42,24 @@ The files: `deploy/gcp/compose.gcp.yml` (an overlay on the repository's own `doc
 
 ## Options compared (monthly, USD, estimates, 4 Nov 2026)
 
-730 hours a month. **Decided: me-central1 (Doha), e2-standard-2 (2 vCPU, 8 GB), budget alert USD 80.**
+730 hours a month. **Decided: me-central1 (Doha), e2-medium (2 shared vCPU, 4 GB), owner budget about INR 3,000 a month (about USD 35), budget alert USD 80 (an alert, not a cap; lower it with `SC_BUDGET_USD`).** The first deployment ran on e2-standard-2 (8 GB) and was downsized with the owner's approval.
 
 | Line | Basis | Monthly |
 |---|---|---|
-| VM e2-standard-2, Doha, on demand | USD 0.0814 per hour x 730. Source: [Spare Cores](https://sparecores.com/server/gcp/e2-standard-2) region table, observed 2026-11-04 (third party; Google's own page was not readable). Same table: europe-west4 0.0738, us-central1 0.067 | **59.4** |
+| VM e2-medium, Doha, on demand | about USD 0.0407 per hour x 730, i.e. half the e2-standard-2 rate of USD 0.0814 per hour (Spare Cores region table, observed 2026-11-04; third party, Google's own page was not readable); an estimate, to be read off the first invoice. For reference e2-standard-2 was 59.4 | **about 29.7** |
 | Boot disk 40 GB pd-balanced | about USD 0.12 per GB-month assumed for Doha (the US/EU list price is 0.10; the Doha rate was **not** found) | about 4.8 |
 | One in-use static external IPv4 | USD 0.005 per hour, Google's flat external IP rate (from memory, not re-read) | about 3.7 |
 | Secret Manager, 17 secrets | USD 0.06 per active version | about 1.0 |
 | Egress | a few GB for a demo, mostly inside the free tier | under 1 |
-| **Total, always on** | | **about 69** |
+| **Total, always on** | | **about 39 (about INR 3,300 at 85 INR per USD; the VM line is the estimate that matters)** |
 | **Stopped between judging windows** | disk 4.8 + the reserved but unattached IP (USD 0.01 per hour, 7.3) | **about 12** |
 | Budget alert | email at 50/90/100 percent of USD 80; an alert, not a cap | |
 
 Free-tier allowances, taxes and support plans are ignored. Google Cloud has no hard spending cap; the real guard is that the whole stack is one fixed-price VM. **Machine availability (checked against Google's [regions and zones](https://docs.cloud.google.com/compute/docs/regions-zones) table on 2026-11-04, not against your project):** E2 is listed in all three Doha zones (`me-central1-a`, `-b`, `-c`); `preflight.sh` confirms the type in the chosen zone with your project once you are signed in. The default zone is `me-central1-a`.
 
-Alternatives considered (estimates, from the earlier comparison): **cheapest viable**, e2-medium (1 shared vCPU, 4 GB), about USD 34-38 in Doha: too tight now that the triage model (about 1.2-1.7 GB) joins HAPI, Keycloak and Postgres, so it is no longer recommended. **Spot** VM about 24-29: a preemption in the judging window is a failed demo. **Cloud Run + Cloud SQL** about 150-200: HAPI and Keycloak are JVM services that need to stay warm and the scheduler is a lease-based loop (always-on Cloud Run instances cost about 25-30 each), so it costs three times as much for a worse judge experience. **GKE** 130+: the Helm chart has no FHIR server or identity provider.
+Alternatives considered (estimates, from the earlier comparison): **e2-standard-2** (2 vCPU, 8 GB), about USD 69: the first deployment; replaced by e2-medium to meet the owner's budget (the containers are sized for 4 GB below, with 4 GB of swap as a net). **Spot** VM about 24-29: a preemption in the judging window is a failed demo. **Cloud Run + Cloud SQL** about 150-200: HAPI and Keycloak are JVM services that need to stay warm and the scheduler is a lease-based loop (always-on Cloud Run instances cost about 25-30 each), so it costs three times as much for a worse judge experience. **GKE** 130+: the Helm chart has no FHIR server or identity provider.
 
-Memory on the 8 GB VM, rough: HAPI (1.5 GB heap, about 2.2 resident), Keycloak 0.9, Postgres 0.4, API 0.3, llama.cpp with Q8_0 about 1.7 (Q5_K_M about 1.2), the rest 0.4: about 6 GB, plus 2 GB swap as a safety net. To be confirmed by the first seed on the real VM.
+Memory on the 4 GB e2-medium (container limits in `compose.gcp.yml`): HAPI heap 768 MB, limit 1300 MB (measured use about 1.0 GiB); Keycloak heap 384 MB, limit 700 MB; llama.cpp with Q5_K_M (the default, `SC_QUANT=q5_k_m`, about 1.1 GB file) limit 1500 MB; API limit 1024 MB; Postgres about 0.4 GB; the rest small. Swap is 4 GB (a net, not a substitute). The measured numbers are in the deployment record below.
 
 "Scale to near zero when idle" means **stop the VM** between judging windows (`gcloud compute instances stop`; start brings the stack back by itself, certificates and data persist).
 
@@ -67,7 +67,7 @@ Memory on the 8 GB VM, rough: HAPI (1.5 GB heap, about 2.2 resident), Keycloak 0
 
 | Region | Where | Fit | Cost | Notes |
 |---|---|---|---|---|
-| **me-central1 (chosen)** | Doha | about 10-20 ms from the UAE | USD 0.0814/h (e2-standard-2) | E2 in zones a, b, c. |
+| **me-central1 (chosen)** | Doha | about 10-20 ms from the UAE | about USD 0.04/h (e2-medium, estimate) | E2 in zones a, b, c. |
 | me-central2 | Dammam | about 10-25 ms | USD 0.1072/h per the same tracker | Dearer. |
 | europe-west4 | Netherlands | about 110-140 ms | USD 0.0738/h | Cheapest of the three. |
 
@@ -126,9 +126,9 @@ Everything below is run by you in a terminal. The agent that prepared this did n
 
 1. gcloud is installed at `/opt/homebrew/share/google-cloud-sdk` (otherwise `brew install --cask gcloud-cli`).
 2. Sign in, in the browser: `gcloud auth login`
-3. Create or choose a project in the console and link billing there, then `gcloud config set project <PROJECT_ID>`. Defaults are already set to me-central1-a, e2-standard-2, a USD 80 alert and sslip.io.
+3. Create or choose a project in the console and link billing there, then `gcloud config set project <PROJECT_ID>`. Defaults are already set to me-central1-a, e2-medium, a USD 80 alert and sslip.io.
 4. Read-only check: `deploy/gcp/preflight.sh`
-5. **One command (spends money; approve the cost first):** `make gcp-up` (= `deploy/gcp/up.sh --yes-spend`). It runs preflight, `deploy.sh --model tools/triage/gguf/triage-q8_0.gguf` (APIs, service account with no roles, 17 generated secrets, firewall, static IP, VM, budget alert, delivery of the committed tree and the model), `seed.sh` (builds the images, generates the cohort, takes the snapshot, switches to production mode), `smoke-test.sh`, then prints the judge logins once with `credentials.sh`. Use `SC_QUANT=q5_k_m make gcp-up` for the other build, or `deploy/gcp/up.sh --yes-spend --no-model` to skip triage. About 45-75 minutes the first time; every step is idempotent, so re-running continues.
+5. **One command (spends money; approve the cost first):** `make gcp-up` (= `deploy/gcp/up.sh --yes-spend`). It runs preflight, `deploy.sh --model tools/triage/gguf/triage-q5_k_m.gguf` (APIs, service account with no roles, 17 generated secrets, firewall, static IP, VM, budget alert, delivery of the committed tree and the model), `seed.sh` (builds the images, generates the cohort, takes the snapshot, switches to production mode), `smoke-test.sh`, then prints the judge logins once with `credentials.sh`. Use `SC_QUANT=q8_0 make gcp-up` for the larger build (about 1.7 GB; needs the 8 GB `SC_MACHINE_TYPE=e2-standard-2`), or `deploy/gcp/up.sh --yes-spend --no-model` to skip triage. About 45-75 minutes the first time; every step is idempotent, so re-running continues.
 6. Individual steps if you prefer: `deploy/gcp/deploy.sh --yes-spend --model <file>`, `deploy/gcp/seed.sh`, `deploy/gcp/smoke-test.sh`, `deploy/gcp/credentials.sh` (paste into the submission).
 7. **Reset the demo before each judging window**, and whenever needed: `make gcp-reset` (IAM-protected over IAP SSH). Because a judge's "advance time" cannot be undone from the browser, this operator step is how the demo returns to its starting date; do it after seeding and again just before judges are expected.
 8. Between judging windows: `gcloud compute instances stop sc-demo --zone me-central1-a`, and `start` (the stack returns in 2-3 minutes).
@@ -138,7 +138,7 @@ To ship a newer commit: commit, run `deploy/gcp/deploy.sh --yes-spend` again (id
 
 ## What needs your approval
 
-- **Cost**: about USD 69 a month always on, about 12 stopped (Doha, e2-standard-2, estimates above); the alert at USD 80. A project with billing linked. To be confirmed with the user before `gcp-up`.
+- **Cost**: about USD 39 (about INR 3,300) a month always on, about 12 stopped (Doha, e2-medium, estimates above; owner budget about INR 3,000); the alert at USD 80. A project with billing linked. To be confirmed with the user before `gcp-up`.
 - **Downloads on the Mac for the triage conversion (already approved by the user)**: PyTorch and the `gguf` package into the triage venv, `brew install llama.cpp`, a llama.cpp checkout. Anything else, or well over 2 GB in total, needs a new approval.
 - **Downloads on the VM** (not the Mac): Docker's apt repository, container images (Postgres, HAPI, Keycloak, Caddy, nginx, Node, Python, llama.cpp server), npm packages for the web build, the Synthea v3.3.0 jar from GitHub (inside a container).
 - **Live Claude drafting** (optional, off): an Anthropic key in Secret Manager and a token budget.

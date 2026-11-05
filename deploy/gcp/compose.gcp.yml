@@ -13,6 +13,7 @@ services:
       - path: /etc/sc/api.env
         required: true
     # HAPI and the API stay on the private compose network; no new ports.
+    mem_limit: 1024m
 
   scheduler:
     # The lease/fencing design (ADR-041) is kept as is; ONE scheduler here (no scale profile), so the lease is trivially held.
@@ -30,8 +31,8 @@ services:
   fhir:
     restart: unless-stopped
     environment:
-      JAVA_TOOL_OPTIONS: -Xmx${FHIR_HEAP_MB:-1536}m
-    mem_limit: 3500m
+      JAVA_TOOL_OPTIONS: -Xmx${FHIR_HEAP_MB:-768}m
+    mem_limit: 1300m
 
   postgres:
     restart: unless-stopped
@@ -44,7 +45,7 @@ services:
     profiles: [public]
     restart: unless-stopped
     command: ["start", "--import-realm"]
-    mem_limit: 1100m
+    mem_limit: 700m
     environment:
       KC_DB: postgres
       KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak
@@ -56,7 +57,7 @@ services:
       KC_HOSTNAME_BACKCHANNEL_DYNAMIC: "true"
       KC_PROXY_HEADERS: xforwarded
       KC_HEALTH_ENABLED: "true"
-      JAVA_OPTS_KC_HEAP: -Xms256m -Xmx768m
+      JAVA_OPTS_KC_HEAP: -Xms128m -Xmx384m
       KC_BOOTSTRAP_ADMIN_USERNAME: admin
       KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?set by render_env.py}
       KC_PW_LAB: ${KC_PW_LAB:?}
@@ -84,7 +85,14 @@ services:
     command: ["-m", "/models/triage.gguf", "--host", "0.0.0.0", "--port", "8081", "-c", "2048", "-t", "2", "--parallel", "1", "--no-webui"]
     volumes:
       - /srv/sc/models:/models:ro
-    mem_limit: 2200m
+    mem_limit: 1500m
+    # The image's own healthcheck curls :8080, but this server listens on 8081 (--port above), so it reported unhealthy while working.
+    healthcheck:
+      test: ["CMD", "curl", "-fs", "http://localhost:8081/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 120s
     networks: [closure]
 
   triage:
