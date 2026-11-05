@@ -8,8 +8,9 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-from app import effort, users
+from app import effort, insurance, users
 from app import priority as priority_module
+from app import providers as providers_module
 from app.calendar import WorkingCalendar
 from app.events import Event, LoadedCase
 from app.pathway import Pathway
@@ -126,6 +127,10 @@ def case_row(lc: LoadedCase, pathway: Pathway, calendar: WorkingCalendar) -> dic
         # ADR-051: {tier, rank, rule, reason: {en, ar}, basis} from the genesis event and the pack's rules; null when the case
         # has none. Staff only: a patient's rows do not carry it. It orders and explains; nothing is derived from it.
         "priority": priority_of(lc.events, pathway),
+        # ADR-056: the insurance scheme and the referral's network, from the genesis event and the referral requests; null when the
+        # case has no recorded scheme. Staff only: a patient's rows and case page do not carry it (`patient_case_row` is an
+        # allow-list). It decides where a referral goes (providers.route) and explains it; it never holds a case.
+        "insurance": insurance_of(lc.events, pathway),
     }
 
 
@@ -147,6 +152,32 @@ def at_risk(lc: LoadedCase, pathway: Pathway, now: datetime) -> bool:
 def priority_of(events, pathway: Pathway) -> dict | None:
     genesis = events[0].payload if events else {}
     return priority_module.describe(pathway.priority, genesis.get("priority"), genesis.get("priority_rule"))
+
+
+def insurance_of(events, pathway: Pathway) -> dict | None:
+    """`{scheme, label, synthetic, providers, referral}` or None when the genesis event records no scheme.
+
+    `referral` describes the latest referral request: `{provider, network, out_of_network, auto, reason}`, with `network` and
+    `reason` null when the scheme took no part in the choice (`unknown`, or a request made before the scheme was known).
+    `providers` is the pathway's referral list in referral order, each `{name, network}` for the scheme (network null when the
+    scheme is `unknown`), for the picker."""
+    scheme = events[0].payload.get("insurance_scheme") if events else None
+    if scheme is None:
+        return None
+    request = next((e for e in reversed(events) if e.type == "handoff_requested"), None)
+    referral = None
+    if request is not None:
+        network, auto = request.payload.get("network"), request.payload.get("auto") is True
+        referral = {
+            "provider": request.payload.get("to_provider"), "network": network, "out_of_network": network == insurance.OUT_OF_NETWORK,
+            "auto": auto, "reason": insurance.reason(scheme, network, auto),
+        }
+    config = providers_module.get_providers()
+    return {
+        "scheme": scheme, "label": insurance.label(scheme), "synthetic": True,
+        "providers": [{"name": p, "network": config.network_of(p, scheme)} for p in config.reroute_list(pathway.name)],
+        "referral": referral,
+    }
 
 
 def matches(row: dict, *, owner=None, overdue=None, provider=None, flagged=None) -> bool:

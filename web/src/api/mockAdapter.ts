@@ -18,6 +18,7 @@ import {
 } from "./mockAgency";
 import { PROVIDER_CLINICIANS, ROLE_NAMES, ROLE_PROVIDERS, backendActor } from "./identities";
 import { funnelMetricsOf } from "../lib/funnel";
+import { insuranceOfEvents, networkOf, routeNext } from "../lib/insurance";
 import { mockIntegrationFeed } from "../lib/integrationFeed";
 import { ESCALATION_LADDER, pathwayMeta, procedureSlug } from "../lib/pathway";
 import {
@@ -222,8 +223,12 @@ export function createMockAdapter(
     return evs;
   }
   // Priority is a staff view: a patient's rows never carry it.
-  const summary = (db: MockDb, id: string): CaseSummary =>
-    summarise(id, must(db, id), SIM_NOW, FIXTURE_RISK[id] ?? 0.2, pathwayOfCase(id), session.role === "patient" ? null : priorityOfCase(id));
+  const summary = (db: MockDb, id: string): CaseSummary => {
+    const staff = session.role !== "patient";
+    const row = summarise(id, must(db, id), SIM_NOW, FIXTURE_RISK[id] ?? 0.2, pathwayOfCase(id), staff ? priorityOfCase(id) : null);
+    const insurance = staff && pathwayOfCase(id) === "colorectal_fit" ? insuranceOfEvents(must(db, id), REROUTE_LIST) : null; // ADR-056: staff only
+    return insurance ? { ...row, insurance } : row;
+  };
   const detail = (db: MockDb, id: string): CaseDetail => {
     const evs = must(db, id);
     const consent = consentOf(evs);
@@ -288,6 +293,11 @@ export function createMockAdapter(
     const evs = must(db, id);
     if (opts.eventId && evs.some((e) => e.event_id === opts.eventId)) return; // idempotent retry
     validateAppend(evs, type, who, payload, { internal: opts.internal, provider: session.provider });
+    if (type === "handoff_requested") { // ADR-056: the server records the network; a value the client sends is replaced
+      const { network: _sent, ...rest } = payload;
+      const network = networkOf(String(rest.to_provider ?? "").trim(), evs[0]?.payload?.insurance_scheme as string | undefined);
+      payload = network ? { ...rest, network } : rest;
+    }
     evs.push({ seq: evs.length + 1, event_id: opts.eventId, type, at: nextAt(db), actor: who, payload });
   }
 
@@ -352,7 +362,8 @@ export function createMockAdapter(
       const evs = must(db, id);
       if (replayState(evs) !== "referral_rejected" || consentOf(evs).withdrawn) return; // outreach is frozen: a human decides
       const asked = new Set(evs.filter((e) => e.type === "handoff_requested").map((e) => String(e.payload.to_provider)));
-      const next = REROUTE_LIST.find((p) => !asked.has(p));
+      const route = routeNext(REROUTE_LIST, evs[0]?.payload?.insurance_scheme as string | undefined, asked); // ADR-056: in network first
+      const next = route?.provider;
       if (!next) {
         const last = evs.at(-1)!;
         appendAuto(db, id, "review_requested", { reason: "reroute_exhausted", source_event_id: last.event_id ?? `seq-${last.seq}` });

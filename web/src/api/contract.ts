@@ -463,6 +463,31 @@ export interface CaseSummary {
    * not depend on it. Thresholds are PLACEHOLDERS pending clinician sign-off (H1); the Arabic reason needs native review (H2).
    */
   priority?: CasePriority | null;
+  /**
+   * Insurance scheme and the referral's network (staff views only; a patient's rows never carry it; ADR-056). null / absent = no
+   * scheme recorded. It decides which provider a referral prefers and explains the choice; it never holds a case.
+   */
+  insurance?: CaseInsurance | null;
+}
+
+/** `insurance` on a case row and a case page (api/app/readmodel.py `insurance_of`). The network data behind it is SYNTHETIC. */
+export interface CaseInsurance {
+  scheme: "thiqa" | "enhanced" | "basic" | "unknown" | (string & {});
+  /** "Thiqa", "Enhanced", "Basic" or "Unknown". */
+  label: string;
+  synthetic: boolean;
+  /** The pathway's referral providers in referral order, each in or out of the scheme's network (null while the scheme is unknown). */
+  providers: { name: string; network: "in_network" | "out_of_network" | null }[];
+  /** The latest referral request; null while none has been made. */
+  referral: {
+    provider: string;
+    network: "in_network" | "out_of_network" | null;
+    out_of_network: boolean;
+    /** True when the automation made the request (a reroute), false when a person did. */
+    auto: boolean;
+    /** The plain-words reason, null when the scheme took no part in the choice. */
+    reason: string | null;
+  } | null;
 }
 
 /** `priority` on a case row and a case page (api/app/priority.py). `rank` 0 = highest. */

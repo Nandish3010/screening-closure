@@ -31,7 +31,7 @@ BACKENDS = [
 ]
 KEYS = {"case_id", "pathway", "state", "created_at", "updated_at", "patient_ref", "owner", "provider", "due_at",
         "overdue", "escalation_level", "consent_frozen", "last_event_at", "watchdog_flagged", "pending_handoff",
-        "risk_score", "priority", "at_risk"}  # priority: ADR-051, null for a case with none
+        "risk_score", "priority", "at_risk", "insurance"}  # priority: ADR-051, insurance: ADR-056; each null for a case with none
 
 
 @pytest.fixture(params=BACKENDS)

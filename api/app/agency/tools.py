@@ -227,10 +227,18 @@ def explain_factors(ctx, case_id: UUID) -> dict | None:
     return _cases().factors_for_agency(case_id)
 
 
-def read_providers(ctx) -> list[str]:
+def read_providers(ctx, case_id: UUID | None = None) -> list[str]:
+    """The receiving providers for referrals. Given a case whose genesis event records a known insurance scheme (ADR-056), the
+    providers in that scheme's network come first (config/providers.yaml); otherwise the configured order, unchanged."""
     from app.agency import config as agency_config
+    from app.providers import get_providers
 
-    return list(agency_config.providers())
+    names = list(agency_config.providers())
+    if case_id is None:
+        return names
+    events = _cases().store.events_for(case_id)
+    scheme = events[0].payload.get("insurance_scheme") if events else None
+    return get_providers().order_for(names, scheme)
 
 
 # ---------------------------------------------------------------- the requests through another actor's path

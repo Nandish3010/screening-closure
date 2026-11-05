@@ -35,6 +35,8 @@ from pathlib import Path
 
 import httpx
 
+from insurance_mix import insurance_scheme_for
+
 log = logging.getLogger("create_cervical_cases")
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -130,6 +132,7 @@ class Seeder:
         registered = registered_provider_for(item["patient_id"], providers)
         if registered:
             body["registered_provider"] = registered
+        body["insurance_scheme"] = insurance_scheme_for(item["patient_id"])  # ADR-056: a synthetic, deterministic mix for the demo
         r = self.client.post(f"{self.api}/cases", json=body, headers=self.login("coordinator", "simulator"))
         if r.status_code == 201:
             return "created"

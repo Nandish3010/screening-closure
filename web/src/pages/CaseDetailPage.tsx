@@ -28,6 +28,7 @@ import { fmtDate, fmtDateTime, plainError, titleCase } from "../lib/format";
 import { STAFF } from "../i18n/strings";
 import { ESCALATION_LADDER, HANDOFF_RESPONSE_WORKING_DAYS, REFUSAL_FROM_STATES, RUNG_LABEL, handoffReasonLabel, milestonesFor, pathwayMeta, procedurePlural, procedureSlug } from "../lib/pathway";
 import { PriorityBadge } from "../components/PriorityBadge";
+import { InsuranceFact } from "../components/InsuranceFact";
 import { PRIORITY_NOT_SLA_NOTE, priorityIsPlaceholder, priorityReason } from "../lib/priority";
 import { PathwayBadge } from "../components/PathwayBadge";
 import type { MilestoneDef } from "../lib/pathway";
@@ -258,6 +259,7 @@ export function CaseDetailPage() {
             </dd>
           </div>
         )}
+        <InsuranceFact insurance={detail.insurance} />
         {milestonesFor(detail.pathway).map((def) => (
           <MilestoneRow key={def.name} def={def} clock={detail.milestones?.[def.name]} now={timeline?.sim_time ?? simTime} closed={closed} />
         ))}
@@ -589,7 +591,7 @@ export function CaseDetailPage() {
               <>
                 <label className="field"><span>Provider</span>
                   <select value={provider} onChange={(e) => setProvider(e.target.value)} data-testid="handoff-provider">
-                    {PROVIDERS.map((p) => <option key={p}>{p}</option>)}
+                    {PROVIDERS.map((p) => <option key={p} value={p}>{detail.insurance?.providers.find((x) => x.name === p)?.network === "out_of_network" ? `${p} (out of network)` : p}</option>)}
                   </select>
                 </label>
                 <ActionButton testId="hand-off" busy={busy} disabledReason={closedWhy ?? frozenWhy ?? why("handOff", "owner, specialist or clinician (the case owner)", true) ?? (detail.owner ? null : "Nobody owns this case yet: accept ownership first.")} onClick={() => act(() => post("handoff_requested", { to_provider: provider }), "Hand-off requested. Waiting for acceptance.")}>

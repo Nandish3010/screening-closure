@@ -142,7 +142,8 @@ export function CoordinatorPage() {
                   const od = overdueInfo(c, now);
                   const age = ageDays(c.created_at, now);
                   const bouncedNow = !!(c.last_handoff?.bounced && c.state === "referral_rejected");
-                  const noFlags = !od.overdue && c.escalation_level === 0 && !c.watchdog_flagged && !c.consent_frozen && !c.pending_handoff && !bouncedNow && c.state !== "declined_pending_signoff";
+                  const outOfNetwork = c.insurance?.referral?.out_of_network === true;
+                  const noFlags = !outOfNetwork && !od.overdue && c.escalation_level === 0 && !c.watchdog_flagged && !c.consent_frozen && !c.pending_handoff && !bouncedNow && c.state !== "declined_pending_signoff";
                   return (
                     <tr key={c.case_id} data-testid="worklist-row" className={`${od.overdue ? "row-overdue" : ""} ${c.watchdog_flagged ? "row-watchdog" : ""}`.trim()}>
                       <td data-label="Case" className="nowrap"><Link to={`/coordinator/${c.case_id}`}>{shortId(c.case_id)}</Link></td>
@@ -164,6 +165,7 @@ export function CoordinatorPage() {
                           {c.pending_handoff && <span className="chip chip-held" data-testid="pending-handoff-chip" title={`Hand-off to ${c.pending_handoff.to_provider} is waiting for acceptance`}>Hand-off pending</span>}
                           {bouncedNow && <span className="chip chip-bad" data-testid="bounced-chip" title="The provider did not answer in 3 working days">Hand-off bounced</span>}
                           {c.state === "declined_pending_signoff" && <span className="chip chip-declined" title="The patient declined after counselling; a physician signs the closure">Declined by patient</span>}
+                          {outOfNetwork && <span className="chip chip-warn" data-testid="out-of-network-flag" title={c.insurance?.referral?.reason ?? "Out of network"}>Out of network</span>}
                           {noFlags && <span className="muted">-</span>}
                         </span>
                       </td>
