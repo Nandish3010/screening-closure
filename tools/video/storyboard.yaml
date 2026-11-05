@@ -236,7 +236,7 @@ shots:
       - {text: "Yes, I will come on Sunday, thank you.", outcome: handled, group: null, shown: false, says: "English"}
       - {text: "STOP", outcome: person, group: null, shown: false, says: "opt-out"}
     caption: "A Gulf reply always goes to a person, and the on-premises model's reason is shown."
-    narration: "A patient replies in Gulf Arabic that she will come on Sunday. An AI model on our own on-premises server reads it, and the screen shows the reason. Gulf replies it handled alone were right only ninety-one percent of the time on our synthetic test, so a Gulf reply always goes to a person. English confirmations can be handled; an opt-out never."
+    narration: "A patient replies in Gulf Arabic that she will come on Sunday. An AI model on our own on-premises server reads it, and the screen shows the reason. Our audit found the model too often wrong on Gulf dialect, so a Gulf reply always goes to a person, whatever the model says. English confirmations can be handled; an opt-out never."
     actions:
       # Needs `make triage-serve` on the host so the box names what the model read. The first wait is for the amber box, which a
       # Gulf reply gets whatever the model says; the second makes sure the live model (not the fail-safe) answered.
