@@ -8,13 +8,13 @@ Written 18 Oct 2026. The build is done; what remains needs a person. Items 1 to 
 |---|---|---|---|---|---|
 | 1 | 20 Oct (hard 10 Nov; form open by 7 Nov) | Confirm registration, download the requirements, diff against the bundle | Registration is required to be judged; a missed requirement can disqualify | 1 h | [ ] |
 | 2 | Send 25 Oct; review held by 7 Nov | Clinician reviewer (H1) | Clinical credibility, responsible AI, the "reviewed by" section of the documentation | 30 min call, 1 h to apply | [ ] |
-| 3 | Send 25 Oct; review held by 7 Nov | Arabic reviewer (H2) | Arabic-first patient experience, one of the six moats | 30 min, 1 h to apply | [ ] |
+| 3 | Send 25 Oct; review held by 7 Nov | Arabic reviewer (H2) | Bilingual patient experience (Arabic pending native review), one of the six moats | 30 min, 1 h to apply | [ ] |
 | 4 | Ask by 1 Nov; letter by 13 Nov | Letter of intent for a shadow-mode pilot that will measure staff minutes by role | Commercial viability and pilot readiness, our weakest criterion (judge review scored it 5/10); the capacity story needs a provider who will measure it | 20 min to ask | [ ] |
 | 7 | 11 Nov (day after freeze) | Second-machine fresh-clone run (H5) | The plan promises one-command reproducibility; this proves it off your machine | 1 to 2 h | [ ] |
 | 5 | 13 Nov | Ten timed rehearsals (H3) | The live catch is the demo's whole value | 10 x 8 min plus setup | [ ] |
 | 6 | 14 Nov | Submission video and backup video (H4) | Judges may watch the video before reading anything | 3 to 4 h | [ ] |
 | 8 | Decide 14 Nov; public 17 Nov | Repository visibility and name check | A private link is a 404 for judges | 1 h | [ ] |
-| 9 | 18 Nov | Final submission (H6) | The deliverable | 1 h | [ ] |
+| 9 | 8 Nov (organisers' deadline 20 Nov) | Final submission (H6) | The deliverable | 1 h | [ ] |
 | 10 | Any time | If something breaks | | | [ ] |
 
 ## 1. Registration and requirements
