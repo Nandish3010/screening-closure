@@ -11,7 +11,8 @@ test.beforeEach(({ page }) => freshData(page));
 test("Start here is the first screen; every step opens its screen with what to look for", async ({ page }) => {
   await page.goto("/?demo=1&pathways=3");
   await expect(page).toHaveURL(/\/start$/);
-  await expect(page.getByTestId("start-steps").locator("li")).toHaveCount(7);
+  await expect(page.getByTestId("start-steps").locator("li")).toHaveCount(5); // the loop
+  await expect(page.getByTestId("start-safety").locator("li")).toHaveCount(2); // then what keeps it safe
   await expect(page.getByTestId("demo-status").first()).toContainText("Demo status:");
   for (const id of ["record", "prioritise", "refer", "remind", "outcome", "safety", "privacy"]) {
     await page.goto("/start");

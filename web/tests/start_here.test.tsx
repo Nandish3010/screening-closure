@@ -1,5 +1,5 @@
 /** ADR-058: Start here, the fresh-case guide, the status line and reset control, the missed follow-up, the opt-in credentials. */
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { MemoryRouter } from "react-router-dom";
 import type { ApiClient, Role } from "../src/api/contract";
@@ -7,6 +7,7 @@ import { ApiError } from "../src/api/contract";
 import { createMockAdapter } from "../src/api/mockAdapter";
 import { AppProvider } from "../src/app/AppContext";
 import App from "../src/App";
+import { markSeen } from "../src/judge/guide";
 import { CaseDetailPage } from "../src/pages/CaseDetailPage";
 import { Route, Routes } from "react-router-dom";
 
@@ -22,8 +23,8 @@ describe("Start here", () => {
   it("is the first screen after sign-in in the demo: one card per step, a claim and one button each, and a way to skip", async () => {
     renderApp(demoApi(), "/");
     const page = await screen.findByTestId("start-here");
-    const cards = within(page).getByTestId("start-steps").querySelectorAll("li");
-    expect(cards).toHaveLength(7);
+    const cards = [...within(page).getByTestId("start-steps").querySelectorAll("li"), ...within(page).getByTestId("start-safety").querySelectorAll("li")];
+    expect(cards).toHaveLength(7); // five loop steps, then the safety net and privacy
     for (const id of ["record", "prioritise", "refer", "remind", "outcome", "safety", "privacy"]) {
       const card = screen.getByTestId(`start-step-${id}`);
       expect(within(card).getAllByRole("button")).toHaveLength(1);
@@ -31,6 +32,30 @@ describe("Start here", () => {
     }
     expect(screen.getByTestId("start-skip")).toHaveAttribute("href", "/coordinator/today");
     expect(page.textContent).toMatch(/about \d+ minutes/);
+  });
+
+  it("states the honest result up front and never claims the 40% target", async () => {
+    renderApp(demoApi(), "/start");
+    const band = await screen.findByTestId("honest-result");
+    expect(screen.getByTestId("honest-completion")).toHaveTextContent("51% → 67%");
+    expect(band).toHaveTextContent(/modelled/i);
+    expect(screen.getByTestId("honest-labour")).toHaveTextContent("−20%");
+    expect(band).toHaveTextContent(/40% target is not met/);
+    expect(band.textContent).not.toMatch(/target (is|was) met\b/);
+  });
+
+  it("tags the five steps and drives progress from what has been opened", async () => {
+    renderApp(demoApi(), "/start");
+    expect(await screen.findByTestId("start-tag-record")).toHaveTextContent("Up next");
+    expect(screen.getByTestId("start-tag-refer")).toHaveTextContent("Not yet");
+    expect(screen.getByTestId("start-progress")).toHaveTextContent("0 of 5");
+    cleanup();
+    markSeen("record"); // what opening a step in the tour records for this tab
+    renderApp(demoApi(), "/start");
+    await waitFor(() => expect(screen.getByTestId("start-tag-record")).toHaveTextContent("Seen"));
+    expect(screen.getByTestId("start-tag-prioritise")).toHaveTextContent("Up next");
+    expect(screen.getByTestId("start-progress")).toHaveTextContent("1 of 5");
+    expect(screen.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "1");
   });
 
   it("is not the home page outside the demo", async () => {

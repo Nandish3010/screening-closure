@@ -160,6 +160,9 @@ export function patientEvents(events: CaseEvent[]): CaseEvent[] {
 /** Every staff-facing event says who wrote it (A21): the API's `actor_kind`. */
 const withKind = (e: CaseEvent): CaseEvent => ({ ...e, actor_kind: actorKindOf(e.actor) });
 
+/** The mock's stand-in for the record-store check on closure evidence: a reference naming a made-up or test report does not resolve. */
+export const closeEvidenceRefused = (ref: string): boolean => /made-?up|fake|invalid/i.test(ref);
+
 export function createMockAdapter(
   storage: Pick<Storage, "getItem" | "setItem" | "removeItem"> | null = safeStorage(),
   options: MockOptions = {},
@@ -565,6 +568,11 @@ export function createMockAdapter(
       const db = load();
       const payload = body.payload ?? {};
       const stateBefore = replayState(must(db, id));
+      // The real API asks the record store whether the evidence exists and belongs to this case (api/app/evidence.py) and refuses
+      // `close` when it does not. The mock cannot look it up, so it refuses what is plainly not a reference to a real report.
+      if (body.type === "close" && payload.signed_by !== undefined && closeEvidenceRefused(String(payload.evidence_ref ?? ""))) {
+        throw new ApiError(422, `evidence_ref '${String(payload.evidence_ref)}' does not resolve to a resource of this case`);
+      }
       append(db, id, body.type, body.actor, payload, { eventId: body.event_id });
       // The mock plays the receiving provider of a handoff (only the owner can request one, as in the real API).
       if (body.type === "handoff_requested") playProvider(db, id, String(payload.to_provider ?? ""), body.actor);

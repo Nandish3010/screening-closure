@@ -71,6 +71,18 @@ export interface PatientStrings {
   ownerPending: string;
   ownerReach: string;
   callCareTeam: string;
+  /** Emergency line: shown with its review status; the number is pending clinician review in this prototype. */
+  emergencyHeading: string;
+  emergencyLine: string;
+  emergencyPending: string;
+  /** A request is waiting for a person to read it: nothing has changed until they act. */
+  pendingPerson: string;
+  accessHomeHeading: string;
+  accessHomeMore: string;
+  /** The home card names roles and times only; the names are in the Privacy tab. */
+  accessHomeNote: string;
+  /** Visible on the Arabic screen: the wording has not had a native-speaker review yet (H2). */
+  arabicReviewNote: string;
   demoNumber: string;
   /** Plain names for the roles a patient is told about (the owner, and who looked at the record). */
   roles: { primary_care_owner: string; specialist_owner: string; coordinator: string; supervisor: string; lab: string; other: string };
@@ -220,6 +232,14 @@ export const STRINGS: Record<Lang, PatientStrings> = {
     ownerPending: "A person in your care team will be chosen to look after you soon.",
     ownerReach: "How to reach your care team",
     callCareTeam: "Call your care team",
+    emergencyHeading: "In an emergency",
+    emergencyLine: "If you feel very unwell, call 998 (ambulance).",
+    emergencyPending: "Pending clinician review: this is the national ambulance number, shown here for the prototype.",
+    pendingPerson: "We got your message. A person on your care team is reading it. Nothing has changed yet: your plan stays as it is until they call you.",
+    accessHomeHeading: "Who opened your record",
+    accessHomeMore: "See the full list and your choices",
+    accessHomeNote: "Names are in the Privacy tab.",
+    arabicReviewNote: "Arabic wording is pending native-speaker review.",
     demoNumber: "Demo number. All data here is synthetic.",
     roles: {
       primary_care_owner: "Primary care doctor",
@@ -400,7 +420,15 @@ export const STRINGS: Record<Lang, PatientStrings> = {
     ownerLine: (name, role) => `الشخص المسؤول عن رعايتك:\n${iso(name)} (${role}).\nيمكنك طرح أي سؤال.`,
     ownerPending: "سنعيّن لك منسق رعاية قريباً.",
     ownerReach: "كيف تتواصل مع فريق رعايتك",
-    callCareTeam: "اتصل بفريق رعايتك",
+    callCareTeam: "الاتصال بفريق الرعاية",
+    emergencyHeading: "في حالات الطوارئ",
+    emergencyLine: "في حال الشعور بتعب شديد، يرجى الاتصال بالرقم 998 (الإسعاف).",
+    emergencyPending: "بانتظار مراجعة الطبيب: هذا هو رقم الإسعاف الوطني، ويظهر هنا للنموذج الأولي.",
+    pendingPerson: "وصلتنا رسالتك. أحد أفراد فريق الرعاية يقرؤها الآن. لم يتغير شيء بعد، وتبقى خطتك كما هي حتى يتصل بك.",
+    accessHomeHeading: "من اطلع على سجلك",
+    accessHomeMore: "عرض القائمة الكاملة وخياراتك",
+    accessHomeNote: "الأسماء في تبويب الخصوصية.",
+    arabicReviewNote: "الصياغة العربية بانتظار مراجعة متحدث أصلي.",
     demoNumber: "رقم تجريبي. كل البيانات هنا بيانات اصطناعية.",
     roles: {
       primary_care_owner: "طبيب الرعاية الأولية",
@@ -554,6 +582,12 @@ export const STAFF = {
     explanation: "The automatic patient messages on this system run on a demo approval, not on a clinical lead's signature. No clinician has approved the message texts or the rules that send them. Real patients would receive nothing until the policy is signed.",
   },
   /** Hosted judge demo (`GET /health` -> `demo.simulated_clock`): every date on screen is simulated, and a supervisor can move it. */
+  /** The always-on prototype strip (every route, every build): says what this is and what it is not. */
+  protoStrip: {
+    label: "Prototype for FHDIC Challenge 05.",
+    notOfficial: "Not an official government service.",
+    synthetic: "Synthetic data only.",
+  },
   demoClockBanner: {
     label: "Demo, synthetic data, simulated time",
     short: "Nothing here is a real patient or real time.",
@@ -650,6 +684,26 @@ export const TODAY = {
   intro: "What needs a person now, longest-waiting first. The system prepares the work and a person decides: nothing here closes a case.",
   fullWorklist: "Open the full worklist",
   jumpLabel: "Jump to a queue",
+  filterLabel: "Filter the list",
+  all: "All",
+  listTitle: "Needs a person, most urgent first",
+  empty: "Nobody is waiting on you. Every open case is inside its deadline or already with the right person.",
+  summary: (parts: { g: string; n: number; plus: boolean }[], complete: boolean) => {
+    const words: Record<string, [string, string]> = {
+      urgent: ["urgent result not yet acted on", "urgent results not yet acted on"], overdue: ["overdue case", "overdue cases"],
+      escalations: ["escalation to accept", "escalations to accept"], replies: ["patient reply to read", "patient replies to read"],
+      flagged: ["case nobody is looking at", "cases nobody is looking at"], signatures: ["closure waiting for a signature", "closures waiting for a signature"],
+      agency: ["task prepared by an agent", "tasks prepared by an agent"],
+    };
+    if (parts.length === 0) return complete ? "Nobody is waiting on you." : "Nothing found in the cases read so far.";
+    const bits = parts.map((p) => `${p.n}${p.plus ? "+" : ""} ${words[p.g][p.n === 1 ? 0 : 1]}`);
+    return `${bits.length === 1 ? bits[0] : bits.slice(0, -1).join(", ") + " and " + bits[bits.length - 1]}. One list, most urgent first; a person decides each one.`;
+  },
+  busy: { accept_escalation: "Accepting...", take_ownership: "Taking ownership...", confirm_contact: "Confirming...", record_callback: "Recording..." },
+  conflict: {
+    take_ownership: "Someone else took this case first. The list has been refreshed; open the case to see who owns it.",
+    default: "Someone else changed this case first. The list has been refreshed.",
+  } as Record<string, string>,
   loading: "Loading what needs a person...",
   notForRole: "The Today screen is for the care coordinator and the supervisor. Clinicians work from their own cases in the worklist.",
   lookFurther: "Look further",
@@ -659,13 +713,13 @@ export const TODAY = {
   allRead: (n: number) => `All ${n} open ${n === 1 ? "case" : "cases"} read.`,
   nothingYet: "Nothing found in the cases read so far.",
   groups: {
-    urgent: { title: "Urgent results not yet acted on", clear: "No urgent result is waiting for a first action." },
-    overdue: { title: "Overdue cases", clear: "No case is past its deadline." },
-    escalations: { title: "Escalations waiting for a person to accept", clear: "No escalation is waiting for anyone." },
-    replies: { title: "Patient replies waiting for a person", clear: "No patient reply is waiting for a person." },
-    flagged: { title: "Nobody is looking at these", clear: "The safety net has flagged nothing." },
-    signatures: { title: "Closures waiting for a clinician's signature", clear: "No closure is waiting for a signature." },
-    agency: { title: "Agency tasks prepared for you", clear: "No agent task is waiting for you." },
+    urgent: { short: "Urgent", title: "Urgent results not yet acted on", clear: "No urgent result is waiting for a first action." },
+    overdue: { short: "Overdue", title: "Overdue cases", clear: "No case is past its deadline." },
+    escalations: { short: "Escalation", title: "Escalations waiting for a person to accept", clear: "No escalation is waiting for anyone." },
+    replies: { short: "Reply to read", title: "Patient replies waiting for a person", clear: "No patient reply is waiting for a person." },
+    flagged: { short: "Nobody looking", title: "Nobody is looking at these", clear: "The safety net has flagged nothing." },
+    signatures: { short: "Needs signature", title: "Closures waiting for a clinician's signature", clear: "No closure is waiting for a signature." },
+    agency: { short: "Prepared by agent", title: "Agency tasks prepared for you", clear: "No agent task is waiting for you." },
   },
   actions: {
     open_case: "Open case",

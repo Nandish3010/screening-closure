@@ -9,6 +9,28 @@ import { OutreachDemoBanner } from "../components/OutreachDemoBanner";
 import { WatchdogMarker, watchdogDetail } from "../components/WatchdogMarker";
 import { fmtDateTime, shortId, titleCase } from "../lib/format";
 import { StatePill } from "./CoordinatorPage";
+import headline from "../judge/headline.json";
+
+const pct = (x: number) => `${Math.round(x * 100)}%`;
+
+/** Two honest blocks: what THIS demo can show (counts, no rates: too few cases) and what a real programme would do (modelled, synthetic). */
+export function OutcomesSplit({ n }: { n: number | null }) {
+  return (
+    <section className="outcomes-split" aria-label="What this demo shows and what a real programme would do" data-testid="outcomes-split">
+      <div className="panel" data-testid="outcomes-demo">
+        <h2>This demo{n !== null ? `, n=${n}` : ""}</h2>
+        <p className="outcomes-big">{n !== null ? `${n} synthetic cases` : "Synthetic cases"}: <strong>too few for rates</strong></p>
+        <p className="muted">The counts below are real for this demo and nothing more. A percentage from so few cases would mislead, so none is shown as a result.</p>
+      </div>
+      <div className="panel" data-testid="outcomes-modelled">
+        <h2>A real programme, modelled</h2>
+        <p className="outcomes-big"><strong>{pct(headline.completion_180d.baseline.mean)} → {pct(headline.completion_180d.orchestrated.mean)}</strong> colonoscopy within 180 days</p>
+        <p className="outcomes-big">labour <strong>−{pct(headline.labour_reduction.literature_all.mean)}</strong>: the 40% target is not met</p>
+        <p className="muted">A simulation on synthetic data anchored to published studies ({headline.run.replications} runs of {headline.run.cases_per_replication} cases). Not measured on patients.</p>
+      </div>
+    </section>
+  );
+}
 
 const BUCKETS: AgeBucket[] = ["0-30", "31-60", "61-90", "90+"];
 
@@ -159,6 +181,7 @@ export function DashboardPage() {
           </button>
         </p>
       )}
+      <OutcomesSplit n={funnel?.steps[0]?.count ?? null} />
       {seesEffort && !funnelAbsent && <FunnelCard data={funnel} filters={funnelFilters} onFilters={setFunnelFilters} error={funnelError} loading={funnelLoading} />}
       {seesEffort && <EffortCard metrics={effort} />}
       {error && <p className="banner banner-bad" role="alert">Could not load metrics: {error}</p>}

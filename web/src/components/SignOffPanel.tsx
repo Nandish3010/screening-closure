@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { procedureSlug } from "../lib/pathway";
 import type { Role } from "../api/contract";
 import { can } from "../app/AppContext";
-import { plainError } from "../lib/format";
+import { fmtDateTime, plainError, shortId } from "../lib/format";
+import type { CaseEvent } from "../api/contract";
 import { ActionButton } from "./ActionButton";
 
 /**
@@ -14,8 +15,29 @@ import { ActionButton } from "./ActionButton";
  * own, A15), passed as `signer` and shown read-only, and the evidence must exist in the FHIR store: "Record
  * colonoscopy result" creates the Procedure there (POST /cases/{id}/confirmatory-result) and fills the field.
  */
+export const MADE_UP_REF = "DiagnosticReport/made-up-0000";
+
+/** What a closed case shows in place of the sign-off form: who signed, on what evidence, when. Read from the audit trail. */
+export function ClosedReceipt({ events, caseId }: { events: CaseEvent[]; caseId: string }) {
+  const close = [...events].reverse().find((e) => e.type === "close");
+  if (!close) return null;
+  const evidence = String(close.payload.evidence_ref ?? "");
+  const signedBy = String(close.payload.signed_by ?? "");
+  return (
+    <section className="receipt" aria-labelledby="receipt-h" role="status" data-testid="closed-receipt">
+      <h3 id="receipt-h"><span aria-hidden="true">{"\u2713"} </span>Case {shortId(caseId)} is closed</h3>
+      <dl>
+        <div><dt>Evidence</dt><dd className="mono">{evidence || "none recorded"}</dd></div>
+        <div><dt>Signed by</dt><dd>{signedBy || "not recorded"}</dd></div>
+        <div><dt>When</dt><dd>{fmtDateTime(close.at)}</dd></div>
+      </dl>
+      <p className="muted">The patient's app now shows this case as complete. The audit trail below is final unless a physician reopens it.</p>
+    </section>
+  );
+}
+
 export function SignOffPanel({
-  role, onSignOff, busy, needsReview, extraWhy, defaultEvidence, signer: fixedSigner, onRecordResult, procedure = "colonoscopy",
+  role, onSignOff, busy, needsReview, extraWhy, defaultEvidence, signer: fixedSigner, onRecordResult, procedure = "colonoscopy", refusal, caseId, onClearRefusal,
 }: {
   role: Role;
   /** A reason the acting clinician may not sign this case off, e.g. they do not own it (A5). */
@@ -32,6 +54,10 @@ export function SignOffPanel({
   onRecordResult?: () => Promise<string>;
   /** The pathway's confirmatory procedure (colonoscopy, colposcopy): words the hint, the placeholder and the button. */
   procedure?: string;
+  /** The engine's own words when it refused the close (shown as a designed refusal: nothing was closed). */
+  refusal?: string | null;
+  caseId?: string;
+  onClearRefusal?: () => void;
 }) {
   const [evidence, setEvidence] = useState(defaultEvidence ?? "");
   const [signerText, setSignerText] = useState("");
@@ -44,7 +70,7 @@ export function SignOffPanel({
   }, [defaultEvidence]);
 
   const reasons: string[] = [];
-  if (!can(role, "signOff")) reasons.push("Only a clinician (a case owner) can sign off. Switch the role to owner, specialist or clinician.");
+  if (!can(role, "signOff")) reasons.push(`Only a physician who owns this case can sign off. You are viewing as the ${role}. Switch the role to owner, specialist or clinician in the header.`);
   else if (extraWhy) reasons.push(extraWhy);
   if (!evidence.trim()) reasons.push(`Add an evidence reference (for example the ${procedure} report id).`);
   if (!signer.trim()) reasons.push("Enter the name of the clinician who signs.");
@@ -69,10 +95,24 @@ export function SignOffPanel({
         A case closes only with evidence and a named human sign-off. Nothing automated can close a case.
         {needsReview && " Signing off also records the clinician review."}
       </p>
+      {!can(role, "signOff") && (
+        <p className="banner banner-warn role-denied" role="note" data-testid="signoff-role-denied">
+          <strong>Read-only for your role.</strong> A physician who owns this case signs. You can check the evidence here; the button below stays off until a physician is signed in.
+        </p>
+      )}
       <label className="field">
         <span>Evidence reference</span>
-        <input value={evidence} onChange={(e) => setEvidence(e.target.value)} placeholder={`Procedure/${procedureSlug(procedure)}-0001`} />
+        <input value={evidence} onChange={(e) => { setEvidence(e.target.value); onClearRefusal?.(); }} placeholder={`Procedure/${procedureSlug(procedure)}-0001`} aria-describedby="evidence-hint" autoComplete="off" spellCheck={false} />
       </label>
+      <p id="evidence-hint" className="muted evidence-hint">Type a reference, or pick an example. The made-up one shows what the system does when a reference does not exist.</p>
+      <div className="evidence-chips" role="group" aria-label="Evidence examples">
+        <button type="button" className="chip-btn" data-testid="evidence-real" disabled={!defaultEvidence} onClick={() => { setEvidence(defaultEvidence ?? ""); onClearRefusal?.(); }}>
+          <span className="chip chip-ok">Real</span> {defaultEvidence ? `The report on this case (${defaultEvidence})` : `No ${procedure} report on this case yet`}
+        </button>
+        <button type="button" className="chip-btn" data-testid="evidence-fake" onClick={() => { setEvidence(MADE_UP_REF); onClearRefusal?.(); }}>
+          <span className="chip chip-warn">Made up</span> A reference that does not exist ({MADE_UP_REF})
+        </button>
+      </div>
       {onRecordResult && (
         <>
           <ActionButton testId="record-colonoscopy" busy={busy || recording} disabledReason={null} onClick={() => void record()}>
@@ -89,6 +129,22 @@ export function SignOffPanel({
           <input value={signerText} onChange={(e) => setSignerText(e.target.value)} placeholder="Dr. Huda Rahman" />
         )}
       </label>
+      <section className="check-answers" aria-labelledby="check-h" data-testid="check-answers">
+        <h3 id="check-h">Check your answers</h3>
+        <dl>
+          {caseId && <div><dt>Case</dt><dd className="mono">{shortId(caseId)}</dd></div>}
+          <div><dt>Evidence</dt><dd className="mono" data-testid="check-evidence">{evidence.trim() || <span className="muted">Not entered yet</span>}</dd></div>
+          <div><dt>Signed by</dt><dd data-testid="check-signer">{signer.trim() || <span className="muted">Not entered yet</span>}</dd></div>
+          <div><dt>Result</dt><dd>Closes the case. The evidence and the signer's name go on the audit trail.</dd></div>
+        </dl>
+      </section>
+      {refusal && (
+        <div className="refusal-card" role="alert" data-testid="signoff-refusal">
+          <h3>Nothing was closed</h3>
+          <p>{refusal}</p>
+          <p className="muted">The case is still open. Use the real report, or record the {procedure} result first, then sign again.</p>
+        </div>
+      )}
       <ActionButton
         primary
         testId="signoff"

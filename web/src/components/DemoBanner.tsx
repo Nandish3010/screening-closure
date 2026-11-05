@@ -20,3 +20,13 @@ export function DemoBanner() {
     </div>
   );
 }
+
+/** Sticky amber strip on every route (sign-in, staff screens, patient app): a prototype, synthetic data, not a government service. */
+export function PrototypeStrip() {
+  return (
+    <div className="proto-strip" lang="en" dir="ltr" role="note" data-testid="proto-strip">
+      <span>{STAFF.protoStrip.label} {STAFF.protoStrip.notOfficial}</span>
+      <span className="ps-short">{STAFF.protoStrip.synthetic}</span>
+    </div>
+  );
+}

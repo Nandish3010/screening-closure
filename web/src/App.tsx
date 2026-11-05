@@ -17,7 +17,7 @@ import { DEMO_PATIENT_CASE_ID } from "./api/fixtures";
 import { Suspense, lazy, useEffect, useSyncExternalStore } from "react";
 import { useApp } from "./app/AppContext";
 import { DEMO_USERS, JUDGE_ROLES } from "./api/identities";
-import { DemoBanner } from "./components/DemoBanner";
+import { DemoBanner, PrototypeStrip } from "./components/DemoBanner";
 import { BrandLockup } from "./components/Brand";
 
 /** OIDC mode (A29): shown until someone has signed in at the identity provider. Demo users are listed to pre-fill the login form. */
@@ -27,6 +27,7 @@ export function SignInPage({ error }: { error?: string | null }) {
   if (demoDeployment) return <JudgeSignIn error={error} />;
   return (
     <main className="container" id="main">
+      <PrototypeStrip />
       <DemoBanner />
       <p className="signin-brand"><BrandLockup large /></p>
       <h1>Sign in</h1>
@@ -58,6 +59,7 @@ function JudgeSignIn({ error }: { error?: string | null }) {
   const oidc = api.oidc!;
   return (
     <main className="container" id="main" data-testid="judge-signin">
+      <PrototypeStrip />
       <DemoBanner />
       <p className="signin-brand"><BrandLockup large /></p>
       <h1>Screening Closure: judge demo</h1>
@@ -131,6 +133,7 @@ export default function App({ signInError = null }: { signInError?: string | nul
     <TourProvider>
       <ScrollRegions />
       <a className="skip-link" href="#main">Skip to content</a>
+      <PrototypeStrip />
       <Header />
       <div id="main">
         <Suspense fallback={<main className="container"><p role="status">Loading this page...</p></main>}>

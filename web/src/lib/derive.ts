@@ -947,7 +947,8 @@ export function hasCallbackPending(events: CaseEvent[]): boolean {
   let pending = false;
   for (const ev of events) {
     if (ev.type === "callback_requested") pending = true;
-    if (ev.type === "contact_patient") pending = false;
+    // A person answers by calling (contact_patient), or by acting on what was asked: a new booking or a cancellation.
+    if (ev.type === "contact_patient" || ev.type === "book_confirmatory" || ev.type === "appointment_cancelled") pending = false;
   }
   return pending;
 }
