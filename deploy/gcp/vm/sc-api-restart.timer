@@ -1,0 +1,11 @@
+[Unit]
+Description=Daily restart of the Screening Closure API container (BUG-77 workaround)
+
+[Timer]
+# 22:30 UTC = 02:30 Gulf time, outside clinic hours.
+OnCalendar=*-*-* 22:30:00 UTC
+Persistent=false
+RandomizedDelaySec=300
+
+[Install]
+WantedBy=timers.target

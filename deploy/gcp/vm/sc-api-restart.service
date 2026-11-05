@@ -1,0 +1,8 @@
+[Unit]
+Description=Restart the Screening Closure API container (BUG-77 memory-growth workaround)
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/srv/sc/repo/deploy/gcp/vm/sc-api-restart.sh

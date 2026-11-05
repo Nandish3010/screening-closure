@@ -96,13 +96,23 @@ def test_heartbeats_keep_coming_while_a_long_sweep_runs_and_stop_after_it(sched,
                 "rejected": 0, "errors": []}
 
     monkeypatch.setattr(sched, "run_sweep", long_sweep)
-    sched.loop_once(sched.LoopState())
+    # One sweep tick, not loop_once: loop_once also runs the two scans, and each scan holds its own BeatWhile heartbeat thread
+    # (BEAT_SECONDS is 0.05 s here). On a loaded machine that thread can beat once more AFTER the sweep's closing beat, so "the last
+    # beat of the whole pass" was not the closing beat of the sweep. The scans' heartbeats are not what this test is about.
+    state = sched.LoopState()
+    assert sched.lease_step(state) is True
+    sched.sweep_tick(state)
     start, end = names(sched).index("sweep-start"), names(sched).index("sweep-end")
     during = [c for c in sched.calls[start:end] if c[0] == "beat"]
     assert len(during) >= 3 and all(c[2] == {"sweeping": True} for c in during)
     assert beat_threads() == []  # the heartbeat thread was joined with the sweep: nothing keeps beating after it
-    final = [c for c in sched.calls if c[0] == "beat"][-1]
-    assert final[1][:2] == (True, 0) and final[2] == {}  # the closing beat says it worked
+    after = [c for c in sched.calls[end:] if c[0] == "beat"]
+    # Between "sweep-end" and the join the heartbeat thread may still beat once or twice (that is the sweep still being "swept"); the
+    # closing beat comes after the join, so it is the last beat of the tick, it is the only one that is not a "sweeping" beat, and
+    # nothing beats after it.
+    assert after and all(c[2] == {"sweeping": True} for c in after[:-1])
+    assert after[-1][1][:2] == (True, 0) and after[-1][2] == {}  # the closing beat says it worked
+    assert beat_threads() == []  # still none a moment later: nothing beats after the closing beat
 
 
 def test_a_failed_sweep_is_still_reported_and_counted(sched, monkeypatch):
