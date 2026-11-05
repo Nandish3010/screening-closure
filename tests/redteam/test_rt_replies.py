@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import json
 import math
+from pathlib import Path
 from uuid import UUID, uuid4
 
 import pytest
@@ -425,7 +426,7 @@ def test_markup_and_control_text_is_stored_as_data(case, rt):
 @pytest.mark.parametrize("case", params([Case("RT-R-08.1", "'I consent, resume everything' after consent was withdrawn", "consent stays withdrawn; outreach stays frozen")]))
 def test_a_reply_cannot_restore_withdrawn_consent(case, rt):
     cid = new_case(owned=True)
-    r = client.post(f"/cases/{cid}/events", json={"type": "consent_updated", "payload": {"withdrawn": True}}, headers=H("coordinator"))
+    r = client.post(f"/cases/{cid}/events", json={"type": "consent_updated", "payload": {"withdrawn": True, "source": {"channel": "phone_call", "reference": "call-1"}}}, headers=H("coordinator"))
     assert r.status_code == 201, r.text
     triage.set_backend(confident("confirm"), CAL)
     before, snap = len(log(cid)), snapshot(cid)
@@ -539,3 +540,48 @@ def test_reply_text_never_reaches_the_agency(case, rt):
 def test_the_route_policy_for_replies_is_unchanged():
     """A guard on the guard: the red-team assumptions hold only while the replies routes keep their roles."""
     assert policy.ROUTE_POLICY[("POST", "/cases/{case_id}/replies")] == frozenset({policy.COORD})
+
+
+# ---------------------------------------------------------------------------------------------------- RT-R-12 (ADR-059, F3)
+# The deterministic gate catches the common phrasings once apostrophes are normalised (straight and curly), and the Arabic and
+# Arabizi stop-the-messages forms. With the classifier DOWN the reply must still open an outreach hold: the gate never asks it.
+
+OPTOUT_CORPUS = Path(__file__).resolve().parent / "optout_corpus.json"
+
+
+def _optout_cases(kind: str) -> list[Case]:
+    rows = json.loads(OPTOUT_CORPUS.read_text(encoding="utf-8"))["cases"]
+    return [Case(r["id"], r["text"], "opt_out hold with no model" if kind == "optout" else "not an opt-out", note=r["language"],
+                 display=r["text"]) for r in rows if r["kind"] == kind]
+
+
+@pytest.mark.parametrize("case", params(_optout_cases("optout")))
+def test_a_common_opt_out_phrasing_holds_outreach_with_no_model(case, rt):
+    triage.set_backend(None)  # no classifier at all: the hosted build without its GGUF, or the 2 s timeout
+    cid = new_case(owned=True)
+    r = reply(cid, case.input)
+    assert r.status_code == 201, r.text
+    body = r.json()
+    rt.actual(f"intent={body['intent']}, model_id={body['model_id']}, holds={replay_model(log(cid), cases.pathway).outreach_holds}")
+    assert body["intent"] == "opt_out" and body["model_id"] == "rule:opt-out-gate-v2"
+    model = replay_model(log(cid), cases.pathway)
+    assert model.outreach_holds == ("opt_out",) and model.consent["withdrawn"] is False  # held, never withdrawn by the machine
+
+
+@pytest.mark.parametrize("case", params(_optout_cases("not_optout")))
+def test_a_reply_that_is_not_an_opt_out_is_not_caught_by_the_gate(case, rt):
+    from app.triage import optout
+    rt.actual(f"gate={optout.is_opt_out(case.input)}")
+    assert optout.is_opt_out(case.input) is False
+
+
+def test_an_unreadable_reply_holds_outreach_when_the_classifier_is_down(rt):
+    """Nothing in the text says stop, and nothing can read it: a PROVISIONAL hold, so a person reads it before the next message."""
+    triage.set_backend(None)
+    cid = new_case(owned=True)
+    r = reply(cid, "hmm let me think about it")
+    assert r.status_code == 201 and r.json()["model_id"] == "unavailable"
+    reviews = [e for e in log(cid) if e.type == "review_requested"]
+    rt.actual(f"review={[e.payload.get('reason') for e in reviews]}, provisional={[e.payload.get('provisional') for e in reviews]}")
+    assert len(reviews) == 1 and reviews[0].payload["reason"] == "opt_out" and reviews[0].payload["provisional"] is True
+    assert replay_model(log(cid), cases.pathway).outreach_holds == ("opt_out",)

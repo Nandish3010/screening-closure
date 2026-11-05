@@ -344,3 +344,65 @@ def test_the_command_line_names_packs_and_reports_each_pathways_counts(capsys):
     assert code == 0
     assert "== pathway colorectal_fit ==" in out and "== pathway cervical_hpv ==" in out
     assert "model-check summary: PASS" in out and "chronic_conditions:" in out and "cervical_hpv:" in out and "colorectal_fit:" in out
+
+
+# ---- ADR-059 (F1): the informed refusal's route gate, mutation-tested ---------------------------------------------------
+# The machine alone compares strings: it accepts a refusal naming a counsellor nobody is and a record that does not exist.
+# The route gate (`routers.cases._check_signature_and_evidence`) refuses them; the checker runs that real gate against a
+# world it controls (a directory of the cast, one resolvable record) and reports an I1 violation if a fabricated refusal
+# gets through both. Each rule of the gate has a mutation here.
+
+
+def _refusal_violation(r):
+    v = _only(r, "I1")
+    assert v.trace[-1][0] == "record_informed_refusal" and "fabricated informed refusal" in v.message, v.render()
+    return v
+
+
+def test_the_shipped_gate_refuses_every_fabricated_refusal_of_the_alphabet():
+    r = mc.check(["ownership"], **FAST)
+    assert r.ok, mc.render(r)
+    assert r.slices[0].delegated["I1: fabricated refusal -> refused by the route gate (ADR-059)"] > 0
+
+
+def test_mutation_refusal_gate_removed_is_caught(monkeypatch):
+    """The whole route gate for a refusal is gone: a ghost counsellor and a made-up record close the loop again."""
+    from app.routers import cases
+    monkeypatch.setattr(cases, "_check_informed_refusal", lambda *a, **k: None)
+    v = _refusal_violation(mc.check(["ownership"], **FAST))
+    assert v.trace[-1][2] in ("ghost-counsellor", "ghost-record", "by-spec", "coordinator-counsellor", "by-pco"), v.render()
+
+
+def test_mutation_counselling_record_not_resolved_is_caught(monkeypatch):
+    """The FHIR lookup of the counselling DocumentReference is skipped: a made-up reference passes."""
+    from app.routers import cases
+    monkeypatch.setattr(cases, "_resolve_counselling_record", lambda *a, **k: None)
+    v = _refusal_violation(mc.check(["ownership"], **FAST))
+    assert v.trace[-1][2] == "ghost-record", v.render()
+
+
+def test_mutation_counsellor_directory_check_removed_is_caught(monkeypatch):
+    """Every user id is a known physician: a ghost counsellor passes."""
+    from app import users
+    monkeypatch.setattr(users.InMemoryUserDirectory, "get",
+                        lambda self, user_id: users.UserRecord(user_id, "specialist_owner", "Anyone"))
+    v = _refusal_violation(mc.check(["ownership"], **FAST))
+    assert v.trace[-1][2] in ("ghost-counsellor", "coordinator-counsellor"), v.render()
+
+
+def test_mutation_physician_may_name_another_counsellor_is_caught(monkeypatch):
+    """A physician who records the refusal no longer has to be the counsellor: Dr A records that Dr B counselled."""
+    from app import evidence, users
+    from app.routers import cases
+    from fastapi import HTTPException
+
+    def gate(identity, payload, case_id):
+        record = users.directory.get(cases._person_id(payload["counselled_by"]))
+        if record is None or record.role not in cases.PHYSICIAN_ROLES:
+            raise HTTPException(422, "ghost")
+        if not evidence.verifier.exists(payload["counselling_ref"], case_id=case_id):
+            raise HTTPException(422, "unresolved")
+
+    monkeypatch.setattr(cases, "_check_informed_refusal", gate)
+    v = _refusal_violation(mc.check(["ownership"], **FAST))
+    assert v.trace[-1][2] == "by-spec" and v.trace[-1][1] == mc.PCO, v.render()

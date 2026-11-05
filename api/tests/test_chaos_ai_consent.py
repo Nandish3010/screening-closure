@@ -217,7 +217,7 @@ class HookStore:
 
 
 def withdraw(cid, patient_ref="Patient/chaos"):
-    r = event(cid, "consent_updated", "patient", {"withdrawn": True}, patient_ref=patient_ref)
+    r = event(cid, "consent_updated", "patient", {"withdrawn": True, "source": {"channel": "patient_app"}}, patient_ref=patient_ref)
     assert r.status_code == 201, r.text
 
 
@@ -300,7 +300,7 @@ def test_t_f7_a_channel_switched_off_between_draft_and_approval_blocks_only_that
         cid = owned_case()
         sms = draft(cid).json()["draft_id"]
         letter = draft(cid, channel="letter").json()["draft_id"]
-        r = event(cid, "consent_updated", "patient", {"channel_sms": False}, patient_ref="Patient/chaos")
+        r = event(cid, "consent_updated", "patient", {"channel_sms": False, "source": {"channel": "patient_app"}}, patient_ref="Patient/chaos")
         assert r.status_code == 201
         out = approve(sms).json()
         assert out["sent"] is False and out["blocked_reason"] == "consent"
@@ -332,7 +332,7 @@ def test_t_f7_approve_racing_withdrawal_never_sends_after_the_withdrawal_postgre
                     def do_withdraw():
                         barrier.wait()
                         time.sleep(delay)
-                        results["withdraw"] = event(cid, "consent_updated", "patient", {"withdrawn": True},
+                        results["withdraw"] = event(cid, "consent_updated", "patient", {"withdrawn": True, "source": {"channel": "patient_app"}},
                                                     patient_ref=f"Patient/race-{i}")
 
                     threads = [threading.Thread(target=do_approve), threading.Thread(target=do_withdraw)]

@@ -91,7 +91,7 @@ def busy_case(ref=None):
     did = client.post(f"/cases/{cid}/drafts", json={"purpose": "reminder", "channel": "sms", "language": "en"}, headers=h["coord"]).json()["draft_id"]
     assert client.post(f"/drafts/{did}/approve", headers=h["pco"]).json()["sent"] is True  # message_drafted/approved/sent
     post(cid, "callback_requested", h["pat"], {"reason": "wants_to_speak_to_clinician", "lang": "en"})
-    post(cid, "consent_updated", h["pat"], {"channel_whatsapp": False})
+    post(cid, "consent_updated", h["pat"], {"channel_whatsapp": False, "source": {"channel": "patient_app"}})
     return cid, h, ref
 
 
@@ -178,7 +178,7 @@ def test_the_patients_case_page_is_redacted_too(world):
 
 def test_what_a_patient_gets_back_from_posting_an_event_is_redacted(world):
     cid, h, _ = busy_case()
-    r = client.post(f"/cases/{cid}/events", json={"type": "consent_updated", "payload": {"channel_sms": False}}, headers=h["pat"])
+    r = client.post(f"/cases/{cid}/events", json={"type": "consent_updated", "payload": {"channel_sms": False, "source": {"channel": "patient_app"}}}, headers=h["pat"])
     assert r.status_code == 201
     assert_clean(r.json(), staff_ids())
     assert r.json()["events"][-1]["type"] == "consent_updated"
@@ -203,7 +203,7 @@ def test_the_patients_worklist_row_is_redacted_and_staff_rows_are_not(world):
 
 def test_a_withdrawal_hides_the_review_flag_from_the_patient_but_keeps_the_state(world):
     cid, h, _ = busy_case()
-    r = client.post(f"/cases/{cid}/events", json={"type": "consent_updated", "payload": {"withdrawn": True}}, headers=h["pat"])
+    r = client.post(f"/cases/{cid}/events", json={"type": "consent_updated", "payload": {"withdrawn": True, "source": {"channel": "patient_app"}}}, headers=h["pat"])
     body = r.json()
     assert body["state"] == "consent_withdrawn" and body["read_model"]["consent_frozen"] is True
     assert "review_reason" not in body["read_model"] and "review_requested" not in json.dumps(body)

@@ -222,12 +222,12 @@ def test_automation_sends_nothing_after_a_flag_until_a_person_clears_it(fresh, t
     assert scan().get("outreach_sent") is None and sent(cid) == []  # time does not clear it
     # the event that does NOT clear it leaves it open
     other = "contact_updated" if clearing == "consent_updated" else "consent_updated"
-    other_payload = {"contact_valid": True} if other == "contact_updated" else {"channel_sms": True}
+    other_payload = {"contact_valid": True} if other == "contact_updated" else {"channel_sms": True, "source": {"channel": "reply_review", "reference": "reply-1"}}
     post(cid, other, login_headers(client, "coordinator"), other_payload)
     assert model(cid).outreach_holds == (reason,)
     assert scan().get("outreach_sent") is None
     # a person clears it
-    payload = {"contact_valid": True} if clearing == "contact_updated" else {"channel_sms": True}
+    payload = {"contact_valid": True} if clearing == "contact_updated" else {"channel_sms": True, "source": {"channel": "reply_review", "reference": "reply-1"}}
     post(cid, clearing, login_headers(client, "coordinator"), payload)
     m = model(cid)
     assert m.outreach_holds == () and m.review_reason is None and m.triage_review_reason is None
@@ -241,7 +241,7 @@ def test_both_flags_must_be_cleared_one_by_one(fresh, triage):
     flag(cid, "wrong_number")
     flag(cid, "wrong_number")  # a second report does not stack
     assert model(cid).outreach_holds == ("opt_out", "wrong_number")
-    post(cid, "consent_updated", login_headers(client, "coordinator"), {"channel_sms": True})
+    post(cid, "consent_updated", login_headers(client, "coordinator"), {"channel_sms": True, "source": {"channel": "phone_call", "reference": "call-1"}})
     assert model(cid).outreach_holds == ("wrong_number",) and scan().get("outreach_sent") is None
     post(cid, "contact_updated", login_headers(client, "coordinator"), {"contact_valid": True})
     assert model(cid).outreach_holds == () and scan()["outreach_sent"] == 1

@@ -33,9 +33,10 @@ def test_case_lifecycle_and_response_shape():
     first = client.get("/pathways", headers=COORD).json()["transitions"][0]["event"]
     resp = post(case_id, first, LAB)
     assert resp.status_code == 201
-    assert [e["seq"] for e in resp.json()["events"]] == [1, 2]
-    assert resp.json()["events"][1]["actor"] == actor_of("lab", "lab one")  # derived from the identity (opaque id, A14)
+    assert resp.json()["events"] == []  # ADR-059 (F5): the lab's answer is the minimal projection, not the log
     got = client.get(f"/cases/{case_id}", headers=COORD).json()
+    assert [e["seq"] for e in got["events"]] == [1, 2]
+    assert got["events"][1]["actor"] == actor_of("lab", "lab one")  # derived from the identity (opaque id, A14)
     assert got["state"] == resp.json()["state"]
 
 
@@ -46,7 +47,7 @@ def test_event_id_makes_retries_idempotent():
     one = post(case_id, first, LAB, **kwargs)
     two = post(case_id, first, LAB, **kwargs)
     assert one.status_code == two.status_code == 201
-    assert len(two.json()["events"]) == 2
+    assert len(client.get(f"/cases/{case_id}", headers=COORD).json()["events"]) == 2
 
 
 def test_list_cases_filters_by_state_and_unknown_case_404():
@@ -93,9 +94,9 @@ def test_case_json_carries_the_read_model():
 def test_side_state_events_over_http():
     case_id = new_case(patient_ref="Patient/77")
     patient = login_headers(client, "patient", "pat", patient_ref="Patient/77")
-    out = post(case_id, "consent_updated", patient, {"withdrawn": True}).json()
+    out = post(case_id, "consent_updated", patient, {"withdrawn": True, "source": {"channel": "patient_app"}}).json()
     assert out["state"] == "consent_withdrawn"
     assert post(case_id, "acknowledge", LAB).status_code == 409  # frozen: only consent moves it
     assert post(case_id, "callback_requested", patient).status_code == 201  # annotations land
-    back = post(case_id, "consent_updated", patient, {"withdrawn": False}).json()
+    back = post(case_id, "consent_updated", patient, {"withdrawn": False, "source": {"channel": "patient_app"}}).json()
     assert back["state"] == "result_received" and back["read_model"]["consent_frozen"] is False

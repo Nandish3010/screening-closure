@@ -127,19 +127,19 @@ describe("mock adapter: the seeded triage cases", () => {
   it("a person's consent_updated clears the opt_out hold and the flag, and the automation stays quiet afterwards", async () => {
     const api = auto();
     await api.login("coordinator", "Maryam Al Suwaidi");
-    const d = await api.postEvent(DEMO_OPT_OUT_CASE_ID, { type: "consent_updated", actor: COORD, payload: { channel_sms: true } });
+    const d = await api.postEvent(DEMO_OPT_OUT_CASE_ID, { type: "consent_updated", actor: COORD, payload: { channel_sms: true, source: { channel: "phone_call", reference: "call-1" } } });
     expect(d).toMatchObject({ review_reason: null, triage_review_reason: null, outreach_holds: [] });
   });
   it("a consent_updated that withdraws consent clears the hold but the case stays in consent review with the triage reason kept", async () => {
     const api = auto();
     await api.login("coordinator", "Maryam Al Suwaidi");
-    const d = await api.postEvent(DEMO_OPT_OUT_CASE_ID, { type: "consent_updated", actor: COORD, payload: { withdrawn: true } });
+    const d = await api.postEvent(DEMO_OPT_OUT_CASE_ID, { type: "consent_updated", actor: COORD, payload: { withdrawn: true, source: { channel: "phone_call", reference: "call-1" } } });
     expect(d).toMatchObject({ review_reason: "consent_withdrawn", triage_review_reason: "opt_out", outreach_holds: [] });
   });
   it("a wrong_number hold is not cleared by consent, but by contact_updated {contact_valid: true}", async () => {
     const api = auto();
     await api.login("coordinator", "Maryam Al Suwaidi");
-    let d = await api.postEvent(DEMO_WRONG_NUMBER_CASE_ID, { type: "consent_updated", actor: COORD, payload: { channel_sms: true } });
+    let d = await api.postEvent(DEMO_WRONG_NUMBER_CASE_ID, { type: "consent_updated", actor: COORD, payload: { channel_sms: true, source: { channel: "phone_call", reference: "call-1" } } });
     expect(d.outreach_holds).toEqual(["wrong_number"]);
     d = await api.postEvent(DEMO_WRONG_NUMBER_CASE_ID, { type: "contact_updated", actor: COORD, payload: { contact_valid: true } });
     expect(d).toMatchObject({ review_reason: null, triage_review_reason: null, outreach_holds: [] });

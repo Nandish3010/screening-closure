@@ -16,6 +16,7 @@ Everything the 7-minute GITEX demo needs to start from a known state, run the sa
 | `make demo-kill-scheduler [RUNS=3]` | The F11 rehearsal: stop the scheduler, wait for the alert, restart it, check no event was lost. |
 | `make test-demo` | T-E9 and T-E10 against the running stack (about 4 minutes; leaves the demo reset). |
 | `python3 tools/demo/create_colonoscopy_report.py --case-id ... --patient-ref Patient/...` | Create the colonoscopy `Procedure` and `DiagnosticReport` for a case in HAPI without going through the API. |
+| `python3 tools/demo/create_counselling_record.py --case-id ... --patient-ref Patient/...` | Create the synthetic counselling `DocumentReference` an informed refusal cites (ADR-059: the refusal and the declined closure resolve it in FHIR). |
 
 ## The named patient
 

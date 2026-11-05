@@ -400,10 +400,10 @@ def test_t_sp21_the_consent_hold_applies_to_a_cervical_case(both):
     cid = new_case("cervical_hpv")
     drive_to(cid, last="patient_acknowledge")
     patient = H("patient", "pat", "Patient/sp1")
-    r = post(cid, "consent_updated", patient, {"withdrawn": True})
+    r = post(cid, "consent_updated", patient, {"withdrawn": True, "source": {"channel": "patient_app"}})
     assert r.status_code == 201 and r.json()["state"] == "consent_withdrawn"
     assert post(cid, "handoff_requested", H("primary_care_owner", "Dr Referrer"), {"to_provider": "endo-sp"}).status_code == 409
-    back = post(cid, "consent_updated", patient, {"withdrawn": False})
+    back = post(cid, "consent_updated", patient, {"withdrawn": False, "source": {"channel": "patient_app"}})
     assert back.json()["state"] == "patient_acknowledged"  # resumed where it was, from the log
 
 
