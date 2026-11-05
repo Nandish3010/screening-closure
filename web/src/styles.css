@@ -23,7 +23,8 @@
   --brand-soft: #e1f0f3;
   --brand-contrast: #ffffff;
   --link: #0b5a8a;
-  --focus: #b45309;
+  --focus: #0a4655; --focus-halo: #ffffff;
+  --ring-dark: #ffffff; --ring-dark-halo: #0a2a33;
   /* Status pairs (background, foreground) */
   --bad-bg: #fde8e6; --bad: #9b1c14;
   --warn-bg: #fff3d6; --warn: #7a4b00;
@@ -47,6 +48,7 @@
   --shadow-md: 0 2px 8px rgba(20, 35, 43, 0.08);
   --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.25);
   --header-h: 0px;
+  --strip-h: 2.25rem;
   font-family: var(--font);
   color-scheme: light dark;
 }
@@ -64,7 +66,8 @@
     --brand-soft: #16343c;
     --brand-contrast: #06161b;
     --link: #8ec9f0;
-    --focus: #fbbf24;
+    --focus: #fbbf24; --focus-halo: #0e171c;
+    --ring-dark: #ffffff; --ring-dark-halo: #0a2a33;
     --bad-bg: #4a1b17; --bad: #ffb4ab;
     --warn-bg: #46340a; --warn: #ffd98a;
     --ok-bg: #123a20; --ok: #9fe3b4;
@@ -81,7 +84,9 @@
 html { font-size: 16px; }
 body { margin: 0; background: var(--bg); color: var(--text); line-height: 1.5; font-size: var(--fs-md); }
 a { color: var(--link); }
-:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; box-shadow: 0 0 0 2px var(--focus-halo); }
+/* Ring on a dark or teal surface (the honest-result band, the dark nav pill): the halo colour inverts so 3:1 holds there too. */
+.on-dark :focus-visible { outline-color: var(--ring-dark); box-shadow: 0 0 0 2px var(--ring-dark-halo); }
 h1 { font-size: var(--fs-xl); line-height: 1.25; margin: var(--s-2) 0 var(--s-2); }
 h2 { font-size: var(--fs-lg); margin: var(--s-5) 0 var(--s-2); }
 h3 { font-size: var(--fs-md); margin: 0 0 var(--s-2); }
@@ -96,7 +101,8 @@ h1 + p, h2 + p { margin-top: 0; }
 .page-head h1 { margin-inline-end: var(--s-2); }
 
 /* Header: brand and simulated time on the first row, navigation and demo tools on the second */
-.app-header { background: var(--surface); border-bottom: 1px solid var(--border); padding: var(--s-2) var(--s-4); position: sticky; top: 0; z-index: 30; }
+.app-header { background: var(--surface); border-bottom: 1px solid var(--border); padding: var(--s-2) var(--s-4); }
+@media (min-width: 1100px) { .app-header { position: sticky; top: var(--strip-h); z-index: 30; } }
 .header-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s-1) var(--s-4); max-width: 1120px; margin: 0 auto; }
 .brand { color: var(--text); text-decoration: none; display: inline-flex; align-items: center; border-radius: var(--r-sm); }
 .brand-lockup { display: inline-flex; align-items: center; gap: var(--s-2); }
@@ -642,3 +648,25 @@ body.tour-open.tour-minimised { padding-bottom: 9rem; }
   body.tour-open, body.tour-open.tour-minimised { padding-bottom: 0; padding-inline-end: 424px; }
 }
 .tour-top { flex-wrap: wrap; }
+
+/* ---- Design port: chrome shared by every route ---- */
+/* Prototype strip: the synthetic / not-official line, amber and bordered in both themes, 13px+, sticky on every route including sign-in and the patient app. */
+.proto-strip { position: sticky; top: 0; z-index: 40; background: var(--sim-bg); color: var(--sim-text); border-bottom: 2px solid var(--sim-border); font-size: 0.8125rem; font-weight: 700; line-height: 1.35; padding: var(--s-1) var(--s-4); text-align: center; min-height: var(--strip-h); display: flex; align-items: center; justify-content: center; gap: var(--s-2); flex-wrap: wrap; }
+.proto-strip .ps-short { font-weight: 500; }
+.sim-pill { display: inline-flex; align-items: center; gap: var(--s-1); }
+.header-tools .btn-small, .app-header nav a, .role-switch select { min-height: 44px; display: inline-flex; align-items: center; }
+.role-switch { position: relative; padding: 0 var(--s-2); border: 2px dashed var(--sim-border); border-radius: var(--r-md); background: var(--surface-2); color: var(--text); font-weight: 600; }
+.role-switch .demo-only { font-size: var(--fs-2xs); text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); font-weight: 700; }
+.lang-link { font: inherit; min-height: 44px; min-width: 44px; padding: 0 var(--s-3); border-radius: var(--r-pill); border: 1.5px solid var(--border-strong); background: var(--surface); color: var(--text); cursor: pointer; display: inline-flex; align-items: center; gap: var(--s-2); }
+.lang-link .on { background: var(--brand); color: var(--brand-contrast); font-weight: 700; border-radius: var(--r-pill); padding: 0 var(--s-2); }
+.adapter { font-size: var(--fs-xs); }
+.chip, .pill, .brand-by, .facts dt { font-size: max(var(--fs-xs), 0.75rem); }
+@media (max-width: 480px) { .app-header nav a { padding-inline: var(--s-2); } .container { padding-inline: var(--s-3); } .btn { max-width: 100%; } }
+/* reflow at 320px: nothing forces a sideways scroll */
+body { overflow-wrap: anywhere; }
+table, pre, .mono { max-width: 100%; }
+@media (max-width: 640px) {
+  .app-header nav[aria-label="Main"] { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: thin; padding-bottom: var(--s-1); }
+  .app-header nav[aria-label="Main"] a { white-space: nowrap; }
+  .proto-strip { justify-content: flex-start; text-align: start; padding-inline: var(--s-3); }
+}

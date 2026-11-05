@@ -554,6 +554,12 @@ export const STAFF = {
     explanation: "The automatic patient messages on this system run on a demo approval, not on a clinical lead's signature. No clinician has approved the message texts or the rules that send them. Real patients would receive nothing until the policy is signed.",
   },
   /** Hosted judge demo (`GET /health` -> `demo.simulated_clock`): every date on screen is simulated, and a supervisor can move it. */
+  /** The always-on prototype strip (every route, every build): says what this is and what it is not. */
+  protoStrip: {
+    label: "Prototype for FHDIC Challenge 05.",
+    notOfficial: "Not an official government service.",
+    synthetic: "Synthetic data only.",
+  },
   demoClockBanner: {
     label: "Demo, synthetic data, simulated time",
     short: "Nothing here is a real patient or real time.",
