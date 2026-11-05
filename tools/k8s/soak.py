@@ -99,9 +99,9 @@ def slope_per_hour(points: list[tuple[float, float]]) -> float | None:
 
 def kube_exec_cgroup(pod: str) -> dict | None:
     try:
-        out = subprocess.run(["kubectl", "--context", AL.CTX, "-n", AL.NS, "exec", pod, "--", "sh", "-c", CG], capture_output=True,
+        out = subprocess.run([*AL.kubectl_base(), "exec", pod, "--", "sh", "-c", CG], capture_output=True,
                              text=True, timeout=30).stdout
-    except subprocess.SubprocessError:
+    except (subprocess.SubprocessError, OSError):
         return None
     head, _, stat = out.partition("--stat")
     d: dict = {}
@@ -539,10 +539,10 @@ async def amain(args) -> int:
     gen = AL.Gen(tokens, seeded, random.Random(args.seed))
     chart = AL.chart_values()
     wd_interval = float(chart.get("watchdog", {}).get("intervalSeconds", 10))
-    machine = json.loads(subprocess.run(["bash", str(ROOT / "tools/k8s/machine_spec.sh")], capture_output=True, text=True, check=True).stdout)
+    machine = AL.machine_spec()
     doc: dict = {
         "schema_version": 1, "tool": "tools/k8s/soak.py", "method": METHOD, "git": AL.git_info(), "machine_spec": machine, "chart_values": chart,
-        "chart_file_values_kind": (ROOT / "deploy/helm/screening-closure/values-kind.yaml").read_text(),
+        "chart_file_values_kind": (ROOT / "deploy/helm/screening-closure" / os.environ.get("SC_VALUES_FILE", "values-kind.yaml")).read_text(),
         "cluster_overrides": await asyncio.to_thread(AL.cluster_overrides), "mix_weights": dict(AL.MIX), "list_state": AL.LIST_STATE,
         "parameters": {"rate_per_s": args.rate, "warmup_s": args.warmup, "duration_s": args.duration, "sample_period_s": args.sample_period,
                        "window_s": WINDOW_S, "seed": args.seed, "label": args.label},

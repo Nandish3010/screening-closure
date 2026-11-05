@@ -211,7 +211,7 @@ def test_t_a27_overdue_rows_report_the_breach_due_date_and_escalation(backend):
 
 def test_t_a27_a_consent_withdrawn_case_has_no_state_deadline_only_the_running_milestone(backend):
     cid = new_case("Patient/rr-pat")
-    post(cid, "consent_updated", H("patient", "rr pat", "Patient/rr-pat"), {"withdrawn": True})
+    post(cid, "consent_updated", H("patient", "rr pat", "Patient/rr-pat"), {"withdrawn": True, "source": {"channel": "patient_app"}})
     row = next(r for r in listing(state="consent_withdrawn") if r["case_id"] == cid)
     d = detail(cid)
     # no state SLA applies while consent is withdrawn; the referral milestone (15 working days from the result) runs on

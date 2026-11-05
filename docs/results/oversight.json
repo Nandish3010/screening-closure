@@ -107,12 +107,12 @@
       "callback_requested:patient_does_not_understand": 3,
       "callback_requested:reschedule": 4,
       "review_requested:already_done": 4,
-      "review_requested:opt_out": 11,
-      "review_requested:triage_uncertain": 20,
+      "review_requested:opt_out": 16,
+      "review_requested:triage_uncertain": 15,
       "review_requested:wrong_number": 7
     },
     "needs_human": 31,
-    "opt_out_gate": 1,
+    "opt_out_gate": 2,
     "replies": 60
   }
 }

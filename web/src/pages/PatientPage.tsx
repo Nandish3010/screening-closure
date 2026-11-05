@@ -243,7 +243,7 @@ export function PatientView({ caseId }: { caseId: string }) {
   const consent = detail ? (detail.consent ?? consentOf(detail.events)) : null;
   /** Partial updates: only what the patient just changed is sent (A6). The engine's consent hold applies unchanged. */
   const saveConsent = async (changes: ConsentChanges) =>
-    setNotice((await post("consent_updated", changes)) ? "saved" : "saveFailed");
+    setNotice((await post("consent_updated", { ...changes, source: { channel: "patient_app" } })) ? "saved" : "saveFailed");
 
   // Large touch targets (btn-xl is 60px tall); both languages are one tap away and each is named in its own script.
   const toggle = (

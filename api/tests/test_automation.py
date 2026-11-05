@@ -500,11 +500,11 @@ def test_an_accepted_owner_triggers_the_result_notice_with_no_draft_and_no_appro
 
 def test_the_consent_ledger_picks_the_channel_and_a_withdrawal_stops_everything(fresh):
     cid = owner_accepted_case()
-    post(cid, "consent_updated", login("patient", "pat", patient_ref="Patient/1"), {"channel_sms": False})
+    post(cid, "consent_updated", login("patient", "pat", patient_ref="Patient/1"), {"channel_sms": False, "source": {"channel": "patient_app"}})
     scan()
     assert sent(cid)[0].payload["channel"] == "whatsapp"
     cid2 = owner_accepted_case()
-    post(cid2, "consent_updated", login("coordinator", "Maryam"), {"withdrawn": True})
+    post(cid2, "consent_updated", login("coordinator", "Maryam"), {"withdrawn": True, "source": {"channel": "phone_call", "reference": "call-1"}})
     out = scan()
     assert sent(cid2) == [] and notify.log.for_case(UUID(cid2)) == []
     assert out.get("outreach_sent", 0) == 0
@@ -743,13 +743,13 @@ def test_the_exhausted_flag_is_independent_of_the_consent_review(fresh):
     reject(cid, HUDA_LOGIN)
     scan()
     patient = login("patient", "pat", patient_ref="Patient/1")
-    post(cid, "consent_updated", patient, {"withdrawn": True})
+    post(cid, "consent_updated", patient, {"withdrawn": True, "source": {"channel": "patient_app"}})
     m = model(cid)
     # consent takes precedence while it is withdrawn, and the reroute flag is neither lost nor overwritten ...
     assert m.consent_frozen and m.to_json()["review_reason"] == "consent_withdrawn" and m.reroute_exhausted_at is not None
     scan()
     assert len(requests_of(cid)) == 3  # nothing is sent while consent is withdrawn
-    post(cid, "consent_updated", patient, {"withdrawn": False})
+    post(cid, "consent_updated", patient, {"withdrawn": False, "source": {"channel": "patient_app"}})
     m = model(cid)
     assert m.state == "referral_rejected" and m.to_json()["review_reason"] == "reroute_exhausted"  # ... and is back after
     scan()

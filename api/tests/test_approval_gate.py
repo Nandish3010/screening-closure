@@ -271,7 +271,7 @@ def test_approval_and_event_commit_together_or_not_at_all(fresh):
         store.append(event, PATHWAY, within=boom)
     assert len(log_of(cid)) == n  # the event was not stored
     # and the other way round: a refused event leaves the draft alone
-    post_event(cid, "consent_updated", "coordinator", {"withdrawn": True})
+    post_event(cid, "consent_updated", "coordinator", {"withdrawn": True, "source": {"channel": "phone_call", "reference": "call-1"}})
     n = len(log_of(cid))
     with pytest.raises(InvalidTransition):
         store.append(event, PATHWAY, within=lambda cur: ds.approve(UUID(did), OWNER_ACTOR, clock.now(), cur=cur))
@@ -332,7 +332,7 @@ def test_the_only_post_routes_that_touch_drafts_are_the_documented_ones():
 
 def test_approval_on_a_consent_frozen_case_is_409_and_emits_nothing(fresh):
     cid, did = drafted_case()
-    post_event(cid, "consent_updated", "patient", {"withdrawn": True}, patient_ref="Patient/1")
+    post_event(cid, "consent_updated", "patient", {"withdrawn": True, "source": {"channel": "patient_app"}}, patient_ref="Patient/1")
     before = types(cid)
     r = approve(did)
     assert r.status_code == 409 and "consent" in r.json()["detail"]
@@ -342,7 +342,7 @@ def test_approval_on_a_consent_frozen_case_is_409_and_emits_nothing(fresh):
     # a supervisor is stopped too
     assert approve(did, "supervisor", "sam").status_code == 409
     # once consent is restored the same draft can be approved
-    post_event(cid, "consent_updated", "coordinator", {"withdrawn": False})
+    post_event(cid, "consent_updated", "coordinator", {"withdrawn": False, "source": {"channel": "phone_call", "reference": "call-1"}})
     assert approve(did).status_code == 200
 
 
@@ -366,7 +366,7 @@ def test_approval_on_a_closed_case_is_409(fresh):
 
 def test_a_blocked_channel_approves_but_sends_nothing(fresh):
     cid = owned_case()
-    post_event(cid, "consent_updated", "patient", {"channel_sms": False}, patient_ref="Patient/1")
+    post_event(cid, "consent_updated", "patient", {"channel_sms": False, "source": {"channel": "patient_app"}}, patient_ref="Patient/1")
     did = make_draft(cid)  # sms
     r = approve(did)
     assert r.status_code == 200
@@ -464,7 +464,7 @@ def test_reject_needs_a_taxonomy_reason(fresh, body):
 
 def test_a_draft_may_be_rejected_on_a_frozen_case(fresh):
     cid, did = drafted_case()
-    post_event(cid, "consent_updated", "patient", {"withdrawn": True}, patient_ref="Patient/1")
+    post_event(cid, "consent_updated", "patient", {"withdrawn": True, "source": {"channel": "patient_app"}}, patient_ref="Patient/1")
     assert reject(did).status_code == 200  # rejecting can only stop outreach
     assert types(cid)[-1] == "message_rejected"
 
@@ -657,7 +657,7 @@ def test_t_d1_no_message_is_sent_without_a_prior_human_approval(steps):
                 client.post(f"/cases/{cid}/events", json={"type": type_, "payload": {"draft_id": made[0] if made else "x"}},
                             headers=as_role(role))
             elif kind == "consent":
-                client.post(f"/cases/{cid}/events", json={"type": "consent_updated", "payload": step_[1]},
+                client.post(f"/cases/{cid}/events", json={"type": "consent_updated", "payload": {**step_[1], "source": {"channel": "patient_app"}}},
                             headers=as_role("patient"))
             elif kind == "tick":
                 client.post("/clock/advance", json={"hours": step_[1]}, headers=H("supervisor", "sam"))

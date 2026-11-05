@@ -3,6 +3,10 @@
 from __future__ import annotations
 
 import os
+
+# ADR-059 (F6): the API refuses to start with APP_ENV unset; the test sessions are development runs and say so, before any
+# module reads the settings.
+os.environ.setdefault("APP_ENV", "dev")
 import subprocess
 import sys
 from pathlib import Path

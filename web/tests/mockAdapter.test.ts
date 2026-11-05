@@ -217,7 +217,7 @@ describe("mock adapter: drafts and the approval gate (D4, D5)", () => {
   });
 
   it("an approval whose channel the patient switched off stands but is blocked: sent false, reason consent, no message_sent", async () => {
-    await api.postEvent(DEMO_OVERDUE_CASE_ID, { type: "consent_updated", actor: "patient:x", payload: { channel_sms: false } });
+    await api.postEvent(DEMO_OVERDUE_CASE_ID, { type: "consent_updated", actor: "patient:x", payload: { channel_sms: false, source: { channel: "patient_app" } } });
     await api.login("owner", "Dr. Layla Haddad", ROLE_PROVIDERS.owner);
     const d = await api.requestDraft(DEMO_OVERDUE_CASE_ID, request);
     const ap = await api.approveDraft(d.draft_id);
@@ -269,7 +269,7 @@ describe("mock adapter: drafts and the approval gate (D4, D5)", () => {
   it("a draft pending when consent is withdrawn can no longer be approved (409) but can be rejected", async () => {
     await api.login("owner", "Dr. Layla Haddad", ROLE_PROVIDERS.owner);
     const d = await api.requestDraft(DEMO_OVERDUE_CASE_ID, request);
-    await api.postEvent(DEMO_OVERDUE_CASE_ID, { type: "consent_updated", actor: "patient:x", payload: { withdrawn: true } });
+    await api.postEvent(DEMO_OVERDUE_CASE_ID, { type: "consent_updated", actor: "patient:x", payload: { withdrawn: true, source: { channel: "patient_app" } } });
     await expect(api.approveDraft(d.draft_id)).rejects.toMatchObject({ status: 409 });
     await expect(api.rejectDraft(d.draft_id, { reason: "not_needed" })).resolves.toMatchObject({ reason: "not_needed" });
   });
@@ -277,8 +277,8 @@ describe("mock adapter: drafts and the approval gate (D4, D5)", () => {
 
 describe("mock adapter: consent (A6)", () => {
   it("merges partial updates over the all-allowed defaults and keeps the history", async () => {
-    await api.postEvent(DEMO_PATIENT_CASE_ID, { type: "consent_updated", actor: "patient:x", payload: { channel_sms: false } });
-    const d = await api.postEvent(DEMO_PATIENT_CASE_ID, { type: "consent_updated", actor: "patient:x", payload: { share_with_specialist: false } });
+    await api.postEvent(DEMO_PATIENT_CASE_ID, { type: "consent_updated", actor: "patient:x", payload: { channel_sms: false, source: { channel: "patient_app" } } });
+    const d = await api.postEvent(DEMO_PATIENT_CASE_ID, { type: "consent_updated", actor: "patient:x", payload: { share_with_specialist: false, source: { channel: "patient_app" } } });
     expect(d.consent).toMatchObject({ channel_sms: false, channel_whatsapp: true, channel_phone: true, channel_letter: true, share_with_specialist: false, withdrawn: false, updated_by: "patient:x" });
     expect(d.consent_history?.map((h) => h.changes)).toEqual([{ channel_sms: false }, { share_with_specialist: false }]);
     expect(d.consent_frozen).toBe(false);
@@ -289,12 +289,12 @@ describe("mock adapter: consent (A6)", () => {
     await expect(api.postEvent(DEMO_PATIENT_CASE_ID, { type: "consent_updated", actor: "patient:x", payload: { channel: "sms" } })).rejects.toMatchObject({ status: 422 }); // the old shape
   });
   it("withdrawal freezes outreach (409 on contact, handoff, drafts), adds review_requested, and restoring clears it", async () => {
-    const w = await api.postEvent(cid(3), { type: "consent_updated", actor: "patient:x", payload: { withdrawn: true } });
+    const w = await api.postEvent(cid(3), { type: "consent_updated", actor: "patient:x", payload: { withdrawn: true, source: { channel: "patient_app" } } });
     expect(w).toMatchObject({ consent_frozen: true, review_reason: "consent_withdrawn" });
     expect(w.events.at(-1)).toMatchObject({ type: "review_requested", actor: "system:consent", payload: { reason: "consent_withdrawn" } });
     await expect(api.postEvent(cid(3), { type: "contact_patient", actor: "coordinator:m", payload: {} })).rejects.toMatchObject({ status: 409 });
     await expect(api.postEvent(cid(3), { type: "handoff_requested", actor: "primary_care_owner:Omar Khalid", payload: { to_provider: "Corniche Gastro Unit" } })).rejects.toMatchObject({ status: 409 });
-    const r = await api.postEvent(cid(3), { type: "consent_updated", actor: "coordinator:m", payload: { withdrawn: false } });
+    const r = await api.postEvent(cid(3), { type: "consent_updated", actor: "coordinator:m", payload: { withdrawn: false, source: { channel: "phone_call", reference: "call-1" } } });
     expect(r).toMatchObject({ consent_frozen: false, review_reason: null });
   });
   it("review_requested, message_approved and message_sent cannot be posted by anyone", async () => {
@@ -433,5 +433,20 @@ describe("E14: demo draft texts never state the finding", () => {
       expect(hits, text).toEqual([]);
       expect(text).not.toMatch(/diagnos/i);
     }
+  });
+});
+
+describe("mock adapter: how the patient asked (ADR-059, F4)", () => {
+  it("a consent change needs a source; staff name the record, the patient's own change is the app", async () => {
+    const api = createMockAdapter();
+    const post = (actor: string, payload: Record<string, unknown>) => api.postEvent(DEMO_PATIENT_CASE_ID, { type: "consent_updated", actor, payload });
+    await expect(post("coordinator:m", { channel_sms: true })).rejects.toMatchObject({ status: 422 });
+    await expect(post("coordinator:m", { channel_sms: true, source: { channel: "phone_call" } })).rejects.toMatchObject({ status: 422 });
+    await expect(post("coordinator:m", { channel_sms: true, source: { channel: "carrier_pigeon", reference: "x" } })).rejects.toMatchObject({ status: 422 });
+    await expect(post("coordinator:m", { channel_sms: true, source: { channel: "patient_app" } })).rejects.toMatchObject({ status: 403 });
+    await expect(post("patient:x", { channel_sms: true, source: { channel: "phone_call", reference: "call-1" } })).rejects.toMatchObject({ status: 403 });
+    const ok = await post("coordinator:m", { channel_sms: true, source: { channel: "phone_call", reference: "call-0412" } });
+    expect(ok.consent_history?.at(-1)).toMatchObject({ source: { channel: "phone_call", reference: "call-0412" } });
+    await post("patient:x", { lang: "ar" }); // a language preference alone carries no source
   });
 });

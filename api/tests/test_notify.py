@@ -290,7 +290,7 @@ def test_t_a23_after_a_withdrawal_over_http_no_outbound_row_exists(http_case, no
     cid = http_case
     send_approved(cid, "sms", "en", "reminder", "before", at=clock.now())
     client.post("/clock/advance", json={"hours": 1}, headers=SUP)
-    r = client.post(f"/cases/{cid}/events", json={"type": "consent_updated", "payload": {"withdrawn": True}}, headers=PATIENT)
+    r = client.post(f"/cases/{cid}/events", json={"type": "consent_updated", "payload": {"withdrawn": True, "source": {"channel": "patient_app"}}}, headers=PATIENT)
     assert r.status_code == 201 and r.json()["state"] == "consent_withdrawn"
     withdrawn_at = next(e["at"] for e in r.json()["events"] if e["type"] == "consent_updated")  # (a patient sees a redacted list)
     for ch in ("sms", "whatsapp", "phone", "letter"):

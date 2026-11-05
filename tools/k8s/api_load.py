@@ -36,6 +36,7 @@ import asyncio
 import base64
 import collections
 import json
+import os
 import random
 import re
 import statistics
@@ -51,10 +52,16 @@ import httpx
 import psycopg
 
 ROOT = Path(__file__).resolve().parents[2]
-CTX = "kind-sc-m76"
-NS = "closure"
-API_BASE = "http://127.0.0.1:18376"
-PG_HOSTPORT = "127.0.0.1:15476"
+# Where the cluster is. The defaults are the local kind cluster. The GKE load test (deploy/gke/, docs/governance/gke-loadtest.md) runs this
+# very file INSIDE the cluster in a load-generator pod and sets, through the environment: SC_K8S_CONTEXT="" (empty = kubectl's in-cluster
+# config, no --context), SC_API_BASE (the API Service), SC_PG_HOSTPORT (the Postgres Service), SC_PG_SSLMODE, SC_OIDC_ISSUER (mint_token)
+# and SC_RUN_INFO (a directory with machine_spec.json and chart_values.json that the orchestrator wrote: no helm, docker or sysctl in the pod).
+CTX = os.environ.get("SC_K8S_CONTEXT", "kind-sc-m76")
+NS = os.environ.get("SC_K8S_NAMESPACE", "closure")
+API_BASE = os.environ.get("SC_API_BASE", "http://127.0.0.1:18376")
+PG_HOSTPORT = os.environ.get("SC_PG_HOSTPORT", "127.0.0.1:15476")
+PG_SSLMODE = os.environ.get("SC_PG_SSLMODE", "disable")
+RUN_INFO = os.environ.get("SC_RUN_INFO", "")
 DEFAULT_OUT = ROOT / "docs/results/scale/latency.json"
 P99_LIMIT_S = 0.5
 ERROR_LIMIT = 0.001
@@ -85,18 +92,40 @@ METHOD = (
 
 # ------------------------------------------------------------------------------------------------------ cluster helpers
 
+def kubectl_base() -> list[str]:
+    """`kubectl [--context CTX] -n NS`; an empty CTX = the in-cluster config of a pod."""
+    return ["kubectl", *(["--context", CTX] if CTX else []), "-n", NS]
+
+
 def kubectl(*args: str, timeout: float = 60, check: bool = True) -> str:
-    return subprocess.run(["kubectl", "--context", CTX, "-n", NS, *args], capture_output=True, text=True, check=check,
-                          timeout=timeout).stdout
+    return subprocess.run([*kubectl_base(), *args], capture_output=True, text=True, check=check, timeout=timeout).stdout
+
+
+def run_info(name: str) -> dict | None:
+    """A JSON file the GKE orchestrator left in SC_RUN_INFO (None outside that run)."""
+    if not RUN_INFO:
+        return None
+    try:
+        return json.loads((Path(RUN_INFO) / name).read_text())
+    except (OSError, ValueError):
+        return {}
+
+
+def machine_spec() -> dict:
+    info = run_info("machine_spec.json")
+    if info is not None:
+        return info
+    return json.loads(subprocess.run(["bash", str(ROOT / "tools/k8s/machine_spec.sh")], capture_output=True, text=True, check=True).stdout)
 
 
 def owner_dsn() -> str:
     pw = base64.b64decode(kubectl("get", "secret", "sc-postgres", "-o", "jsonpath={.data.password}")).decode()
-    return f"postgresql://closure_owner:{pw}@{PG_HOSTPORT}/closure?sslmode=disable"
+    return f"postgresql://closure_owner:{pw}@{PG_HOSTPORT}/closure?sslmode={PG_SSLMODE}"
 
 
 def mint(role: str, name: str, sub: str | None = None, ttl: int = 21600) -> str:
-    cmd = [str(ROOT / ".venv/bin/python"), str(ROOT / "tools/k8s/mint_token.py"), "--role", role, "--name", name, "--ttl", str(ttl)]
+    py = str(ROOT / ".venv/bin/python") if (ROOT / ".venv/bin/python").exists() else sys.executable
+    cmd = [py, str(ROOT / "tools/k8s/mint_token.py"), "--role", role, "--name", name, "--ttl", str(ttl), "--context", CTX, "--namespace", NS]
     return subprocess.run(cmd + (["--sub", sub] if sub else []), capture_output=True, text=True, check=True, timeout=60).stdout.strip()
 
 
@@ -108,10 +137,15 @@ def pods(label: str) -> list[str]:
 def git_info() -> dict:
     def g(*a: str) -> str:
         return subprocess.run(["git", "-C", str(ROOT), *a], capture_output=True, text=True).stdout.strip()
+    if os.environ.get("SC_GIT_COMMIT"):  # in the load-generator pod there is no git checkout: the orchestrator passes the commit it built
+        return {"commit": os.environ["SC_GIT_COMMIT"], "branch": os.environ.get("SC_GIT_BRANCH", ""), "dirty_files": []}
     return {"commit": g("rev-parse", "HEAD"), "branch": g("rev-parse", "--abbrev-ref", "HEAD"), "dirty_files": g("status", "--porcelain").splitlines()[:30]}
 
 
 def chart_values() -> dict:
+    info = run_info("chart_values.json")
+    if info is not None:
+        return {k: info[k] for k in ("images", "api", "scheduler", "watchdog", "app") if k in info}
     vals = json.loads(subprocess.run(["helm", "--kube-context", CTX, "-n", NS, "get", "values", "closure", "--all", "-o", "json"],
                                      capture_output=True, text=True, check=True).stdout)
     return {k: vals[k] for k in ("images", "api", "scheduler", "watchdog", "app") if k in vals}
@@ -144,9 +178,9 @@ CG = "cat /sys/fs/cgroup/cpu.stat /sys/fs/cgroup/memory.current /sys/fs/cgroup/m
 
 def _cgroup(pod: str) -> dict | None:
     try:
-        out = subprocess.run(["kubectl", "--context", CTX, "-n", NS, "exec", pod, "--", "sh", "-c", CG], capture_output=True, text=True,
+        out = subprocess.run([*kubectl_base(), "exec", pod, "--", "sh", "-c", CG], capture_output=True, text=True,
                              timeout=20).stdout
-    except subprocess.SubprocessError:
+    except (subprocess.SubprocessError, OSError):
         return None
     d: dict = {}
     lines = out.split("\n")
@@ -194,7 +228,7 @@ class Sampler(threading.Thread):
                 threads.append(th)
             try:
                 self.docker.append((t, _docker_stats()))
-            except (subprocess.SubprocessError, ValueError):
+            except (subprocess.SubprocessError, ValueError, OSError):  # no docker (a pod, or a host without it): per-pod cgroups only
                 pass
             for th in threads:
                 th.join()
@@ -626,7 +660,7 @@ async def amain(args) -> int:
     rng = random.Random(args.seed)
     doc: dict = load(out_path)
     doc.update(schema_version=1, tool="tools/k8s/api_load.py", method=METHOD, git=git_info(), generated_at=datetime.now(UTC).isoformat(),
-               machine_spec=json.loads(subprocess.run(["bash", str(ROOT / "tools/k8s/machine_spec.sh")], capture_output=True, text=True, check=True).stdout),
+               machine_spec=machine_spec(),
                chart_values=chart_values(), cluster_overrides=cluster_overrides(), mix_weights=dict(MIX), list_state=LIST_STATE, note_same_host="the load generator runs on the same host as the cluster",
                population_before=await asyncio.to_thread(population, dsn), pass_criteria=f"p99 < {P99_LIMIT_S * 1000:.0f} ms (answered requests, from intended start) and error rate < {ERROR_LIMIT * 100:.1f}%; "
                "requests refused with 503 + Retry-After (load shedding) are counted apart and are not errors")

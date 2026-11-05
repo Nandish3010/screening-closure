@@ -1,0 +1,17 @@
+{{- if .Values.storageClass.create }}
+# GKE persistent-disk CSI: the `labels` parameter puts these labels on every disk the class provisions, which is how `make gke-teardown`
+# finds a disk that outlived its cluster. reclaimPolicy Delete: deleting the PVC deletes the disk. WaitForFirstConsumer: in the pod's zone.
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: {{ .Values.storageClass.name }}
+  labels:
+    {{- include "slt.labels" . | nindent 4 }}
+provisioner: {{ .Values.storageClass.provisioner }}
+parameters:
+  type: {{ .Values.storageClass.type }}
+  labels: "{{ .Values.label }}=true,sc-loadtest-run={{ .Values.runId }}"
+reclaimPolicy: Delete
+volumeBindingMode: WaitForFirstConsumer
+allowVolumeExpansion: true
+{{- end }}

@@ -9,6 +9,7 @@ cluster; do not log it. Needs PyJWT[crypto] (the repository .venv has it).
 """
 import argparse
 import base64
+import os
 import subprocess
 import sys
 import time
@@ -16,14 +17,15 @@ import uuid
 
 import jwt
 
-ISSUER = "https://idp.kind.invalid/realms/sc-m76"   # must match app.oidcIssuer in values-kind.yaml
+# must match app.oidcIssuer in the values file of the cluster (values-kind.yaml; the GKE load test sets SC_OIDC_ISSUER, values-gke-loadtest.yaml)
+ISSUER = os.environ.get("SC_OIDC_ISSUER", "https://idp.kind.invalid/realms/sc-m76")
 AUDIENCE = "screening-closure"
 KID = "sc-m76-1"
 
 
 def private_key(context: str, namespace: str) -> str:
     out = subprocess.run(
-        ["kubectl", "--context", context, "-n", namespace, "get", "secret", "sc-oidc-signing", "-o", "jsonpath={.data.private\\.pem}"],
+        ["kubectl", *(["--context", context] if context else []), "-n", namespace, "get", "secret", "sc-oidc-signing", "-o", "jsonpath={.data.private\\.pem}"],
         check=True, capture_output=True, text=True,
     ).stdout
     return base64.b64decode(out).decode()
@@ -37,8 +39,8 @@ def main() -> int:
     ap.add_argument("--ttl", type=int, default=3600, help="seconds")
     ap.add_argument("--patient-ref", default=None)
     ap.add_argument("--provider", default=None)
-    ap.add_argument("--context", default="kind-sc-m76")
-    ap.add_argument("--namespace", default="closure")
+    ap.add_argument("--context", default=os.environ.get("SC_K8S_CONTEXT", "kind-sc-m76"), help="empty = kubectl's in-cluster config")
+    ap.add_argument("--namespace", default=os.environ.get("SC_K8S_NAMESPACE", "closure"))
     a = ap.parse_args()
     now = int(time.time())
     claims = {

@@ -105,7 +105,7 @@ describe("C10: approving and rejecting", () => {
   it("approved but blocked: the answer's blocked_reason is shown instead of 'Sent', with the plain-words reason", async () => {
     const user = userEvent.setup();
     const api = createMockAdapter(null);
-    await api.postEvent(DEMO_OVERDUE_CASE_ID, { type: "consent_updated", actor: "patient:x", payload: { channel_sms: false } });
+    await api.postEvent(DEMO_OVERDUE_CASE_ID, { type: "consent_updated", actor: "patient:x", payload: { channel_sms: false, source: { channel: "patient_app" } } });
     openCase(DEMO_OVERDUE_CASE_ID, "owner", api);
     await user.click(await screen.findByTestId("request-draft"));
     const item = await newDraft();
@@ -207,7 +207,7 @@ describe("C10: approving and rejecting", () => {
     const api = createMockAdapter(null);
     await api.login("owner", "Dr. Layla Haddad", "Riverside Primary Care");
     const d = await api.requestDraft(DEMO_OVERDUE_CASE_ID, { purpose: "reminder", channel: "sms", language: "en" });
-    await api.postEvent(DEMO_OVERDUE_CASE_ID, { type: "consent_updated", actor: "patient:x", payload: { withdrawn: true } });
+    await api.postEvent(DEMO_OVERDUE_CASE_ID, { type: "consent_updated", actor: "patient:x", payload: { withdrawn: true, source: { channel: "patient_app" } } });
     openCase(DEMO_OVERDUE_CASE_ID, "owner", api);
     const item = await screen.findByTestId(`draft-${d.draft_id}`);
     expect(within(item).getByRole("button", { name: /approve draft/i })).toBeDisabled();
@@ -221,7 +221,7 @@ describe("SEC-2: blocked reasons from the approve answer", () => {
   /** A real mock approval (consent for sms is off, so the mock sends nothing) whose answer carries `reason`. */
   const withReason = async (reason: string | null | undefined) => {
     const base = createMockAdapter(null);
-    await base.postEvent(DEMO_OVERDUE_CASE_ID, { type: "consent_updated", actor: "patient:x", payload: { channel_sms: false } });
+    await base.postEvent(DEMO_OVERDUE_CASE_ID, { type: "consent_updated", actor: "patient:x", payload: { channel_sms: false, source: { channel: "patient_app" } } });
     return {
       ...base,
       approveDraft: async (id: string) => {

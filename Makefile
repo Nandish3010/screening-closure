@@ -22,6 +22,38 @@ k8s-up:
 k8s-down:
 	bash tools/k8s/down.sh
 
+# GKE load test (docs/governance/gke-loadtest.md): ONE command after `gcloud auth login`. NOTHING here runs unless you call it; the
+# scripts print the cost estimate and wait for you to type "yes" first. Builds and pushes images, creates a zonal GKE cluster, runs the
+# seed / sweep / ladder / soak scenarios from a pod inside it, copies the results to results/gke-loadtest/<run>/, and ALWAYS tears down.
+#   make gke-loadtest PROJECT=my-project [REGION=me-central1]      make gke-teardown PROJECT=my-project [FORCE=1]
+#   make gke-cost                                                    (the estimate only, no cloud call)
+#   make gke-rehearse                                                (the same pipeline on a local kind cluster, small numbers; take the stack lock first)
+#   make gke-import RUN=results/gke-loadtest/<run id>                (copy a finished run's JSON into docs/results/scale/gke/ and re-render scale.md)
+.PHONY: gke-loadtest gke-teardown gke-cost gke-rehearse gke-import gke-budget-alert gke-lint
+gke-loadtest:
+	bash deploy/gke/loadtest.sh run $(if $(PROJECT),--project $(PROJECT))
+
+gke-teardown:
+	bash deploy/gke/loadtest.sh teardown $(if $(PROJECT),--project $(PROJECT)) $(if $(FORCE),--yes)
+
+gke-cost:
+	bash deploy/gke/loadtest.sh estimate
+
+gke-rehearse:
+	bash deploy/gke/loadtest.sh rehearse
+
+gke-import:
+	$(PY) tools/k8s/render_gke.py --import-run $(RUN)
+	$(PY) tools/k8s/render_scale.py
+
+# Optional, NOT run by gke-loadtest: a billing budget with e-mail alerts (an alert, not a cap). See the runbook.
+gke-budget-alert:
+	bash deploy/gke/budget-alert.sh $(PROJECT)
+
+# helm lint + helm template (and kubeconform when it is installed) for both charts; no cluster, no cloud.
+gke-lint:
+	bash deploy/gke/lint.sh
+
 # M7-6: docs/results/scale.md and scale.json (scalability evidence and the emirate capacity plan), rendered from the raw measurements in
 # docs/results/scale/*.json and tools/k8s/capacity_inputs.yaml. Pure Python, no cluster. `scale-report-check` fails if the committed
 # files differ from what the raw files and the inputs produce.

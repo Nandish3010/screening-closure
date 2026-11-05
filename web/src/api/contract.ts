@@ -369,12 +369,23 @@ export const CONSENT_KEYS = [
   "channel_sms", "channel_whatsapp", "channel_phone", "channel_letter", "share_with_specialist", "withdrawn",
 ] as const;
 export type ConsentKey = (typeof CONSENT_KEYS)[number];
-/** A `consent_updated` payload: any non-empty subset of the six booleans. */
-export type ConsentChanges = Partial<Record<ConsentKey, boolean>> & { lang?: "en" | "ar" };
+/** ADR-059 (F4): how the patient asked. `patient_app` is the patient's own change; staff record `phone_call`, `in_person`,
+ *  `written` or `reply_review` (a person read the patient's reply) and name the record that holds the detail. */
+export const CONSENT_SOURCE_CHANNELS = ["patient_app", "phone_call", "in_person", "written", "reply_review"] as const;
+export type ConsentSourceChannel = (typeof CONSENT_SOURCE_CHANNELS)[number];
+export interface ConsentSource {
+  channel: ConsentSourceChannel;
+  /** An opaque id of the record (call-log id, visit id, scan id, reply id): required unless the channel is `patient_app`. */
+  reference?: string;
+}
+/** A `consent_updated` payload: any non-empty subset of the six booleans, with the `source` of the change (required with them). */
+export type ConsentChanges = Partial<Record<ConsentKey, boolean>> & { lang?: "en" | "ar"; source?: ConsentSource };
 export interface ConsentHistoryEntry {
   at: string;
   actor: string;
   changes: ConsentChanges;
+  /** How the patient asked (ADR-059); absent on entries written before it. */
+  source?: ConsentSource;
 }
 
 /** `pending_handoff` on the read model while a request is unanswered, else null (A5). */

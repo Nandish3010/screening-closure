@@ -69,7 +69,7 @@ def walk(patient_ref="Patient/p-1", result_ref="DiagnosticReport/r-1"):
     clock.advance(days=12)  # patient_acknowledge (7 wd) breached: mark_overdue + reminder + supervisor rung
     run_sweep(cases.store, PATHWAY, default_calendar(), clock.now(), only=[UUID(cid)])
     post(cid, "patient_acknowledge", pat)
-    post(cid, "consent_updated", pat, {"channel_sms": False})
+    post(cid, "consent_updated", pat, {"channel_sms": False, "source": {"channel": "patient_app"}})
     post(cid, "handoff_requested", pco, {"to_provider": "fp-endo"})
     post(cid, "handoff_accepted", spec)
     post(cid, "book_confirmatory", spec)
@@ -152,7 +152,7 @@ def test_t_a33_the_task_status_follows_the_state_at_every_step(stack):
     post(cid, "accept_ownership", pco)
     assert (task()["status"], task()["businessStatus"]["coding"][0]["code"]) == ("accepted", "owner_accepted")
     assert task()["owner"]["reference"].startswith("Practitioner/")
-    post(cid, "consent_updated", login("patient", "fp pat", patient_ref="Patient/p-1"), {"withdrawn": True})
+    post(cid, "consent_updated", login("patient", "fp pat", patient_ref="Patient/p-1"), {"withdrawn": True, "source": {"channel": "patient_app"}})
     assert (task()["status"], task()["businessStatus"]["coding"][0]["code"]) == ("on-hold", "consent_withdrawn")
     assert next(e for e in task()["extension"] if e["url"].endswith("consent-frozen"))["valueBoolean"] is True
     consent = fake.resources[f"Consent/consent-{cid}"]

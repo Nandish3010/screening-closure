@@ -8,7 +8,7 @@ Submission document for Challenge 05. Team Humans Decide. One page for evaluator
 
 ## Test cases
 
-Counted by collection on the branch that adds this page; recount with the commands in the last column. The web unit count includes the tests added with the guided demo.
+Counted by collection when this page was last updated (late October); counts drift as tests are added, so recount with the commands in the last column. They are static text here, not read from CI. The web unit count includes the tests added with the guided demo.
 
 | Suite | Tests | How to run |
 |---|---|---|
@@ -51,7 +51,7 @@ The upper-range scenario (a ceiling for the mechanism, not a forecast) reaches 8
 | Scheduler sweep keeps its 10 s cadence (4 h soak) | at least 95% of nominal starts | 100.0% (1,440 of 1,440) | met |
 | 1,000,000-case daily burst inside one 10 s loop | one loop | bounded, drains in 9 loops (2.4 minutes) | **not met** |
 | API memory flat over a 4 h soak | flat | +43.85 to +45.94 MiB/h per pod | **not met** |
-| Hosted demo end to end | passes the smoke test | not yet deployed | **not run** |
+| Hosted demo end to end | passes the smoke test | deploys 8 November 2026; not yet deployed | **not run** |
 
 ## Reply triage by language group
 
@@ -65,7 +65,7 @@ Test set of 551 synthetic replies (written by developers, split by template). "P
 | Mixed script | 78 | 93.6% | 100.0% | 92.3% | 100.0% (41.0%) |
 | All | 551 | 89.8% | 96.2% | 89.7% | 100.0% (43.6%) |
 
-Reading: Arabizi misses the target in the original build. The hosted build adds a group rule (Gulf dialect always to a person, Arabizi only above its own threshold), which reaches 100.0% precision by sending more replies to a person. No reply opt-out was handled automatically (0 of 61).
+Reading: Arabizi misses the target in the original build. The hosted build adds a group rule (Gulf dialect always to a person, Arabizi only above its own threshold), which reaches 100.0% precision by sending more replies to a person; on 551 developer-written texts that 100.0% is a property of the rule, not an estimate of real-world precision. No reply opt-out was handled automatically (0 of 61).
 
 ## Failure analysis: the key known failures and where they come from
 
@@ -78,7 +78,7 @@ Reading: Arabizi misses the target in the original build. The hosted build adds 
 | API memory grows slowly under load | Cause not found; the scan-path transient was found and fixed, a worker-recycling mitigation failed at the pod limit | [../results/scale.md](../results/scale.md) |
 | The one-loop burst is not met | A 1,000,000-case daily catch-up exceeds one 10 s loop (it drains across loops); one laptop-class host, no cloud measured (the sweep cadence itself is now met) | [../results/scale.md](../results/scale.md) |
 | Overload is refused, not served | Above the highest passing rate the API answers 503 with a retry time | [../results/scale.md](../results/scale.md) |
-| Hosted demo not yet exercised | Not deployed; the container builds, identity provider, certificates and reset are untested on the VM | [../governance/hosting-gcp.md](../governance/hosting-gcp.md) |
+| Hosted demo not yet exercised | Deploys on 8 November 2026 and is not live yet; the container builds, identity provider, certificates and reset are untested on the VM | [../governance/hosting-gcp.md](../governance/hosting-gcp.md) |
 | Pathway values not clinician-reviewed | Thresholds and timings are placeholders until the clinical review (H1) | [../governance/third-pathway.md](../governance/third-pathway.md) |
 
 ## Comparison with existing approaches

@@ -1,0 +1,28 @@
+{
+  "description": "RT-R-12 (ADR-059, F3): opt-out phrasings the first gate missed. Every `optout` case is a reply that means STOP and must be caught by the deterministic gate (so it holds outreach with NO model running); every `not_optout` case must not be mistaken for one. Straight and curly apostrophes, English contractions, Arabic stop-the-messages, Arabizi.",
+  "cases": [
+    {"id": "RT-R-12.1", "language": "en", "text": "don't text me again", "kind": "optout"},
+    {"id": "RT-R-12.2", "language": "en", "text": "Please don't contact me", "kind": "optout"},
+    {"id": "RT-R-12.3", "language": "en", "text": "please don’t contact me", "kind": "optout"},
+    {"id": "RT-R-12.4", "language": "en", "text": "DON’T TEXT ME", "kind": "optout"},
+    {"id": "RT-R-12.5", "language": "en", "text": "I don't want these messages", "kind": "optout"},
+    {"id": "RT-R-12.6", "language": "en", "text": "I don‘t want to receive any more", "kind": "optout"},
+    {"id": "RT-R-12.7", "language": "en", "text": "enough messages", "kind": "optout"},
+    {"id": "RT-R-12.8", "language": "en", "text": "do n't call me", "kind": "optout"},
+    {"id": "RT-R-12.9", "language": "en", "text": "I no longer wish to receive texts from you", "kind": "optout"},
+    {"id": "RT-R-12.10", "language": "ar", "text": "اوقفوا الرسائل", "kind": "optout"},
+    {"id": "RT-R-12.11", "language": "ar", "text": "ابي اوقف الرسائل", "kind": "optout"},
+    {"id": "RT-R-12.12", "language": "ar", "text": "أوقفوا الرسائل من فضلكم", "kind": "optout"},
+    {"id": "RT-R-12.13", "language": "ar", "text": "وقفوا التواصل معي", "kind": "optout"},
+    {"id": "RT-R-12.14", "language": "ar", "text": "كفاية رسائل", "kind": "optout"},
+    {"id": "RT-R-12.15", "language": "arabizi", "text": "w2fo el rasayel", "kind": "optout"},
+    {"id": "RT-R-12.16", "language": "arabizi", "text": "wa2fo l rasayel plz", "kind": "optout"},
+    {"id": "RT-R-12.17", "language": "arabizi", "text": "waqqfo rasael", "kind": "optout"},
+    {"id": "RT-R-12.18", "language": "arabizi", "text": "bas rasayel", "kind": "optout"},
+    {"id": "RT-R-12.19", "language": "en", "text": "please don't stop the reminders", "kind": "not_optout"},
+    {"id": "RT-R-12.20", "language": "en", "text": "I don't know the address", "kind": "not_optout"},
+    {"id": "RT-R-12.21", "language": "en", "text": "can you text me the address?", "kind": "not_optout"},
+    {"id": "RT-R-12.22", "language": "ar", "text": "لا توقفوا الرسائل", "kind": "not_optout"},
+    {"id": "RT-R-12.23", "language": "ar", "text": "وقفت السيارة قدام العيادة", "kind": "not_optout"}
+  ]
+}
