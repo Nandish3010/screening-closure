@@ -548,6 +548,11 @@
       }
     }
   },
+  "cloud_run": {
+    "note": "no cloud environment has been measured yet",
+    "source": "docs/results/scale/gke/",
+    "status": "not run: owner budget limit"
+  },
   "generated_by": "tools/k8s/render_scale.py",
   "machine_spec": {
     "docker": {

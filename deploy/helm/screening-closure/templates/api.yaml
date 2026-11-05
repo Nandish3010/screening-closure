@@ -6,7 +6,9 @@ metadata:
     app.kubernetes.io/name: api
     {{- include "sc.labels" . | nindent 4 }}
 spec:
+  {{- if not .Values.api.autoscaling.enabled }}
   replicas: {{ .Values.api.replicas }}
+  {{- end }}
   selector:
     matchLabels:
       app.kubernetes.io/name: api
@@ -23,6 +25,7 @@ spec:
         {{- toYaml (default (dict) .Values.podAnnotations) | nindent 8 }}
     spec:
       {{- include "sc.podCommon" . | nindent 6 }}
+      terminationGracePeriodSeconds: {{ .Values.api.terminationGracePeriodSeconds }}
       {{- if .Values.api.topologySpread }}
       topologySpreadConstraints:
         - maxSkew: 1
@@ -43,6 +46,13 @@ spec:
           {{- end }}
           ports:
             - { name: http, containerPort: {{ .Values.api.port }} }
+          {{- if gt (int .Values.api.preStopSleepSeconds) 0 }}
+          # Give the endpoint controller time to take the pod out of the Service before uvicorn gets SIGTERM, so a rolling update or a
+          # node drain does not reset connections that were routed to a terminating pod.
+          lifecycle:
+            preStop:
+              exec: { command: ["sleep", "{{ int .Values.api.preStopSleepSeconds }}"] }
+          {{- end }}
           env:
             {{- include "sc.apiEnv" . | nindent 12 }}
           securityContext: {{ toYaml .Values.containerSecurityContext | nindent 12 }}

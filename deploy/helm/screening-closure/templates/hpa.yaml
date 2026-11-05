@@ -1,0 +1,33 @@
+{{- if .Values.api.autoscaling.enabled }}
+# Horizontal autoscaling of the API on CPU (see api.autoscaling in values.yaml). The scheduler and the watchdog are not scaled: one leads, the rest idle.
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ .Release.Name }}-api
+  labels:
+    app.kubernetes.io/name: api
+    {{- include "sc.labels" . | nindent 4 }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ .Release.Name }}-api
+  minReplicas: {{ .Values.api.autoscaling.minReplicas }}
+  maxReplicas: {{ .Values.api.autoscaling.maxReplicas }}
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.api.autoscaling.targetCPUUtilizationPercentage }}
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: {{ .Values.api.autoscaling.scaleDownStabilizationSeconds }}
+      policies:
+        - { type: Pods, value: 1, periodSeconds: 120 }
+    scaleUp:
+      stabilizationWindowSeconds: 0
+      policies:
+        - { type: Pods, value: 2, periodSeconds: 60 }
+{{- end }}
