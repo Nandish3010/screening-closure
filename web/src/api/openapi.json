@@ -328,6 +328,17 @@
         "title": "LeaseRequest",
         "type": "object"
       },
+      "MalaffiReplay": {
+        "properties": {
+          "redeliver": {
+            "default": false,
+            "title": "Redeliver",
+            "type": "boolean"
+          }
+        },
+        "title": "MalaffiReplay",
+        "type": "object"
+      },
       "PostEvent": {
         "additionalProperties": false,
         "properties": {
@@ -475,6 +486,32 @@
           "reason"
         ],
         "title": "RequestErasure",
+        "type": "object"
+      },
+      "SahatnaCallback": {
+        "properties": {
+          "case_id": {
+            "format": "uuid",
+            "title": "Case Id",
+            "type": "string"
+          },
+          "slot_start": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Slot Start"
+          }
+        },
+        "required": [
+          "case_id"
+        ],
+        "title": "SahatnaCallback",
         "type": "object"
       },
       "Scan": {
@@ -2265,6 +2302,137 @@
         "summary": "Feed",
         "tags": [
           "integrations"
+        ]
+      }
+    },
+    "/integrations/mock": {
+      "get": {
+        "operationId": "mock_status_integrations_mock_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Mock Status Integrations Mock Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Mock Status",
+        "tags": [
+          "integrations-mock"
+        ]
+      }
+    },
+    "/integrations/mock/malaffi/replay": {
+      "post": {
+        "operationId": "malaffi_replay_integrations_mock_malaffi_replay_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/MalaffiReplay"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Malaffi Replay Integrations Mock Malaffi Replay Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Malaffi Replay",
+        "tags": [
+          "integrations-mock"
+        ]
+      }
+    },
+    "/integrations/mock/sahatna/booking-callback": {
+      "post": {
+        "operationId": "sahatna_booking_callback_integrations_mock_sahatna_booking_callback_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SahatnaCallback"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Sahatna Booking Callback Integrations Mock Sahatna Booking Callback Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Sahatna Booking Callback",
+        "tags": [
+          "integrations-mock"
         ]
       }
     },

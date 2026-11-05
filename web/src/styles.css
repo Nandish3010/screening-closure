@@ -467,6 +467,8 @@ body.tour-open { padding-bottom: 46vh; }
 .today-head .chip { white-space: normal; }
 .today-case { font-weight: 700; font-size: var(--fs-md); padding: var(--s-1) 0; }
 .today-why { margin: var(--s-2) 0 var(--s-1); }
+.today-priority { margin: var(--s-1) 0; }
+.today-priority .chip { white-space: normal; }
 .today-notes { margin: 0 0 var(--s-1); padding: 0; }
 .today-meta { margin: 0 0 var(--s-2); font-size: var(--fs-sm); }
 .today-actions { display: flex; flex-wrap: wrap; align-items: flex-start; gap: var(--s-2); }

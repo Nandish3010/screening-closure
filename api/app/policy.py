@@ -65,6 +65,12 @@ ROUTE_POLICY: dict[tuple[str, str], object] = {
     ("GET", "/metrics/funnel"): frozenset({COORD, SUPER}),
     # The integration feed (judge Integrations page): the last few HL7, FHIR and notification events, metadata only.
     ("GET", "/integrations/feed"): frozenset({COORD, SUPER}),
+    # The MOCK Malaffi result replay and Sahatna booking callback (ADR-057): a message of our own adapter's shape is built in the
+    # API and applied by the HL7 handler, as `system:hl7`. Coordinator and supervisor; the routes exist only on a development or a
+    # declared demo deployment (app.mock_integrations.enabled) and answer 404 anywhere else.
+    ("GET", "/integrations/mock"): frozenset({COORD, SUPER}),
+    ("POST", "/integrations/mock/malaffi/replay"): frozenset({COORD, SUPER}),
+    ("POST", "/integrations/mock/sahatna/booking-callback"): frozenset({COORD, SUPER}),
     # Record the confirmatory colonoscopy as FHIR evidence (E8): the case's owner (checked in the handler).
     ("POST", "/cases/{case_id}/confirmatory-result"): frozenset({PCO, SPEC}),
     # Demo clock: supervisor only. The router is registered only when APP_ENV=dev (app.main); outside dev

@@ -130,8 +130,25 @@ describe("the screen", () => {
     expect(within(row).getByTestId("today-pathway").getAttribute("data-pathway")).toBe("chronic_conditions");
     expect(within(row).getByTestId("today-priority").getAttribute("data-priority")).toBe("urgent");
     expect(within(row).getByTestId("today-why").textContent).toBe("An urgent result came in 2 days ago and nobody has acted on it yet.");
+    expect(within(row).getByTestId("today-priority-text").textContent).toBe("Very high blood pressure.");
+    expect(within(row).getByTestId("today-priority-placeholder").textContent).toMatch(/placeholder pending clinician sign-off \(H1\)/);
     expect(within(row).getByTestId("today-open-case")).toBeTruthy();
     expect(screen.getByTestId("today-count-urgent").textContent).toBe("1");
+  });
+
+  it("a case whose priority is not a placeholder shows its reason and no placeholder flag, and a case without priority shows neither", async () => {
+    const api = withToday(createMockAdapter(null), async () => response([
+      ...empty().filter((g) => g.group !== "urgent"),
+      group("urgent", [
+        item({ case_id: "aaaaaaaa-2222-4333-8444-555555555555", priority: { tier: "urgent", rank: 0, rule: "x", reason: { en: "A sourced rule", ar: "" }, basis: "IFHAS V10" } }),
+        item({ case_id: "bbbbbbbb-2222-4333-8444-555555555555", priority: null }),
+      ]),
+    ]));
+    page(api);
+    const rows = await screen.findAllByTestId("today-item");
+    expect(within(rows[0]).getByTestId("today-priority-text").textContent).toBe("A sourced rule.");
+    expect(within(rows[0]).queryByTestId("today-priority-placeholder")).toBeNull();
+    expect(within(rows[1]).queryByTestId("today-priority-reason")).toBeNull();
   });
 
   it("an empty queue says all clear once every open case was read", async () => {

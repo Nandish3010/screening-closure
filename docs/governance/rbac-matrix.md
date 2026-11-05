@@ -51,6 +51,9 @@ Every cell is what the running API did, not what the policy table says: the scri
 | `GET /heartbeats` | U | R | R | R | A | R | A | R | A | R | R | R |
 | `POST /hl7` | U | R | R | R | R | R | R | R | R | R | R | A |
 | `GET /integrations/feed` | U | R | R | R | A | R | A | R | R | R | R | R |
+| `GET /integrations/mock` | U | R | R | R | A | R | A | R | R | R | R | R |
+| `POST /integrations/mock/malaffi/replay` | U | R | R | R | A | R | A | R | R | R | R | R |
+| `POST /integrations/mock/sahatna/booking-callback` | U | R | R | R | A | R | A | R | R | R | R | R |
 | `GET /me` | U | A | A | A | A | A | A | A | A | A | A | A |
 | `GET /metrics/abstention` | U | R | R | R | A | R | A | R | R | R | R | R |
 | `GET /metrics/closure` | U | R | R | R | A | R | A | R | R | R | R | R |
@@ -140,6 +143,6 @@ None.
 
 ## What was checked
 
-- 48 routes in the OpenAPI document, 48 entries in `ROUTE_POLICY`: every route has a decision and no decision is stale.
+- 51 routes in the OpenAPI document, 51 entries in `ROUTE_POLICY`: every route has a decision and no decision is stale.
 - 33 event types in `EVENT_POLICY`, plus one unknown type that must be refused for every role.
-- 1119 role, route and scope combinations probed with real requests; 0 differ from the policy tables; 0 are documented gaps (see Findings).
+- 1155 role, route and scope combinations probed with real requests; 0 differ from the policy tables; 0 are documented gaps (see Findings).
