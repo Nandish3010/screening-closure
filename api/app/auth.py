@@ -325,7 +325,7 @@ def demo_clock_active() -> bool:
 def demo_controls_active() -> bool:
     """The judge-experience controls (ADR-057: guided path, simulated missed follow-up, reset request, demo status): ONLY when both
     demo flags are set with the simulation clock, in any environment. In dev the flags are off by default, so a developer's stack
-    has none of them; `make demo-preview` sets them to rehearse the hosted demo locally. Outside dev this is `demo_clock_active()`
+    has none of them; setting both (with the default sim clock) rehearses the hosted demo locally. Outside dev this is `demo_clock_active()`
     (assert_secure_config refuses every other mix), so a production deployment can never have them."""
     return settings.demo_simulated_clock and settings.demo_deployment and settings.clock_mode == "sim"
 
