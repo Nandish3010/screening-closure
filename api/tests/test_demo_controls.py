@@ -84,7 +84,7 @@ def _probe(**extra: str) -> dict:
     return json.loads(done.stdout.strip().splitlines()[-1])
 
 
-ROUTES = ["/demo/guide", "/demo/missed-followup", "/demo/reset"]
+ROUTES = ["/demo/credentials", "/demo/guide", "/demo/missed-followup", "/demo/reset"]
 
 
 def test_the_controls_exist_only_under_both_flags_with_the_sim_clock():
@@ -230,3 +230,17 @@ def test_an_unwritable_control_folder_is_a_plain_503_not_a_stack_trace(monkeypat
     monkeypatch.setattr(settings, "demo_control_dir", str(blocker / "sub"))  # a path under a file cannot be created
     r = demo.post("/demo/reset", headers=SUP)
     assert r.status_code == 503 and "operator" in r.json()["detail"] and "Traceback" not in r.text
+
+
+def test_credentials_are_404_by_default_and_come_only_from_deploy_time_config(monkeypatch):
+    import base64
+
+    assert demo.get("/demo/credentials").status_code == 404
+    rows = [{"role": "supervisor", "username": "noura.alhammadi", "password": "generated-at-deploy"}]
+    monkeypatch.setattr(settings, "demo_judge_logins_b64", base64.b64encode(json.dumps(rows).encode()).decode())
+    assert demo.get("/demo/credentials").status_code == 404  # the value alone is not enough: the operator must opt in
+    monkeypatch.setattr(settings, "demo_show_credentials", True)
+    r = demo.get("/demo/credentials")
+    assert r.status_code == 200 and r.json()["logins"] == rows and r.headers["cache-control"] == "no-store"
+    monkeypatch.setattr(settings, "demo_judge_logins_b64", "not-base64!!")
+    assert demo.get("/demo/credentials").status_code == 404  # malformed: stays off
