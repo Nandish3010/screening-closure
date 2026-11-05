@@ -57,7 +57,9 @@ fi
 
 echo "== budget alert (email to billing admins at 50/90/100 percent of ${SC_BUDGET_USD} USD; an alert, not a spending cap)"
 ba=$(gcloud billing projects describe "$GCP_PROJECT" --format='value(billingAccountName)' | sed 's|billingAccounts/||')
-if [ -n "$ba" ]; then
+if [ -n "$ba" ] && ! gcloud billing budgets list --billing-account "$ba" --format='value(name)' >/dev/null 2>&1; then
+  echo "budget: this identity cannot read budgets on billing account $ba (e.g. a deployer service account); skipped. Create or check sc-demo-budget in the console or as a billing admin."
+elif [ -n "$ba" ]; then
   gcloud billing budgets list --billing-account "$ba" --filter="displayName=sc-demo-budget" --format='value(name)' | grep -q . || \
     gcloud billing budgets create --billing-account "$ba" --display-name sc-demo-budget --budget-amount "${SC_BUDGET_USD}USD" \
       --filter-projects "projects/$GCP_PROJECT" --threshold-rule percent=0.5 --threshold-rule percent=0.9 --threshold-rule percent=1.0
