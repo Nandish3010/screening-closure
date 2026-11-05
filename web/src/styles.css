@@ -721,3 +721,7 @@ table, pre, .mono { max-width: 100%; }
 .start-bar span { display: block; height: 100%; background: var(--brand); }
 .start-card[data-status="next"] { border-color: var(--brand); border-width: 2px; }
 .start-then { margin-top: var(--s-5); }
+
+.outcomes-split { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: var(--s-4); margin: var(--s-4) 0; }
+.outcomes-split .panel { margin: 0; }
+.outcomes-big { font-size: var(--fs-lg); margin: var(--s-1) 0; }
