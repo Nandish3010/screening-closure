@@ -422,6 +422,20 @@ async function runAction(page: any, act: Action, ctx: { cases: Record<string, st
       const file = join(PAGES, `card-${++pageSeq}.html`);
       writeFileSync(file, cardHtml(v));
       await page.goto(pathToFileURL(file).href);
+      // A static page makes Chromium send no new screencast frame, and Playwright's recording then holds only the blank frame it
+      // started with (v7 shot 9: a 1.0 s, 1.6 kB webm that narrate.py padded into 14 s of white). A near-invisible flicker keeps
+      // frames coming for as long as the card is up, and the fonts and two paints are awaited first.
+      await page.evaluate(async () => {
+        await document.fonts.ready;
+        const s = document.createElement("style");
+        s.textContent = "@keyframes __keepalive{from{opacity:.02}to{opacity:.03}}";
+        const d = document.createElement("div");
+        d.setAttribute("aria-hidden", "true");
+        d.style.cssText = "position:fixed;right:0;bottom:0;width:2px;height:2px;background:#fff;opacity:.02;pointer-events:none;animation:__keepalive .1s steps(2) infinite";
+        document.head.append(s);
+        document.body.append(d);
+        await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(() => r(null))));
+      });
       await sleep(500);
       return;
     }
@@ -578,6 +592,9 @@ async function main() {
       const file = join(RAW, `shot-${shot.id}.webm`);
       renameSync(src!, file);
       const dur = ffprobeDuration(file);
+      // A recording much shorter than the time the shot took means the screencast stalled (no frames for a static page): narrate.py
+      // would pad the last, possibly blank, frame to the full length. Fail here, with the shot named, instead of shipping it.
+      if (!(dur >= wall - 2)) throw new Error(`shot ${shot.id} (${shot.title}): the recording is ${dur.toFixed(1)} s but the shot ran ${wall.toFixed(1)} s: the browser sent no frames (re-run with --only ${shot.id} --no-reset)`);
       const offset = (t0 - tPage) / 1000; // the video starts when the page opens, slightly before t0
       entry.video = file;
       entry.duration = Number(dur.toFixed(2));
