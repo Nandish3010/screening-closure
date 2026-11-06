@@ -22,6 +22,8 @@ server {
 
     # --- the API, under /api (prefix stripped). Service, scrape, clock and HL7 paths are never public. -----------------------
     location ~ ^/api/(scheduler|watchdog|hl7)(/|$) { return 404; }
+    # FastAPI's interactive docs and schema map every route; the app disables them in production, and the edge refuses them too.
+    location ~ ^/api/(docs|redoc|openapi\.json)(/|$) { return 404; }
     # Demo clock: only "advance" (supervisor token, checked by the API); reset and anything else under /clock stay closed.
     location = /api/clock/advance {
         limit_req zone=api_ip burst=5 nodelay;

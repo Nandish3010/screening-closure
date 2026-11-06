@@ -42,7 +42,7 @@ API_URL=${API_URL:-http://localhost:8000}
 FHIR_URL=${FHIR_BASE_URL_HOST:-http://localhost:8080/fhir}
 
 psql_admin() { docker compose exec -T postgres psql -v ON_ERROR_STOP=1 -U "$USER_" -d postgres -At "$@"; }
-psql_db() { docker compose exec -T postgres psql -v ON_ERROR_STOP=1 -U "$USER_" -d "$1" -At "${@:2}"; }
+psql_db() { _db=$1; shift; docker compose exec -T postgres psql -v ON_ERROR_STOP=1 -U "$USER_" -d "$_db" -At "$@"; }
 
 now() { python3 -c 'import time; print(time.time())'; }
 elapsed() { python3 -c "import time; print(f'{time.time()-$1:.1f}')"; }
