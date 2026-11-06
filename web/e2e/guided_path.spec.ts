@@ -12,14 +12,15 @@ test("Start here is the first screen; every step opens its screen with what to l
   await page.goto("/?demo=1&pathways=3");
   await expect(page).toHaveURL(/\/start$/);
   await expect(page.getByTestId("start-steps").locator("li")).toHaveCount(5); // the loop
-  await expect(page.getByTestId("start-safety").locator("li")).toHaveCount(2); // then what keeps it safe
+  await expect(page.getByTestId("start-safety").locator("li")).toHaveCount(3); // then what keeps it safe (the missed follow-up, the watchdog, privacy)
   await expect(page.getByTestId("demo-status").first()).toContainText("Demo status:");
-  for (const id of ["record", "prioritise", "refer", "remind", "outcome", "safety", "privacy"]) {
+  for (const id of ["record", "prioritise", "refer", "remind", "outcome", "safety", "watchdog", "privacy"]) {
     await page.goto("/start");
     await page.getByTestId(`start-open-${id}`).click();
     await expect(page.getByTestId("tour-look")).toBeVisible();
     await expect(page.getByTestId("tour-claim")).toBeVisible();
-    if (id !== "outcome") await expect(page).toHaveURL(/\/coordinator\/[0-9a-f-]{36}$/);
+    if (id === "watchdog") await expect(page).toHaveURL(/\/dashboard$/); // the dashboard's safety-net status; its links go to Today and the overdue worklist
+    else if (id !== "outcome") await expect(page).toHaveURL(/\/coordinator\/[0-9a-f-]{36}$/);
   }
 });
 

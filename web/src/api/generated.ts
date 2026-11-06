@@ -94,6 +94,10 @@ export interface Scan {
   "uptime_seconds"?: number;
 }
 
+export interface SignIn {
+  "role": string;
+}
+
 export interface ValidationError {
   "ctx"?: Record<string, unknown>;
   "input"?: unknown;
@@ -130,6 +134,7 @@ export interface Routes {
   "GET /demo/guide": { query: { "session": string; }; response: Record<string, unknown>; };
   "POST /demo/missed-followup": { body: MissedFollowup; response: Record<string, unknown>; };
   "POST /demo/reset": { response: Record<string, unknown>; };
+  "POST /demo/sign-in": { body: SignIn; response: Record<string, unknown>; };
   "POST /drafts/{draft_id}/approve": { path: { "draft_id": string; }; response: Record<string, unknown>; };
   "POST /drafts/{draft_id}/reject": { path: { "draft_id": string; }; body: RejectDraft; response: Record<string, unknown>; };
   "POST /erasures": { body: RequestErasure; response: Record<string, unknown>; };
@@ -188,6 +193,7 @@ export const ROUTES: readonly RouteKey[] = [
   "GET /demo/guide",
   "POST /demo/missed-followup",
   "POST /demo/reset",
+  "POST /demo/sign-in",
   "POST /drafts/{draft_id}/approve",
   "POST /drafts/{draft_id}/reject",
   "POST /erasures",

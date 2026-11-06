@@ -365,6 +365,10 @@ def secure_config_problems() -> list[str]:
     if scrape and scrape != METRICS_TOKEN_DEFAULT and len(scrape.encode()) < MIN_SECRET_BYTES:
         problems.append(f"METRICS_SCRAPE_TOKEN is shorter than {MIN_SECRET_BYTES} bytes")
     problems.extend(demo_clock_problems())
+    if not demo_controls_active() and any((settings.demo_signin_pw_coordinator, settings.demo_signin_pw_clinician,
+                                           settings.demo_signin_pw_supervisor, settings.demo_signin_pw_patient)):
+        problems.append("DEMO_SIGNIN_PW_* are set but the demo gate is not active (one-click demo passwords belong only to "
+                        "DEMO_SIMULATED_CLOCK + DEMO_DEPLOYMENT)")
     if not settings.fhir_verify_evidence:
         problems.append("FHIR_VERIFY_EVIDENCE is not true (outside dev closure evidence must resolve in the FHIR store, "
                         "not merely be a well-formed reference)")

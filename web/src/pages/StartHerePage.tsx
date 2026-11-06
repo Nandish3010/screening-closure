@@ -69,7 +69,7 @@ export function StartHerePage() {
     <main className="container start-here" id="main-start" data-testid="start-here">
       <p className="signin-brand"><BrandLockup large /></p>
       <h1>Start here</h1>
-      <p className="lead">The programme in about {minutes} minutes. Seven steps, one button each. Every button opens the real screen on a case nobody else has touched, and tells you what to look for. Everything is synthetic and runs on simulated time.</p>
+      <p className="lead">The programme in about {minutes} minutes. {CHALLENGE_STEPS.length} steps, one button each. Every button opens the real screen on a case nobody else has touched, and tells you what to look for. Everything is synthetic and runs on simulated time.</p>
       <p className="start-meta">
         <DemoStatusLine /> <ResetDemoControl />
       </p>

@@ -1,7 +1,7 @@
 /** HTTP adapter: the real API at VITE_API_URL, with bearer-token auth from POST /auth/dev-login. */
 import type {
   DemoGuide, DemoResetRequested, MissedFollowupResult,
-  AccessLog, AgencyInboxItem, AgencyOrg, AgencyRun, AgencyTask, AgencyTaskParams, Alert, ApiClient, CaseAgencySummary, CaseDetail, CaseEvent, CaseListParams, CaseSummary, CaseTimeline, ClosureMetrics, ConfirmatoryResult, Draft, TodayParams, TodayResponse,
+  AccessLog, AgencyInboxItem, AgencyOrg, AgencyRun, AgencyTask, AgencyTaskParams, Alert, ApiClient, CaseAgencySummary, CaseDetail, CaseEvent, CaseListParams, CaseSummary, CaseTimeline, ClosureMetrics, ConfirmatoryResult, Draft, Heartbeats, TodayParams, TodayResponse,
   DraftApproval, DraftRecord, DraftRejection, DraftRequestBody, EffortMetrics, FunnelMetrics, FunnelParams, IntegrationFeed, IntegrationMockStatus, MalaffiReplayResult, SahatnaCallbackResult, Me, PostEventBody, ReplyBody, ReplyResult, Role, TimelineItem,
 } from "./contract";
 import { ApiError, BACKEND_ROLE, OWNER_SCOPED_ROLES, ROLES } from "./contract";
@@ -200,6 +200,17 @@ export function createHttpAdapter(baseUrl: string, fetchImpl: typeof fetch = (..
     health: () => request("/health"),
     login,
     oidc,
+    demoSignIn: oidc
+      ? async (role: Role): Promise<void> => {
+          const res = await fetchImpl(`${base}/demo/sign-in`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Accept: "application/json" },
+            body: JSON.stringify({ role }),
+          });
+          if (!res.ok) throw await failure(res);
+          oidc.adoptTokens((await res.json()) as Parameters<OidcClient["adoptTokens"]>[0]);
+        }
+      : undefined,
     async loginPatientFor(caseId: string, name = "Patient"): Promise<void> {
       if (oidc) return; // the patient's token already carries its patient_ref
       // A patient token needs the patient's own `patient_ref`, which only staff can read from the case.
@@ -322,6 +333,15 @@ export function createHttpAdapter(baseUrl: string, fetchImpl: typeof fetch = (..
         return await request<Alert[]>("/alerts");
       } catch (e) {
         if (e instanceof ApiError && e.status === 404) return []; // endpoint not shipped yet: no alerts
+        throw e;
+      }
+    },
+    async getHeartbeats(): Promise<Heartbeats | null> {
+      try {
+        const h = await request<{ scheduler?: Heartbeats["scheduler"]; watchdog?: Heartbeats["watchdog"] }>("/heartbeats");
+        return { scheduler: h.scheduler ?? null, watchdog: h.watchdog ?? null };
+      } catch (e) {
+        if (e instanceof ApiError && (e.status === 404 || e.status === 403)) return null; // not shipped, or this role may not read it
         throw e;
       }
     },

@@ -286,6 +286,28 @@ export const CHALLENGE_STEPS: Step[] = [
     links: [DOCS.agency],
   },
   {
+    id: "watchdog",
+    title: "Safety net, part two: if the scheduler itself stops, the watchdog says so",
+    claim: "A separate watchdog raises an alert when the scheduler goes silent for 60 seconds, and a person must still accept the escalation it was holding.",
+    seconds: 55,
+    role: "supervisor",
+    body: (
+      <>
+        <p>The last step showed the engine catching a missed follow-up. This one is about the engine itself stopping. A separate watchdog process reads the scheduler&apos;s heartbeat every 10 seconds; after <strong>60 seconds of silence</strong> it raises a <em>scheduler down</em> alert and the dashboard shows a red banner, so the failure is loud, not quiet. In the repository&apos;s kill test the alert appeared 58 to 80 seconds after the scheduler was stopped.</p>
+        <p>While the scheduler is down no overdue marks or escalations are written, which is exactly why the alert matters. When it restarts, the missed marks and escalation rungs are written once each, in order, and nothing else in the log changes. You cannot stop containers on this hosted demo, so this step shows the live status and the result: the dashboard&apos;s safety-net line, and the case the demo was seeded with that is already overdue and escalated to the supervisor. A person still has to accept that escalation; no machine can.</p>
+      </>
+    ),
+    route: () => "/dashboard",
+    target: '[data-testid="safety-net-status"], [data-testid="scheduler-banner"], [data-testid="nobody-panel"]',
+    lookFor: [
+      "The Safety net line: when the scheduler and the watchdog last reported (real seconds, live), and the 60-second rule. A red banner replaces the calm line if the scheduler is ever silent for longer.",
+      "On Today, the Escalations group (below): a case that is overdue and escalated to the supervisor, waiting for a person to accept it. On its page: an overdue chip and \"Level 2 of 3, waiting for a human to accept\".",
+    ],
+    tryIt: ["Read the Safety net line, then open Today (link below), choose Escalations, open the case and accept the escalation as the supervisor: it clears, and the log keeps who accepted."],
+    also: [{ label: "Open Today (escalations)", to: TODAY_ROUTE }, { label: "Overdue cases on the worklist", to: "/coordinator?overdue=1" }],
+    links: [DOCS.demo, DOCS.agency],
+  },
+  {
     id: "privacy",
     guide: "privacy",
     title: "Privacy and consent: the patient decides, and can see who looked",
@@ -413,14 +435,19 @@ function TourPanel({ onClose, track, start, onTrack }: { onClose: () => void; tr
     return () => document.body.classList.remove("tour-open");
   }, []);
 
-  // Switch to the step's role. A sign-in provider means leaving the page, so the tour's place is kept and picked up again on return.
+  // Switch to the step's role. The hosted demo signs in with one click (ADR-060) and otherwise a sign-in provider means leaving the page, so the tour's place is kept and picked up again on return.
   const switchTo = () => {
     if (!step.role) return;
     if (api.oidc) {
       const u = JUDGE_ROLES.find((r) => r.role === step.role);
       if (!u || !demoDeployment) return;
       try { sessionStorage.setItem(RESUME_KEY, JSON.stringify({ track, index } satisfies Resume)); } catch { /* the tour just closes */ }
-      void api.oidc.signIn({ loginHint: u.username, forceLogin: true });
+      void (async () => {
+        if (api.demoSignIn) {
+          try { await api.demoSignIn(u.role); window.location.assign("/"); return; } catch { /* fall through to the password sign-in */ }
+        }
+        void api.oidc!.signIn({ loginHint: u.username, forceLogin: true });
+      })();
     } else {
       setRole(step.role);
     }

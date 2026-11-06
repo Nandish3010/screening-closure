@@ -85,7 +85,7 @@ def _probe(**extra: str) -> dict:
 
 
 ALL_ROLES = ["lab", "primary_care_owner", "specialist_owner", "coordinator", "patient", "supervisor"]
-ROUTES = ["/demo/guide", "/demo/missed-followup", "/demo/reset"]
+ROUTES = ["/demo/guide", "/demo/missed-followup", "/demo/reset", "/demo/sign-in"]
 
 
 def test_the_controls_exist_only_under_both_flags_with_the_sim_clock_outside_dev():
@@ -156,6 +156,70 @@ def test_status_shows_when_who_and_the_next_scheduled_reset():
     write_status(last_reset_at="2026-11-08T06:00:00+00:00", last_reset_by="Noura (supervisor)", last_reset_reason="manual")
     st = demo_controls.status()
     assert st["last_reset_by"] == "Noura (supervisor)" and st["next_auto_reset_at"].startswith("2026-11-08T12:00:00")
+
+
+def test_next_scheduled_reset_follows_the_timer_not_only_the_last_reset():
+    """The host records the timer's last pass (even a skipped one) and the seed's snapshot as the first reset point."""
+    from datetime import timedelta
+
+    now = datetime.now(UTC)
+    seed = (now - timedelta(hours=1)).isoformat()
+    write_status(last_reset_at=seed, last_reset_by="the seed", last_reset_reason="seed")
+    st = demo_controls.status()
+    assert st["last_reset_reason"] == "seed" and datetime.fromisoformat(st["next_auto_reset_at"]) == datetime.fromisoformat(seed) + timedelta(hours=6)
+    # the timer fired 2 h ago and skipped (a manual reset was fresh): the next slot is 6 h after THAT pass
+    fired = (now - timedelta(hours=2)).isoformat()
+    write_status(last_reset_at=seed, last_scheduled_at=fired)
+    assert datetime.fromisoformat(demo_controls.status()["next_auto_reset_at"]) == datetime.fromisoformat(fired) + timedelta(hours=6)
+    # a late timer never yields a time in the past: it rolls to the next slot
+    old = (now - timedelta(hours=20)).isoformat()
+    write_status(last_scheduled_at=old)
+    nxt = datetime.fromisoformat(demo_controls.status()["next_auto_reset_at"])
+    assert nxt > now and nxt - now <= timedelta(hours=6)
+    assert (nxt - datetime.fromisoformat(old)) % timedelta(hours=6) == timedelta(0)
+
+
+def test_no_scheduled_reset_means_no_next_time(monkeypatch):
+    monkeypatch.setattr(settings, "demo_auto_reset_hours", 0)
+    write_status(last_reset_at="2026-11-08T06:00:00+00:00")
+    assert demo_controls.status()["next_auto_reset_at"] is None
+
+
+def test_status_shows_the_last_gated_api_restart_and_treats_the_file_as_data():
+    st = demo_controls.status()
+    assert st["last_api_restart_at"] is None and st["last_api_restart_reason"] is None
+    d = Path(settings.demo_control_dir)
+    d.mkdir(parents=True, exist_ok=True)
+    (d / "api-restart.json").write_text(json.dumps({"at": "2026-11-08T03:00:00+00:00", "mode": "gate", "reason": "memory 74% >= gate 70%" + "x" * 500}))
+    st = demo_controls.status()
+    assert st["last_api_restart_at"] == "2026-11-08T03:00:00+00:00"
+    assert st["last_api_restart_reason"].startswith("memory 74%") and len(st["last_api_restart_reason"]) <= 200
+    (d / "api-restart.json").write_text(json.dumps({"at": ["not", "a", "time"], "reason": {"x": 1}}))  # wrong shapes: ignored
+    assert demo_controls.status()["last_api_restart_at"] is None
+    (d / "api-restart.json").write_text("not json")
+    assert demo_controls.status()["last_api_restart_at"] is None
+
+
+def test_the_restart_fields_are_only_in_the_demo_block_of_health():
+    out = _probe(APP_ENV="production", CLOCK_MODE="sim", DEMO_SIMULATED_CLOCK="1", DEMO_DEPLOYMENT="1")
+    assert {"last_api_restart_at", "last_api_restart_reason"} <= set(out["health"]["demo"])
+    plain = _probe(APP_ENV="production", CLOCK_MODE="wall")
+    assert "demo" not in plain["health"] and "last_api_restart_at" not in json.dumps(plain["health"])
+
+
+def test_interactive_docs_and_schema_are_served_in_dev_and_gone_in_production():
+    code = ("import json\nfrom fastapi.testclient import TestClient\nfrom app.main import app\nc = TestClient(app)\n"
+            "print(json.dumps([c.get(p).status_code for p in ('/docs', '/redoc', '/openapi.json')] + [len(app.openapi()['paths']) > 10]))\n")
+
+    def run(**extra):
+        env = {k: v for k, v in os.environ.items() if k not in ("APP_ENV", "DATABASE_URL", "DEV_LOGIN_ENABLED", "CLOCK_MODE", "DEMO_SIMULATED_CLOCK", "DEMO_DEPLOYMENT")}
+        env.update(PYTHONPATH=str(API_DIR), DEV_AUTH_SECRET="k" * 40, **extra)
+        done = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, env=env, cwd=API_DIR, timeout=120)
+        assert done.returncode == 0, done.stderr
+        return json.loads(done.stdout.strip().splitlines()[-1])
+
+    assert run(APP_ENV="dev") == [200, 200, 200, True]
+    assert run(APP_ENV="production", CLOCK_MODE="sim", DEMO_SIMULATED_CLOCK="1", DEMO_DEPLOYMENT="1") == [404, 404, 404, True]  # in-process schema still works
 
 
 # ---- fresh cases ----------------------------------------------------------------------------------------------------
@@ -242,7 +306,7 @@ def _demo_rows():
 def test_every_demo_path_is_404_without_the_gate_for_every_method_and_caller():
     """The policy table lists the /demo/* paths; a process without the gate must not serve any of them, to anyone."""
     rows = _demo_rows()
-    assert [p for _, p in rows] == ["/demo/guide", "/demo/missed-followup", "/demo/reset"]
+    assert [p for _, p in rows] == ["/demo/guide", "/demo/missed-followup", "/demo/reset", "/demo/sign-in"]
     for extra in (dict(APP_ENV="dev"), dict(APP_ENV="dev", DEMO_SIMULATED_CLOCK="1", DEMO_DEPLOYMENT="1", CLOCK_MODE="sim"),
                   dict(APP_ENV="production", CLOCK_MODE="sim", DEMO_SIMULATED_CLOCK="1"),
                   dict(APP_ENV="production", CLOCK_MODE="wall", DEMO_DEPLOYMENT="1"), dict(APP_ENV="production", CLOCK_MODE="wall")):
@@ -252,7 +316,7 @@ def test_every_demo_path_is_404_without_the_gate_for_every_method_and_caller():
             "tok = {r: c.post('/auth/dev-login', json={'role': r, 'name': 'x'}).json().get('token') for r in "
             "['coordinator','supervisor','patient']} if app.openapi() else {}\n"
             "out = {}\n"
-            "for m, p in [('GET','/demo/guide?session=abcdefgh'),('POST','/demo/reset'),('POST','/demo/missed-followup'),('GET','/demo/credentials')]:\n"
+            "for m, p in [('GET','/demo/guide?session=abcdefgh'),('POST','/demo/reset'),('POST','/demo/missed-followup'),('POST','/demo/sign-in'),('GET','/demo/credentials')]:\n"
             "    out[m+p] = [c.request(m, p, json={} if m == 'POST' else None).status_code] + [c.request(m, p, json={} if m == 'POST' else None, headers={'Authorization': 'Bearer ' + t}).status_code for t in tok.values() if t]\n"
             "print(json.dumps({'out': out, 'paths': [p for p in app.openapi()['paths'] if p.startswith('/demo')]}))\n")
         env = {k: v for k, v in os.environ.items() if k not in ("APP_ENV", "DATABASE_URL", "DEV_LOGIN_ENABLED", "CLOCK_MODE", "DEMO_SIMULATED_CLOCK", "DEMO_DEPLOYMENT")}
@@ -271,10 +335,14 @@ def test_the_demo_routes_are_probed_for_every_role_in_the_rbac_matrix_sense():
     every role and anonymous, against the real router behind the real policy dependency."""
     (cid,) = new_case()
     bodies = {("GET", "/demo/guide"): (None, "?session=abcdefgh"), ("POST", "/demo/reset"): (None, ""),
+              ("POST", "/demo/sign-in"): ({"role": "nobody"}, ""),  # public by design; ADR-060 (tests/test_demo_signin.py holds its behaviour)
               ("POST", "/demo/missed-followup"): ({"case_id": cid}, "")}
     for (method, path), allowed in sorted((k, v) for k, v in policy.ROUTE_POLICY.items() if k[1].startswith("/demo/")):
         body, qs = bodies[(method, path)]
         anon = demo.request(method, path + qs, json=body)
+        if allowed == policy.PUBLIC:  # the one deliberately public demo route: it answers anyone, and an unknown role gets 422, never a token
+            assert anon.status_code == 422 and "access_token" not in anon.text, (path, anon.status_code)
+            continue
         assert anon.status_code == 401, (path, anon.status_code)  # nothing anonymous
         for role in ALL_ROLES:
             demo_controls.forget()
@@ -301,7 +369,9 @@ def test_missed_followup_is_rate_limited_and_names_who_asked(caplog):
     assert second.status_code == 429 and "few seconds" in second.json()["detail"]
 
 
-def test_no_committed_config_turns_the_credentials_route_on_and_the_route_does_not_exist():
+def test_no_public_credentials_listing_exists_and_no_config_turns_one_on():
+    """ADR-060 reverses the old "no credential shortcut" rule in ONE way only: a gated sign-in that returns tokens. A route that LISTS or
+    returns passwords, and the opt-in switches an earlier draft had for it, still do not exist (the password never leaves the API)."""
     repo = API_DIR.parent
     assert "/demo/credentials" not in policy.ROUTE_POLICY and not hasattr(demo_controls, "judge_logins")
     assert "/demo/credentials" not in [r.path for r in demo_router.router.routes]

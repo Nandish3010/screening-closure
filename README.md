@@ -4,7 +4,7 @@
 
 [![check](https://github.com/Nandish3010/screening-closure/actions/workflows/check.yml/badge.svg)](https://github.com/Nandish3010/screening-closure/actions/workflows/check.yml)
 
-**Start with the [one-pager](docs/submission/ONE-PAGER.md)**: about one printed page with the problem, what is built against the challenge owner's five steps, the headline result (calibrated to published trials, not validated), the three biggest things not done, and how to see it. The sections below are the detail.
+**Start with the [one-pager](docs/submission/ONE-PAGER.md)** (the owner's five steps, each with its screen, endpoint and test: [five-steps-evidence.md](docs/submission/five-steps-evidence.md)): about one printed page with the problem, what is built against the challenge owner's five steps, the headline result (calibrated to published trials, not validated), the three biggest things not done, and how to see it. The sections below are the detail.
 
 Continuous integration: GitHub Actions has run [`check.yml`](.github/workflows/check.yml) on every pull request since the repository went public on 31 October 2026, so the badge above is live. A pull request merges only on a green local `make check-full` and a green CI run (see "Continuous integration").
 
@@ -32,7 +32,7 @@ Release notes by milestone (the judge tour, live reply triage, Claude as a model
 
 This is a deterministic closure engine. Its simulated and evaluated pathway is a positive FIT (faecal immunochemical test) result, then a confirmatory colonoscopy, then a clinician-signed closure; a second and a third pathway, cervical screening and long-term conditions, run on the same engine as configuration packs (see "Pathways" above). It tracks each case, nudges, escalates to humans, and closes only with evidence. It is not a diagnostic tool. Models are used in four places, drafting patient messages for human approval, ordering the worklist by a calibrated risk score, planning the agency's work queue, and classifying inbound patient replies, plus automatic sending of clinician-pre-approved deterministic templates; no model and no agent can move a case between states, approve a message, change consent or close a case.
 
-**Automatic patient messages are OFF until a clinician signs.** The pre-approved message templates are sent by the automation only under `config/outreach_policy.yaml`, and the shipped policy is **unsigned** (`approved_by: null`): an unsigned policy sends nothing (the automation counts and logs what it held back, `outreach_held`, reason `policy_unsigned`). No clinician has reviewed any template or rule (H1 is open; the AI-simulated reviews in `docs/governance/` are not that sign-off). The compose demo sets `OUTREACH_DEMO_APPROVAL=1`, which treats the policy as signed by **"DEMO PLACEHOLDER (clinical sign-off pending, H1)"**; the web app then shows a persistent amber banner with that text on the case page and the dashboard, `GET /health` reports `outreach.demo_approval`, and the API refuses to start with the switch on outside `APP_ENV=dev`. A real signature in the file wins over the switch.
+**Every clinical threshold, clock and wording that a clinician must still sign is listed in one table: [docs/clinical/thresholds-to-sign.md](docs/clinical/thresholds-to-sign.md).** **Automatic patient messages are OFF until a clinician signs.** The pre-approved message templates are sent by the automation only under `config/outreach_policy.yaml`, and the shipped policy is **unsigned** (`approved_by: null`): an unsigned policy sends nothing (the automation counts and logs what it held back, `outreach_held`, reason `policy_unsigned`). No clinician has reviewed any template or rule (H1 is open; the AI-simulated reviews in `docs/governance/` are not that sign-off). The compose demo sets `OUTREACH_DEMO_APPROVAL=1`, which treats the policy as signed by **"DEMO PLACEHOLDER (clinical sign-off pending, H1)"**; the web app then shows a persistent amber banner with that text on the case page and the dashboard, `GET /health` reports `outreach.demo_approval`, and the API refuses to start with the switch on outside `APP_ENV=dev`. A real signature in the file wins over the switch.
 
 People act on decisions and conversations; the system does the rest. The phone call after an escalation is the evidence-based intervention, not waste; automation prepares it, a person makes it.
 
@@ -112,7 +112,7 @@ Detail: [docs/submission/technical-documentation.md](docs/submission/technical-d
 
 ## Why a programme would buy it
 
-Commercial front page, with every figure graded sourced, assumed or simulated: [docs/commercial/README.md](docs/commercial/README.md). No buyer exists, no price has been tested and nobody has been contacted.
+Commercial front page, with every figure graded sourced, assumed or simulated: [docs/commercial/README.md](docs/commercial/README.md); the offer itself is a [90-day read-only shadow pilot](docs/commercial/pilot-offer.md) built on the 15-working-day referral clock, with a one-page [decision memo](docs/commercial/decision-memo.md) and a fill-in [letter of intent](docs/commercial/outreach/letter-of-intent.md). No buyer exists, no price has been tested and nobody has been contacted.
 
 **What is sourced (read from a published page).**
 
