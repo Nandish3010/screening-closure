@@ -204,3 +204,5 @@ The tests do not measure benefit. They prove the boundary: nothing an agent does
 - The fairness and anomaly thresholds (10 percentage points, at least 5 cases; 20% failures from ten tasks) are not clinically reviewed (H1).
 - The demo's event-log hash (T-E9) changes if the scheduler hook drafts on the demo case, because a draft is a `message_drafted` event. See [tools/demo/README.md](../../tools/demo/README.md).
 - Nothing here has been used by a coordinator. How many items a person can work from an inbox in a day, and whether approval of a larger number of drafts stays careful (HZ-29), are not measured.
+
+- *6 November 2026:* the hosted demo's fresh seed holds 26 cases (22 bowel-screening and 4 long-term-condition, `simulator/create_chronic_cases.py`). The 22-case reading above is the earlier measurement and is kept as it was.

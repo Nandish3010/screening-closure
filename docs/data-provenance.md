@@ -136,3 +136,5 @@ A full reset is `make reset && make demo-seed`. `make demo-seed-clean` deletes t
 
 Reproducibility scope: with the same Synthea version, seed, population and reference date the generator is deterministic;
 FIT selection is a pure function of the seed and each patient's Synthea UUID, independent of HAPI's id assignment.
+
+**Reseed, 6 November 2026.** The hosted demo's fresh seed holds 26 cases: the 22 bowel-screening cases above plus 4 synthetic long-term-condition cases (`simulator/create_chronic_cases.py`; states acknowledged 2, patient_acknowledged 1, patient_contacted 1). Earlier dated counts in this file are history and are not rewritten.

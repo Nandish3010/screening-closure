@@ -97,4 +97,4 @@ Likelihood and impact are our judgement on a 1 (low) to 3 (high) scale. The owne
 
 1. **Active pilot** at the same clinics ([pilot-plan.md](../pilot-plan.md)): owners work from the worklist, messages after owner approval, clinician-signed closures; priced at cost.
 2. **Programme conversation** with ADPHC: FIT and blood-based positives across two networks, then cervical screening (implemented on the engine, to be reviewed) and breast recall (designed only) once reviewed.
-3. **Programme licence** ([business-case.md](business-case.md) section 9): about AED 2 million a year for a four-pathway scope (two implemented, two designed only; illustrative), against an operator cost to serve of about AED 1.7 million at list-price hosting.
+3. **Programme licence** ([business-case.md](business-case.md) section 9): about AED 2 million a year for a four-pathway scope (bowel and cervical implemented, blood-based and breast recall designed only; long-term conditions is implemented but not in the priced scope; illustrative), against an operator cost to serve of about AED 1.7 million at list-price hosting.
