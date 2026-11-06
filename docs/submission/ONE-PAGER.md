@@ -10,6 +10,8 @@ In an audit of Abu Dhabi ambulatory clinics, only 30.5% of positive bowel-screen
 
 ## What is built, against the owner's five steps
 
+Each step with its screen, API endpoint and the tests that prove it: [five-steps-evidence.md](five-steps-evidence.md).
+
 One engine gives every actionable result a named owner, a working-day clock, an escalation ladder to named people, an append-only audit trail and a clinician-signed closure. Models draft and classify; a person approves, accepts, signs and calls. One screen each:
 
 | Step | Screen | What you see |
@@ -28,9 +30,9 @@ In a simulation on a synthetic cohort, colonoscopy within 180 days rises from 51
 
 ## The three biggest things not done
 
-1. **No human review.** No clinician has reviewed any threshold, timing or wording; no native Arabic speaker has reviewed the Arabic. The reviews on file are AI-simulated. The outreach policy is unsigned, so nothing is sent automatically.
+1. **No human review.** No clinician has reviewed any threshold, timing or wording; no native Arabic speaker has reviewed the Arabic. The reviews on file are AI-simulated. The outreach policy is unsigned, so nothing is sent automatically. Every value still waiting for a clinician's signature, with its file and line, is in [thresholds-to-sign.md](../clinical/thresholds-to-sign.md).
 2. **No real-world contact.** Impact is simulated; the system is not connected to Malaffi, Sahatna or UAE PASS; all data is synthetic. API memory grows about 45 MiB/h for an unknown reason; an automatic API restart is a mitigation, not a fix.
-3. **No buyer.** No letter of intent exists and nobody has been contacted. The AED 2.0 million licence is an assumption. The sourced offer is a 90-day shadow run at about AED 106,000, which sends nothing to patients ([commercial front page](../commercial/README.md)).
+3. **No buyer.** No letter of intent exists and nobody has been contacted. The AED 2.0 million licence is an assumption. The sourced offer is a 90-day shadow run at about AED 106,000, which sends nothing to patients ([commercial front page](../commercial/README.md); the [offer](../commercial/pilot-offer.md) and a one-page [decision memo](../commercial/decision-memo.md)).
 
 Independent AI re-scores (not human judges) and what is being fixed: [rescore.md](rescore.md).
 
