@@ -1,7 +1,8 @@
 import { readFileSync } from "node:fs";
-import { render, screen } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { PrototypeStrip } from "../src/components/DemoBanner";
+import { renderWithApp } from "./helpers";
 
 const css = readFileSync("src/styles.css", "utf8");
 const lum = (hex: string) => {
@@ -16,7 +17,7 @@ const token = (name: string, dark = false) => {
 
 describe("app-wide chrome", () => {
   it("the prototype strip says what this is and is not", () => {
-    render(<PrototypeStrip />);
+    renderWithApp(<PrototypeStrip />);
     expect(screen.getByTestId("proto-strip")).toHaveTextContent("Prototype for FHDIC Challenge 05. Not an official government service.");
   });
   it("the focus ring has 3:1 non-text contrast against its surfaces, light and dark", () => {

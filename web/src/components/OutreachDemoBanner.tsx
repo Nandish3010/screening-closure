@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useApp } from "../app/AppContext";
 import { STAFF } from "../i18n/strings";
 
@@ -9,11 +10,18 @@ import { STAFF } from "../i18n/strings";
  */
 export function OutreachDemoBanner() {
   const { outreach } = useApp();
+  const [open, setOpen] = useState(false);
   if (!outreach || !outreach.demo_approval) return null;
   return (
-    <p className="banner banner-warn" role="status" data-testid="outreach-demo-banner">
-      <strong data-testid="outreach-demo-text">{outreach.approved_by ?? STAFF.outreachDemoBanner.fallback}</strong>{" "}
-      {STAFF.outreachDemoBanner.explanation}
-    </p>
+    <div className={`banner banner-warn outreach-banner${open ? " is-open" : ""}`} role="status" data-testid="outreach-demo-banner">
+      <p className="ob-full">
+        <strong data-testid="outreach-demo-text">{outreach.approved_by ?? STAFF.outreachDemoBanner.fallback}</strong>{" "}
+        {STAFF.outreachDemoBanner.explanation}
+      </p>
+      <span className="ob-compact" aria-hidden="true">{STAFF.outreachDemoBanner.compact}</span>
+      <button type="button" className="ob-more" aria-expanded={open} onClick={() => setOpen((o) => !o)} data-testid="outreach-banner-more">
+        {open ? "Less" : "More"}<span className="visually-hidden"> about the demo placeholder approval</span>
+      </button>
+    </div>
   );
 }
