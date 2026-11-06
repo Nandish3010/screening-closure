@@ -97,3 +97,7 @@ The per-criterion means are computed from the three files (for example criterion
 ### Since the 25 October round
 
 CI: the entries above that read "CI is not running" and "CI stays off until the billing is resolved or the repository goes public" are history. The repository went public on 31 October 2026 and GitHub Actions has run on every pull request since; a merge needs a green local `make check-full` and a green CI run.
+
+### Follow-up, 6 November 2026
+
+The hosted demo named as a gap in the table above is now live at https://34-18-228-79.sslip.io (one e2-medium VM in Google Cloud me-central1, no failover, synthetic data, simulated time; smoke test 19 of 19). The reviews above were written before it existed and are not rewritten. The GKE load test was not run, because the owner capped spend at the single demo VM on 6 November 2026. The self-healing deploy (engineering F2) merged as PR #50, and the engine safety fixes (F1, F3 to F6) as PR #47. These were AI reviews, not human judges, and the 40% labour target is still not met.
