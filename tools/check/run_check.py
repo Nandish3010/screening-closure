@@ -4,7 +4,7 @@
 Two tiers (F15). `make check` is the FAST tier, the gate before every merge; `make check-full` is everything:
 
   fast   test, verify, test-db, web-test, web-build, web-e2e, docs-check, tracker-lint, test-security, test-tools,
-         test-redteam, load-check, review-packs-check, test-review-packs, effort-check, rai-check, and `evaluate-smoke` (the
+         test-redteam, load-check, review-packs-check, evaluation-counts-check, test-review-packs, effort-check, rai-check, and `evaluate-smoke` (the
          evaluate determinism check at 1 replication instead of 20)
   heavy  the simulator-heavy checks: sensitivity-check, evaluate-check (full size; replaces evaluate-smoke), risk-check,
          calibrate-check, validate-check, evaluate-capacity-check,
@@ -87,6 +87,7 @@ STAGES = [
     Stage("test-redteam", weight=18),
     Stage("load-check", needs_pg=True, weight=3),
     Stage("review-packs-check", weight=1),
+    Stage("evaluation-counts-check", web=True, weight=22),  # the generated test-count table in evaluation-summary.md is current
     Stage("test-review-packs", weight=2),
     Stage("effort-check", weight=6),
     Stage("rai-check", weight=8),  # M7-5: fairness audit and oversight report regenerated and compared byte for byte
