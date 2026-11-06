@@ -53,3 +53,47 @@ Three items the 25 October list above accepted as not fixed are now fixed. The s
 - **Leader fence checked at request entry, not at the write (engineering F10): fixed.** The lease token is re-checked inside the write transaction (`SELECT ... FOR SHARE` on the lease row, `api/app/leader.py`); a deposed leader's write raises `StaleLeader` and the scheduler route answers 409.
 
 Also new in the same change, not asked for by the reviewers: a dialect rule for reply triage (`api/app/triage/dialect.py`, hazard HZ-43, test T-D23: Arabizi replies are auto-handled only above their own validated threshold, Gulf-dialect replies always go to a person) and a fairness watch of the overdue share that now covers the `other` language group and contact quality (T-A82). Regenerating the results on the merged engine moved some quoted numbers; the outcomes figures are in [outcomes.md](../results/outcomes.md).
+
+## 5 November 2026 re-score
+
+Three AI reviewers scored `origin/main` at a335633 (5 November 2026) against the same six criteria of [PLAN.md](../../project/PLAN.md) section 1. **These are AI reviews, not human judges.** They were run separately: the judge-panel reviewer (a Department of Health senior leader sitting with industry judges) read the documents, the web source and the video frames but did not run the stack; the engineering reviewer ran `make check`, the model checker and probes against the code; the third reviewer read the criteria and the repository with no other brief and ran nothing. Each formed scores before reading this file. The reviews are kept with the team's working notes and are not committed to the repository.
+
+A fourth reviewer, Codex, could not score. Its run ended with "You've hit your usage limit" from OpenAI and the quota returns on 25 November 2026, after the 8 November 2026 submission. So this round has three scores where the 25 October round had three different ones (including a Codex score of 5.5), and **the two means are not like for like**: the earlier mean was pulled down by a harsher third reviewer.
+
+### Scores
+
+| # | Criterion | Judge view | Engineering view | Outsider (criteria only) | Mean of three |
+|---|---|---:|---:|---:|---:|
+| 1 | Health impact and clinical relevance | 5.5 | 6.0 | 6.0 | 5.8 |
+| 2 | Technical depth and architecture | 8.5 | 8.0 | 8.5 | 8.3 |
+| 3 | Working solution and demonstration quality | 6.5 | 7.0 | 6.5 | 6.7 |
+| 4 | Responsible AI, safety and data governance | 8.0 | 8.0 | 8.5 | 8.2 |
+| 5 | Scalability and deployment readiness | 6.5 | 7.0 | 6.5 | 6.7 |
+| 6 | Commercial viability and path to pilot | 4.5 | 4.5 | 5.0 | 4.7 |
+| | Unweighted mean | 6.6 | 6.75 | 6.83 | 6.72 |
+
+The per-criterion means are computed from the three files (for example criterion 1 is (5.5 + 6.0 + 6.0) / 3). The last row is each reviewer's own mean, and 6.72 is the mean of all eighteen scores. The spread between reviewers is small (6.6 to 6.83); the spread between criteria is large (4.7 to 8.3).
+
+### Top gaps the reviewers agreed on, and where each stands
+
+| Gap | Judge | Eng | Outsider | Status |
+|---|:-:|:-:|:-:|---|
+| No human review of anything (clinician, Arabic) and no real-world data; the reviews on file are AI-simulated | yes | yes | yes | Cannot be closed with software. Stays labelled placeholder or AI-simulated everywhere. |
+| No buyer or letter of intent; the licence is not covered by avoided cost; wage-weighted staff cost per case rises; the 40% labour target is missed | yes | yes | yes | Cannot be closed without a buyer. **This docs pass** leads the commercial front page with what is sourced and labels the licence as an assumption ([commercial/README.md](../commercial/README.md)). |
+| The hosted demo is not live, and the local path is long (12-minute seed, Docker, venv, Node, an Apple-only model server) | yes | yes | yes | **Hosted deploy on 8 November 2026**, and a **self-healing deploy** (engineering F2) in an open branch. This docs pass states the platform needs and honest timings. |
+| API memory growth with an unknown cause | yes | yes | yes | Mitigated by an automatic API restart; cause still unknown. |
+| Stale or overclaimed text: CI badge and "CI off", video "Not recorded", "building autonomously until 18 October", the M6 changelog in the README, "60 seconds", 16 versus 17 stages, the missing-checker line | yes | yes | yes | **Fixed in this docs pass.** |
+| The brief names hypertension, diabetes and obesity; the demo and the headline are bowel; the chronic thresholds are placeholders | yes | | in part | A **demo chronic seed** and **Malaffi and Sahatna mocks** are in open branches; the thresholds stay placeholders until a clinician signs. |
+| The simulator is calibrated, not validated; most held-out timing checks fail | in part | in part | yes | Already stated everywhere; no fix intended. |
+| The video: one blank results card (judge); video status stale in the docs (outsider) | yes | | yes | A **re-render fixing the blank card** is in progress on another branch; the stale status text is **fixed in this docs pass**. |
+| Engine safety: a single physician can close as "declined" with a fabricated counselling reference (F1), the opt-out gate misses "don't" phrasings (F3), consent writes carry no provenance (F4), case-page reads are not need-to-know scoped (F5), `APP_ENV` defaults to dev (F6) | | yes | | **Engine-safety F1 and F3 to F6** in an open branch. Until it merges the documents say where the declined path is weaker (technical documentation section 4.4). |
+
+### Reviewer claims checked against the repository
+
+- Confirmed and fixed here: the CI badge and "CI off" wording; "Not recorded" and the `say` voice in the docs; "Draft" status labels; "building autonomously until 18 October"; "As of 25 Oct"; the "What changed in M6" changelog (moved to [project/CHANGELOG.md](../../project/CHANGELOG.md)); the Quickstart "60 seconds" and "Judge path in 5 minutes" timings; the hosted sign-in described as if it existed; 16 versus 17 check stages (the fast tier has 17 and `check-full` has 23); the docs-numbers checker listed as missing (B10 is built); evidence resolution described as inside the state machine (it is in the API route); "Arabic-first"; the 31 deaths versus 42 advanced cancers units (a bridge sentence was added); PLAN.md criteria 3 and 4 promising a live kill and an on-screen model draft that the recorded video does not show.
+- Wrong or out of date: the outsider's statements that CI "is dead (billing)" and that the video "is synthetic macOS `say` TTS" described the repository's stale text, not the facts (Actions has run on every pull request since 31 October; the video uses a local neural voice). The judge's reading that the 91.1% Gulf figure belongs to the hosted CPU build is not right: the on-premises model's own fairness audit gives the same 91.1% (45 auto-handled replies, interval 79.3% to 96.5%), so the narration is accurate; the teleprompter now names the model and the 95% target. The outsider's note that the README and PLAN disagree on the registration and feature-freeze dates was not found: both say 10 November. Test counts quoted in the evaluation summary are static text, as the outsider said, and now say so.
+- Not fixed here: the engineering finding F8 (scale runs attributed to commits with uncommitted paths, `docs/results/scale.md`) needs a re-run on a clean tree and is outside this docs pass.
+
+### Since the 25 October round
+
+CI: the entries above that read "CI is not running" and "CI stays off until the billing is resolved or the repository goes public" are history. The repository went public on 31 October 2026 and GitHub Actions has run on every pull request since; a merge needs a green local `make check-full` and a green CI run.

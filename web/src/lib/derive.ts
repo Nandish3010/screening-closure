@@ -1,10 +1,10 @@
 /** Derivations shared by the mock adapter and the UI (state, owner, SLA clock, handoffs, consent, drafts). */
 import type {
-  ActorKind, CasePriority, CaseDetail, CaseEvent, ClosureProposal, IncompleteProcedure, CaseSummary, Consent, ConsentChanges, ConsentHistoryEntry, DraftRecord, EscalationRung, Lang,
+  ActorKind, CasePriority, CaseDetail, CaseEvent, ClosureProposal, IncompleteProcedure, CaseSummary, Consent, ConsentChanges, ConsentHistoryEntry, ConsentSource, DraftRecord, EscalationRung, Lang,
   InformedRefusal, LastHandoff, MilestoneClock, MilestoneName, PendingHandoff, TimelineItem, WatchdogFlag,
 } from "../api/contract";
 import {
-  APPOINTMENT_CANCEL_REASONS, ApiError, AUTOMATION_ACTOR, CONSENT_KEYS, REFUSAL_REASONS, HANDOFF_REJECT_REASONS, OUTREACH_HOLD_REASONS, REVIEW_REASONS, TRIAGE_REVIEW_REASONS } from "../api/contract";
+  APPOINTMENT_CANCEL_REASONS, ApiError, AUTOMATION_ACTOR, CONSENT_KEYS, CONSENT_SOURCE_CHANNELS, REFUSAL_REASONS, HANDOFF_REJECT_REASONS, OUTREACH_HOLD_REASONS, REVIEW_REASONS, TRIAGE_REVIEW_REASONS } from "../api/contract";
 import {
   RE_OFFER_MONTHS, REFERRAL_STATES, TRANSITIONS, SLA_WORKING_DAYS, addWorkingDays, milestonesFor, nextTransition,
   rungLevel, transitionFor, wholeDaysBetween,
@@ -402,7 +402,7 @@ export function consentOf(events: CaseEvent[]): Consent {
 }
 
 export function consentHistoryOf(events: CaseEvent[]): ConsentHistoryEntry[] {
-  return events.filter((e) => e.type === "consent_updated" && Object.keys(consentChangesOf(e.payload)).length > 0).map((e) => ({ at: e.at, actor: e.actor, changes: consentChangesOf(e.payload) }));
+  return events.filter((e) => e.type === "consent_updated" && Object.keys(consentChangesOf(e.payload)).length > 0).map((e) => ({ at: e.at, actor: e.actor, changes: consentChangesOf(e.payload), ...(e.payload.source ? { source: e.payload.source as ConsentSource } : {}) }));
 }
 
 /** Outreach is frozen exactly while consent is withdrawn. The real read model's `consent_frozen` wins over this. */
@@ -784,6 +784,19 @@ export function validateAppend(events: CaseEvent[], type: string, actor: string,
     if ("lang" in payload && payload.lang !== "en" && payload.lang !== "ar") throw new ApiError(422, "consent_updated lang must be 'en' or 'ar'");
     if (given.length === 0 && !("lang" in payload)) throw new ApiError(422, `consent_updated needs at least one of ${JSON.stringify(CONSENT_KEYS)} or lang`);
     if (given.some((k) => typeof payload[k] !== "boolean")) throw new ApiError(422, "consent_updated values must be booleans");
+    // ADR-059 (F4): a consent change says how the patient asked; staff name the record, the patient's own app needs none
+    if (given.length > 0) {
+      const src = payload.source as { channel?: unknown; reference?: unknown } | undefined;
+      if (!src || typeof src !== "object" || !(CONSENT_SOURCE_CHANNELS as readonly string[]).includes(String(src.channel))) {
+        throw new ApiError(422, "a consent change needs `source` (channel, and the reference of the record unless it is patient_app)");
+      }
+      if (src.channel !== "patient_app" && !(typeof src.reference === "string" && src.reference.length > 0)) {
+        throw new ApiError(422, "a consent change recorded by staff needs the reference of the record of how the patient asked");
+      }
+      if ((actorRole(actor) === "patient") !== (src.channel === "patient_app")) {
+        throw new ApiError(403, "source.channel patient_app is for the patient's own change; staff record how the patient asked");
+      }
+    }
   }
 
   if (type === "record_informed_refusal" || type === "appointment_cancelled") {
@@ -934,7 +947,8 @@ export function hasCallbackPending(events: CaseEvent[]): boolean {
   let pending = false;
   for (const ev of events) {
     if (ev.type === "callback_requested") pending = true;
-    if (ev.type === "contact_patient") pending = false;
+    // A person answers by calling (contact_patient), or by acting on what was asked: a new booking or a cancellation.
+    if (ev.type === "contact_patient" || ev.type === "book_confirmatory" || ev.type === "appointment_cancelled") pending = false;
   }
   return pending;
 }

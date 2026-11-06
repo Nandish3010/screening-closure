@@ -51,6 +51,12 @@ PYEOF
   echo "file 'final/card-end.mp4'"
 }
 
+# The blank-frame guard: no segment may hold a blank or near-uniform frame for 0.5 s or more (v7 shipped 14 s of white
+# that nobody noticed). Checked per segment, so the failure names the shot, and again on the two deliverables below.
+segs=$(list all | sed "s/^file '//; s/'$//")
+# shellcheck disable=SC2086
+"$PY" "$HERE/blankcheck.py" $segs >/dev/null || { "$PY" "$HERE/blankcheck.py" $segs >&2 || true; echo "assemble: FAIL: a segment has a blank frame: re-record that shot (record.ts --only N --no-reset), then narrate.py" >&2; exit 1; }
+
 for kind in submission backup; do
   if [ "$kind" = submission ]; then name=submission-3min; sel=submission; else name=backup-demo; sel=all; fi
   list "$sel" > "$name.txt"
@@ -58,6 +64,7 @@ for kind in submission backup; do
   d=$(ffprobe -v error -show_entries format=duration -of csv=p=0 "$name.mp4")
   size=$(wc -c < "$name.mp4" | tr -d ' ')
   echo "assemble: $name.mp4 $d s, $size bytes"
+  "$PY" "$HERE/blankcheck.py" "$name.mp4" >/dev/null || { "$PY" "$HERE/blankcheck.py" "$name.mp4" >&2 || true; echo "assemble: FAIL: $name.mp4 has a blank frame" >&2; exit 1; }
   if [ "$kind" = submission ]; then
     "$PY" -c "import sys; d=float('$d'); sys.exit(0 if d <= $CAP else 1)" || { echo "assemble: FAIL: $name.mp4 is $d s, over the $CAP s cap: shorten narration or targets" >&2; exit 1; }
   fi

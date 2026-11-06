@@ -139,3 +139,17 @@ describe("the Human effort card asks after the login of the chosen role", () => 
     expect(calls.indexOf("closure")).toBeGreaterThan(calls.indexOf("login:supervisor"));
   });
 });
+
+describe("outcomes split", () => {
+  it("separates this demo (too few for rates) from the modelled programme, and never claims the 40% target", async () => {
+    const { render } = await import("@testing-library/react");
+    const { OutcomesSplit } = await import("../src/pages/DashboardPage");
+    const { container } = render(<OutcomesSplit n={26} />);
+    const demo = container.querySelector('[data-testid="outcomes-demo"]')!;
+    expect(demo.textContent).toMatch(/n=26/);
+    expect(demo.textContent).toMatch(/too few for rates/);
+    const modelled = container.querySelector('[data-testid="outcomes-modelled"]')!;
+    expect(modelled.textContent).toMatch(/51% → 67%/);
+    expect(modelled.textContent).toMatch(/40% target is not met/);
+  });
+});

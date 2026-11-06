@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { can, isOwnerScoped, useApp } from "../app/AppContext";
 import type {
-  CaseDetail, CaseTimeline, ConsentChanges, ContactChannel, DraftApproval, DraftRecord, EscalationRung, MilestoneClock, ReplyResult, TimelineItem,
+  CaseDetail, CaseTimeline, ConsentChanges, ConsentSourceChannel, ContactChannel, DraftApproval, DraftRecord, EscalationRung, MilestoneClock, ReplyResult, TimelineItem,
 } from "../api/contract";
 import {
   ApiError, APPOINTMENT_CANCEL_REASONS, DRAFTS_OWNER_ONLY, HANDOFF_REJECT_REASONS, PROVIDERS, REFUSAL_REASONS, REOPEN_REASONS,
@@ -14,10 +14,12 @@ import { AccessLogPanel } from "../components/AccessLogPanel";
 import { ActionButton } from "../components/ActionButton";
 import { DraftsPanel, approvalMessage } from "../components/DraftsPanel";
 import { WhyPanel } from "../components/WhyPanel";
+import { MissedFollowupPanel } from "../components/MissedFollowupPanel";
 import { ClosureProposalBanner } from "../components/ClosureProposalBanner";
 import { EffortCounter } from "../components/EffortCounter";
 import { OutreachDemoBanner } from "../components/OutreachDemoBanner";
-import { SignOffPanel } from "../components/SignOffPanel";
+import { ClosedReceipt, SignOffPanel } from "../components/SignOffPanel";
+import { LoopStrip } from "../components/LoopStrip";
 import { Timeline } from "../components/Timeline";
 import {
   actorName as actorNameOf, allowedChannels, consentOf, draftViews, handoffs, hasCallbackPending, lostContact, overdueDays, overdueInfo,
@@ -84,7 +86,7 @@ function MilestoneRow({ def, clock, now, closed }: { def: MilestoneDef; clock: M
 
 export function CaseDetailPage() {
   const { caseId = "" } = useParams();
-  const { api, role, actor, actorName, provider: myProvider, userId, refreshSim, simTime } = useApp();
+  const { api, role, actor, actorName, provider: myProvider, userId, refreshSim, simTime, demoDeployment } = useApp();
   const [detail, setDetail] = useState<CaseDetail | null>(null);
   const [timeline, setTimeline] = useState<CaseTimeline | null>(null);
   const [draftRecords, setDraftRecords] = useState<DraftRecord[]>([]);
@@ -94,6 +96,7 @@ export function CaseDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [flash, setFlash] = useState<string | null>(null);
+  const [signoffRefusal, setSignoffRefusal] = useState<string | null>(null);
 
   // Local form state
   const [provider, setProvider] = useState<string>(PROVIDERS[0]);
@@ -119,6 +122,8 @@ export function CaseDetailPage() {
   const [declineReason, setDeclineReason] = useState<string>(HANDOFF_REJECT_REASONS[0]);
   const [reassignTo, setReassignTo] = useState<(typeof REASSIGN_TARGETS)[number]>(REASSIGN_TARGETS[0]);
   // A33 informed refusal, A34 cancel
+  const [consentVia, setConsentVia] = useState<Exclude<ConsentSourceChannel, "patient_app">>("phone_call");
+  const [consentRef, setConsentRef] = useState("");
   const [counsellingRef, setCounsellingRef] = useState("");
   const [refusalReason, setRefusalReason] = useState<RefusalReason>(REFUSAL_REASONS[0]);
   const [refusalNote, setRefusalNote] = useState("");
@@ -160,7 +165,7 @@ export function CaseDetailPage() {
 
   /** Every action goes through the client, then refreshes. Engine refusals are shown verbatim. */
   const act = useCallback(
-    async <T,>(fn: () => Promise<T>, okMessage: string | ((result: T) => string)) => {
+    async <T,>(fn: () => Promise<T>, okMessage: string | ((result: T) => string), onRefused?: (msg: string) => void) => {
       setBusy(true);
       setFlash(null);
       setError(null);
@@ -170,7 +175,10 @@ export function CaseDetailPage() {
         refreshSim();
         setFlash(typeof okMessage === "function" ? okMessage(result) : okMessage);
       } catch (e) {
-        setError(e instanceof ApiError ? `The engine refused this: ${plainError(e.message)}` : `Something went wrong: ${(e as Error).message}`);
+        // A step may have gone through before the refusal (the review before a refused close): read the case again so the screen matches.
+        await reload().catch(() => undefined);
+        const msg = e instanceof ApiError ? `The engine refused this: ${plainError(e.message)}` : `Something went wrong: ${(e as Error).message}`;
+        if (onRefused) onRefused(msg); else setError(msg);
       } finally {
         setBusy(false);
       }
@@ -242,6 +250,7 @@ export function CaseDetailPage() {
     <main className="container">
       <p><Link to="/coordinator">&larr; Worklist</Link></p>
       <h1>Case <span className="mono">{detail.case_id.slice(0, 8)}</span> <StatePill state={state} /> <PathwayBadge pathway={detail.pathway} /></h1>
+      <LoopStrip events={events} prioritised={!!detail.priority} closed={closed} declined={detail.closure_outcome === "declined"} />
       <OutreachDemoBanner />
       <AgencyChip caseId={detail.case_id} version={`${detail.state}:${events.length}`} />
 
@@ -278,6 +287,8 @@ export function CaseDetailPage() {
           </dd>
         </div>
       </dl>
+
+      {demoDeployment && <MissedFollowupPanel caseId={detail.case_id} closed={closed} onDone={reload} />}
 
       {proposal && (
         <ClosureProposalBanner
@@ -422,15 +433,19 @@ export function CaseDetailPage() {
                 defaultEvidence={proposal?.evidence_ref ?? recordedEvidence}
                 signer={userId ? `Practitioner/${userId}` : undefined}
                 procedure={procedure}
+                caseId={detail.case_id}
+                refusal={signoffRefusal}
+                onClearRefusal={() => setSignoffRefusal(null)}
                 onRecordResult={can(role, "recordColonoscopy") && !scopeWhy ? async () => {
                   const r = await api.recordConfirmatoryResult(caseId);
                   return r.evidence_ref;
                 } : undefined}
                 onSignOff={(evidence, signer) =>
                   act(async () => {
+                    setSignoffRefusal(null);
                     if (state !== "clinician_reviewed") await post("clinician_review", { signed_by: signer });
                     await post("close", { evidence_ref: evidence, signed_by: signer });
-                  }, "Case closed with evidence and sign-off.")
+                  }, "Case closed with evidence and sign-off.", (msg) => setSignoffRefusal(msg))
                 }
               />
             )}
@@ -480,7 +495,8 @@ export function CaseDetailPage() {
             {closed && detail.closure_outcome === "declined" && (
               <p data-testid="closed-declined">Closed as <strong>declined</strong>: the patient decided against the {procedure} after counselling and a physician signed. This is not a completed {procedure}. Re-offer date: {fmtDate(detail.re_offer_due_at)}.</p>
             )}
-            {closed && <p>This case is closed. The audit trail below is final unless a clinician reopens it.</p>}
+            {closed && detail.closure_outcome !== "declined" && <ClosedReceipt events={events} caseId={detail.case_id} />}
+            {closed && detail.closure_outcome === "declined" && <p>This case is closed. The audit trail below is final unless a clinician reopens it.</p>}
             {!closed && (
               <>
                 <label className="field"><span>Failed contact attempts (at least 3)</span>
@@ -638,14 +654,25 @@ export function CaseDetailPage() {
               {detail.consent_history && detail.consent_history.length > 0 ? ` ${detail.consent_history.length} change${detail.consent_history.length === 1 ? "" : "s"} on record.` : ""}
             </p>
             {!closed && (
-              <ActionButton
-                testId={frozen ? "consent-restore" : "consent-withdraw"}
-                busy={busy}
-                disabledReason={why("recordConsent", "coordinator")}
-                onClick={() => act(() => post("consent_updated", (frozen ? { withdrawn: false } : { withdrawn: true }) satisfies ConsentChanges), frozen ? "Recorded: the patient restored consent." : "Recorded: the patient withdrew consent. Outreach is frozen.")}
-              >
-                {frozen ? "Record: patient restored consent" : "Record: patient withdrew consent"}
-              </ActionButton>
+              <>
+                <label className="field"><span>How did the patient ask?</span>
+                  <select value={consentVia} onChange={(e) => setConsentVia(e.target.value as typeof consentVia)} data-testid="consent-via">
+                    <option value="phone_call">Phone call</option><option value="in_person">In person</option>
+                    <option value="written">In writing</option><option value="reply_review">A reply I read</option>
+                  </select>
+                </label>
+                <label className="field"><span>Reference of that record (call-log id, visit id, scan id or reply id)</span>
+                  <input value={consentRef} onChange={(e) => setConsentRef(e.target.value)} placeholder="call-0412" data-testid="consent-ref" />
+                </label>
+                <ActionButton
+                  testId={frozen ? "consent-restore" : "consent-withdraw"}
+                  busy={busy}
+                  disabledReason={why("recordConsent", "coordinator") ?? (/^[A-Za-z0-9][A-Za-z0-9._:/-]{0,63}$/.test(consentRef.trim()) ? null : "Enter the reference of the record of how the patient asked.")}
+                  onClick={() => act(() => post("consent_updated", { ...(frozen ? { withdrawn: false } : { withdrawn: true }), source: { channel: consentVia, reference: consentRef.trim() } } satisfies ConsentChanges), frozen ? "Recorded: the patient restored consent." : "Recorded: the patient withdrew consent. Outreach is frozen.")}
+                >
+                  {frozen ? "Record: patient restored consent" : "Record: patient withdrew consent"}
+                </ActionButton>
+              </>
             )}
           </section>
 
@@ -703,6 +730,7 @@ export function CaseDetailPage() {
             canRequest={!closed && !frozen && can(role, "draft") && !draftsDenied && !scopeWhy}
             listWhy={draftsDenied ? DRAFTS_OWNER_ONLY : null}
             defaultLanguage={patientLang(events) ?? "en"}
+            ownerName={detail.owner ?? null}
             canDecide={can(role, "decideDraft") && !scopeWhy}
             requestWhy={closedWhy ?? frozenWhy ?? why("draft", "coordinator or owner", true)}
             decideWhy={why("decideDraft", "owner, specialist or clinician (the case owner)", true)}

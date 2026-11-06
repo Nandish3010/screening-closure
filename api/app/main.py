@@ -17,6 +17,7 @@ from app.routers import cases, drafts, erasure as erasure_router, replies, sched
 from app.routers import hl7 as hl7_router
 from app.routers import integrations as integrations_router
 from app.routers import clock as clock_router
+from app.routers import mock_integrations as mock_integrations_router
 from app.routers import metrics as metrics_router
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s:     %(name)s: %(message)s")
@@ -58,6 +59,9 @@ def _start_clock(clock_store) -> None:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     auth.assert_secure_config()
+    if settings.app_env == "dev":
+        log.warning("APP_ENV=dev: DEVELOPMENT MODE. Passwordless dev login%s, simulation clock and unverified evidence are allowed. "
+                    "Never run this against real data.", "" if settings.dev_login_enabled else " (disabled)")
     # Read the process environment (not .env/settings): a stray .env must never silently
     # switch a local run onto a database. Unset means the in-memory store.
     database_url = os.environ.get("DATABASE_URL")
@@ -153,6 +157,10 @@ if settings.app_env == "dev" and clock.mode == "sim":  # the demo clock exists o
     app.include_router(clock_router.router)
 elif auth.demo_clock_active():  # the declared hosted demo (both flags, sim clock): advance only, supervisor only; no reset
     app.include_router(clock_router.demo_router)
+if auth.demo_controls_active():  # ADR-058: the judge-experience controls exist only under the two demo flags with the sim clock
+    from app.routers import demo as demo_router
+
+    app.include_router(demo_router.router)
 app.include_router(scheduler.router)
 app.include_router(watchdog.router)
 app.include_router(metrics_router.router)
@@ -163,6 +171,7 @@ app.include_router(agency_router.router)  # A22: the agency (labour, not authori
 app.include_router(erasure_router.router)  # A32: erasure of a patient's personal data (ADR-025)
 app.include_router(hl7_router.router)  # A28: the HL7 v2 adapter's transport (ADR-039)
 app.include_router(integrations_router.router)  # judge Integrations page: bounded metadata feed
+app.include_router(mock_integrations_router.router)  # ADR-057: MOCK Malaffi replay and Sahatna callback (dev or declared demo only; 404 elsewhere)
 
 
 @app.get("/health")
@@ -171,8 +180,10 @@ def health() -> dict:
     `demo_approval` is true while they run only on the demo placeholder, and the web shows an amber banner with
     `approved_by`."""
     body = {"status": "ok", "sim_time": clock.now().isoformat(), "clock_mode": clock.mode, "outreach": outreach_policy.public_status()}
-    if auth.demo_clock_active():  # the web app shows the "Demo, synthetic data, simulated time" banner and the judge role cards whenever this is present
-        body["demo"] = {"simulated_clock": True, "deployment": True}
+    if auth.demo_controls_active():  # the web app shows the "Demo, synthetic data, simulated time" banner and the judge role cards whenever this is present
+        from app import demo_controls
+
+        body["demo"] = {"simulated_clock": True, "deployment": True, **demo_controls.status()}
     return body
 
 

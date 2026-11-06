@@ -246,7 +246,7 @@ class Walk:
                           {"purpose": "result_notification", "channel": "sms", "language": "en"}, expect=201).json()
         self.call("POST", f"/drafts/{draft['draft_id']}/approve", "pco", expect=200)
         ev("patient-ack", "patient", "patient_acknowledge")
-        ev("consent", "patient", "consent_updated", {"channel_whatsapp": False})
+        ev("consent", "patient", "consent_updated", {"channel_whatsapp": False, "source": {"channel": "patient_app"}})
         # reads, with the filters a worklist uses
         for path in ("/cases", "/cases?state=patient_acknowledged", "/cases?overdue=true", "/cases?flagged=true",
                      f"/cases/{case_id}", f"/cases/{case_id}/timeline", f"/cases/{case_id}/notifications",

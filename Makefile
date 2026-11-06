@@ -1,4 +1,4 @@
-.PHONY: k8s-up k8s-down scale-report scale-report-check evaluate-outcomes evaluate-outcomes-check rai-fairness rai-fairness-check rai-oversight rai-oversight-check rai-check claude-smoke claude-record redteam-generate triage-serve up-obs check-full evaluate-smoke test-redteam validate validate-check validate-targets evaluate-refusal evaluate-abudhabi oidc-up oidc-down test-oidc up-scale agency-run test-demo test-e2e-live demo-scenario demo-stage demo-snapshot demo-restore demo-reset demo-kill-scheduler check docs-check docs-numbers tracker-lint test-security test-tools test-load load-check up down logs test test-db test-db-create test-db-reset test-chaos synthea demo-seed demo-seed-cervical demo-seed-chronic demo-seed-clean evaluate evaluate-capacity evaluate-capacity-check simulate evaluate-check sensitivity sensitivity-check reset web-install web-dev web-build web-test web-e2e test-e2e review-packs review-packs-check test-review-packs test-phi-logs rbac-matrix test-offline fresh-clone risk-report risk-check calibrate-fetch calibrate-fit calibrate-check effort effort-check video video-check video-deps verify hl7-demo hl7-samples judge-headline judge-headline-check judge-pages-data judge-pages-data-check api-types api-types-check
+.PHONY: k8s-up k8s-down scale-report scale-report-check evaluate-outcomes evaluate-outcomes-check rai-fairness rai-fairness-check rai-oversight rai-oversight-check rai-check claude-smoke claude-record redteam-generate triage-serve up-obs check-full evaluate-smoke test-redteam validate validate-check validate-targets evaluate-refusal evaluate-abudhabi oidc-up oidc-down test-oidc up-scale agency-run test-demo test-e2e-live demo-scenario demo-stage demo-snapshot demo-restore demo-reset demo-kill-scheduler check docs-check docs-numbers tracker-lint test-security test-tools test-load load-check up down logs test test-db test-db-create test-db-reset test-chaos synthea demo-seed demo-seed-cervical demo-seed-chronic demo-seed-clean evaluate evaluate-capacity evaluate-capacity-check simulate evaluate-check sensitivity sensitivity-check reset web-install web-dev web-build web-test web-e2e test-e2e review-packs review-packs-check test-review-packs test-phi-logs rbac-matrix test-offline fresh-clone risk-report risk-check calibrate-fetch calibrate-fit calibrate-check effort effort-check video video-check video-blank-check video-deps verify hl7-demo hl7-samples judge-headline judge-headline-check judge-pages-data judge-pages-data-check api-types api-types-check
 
 up:
 	docker compose up -d --build
@@ -21,6 +21,38 @@ k8s-up:
 
 k8s-down:
 	bash tools/k8s/down.sh
+
+# GKE load test (docs/governance/gke-loadtest.md): ONE command after `gcloud auth login`. NOTHING here runs unless you call it; the
+# scripts print the cost estimate and wait for you to type "yes" first. Builds and pushes images, creates a zonal GKE cluster, runs the
+# seed / sweep / ladder / soak scenarios from a pod inside it, copies the results to results/gke-loadtest/<run>/, and ALWAYS tears down.
+#   make gke-loadtest PROJECT=my-project [REGION=me-central1]      make gke-teardown PROJECT=my-project [FORCE=1]
+#   make gke-cost                                                    (the estimate only, no cloud call)
+#   make gke-rehearse                                                (the same pipeline on a local kind cluster, small numbers; take the stack lock first)
+#   make gke-import RUN=results/gke-loadtest/<run id>                (copy a finished run's JSON into docs/results/scale/gke/ and re-render scale.md)
+.PHONY: gke-loadtest gke-teardown gke-cost gke-rehearse gke-import gke-budget-alert gke-lint
+gke-loadtest:
+	bash deploy/gke/loadtest.sh run $(if $(PROJECT),--project $(PROJECT))
+
+gke-teardown:
+	bash deploy/gke/loadtest.sh teardown $(if $(PROJECT),--project $(PROJECT)) $(if $(FORCE),--yes)
+
+gke-cost:
+	bash deploy/gke/loadtest.sh estimate
+
+gke-rehearse:
+	bash deploy/gke/loadtest.sh rehearse
+
+gke-import:
+	$(PY) tools/k8s/render_gke.py --import-run $(RUN)
+	$(PY) tools/k8s/render_scale.py
+
+# Optional, NOT run by gke-loadtest: a billing budget with e-mail alerts (an alert, not a cap). See the runbook.
+gke-budget-alert:
+	bash deploy/gke/budget-alert.sh $(PROJECT)
+
+# helm lint + helm template (and kubeconform when it is installed) for both charts; no cluster, no cloud.
+gke-lint:
+	bash deploy/gke/lint.sh
 
 # M7-6: docs/results/scale.md and scale.json (scalability evidence and the emirate capacity plan), rendered from the raw measurements in
 # docs/results/scale/*.json and tools/k8s/capacity_inputs.yaml. Pure Python, no cluster. `scale-report-check` fails if the committed
@@ -135,10 +167,11 @@ demo-seed:
 demo-seed-cervical:
 	$(PY) simulator/create_cervical_cases.py
 
-# The third pathway's demo cases (long-term conditions, config/pathways/chronic_conditions.yaml): a few synthetic cases at
-# different stages, each created with a synthetic result so it carries a priority tier, through the API. OPT-IN and kept out of
-# the demo snapshot and the video: the storyboard says "all 22 open cases" and finds its cases by state. `make demo-reset`
-# removes them. Needs the stack up and `make demo-seed` done.
+# The third pathway's demo cases (long-term conditions, config/pathways/chronic_conditions.yaml): four synthetic, Emirati-named
+# patients written to HAPI, each with a case created with a synthetic result (blood pressure twice, HbA1c, BMI) so it carries a
+# priority tier, at different stages, through the API. Part of the demo snapshot (`make demo-snapshot` runs it) and of the hosted
+# demo's seed (deploy/gcp/vm/seed-on-vm.sh); rerunning is safe. Also usable by itself, and `make demo-seed DEMO_THIRD_PATHWAY=1`
+# runs it after the cohort. Needs the stack up and `make demo-seed` done.
 demo-seed-chronic:
 	$(PY) simulator/create_chronic_cases.py
 
@@ -320,8 +353,9 @@ demo-stage:
 
 # Save the current database (cases, events, drafts, notifications, the sim clock AND HAPI's FHIR data) as the demo
 # snapshot, on a clean seeded stack: `make reset && make demo-seed && make demo-snapshot`. It stages the second case
-# first (demo-stage), so `make demo-reset` brings that case back with everything else.
-demo-snapshot: demo-stage
+# first (demo-stage) and then seeds the long-term-conditions cases (demo-seed-chronic: blood pressure, HbA1c, BMI), so
+# `make demo-reset` brings both back with everything else and the Today screen shows them.
+demo-snapshot: demo-stage demo-seed-chronic
 	tools/demo/snapshot.sh save
 
 demo-restore:
@@ -573,6 +607,11 @@ validate-targets:
 # About 10 minutes. See docs/submission/video.md.
 video-check:
 	$(PY) tools/video/storyboard.py --check
+
+# `make video-blank-check` fails when a rendered segment or either mp4 in tools/video/out has a blank or near-uniform frame for 0.5 s or
+# more (tools/video/blankcheck.py; assemble.sh runs the same check, so `make video` cannot finish with a blank shot).
+video-blank-check:
+	$(PY) tools/video/blankcheck.py tools/video/out/final/*.mp4 tools/video/out/submission-3min.mp4 tools/video/out/backup-demo.mp4
 
 # `make video-deps` checks ffmpeg, ffprobe and macOS `say` (and the voice) are installed, with the fix in the message.
 video-deps:

@@ -1,6 +1,6 @@
 # ADHICS control-by-control table
 
-Status: **draft for human review (E18, T-E21).** A design-time mapping of the Abu Dhabi Healthcare Information and Cyber Security Standard (ADHICS) to what this system does. It is not an audit, not a certification and not a compliance claim. The prototype holds synthetic data only ([data-provenance](../data-provenance.md)); most rows describe what a pilot deployment would need, and say what the repository has today. Related: [regulatory-mapping.md](regulatory-mapping.md) section 3 (the reading of ADHICS), [dpia.md](dpia.md), [hazard-log.md](hazard-log.md), [pilot-hardening.md](pilot-hardening.md), [identity.md](identity.md), [operations.md](operations.md), [erasure.md](erasure.md).
+Status: **complete as an AI-prepared design-time mapping (E18, T-E21); human review is pending, and the ADHICS V2 text was not read.** A design-time mapping of the Abu Dhabi Healthcare Information and Cyber Security Standard (ADHICS) to what this system does. It is not an audit, not a certification and not a compliance claim. The prototype holds synthetic data only ([data-provenance](../data-provenance.md)); most rows describe what a pilot deployment would need, and say what the repository has today. Related: [regulatory-mapping.md](regulatory-mapping.md) section 3 (the reading of ADHICS), [dpia.md](dpia.md), [hazard-log.md](hazard-log.md), [pilot-hardening.md](pilot-hardening.md), [identity.md](identity.md), [operations.md](operations.md), [erasure.md](erasure.md).
 
 ## 1. Which version, and what was actually read
 

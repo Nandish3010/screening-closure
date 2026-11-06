@@ -240,12 +240,12 @@ def case(cid):
 
 def test_t_a24_patient_and_coordinator_may_change_consent_everyone_else_gets_403():
     cid = new_case()
-    assert post(cid, "consent_updated", PATIENT, {"channel_sms": False}).status_code == 201
-    assert post(cid, "consent_updated", COORD, {"channel_whatsapp": False}).status_code == 201
+    assert post(cid, "consent_updated", PATIENT, {"channel_sms": False, "source": {"channel": "patient_app"}}).status_code == 201
+    assert post(cid, "consent_updated", COORD, {"channel_whatsapp": False, "source": {"channel": "phone_call", "reference": "call-1"}}).status_code == 201
     n = len(case(cid)["events"])
     for headers in (SUP, PCO, SPEC, LAB):
-        assert post(cid, "consent_updated", headers, {"channel_sms": True}).status_code == 403
-    assert post(cid, "consent_updated", OTHER_PATIENT, {"channel_sms": True}).status_code == 404  # not theirs
+        assert post(cid, "consent_updated", headers, {"channel_sms": True, "source": {"channel": "phone_call", "reference": "call-1"}}).status_code == 403
+    assert post(cid, "consent_updated", OTHER_PATIENT, {"channel_sms": True, "source": {"channel": "patient_app"}}).status_code == 404  # not theirs
     assert len(case(cid)["events"]) == n
     rm = case(cid)["read_model"]
     assert rm["consent"]["channel_sms"] is False and rm["consent"]["channel_whatsapp"] is False
@@ -255,10 +255,11 @@ def test_t_a24_patient_and_coordinator_may_change_consent_everyone_else_gets_403
 
 def test_t_a24_history_is_in_the_timeline_and_matches_the_derived_value():
     cid = new_case()
+    app = {"source": {"channel": "patient_app"}}
     for payload in ({"channel_sms": False}, {"channel_sms": True}, {"share_with_specialist": False}):
-        assert post(cid, "consent_updated", PATIENT, payload).status_code == 201
+        assert post(cid, "consent_updated", PATIENT, {**payload, **app}).status_code == 201
     events = [e for e in case(cid)["events"] if e["type"] == "consent_updated"]
-    assert [e["payload"] for e in events] == [{"channel_sms": False}, {"channel_sms": True}, {"share_with_specialist": False}]
+    assert [e["payload"] for e in events] == [{"channel_sms": False, **app}, {"channel_sms": True, **app}, {"share_with_specialist": False, **app}]
     rm = case(cid)["read_model"]
     assert rm["consent"]["channel_sms"] is True and rm["consent"]["share_with_specialist"] is False
     assert len(rm["consent_history"]) == 3
@@ -274,7 +275,7 @@ def test_bad_consent_payloads_are_422_and_write_nothing(payload):
 
 def test_t_a23_withdrawal_freezes_outreach_and_flags_the_case_for_review():
     cid = new_case()
-    r = post(cid, "consent_updated", PATIENT, {"withdrawn": True})
+    r = post(cid, "consent_updated", PATIENT, {"withdrawn": True, "source": {"channel": "patient_app"}})
     assert r.status_code == 201
     patient_body = r.json()  # SEC-2: the patient's answer is the redacted one: no review flag, no staff events
     assert patient_body["state"] == "consent_withdrawn" and patient_body["read_model"]["consent_frozen"] is True
@@ -308,7 +309,7 @@ def test_t_a23_withdrawal_freezes_outreach_and_flags_the_case_for_review():
 
 def test_the_review_flag_cannot_be_posted_by_anyone():
     cid = new_case()
-    post(cid, "consent_updated", PATIENT, {"withdrawn": True})
+    post(cid, "consent_updated", PATIENT, {"withdrawn": True, "source": {"channel": "patient_app"}})
     for headers in (PATIENT, COORD, SUP, PCO, SPEC, LAB):
         assert post(cid, "review_requested", headers, {"reason": "consent_withdrawn"}).status_code == 403
 
@@ -317,15 +318,15 @@ def test_a_retried_withdrawal_adds_no_second_flag():
     cid = new_case()
     eid = str(uuid4())
     for _ in range(3):
-        assert post(cid, "consent_updated", PATIENT, {"withdrawn": True}, event_id=eid).status_code == 201
+        assert post(cid, "consent_updated", PATIENT, {"withdrawn": True, "source": {"channel": "patient_app"}}, event_id=eid).status_code == 201
     assert [e["type"] for e in case(cid)["events"]].count("review_requested") == 1
     assert [e["type"] for e in case(cid)["events"]].count("consent_updated") == 1
 
 
 def test_restoring_consent_unfreezes_and_clears_the_review():
     cid = new_case()
-    post(cid, "consent_updated", PATIENT, {"withdrawn": True})
-    r = post(cid, "consent_updated", COORD, {"withdrawn": False})  # recorded on the patient's behalf
+    post(cid, "consent_updated", PATIENT, {"withdrawn": True, "source": {"channel": "patient_app"}})
+    r = post(cid, "consent_updated", COORD, {"withdrawn": False, "source": {"channel": "phone_call", "reference": "call-1"}})  # recorded on the patient's behalf
     assert r.status_code == 201 and r.json()["state"] == "patient_contacted"
     rm = r.json()["read_model"]
     assert rm["consent_frozen"] is False and rm["review_reason"] is None
@@ -384,3 +385,48 @@ def test_the_outreach_language_follows_the_latest_preference_with_the_phone_valu
     assert automation._language([ev("patient_acknowledge", {"lang": "en"}), ev("consent_updated", {"lang": "ar"})], "en") == "ar"
     assert automation._language([ev("consent_updated", {"lang": "ar"}), ev("callback_requested", {"lang": "en"})], "ar") == "en"
     assert automation._language([ev("consent_updated", {"channel_sms": False})], "ar") == "ar"
+
+
+# ---- ADR-059 (F4): a consent change says how the patient asked ------------------------------------------------------------
+
+
+@pytest.mark.parametrize("payload", [
+    {"withdrawn": True},                                                                   # no source
+    {"channel_sms": True, "source": {"channel": "phone_call"}},                            # staff-recorded, no reference
+    {"channel_sms": True, "source": {"channel": "in_person", "reference": ""}},
+    {"channel_sms": True, "source": {"channel": "carrier_pigeon", "reference": "x1"}},
+    {"channel_sms": True, "source": {"channel": "written", "reference": "../etc"}},
+    {"channel_sms": True, "source": {"channel": "written", "reference": "x1", "name": "Aisha"}},
+    {"lang": "ar", "source": {"channel": "patient_app"}},                                  # a language alone has no source
+    {"channel_sms": True, "source": "phone"},
+])
+def test_f4_a_consent_change_without_a_valid_source_is_422_and_writes_nothing(payload):
+    cid = new_case()
+    n = len(case(cid)["events"])
+    assert post(cid, "consent_updated", COORD, payload).status_code == 422
+    assert len(case(cid)["events"]) == n
+
+
+def test_f4_the_patient_is_the_app_and_staff_record_how_the_patient_asked():
+    cid = new_case()
+    staff = {"channel_sms": True, "source": {"channel": "phone_call", "reference": "call-0412"}}
+    app = {"channel_sms": True, "source": {"channel": "patient_app"}}
+    assert post(cid, "consent_updated", COORD, app).status_code == 403          # staff cannot claim the patient's own app
+    assert post(cid, "consent_updated", PATIENT, staff).status_code == 403      # the patient does not claim a phone call
+    assert post(cid, "consent_updated", COORD, staff).status_code == 201
+    assert post(cid, "consent_updated", PATIENT, app).status_code == 201
+    assert post(cid, "consent_updated", PATIENT, {"lang": "ar"}).status_code == 201   # a preference alone: no source
+
+
+def test_f4_the_source_is_in_the_log_and_the_consent_history_and_clearing_an_opt_out_hold_needs_it():
+    from app.events import Event
+    cid = new_case()
+    ref = {"channel": "reply_review", "reference": "7c9e6679-7425-40de-944b-e07fc1f90ae7"}
+    r = post(cid, "consent_updated", COORD, {"channel_sms": True, "source": ref})
+    assert r.status_code == 201
+    ev = [e for e in case(cid)["events"] if e["type"] == "consent_updated"][-1]
+    assert ev["payload"]["source"] == ref
+    history = case(cid)["read_model"]["consent_history"][-1]
+    assert history["source"] == ref and history["changes"] == {"channel_sms": True}
+    # the hold-clearing re-grant is the same event, so it cannot be written without its source
+    assert post(cid, "consent_updated", COORD, {"channel_sms": True}).status_code == 422

@@ -35,7 +35,7 @@ for (const lang of ["en", "ar"] as const) {
     await page.getByLabel("Channel").selectOption("sms");
     await page.getByTestId("request-draft").click();
     const draft = page.getByTestId(/^draft-d-mock-/);
-    await expect(draft).toContainText("AI draft");
+    await expect(draft).toContainText("Template message");
     await expect(draft).toContainText("Prompt hash");
     const text = draft.locator(`[lang="${lang}"]`);
     await expect(text).toContainText(s.draft);
@@ -118,7 +118,11 @@ test("consent withdrawal freezes drafting and says why, on the coordinator's cas
   await expect(page.getByTestId("timeline")).toContainText("Flagged for human review (consent withdrawn)");
 
   // A human restores consent; drafting works again.
+  await expect(page.getByTestId("consent-restore")).toBeDisabled(); // ADR-057: how the patient asked is required first
+  await page.getByTestId("consent-via").selectOption("phone_call");
+  await page.getByTestId("consent-ref").fill("call-0412");
   await page.getByTestId("consent-restore").click();
+  await expect(page.getByTestId("timeline")).toContainText("asked by: phone call, ref call-0412");
   await expect(page.getByTestId("flash")).toContainText("restored consent");
   await expect(page.getByTestId("consent-frozen-banner")).toHaveCount(0);
   await expect(page.getByTestId("request-draft")).toBeEnabled();

@@ -456,7 +456,7 @@ def test_the_makefile_stages_before_it_saves_the_snapshot():
     makefile = (ROOT / "Makefile").read_text()
     phony = next(line for line in makefile.splitlines() if line.startswith(".PHONY:"))
     assert "demo-stage" in phony.split() and "demo-snapshot" in phony.split()
-    assert re.search(r"^demo-snapshot: demo-stage\n\ttools/demo/snapshot\.sh save$", makefile, re.M), "demo-snapshot must run demo-stage first"
+    assert re.search(r"^demo-snapshot: demo-stage demo-seed-chronic\n\ttools/demo/snapshot\.sh save$", makefile, re.M), "demo-snapshot must run demo-stage first"
     assert re.search(r"^demo-stage:\n\t\$\(PY\) tools/demo/stage_second_case\.py$", makefile, re.M)
 
 

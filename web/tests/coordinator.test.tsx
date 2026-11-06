@@ -52,7 +52,7 @@ describe("Case detail actions", () => {
     await waitFor(() => expect(screen.getByTestId("flash")).toHaveTextContent(/escalated/i));
     await user.click(screen.getByTestId("request-draft"));
     const draftItem = await screen.findByTestId(/^draft-d-mock/);
-    expect(draftItem).toHaveTextContent(/AI draft/);
+    expect(draftItem).toHaveTextContent(/Template message/); // the mock drafts from a template, and says so
     // The patient answered in Arabic, so the draft form defaults to Arabic and the text is right-to-left.
     expect(within(draftItem).getByText(/تنظير القولون/).closest("p")).toHaveAttribute("dir", "rtl");
     // The event carries no text: the timeline loads it from GET /cases/{id}/drafts.
@@ -180,7 +180,7 @@ describe("Case detail: vocabulary and markers", () => {
   it("frozen consent also blocks recording a patient contact", async () => {
     // Case 14 is at patient_contacted, so exercise the owner_accepted button via a case that is frozen there.
     const api = (await import("../src/api/mockAdapter")).createMockAdapter(null);
-    await api.postEvent(cid(3), { type: "consent_updated", actor: "patient:c3", payload: { withdrawn: true } });
+    await api.postEvent(cid(3), { type: "consent_updated", actor: "patient:c3", payload: { withdrawn: true, source: { channel: "patient_app" } } });
     renderWithApp(<CaseDetailPage />, { api, route: `/coordinator/${cid(3)}`, path: "/coordinator/:caseId" });
     const btn = await screen.findByTestId("contact-patient");
     expect(btn).toBeDisabled();

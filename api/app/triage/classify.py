@@ -124,6 +124,15 @@ def active_group_thresholds() -> dict | None:
         return None
 
 
+def confidence_threshold() -> float | None:
+    """The confidence below which a reply goes to a person, from the calibration in force; None if it cannot be read (the
+    caller then treats every reply as unread: fail safe)."""
+    try:
+        return float((_calibration if _calibration is not None else Calibration.load()).threshold)
+    except Exception:  # noqa: BLE001
+        return None
+
+
 def unavailable() -> dict:
     return {"intent": "other", "confidence": 0.0, "model_id": UNAVAILABLE_MODEL_ID, "needs_human": True}
 

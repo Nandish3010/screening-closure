@@ -267,7 +267,7 @@ def test_channel_opt_out_between_the_approval_and_the_send_writes_no_message_sen
     cid, patient_ref = owned_case()
     did = make_draft(cid)
     assert approve(did).json()["blocked_reason"] == "pending"
-    post(cid, "consent_updated", "patient", {"channel_sms": False}, name="ob pat", patient_ref=patient_ref)  # the opt-out
+    post(cid, "consent_updated", "patient", {"channel_sms": False, "source": {"channel": "patient_app"}}, name="ob pat", patient_ref=patient_ref)  # the opt-out
     crashing_drain()
     out = drafts.drain_outbox()
     assert [(o.status, o.reason) for o in out] == [(outbox.BLOCKED, "blocked_consent")]
@@ -283,7 +283,7 @@ def test_a_withdrawal_after_the_approval_blocks_the_send(world, crashing_drain):
     cid, patient_ref = owned_case()
     did = make_draft(cid)
     approve(did)
-    post(cid, "consent_updated", "patient", {"withdrawn": True}, name="ob pat", patient_ref=patient_ref)
+    post(cid, "consent_updated", "patient", {"withdrawn": True, "source": {"channel": "patient_app"}}, name="ob pat", patient_ref=patient_ref)
     crashing_drain()
     assert [o.status for o in drafts.drain_outbox()] == [outbox.BLOCKED]
     assert "message_sent" not in types(cid)

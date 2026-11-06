@@ -195,7 +195,7 @@ export function PatientView({ caseId }: { caseId: string }) {
 
   // The access log is loaded each time the Privacy tab opens; it is never kept on the phone.
   useEffect(() => {
-    if (tab !== "privacy" || !detail) return;
+    if (!detail) return; // the Privacy tab shows the full list; the home screen shows the latest few
     let live = true;
     api.getAccessLog(caseId).then((a) => live && setAccess(a), () => live && setAccess("error"));
     return () => {
@@ -243,7 +243,7 @@ export function PatientView({ caseId }: { caseId: string }) {
   const consent = detail ? (detail.consent ?? consentOf(detail.events)) : null;
   /** Partial updates: only what the patient just changed is sent (A6). The engine's consent hold applies unchanged. */
   const saveConsent = async (changes: ConsentChanges) =>
-    setNotice((await post("consent_updated", changes)) ? "saved" : "saveFailed");
+    setNotice((await post("consent_updated", { ...changes, source: { channel: "patient_app" } })) ? "saved" : "saveFailed");
 
   // Large touch targets (btn-xl is 60px tall); both languages are one tap away and each is named in its own script.
   const toggle = (
@@ -287,7 +287,8 @@ export function PatientView({ caseId }: { caseId: string }) {
   const next = nextStepOf(detail.state, appt !== null, withdrawn);
   const canAck = detail.state === "patient_contacted";
   const acknowledged = notice === "ack" || detail.events.some((e) => e.type === "patient_acknowledge");
-  const callbackAsked = notice === "callback" || hasCallbackPending(detail.events);
+  const personPending = hasCallbackPending(detail.events); // from the log: it clears when a person records contact, not when the patient taps
+  const callbackAsked = notice === "callback" || personPending;
   const canSend = online && !offline;
   const sendOff = busy || !canSend;
   const history = historyOf(detail.events, t).reverse(); // newest first
@@ -305,6 +306,12 @@ export function PatientView({ caseId }: { caseId: string }) {
         <h2 id="p-result">{t.resultHeading}</h2>
         <p className="big">{t.resultBody}</p>
         <p data-testid="explain-in-person">{t.explainInPerson}</p>
+      </section>
+
+      <section className="pa-card pa-emergency" aria-labelledby="p-emerg" data-testid="emergency-line">
+        <h2 id="p-emerg">{t.emergencyHeading}</h2>
+        <p className="big"><a href="tel:998" className="pa-emerg-link">{t.emergencyLine.split("998")[0]}<bdi dir="ltr">998</bdi>{t.emergencyLine.split("998")[1]}</a></p>
+        <p className="muted" data-testid="emergency-pending">{t.emergencyPending}</p>
       </section>
 
       <section className="pa-card" aria-labelledby="p-next" data-testid="next-step">
@@ -346,7 +353,16 @@ export function PatientView({ caseId }: { caseId: string }) {
             </button>
           )}
           {next.kind === "preContact" && <p className="muted">{t.understandWait}</p>}
+          {contact && (
+            <>
+              <a className="btn btn-xl pa-call" href={telHref(contact.phone)} data-testid="call-care-team">
+                <span aria-hidden="true">{"\u260E "}</span>{t.callCareTeam}: <bdi dir="ltr">{contact.phone}</bdi>
+              </a>
+              {contact.synthetic && <p className="muted">{t.demoNumber}</p>}
+            </>
+          )}
           {!canSend && <p className="muted" role="status">{t.offlineAction}</p>}
+          {personPending && <p className="banner banner-warn" role="status" data-testid="person-pending">{t.pendingPerson}</p>}
           {acknowledged && next.kind !== "contacted" && <p className="banner banner-ok" role="status" data-testid="ack-done">{t.understandDone}</p>}
           {callbackAsked && <p className="banner banner-ok" role="status" data-testid="callback-done">{t.callbackDone}</p>}
           {notice === "reschedule" && <p className="banner banner-ok" role="status">{t.rescheduleDone}</p>}
@@ -380,15 +396,22 @@ export function PatientView({ caseId }: { caseId: string }) {
         <p className="big" data-testid="patient-owner">
           {ownerLine}
         </p>
-        {contact && (
-          <div className="pa-reach">
-            <p className="pa-sub">{t.ownerReach}</p>
-            <a className="btn btn-xl" href={telHref(contact.phone)} data-testid="call-care-team">
-              {t.callCareTeam}: <bdi dir="ltr">{contact.phone}</bdi>
-            </a>
-            {contact.synthetic && <p className="muted">{t.demoNumber}</p>}
-          </div>
-        )}
+      </section>
+
+      <section className="pa-card" aria-labelledby="p-access-home" data-testid="access-home">
+        <h2 id="p-access-home">{t.accessHomeHeading}</h2>
+        {access && access !== "error" && access.entries.length > 0 ? (
+          <ul className="pa-access">
+            {access.entries.slice(0, 3).map((e, i) => (
+              <li key={`${e.at}-${e.role}-${i}`}>
+                <strong>{roleName(t, e.role)}</strong>
+                <time dateTime={e.at}>{formatWhen(e.at, lang)}</time>
+              </li>
+            ))}
+          </ul>
+        ) : access && access !== "error" ? <p className="muted">{t.accessEmpty}</p> : null}
+        <p className="muted">{t.accessHomeNote}</p>
+        <button type="button" className="btn btn-xl" onClick={() => setTab("privacy")} data-testid="access-home-more">{t.accessHomeMore}</button>
       </section>
 
       <section className="pa-card" aria-labelledby="p-history" data-testid="status-timeline">
@@ -537,6 +560,7 @@ export function PatientView({ caseId }: { caseId: string }) {
         <div className="pa-body">
           {offline && <p className="banner banner-warn" role="status">{t.offline}</p>}
           {tab === "home" ? homePanel : privacyPanel}
+          {lang === "ar" && <p className="muted pa-review-note" data-testid="arabic-review-note"><span lang="en" dir="ltr">Arabic text pending native-speaker review (H2).</span> {t.arabicReviewNote}</p>}
         </div>
 
         <nav className="pa-nav" aria-label={t.navLabel}>

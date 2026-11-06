@@ -16,6 +16,10 @@ services:
     # BUG-77: a limit makes "memory is high" mean something. deploy/gcp/vm/sc-api-restart.sh restarts the API at 70% of it (about
     # 717 MiB) and, once a day, at 40%; an OOM kill at the limit would also be restarted by the policy above, but abruptly.
     mem_limit: 1024m
+    # ADR-058: the folder through which the web's "Reset the demo" asks the host (deploy/gcp/vm/demo-reset-watch.sh) and the host
+    # answers (status.json). Create it on the VM first (the watch script does): it must be writable by uid 10001.
+    volumes:
+      - /var/lib/sc-demo:/var/lib/sc-demo
 
   scheduler:
     # The lease/fencing design (ADR-041) is kept as is; ONE scheduler here (no scale profile), so the lease is trivially held.

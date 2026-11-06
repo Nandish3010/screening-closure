@@ -15,7 +15,12 @@ at most ONE of the following effects, none of which changes the state of the cas
     wrong_number                review_requested {reason: wrong_number}
     already_done                review_requested {reason: already_done}
     opt_out                     review_requested {reason: opt_out}    (never withdraws consent: only a person does that)
-    anything else a person must look at (question, other, low confidence, no model)
+    not understood, or not classified at all (the model is unavailable, or its confidence is below the threshold, or the
+    reply is longer than it reads)
+                                review_requested {reason: opt_out, provisional: true}  ADR-059 (F3): a PROVISIONAL outreach
+                                hold. The system cannot tell whether the patient said stop, so it sends nothing more until a
+                                person has read the reply and cleared the hold (the same `consent_updated` as an opt-out).
+    anything else a person must look at (a confident question or other)
                                 review_requested {reason: triage_uncertain}
 
 `needs_human` replies get a `review_requested`, never a callback: when the system is not sure, it asks a person to
@@ -41,6 +46,7 @@ from app.routers import cases
 from app.state_machine import TRIAGE_ACTOR, InvalidTransition
 from app.triage import classify as triage
 from app.triage import dialect
+from app.triage.labels import MAX_TEXT_CHARS
 from app.triage.reply_store import InMemoryReplyStore, PostgresReplyStore, ReplyRecord, ReplyStore
 
 log = logging.getLogger("app.replies")
@@ -81,13 +87,32 @@ def event_id(reply_id: UUID, kind: str) -> UUID:
     return uuid.uuid5(REPLIES_NAMESPACE, f"{reply_id}|{kind}")
 
 
-def effect_for(result: dict) -> tuple[str, dict] | None:
+def provisional_hold(result: dict, text: str = "") -> bool:
+    """ADR-059 (F3): must outreach stop until a person has read this reply, though nothing says the patient opted out?
+
+    True when a person must look at the reply AND the classification cannot be relied on to have read it: the classifier is
+    unavailable (no model, timeout, a scorer error: model_id `unavailable`, or confidence 0), its confidence is below the
+    deployed threshold (or the threshold cannot be read), or the reply is longer than the model reads. A confident
+    `question` or `other` is not an opt-out the system missed, it is a reply the model understood, so it is a flag and no hold.
+    An empty or blank reply says nothing and holds nothing. An `opt_out` already holds."""
+    if not result["needs_human"] or result["intent"] == "opt_out" or not text.strip():
+        return False
+    if result["model_id"] == triage.UNAVAILABLE_MODEL_ID or len(text) > MAX_TEXT_CHARS:
+        return True
+    threshold = triage.confidence_threshold()
+    return threshold is None or result["confidence"] < threshold
+
+
+def effect_for(result: dict, text: str = "") -> tuple[str, dict] | None:
     """The one automatic step for a classification: (event type, payload without source_event_id), or None.
 
     A reply a person must look at gets a review request, whatever the intent; only a confident, auto-handled
-    intent gets its own step. Nothing here is clinical and nothing closes or changes the state of a case."""
+    intent gets its own step. Nothing here is clinical and nothing closes or changes the state of a case.
+    A reply the classifier could not read gets a provisional opt-out hold (`provisional_hold`)."""
     intent = result["intent"]
     if result["needs_human"]:
+        if provisional_hold(result, text):
+            return "review_requested", {"reason": "opt_out", "provisional": True}
         return "review_requested", {"reason": "opt_out" if intent == "opt_out" else "triage_uncertain"}
     if intent in CALLBACK_REASON:
         return "callback_requested", {"reason": CALLBACK_REASON[intent]}
@@ -131,7 +156,7 @@ def post_reply(case_id: UUID, body: PostReply, identity: Identity = Depends(requ
             classified_id = event_id(reply_id, "reply_classified")
             _append(case_id, "reply_classified", {**result, "text_ref": str(reply_id)}, classified_id, at)
             applied.append("reply_classified")
-            effect = effect_for(result)
+            effect = effect_for(result, record.text)
             if effect is not None:
                 kind, payload = effect
                 _append(case_id, kind, {**payload, "source_event_id": str(classified_id)}, event_id(reply_id, kind), at)

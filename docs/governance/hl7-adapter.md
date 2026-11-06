@@ -119,6 +119,14 @@ Each item is an assumption in the code or the mapping that no document we hold s
 9. Transport: MLLP over what (VPN, TLS, a vendor gateway), the port, source IP allow-listing, and the certificate regime.
 10. Message ordering and duplication: whether an A08 can arrive after the ORU it belongs to, and whether the same result can arrive from two sources with different control ids (it would then make two cases, as two `POST /cases` calls would).
 
+## The demo mocks (ADR-057)
+
+Two buttons on the Integrations page run **mocks of message shapes** on the demo stack, so a judge can see the adapter at work without a script. They are not a connection to Malaffi or Sahatna, and no specification of either was available.
+
+- **Malaffi-style result replay.** `POST /integrations/mock/malaffi/replay` builds a synthetic ORU^R01 (a positive FIT, the shape of `tools/hl7/samples/oru_fit_positive.hl7`) and passes it to `handler.handle` in the API process. The adapter creates a case as `POST /hl7` would; `{"redeliver": true}` sends the last message again and the adapter answers "duplicate". Three distinct messages at most, then 409 until a demo reset.
+- **Sahatna-style booking callback.** `POST /integrations/mock/sahatna/booking-callback` takes an invented JSON callback for a case, translates it into an SIU^S12 (09:30 local on the first weekday 14 days after the simulation clock unless a slot is given) and passes it to the same handler: the case moves to `confirmatory_booked` by `book_confirmatory` as `system:hl7`. The callback's shape is ours; nothing is known of Sahatna's.
+- **Gates.** Coordinator and supervisor only; development or `DEMO_DEPLOYMENT=1` only (404 elsewhere). The mocks add no event, state or write path: the sender allow-list, exact identifier match, state rules and MSH-10 idempotency all apply. Tests: `api/tests/test_mock_integrations.py` (T-A110, T-A111).
+
 ## Not built
 
 - **Outbound.** The only thing sent is an ACK. No status, ownership or due date goes to Malaffi or to a provider EMR (plan: "if the operator permits"; the outbox and the dead-letter queue the plan describes are not built), so there is no outbound failure visibility either.

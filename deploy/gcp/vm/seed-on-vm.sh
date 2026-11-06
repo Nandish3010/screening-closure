@@ -4,7 +4,8 @@
 #
 #   1. mode=seed: APP_ENV=dev, dev login, simulation clock, NO public listener (only 127.0.0.1) - the seeding scripts
 #      (simulator/*.py) authenticate with the dev login, which production refuses by design.
-#   2. Synthea (deterministic: seed 20261017, 300 patients, in a container) -> HAPI -> FIT results -> cases, as `make demo-seed`.
+#   2. Synthea (deterministic: seed 20261017, 300 patients, in a container) -> HAPI -> FIT results -> cases, as `make demo-seed`,
+#      then the four long-term-conditions demo cases (blood pressure, HbA1c, BMI; `make demo-seed-chronic`) so Today shows them.
 #   3. tools/demo/snapshot.sh save: the reset point ("reset demo" restores it).
 #   4. mode=production: APP_ENV=production, OIDC, no dev login, FHIR evidence check on, demo-approval off, simulated clock under the demo
 #      gate; Caddy opens 80/443.
@@ -36,7 +37,7 @@ else
 fi
 
 docker run --rm --network host -v "$SC_REPO":/repo -w /repo python:3.12-slim sh -c \
-  'pip install -q --no-cache-dir httpx pyyaml && python simulator/load_cohort.py --skip-if-loaded && python simulator/generate_results.py && python simulator/create_cases.py'
+  'pip install -q --no-cache-dir httpx pyyaml && python simulator/load_cohort.py --skip-if-loaded && python simulator/generate_results.py && python simulator/create_cases.py && python simulator/create_chronic_cases.py'
 
 ref=$(docker compose exec -T postgres psql -U closure -d closure -At -c "SELECT payload->>'patient_ref' FROM events WHERE payload ? 'patient_ref' ORDER BY id LIMIT 1")
 echo "seed: demo patient reference for the patient login: ${ref:-<none>}"

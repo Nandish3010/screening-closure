@@ -109,11 +109,14 @@ describe("the screen", () => {
     expect(await screen.findByRole("heading", { level: 1, name: "Today" })).toBeTruthy();
     expect(screen.getByText("Synthetic data")).toBeTruthy();
     expect(screen.getByTestId("full-worklist").getAttribute("href")).toBe("/coordinator");
+    expect(await screen.findByTestId("today-list")).toBeTruthy();
+    expect(screen.getByTestId("today-summary").textContent).toMatch(/^\d+\+? .*One list, most urgent first/);
+    expect(screen.getByTestId("today-filter-all")).toBeTruthy();
     for (const g of TODAY_GROUPS) {
-      expect(await screen.findByTestId(`today-group-${g}`)).toBeTruthy();
-      expect(screen.getByTestId(`today-count-${g}`).textContent).toMatch(/^\d+\+?$/);
-      expect(screen.getByTestId(`today-jump-${g}`)).toBeTruthy();
+      const n = screen.queryByTestId(`today-count-${g}`);
+      if (n) expect(n.textContent).toMatch(/^\d+\+?$/); // a filter chip exists only for a queue that has something in it
     }
+    expect(screen.queryAllByText(/All clear/)).toHaveLength(0); // no stack of empty sections
     expect(screen.getByTestId("today-scan").textContent).toMatch(/^All \d+ open cases read\./);
   });
 
@@ -130,14 +133,45 @@ describe("the screen", () => {
     expect(within(row).getByTestId("today-pathway").getAttribute("data-pathway")).toBe("chronic_conditions");
     expect(within(row).getByTestId("today-priority").getAttribute("data-priority")).toBe("urgent");
     expect(within(row).getByTestId("today-why").textContent).toBe("An urgent result came in 2 days ago and nobody has acted on it yet.");
+    expect(within(row).getByTestId("today-priority-text").textContent).toBe("Very high blood pressure.");
+    expect(within(row).getByTestId("today-priority-placeholder").textContent).toMatch(/placeholder pending clinician sign-off \(H1\)/);
     expect(within(row).getByTestId("today-open-case")).toBeTruthy();
     expect(screen.getByTestId("today-count-urgent").textContent).toBe("1");
   });
 
-  it("an empty queue says all clear once every open case was read", async () => {
+  it("a case whose priority is not a placeholder shows its reason and no placeholder flag, and a case without priority shows neither", async () => {
+    const api = withToday(createMockAdapter(null), async () => response([
+      ...empty().filter((g) => g.group !== "urgent"),
+      group("urgent", [
+        item({ case_id: "aaaaaaaa-2222-4333-8444-555555555555", priority: { tier: "urgent", rank: 0, rule: "x", reason: { en: "A sourced rule", ar: "" }, basis: "IFHAS V10" } }),
+        item({ case_id: "bbbbbbbb-2222-4333-8444-555555555555", priority: null }),
+      ]),
+    ]));
+    page(api);
+    const rows = await screen.findAllByTestId("today-item");
+    expect(within(rows[0]).getByTestId("today-priority-text").textContent).toBe("A sourced rule.");
+    expect(within(rows[0]).queryByTestId("today-priority-placeholder")).toBeNull();
+    expect(within(rows[1]).queryByTestId("today-priority-reason")).toBeNull();
+  });
+
+  it("when nothing is waiting there is one empty state, not one per queue", async () => {
     page(withToday(createMockAdapter(null), async () => response(empty())));
-    for (const g of TODAY_GROUPS) expect((await screen.findByTestId(`today-clear-${g}`)).textContent).toContain("All clear.");
-    expect(screen.getAllByTestId("today-clear-urgent")).toHaveLength(1);
+    expect((await screen.findByTestId("today-empty")).textContent).toContain("Nobody is waiting on you");
+    expect(screen.getAllByRole("status").filter((e) => /All clear/.test(e.textContent ?? ""))).toHaveLength(0);
+    expect(screen.getByTestId("today-summary").textContent).toContain("Nobody is waiting on you.");
+  });
+
+  it("filter chips narrow the one list and say which is on", async () => {
+    page(createMockAdapter(null, { automation: true }));
+    await screen.findAllByTestId("today-item");
+    const all = screen.getAllByTestId("today-item").length;
+    fireEvent.click(screen.getByTestId("today-filter-overdue"));
+    expect(screen.getByTestId("today-filter-overdue").getAttribute("aria-pressed")).toBe("true");
+    const rows = screen.getAllByTestId("today-item");
+    expect(rows.length).toBeLessThan(all);
+    for (const r of rows) expect(r.getAttribute("data-group")).toBe("overdue");
+    fireEvent.click(screen.getByTestId("today-filter-all"));
+    expect(screen.getAllByTestId("today-item")).toHaveLength(all);
   });
 
   it("never says all clear while the scan is incomplete; 'Look further' reads on with the cursor", async () => {
@@ -149,14 +183,13 @@ describe("the screen", () => {
         : response(empty(), { cursor: "c1", complete: false, scanned: 1000 });
     });
     page(api);
-    expect(await screen.findByTestId("today-searching-overdue")).toBeTruthy();
-    expect(screen.queryByTestId("today-clear-overdue")).toBeNull();
-    expect(screen.getByTestId("today-count-overdue").textContent).toBe("0+");
+    expect(await screen.findByTestId("today-searching")).toBeTruthy();
+    expect(screen.queryByTestId("today-empty")).toBeNull();
     expect(screen.getByTestId("today-scan").textContent).toContain("1000 open cases read so far");
     fireEvent.click(screen.getByTestId("today-more"));
     await waitFor(() => expect(screen.getByTestId("today-count-overdue").textContent).toBe("1"));
     expect(calls.find((p) => (p as { cursor?: string })?.cursor)).toMatchObject({ cursor: "c1", groups: [...TODAY_CASE_GROUPS] });
-    expect(screen.getByTestId("today-clear-flagged")).toBeTruthy(); // complete now: the other queues are really clear
+    expect(screen.queryByTestId("today-searching")).toBeNull(); // complete now
   });
 
   it("is not for a clinician: it says so and asks the API for nothing", async () => {
@@ -194,8 +227,8 @@ describe("one-click actions", () => {
     expect(posted).toHaveLength(1);
     expect(posted[0]).toMatchObject([escItem.case_id, { type: "escalation_accepted", payload: { rung: "coordinator" } }]);
     expect((posted[0] as [string, { actor: string }])[1].actor).toMatch(/^coordinator:/);
-    expect(screen.getByTestId("today-clear-escalations")).toBeTruthy();
-    expect(document.activeElement).toBe(screen.getByRole("heading", { name: /Escalations waiting/ }));
+    expect(screen.getByTestId("today-empty")).toBeTruthy();
+    expect(document.activeElement?.id).toBe("today-empty"); // the list is gone, so focus lands on the empty state
   });
 
   it("a role the rung is not for sees the action disabled, with the reason in words", async () => {
@@ -226,7 +259,7 @@ describe("one-click actions", () => {
     expect(within(row).getByTestId("today-why").textContent).toMatch(/number is wrong/);
     await act(async () => { fireEvent.click(within(row).getByTestId("today-confirm_contact")); });
     await waitFor(() => expect(screen.getByTestId("today-flash").textContent).toContain(`(${shortId(DEMO_WRONG_NUMBER_CASE_ID)})`));
-    expect(screen.getAllByTestId("today-item").some((r) => r.getAttribute("data-case") === DEMO_WRONG_NUMBER_CASE_ID && r.closest("[data-testid=today-group-replies]"))).toBe(false);
+    expect(screen.getAllByTestId("today-item").some((r) => r.getAttribute("data-case") === DEMO_WRONG_NUMBER_CASE_ID && r.getAttribute("data-group") === "replies")).toBe(false);
     const events = (await api.getCase(DEMO_WRONG_NUMBER_CASE_ID)).events;
     expect(events[events.length - 1]).toMatchObject({ type: "contact_updated" }); // the audit trail is the case page's own
   });
@@ -244,12 +277,32 @@ describe("one-click actions", () => {
     expect(screen.getByTestId("today-item")).toBeTruthy();
   });
 
+  it("take ownership: busy label while it runs, and a conflict says someone else got there first", async () => {
+    const flagged = item({ why: { code: "nobody_looking", idle_days: 11 }, actions: ["open_case", "take_ownership"], state: "acknowledged" });
+    const base = createMockAdapter(null);
+    let release: () => void = () => undefined;
+    const api = Object.assign(Object.create(base), base, {
+      getToday: async () => response([...empty().filter((g) => g.group !== "flagged"), group("flagged", [flagged])]),
+      postEvent: () => new Promise((_, rej) => { release = async () => { const { ApiError } = await import("../src/api/contract"); rej(new ApiError(409, "case already has an owner")); }; }),
+    }) as ApiClient;
+    page(api, "supervisor");
+    const btn = await screen.findByTestId("today-take_ownership");
+    expect(btn.textContent).toBe("Take ownership");
+    await act(async () => { fireEvent.click(btn); });
+    expect(screen.getByTestId("today-take_ownership").textContent).toBe("Taking ownership...");
+    expect((screen.getByTestId("today-take_ownership") as HTMLButtonElement).disabled).toBe(true);
+    await act(async () => { release(); });
+    expect((await screen.findByTestId("today-conflict")).textContent).toContain("Someone else took this case first");
+    expect(screen.getByTestId("today-take_ownership").textContent).toBe("Take ownership");
+  });
+
   it("every action and link is a native control in the tab order", async () => {
     page(createMockAdapter(null, { automation: true }));
     await screen.findAllByTestId("today-item");
     for (const el of screen.getAllByTestId("today-open-case")) expect(el.tagName).toBe("A");
     for (const b of screen.getAllByRole("button")) expect(b.getAttribute("tabindex")).not.toBe("-1");
-    for (const g of TODAY_GROUPS) expect(screen.getByTestId(`today-group-${g}`).getAttribute("aria-labelledby")).toBe(`today-h-${g}`);
+    expect(screen.getByTestId("today-list").getAttribute("aria-labelledby")).toBe("today-h-list");
+    for (const b of screen.getAllByTestId(/today-filter-/)) expect(b.getAttribute("aria-pressed")).not.toBeNull();
   });
 });
 

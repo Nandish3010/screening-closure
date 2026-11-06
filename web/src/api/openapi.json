@@ -328,6 +328,32 @@
         "title": "LeaseRequest",
         "type": "object"
       },
+      "MalaffiReplay": {
+        "properties": {
+          "redeliver": {
+            "default": false,
+            "title": "Redeliver",
+            "type": "boolean"
+          }
+        },
+        "title": "MalaffiReplay",
+        "type": "object"
+      },
+      "MissedFollowup": {
+        "additionalProperties": false,
+        "properties": {
+          "case_id": {
+            "format": "uuid",
+            "title": "Case Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "case_id"
+        ],
+        "title": "MissedFollowup",
+        "type": "object"
+      },
       "PostEvent": {
         "additionalProperties": false,
         "properties": {
@@ -475,6 +501,32 @@
           "reason"
         ],
         "title": "RequestErasure",
+        "type": "object"
+      },
+      "SahatnaCallback": {
+        "properties": {
+          "case_id": {
+            "format": "uuid",
+            "title": "Case Id",
+            "type": "string"
+          },
+          "slot_start": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Slot Start"
+          }
+        },
+        "required": [
+          "case_id"
+        ],
+        "title": "SahatnaCallback",
         "type": "object"
       },
       "Scan": {
@@ -1877,6 +1929,133 @@
         ]
       }
     },
+    "/demo/guide": {
+      "get": {
+        "operationId": "guide_demo_guide_get",
+        "parameters": [
+          {
+            "description": "a random id the browser keeps for this tab",
+            "in": "query",
+            "name": "session",
+            "required": true,
+            "schema": {
+              "description": "a random id the browser keeps for this tab",
+              "title": "Session",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Guide Demo Guide Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Guide",
+        "tags": [
+          "demo"
+        ]
+      }
+    },
+    "/demo/missed-followup": {
+      "post": {
+        "operationId": "missed_followup_demo_missed_followup_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MissedFollowup"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Missed Followup Demo Missed Followup Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Missed Followup",
+        "tags": [
+          "demo"
+        ]
+      }
+    },
+    "/demo/reset": {
+      "post": {
+        "operationId": "reset_demo_reset_post",
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Reset Demo Reset Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Reset",
+        "tags": [
+          "demo"
+        ]
+      }
+    },
     "/drafts/{draft_id}/approve": {
       "post": {
         "description": "Approve a draft and hand it to the notification mock.\n\nOne transaction (Postgres) or one critical section (in-memory) records the approval on the\ndraft, appends `message_approved` as the approver and writes the outbox row, so none of the three\ncan exist without the others (ADR-030). Only then is the outbox drained: the notification mock\nwrites `message_sent` as `system:notifier` and the notification row (one transaction), or reports\nwhy it did not (consent / contact / the case moved on): the approval stands and the response says\n`sent: false`. If the drain itself fails the row stays pending, the response says so\n(`blocked_reason: \"pending\"`) and the scheduler's next drain sends it, once.",
@@ -2265,6 +2444,137 @@
         "summary": "Feed",
         "tags": [
           "integrations"
+        ]
+      }
+    },
+    "/integrations/mock": {
+      "get": {
+        "operationId": "mock_status_integrations_mock_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Mock Status Integrations Mock Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Mock Status",
+        "tags": [
+          "integrations-mock"
+        ]
+      }
+    },
+    "/integrations/mock/malaffi/replay": {
+      "post": {
+        "operationId": "malaffi_replay_integrations_mock_malaffi_replay_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/MalaffiReplay"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Malaffi Replay Integrations Mock Malaffi Replay Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Malaffi Replay",
+        "tags": [
+          "integrations-mock"
+        ]
+      }
+    },
+    "/integrations/mock/sahatna/booking-callback": {
+      "post": {
+        "operationId": "sahatna_booking_callback_integrations_mock_sahatna_booking_callback_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SahatnaCallback"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Sahatna Booking Callback Integrations Mock Sahatna Booking Callback Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Sahatna Booking Callback",
+        "tags": [
+          "integrations-mock"
         ]
       }
     },

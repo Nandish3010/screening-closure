@@ -1,0 +1,11 @@
+*
+!api/pyproject.toml
+!api/app
+!api/migrations
+!config
+!tools/k8s
+!tools/load
+!deploy/helm/screening-closure/values-gke-loadtest.yaml
+!deploy/gke/scenarios.sh
+**/__pycache__
+**/*.pyc

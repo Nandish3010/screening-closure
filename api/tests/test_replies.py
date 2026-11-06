@@ -137,8 +137,10 @@ def test_low_confidence_asks_a_person_instead_of_guessing():
     body = reply(cid, "unsure about this").json()
     assert body["needs_human"] is True
     assert kinds_after_creation(cid) == ["reply_received", "reply_classified", "review_requested"]
-    assert log(cid)[-1].payload["reason"] == "triage_uncertain"
-    assert replay_model(log(cid), cases.pathway).triage_review_reason == "triage_uncertain"
+    # ADR-059 (F3): a reply the model was not confident about is a PROVISIONAL opt-out hold until a person has read it
+    assert log(cid)[-1].payload == {"reason": "opt_out", "provisional": True, "source_event_id": log(cid)[-2].event_id.__str__()}
+    model = replay_model(log(cid), cases.pathway)
+    assert model.triage_review_reason == "opt_out" and model.outreach_holds == ("opt_out",)
 
 
 def test_no_model_means_every_reply_goes_to_a_person():
@@ -148,8 +150,31 @@ def test_no_model_means_every_reply_goes_to_a_person():
         body = reply(cid, text).json()
         assert body["needs_human"] is True and body["model_id"] == "unavailable"
     assert kinds_after_creation(cid).count("callback_requested") == 0
-    reasons = [e.payload["reason"] for e in log(cid) if e.type == "review_requested"]
-    assert reasons == ["triage_uncertain"] * 3
+    reviews = [e.payload for e in log(cid) if e.type == "review_requested"]
+    # the model is unavailable: nothing can say the patient did not ask to stop, so outreach is held (ADR-059, F3). The
+    # explicit opt-out is the gate's, not provisional.
+    assert [(r["reason"], r.get("provisional")) for r in reviews] == [("opt_out", True)] * 3
+    assert replay_model(log(cid), cases.pathway).outreach_holds == ("opt_out",)
+
+
+def test_a_confident_question_or_other_is_a_flag_and_not_a_hold_but_a_blank_or_unread_reply_is_handled():
+    from app.routers.replies import provisional_hold
+    sure = {"intent": "question", "confidence": 0.99, "model_id": "m", "needs_human": True}
+    assert provisional_hold(sure, "what time?") is False                      # understood: a flag, not a hold
+    assert provisional_hold({**sure, "confidence": 0.2}, "hmm") is True       # not sure
+    assert provisional_hold({**sure, "model_id": "unavailable", "confidence": 0.0}, "hmm") is True
+    assert provisional_hold({**sure, "model_id": "unavailable", "confidence": 0.0}, "   ") is False  # says nothing
+    assert provisional_hold(sure, "x" * 700) is True                           # longer than the model reads
+    assert provisional_hold({**sure, "needs_human": False}, "ok") is False
+    assert provisional_hold({**sure, "intent": "opt_out"}, "stop") is False   # already a real opt-out hold
+
+
+def test_a_provisional_hold_stops_the_automation_until_a_person_clears_it():
+    triage.set_backend(None)
+    cid = new_case()
+    reply(cid, "don't text me again please")  # the gate catches this one even with no model
+    reply(cid, "hmm ok whatever")
+    assert replay_model(log(cid), cases.pathway).outreach_holds == ("opt_out",)
 
 
 def test_an_opt_out_never_withdraws_consent_and_never_touches_the_state():
@@ -165,7 +190,7 @@ def test_an_opt_out_never_withdraws_consent_and_never_touches_the_state():
 def test_a_triage_flag_does_not_hide_a_later_consent_review():
     cid = new_case()
     reply(cid, "intent:opt_out enough")
-    post_event(cid, "consent_updated", "coordinator", {"withdrawn": True})
+    post_event(cid, "consent_updated", "coordinator", {"withdrawn": True, "source": {"channel": "phone_call", "reference": "call-1"}})
     types = [e.type for e in log(cid)]
     assert types.count("review_requested") == 2  # the triage one and the consent one
     model = replay_model(log(cid), cases.pathway)

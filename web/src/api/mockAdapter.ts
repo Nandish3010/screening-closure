@@ -27,6 +27,7 @@ import {
 } from "../lib/derive";
 import { effortMetricsOf, effortOf } from "../lib/effort";
 import { todayOf } from "./mockToday";
+import { mockGuide } from "./mockDemo";
 
 export { ROLE_NAMES };
 
@@ -77,6 +78,8 @@ export interface MockOptions {
    */
   thirdPathway?: boolean;
   decliningProviders?: readonly string[];
+  /** Play the hosted demo's judge controls (ADR-058): `/health` reports `demo`, and the guide, reset request and missed follow-up exist. `?demo=1`. */
+  demo?: boolean;
 }
 
 /** The automatic re-route list (A21): who is asked next, in order, skipping providers already asked on the case. */
@@ -156,6 +159,9 @@ export function patientEvents(events: CaseEvent[]): CaseEvent[] {
 
 /** Every staff-facing event says who wrote it (A21): the API's `actor_kind`. */
 const withKind = (e: CaseEvent): CaseEvent => ({ ...e, actor_kind: actorKindOf(e.actor) });
+
+/** The mock's stand-in for the record-store check on closure evidence: a reference naming a made-up or test report does not resolve. */
+export const closeEvidenceRefused = (ref: string): boolean => /made-?up|fake|invalid/i.test(ref);
 
 export function createMockAdapter(
   storage: Pick<Storage, "getItem" | "setItem" | "removeItem"> | null = safeStorage(),
@@ -399,13 +405,59 @@ export function createMockAdapter(
     }
   }
 
+  // ADR-058, `?demo=1`: the judge controls of the hosted demo, played by the mock (no real clock moves).
+  const demoOn = options.demo === true;
+  const demoClaims = new Map<string, string>();
+  let demoReset: { at: string; by: string; reason: string } | null = null;
+  let demoSeed: Record<string, number> | null = null;
+  const countsOf = (db: MockDb) => Object.fromEntries(Object.entries(db.events).map(([k, v]) => [k, v.length]));
+  const demoMethods: Pick<ApiClient, "demoGuide" | "requestDemoReset" | "missedFollowup"> = {
+    async demoGuide(sessionId) {
+      const db = load();
+      demoSeed ??= countsOf(fresh());
+      return { ...mockGuide(Object.keys(db.events).map((id) => summary(db, id)), demoSeed, countsOf(db), demoClaims, sessionId) };
+    },
+    async requestDemoReset() {
+      if (session.role !== "supervisor") throw new ApiError(403, "role 'coordinator' may not call POST /demo/reset");
+      save(fresh());
+      demoClaims.clear();
+      demoReset = { at: new Date().toISOString(), by: `${session.name} (supervisor)`, reason: "manual" };
+      return { requested: true, requested_at: demoReset.at, requested_by: demoReset.by, message: "Reset requested. The demo restarts in about a minute and comes back at the same sign-in." };
+    },
+    async missedFollowup(id) {
+      if (session.role !== "supervisor") throw new ApiError(403, "role 'coordinator' may not call POST /demo/missed-followup");
+      const db = load();
+      const before = summary(db, id);
+      if (before.state === "closed") throw new ApiError(409, "That case is already closed, so there is no follow-up to miss. Pick an open case.");
+      if (!before.due_at) throw new ApiError(409, "That case has no follow-up date right now, so nothing can be missed. Pick another case.");
+      const evs = must(db, id);
+      const n = evs.length;
+      const sys = "system:scheduler";
+      append(db, id, "mark_overdue", sys, { state: before.state, due_at: before.due_at }, { internal: true });
+      append(db, id, "escalate", sys, { rung: "reminder", target_role: "owner" }, { internal: true });
+      append(db, id, "escalate", sys, { rung: "supervisor", target_role: "supervisor" }, { internal: true });
+      save(db);
+      const after = summary(db, id);
+      return {
+        case_id: id, clock_from: SIM_NOW, clock_to: SIM_NOW, days_skipped: 0,
+        new_events: evs.slice(n).map((e) => ({ type: e.type, actor_kind: "system" as const })),
+        overdue: after.overdue, escalation_level: after.escalation_level, escalation_level_before: before.escalation_level, watchdog_flagged: !!after.watchdog_flagged,
+      };
+    },
+  };
+
   return {
     adapter: "mock",
     automation,
+    ...(demoOn ? demoMethods : {}),
     async health() {
       // The compose demo: the automation runs under the placeholder approval (A26). The manual-flow mock sends nothing.
       return {
         status: "ok", sim_time: SIM_NOW,
+        ...(demoOn ? { demo: {
+          simulated_clock: true, deployment: true, reset_pending: false,
+          last_reset_at: demoReset?.at ?? null, last_reset_by: demoReset?.by ?? null, last_reset_reason: demoReset?.reason ?? null, next_auto_reset_at: null,
+        } } : {}),
         outreach: automation
           ? { usable: true, signed: false, demo_approval: true, approved_by: "DEMO PLACEHOLDER (clinical sign-off pending, H1)", automatic_sending: true }
           : { usable: true, signed: false, demo_approval: false, approved_by: null, automatic_sending: false },
@@ -516,6 +568,11 @@ export function createMockAdapter(
       const db = load();
       const payload = body.payload ?? {};
       const stateBefore = replayState(must(db, id));
+      // The real API asks the record store whether the evidence exists and belongs to this case (api/app/evidence.py) and refuses
+      // `close` when it does not. The mock cannot look it up, so it refuses what is plainly not a reference to a real report.
+      if (body.type === "close" && payload.signed_by !== undefined && closeEvidenceRefused(String(payload.evidence_ref ?? ""))) {
+        throw new ApiError(422, `evidence_ref '${String(payload.evidence_ref)}' does not resolve to a resource of this case`);
+      }
       append(db, id, body.type, body.actor, payload, { eventId: body.event_id });
       // The mock plays the receiving provider of a handoff (only the owner can request one, as in the real API).
       if (body.type === "handoff_requested") playProvider(db, id, String(payload.to_provider ?? ""), body.actor);

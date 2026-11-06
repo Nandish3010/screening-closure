@@ -1,7 +1,8 @@
 /** HTTP adapter: the real API at VITE_API_URL, with bearer-token auth from POST /auth/dev-login. */
 import type {
+  DemoGuide, DemoResetRequested, MissedFollowupResult,
   AccessLog, AgencyInboxItem, AgencyOrg, AgencyRun, AgencyTask, AgencyTaskParams, Alert, ApiClient, CaseAgencySummary, CaseDetail, CaseEvent, CaseListParams, CaseSummary, CaseTimeline, ClosureMetrics, ConfirmatoryResult, Draft, TodayParams, TodayResponse,
-  DraftApproval, DraftRecord, DraftRejection, DraftRequestBody, EffortMetrics, FunnelMetrics, FunnelParams, IntegrationFeed, Me, PostEventBody, ReplyBody, ReplyResult, Role, TimelineItem,
+  DraftApproval, DraftRecord, DraftRejection, DraftRequestBody, EffortMetrics, FunnelMetrics, FunnelParams, IntegrationFeed, IntegrationMockStatus, MalaffiReplayResult, SahatnaCallbackResult, Me, PostEventBody, ReplyBody, ReplyResult, Role, TimelineItem,
 } from "./contract";
 import { ApiError, BACKEND_ROLE, OWNER_SCOPED_ROLES, ROLES } from "./contract";
 import type { OidcClient } from "./oidc";
@@ -52,7 +53,7 @@ export function createHttpAdapter(baseUrl: string, fetchImpl: typeof fetch = (..
         },
       });
     } catch (e) {
-      throw new ApiError(0, `Network error: ${(e as Error).message}`);
+      throw new ApiError(0, "The server cannot be reached right now. Check the connection and try again in a moment. Nothing was changed.");
     }
   }
 
@@ -70,6 +71,11 @@ export function createHttpAdapter(baseUrl: string, fetchImpl: typeof fetch = (..
     } catch {
       /* keep statusText */
     }
+    // Plain language for what a person cannot act on: a server fault, or a route refusal worded for developers. Engine refusals
+    // (409, 422: "the case cannot close without evidence") are the useful part and stay verbatim.
+    if (res.status >= 500) msg = "Something went wrong on the server. Nothing was changed. Please try again in a moment.";
+    else if (res.status === 403 && /^(role '|no access policy)/.test(msg)) msg = "Your role cannot do this here. Switch to a role that can, or ask a colleague who can.";
+    else if (res.status === 404 && /^(Not Found|not found)$/i.test(msg)) msg = "That could not be found. It may have been removed when the demo was reset.";
     return new ApiError(res.status, msg);
   }
 
@@ -231,6 +237,9 @@ export function createHttpAdapter(baseUrl: string, fetchImpl: typeof fetch = (..
     postReply(id: string, body: ReplyBody) {
       return request<ReplyResult>(`/cases/${encodeURIComponent(id)}/replies`, { method: "POST", body: JSON.stringify(body) });
     },
+    demoGuide: (session) => request<DemoGuide>(`/demo/guide?session=${encodeURIComponent(session)}`),
+    requestDemoReset: () => request<DemoResetRequested>("/demo/reset", { method: "POST" }),
+    missedFollowup: (caseId) => request<MissedFollowupResult>("/demo/missed-followup", { method: "POST", body: JSON.stringify({ case_id: caseId }) }),
     async advanceClock(by) {
       const j = await request<{ sim_time: string }>("/clock/advance", { method: "POST", body: JSON.stringify(by) });
       return j.sim_time;
@@ -344,6 +353,19 @@ export function createHttpAdapter(baseUrl: string, fetchImpl: typeof fetch = (..
         throw e;
       }
     },
+    async integrationMockStatus(): Promise<IntegrationMockStatus | null> {
+      try {
+        return await request<IntegrationMockStatus>("/integrations/mock");
+      } catch (e) {
+        // 404: this deployment is not a development or declared demo one, so the routes do not exist; 403: not this role's.
+        if (e instanceof ApiError && (e.status === 404 || e.status === 403)) return null;
+        throw e;
+      }
+    },
+    replayMalaffiResult: (redeliver = false) =>
+      request<MalaffiReplayResult>("/integrations/mock/malaffi/replay", { method: "POST", body: JSON.stringify({ redeliver }) }),
+    sahatnaBookingCallback: (caseId: string) =>
+      request<SahatnaCallbackResult>("/integrations/mock/sahatna/booking-callback", { method: "POST", body: JSON.stringify({ case_id: caseId }) }),
     // A22 agency layer. A backend without it answers 404: the lists degrade to empty, the case summary to null, and
     // agencyOrg / runAgency let the ApiError through so the page can say "agency not available".
     agencyOrg: () => request<AgencyOrg>("/agency/org"),

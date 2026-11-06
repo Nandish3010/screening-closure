@@ -14,7 +14,7 @@ import pytest
 import yaml
 
 from api_helpers import actor_of, login_headers, make_client, user_id_of
-from app import payloads
+from app import evidence, payloads
 from app.config import settings as app_settings
 from app.events import Event, replay_model
 from app.pathway import PathwayError, load_pathway
@@ -366,3 +366,106 @@ def test_only_the_hl7_adapter_among_services_may_cancel():
     for other in ("system:automation", "system:scheduler", "system:triage", "system:notifier", "model:x", "system:agency:outreach"):
         with pytest.raises(InvalidTransition):
             step(model, Event(cid, "appointment_cancelled", at, other, payload), PATHWAY)
+
+
+# ---- ADR-059 (F1): the refusal's evidence is real, and so is the counsellor ----------------------------------------------
+# An independent review closed a case as "declined" with one physician, a ghost counsellor and a made-up DocumentReference.
+
+
+def _case_pair(upto="patient_acknowledged", owner="Dr Solo"):
+    cid, pco = case_at(upto, owner)
+    return cid, pco, actor_of("primary_care_owner", owner)
+
+
+def test_the_reviewers_one_physician_fabricated_decline_is_refused_at_the_first_step():
+    cid, pco, me = _case_pair()
+    n = len(cases.store.events_for(UUID(cid)))
+    ghost = refusal("Practitioner/ghost-doctor", counselling_ref="DocumentReference/made-up-1")
+    ghost["counselling_ref"] = "DocumentReference/made-up-1"
+    r = post(cid, "record_informed_refusal", pco, ghost)
+    assert r.status_code == 422 and "known user" in r.json()["detail"]
+    assert len(cases.store.events_for(UUID(cid))) == n and state(cid) == "patient_acknowledged"
+    # the second step of the attack is also closed: there is no refusal on record to close
+    close = post(cid, "close", pco, {"outcome": "declined", "evidence_ref": "DocumentReference/made-up-1", "signed_by": me})
+    assert close.status_code == 409 and state(cid) == "patient_acknowledged"
+
+
+@pytest.mark.parametrize("counsellor", [
+    "specialist_owner:ghost-counsellor", "primary_care_owner:ghost0000", "Practitioner/ghost-doctor",
+])
+def test_a_counsellor_who_is_not_in_the_directory_is_refused(counsellor):
+    cid, _pco, _me = _case_pair()
+    r = post(cid, "record_informed_refusal", H("coordinator"), refusal(counsellor))  # even a coordinator cannot name a ghost
+    assert r.status_code == 422 and state(cid) == "patient_acknowledged"
+
+
+def test_a_counsellor_whose_directory_role_is_not_a_physician_is_refused():
+    cid, _pco, _me = _case_pair()
+    H("coordinator", "Not A Doctor")
+    for form in (actor_of("coordinator", "Not A Doctor"), f"Practitioner/{user_id_of('coordinator', 'Not A Doctor')}"):
+        r = post(cid, "record_informed_refusal", H("coordinator"), refusal(form))
+        assert r.status_code == 422, form  # the pattern rejects the first form; the directory role rejects the second
+    # a physician's user id under the wrong role prefix is not that physician either
+    H("specialist_owner", "Dr Real")
+    wrong = f"primary_care_owner:{user_id_of('specialist_owner', 'Dr Real')}"
+    assert post(cid, "record_informed_refusal", H("coordinator"), refusal(wrong)).status_code == 422
+    right = f"Practitioner/{user_id_of('specialist_owner', 'Dr Real')}"
+    assert post(cid, "record_informed_refusal", H("coordinator"), refusal(right)).status_code == 201
+
+
+def test_a_physician_records_their_own_counselling_and_a_coordinator_records_another_physicians():
+    cid, pco, me = _case_pair()
+    H("specialist_owner", "Dr Other")
+    other = actor_of("specialist_owner", "Dr Other")
+    r = post(cid, "record_informed_refusal", pco, refusal(other))
+    assert r.status_code == 403 and state(cid) == "patient_acknowledged"  # naming a colleague who did not record it
+    assert post(cid, "record_informed_refusal", H("coordinator"), refusal(other)).status_code == 201
+
+
+def test_one_physician_cannot_both_counsel_and_sign_so_a_solo_decline_cannot_close():
+    cid, pco, me = _case_pair()
+    assert post(cid, "record_informed_refusal", pco, refusal(me)).status_code == 201
+    close = post(cid, "close", pco, {"outcome": "declined", "evidence_ref": REF, "signed_by": me})
+    assert close.status_code == 409 and state(cid) == "declined_pending_signoff"
+
+
+def test_the_counselling_record_must_resolve_in_fhir_as_this_cases_record(monkeypatch):
+    cid, pco, me = _case_pair()
+    other_case = uuid4()
+    verifier = evidence.StaticVerifier({REF, "DocumentReference/theirs"}, bindings={"DocumentReference/theirs": other_case})
+    monkeypatch.setattr(evidence, "verifier", verifier)
+    gone = post(cid, "record_informed_refusal", pco, refusal(me, counselling_ref="DocumentReference/made-up-1"))
+    assert gone.status_code == 422 and "does not resolve" in gone.json()["detail"]
+    theirs = post(cid, "record_informed_refusal", pco, refusal(me, counselling_ref="DocumentReference/theirs"))
+    assert theirs.status_code == 422  # it exists, but it is another case's record
+    assert state(cid) == "patient_acknowledged"
+    assert post(cid, "record_informed_refusal", pco, refusal(me)).status_code == 201  # REF resolves
+    assert REF in verifier.calls
+
+
+def test_a_fhir_outage_fails_closed_for_the_refusal_and_for_the_declined_close(monkeypatch):
+    class Down:
+        def exists(self, ref, **_kw):
+            raise evidence.EvidenceUnavailable("HAPI down")
+
+    cid, pco, me = _case_pair()
+    monkeypatch.setattr(evidence, "verifier", Down())
+    assert post(cid, "record_informed_refusal", pco, refusal(me)).status_code == 503
+    assert state(cid) == "patient_acknowledged"
+
+
+def test_the_declined_close_resolves_the_record_again(monkeypatch):
+    """The record is looked up at the close too, not only at the refusal: a reference that stopped resolving (or was never
+    there, in an older log) does not close the case."""
+    cid, pco, me = _case_pair()
+    assert post(cid, "record_informed_refusal", pco, refusal(me)).status_code == 201  # permissive dev verifier
+    spec_actor = actor_of("specialist_owner", "Dr Signer")
+    assert post(cid, "reassign", H("coordinator"), {"owner": spec_actor}).status_code == 201
+    spec = H("specialist_owner", "Dr Signer")
+    body = {"outcome": "declined", "evidence_ref": REF, "signed_by": spec_actor}
+    monkeypatch.setattr(evidence, "verifier", evidence.StaticVerifier(set()))
+    r = post(cid, "close", spec, body)
+    assert r.status_code == 422 and state(cid) == "declined_pending_signoff"
+    monkeypatch.setattr(evidence, "verifier", evidence.StaticVerifier({REF}))
+    done = post(cid, "close", spec, body)
+    assert done.status_code == 201 and done.json()["state"] == "closed"

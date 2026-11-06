@@ -51,6 +51,14 @@ export interface LeaseRequest {
   "holder": string;
 }
 
+export interface MalaffiReplay {
+  "redeliver"?: boolean;
+}
+
+export interface MissedFollowup {
+  "case_id": string;
+}
+
 export interface PostEvent {
   "at"?: string | null;
   "event_id"?: string | null;
@@ -74,6 +82,11 @@ export interface RejectDraft {
 export interface RequestErasure {
   "patient_ref": string;
   "reason": string;
+}
+
+export interface SahatnaCallback {
+  "case_id": string;
+  "slot_start"?: string | null;
 }
 
 export interface Scan {
@@ -114,6 +127,9 @@ export interface Routes {
   "GET /cases/{case_id}/timeline": { path: { "case_id": string; }; response: Record<string, unknown>; };
   "POST /clock/advance": { body: Advance; response: Record<string, unknown>; };
   "POST /clock/reset": { response: Record<string, unknown>; };
+  "GET /demo/guide": { query: { "session": string; }; response: Record<string, unknown>; };
+  "POST /demo/missed-followup": { body: MissedFollowup; response: Record<string, unknown>; };
+  "POST /demo/reset": { response: Record<string, unknown>; };
   "POST /drafts/{draft_id}/approve": { path: { "draft_id": string; }; response: Record<string, unknown>; };
   "POST /drafts/{draft_id}/reject": { path: { "draft_id": string; }; body: RejectDraft; response: Record<string, unknown>; };
   "POST /erasures": { body: RequestErasure; response: Record<string, unknown>; };
@@ -123,6 +139,9 @@ export interface Routes {
   "GET /heartbeats": { response: Record<string, unknown>; };
   "POST /hl7": { response: unknown; };
   "GET /integrations/feed": { query: { "limit"?: number; }; response: Record<string, unknown>; };
+  "GET /integrations/mock": { response: Record<string, unknown>; };
+  "POST /integrations/mock/malaffi/replay": { body?: MalaffiReplay | null; response: Record<string, unknown>; };
+  "POST /integrations/mock/sahatna/booking-callback": { body: SahatnaCallback; response: Record<string, unknown>; };
   "GET /me": { response: Record<string, unknown>; };
   "GET /metrics/abstention": { response: Record<string, unknown>; };
   "GET /metrics/closure": { response: Record<string, unknown>; };
@@ -166,6 +185,9 @@ export const ROUTES: readonly RouteKey[] = [
   "GET /cases/{case_id}/timeline",
   "POST /clock/advance",
   "POST /clock/reset",
+  "GET /demo/guide",
+  "POST /demo/missed-followup",
+  "POST /demo/reset",
   "POST /drafts/{draft_id}/approve",
   "POST /drafts/{draft_id}/reject",
   "POST /erasures",
@@ -175,6 +197,9 @@ export const ROUTES: readonly RouteKey[] = [
   "GET /heartbeats",
   "POST /hl7",
   "GET /integrations/feed",
+  "GET /integrations/mock",
+  "POST /integrations/mock/malaffi/replay",
+  "POST /integrations/mock/sahatna/booking-callback",
   "GET /me",
   "GET /metrics/abstention",
   "GET /metrics/closure",

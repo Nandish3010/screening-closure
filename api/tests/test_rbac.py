@@ -180,7 +180,7 @@ def test_actor_is_derived_from_identity_and_a_body_actor_is_rejected():
     assert event_count(case_id) == before
     ok = post(case_id, "acknowledge", H("lab", "lab one"))
     assert ok.status_code == 201
-    assert ok.json()["events"][-1]["actor"] == actor_of("lab", "lab one")
+    assert client.get(f"/cases/{case_id}", headers=H("coordinator")).json()["events"][-1]["actor"] == actor_of("lab", "lab one")
 
 
 def test_events_cannot_be_dated_after_the_simulation_clock():
@@ -283,10 +283,10 @@ def test_patient_may_only_act_on_their_own_case_and_only_three_event_types():
     # a patient's list holds their own cases only (A9)
     listed = client.get("/cases", headers=pat).json()
     assert mine in [c["case_id"] for c in listed] and theirs not in [c["case_id"] for c in listed]
-    assert post(theirs, "consent_updated", pat, {"withdrawn": True}).status_code == 404
+    assert post(theirs, "consent_updated", pat, {"withdrawn": True, "source": {"channel": "patient_app"}}).status_code == 404
     assert post(theirs, "callback_requested", pat).status_code == 404
     assert post(mine, "callback_requested", pat).status_code == 201
-    assert post(mine, "consent_updated", pat, {"withdrawn": True}).status_code == 201
+    assert post(mine, "consent_updated", pat, {"withdrawn": True, "source": {"channel": "patient_app"}}).status_code == 201
     allowed = {t for t, roles in policy.EVENT_POLICY.items() if "patient" in roles}
     assert allowed == {"patient_acknowledge", "consent_updated", "callback_requested"}
     for type_ in set(policy.EVENT_POLICY) - allowed:
@@ -354,7 +354,13 @@ def test_every_real_route_has_a_policy_entry_and_no_entry_is_stale():
         for path, item in app.openapi()["paths"].items()
         for method in item
     }
-    assert routes == set(policy.ROUTE_POLICY), routes ^ set(policy.ROUTE_POLICY)
+    # The judge-experience routes (ADR-058) exist only under the demo gate: a test process does not run under it, so they are
+    # compared against their own router instead (tests/test_demo_controls.py proves the gate).
+    from app.routers import demo as demo_router
+
+    gated = {(m.upper(), r.path) for r in demo_router.router.routes for m in r.methods}
+    assert gated and gated <= set(policy.ROUTE_POLICY) and not (gated & routes)
+    assert routes == set(policy.ROUTE_POLICY) - gated, routes ^ (set(policy.ROUTE_POLICY) - gated)
 
 
 def test_event_policy_covers_exactly_the_pathway_vocabulary():

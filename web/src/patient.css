@@ -103,3 +103,10 @@
 }
 
 @media (prefers-reduced-motion: reduce) { .pa * { transition: none !important; animation: none !important; } }
+
+/* Emergency line, call button, pending-person state; logical properties only so the same rules serve RTL */
+.pa-emergency { border-inline-start: 6px solid var(--alarm-bg); }
+.pa-emerg-link { color: var(--text); font-weight: 700; }
+.pa .pa-call { border-color: var(--brand); color: var(--brand); font-weight: 700; margin-block-start: var(--s-2); }
+.pa-review-note { border-block-start: 1px dashed var(--border-strong); padding-block-start: var(--s-3); font-size: 0.9rem; }
+.pa-lang { min-height: 48px; }

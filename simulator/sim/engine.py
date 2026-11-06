@@ -1115,7 +1115,7 @@ class Engine:
             c.consent_ok = False
             self.emit(c, t, "consent_updated", f"patient:{c.p.key}",
                       {"status": "withdrawn", "scope": "outreach", "flagged_for_review": True, "source": source},
-                      m=("consent_updated", {"withdrawn": True}))
+                      m=("consent_updated", {"withdrawn": True, "source": {"channel": "patient_app"}}))  # ADR-059 (F4): the API requires how the patient asked
             d = lognormal(self.mp.consent_review_delay_median_days, self.mp.reaction_delay_sigma, c.lat.z_consent_review)
             self.schedule(self.cal.next_working_t(t + d), "consent_review", c)
         else:
@@ -1128,7 +1128,7 @@ class Engine:
         outcome = "declined_care" if c.declined_care else "continues_without_outreach"
         # a review that lets the case continue restores consent in the API (outreach stays off in the simulator); one that
         # finds the patient declines care leaves the case in consent_withdrawn, frozen, as the API would
-        restore = ("consent_updated", {"withdrawn": False}) if not c.declined_care and c.withdrawn else None
+        restore = ("consent_updated", {"withdrawn": False, "source": {"channel": "phone_call", "reference": f"call-{c.p.idx}"}}) if not c.declined_care and c.withdrawn else None
         self.emit(c, t, "consent_review_completed", f"owner:pcp-{c.p.idx % 7}", {"outcome": outcome}, m=restore)
         if c.declined_care and c.state != self.terminal:
             self.flag_lost(c, t, "declined_care")
