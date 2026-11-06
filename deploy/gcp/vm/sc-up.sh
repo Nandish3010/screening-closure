@@ -12,6 +12,28 @@ umask 077
 mkdir -p /etc/sc /var/lib/sc
 
 PY=$SC_REPO/deploy/gcp/vm
+
+# BUG-77 workaround: the gated API restart (every 15 min) and its daily fallback. Installed here, not in startup.sh, because this runs
+# on every boot AND after every deploy, once the bundle exists. Idempotent: install overwrites, enable --now is a no-op if enabled.
+if command -v systemctl >/dev/null 2>&1 && [ -d /run/systemd/system ]; then
+  install -m 0644 "$PY"/sc-api-restart.service "$PY"/sc-api-restart.timer "$PY"/sc-api-restart-daily.service "$PY"/sc-api-restart-daily.timer /etc/systemd/system/
+  systemctl daemon-reload
+  systemctl enable --now sc-api-restart.timer sc-api-restart-daily.timer
+  systemctl try-restart sc-api-restart.timer sc-api-restart-daily.timer
+  # the earlier fixed 22:30 UTC timer was the same unit name as the gate timer, so it is replaced above; nothing else to remove
+fi
+# ADR-058: the judge demo's reset. /var/lib/sc-demo is bind-mounted into the api container (compose.gcp.yml), which runs as uid 10001
+# and writes the reset request there; the host-side watcher (root) answers. Created before the stack starts so docker does not create
+# it root-owned. Then the watcher (every 15 s) and the scheduled reset (every 6 h) units, same pattern as above; nothing else is added.
+mkdir -p /var/lib/sc-demo
+chown 10001 /var/lib/sc-demo
+chmod 0755 /var/lib/sc-demo
+if command -v systemctl >/dev/null 2>&1 && [ -d /run/systemd/system ]; then
+  install -m 0644 "$PY"/sc-demo-reset-watch.service "$PY"/sc-demo-reset-watch.timer "$PY"/sc-demo-reset-scheduled.service "$PY"/sc-demo-reset-scheduled.timer /etc/systemd/system/
+  systemctl daemon-reload
+  systemctl enable --now sc-demo-reset-watch.timer sc-demo-reset-scheduled.timer
+  systemctl try-restart sc-demo-reset-watch.timer sc-demo-reset-scheduled.timer
+fi
 secrets_json=$(python3 - "$PROJECT" <<'PYEOF'
 import json, subprocess, sys
 sys.path.insert(0, "/srv/sc/repo/deploy/gcp/vm")
@@ -30,6 +52,10 @@ unset secrets_json
 
 mkdir -p /etc/sc/keycloak-import
 python3 "$PY/render_realm.py" "$HOST" "$SC_REPO/config/keycloak/screening-closure-realm.json" /etc/sc/keycloak-import/screening-closure-realm.json
+# The umask above makes these root-only, but Keycloak runs as uid 1000 in its container and must READ the import directory (otherwise:
+# "Failed to start server ... directory not found"). The file holds only ${KC_PW_*} placeholders, no secret, so it is world-readable.
+chmod 0755 /etc/sc/keycloak-import
+chmod 0644 /etc/sc/keycloak-import/screening-closure-realm.json
 
 # shellcheck disable=SC1091
 . "$PY/env.sh"

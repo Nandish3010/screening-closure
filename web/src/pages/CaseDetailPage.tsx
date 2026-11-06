@@ -703,8 +703,9 @@ export function CaseDetailPage() {
                 return r;
               }, (r: ReplyResult) => (r.needs_human ? STAFF.replyForm.recordedNeedsPerson : STAFF.replyForm.recordedHandled(String(r.intent).replace(/_/g, " "))))}
             >
-              {STAFF.replyForm.button}
+              {busy ? STAFF.replyForm.classifying : STAFF.replyForm.button}
             </ActionButton>
+            {busy && <p className="muted" role="status" data-testid="reply-classifying">{STAFF.replyForm.classifyingNote}</p>}
             {replyResult && (
               <p className={`banner ${replyResult.needs_human ? "banner-warn" : "banner-ok"}`} role="status" data-testid="reply-result" data-intent={replyResult.intent} data-needs-human={String(replyResult.needs_human)}>
                 {replyQuote && (

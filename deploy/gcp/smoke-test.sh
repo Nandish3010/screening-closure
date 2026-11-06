@@ -10,7 +10,7 @@ HOST=${BASE#https://}
 fail=0
 ok()  { echo "PASS  $1"; }
 bad() { echo "FAIL  $1"; fail=1; }
-code() { curl -s -o /dev/null -m 15 -w '%{http_code}' "$@" || echo 000; }
+code() { local c; c=$(curl -s -o /dev/null -m 15 -w '%{http_code}' "$@" 2>/dev/null); echo "${c:-000}"; }  # curl already prints 000 on no connection
 check() { # name expected-code url [curl args...]
   local n=$1 want=$2; shift 2; local got; got=$(code "$@"); [ "$got" = "$want" ] && ok "$n ($got)" || bad "$n: wanted $want, got $got"; }
 
@@ -32,9 +32,10 @@ check "metrics endpoint blocked at the edge" 404 "$BASE/api/metrics"
 check "Keycloak admin console not public" 404 "$BASE/auth/admin/master/console/"
 check "master realm not public" 404 "$BASE/auth/realms/master/.well-known/openid-configuration"
 check "database port closed" 000 -m 4 "http://$HOST:5432/"
-# rate limit: a burst of 80 unauthenticated calls must produce at least one 429
-n429=$(seq 1 80 | xargs -P 16 -I{} curl -s -o /dev/null -m 15 -w '%{http_code}\n' "$BASE/api/pathways" | grep -c '^429$' || true)
-[ "$n429" -gt 0 ] && ok "rate limit active ($n429 of 80 got 429)" || bad "no 429 in a burst of 80 requests (rate limit not active?)"
+# rate limit: a burst of 120 unauthenticated calls, 40 at a time (enough to exceed 10/s + burst 40 even over a slow link),
+# must produce at least one 429
+n429=$(seq 1 120 | xargs -P 40 -I{} curl -s -o /dev/null -m 15 -w '%{http_code}\n' "$BASE/api/pathways" | grep -c '^429$' || true)
+[ "$n429" -gt 0 ] && ok "rate limit active ($n429 of 120 got 429)" || bad "no 429 in a burst of 120 requests (rate limit not active?)"
 hsts=$(curl -sI -m 15 "$BASE/" | tr -d '\r' | grep -i '^strict-transport-security' || true)
 [ -n "$hsts" ] && ok "HSTS header present" || bad "no Strict-Transport-Security header"
 echo; [ $fail = 0 ] && echo "SMOKE TEST PASSED for $BASE" || echo "SMOKE TEST FAILED for $BASE"

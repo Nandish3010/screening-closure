@@ -1,0 +1,8 @@
+[Unit]
+Description=Daily fallback: restart the Screening Closure API container if its memory is above the lower threshold (BUG-77 workaround)
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/srv/sc/repo/deploy/gcp/vm/sc-api-restart.sh daily

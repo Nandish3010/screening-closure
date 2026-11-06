@@ -163,3 +163,173 @@ def test_demo_clock_banner_and_gate_are_wired():
     assert "demo-clock-banner" in (REPO_ROOT / "web/src/components/DemoBanner.tsx").read_text()
     assert "DemoBanner" in (REPO_ROOT / "web/src/components/Header.tsx").read_text()
     assert "Demo, synthetic data, simulated time" in (REPO_ROOT / "web/src/i18n/strings.ts").read_text()
+
+
+def test_keycloak_import_dir_is_readable_by_the_container_user():
+    # sc-up.sh runs under umask 077; Keycloak (uid 1000) must still read the import dir or it crash-loops with "directory not found".
+    up = (GCP / "vm" / "sc-up.sh").read_text()
+    assert "chmod 0755 /etc/sc/keycloak-import" in up
+    assert "chmod 0644 /etc/sc/keycloak-import/screening-closure-realm.json" in up
+
+
+def test_sized_for_the_4gb_e2_medium():
+    import re
+
+    lib = (GCP / "lib.sh").read_text()
+    assert ': "${SC_MACHINE_TYPE:=e2-medium}"' in lib and ': "${SC_QUANT:=q5_k_m}"' in lib
+    data = yaml.load((GCP / "compose.gcp.yml").read_text(), Loader=cl._Loader)
+    mb = lambda name: int(re.fullmatch(r"(\d+)m", data["services"][name]["mem_limit"]).group(1))  # noqa: E731
+    assert (mb("api"), mb("fhir"), mb("keycloak-prod"), mb("triage-llama")) == (1024, 1300, 700, 1500)
+    assert "-Xmx${FHIR_HEAP_MB:-768}m" in data["services"]["fhir"]["environment"]["JAVA_TOOL_OPTIONS"]
+    assert "-Xmx384m" in data["services"]["keycloak-prod"]["environment"]["JAVA_OPTS_KC_HEAP"]
+    # each heap leaves room for the JVM's own overhead inside its container limit, and the limits together fit 4 GB with Postgres and the OS
+    assert 768 + 400 <= mb("fhir") and 384 + 250 <= mb("keycloak-prod")
+    startup = (GCP / "vm" / "startup.sh").read_text()
+    assert "fallocate -l 4G /swapfile" in startup  # 4 GB swap, grown from an older 2 GB file
+
+
+def test_llama_healthcheck_uses_the_port_it_listens_on():
+    data = yaml.load((GCP / "compose.gcp.yml").read_text(), Loader=cl._Loader)
+    llama = data["services"]["triage-llama"]
+    port = llama["command"][llama["command"].index("--port") + 1]
+    assert port == "8081" and f"localhost:{port}/health" in " ".join(llama["healthcheck"]["test"])
+
+
+# ---- BUG-77: the gated API restart (deploy/gcp/vm/sc-api-restart.sh) and its installation -----------------------------------------
+# No Docker and no systemd: a fake `docker` on PATH records the calls, a fake cgroup tree and /proc/meminfo give the readings.
+
+MIB = 1024 * 1024
+
+
+def _run_restart(tmp_path, mode, *, anon_mib=None, stats="", limit=1024 * MIB, last=None, extra_env=None):
+    import os
+    import stat
+
+    bindir = tmp_path / "bin"
+    bindir.mkdir(exist_ok=True)
+    calls = tmp_path / "calls"
+    calls.write_text("")
+    fake = bindir / "docker"
+    fake.write_text(
+        f"""#!/bin/bash
+echo "$*" >> {calls}
+case "$1 $2" in
+  "compose ps") echo abc123 ;;
+  "compose restart") ;;
+  "inspect -f") echo {limit} ;;
+  "stats --no-stream") echo "{stats}" ;;
+esac
+"""
+    )
+    fake.chmod(fake.stat().st_mode | stat.S_IXUSR)
+    cg = tmp_path / "cg"
+    scope = cg / "system.slice" / "docker-abc123.scope"
+    scope.mkdir(parents=True, exist_ok=True)
+    if anon_mib is not None:
+        (scope / "memory.stat").write_text(f"file 99999999\nanon {int(anon_mib * MIB)}\n")
+    meminfo = tmp_path / "meminfo"
+    meminfo.write_text("MemTotal:        8000000 kB\n")
+    state = tmp_path / "last"
+    if last is not None:
+        state.write_text(str(last))
+    env = {
+        **os.environ,
+        "PATH": f"{bindir}:{os.environ['PATH']}",
+        "SC_REPO": str(tmp_path),
+        "SC_ENV_SH": str(tmp_path / "absent.sh"),
+        "SC_CGROUP_ROOT": str(cg),
+        "SC_MEMINFO": str(meminfo),
+        "SC_RESTART_LOG": str(tmp_path / "restart.log"),
+        "SC_RESTART_STATE": str(state),
+        **(extra_env or {}),
+    }
+    r = subprocess.run(["bash", str(GCP / "vm/sc-api-restart.sh"), mode], capture_output=True, text=True, env=env, timeout=30)
+    log = (tmp_path / "restart.log").read_text() if (tmp_path / "restart.log").exists() else ""
+    return r, "compose restart api" in calls.read_text(), log
+
+
+def test_api_restart_below_the_gate_restarts_nothing(tmp_path):
+    r, restarted, log = _run_restart(tmp_path, "gate", anon_mib=500)  # 48.8% of 1024 MiB
+    assert r.returncode == 0 and not restarted and log == ""
+    assert "no restart" in r.stdout
+
+
+def test_api_restart_above_the_gate_restarts_only_api_and_logs_the_reason(tmp_path):
+    r, restarted, log = _run_restart(tmp_path, "gate", anon_mib=760)  # 74%
+    assert r.returncode == 0 and restarted
+    assert "RESTARTED" in log and "memory 74% >= gate 70%" in log and "cgroup anon" in log
+    calls = (tmp_path / "calls").read_text()
+    assert "compose restart api" in calls and "down" not in calls and "restart postgres" not in calls
+
+
+def test_api_restart_daily_fallback_uses_the_lower_threshold(tmp_path):
+    r, restarted, log = _run_restart(tmp_path, "daily", anon_mib=450)  # 44%: over 40, under 70
+    assert restarted and "daily fallback" in log
+    (tmp_path / "g").mkdir()
+    r, restarted, _ = _run_restart(tmp_path / "g", "gate", anon_mib=450)
+    assert not restarted
+    (tmp_path / "g2").mkdir()
+    r, restarted, _ = _run_restart(tmp_path / "g2", "daily", anon_mib=300)  # 29%: under both
+    assert not restarted
+
+
+def test_api_restart_loop_guard_and_check_mode(tmp_path):
+    import time
+
+    r, restarted, log = _run_restart(tmp_path, "gate", anon_mib=900, last=int(time.time()) - 600)
+    assert r.returncode == 0 and not restarted and "WANTED restart" in log and "not restarting" in log
+    (tmp_path / "c").mkdir()
+    r, restarted, _ = _run_restart(tmp_path / "c", "check", anon_mib=900)
+    assert r.returncode == 0 and not restarted and "87%" in r.stdout
+    (tmp_path / "u").mkdir()
+    assert _run_restart(tmp_path / "u", "bogus")[0].returncode == 2
+
+
+def test_api_restart_falls_back_to_docker_stats_and_to_host_memory(tmp_path):
+    r, restarted, log = _run_restart(tmp_path, "gate", stats="760MiB / 1GiB", anon_mib=None)
+    assert restarted and "docker stats" in log
+    (tmp_path / "h").mkdir()
+    # no container limit (0): the limit is the host's MemTotal, 8000000 kB; 6 GiB used is 78%
+    r, restarted, log = _run_restart(tmp_path / "h", "gate", anon_mib=6 * 1024, limit=0)
+    assert restarted and "host MemTotal" in log
+
+
+def test_api_restart_units_and_installation():
+    vm = GCP / "vm"
+    timer = (vm / "sc-api-restart.timer").read_text()
+    assert "OnUnitActiveSec=15min" in timer and "OnCalendar" not in timer  # no blind clock-time restart
+    assert "sc-api-restart.sh gate" in (vm / "sc-api-restart.service").read_text()
+    assert "sc-api-restart.sh daily" in (vm / "sc-api-restart-daily.service").read_text()
+    assert "OnCalendar" in (vm / "sc-api-restart-daily.timer").read_text()
+    # installed on every run of sc-up.sh (boot and deploy), all four units, enabled; startup.sh no longer carries a conditional copy
+    up = (vm / "sc-up.sh").read_text()
+    for unit in ("sc-api-restart.service", "sc-api-restart.timer", "sc-api-restart-daily.service", "sc-api-restart-daily.timer"):
+        assert unit in up
+    assert "systemctl enable --now sc-api-restart.timer sc-api-restart-daily.timer" in up
+    assert "sc-api-restart" not in "\n".join(l for l in (vm / "startup.sh").read_text().splitlines() if not l.lstrip().startswith("#"))
+    # a re-run of deploy.sh refreshes the startup-script metadata on an existing VM
+    deploy = (GCP / "deploy.sh").read_text()
+    assert deploy.count("startup-script=$here/vm/startup.sh") == 2
+    # the gate needs a limit to be a percentage of
+    api = yaml.safe_load((GCP / "compose.gcp.yml").read_text())["services"]["api"]
+    assert api["mem_limit"] == "1024m"
+
+
+def test_demo_reset_watcher_units_are_installed_by_sc_up():
+    """ADR-058 wiring: both reset units are installed and enabled by sc-up.sh, /var/lib/sc-demo is owned by uid 10001, no cron."""
+    vm = GCP / "vm"
+    up = (vm / "sc-up.sh").read_text()
+    for unit in ("sc-demo-reset-watch.service", "sc-demo-reset-watch.timer", "sc-demo-reset-scheduled.service", "sc-demo-reset-scheduled.timer"):
+        assert (vm / unit).exists() and unit in up
+    assert "systemctl enable --now sc-demo-reset-watch.timer sc-demo-reset-scheduled.timer" in up
+    assert "chown 10001 /var/lib/sc-demo" in up
+    assert "demo-reset-watch.sh --scheduled" in (vm / "sc-demo-reset-scheduled.service").read_text()
+    assert "demo-reset-watch.sh" in (vm / "sc-demo-reset-watch.service").read_text()
+    assert "OnUnitActiveSec=15" in (vm / "sc-demo-reset-watch.timer").read_text()
+    assert "OnUnitActiveSec=6h" in (vm / "sc-demo-reset-scheduled.timer").read_text()
+    # no cron, and startup.sh does not carry the units
+    assert "cron" not in up.lower()
+    assert "sc-demo-reset" not in "\n".join(l for l in (vm / "startup.sh").read_text().splitlines() if not l.lstrip().startswith("#"))
+    # the folder is bind-mounted into the api container
+    api = yaml.safe_load((GCP / "compose.gcp.yml").read_text())["services"]["api"]
+    assert "/var/lib/sc-demo:/var/lib/sc-demo" in api["volumes"] and api["mem_limit"] == "1024m"

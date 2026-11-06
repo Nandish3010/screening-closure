@@ -1,11 +1,11 @@
 [Unit]
-Description=Daily restart of the Screening Closure API container (BUG-77 workaround)
+Description=Every 15 minutes: restart the Screening Closure API container only if its memory is above the gate (BUG-77 workaround)
 
 [Timer]
-# 22:30 UTC = 02:30 Gulf time, outside clinic hours.
-OnCalendar=*-*-* 22:30:00 UTC
+OnBootSec=15min
+OnUnitActiveSec=15min
 Persistent=false
-RandomizedDelaySec=300
+AccuracySec=1min
 
 [Install]
 WantedBy=timers.target

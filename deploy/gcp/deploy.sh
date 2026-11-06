@@ -1,7 +1,7 @@
 #!/bin/bash
 # Creates the hosted demo's cloud resources and delivers the code. THIS SPENDS MONEY: run it only after you approved the cost in
 # docs/governance/hosting-gcp.md. It refuses to run without --yes-spend. Idempotent (re-running reuses what exists).
-#   deploy.sh --yes-spend [--model tools/triage/gguf/triage-q8_0.gguf]
+#   deploy.sh --yes-spend [--model tools/triage/gguf/triage-q5_k_m.gguf]
 # --model uploads the converted triage model (about 1-1.7 GB, over IAP SSH) to the VM; without it replies fail safe to a person.
 # Creates: APIs enabled, a service account with NO project roles, secrets in Secret Manager (generated here, never printed),
 # firewall (80/443 from anywhere, SSH only through IAP), one static IP, one VM, a billing budget alert. It does NOT start serving
@@ -52,12 +52,15 @@ if ! gcloud compute instances describe "$SC_VM_NAME" --zone "$GCP_ZONE" "${P[@]}
     --shielded-secure-boot --shielded-vtpm --shielded-integrity-monitoring \
     --metadata "enable-oslogin=TRUE,sc-public-host=$HOST" --metadata-from-file "startup-script=$here/vm/startup.sh" "${P[@]}"
 else
-  gcloud compute instances add-metadata "$SC_VM_NAME" --zone "$GCP_ZONE" --metadata "sc-public-host=$HOST" "${P[@]}" >/dev/null
+  gcloud compute instances add-metadata "$SC_VM_NAME" --zone "$GCP_ZONE" --metadata "sc-public-host=$HOST" \
+    --metadata-from-file "startup-script=$here/vm/startup.sh" "${P[@]}" >/dev/null
 fi
 
 echo "== budget alert (email to billing admins at 50/90/100 percent of ${SC_BUDGET_USD} USD; an alert, not a spending cap)"
 ba=$(gcloud billing projects describe "$GCP_PROJECT" --format='value(billingAccountName)' | sed 's|billingAccounts/||')
-if [ -n "$ba" ]; then
+if [ -n "$ba" ] && ! gcloud billing budgets list --billing-account "$ba" --format='value(name)' >/dev/null 2>&1; then
+  echo "budget: this identity cannot read budgets on billing account $ba (e.g. a deployer service account); skipped. Create or check sc-demo-budget in the console or as a billing admin."
+elif [ -n "$ba" ]; then
   gcloud billing budgets list --billing-account "$ba" --filter="displayName=sc-demo-budget" --format='value(name)' | grep -q . || \
     gcloud billing budgets create --billing-account "$ba" --display-name sc-demo-budget --budget-amount "${SC_BUDGET_USD}USD" \
       --filter-projects "projects/$GCP_PROJECT" --threshold-rule percent=0.5 --threshold-rule percent=0.9 --threshold-rule percent=1.0
