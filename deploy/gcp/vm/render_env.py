@@ -51,6 +51,9 @@ def build_files(host: str, secrets: dict[str, str], mode: str = "production", de
     compose = {
         "POSTGRES_PASSWORD": s["postgres-password"],
         "APP_DB_PASSWORD": s["app-db-password"],
+        # docker-compose.yml sets the api's APP_ENV from ${APP_ENV:-dev} (ADR-059 F6); `environment:` beats env_file, so the
+        # mode must also be set here or the production API silently runs as dev (found on the VM, 6 Nov 2026).
+        "APP_ENV": "production" if prod else "dev",
         "AUTH_MODE": "oidc" if prod else "dev",
         "OIDC_ISSUER": issuer,
         "OIDC_JWKS_URL": f"http://keycloak:8080/auth/realms/{REALM}/protocol/openid-connect/certs",
