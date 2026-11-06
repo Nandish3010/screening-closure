@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useApp } from "../app/AppContext";
-import type { AgeBucket, Alert, CaseSummary, ClosureMetrics, EffortMetrics, FunnelMetrics } from "../api/contract";
+import type { AgeBucket, Alert, CaseSummary, ClosureMetrics, EffortMetrics, FunnelMetrics, Heartbeats } from "../api/contract";
 import { BarChart } from "../components/BarChart";
 import { EffortCard } from "../components/EffortCard";
 import { FunnelCard, NO_FUNNEL_FILTER, type FunnelFilters } from "../components/FunnelCard";
@@ -43,6 +43,18 @@ function Days({ value }: { value: number | null | undefined }) {
   return <>{value}<small> days</small></>;
 }
 
+/** The scheduler counts as down after this long without a heartbeat (api/app/ops.py HEARTBEAT_MAX_AGE_SECONDS; tests/dashboard.test.tsx keeps them equal). */
+export const SCHEDULER_SILENT_ALERT_SECONDS = 60;
+
+/** "4 seconds", "1 minute": the age of a heartbeat in real time, rounded; null when it has not beaten yet. */
+export function beatAge(h: { age_seconds: number } | null | undefined): string | null {
+  if (!h || !Number.isFinite(h.age_seconds)) return null;
+  const s = Math.max(0, Math.round(h.age_seconds));
+  if (s < 90) return s === 1 ? "1 second" : `${s} seconds`;
+  const m = Math.round(s / 60);
+  return `${m} minutes`;
+}
+
 /** Heartbeats are real wall-clock time (that is what liveness means), so say how long ago in real minutes, not a date under the simulated clock. */
 export function minutesSince(iso: string, now: number = Date.now()): string | null {
   const t = Date.parse(iso);
@@ -72,6 +84,7 @@ export function DashboardPage() {
   const [flagged, setFlagged] = useState<CaseSummary[] | null>(null);
   const [flaggedError, setFlaggedError] = useState<string | null>(null);
   const [alerts, setAlerts] = useState<Alert[]>([]);
+  const [beats, setBeats] = useState<Heartbeats | null>(null);
 
   useEffect(() => {
     let live = true;
@@ -139,6 +152,7 @@ export function DashboardPage() {
 
   const loadAlerts = useCallback(() => {
     api.listAlerts().then(setAlerts).catch(() => undefined); // an unreachable alert feed must not hide the dashboard
+    api.getHeartbeats?.().then(setBeats).catch(() => undefined); // the live adapter only; a role that may not read it simply shows nothing
   }, [api]);
   useEffect(() => {
     loadAlerts();
@@ -163,6 +177,14 @@ export function DashboardPage() {
           <strong>The scheduler is down.</strong> {stoppedWording(a.since)}, so SLA clocks are not being checked and no case will be marked overdue or escalated until it is back.
         </p>
       ))}
+      {beats && (beats.scheduler || beats.watchdog) && (
+        <p className={down.length === 0 ? "muted" : "banner banner-watchdog"} role="status" data-testid="safety-net-status">
+          <strong>Safety net:</strong>{" "}
+          scheduler {beatAge(beats.scheduler) ? `last reported ${beatAge(beats.scheduler)} ago` : "has not reported yet"},
+          watchdog {beatAge(beats.watchdog) ? `last checked ${beatAge(beats.watchdog)} ago` : "has not checked yet"} (real time).
+          The watchdog raises the alert above when the scheduler has been silent for {SCHEDULER_SILENT_ALERT_SECONDS} seconds.
+        </p>
+      )}
       {down.length === 0 && recovered.length > 0 && (
         <p className="banner banner-ok" role="status" data-testid="scheduler-recovered">
           The scheduler is running again (it was down since {fmtDateTime(recovered.at(-1)!.since)}, cleared {fmtDateTime(recovered.at(-1)!.cleared_at)}).

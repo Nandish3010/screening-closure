@@ -1123,6 +1123,21 @@ export interface Alert {
   cleared_at: string | null;
 }
 
+/**
+ * GET /heartbeats -> Heartbeats (A11, coordinator and supervisor). The age of the latest heartbeat of each service, in real seconds
+ * (liveness is wall-clock time, not simulated time); `null` until that service has beaten once. The watchdog raises `scheduler_down`
+ * when the scheduler's is older than 60 s (api/app/ops.py HEARTBEAT_MAX_AGE_SECONDS).
+ */
+export interface ServiceHeartbeat {
+  service: string;
+  last_beat_at: string;
+  age_seconds: number;
+}
+export interface Heartbeats {
+  scheduler: ServiceHeartbeat | null;
+  watchdog: ServiceHeartbeat | null;
+}
+
 // ---------------------------------------------------------------------------------------
 // Identity
 // ---------------------------------------------------------------------------------------
@@ -1571,6 +1586,8 @@ export interface ApiClient {
   sahatnaBookingCallback?(caseId: string): Promise<SahatnaCallbackResult>;
   /** GET /alerts: active and cleared platform alerts (scheduler down). */
   listAlerts(): Promise<Alert[]>;
+  /** GET /heartbeats: how long ago the scheduler and the watchdog last reported (http only); null where the route is absent or the role may not read it. */
+  getHeartbeats?(): Promise<Heartbeats | null>;
   /** GET /agency/org (A22): the org chart with live counts. Coordinator and supervisor; others 403. */
   agencyOrg(): Promise<AgencyOrg>;
   /** GET /agency/runs?limit=N (A22): newest first. */

@@ -3,6 +3,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { MemoryRouter } from "react-router-dom";
 import { readFileSync } from "node:fs";
+import { renderToStaticMarkup } from "react-dom/server";
 import type { ApiClient } from "../src/api/contract";
 import type { OidcClient } from "../src/api/oidc";
 import { createMockAdapter } from "../src/api/mockAdapter";
@@ -55,11 +56,11 @@ describe("role cards on the hosted demo's sign-in page", () => {
 
 describe("the five-step tour", () => {
   it("is the challenge owner's loop, deep-linked into the real screens, with try-it prompts", () => {
-    expect(CHALLENGE_STEPS.map((s) => s.id)).toEqual(["record", "prioritise", "refer", "remind", "outcome", "safety", "privacy"]);
+    expect(CHALLENGE_STEPS.map((s) => s.id)).toEqual(["record", "prioritise", "refer", "remind", "outcome", "safety", "watchdog", "privacy"]);
     expect(TODAY_ROUTE).toBe("/coordinator/today");
     expect(CHALLENGE_STEPS[0].route([], null)).toBe(TODAY_ROUTE); // no fresh case known: the screen, not a case
     expect(CHALLENGE_STEPS[3].also?.map((a) => a.to)).toEqual(["/patient"]);
-    expect(CHALLENGE_STEPS[6].also?.map((a) => a.to)).toEqual([PRIVACY_ROUTE]);
+    expect(CHALLENGE_STEPS[7].also?.map((a) => a.to)).toEqual([PRIVACY_ROUTE]);
     expect(CHALLENGE_STEPS[4].route([], null)).toBe("/dashboard");
     expect(CHALLENGE_STEPS[4].target).toContain("funnel-card");
     for (const s of CHALLENGE_STEPS) {
@@ -69,6 +70,22 @@ describe("the five-step tour", () => {
     }
     expect(CHALLENGE_STEPS[5].target).toContain("missed-followup");
     expect(CHALLENGE_STEPS[5].lookFor!.join(" ")).toMatch(/accept/i);
+    // the watchdog step: the scheduler-kill moment, shown truthfully (no container control on the hosted demo): the dashboard status and the escalation
+    const wd = CHALLENGE_STEPS[6];
+    expect(wd.route([], null)).toBe("/dashboard");
+    expect(wd.target).toContain("safety-net-status");
+    expect(wd.also?.map((a) => a.to)).toEqual([TODAY_ROUTE, "/coordinator?overdue=1"]);
+    expect(wd.role).toBe("supervisor");
+    // the numbers in the copy are the engine's: the heartbeat limit and the watchdog's loop (api/app/ops.py, docker-compose.yml)
+    const ops = readFileSync("../api/app/ops.py", "utf8");
+    expect(ops).toMatch(/^HEARTBEAT_MAX_AGE_SECONDS = 60\b/m);
+    expect(readFileSync("../docker-compose.yml", "utf8")).toMatch(/WATCHDOG_INTERVAL_SECONDS: \$\{WATCHDOG_INTERVAL_SECONDS:-10\}/);
+    const text = renderToStaticMarkup(<>{wd.body}</>);
+    expect(text).toContain("60 seconds of silence");
+    expect(text).toContain("every 10 seconds");
+    expect(text).toContain("58 to 80 seconds"); // measured, docs/submission/demo-script.md (F11)
+    expect(text).toMatch(/cannot stop containers/);
+    expect(text).toMatch(/person still has to accept/);
     // about five minutes in all
     const seconds = CHALLENGE_STEPS.reduce((n, s) => n + (s.seconds ?? 0), 0);
     expect(seconds).toBeGreaterThanOrEqual(240);
@@ -81,7 +98,7 @@ describe("the five-step tour", () => {
     render(<MemoryRouter initialEntries={["/coordinator"]}><AppProvider api={api} initialRole="coordinator"><App /></AppProvider></MemoryRouter>);
     await screen.findByTestId("demo-clock-banner");
     fireEvent.click(screen.getByTestId("judge-tour-button"));
-    expect(await screen.findByTestId("tour-progress")).toHaveTextContent("Step 1 of 7");
+    expect(await screen.findByTestId("tour-progress")).toHaveTextContent("Step 1 of 8");
     expect(screen.getByTestId("tour-try")).toHaveTextContent("Try it");
     fireEvent.click(screen.getByTestId("tour-next")); fireEvent.click(screen.getByTestId("tour-next"));
     expect(screen.getByTestId("tour-role-hint")).toHaveTextContent("clinician"); // step 3 is clearest as the clinician

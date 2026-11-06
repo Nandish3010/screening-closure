@@ -24,8 +24,8 @@ describe("Start here", () => {
     renderApp(demoApi(), "/");
     const page = await screen.findByTestId("start-here");
     const cards = [...within(page).getByTestId("start-steps").querySelectorAll("li"), ...within(page).getByTestId("start-safety").querySelectorAll("li")];
-    expect(cards).toHaveLength(7); // five loop steps, then the safety net and privacy
-    for (const id of ["record", "prioritise", "refer", "remind", "outcome", "safety", "privacy"]) {
+    expect(cards).toHaveLength(8); // five loop steps, then the safety net (two steps) and privacy
+    for (const id of ["record", "prioritise", "refer", "remind", "outcome", "safety", "watchdog", "privacy"]) {
       const card = screen.getByTestId(`start-step-${id}`);
       expect(within(card).getAllByRole("button")).toHaveLength(1);
       expect(card.querySelector(".start-claim")?.textContent?.length).toBeGreaterThan(20);
@@ -70,7 +70,7 @@ describe("Start here", () => {
     expect(await screen.findByTestId("judge-tour")).toBeInTheDocument();
     expect(screen.getByTestId("tour-claim").textContent).toMatch(/priority tier/i);
     expect(screen.getByTestId("tour-look").textContent).toMatch(/Priority line/);
-    expect(screen.getByTestId("tour-progress")).toHaveTextContent("Step 2 of 7");
+    expect(screen.getByTestId("tour-progress")).toHaveTextContent("Step 2 of 8");
     expect(await screen.findByTestId("priority")).toBeInTheDocument(); // the case page, on an urgent case
   });
 
