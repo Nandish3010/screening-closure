@@ -63,6 +63,21 @@ server {
         proxy_buffers 8 16k;
     }
 
+    # --- the submission video, served from the VM's /srv/sc/media (read-only bind mount; put there by deploy/gcp/put-media.sh, never
+    # in git). Static files only, no listing; nginx answers range requests so browsers can seek. Two connections per visitor.
+    location /media/ {
+        alias /srv/media/;
+        autoindex off;
+        types { video/mp4 mp4; }
+        default_type application/octet-stream;
+        limit_conn conn_ip 2;
+        add_header Cache-Control "public, max-age=3600" always;
+        # add_header here replaces the server-level headers, so repeat them.
+        add_header X-Content-Type-Options nosniff always;
+        add_header Referrer-Policy no-referrer always;
+        add_header X-Frame-Options DENY always;
+    }
+
     # --- the static web app (single page; unknown paths fall back to index.html) -------------------------------------------------
     location / {
         root /usr/share/nginx/html;

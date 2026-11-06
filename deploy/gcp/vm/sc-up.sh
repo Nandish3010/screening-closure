@@ -10,6 +10,7 @@ HOST=$(md instance/attributes/sc-public-host)
 MODE=$(cat /var/lib/sc/mode 2>/dev/null || echo seed)
 umask 077
 mkdir -p /etc/sc /var/lib/sc
+install -d -m 0755 /srv/sc/media   # the submission video, served read-only at /media/ (deploy/gcp/put-media.sh)
 
 PY=$SC_REPO/deploy/gcp/vm
 

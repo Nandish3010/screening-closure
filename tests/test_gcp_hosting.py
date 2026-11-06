@@ -345,3 +345,16 @@ def test_compose_env_carries_app_env_so_the_base_compose_default_cannot_win():
     seed = render_env.build_files("demo.example", SECRETS, mode="seed")
     assert prod["compose.env"]["APP_ENV"] == "production" == prod["api.env"]["APP_ENV"]
     assert seed["compose.env"]["APP_ENV"] == "dev"
+
+
+def test_media_route_is_static_read_only_and_keeps_security_headers():
+    conf = (GCP / "edge" / "nginx.conf.template").read_text()
+    block = conf.split("location /media/ {", 1)[1].split("\n    }", 1)[0]
+    assert "alias /srv/media/;" in block and "autoindex off;" in block and "video/mp4 mp4" in block
+    for h in ("X-Content-Type-Options nosniff", "Referrer-Policy no-referrer", "X-Frame-Options DENY"):
+        assert h in block, h
+    compose = yaml.safe_load((GCP / "compose.gcp.yml").read_text())
+    assert "/srv/sc/media:/srv/media:ro" in compose["services"]["web"]["volumes"]
+    assert "install -d -m 0755 /srv/sc/media" in (GCP / "vm" / "sc-up.sh").read_text()
+    put = (GCP / "put-media.sh").read_text()
+    assert "*.mp4)" in put and "104857600" in put

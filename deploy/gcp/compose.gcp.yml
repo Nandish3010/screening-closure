@@ -124,6 +124,9 @@ services:
         VITE_PUBLIC_HOST: ${SC_PUBLIC_HOST:?set by render_env.py}
     environment:
       SC_PUBLIC_HOST: ${SC_PUBLIC_HOST}
+    # The submission video (/media/ on the edge); the folder is created by sc-up.sh, filled by deploy/gcp/put-media.sh.
+    volumes:
+      - /srv/sc/media:/srv/media:ro
     depends_on: [api]
     networks: [closure]
 
