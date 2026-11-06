@@ -8,21 +8,20 @@ Submission document for Challenge 05. Team Humans Decide. One page for evaluator
 
 ## Test cases
 
-Counted by collection when this page was last updated (late October); counts drift as tests are added, so recount with the commands in the last column. They are static text here, not read from CI. The web unit count includes the tests added with the guided demo.
+Counts from `make check-full` run on 6 November 2026 on the branch docs-hosted-live (code identical to main at 08c6d06; this pass changes documentation only). Result: every stage passed except `calibrate-check`, which was skipped because `data/external/MANIFEST.json` is not in the repository (`make calibrate-fetch` downloads it). Counts drift as tests are added, so recount with `make check-full`. They are static text here, not read from CI.
 
-| Suite | Tests | How to run |
+| Suite | Result on 6 Nov 2026 | How to run |
 |---|---|---|
-| API and engine, no database needed | 2,750 | `pytest api/tests -m "not integration and not chaos and not oidc"` |
-| API against a real Postgres (integration) | 328 | `make test-db` |
-| Chaos (stops and restarts containers) | 46 | `make test-chaos` |
-| Identity provider (real Keycloak) | 7 | `make test-oidc` |
-| Simulator and evaluation | 1,676 | `pytest simulator/tests` |
-| Repository checks (docs, hosting, tracker, secrets, RBAC) | 199 | `pytest tests --ignore=tests/redteam` |
-| Red team (abuse, injection, authorisation) | 957 | `make test-redteam` |
-| Tools (demo, video, pilot cost model, AI-safety, reviews, calibration) | 151 | `pytest tools/*/tests` |
-| Web unit and component | 548 in 42 files | `make web-test` |
-| Web browser (Playwright, including the accessibility audit) | 55 in 10 spec files | `make web-e2e` |
-| Documented test cases, each with a pass criterion | 201 | [../../project/TEST-CASES.md](../../project/TEST-CASES.md) |
+| API, engine, simulator, tools and repository checks (the `test` stage) | 4,558 passed, 2 skipped | `make test` |
+| API against a real Postgres (integration) | 302 passed, 26 skipped | `make test-db` |
+| Model check of the state machine | PASS (23,730 abstract states) | `make verify` |
+| Security and RBAC matrix | 73 passed; 1,155 role and event combinations probed, 0 documented gap cells | `make test-security` |
+| Tools (demo, video, pilot cost model, AI-safety, reviews, calibration) | 344 passed, 2 deselected | `make test-tools` |
+| Red team (abuse, injection, authorisation) | 971 passed, 10 xfailed (known limitations) | `make test-redteam` |
+| Web unit and component | 640 passed | `make web-test` |
+| Web browser (Playwright, including the accessibility audit) | 90 passed | `make web-e2e` |
+| Chaos (stops and restarts containers) and identity provider (real Keycloak) | not part of `check-full`; not re-run in this pass | `make test-chaos`, `make test-oidc` |
+| Documented test cases, each with a pass criterion | see [../../project/TEST-CASES.md](../../project/TEST-CASES.md) | |
 
 `make check` runs the fast tier and `make check-full` adds the simulator-heavy stages; both must pass before a merge (see the README).
 
@@ -51,7 +50,7 @@ The upper-range scenario (a ceiling for the mechanism, not a forecast) reaches 8
 | Scheduler sweep keeps its 10 s cadence (4 h soak) | at least 95% of nominal starts | 100.0% (1,440 of 1,440) | met |
 | 1,000,000-case daily burst inside one 10 s loop | one loop | bounded, drains in 9 loops (2.4 minutes) | **not met** |
 | API memory flat over a 4 h soak | flat | +43.85 to +45.94 MiB/h per pod | **not met** |
-| Hosted demo end to end | passes the smoke test | deploys 8 November 2026; not yet deployed | **not run** |
+| Hosted demo end to end | passes the smoke test | live since 6 November 2026; smoke test 19 of 19 passed on the VM | **run once (6 Nov 2026)** |
 
 ## Reply triage by language group
 
@@ -78,7 +77,7 @@ Reading: Arabizi misses the target in the original build. The hosted build adds 
 | API memory grows slowly under load | Cause not found; the scan-path transient was found and fixed, a worker-recycling mitigation failed at the pod limit | [../results/scale.md](../results/scale.md) |
 | The one-loop burst is not met | A 1,000,000-case daily catch-up exceeds one 10 s loop (it drains across loops); one laptop-class host, no cloud measured (the sweep cadence itself is now met) | [../results/scale.md](../results/scale.md) |
 | Overload is refused, not served | Above the highest passing rate the API answers 503 with a retry time | [../results/scale.md](../results/scale.md) |
-| Hosted demo not yet exercised | Deploys on 8 November 2026 and is not live yet; the container builds, identity provider, certificates and reset are untested on the VM | [../governance/hosting-gcp.md](../governance/hosting-gcp.md) |
+| Hosted demo is one small VM | Live since 6 November 2026 on one e2-medium VM with no failover; no load test was run on it and the GKE load test was not run (owner spend cap) | [../governance/hosting-gcp.md](../governance/hosting-gcp.md) |
 | Pathway values not clinician-reviewed | Thresholds and timings are placeholders until the clinical review (H1) | [../governance/third-pathway.md](../governance/third-pathway.md) |
 
 ## Comparison with existing approaches

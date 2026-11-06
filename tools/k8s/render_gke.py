@@ -2,7 +2,7 @@
 Pure functions from the raw files in docs/results/scale/gke/ to Markdown lines; every number printed is read from them. Imported by render_scale.py.
 
 Until a real run has been imported (`make gke-import RUN=results/gke-loadtest/<run id>`, which copies run.json, seed.json, sweep.json, latency.json and
-soak.json there) the section says "pending run on 8 Nov" and lists what the run will measure. A local kind REHEARSAL (mode "kind") is never
+soak.json there) the section says "not run: owner budget limit" and lists what the run will measure. A local kind REHEARSAL (mode "kind") is never
 rendered as a measurement: the importer refuses it.
 
     python tools/k8s/render_gke.py --import-run results/gke-loadtest/20261108-101500
@@ -28,9 +28,9 @@ SWEEP_TARGET_S = 10.0
 P99_LIMIT_MS = 500.0
 
 PENDING = [
-    "# Cloud run (GKE): not run, owner budget limit (pending run on 8 Nov)",
+    "# Cloud run (GKE): not run: owner budget limit (owner spend cap, 6 Nov 2026)",
     "",
-    "**Status: not run: owner budget limit (pending run on 8 Nov, only if the owner approves spend).** Nothing in this section has been measured yet. Every figure in the sections below this one was measured on one laptop-class "
+    "**Status: not run: owner budget limit. On 6 November 2026 the owner capped spend at the single demo VM, so this test was not run. The harness is ready; results are pending a funded run.** Nothing in this section has been measured yet. Every figure in the sections below this one was measured on one laptop-class "
     "machine with a local kind cluster (see \"What it is not\" above); no cloud environment has been measured. The load test is prepared and rehearsed locally "
     "(`deploy/gke/`, `docs/governance/gke-loadtest.md`, a local kind rehearsal of the same pipeline) but the owner has not approved any cloud spend, so it is NOT scheduled and the script refuses to run without `SC_ALLOW_SPEND=1`. "
     "If spend is approved later it would run as `SC_ALLOW_SPEND=1 make gke-loadtest PROJECT=<id>`. This section is regenerated from `docs/results/scale/gke/*.json` once a run has been imported "

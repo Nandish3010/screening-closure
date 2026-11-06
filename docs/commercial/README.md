@@ -24,7 +24,7 @@ The system frees **coordinator hours**; it does not cut the cost of a case. At w
 
 | Item | Figure | Why it is only an assumption |
 |---|---|---|
-| Licence | About **AED 2.0 million** a year for a four-pathway programme licence (two pathways implemented, bowel and cervical; two designed only) | No price has been tested with anyone. |
+| Licence | About **AED 2.0 million** a year for a four-pathway programme licence (bowel and cervical are implemented, long-term conditions is also implemented but not in the priced scope; blood-based and breast recall are designed only) | No price has been tested with anyone. |
 | Cost to serve | About AED 1.71 million a year at about 24,600 actionable cases | Hosting at Azure UAE North list prices; every other input assumed. |
 | Margin and payback | 14% margin; 21-month operator payback on the integration and pathway work | Follows from the two rows above. |
 | Avoided cost | Avoided first-year treatment cost covers 69% of the licence (FIT pathway) | Simulated, with observational odds ratios and an unvalidated 270-day timing. Avoided cost alone does not pay the fee. |

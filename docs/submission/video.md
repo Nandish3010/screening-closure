@@ -2,7 +2,7 @@
 
 Both videos are produced by a script from the storyboard of [demo-script.md](demo-script.md), with no human recording: Playwright drives the real web app against the live stack, a text-to-speech voice reads the narration, and ffmpeg joins the shots. **All data shown is synthetic, and the narration is synthetic text-to-speech (the local neural voice Kokoro "Emma", `bf_emma`, run offline; macOS `say` is only a fallback and is not used in the submission), not a person.** Say so wherever the video is posted.
 
-**Status (5 November 2026): the submission video, version 7, is recorded, with no code on screen.** The file is outside the repository, in `screening-closure-videos/`. A re-render that fixes one blank results card is in progress on another branch, so treat the file name and length as provisional until that lands. The sections below are the history of earlier cuts and the method; where one says "not yet recorded", version 7 supersedes it.
+**Status (5 November 2026): the submission video, version 7, is recorded, with no code on screen.** The file is outside the repository, in `screening-closure-videos/`. A re-render that fixes one blank results card is in progress on another branch, so treat the file name and length as provisional until that lands. *Update, 6 November 2026:* the blank-card fix has merged (PR #42, #46). The video predates the 4 long-term-condition cases; the hosted demo shows 26 cases. The sections below are the history of earlier cuts and the method; where one says "not yet recorded", version 7 supersedes it.
 
 | File | What | Where |
 |---|---|---|

@@ -1,5 +1,7 @@
 # Demo script: 7 minutes (6:30 spoken), Q&A and backup video
 
+
+> **Note, 6 November 2026.** The recorded video and the teleprompter predate the 4 long-term-condition cases (ADR-057) and say "twenty-two open cases". The hosted demo now shows 26 cases: 22 bowel-screening plus 4 long-term-condition. The narration below is left as recorded.
 The live demo for the GITEX finals, if shortlisted, plus the answers to the questions we expect and the storyboard for the 3-minute submission video. **All data shown is synthetic**, and every number spoken comes from [`docs/results/results.md`](../results/results.md) (literature-anchored scenario) or [`docs/evidence.md`](../evidence.md); the source is given next to each line. The words to say, with a click cue every 15 seconds, are in [teleprompter.md](teleprompter.md) (spoken words only, under 900).
 
 Timing rule: the script is written for 6:28 of talking inside a 7:00 slot (the teleprompter is paced at 2.3 words a second, 35 words per 15 seconds at most; its last block starts at 6:15 and runs about 13 seconds; re-timed for M7-4 and M7-3) and must be rehearsed to 6:30 or less (T-E11). Rehearsals and their timings are logged by the human owner (H3) in `docs/demo/rehearsals.md`; recording the backup and submission videos is H4.
