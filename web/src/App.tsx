@@ -1,4 +1,4 @@
-import { Link, Navigate, Route, Routes } from "react-router-dom";
+import { Link, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { Header } from "./components/Header";
 import { CoordinatorPage } from "./pages/CoordinatorPage";
 import { TodayPage } from "./pages/TodayPage";
@@ -11,6 +11,7 @@ const PilotValuePage = lazy(() => import("./pages/PilotValuePage").then((m) => (
 import { TourProvider } from "./judge/JudgeTour";
 const DashboardPage = lazy(() => import("./pages/DashboardPage").then((m) => ({ default: m.DashboardPage })));
 import { StartHerePage } from "./pages/StartHerePage";
+import { PreviewPage } from "./pages/PreviewPage";
 const PatientPage = lazy(() => import("./pages/PatientPage").then((m) => ({ default: m.PatientPage })));
 const PatientHome = lazy(() => import("./pages/PatientPage").then((m) => ({ default: m.PatientHome })));
 import { DEMO_PATIENT_CASE_ID } from "./api/fixtures";
@@ -22,8 +23,11 @@ import { BrandLockup } from "./components/Brand";
 
 /** OIDC mode (A29): shown until someone has signed in at the identity provider. Demo users are listed to pre-fill the login form. */
 export function SignInPage({ error }: { error?: string | null }) {
-  const { api, demoDeployment } = useApp();
+  const { api, demoDeployment, healthKnown } = useApp();
   const oidc = api.oidc!;
+  // Whether this is the hosted judge demo is only known once GET /health has answered: until then show a neutral loading state,
+  // never the developer's "make oidc-up" page (it flashed up before the role cards).
+  if (!healthKnown) return <SignInLoading />;
   if (demoDeployment) return <JudgeSignIn error={error} />;
   return (
     <main className="container" id="main">
@@ -44,6 +48,14 @@ export function SignInPage({ error }: { error?: string | null }) {
           </li>
         ))}
       </ul>
+    </main>
+  );
+}
+
+function SignInLoading() {
+  return (
+    <main className="container" id="main" data-testid="signin-loading">
+      <p role="status" aria-live="polite">Loading...</p>
     </main>
   );
 }
@@ -76,6 +88,7 @@ function JudgeSignIn({ error }: { error?: string | null }) {
           </li>
         ))}
       </ul>
+      <p className="preview-link"><Link className="btn" to="/preview" data-testid="preview-link">Preview without signing in</Link> <span className="muted">Screenshots of the five steps on synthetic data, and the headline numbers. No password needed.</span></p>
       <p className="muted">Once in, use <strong>Judge tour</strong> in the header for the five steps of the programme (record, prioritise, refer, reminders and navigation, outcome). You can switch role at any time with &quot;Sign in as&quot; in the header.</p>
     </main>
   );
@@ -128,6 +141,9 @@ export default function App({ signInError = null }: { signInError?: string | nul
     (cb) => api.oidc?.subscribe(cb) ?? (() => undefined),
     () => (api.oidc ? api.oidc.signedIn() : true),
   );
+  const { pathname } = useLocation();
+  // The public preview (screenshots only, no API call) is reachable without signing in, and signed in too.
+  if (pathname === "/preview" || pathname.startsWith("/preview/")) return <PreviewPage />;
   if (api.oidc && !signedIn) return <SignInPage error={signInError} />;
   return (
     <TourProvider>

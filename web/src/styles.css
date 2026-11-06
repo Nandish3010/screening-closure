@@ -756,3 +756,17 @@ table, pre, .mono { max-width: 100%; }
   .outreach-banner.is-open .ob-compact { display: none; }
   .outreach-banner.is-open .ob-full { flex: 1; min-width: 0; }
 }
+
+/* Public preview (/preview) and its link on the judge sign-in page */
+.preview-link { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2) var(--s-3); margin: var(--s-4) 0; }
+.preview-link .btn, .preview-actions .btn { min-height: 44px; display: inline-flex; align-items: center; }
+.preview-steps { list-style: none; padding: 0; margin: var(--s-4) 0; display: grid; gap: var(--s-5); grid-template-columns: minmax(0, 1fr); }
+.preview-steps li { margin: 0; min-width: 0; }
+.preview-steps figure { margin: 0; border: 1px solid var(--border); border-radius: var(--r-md); background: var(--surface); box-shadow: var(--shadow); overflow: hidden; }
+.preview-steps h2 { margin: 0; padding: var(--s-3) var(--s-4) var(--s-2); }
+.preview-steps img { display: block; width: 100%; height: auto; border-block: 1px solid var(--border); }
+.preview-steps figcaption { padding: var(--s-3) var(--s-4); }
+.preview-figures { padding-inline-start: 1.1rem; }
+.preview-figures li { margin: var(--s-2) 0; }
+@media (min-width: 1000px) { .preview-steps { grid-template-columns: repeat(2, minmax(0, 1fr)); } .preview-steps li:first-child { grid-column: 1 / -1; } }
+.preview-page { overflow-wrap: anywhere; }
