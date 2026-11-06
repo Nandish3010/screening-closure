@@ -8,12 +8,14 @@ environment, is never returned, never logged and never put in an error. Only the
 
 from __future__ import annotations
 
+import json
 import logging
 import threading
 import time
+import urllib.error
+import urllib.parse
+import urllib.request
 from collections import deque
-
-import httpx
 
 from app.config import settings
 
@@ -85,8 +87,21 @@ def _admit(ip: str) -> None:
                 del _per_ip[k]
 
 
-def _exchange(url: str, form: dict[str, str]) -> httpx.Response:
-    return httpx.post(url, data=form, headers={"Accept": "application/json"}, timeout=8.0)
+def _exchange(url: str, form: dict[str, str]) -> tuple[int, object]:
+    """POST the form to the token endpoint (stdlib only: the runtime image has no HTTP client library). Returns (status, parsed body or None)."""
+    if not url.startswith(("http://", "https://")):
+        raise OSError("token URL must be http(s)")
+    req = urllib.request.Request(url, data=urllib.parse.urlencode(form).encode(), method="POST",
+                                 headers={"Content-Type": "application/x-www-form-urlencoded", "Accept": "application/json"})
+    try:
+        with urllib.request.urlopen(req, timeout=8.0) as resp:  # noqa: S310 - scheme checked above
+            status, raw = resp.status, resp.read(1_000_000)
+    except urllib.error.HTTPError as exc:  # the provider answered with a refusal: a status, not an outage
+        return exc.code, None
+    try:
+        return status, json.loads(raw)
+    except ValueError:
+        return status, None
 
 
 def sign_in(role: str, ip: str) -> dict:
@@ -100,17 +115,13 @@ def sign_in(role: str, ip: str) -> dict:
     form = {"grant_type": "password", "client_id": settings.demo_signin_client_id,
             "username": DEMO_USERS[role], "password": password, "scope": "openid profile"}
     try:
-        res = _exchange(token_url(), form)
-    except httpx.HTTPError as exc:
+        status, body = _exchange(token_url(), form)
+    except OSError as exc:  # URLError, timeouts and refused connections are OSErrors
         log.error("demo sign-in role=%s: identity provider unreachable (%s)", role, type(exc).__name__)
         raise SignInError(503, "The identity provider did not answer. Try again, or use the password sign-in.") from exc
-    if res.status_code != 200:
-        log.error("demo sign-in role=%s: identity provider refused (status %s)", role, res.status_code)
+    if status != 200:
+        log.error("demo sign-in role=%s: identity provider refused (status %s)", role, status)
         raise SignInError(503, "The identity provider refused the sign-in. Use the password sign-in.")
-    try:
-        body = res.json()
-    except ValueError as exc:
-        raise SignInError(503, "The identity provider answered unexpectedly. Use the password sign-in.") from exc
     if not isinstance(body, dict) or not body.get("access_token"):
         raise SignInError(503, "The identity provider answered unexpectedly. Use the password sign-in.")
     log.info("demo sign-in role=%s", role)  # role and time (the log line's own); no name, address or token

@@ -101,3 +101,14 @@ def test_smoke_test_signs_in_as_the_coordinator_and_reads_cases_with_the_token()
     assert "/api/demo/sign-in" in s and '"role":"coordinator"' in s
     assert "access_token" in s and "password" in s.lower() and "/api/cases" in s
     assert subprocess.run(["bash", "-n", str(GCP / "smoke-test.sh")]).returncode == 0
+
+
+def test_jwks_and_token_urls_name_the_keycloak_service_the_overlay_actually_defines():
+    """Found in the local rehearsal: the JWKS URL said `keycloak`, but the hosted overlay's service is `keycloak-prod`, so the API
+    could not fetch signing keys and every token (one-click or not) was refused with 401."""
+    import yaml
+
+    services = yaml.safe_load((GCP / "compose.gcp.yml").read_text())["services"]
+    f = render_env.build_files(HOST, SECRETS)
+    for url in (f["compose.env"]["OIDC_JWKS_URL"], f["api.env"]["DEMO_SIGNIN_TOKEN_URL"]):
+        assert url.split("//")[1].split(":")[0] in services, url

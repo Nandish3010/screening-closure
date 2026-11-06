@@ -8,7 +8,6 @@ import subprocess
 import sys
 from pathlib import Path
 
-import httpx
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
@@ -49,7 +48,7 @@ class Idp:
         self.calls.append((url, dict(form)))
         if self.raises:
             raise self.raises
-        return httpx.Response(self.status, json=self.body)
+        return self.status, (self.body if self.status == 200 else None)
 
 
 def post(role, ip="203.0.113.7"):
@@ -113,7 +112,7 @@ def test_the_visitor_is_the_edge_supplied_last_address_not_one_the_client_chose(
 
 
 def test_identity_provider_failures_are_plain_503s_without_secrets(monkeypatch, caplog):
-    for idp in (Idp(status=401, body={"error": "invalid_grant"}), Idp(raises=httpx.ConnectError("boom")), Idp(body={"nope": 1}), Idp(body=[1])):
+    for idp in (Idp(status=401, body={"error": "invalid_grant"}), Idp(raises=ConnectionRefusedError("boom")), Idp(body={"nope": 1}), Idp(body=[1])):
         demo_signin.forget()
         monkeypatch.setattr(demo_signin, "_exchange", idp)
         with caplog.at_level(logging.INFO, logger="app.demo"):
@@ -188,3 +187,41 @@ def test_the_route_exists_under_the_full_gate_and_the_app_still_validates_the_ro
                                   DEV_LOGIN_ENABLED="false", FHIR_VERIFY_EVIDENCE="true"))
     # password not configured in this process -> the route exists (not 404) and says it is not set up
     assert got["status"] == 503 and "/demo/sign-in" in got["paths"], got
+
+
+# ---- the real HTTP exchange against a local stand-in for Keycloak's token endpoint ------------------------------------------------
+
+def test_exchange_posts_a_form_and_parses_json_and_reports_refusals_and_outages():
+    import threading
+    from http.server import BaseHTTPRequestHandler, HTTPServer
+    from urllib.parse import parse_qs
+
+    seen = {}
+
+    class H(BaseHTTPRequestHandler):
+        def do_POST(self):
+            form = parse_qs(self.rfile.read(int(self.headers["Content-Length"])).decode())
+            seen["form"], seen["ctype"] = {k: v[0] for k, v in form.items()}, self.headers["Content-Type"]
+            ok = form.get("password") == ["right"]
+            self.send_response(200 if ok else 401)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps({"access_token": "AT"} if ok else {"error": "invalid_grant"}).encode())
+
+        def log_message(self, *a):  # silent
+            pass
+
+    srv = HTTPServer(("127.0.0.1", 0), H)
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    url = f"http://127.0.0.1:{srv.server_port}/token"
+    try:
+        assert demo_signin._exchange(url, {"password": "right", "username": "u"}) == (200, {"access_token": "AT"})
+        assert seen["ctype"] == "application/x-www-form-urlencoded" and seen["form"]["username"] == "u"
+        assert demo_signin._exchange(url, {"password": "wrong"}) == (401, None)
+    finally:
+        srv.shutdown()
+        srv.server_close()
+    with pytest.raises(OSError):
+        demo_signin._exchange(url, {"password": "right"})  # nothing listening any more
+    with pytest.raises(OSError):
+        demo_signin._exchange("file:///etc/passwd", {})

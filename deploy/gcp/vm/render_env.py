@@ -57,7 +57,7 @@ def build_files(host: str, secrets: dict[str, str], mode: str = "production", de
         "APP_ENV": "production" if prod else "dev",
         "AUTH_MODE": "oidc" if prod else "dev",
         "OIDC_ISSUER": issuer,
-        "OIDC_JWKS_URL": f"http://keycloak:8080/auth/realms/{REALM}/protocol/openid-connect/certs",
+        "OIDC_JWKS_URL": f"http://keycloak-prod:8080/auth/realms/{REALM}/protocol/openid-connect/certs",
         "CLOCK_MODE": "sim",  # the demo runs on simulated time in both modes (production: only under the demo gate, api.env)
         "OUTREACH_DEMO_APPROVAL": "0",  # never the demo placeholder: the policy stays unsigned and the automation sends nothing
         "LLM_PROVIDER": "anthropic",
