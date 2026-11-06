@@ -15,7 +15,8 @@ import { PreviewPage } from "./pages/PreviewPage";
 const PatientPage = lazy(() => import("./pages/PatientPage").then((m) => ({ default: m.PatientPage })));
 const PatientHome = lazy(() => import("./pages/PatientPage").then((m) => ({ default: m.PatientHome })));
 import { DEMO_PATIENT_CASE_ID } from "./api/fixtures";
-import { Suspense, lazy, useEffect, useSyncExternalStore } from "react";
+import { Suspense, lazy, useEffect, useState, useSyncExternalStore } from "react";
+import type { Role } from "./api/contract";
 import { useApp } from "./app/AppContext";
 import { DEMO_USERS, JUDGE_ROLES } from "./api/identities";
 import { DemoBanner, PrototypeStrip } from "./components/DemoBanner";
@@ -69,25 +70,57 @@ function SignInLoading() {
 function JudgeSignIn({ error }: { error?: string | null }) {
   const { api } = useApp();
   const oidc = api.oidc!;
+  const oneClick = typeof api.demoSignIn === "function";
+  const [busy, setBusy] = useState<string | null>(null);
+  const [failed, setFailed] = useState<string | null>(null);
+  async function go(role: Role) {
+    setBusy(role);
+    setFailed(null);
+    try {
+      await api.demoSignIn!(role);
+      setBusy(null); // normally the page is replaced by the signed-in app before this matters
+    } catch (e) {
+      setFailed(e instanceof Error && e.message ? e.message : "One-click sign-in did not work.");
+      setBusy(null);
+    }
+  }
   return (
     <main className="container" id="main" data-testid="judge-signin">
       <PrototypeStrip />
       <DemoBanner />
       <p className="signin-brand"><BrandLockup large /></p>
       <h1>Screening Closure: judge demo</h1>
-      <p className="lead">Pick a role. You sign in through the real identity provider; the username is filled in and the <strong>password for each role is in the submission</strong>. Everything here is synthetic.</p>
-      {error && <p role="alert" className="why">{error}</p>}
+      {oneClick ? (
+        <p className="lead">Pick a role and you are in: <strong>no password needed</strong> on this demo. Everything here is synthetic.</p>
+      ) : (
+        <p className="lead">Pick a role. You sign in through the real identity provider; the username is filled in and the <strong>password for each role is in the submission</strong>. Everything here is synthetic.</p>
+      )}
+      {(error || failed) && <p role="alert" className="why">{failed ?? error}</p>}
       <ul className="role-cards" data-testid="role-cards">
         {JUDGE_ROLES.map((r) => (
           <li key={r.role} data-testid={`role-card-${r.role}`}>
             <strong>{r.title}</strong>
             <span>{r.does}</span>
             <span className="muted">{r.tryThis}</span>
-            <span className="mono role-user">Username: {r.username}</span>
-            <button className="btn btn-primary" onClick={() => void oidc.signIn({ loginHint: r.username, forceLogin: true })}>Sign in as {r.title.toLowerCase()}</button>
+            {oneClick ? (
+              <button className="btn btn-primary" disabled={busy !== null} onClick={() => void go(r.role)}>
+                {busy === r.role ? "Signing in..." : `Log in as ${r.label}`}
+              </button>
+            ) : (
+              <>
+                <span className="mono role-user">Username: {r.username}</span>
+                <button className="btn btn-primary" onClick={() => void oidc.signIn({ loginHint: r.username, forceLogin: true })}>Sign in as {r.label.toLowerCase()}</button>
+              </>
+            )}
           </li>
         ))}
       </ul>
+      {oneClick && (
+        <p className="muted">
+          <button className="linklike" data-testid="password-signin" onClick={() => void oidc.signIn({ forceLogin: true })}>Sign in with a password instead</button>
+          {" "}(the real identity provider; the passwords are in the submission).
+        </p>
+      )}
       <p className="preview-link"><Link className="btn" to="/preview" data-testid="preview-link">Preview without signing in</Link> <span className="muted">Screenshots of the five steps on synthetic data, and the headline numbers. No password needed.</span></p>
       <p className="muted">Once in, use <strong>Judge tour</strong> in the header for the five steps of the programme (record, prioritise, refer, reminders and navigation, outcome). You can switch role at any time with &quot;Sign in as&quot; in the header.</p>
     </main>

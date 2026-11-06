@@ -23,6 +23,16 @@ iss=$(curl -s -m 15 "$BASE/auth/realms/screening-closure/.well-known/openid-conf
 [ "$iss" = "$BASE/auth/realms/screening-closure" ] && ok "issuer is $iss" || bad "issuer is '$iss', expected $BASE/auth/realms/screening-closure"
 check "cases need a token" 401 "$BASE/api/cases"
 check "dev login is closed" 404 -X POST -H 'Content-Type: application/json' -d '{"role":"supervisor","name":"x"}' "$BASE/api/auth/dev-login"
+# ADR-060: one-click demo sign-in. The coordinator's tokens come back without any password, and the access token works against the API.
+signin=$(curl -s -m 30 -X POST -H 'Content-Type: application/json' -d '{"role":"coordinator"}' "$BASE/api/demo/sign-in" -w '\n%{http_code}' || true)
+signin_code=${signin##*$'\n'}; signin_body=${signin%$'\n'*}
+[ "$signin_code" = 200 ] && ok "one-click demo sign-in as coordinator (200)" || bad "one-click demo sign-in: wanted 200, got $signin_code"
+echo "$signin_body" | grep -qi 'password' && bad "the sign-in answer contains the substring 'password'" || ok "sign-in answer carries no password"
+tok=$(echo "$signin_body" | python3 -c 'import sys,json;print(json.load(sys.stdin).get("access_token",""))' 2>/dev/null || true)
+[ -n "$tok" ] && ok "sign-in answer has an access_token" || bad "sign-in answer has no access_token"
+check "that token reads /api/cases" 200 -H "Authorization: Bearer $tok" "$BASE/api/cases"
+check "sign-in refuses a role outside the four" 422 -X POST -H 'Content-Type: application/json' -d '{"role":"lab"}' "$BASE/api/demo/sign-in"
+unset tok signin signin_body
 check "clock reset does not exist" 404 -X POST "$BASE/api/clock/reset"
 check "clock advance needs a supervisor token" 401 -X POST -H 'Content-Type: application/json' -d '{"days":1}' "$BASE/api/clock/advance"
 echo "$body" | grep -q '"simulated_clock": *true' && ok "health reports the demo clock (the UI banner source)" || bad "health does not report demo.simulated_clock"

@@ -82,6 +82,8 @@ ROUTE_POLICY: dict[tuple[str, str], object] = {
     ("POST", "/clock/reset"): frozenset({SUPER}),
     # The hosted demo's judge-experience routes (ADR-058), registered only under app.auth.demo_controls_active(): the guided path's
     # fresh cases (any signed-in role), and the two controls that move shared demo state (supervisor only, like /clock/advance).
+    # ADR-060: one-click sign-in as a fixed demo role. PUBLIC by nature (it is how a judge gets a session); same gate, rate limited.
+    ("POST", "/demo/sign-in"): PUBLIC,
     ("GET", "/demo/guide"): ALL_USERS,
     ("POST", "/demo/reset"): frozenset({SUPER}),
     ("POST", "/demo/missed-followup"): frozenset({SUPER}),

@@ -54,6 +54,19 @@ class Settings(BaseSettings):
     demo_control_dir: str = "/var/lib/sc-demo"
     demo_reset_min_interval_seconds: int = Field(default=600, ge=60, le=86400)  # one accepted reset request per this long
     demo_auto_reset_hours: float = Field(default=6.0, ge=0, le=168)  # informational: when the scheduled reset is due (0 = none)
+    # One-click demo sign-in (ADR-060). POST /demo/sign-in exists ONLY under the same gate (app.auth.demo_controls_active). The API
+    # exchanges a fixed demo user's password with Keycloak over the private network (direct access grant on a dedicated client) and
+    # returns the token response; the password never reaches the browser. The four passwords are rendered into api.env by
+    # deploy/gcp/vm/render_env.py in production-demo mode only; they are never logged or returned. Empty = that role cannot be used.
+    demo_signin_token_url: str = ""  # default: the JWKS URL with /certs replaced by /token
+    demo_signin_client_id: str = "screening-closure-demo"
+    demo_signin_pw_coordinator: str = Field(default="", repr=False)
+    demo_signin_pw_clinician: str = Field(default="", repr=False)
+    demo_signin_pw_supervisor: str = Field(default="", repr=False)
+    demo_signin_pw_patient: str = Field(default="", repr=False)
+    demo_signin_per_ip_limit: int = Field(default=20, ge=1, le=10000)  # sign-ins per visitor address per window
+    demo_signin_global_limit: int = Field(default=400, ge=1, le=100000)  # and in all, to protect the identity provider
+    demo_signin_window_seconds: int = Field(default=600, ge=10, le=86400)
     leader_lease_ttl_seconds: float = Field(default=30.0, gt=1, le=3600)
     watchdog_idle_days: int = 7
     # M7-7: bounded work per scheduler sweep (app.sweep.run_sweep). At most this many due cases are evaluated per sweep

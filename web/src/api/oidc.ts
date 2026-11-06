@@ -28,6 +28,8 @@ export interface OidcSession {
   refreshToken?: string;
   /** Epoch milliseconds. */
   expiresAt: number;
+  /** The client the tokens were issued to, when it is not `config.clientId` (the hosted demo's one-click sign-in, ADR-060): a refresh must name it. */
+  clientId?: string;
 }
 
 export interface OidcDeps {
@@ -91,6 +93,11 @@ export interface OidcClient {
   accessToken(opts?: { force?: boolean }): Promise<string | null>;
   /** Forget the tokens (the app is signed out; the provider session is separate). */
   signOut(): void;
+  /**
+   * Hosted demo only (ADR-060): take a token response the API's POST /demo/sign-in returned and keep it exactly as a completed
+   * authorization-code sign-in would be kept (same storage, same refresh, same sign-out). `client_id` names the client that issued it.
+   */
+  adoptTokens(t: { access_token: string; refresh_token?: string; expires_in?: number; client_id?: string }): void;
   subscribe(listener: () => void): () => void;
 }
 
@@ -139,17 +146,17 @@ export function createOidcClient(cfg: OidcConfig, deps: Partial<OidcDeps> = {}):
     return discovery;
   }
 
-  async function tokenRequest(form: Record<string, string>): Promise<OidcSession> {
+  async function tokenRequest(form: Record<string, string>, clientId = cfg.clientId): Promise<OidcSession> {
     const { token_endpoint } = await endpoints();
     const res = await d.fetch(token_endpoint, {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded", Accept: "application/json" },
-      body: new URLSearchParams({ client_id: cfg.clientId, ...form }).toString(),
+      body: new URLSearchParams({ client_id: clientId, ...form }).toString(),
     });
     if (!res.ok) throw new OidcError(`token request failed (${res.status})`);
     const j = (await res.json()) as { access_token?: string; refresh_token?: string; expires_in?: number };
     if (!j.access_token) throw new OidcError("token response without access_token");
-    return { accessToken: j.access_token, refreshToken: j.refresh_token, expiresAt: d.now() + (j.expires_in ?? 300) * 1000 };
+    return { accessToken: j.access_token, refreshToken: j.refresh_token, expiresAt: d.now() + (j.expires_in ?? 300) * 1000, ...(clientId !== cfg.clientId ? { clientId } : {}) };
   }
 
   return {
@@ -190,7 +197,7 @@ export function createOidcClient(cfg: OidcConfig, deps: Partial<OidcDeps> = {}):
         save(null);
         return null;
       }
-      refreshing ??= tokenRequest({ grant_type: "refresh_token", refresh_token: s.refreshToken })
+      refreshing ??= tokenRequest({ grant_type: "refresh_token", refresh_token: s.refreshToken }, s.clientId)
         .then((n) => (save({ ...n, refreshToken: n.refreshToken ?? s.refreshToken }), n))
         .catch(() => (save(null), null))
         .finally(() => {
@@ -200,6 +207,16 @@ export function createOidcClient(cfg: OidcConfig, deps: Partial<OidcDeps> = {}):
     },
     signOut() {
       save(null);
+    },
+    adoptTokens(t) {
+      if (!t.access_token) throw new OidcError("token response without access_token");
+      d.storage.removeItem(PENDING_KEY);
+      save({
+        accessToken: t.access_token,
+        refreshToken: t.refresh_token,
+        expiresAt: d.now() + (t.expires_in ?? 300) * 1000,
+        ...(t.client_id && t.client_id !== cfg.clientId ? { clientId: t.client_id } : {}),
+      });
     },
   };
 }

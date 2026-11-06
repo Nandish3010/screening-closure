@@ -1521,6 +1521,12 @@ export interface ApiClient {
    */
   oidc?: import("./oidc").OidcClient;
   /**
+   * Hosted demo only (ADR-060): one-click sign-in as a fixed demo role. http adapter in oidc mode: POST /demo/sign-in {role} (the API
+   * exchanges the role's demo user's password with the identity provider; none reaches the browser), then `oidc.adoptTokens`. Rejects
+   * with the server's plain-language reason. Absent on the mock and on an adapter without oidc.
+   */
+  demoSignIn?(role: Role): Promise<void>;
+  /**
    * Log in as the patient who owns `caseId` (E8). The real API needs `patient_ref` for a patient login and a patient
    * cannot look it up, so the http adapter reads it from the case with a staff login of its own (which does not
    * touch this session), remembers it, then logs in as that patient. No-op for the mock.
