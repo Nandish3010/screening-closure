@@ -1,6 +1,7 @@
 """The hosted demo's judge-experience routes (ADR-058). Registered ONLY when `auth.demo_controls_active()` (DEMO_SIMULATED_CLOCK=1 and
 DEMO_DEPLOYMENT=1 with the simulation clock); in any other configuration these paths do not exist (404).
 
+    POST /demo/sign-in                     public       one-click sign-in as a fixed demo role (ADR-060); tokens, never a password
     GET  /demo/guide?session=<random id>   every role   one fresh case per guided step for this browser session
     POST /demo/reset                       supervisor   ask the host to restore the seeded snapshot (rate limited; who and when kept)
     POST /demo/missed-followup             supervisor   move the sim clock past a case's follow-up and let the real engine catch it
@@ -13,10 +14,10 @@ from __future__ import annotations
 import re
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, ConfigDict
 
-from app import demo_controls
+from app import demo_controls, demo_signin
 from app.auth import Identity, require_identity
 
 router = APIRouter(prefix="/demo", tags=["demo"])
@@ -29,8 +30,28 @@ class MissedFollowup(BaseModel):
     case_id: UUID
 
 
+class SignIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    role: str
+
+
+def _visitor(request: Request) -> str:
+    """The edge (nginx) overwrites X-Forwarded-For with the visitor's address; the API port itself is not public."""
+    xff = request.headers.get("x-forwarded-for", "")
+    return xff.split(",")[-1].strip() or (request.client.host if request.client else "unknown")
+
+
 def _problem(exc: demo_controls.DemoError) -> HTTPException:
     return HTTPException(exc.status, exc.message)
+
+
+@router.post("/sign-in")
+def sign_in(body: SignIn, request: Request) -> dict:
+    """ADR-060: one click per role on the hosted demo. Public (it is how a judge gets a session), rate limited, 404 outside the gate."""
+    try:
+        return demo_signin.sign_in(body.role, _visitor(request))
+    except demo_signin.SignInError as exc:
+        raise HTTPException(exc.status, exc.message) from exc
 
 
 @router.get("/guide")

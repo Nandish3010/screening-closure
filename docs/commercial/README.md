@@ -1,10 +1,21 @@
 # Commercial front page
 
-Read this page first; the detail is in [business-case.md](business-case.md). **No buyer exists, no price has been tested, nobody has been contacted, and there is no letter of intent.** Every figure below carries its grade: **sourced** (read from a published page), **assumed** (our input, not a quote), or **simulated** (synthetic, from the model).
+**Start with the offer: [pilot-offer.md](pilot-offer.md)**, a 90-day read-only shadow pilot a buyer could sign a [letter of intent](outreach/letter-of-intent.md) against, and the one-page [decision memo](decision-memo.md) for a regulator reader. The detail is in [business-case.md](business-case.md).
+
+**No buyer exists, no price has been tested, nobody has been contacted, and there is no letter of intent.** Every figure below carries its grade: **sourced** (read from a published page), **assumed** (our input, not a quote), or **simulated** (synthetic, from the model).
+
+## The offer in six lines
+
+- **The hook:** the DoH IFHAS V10 standard (July 2025) sets referral to secondary care within **15 working days** of releasing a positive result (sourced, [evidence.md](../evidence.md) section 8b). Nothing tells a provider, case by case, which positives are about to miss it.
+- **Scope:** 90 days, read-only, 2 to 3 clinics, a periodic export. Sends nothing to a patient, writes nothing, assigns nothing.
+- **Modelled cost to serve:** about **AED 106,000** (AED 105,828; 155 expected positives; AED 681 per case), offered at cost. Arithmetic on assumed inputs, not a quote.
+- **Measured:** the 15-working-day referral rate, time to a named owner, the 31-working-day colonoscopy rate, untracked positives found, flag agreement, staff minutes by role. Table in the offer.
+- **Day-90 gate:** go to an active-pilot proposal only if export completeness and ownership visibility are at least 95%, flag agreement at least 80%, nothing sent or written; otherwise stop and delete.
+- **Buyer provides:** a sponsor, a weekly coordinator review, the export, a clinical lead, data-protection sign-off, an in-country environment.
 
 ## Stated up front: staff cost per case rises
 
-The system frees **coordinator hours**; it does not cut the cost of a case. At wage ratios from published UAE salary pages (a clinician 4 times and a specialist 10 times a coordinator; sourced-adjacent, not an official pay scale; [evidence-wages.md](../evidence-wages.md)), wage-weighted staff time per case goes **up**, by about 11% at programme level in the literature-anchored scenario, because more patients reach colonoscopy and clinicians and specialists spend more time. The 40% labour-reduction target is **not met** (19.7% programme-level, 36.0% where the system reaches a case; simulated). The pilot would replace the assumed minutes with a time-and-motion study (KPI K9, [pilot-plan.md](../pilot-plan.md)). The commercial claim is therefore capacity plus outcomes, not savings.
+The system frees **coordinator hours**; it does not cut the cost of a case. At wage ratios from published UAE salary pages (a clinician 4 times and a specialist 10 times a coordinator; sourced-adjacent, not an official pay scale; [evidence-wages.md](../evidence-wages.md)), wage-weighted staff time per case goes **up**, by about 11% at programme level in the literature-anchored scenario, because more patients reach colonoscopy and clinicians and specialists spend more time. The 40% labour-reduction target is **not met** (19.7% programme-level, 36.0% where the system reaches a case; simulated). The pilot would replace the assumed minutes with a time-and-motion study (KPI K9, [pilot-plan.md](../pilot-plan.md)). The commercial claim is therefore capacity redeployment plus outcomes, not savings. In numbers (simulated, per case, today against the system): coordinator minutes 46.6 to 29.8, owner-clinician 4.5 to 8.7, specialist 6.1 to 7.4, all roles 57.1 to 45.8; coordinator-equivalent weighted minutes 125.0 to 138.7 (+10.9%). Full table in [pilot-offer.md](pilot-offer.md).
 
 ## What is sourced
 
@@ -12,7 +23,7 @@ The system frees **coordinator hours**; it does not cut the cost of a case. At w
 |---|---|---|
 | The clock the network is measured on | Referral to secondary care within **15 working days** of releasing a positive FIT result; for a positive blood-based test, GI consultation within 7 days and colonoscopy within 30 days | DoH IFHAS V10 (July 2025) and DoH Circular 2025/42, read first-hand ([evidence.md](../evidence.md) 8a, 8b). Whether DoH enforces them through a performance indicator is to verify (business case section 2). |
 | The local gap | Only 30.5% of 1,429 positive results in Abu Dhabi ambulatory clinics had a follow-up colonoscopy | BMC Cancer 2021, 2015 to 2016 data |
-| The offer | A 90-day **read-only shadow run** at two or three providers, about **AED 106,000** to serve, offered at cost. Needs only a periodic export; sends nothing to a patient. | [go-to-market.md](go-to-market.md); the AED figure is arithmetic on assumed inputs, not a quote |
+| The offer | A 90-day **read-only shadow run** at two or three providers, about **AED 106,000** to serve, offered at cost. Needs only a periodic export; sends nothing to a patient. | [pilot-offer.md](pilot-offer.md), [go-to-market.md](go-to-market.md); the AED figure is arithmetic on assumed inputs, not a quote |
 
 ## A cost script anyone can rerun
 
@@ -20,7 +31,9 @@ The system frees **coordinator hours**; it does not cut the cost of a case. At w
 
 **Change one input and rerun.** Copy `inputs.yaml`, set `shadow_support_fte` (support staff on the shadow run) from 0.3 to 0.5, and run `python3 tools/pilot/cost_model.py --inputs your-copy.yaml`. The "SHADOW PILOT" block moves from a total of AED 105,828 to AED 120,622 and from AED 681 to AED 776 per case. Nothing else moves. Any input can be changed the same way, and `--pricing` does the same for the licence table.
 
-## What is assumed (a hypothesis, not a finding)
+## Assumed, not offered: the programme licence and payback (a hypothesis, not a finding)
+
+Nothing in this section is part of the pilot offer. No one has been asked to pay it.
 
 | Item | Figure | Why it is only an assumption |
 |---|---|---|

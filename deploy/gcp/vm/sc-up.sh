@@ -73,4 +73,9 @@ REVOKE CONNECT ON DATABASE keycloak FROM PUBLIC;
 SQL
 unset kcpw
 docker compose up -d --build
+# ADR-060: a realm imported before the one-click demo client existed does not get it from the import; add it (idempotent, production only).
+# Not fatal: without it the one-click button reports "not set up" and the normal password sign-in still works.
+if [ "$MODE" = production ]; then
+  "$PY/ensure-demo-client.sh" /etc/sc/keycloak-import/screening-closure-realm.json || echo "sc-up: WARNING one-click demo client not ensured (see above); password sign-in still works" >&2
+fi
 echo "sc-up: mode=$MODE host=$HOST"

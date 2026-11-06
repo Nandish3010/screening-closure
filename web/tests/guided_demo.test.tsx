@@ -47,7 +47,7 @@ describe("role cards on the hosted demo's sign-in page", () => {
   });
 
   it("carry usernames and descriptions only: no password or secret field in the page's data", () => {
-    for (const r of JUDGE_ROLES) expect(Object.keys(r).sort()).toEqual(["does", "role", "title", "tryThis", "username"]);
+    for (const r of JUDGE_ROLES) expect(Object.keys(r).sort()).toEqual(["does", "label", "role", "title", "tryThis", "username"]);
     const src = readFileSync("src/api/identities.ts", "utf8") + readFileSync("src/App.tsx", "utf8");
     expect(src).not.toMatch(/password\s*[:=]\s*["'`]/i);
     expect(src).not.toMatch(/VITE_[A-Z_]*(PASSWORD|SECRET)/);
