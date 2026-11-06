@@ -435,14 +435,19 @@ function TourPanel({ onClose, track, start, onTrack }: { onClose: () => void; tr
     return () => document.body.classList.remove("tour-open");
   }, []);
 
-  // Switch to the step's role. A sign-in provider means leaving the page, so the tour's place is kept and picked up again on return.
+  // Switch to the step's role. The hosted demo signs in with one click (ADR-060) and otherwise a sign-in provider means leaving the page, so the tour's place is kept and picked up again on return.
   const switchTo = () => {
     if (!step.role) return;
     if (api.oidc) {
       const u = JUDGE_ROLES.find((r) => r.role === step.role);
       if (!u || !demoDeployment) return;
       try { sessionStorage.setItem(RESUME_KEY, JSON.stringify({ track, index } satisfies Resume)); } catch { /* the tour just closes */ }
-      void api.oidc.signIn({ loginHint: u.username, forceLogin: true });
+      void (async () => {
+        if (api.demoSignIn) {
+          try { await api.demoSignIn(u.role); window.location.assign("/"); return; } catch { /* fall through to the password sign-in */ }
+        }
+        void api.oidc!.signIn({ loginHint: u.username, forceLogin: true });
+      })();
     } else {
       setRole(step.role);
     }
