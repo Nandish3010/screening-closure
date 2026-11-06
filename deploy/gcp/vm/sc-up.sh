@@ -22,6 +22,18 @@ if command -v systemctl >/dev/null 2>&1 && [ -d /run/systemd/system ]; then
   systemctl try-restart sc-api-restart.timer sc-api-restart-daily.timer
   # the earlier fixed 22:30 UTC timer was the same unit name as the gate timer, so it is replaced above; nothing else to remove
 fi
+# ADR-058: the judge demo's reset. /var/lib/sc-demo is bind-mounted into the api container (compose.gcp.yml), which runs as uid 10001
+# and writes the reset request there; the host-side watcher (root) answers. Created before the stack starts so docker does not create
+# it root-owned. Then the watcher (every 15 s) and the scheduled reset (every 6 h) units, same pattern as above; nothing else is added.
+mkdir -p /var/lib/sc-demo
+chown 10001 /var/lib/sc-demo
+chmod 0755 /var/lib/sc-demo
+if command -v systemctl >/dev/null 2>&1 && [ -d /run/systemd/system ]; then
+  install -m 0644 "$PY"/sc-demo-reset-watch.service "$PY"/sc-demo-reset-watch.timer "$PY"/sc-demo-reset-scheduled.service "$PY"/sc-demo-reset-scheduled.timer /etc/systemd/system/
+  systemctl daemon-reload
+  systemctl enable --now sc-demo-reset-watch.timer sc-demo-reset-scheduled.timer
+  systemctl try-restart sc-demo-reset-watch.timer sc-demo-reset-scheduled.timer
+fi
 secrets_json=$(python3 - "$PROJECT" <<'PYEOF'
 import json, subprocess, sys
 sys.path.insert(0, "/srv/sc/repo/deploy/gcp/vm")

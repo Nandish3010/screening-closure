@@ -313,3 +313,23 @@ def test_api_restart_units_and_installation():
     # the gate needs a limit to be a percentage of
     api = yaml.safe_load((GCP / "compose.gcp.yml").read_text())["services"]["api"]
     assert api["mem_limit"] == "1024m"
+
+
+def test_demo_reset_watcher_units_are_installed_by_sc_up():
+    """ADR-058 wiring: both reset units are installed and enabled by sc-up.sh, /var/lib/sc-demo is owned by uid 10001, no cron."""
+    vm = GCP / "vm"
+    up = (vm / "sc-up.sh").read_text()
+    for unit in ("sc-demo-reset-watch.service", "sc-demo-reset-watch.timer", "sc-demo-reset-scheduled.service", "sc-demo-reset-scheduled.timer"):
+        assert (vm / unit).exists() and unit in up
+    assert "systemctl enable --now sc-demo-reset-watch.timer sc-demo-reset-scheduled.timer" in up
+    assert "chown 10001 /var/lib/sc-demo" in up
+    assert "demo-reset-watch.sh --scheduled" in (vm / "sc-demo-reset-scheduled.service").read_text()
+    assert "demo-reset-watch.sh" in (vm / "sc-demo-reset-watch.service").read_text()
+    assert "OnUnitActiveSec=15" in (vm / "sc-demo-reset-watch.timer").read_text()
+    assert "OnUnitActiveSec=6h" in (vm / "sc-demo-reset-scheduled.timer").read_text()
+    # no cron, and startup.sh does not carry the units
+    assert "cron" not in up.lower()
+    assert "sc-demo-reset" not in "\n".join(l for l in (vm / "startup.sh").read_text().splitlines() if not l.lstrip().startswith("#"))
+    # the folder is bind-mounted into the api container
+    api = yaml.safe_load((GCP / "compose.gcp.yml").read_text())["services"]["api"]
+    assert "/var/lib/sc-demo:/var/lib/sc-demo" in api["volumes"] and api["mem_limit"] == "1024m"
