@@ -333,3 +333,15 @@ def test_demo_reset_watcher_units_are_installed_by_sc_up():
     # the folder is bind-mounted into the api container
     api = yaml.safe_load((GCP / "compose.gcp.yml").read_text())["services"]["api"]
     assert "/var/lib/sc-demo:/var/lib/sc-demo" in api["volumes"] and api["mem_limit"] == "1024m"
+
+
+def test_compose_env_carries_app_env_so_the_base_compose_default_cannot_win():
+    """docker-compose.yml has `APP_ENV: ${APP_ENV:-dev}` in the api's environment, which overrides api.env; the
+    interpolation file must therefore carry the mode too (regression: the hosted API ran as dev, 6 Nov 2026)."""
+    import re
+    base = (REPO_ROOT / "docker-compose.yml").read_text()
+    assert re.search(r"APP_ENV: \$\{APP_ENV:-dev\}", base)
+    prod = render_env.build_files("demo.example", SECRETS, mode="production")
+    seed = render_env.build_files("demo.example", SECRETS, mode="seed")
+    assert prod["compose.env"]["APP_ENV"] == "production" == prod["api.env"]["APP_ENV"]
+    assert seed["compose.env"]["APP_ENV"] == "dev"
