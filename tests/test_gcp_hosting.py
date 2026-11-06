@@ -119,7 +119,8 @@ def test_edge_limits_and_blocks():
     t = (GCP / "edge/nginx.conf.template").read_text()
     for must in ("limit_req_zone", "limit_req zone=api_ip", "limit_req zone=login_ip", "set_real_ip_from",
                  "scheduler|watchdog|hl7", "location = /api/clock/advance", "location ~ ^/api/clock { return 404; }",
-                 "location = /api/metrics { return 404; }", r"^/auth/(admin|realms/master)"):
+                 "location = /api/metrics { return 404; }", r"^/auth/(admin|realms/master)",
+                 r"location ~ ^/api/(docs|redoc|openapi\.json)(/|$) { return 404; }"):
         assert must in t, must
     assert "Strict-Transport-Security" in (GCP / "edge/Caddyfile").read_text()
 
@@ -359,3 +360,49 @@ def test_hosted_seed_stages_the_rich_opening_state_in_the_right_order():
     assert at == sorted(at)
     assert code.index("stage_demo_state.py --phase rest") < code.index("echo production > /var/lib/sc/mode")
     assert "stage_demo_state" not in (REPO_ROOT / "Makefile").read_text().split("\ndemo-seed:\n", 1)[1].split("\n\n", 1)[0]
+
+def test_snapshot_script_is_posix_sh_because_the_vm_runs_it_under_dash():
+    """`tools/demo/snapshot.sh` has a /bin/sh shebang and is run directly on the VM (Debian: dash): no bashisms such as ${@:2}
+    ("45: Bad substitution" in the hosted reset)."""
+    import re
+    import shutil
+
+    snap = REPO_ROOT / "tools/demo/snapshot.sh"
+    text = snap.read_text()
+    assert text.startswith("#!/bin/sh")
+    code = "\n".join(l for l in text.splitlines() if not l.lstrip().startswith("#"))
+    assert not re.search(r"\$\{[A-Za-z0-9_@*]+(:[0-9@]|/|\^|,)", code) and "[[" not in code and "<<<" not in code and "local " not in code
+    for sh in ("dash", "sh"):
+        if shutil.which(sh):
+            assert subprocess.run([sh, "-n", str(snap)]).returncode == 0
+    if shutil.which("dash"):  # psql_db keeps the db name and passes the rest through, as under dash
+        out = subprocess.run(["dash", "-c", 'f() { _db=$1; shift; echo "$_db|$*"; }; f closure -c "SELECT 1"'], capture_output=True, text=True)
+        assert out.stdout.strip() == "closure|-c SELECT 1"
+
+
+def test_smoke_test_checks_docs_are_closed_and_the_reset_is_recorded():
+    t = (GCP / "smoke-test.sh").read_text()
+    for must in ('"$BASE/api/docs"', '"$BASE/api/openapi.json"', "demo.last_reset_at"):
+        assert must in t, must
+    assert "404" in t.split('"$BASE/api/docs"')[0].splitlines()[-1]
+    assert "--record-seed" in (GCP / "vm/seed-on-vm.sh").read_text()
+
+
+def test_api_restart_leaves_a_note_for_the_demo_health_block(tmp_path):
+    import json as _json
+
+    ctl = tmp_path / "ctl"
+    ctl.mkdir()
+    r, restarted, _ = _run_restart(tmp_path, "gate", anon_mib=760, extra_env={"DEMO_CONTROL_DIR": str(ctl)})
+    assert r.returncode == 0 and restarted
+    note = _json.loads((ctl / "api-restart.json").read_text())
+    assert note["mode"] == "gate" and "memory 74% >= gate 70%" in note["reason"] and note["at"].endswith("+00:00")
+    # no restart, no note; and a missing control folder never fails the restart
+    ctl2 = tmp_path / "ctl2"
+    ctl2.mkdir()
+    (tmp_path / "a").mkdir()
+    r, restarted, _ = _run_restart(tmp_path / "a", "gate", anon_mib=500, extra_env={"DEMO_CONTROL_DIR": str(ctl2)})
+    assert not restarted and not (ctl2 / "api-restart.json").exists()
+    (tmp_path / "b").mkdir()
+    r, restarted, _ = _run_restart(tmp_path / "b", "gate", anon_mib=760, extra_env={"DEMO_CONTROL_DIR": str(tmp_path / "nope")})
+    assert r.returncode == 0 and restarted

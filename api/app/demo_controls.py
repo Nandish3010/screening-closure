@@ -77,22 +77,45 @@ def _wall() -> datetime:
     return datetime.now(UTC)  # wall-clock-ok: reset bookkeeping for the demo status, never read by the engine
 
 
-def _parse(ts: str | None) -> datetime | None:
+def _parse(ts: object) -> datetime | None:
     try:
-        return datetime.fromisoformat(ts) if ts else None
+        out = datetime.fromisoformat(ts) if isinstance(ts, str) and ts else None
+        return out.replace(tzinfo=UTC) if out is not None and out.tzinfo is None else out  # a file without an offset means UTC
     except ValueError:
         return None
 
 
 # ---- status and reset -------------------------------------------------------------------------------------------------
 
+def _text(v: object, limit: int = 200) -> str | None:
+    """A string from a host-written file, trimmed; anything else is None. The files are data, never trusted for shape."""
+    return v[:limit] if isinstance(v, str) and v else None
+
+
+def _next_scheduled(st: dict, hours: float, now: datetime) -> str | None:
+    """When the timer fires next: its last pass (`last_scheduled_at`, written by the host even when the pass was skipped) plus
+    the interval, else the last reset plus the interval (the seed's snapshot counts). A late timer rolls forward to the next
+    slot, so the answer is never in the past. None while nothing is known or when scheduled resets are off."""
+    anchor = _parse(st.get("last_scheduled_at")) or _parse(st.get("last_reset_at"))
+    if anchor is None or hours <= 0:
+        return None
+    step = timedelta(hours=hours)
+    nxt = anchor + step
+    if nxt <= now:
+        nxt += step * (int((now - nxt) / step) + 1)
+    return nxt.isoformat()
+
+
 def status() -> dict:
-    """`{last_reset_at, last_reset_by, last_reset_reason, next_auto_reset_at, reset_pending, reset_id}` (nulls when unknown)."""
+    """`{last_reset_at, last_reset_by, last_reset_reason, next_auto_reset_at, reset_pending, reset_id, last_api_restart_at,
+    last_api_restart_reason}` (nulls when unknown). Everything here is read from files the HOST writes (the API only writes the
+    request file): `status.json` by demo-reset-watch.sh (and once by the seed, `--record-seed`), `api-restart.json` by
+    sc-api-restart.sh when its memory gate restarts the API."""
     st = _read("status.json") or {}
     req = _read("reset-request.json")
-    last = _parse(st.get("last_reset_at"))
-    hours = settings.demo_auto_reset_hours
-    nxt = (last + timedelta(hours=hours)).isoformat() if last and hours > 0 else None
+    rs = _read("api-restart.json") or {}
+    nxt = _next_scheduled(st, settings.demo_auto_reset_hours, _wall())
+    restarted = _parse(rs.get("at"))
     return {
         "last_reset_at": st.get("last_reset_at"),
         "last_reset_by": st.get("last_reset_by"),
@@ -100,6 +123,8 @@ def status() -> dict:
         "next_auto_reset_at": nxt,
         "reset_pending": req is not None,
         "reset_id": st.get("last_reset_at") or "initial",
+        "last_api_restart_at": restarted.isoformat() if restarted else None,
+        "last_api_restart_reason": _text(rs.get("reason")) if restarted else None,
     }
 
 

@@ -93,3 +93,23 @@ def test_the_watcher_runs_only_the_fixed_restore():
     for banned in ("eval ", "bash -c", "sh -c", "source ", "xargs", "$(cat", "`cat"):
         assert banned not in text, banned
     assert text.count("demo-reset-on-vm.sh") == 1 and '"$SC_REPO/deploy/gcp/vm/demo-reset-on-vm.sh"' in text
+
+
+def test_the_seed_snapshot_is_recorded_as_the_first_reset_point_without_resetting(tmp_path):
+    resets, st, ctl = run(tmp_path, "--record-seed", status={"last_request_at": "2026-11-08T05:00:00+00:00"})
+    assert resets == 0  # nothing is restored
+    assert st["last_reset_by"] == "the seed" and st["last_reset_reason"] == "seed"
+    assert datetime.fromisoformat(st["last_reset_at"]) > datetime.now(UTC) - timedelta(minutes=2)
+    assert st["last_request_at"] == "2026-11-08T05:00:00+00:00" and not (ctl / "baseline.json").exists()
+
+
+def test_the_scheduled_pass_records_when_the_timer_fired_even_when_it_skips(tmp_path):
+    recent = (datetime.now(UTC) - timedelta(minutes=5)).isoformat()
+    resets, st, _ = run(tmp_path, "--scheduled", status={"last_reset_at": recent})
+    assert resets == 0 and st["last_reset_at"] == recent  # skipped: a reset just happened
+    assert datetime.fromisoformat(st["last_scheduled_at"]) > datetime.now(UTC) - timedelta(minutes=2)
+    old = (datetime.now(UTC) - timedelta(hours=7)).isoformat()
+    second = tmp_path / "b"
+    second.mkdir()
+    resets, st, _ = run(second, "--scheduled", status={"last_reset_at": old})
+    assert resets == 1 and st["last_scheduled_at"] and st["last_reset_at"] != old

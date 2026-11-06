@@ -27,6 +27,12 @@ check "clock reset does not exist" 404 -X POST "$BASE/api/clock/reset"
 check "clock advance needs a supervisor token" 401 -X POST -H 'Content-Type: application/json' -d '{"days":1}' "$BASE/api/clock/advance"
 echo "$body" | grep -q '"simulated_clock": *true' && ok "health reports the demo clock (the UI banner source)" || bad "health does not report demo.simulated_clock"
 echo "$body" | grep -q '"clock_mode": *"sim"' && ok "clock is the simulated one" || bad "clock_mode is not sim"
+check "interactive API docs not public" 404 "$BASE/api/docs"
+check "API schema not public" 404 "$BASE/api/openapi.json"
+check "redoc not public" 404 "$BASE/api/redoc"
+# the demo block must show that the seed's snapshot (or a later reset) was recorded: last_reset_at and next_auto_reset_at set
+lr=$(echo "$body" | python3 -c 'import sys,json;print((json.load(sys.stdin).get("demo") or {}).get("last_reset_at") or "")' 2>/dev/null || true)
+[ -n "$lr" ] && ok "health demo.last_reset_at is recorded ($lr)" || bad "health demo.last_reset_at is null (the seed did not record its snapshot)"
 check "scheduler path blocked at the edge" 404 -X POST "$BASE/api/scheduler/sweep"
 check "metrics endpoint blocked at the edge" 404 "$BASE/api/metrics"
 check "Keycloak admin console not public" 404 "$BASE/auth/admin/master/console/"
