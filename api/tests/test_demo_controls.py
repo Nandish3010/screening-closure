@@ -158,6 +158,70 @@ def test_status_shows_when_who_and_the_next_scheduled_reset():
     assert st["last_reset_by"] == "Noura (supervisor)" and st["next_auto_reset_at"].startswith("2026-11-08T12:00:00")
 
 
+def test_next_scheduled_reset_follows_the_timer_not_only_the_last_reset():
+    """The host records the timer's last pass (even a skipped one) and the seed's snapshot as the first reset point."""
+    from datetime import timedelta
+
+    now = datetime.now(UTC)
+    seed = (now - timedelta(hours=1)).isoformat()
+    write_status(last_reset_at=seed, last_reset_by="the seed", last_reset_reason="seed")
+    st = demo_controls.status()
+    assert st["last_reset_reason"] == "seed" and datetime.fromisoformat(st["next_auto_reset_at"]) == datetime.fromisoformat(seed) + timedelta(hours=6)
+    # the timer fired 2 h ago and skipped (a manual reset was fresh): the next slot is 6 h after THAT pass
+    fired = (now - timedelta(hours=2)).isoformat()
+    write_status(last_reset_at=seed, last_scheduled_at=fired)
+    assert datetime.fromisoformat(demo_controls.status()["next_auto_reset_at"]) == datetime.fromisoformat(fired) + timedelta(hours=6)
+    # a late timer never yields a time in the past: it rolls to the next slot
+    old = (now - timedelta(hours=20)).isoformat()
+    write_status(last_scheduled_at=old)
+    nxt = datetime.fromisoformat(demo_controls.status()["next_auto_reset_at"])
+    assert nxt > now and nxt - now <= timedelta(hours=6)
+    assert (nxt - datetime.fromisoformat(old)) % timedelta(hours=6) == timedelta(0)
+
+
+def test_no_scheduled_reset_means_no_next_time(monkeypatch):
+    monkeypatch.setattr(settings, "demo_auto_reset_hours", 0)
+    write_status(last_reset_at="2026-11-08T06:00:00+00:00")
+    assert demo_controls.status()["next_auto_reset_at"] is None
+
+
+def test_status_shows_the_last_gated_api_restart_and_treats_the_file_as_data():
+    st = demo_controls.status()
+    assert st["last_api_restart_at"] is None and st["last_api_restart_reason"] is None
+    d = Path(settings.demo_control_dir)
+    d.mkdir(parents=True, exist_ok=True)
+    (d / "api-restart.json").write_text(json.dumps({"at": "2026-11-08T03:00:00+00:00", "mode": "gate", "reason": "memory 74% >= gate 70%" + "x" * 500}))
+    st = demo_controls.status()
+    assert st["last_api_restart_at"] == "2026-11-08T03:00:00+00:00"
+    assert st["last_api_restart_reason"].startswith("memory 74%") and len(st["last_api_restart_reason"]) <= 200
+    (d / "api-restart.json").write_text(json.dumps({"at": ["not", "a", "time"], "reason": {"x": 1}}))  # wrong shapes: ignored
+    assert demo_controls.status()["last_api_restart_at"] is None
+    (d / "api-restart.json").write_text("not json")
+    assert demo_controls.status()["last_api_restart_at"] is None
+
+
+def test_the_restart_fields_are_only_in_the_demo_block_of_health():
+    out = _probe(APP_ENV="production", CLOCK_MODE="sim", DEMO_SIMULATED_CLOCK="1", DEMO_DEPLOYMENT="1")
+    assert {"last_api_restart_at", "last_api_restart_reason"} <= set(out["health"]["demo"])
+    plain = _probe(APP_ENV="production", CLOCK_MODE="wall")
+    assert "demo" not in plain["health"] and "last_api_restart_at" not in json.dumps(plain["health"])
+
+
+def test_interactive_docs_and_schema_are_served_in_dev_and_gone_in_production():
+    code = ("import json\nfrom fastapi.testclient import TestClient\nfrom app.main import app\nc = TestClient(app)\n"
+            "print(json.dumps([c.get(p).status_code for p in ('/docs', '/redoc', '/openapi.json')] + [len(app.openapi()['paths']) > 10]))\n")
+
+    def run(**extra):
+        env = {k: v for k, v in os.environ.items() if k not in ("APP_ENV", "DATABASE_URL", "DEV_LOGIN_ENABLED", "CLOCK_MODE", "DEMO_SIMULATED_CLOCK", "DEMO_DEPLOYMENT")}
+        env.update(PYTHONPATH=str(API_DIR), DEV_AUTH_SECRET="k" * 40, **extra)
+        done = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, env=env, cwd=API_DIR, timeout=120)
+        assert done.returncode == 0, done.stderr
+        return json.loads(done.stdout.strip().splitlines()[-1])
+
+    assert run(APP_ENV="dev") == [200, 200, 200, True]
+    assert run(APP_ENV="production", CLOCK_MODE="sim", DEMO_SIMULATED_CLOCK="1", DEMO_DEPLOYMENT="1") == [404, 404, 404, True]  # in-process schema still works
+
+
 # ---- fresh cases ----------------------------------------------------------------------------------------------------
 
 def test_each_session_gets_its_own_untouched_case_and_a_touched_one_is_replaced():

@@ -44,6 +44,8 @@ echo "seed: demo patient reference for the patient login: ${ref:-<none>}"
 [ -n "$ref" ] && echo "$ref" > /var/lib/sc/demo_patient_ref
 
 tools/demo/snapshot.sh save
+# The snapshot is the first reset point: record it so /health's demo block has last_reset_at (and next_auto_reset_at) from the start.
+"$SC_REPO/deploy/gcp/vm/demo-reset-watch.sh" --record-seed
 
 echo production > /var/lib/sc/mode
 "$SC_REPO/deploy/gcp/vm/sc-up.sh"
