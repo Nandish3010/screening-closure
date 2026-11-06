@@ -19,13 +19,16 @@ export function SimBadge() {
   );
 }
 
+const DEMO_MAX_ADVANCE_DAYS = 7;
+
 /**
  * Demo-only control for the supervisor role (the only role the API lets move the simulation clock):
  * POST /clock/advance. Not rendered by the mock adapter, whose clock is fixed.
  */
 function ClockControl() {
-  const { api, refreshSim } = useApp();
+  const { api, refreshSim, demoDeployment } = useApp();
   const [days, setDays] = useState(1);
+  const maxDays = demoDeployment ? DEMO_MAX_ADVANCE_DAYS : 365; // the hosted demo's API refuses more than 7 days per click (ADR-060 addendum)
   const [status, setStatus] = useState<string | null>(null);
   if (!api.advanceClock) return null;
   const advance = () =>
@@ -36,9 +39,9 @@ function ClockControl() {
     <span className="clock-control" data-testid="clock-control">
       <label>
         <span>Advance clock (days)</span>{" "}
-        <input type="number" min={1} max={365} value={days} onChange={(e) => setDays(Number(e.target.value))} aria-label="Days to advance the simulation clock" />
+        <input type="number" min={1} max={maxDays} value={days} onChange={(e) => setDays(Number(e.target.value))} aria-label="Days to advance the simulation clock" />
       </label>{" "}
-      <button className="btn btn-small" onClick={advance} data-testid="advance-clock" disabled={!(days > 0)}>Advance</button>
+      <button className="btn btn-small" onClick={advance} data-testid="advance-clock" disabled={!(days > 0 && days <= maxDays)}>Advance</button>
       {status && <span role="alert" className="why">{status}</span>}
     </span>
   );

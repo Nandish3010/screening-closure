@@ -15,7 +15,7 @@ SC_SA="${SC_PREFIX}-vm"
 SC_ADDR="${SC_PREFIX}-ip"
 SC_TAG="${SC_PREFIX}"
 IAP_RANGE=35.235.240.0/20
-SC_ITEMS="dev-auth-secret scheduler-token watchdog-token automation-token agency-token metrics-token postgres-password app-db-password keycloak-db-password keycloak-admin-password pw-coordinator pw-clinician pw-supervisor pw-patient pw-lab pw-owner pw-specialist"
+SC_ITEMS="dev-auth-secret scheduler-token watchdog-token automation-token agency-token metrics-token postgres-password app-db-password keycloak-db-password keycloak-admin-password pw-coordinator pw-clinician pw-supervisor pw-patient pw-lab pw-owner pw-specialist demo-client-secret"
 REPO_ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
 
 need_project() { [ -n "$GCP_PROJECT" ] || { echo "No project: set GCP_PROJECT or run: gcloud config set project <id>" >&2; exit 1; }; }

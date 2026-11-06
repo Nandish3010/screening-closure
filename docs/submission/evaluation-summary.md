@@ -50,7 +50,7 @@ The upper-range scenario (a ceiling for the mechanism, not a forecast) reaches 8
 | Scheduler sweep keeps its 10 s cadence (4 h soak) | at least 95% of nominal starts | 100.0% (1,440 of 1,440) | met |
 | 1,000,000-case daily burst inside one 10 s loop | one loop | bounded, drains in 9 loops (2.4 minutes) | **not met** |
 | API memory flat over a 4 h soak | flat | +43.85 to +45.94 MiB/h per pod | **not met** |
-| Hosted demo end to end | passes the smoke test | live since 6 November 2026; smoke test 19 of 19 passed on the VM | **run once (6 Nov 2026)** |
+| Hosted demo end to end | passes the smoke test | live since 6 November 2026; every smoke-test check passed on the VM (`deploy/gcp/smoke-test.sh`; it now has 29 checks, including the Content-Security-Policy one) | **run once (6 Nov 2026)** |
 
 ## Reply triage by language group
 

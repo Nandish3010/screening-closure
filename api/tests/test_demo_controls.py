@@ -387,3 +387,80 @@ def test_no_public_credentials_listing_exists_and_no_config_turns_one_on():
             if "DEMO_SHOW_CREDENTIALS" in text or "DEMO_JUDGE_LOGINS" in text:
                 offenders.append(str(f.relative_to(repo)))
     assert offenders == []
+
+
+# ---- the shared clock's advance cap (ADR-060 addendum) -----------------------------------------------------------------
+
+from app import auth  # noqa: E402
+from app.routers import clock as clock_router  # noqa: E402
+
+clock_app = FastAPI(dependencies=[Depends(policy.enforce_route_policy)])
+clock_app.include_router(clock_router.demo_router)
+clock_client = TestClient(clock_app)
+
+
+@pytest.fixture
+def gate(monkeypatch):
+    monkeypatch.setattr(auth, "demo_controls_active", lambda: True)
+
+
+def advance(**body):
+    return clock_client.post("/clock/advance", json=body, headers=SUP)
+
+
+def test_advance_over_the_per_call_cap_is_refused_and_does_not_move_the_clock(gate):
+    before = clock_module.clock.now()
+    r = advance(days=demo_controls.ADVANCE_MAX_DAYS_PER_CALL + 1)
+    assert r.status_code == 422 and "at most 7 days" in r.json()["detail"]
+    assert advance(hours=24 * 8).status_code == 422  # hours count too
+    assert clock_module.clock.now() == before
+
+
+def test_advances_within_the_cap_work_until_the_window_budget_is_spent(gate):
+    for _ in range(4):
+        assert advance(days=7).status_code == 200  # 28 of 30
+    r = advance(days=3)  # 31 > 30
+    assert r.status_code == 409 and "28 of the 30 days" in r.json()["detail"] and "minute" in r.json()["detail"]
+    assert advance(days=2).status_code == 200  # exactly 30
+    assert advance(hours=1).status_code == 409
+
+
+def test_the_window_rolls(gate, monkeypatch):
+    t = [datetime(2026, 1, 1, tzinfo=UTC)]
+    monkeypatch.setattr(demo_controls, "_wall", lambda: t[0])
+    for _ in range(4):
+        assert advance(days=7).status_code == 200
+    assert advance(days=7).status_code == 409
+    t[0] = datetime(2026, 1, 1, 6, 1, tzinfo=UTC)  # six hours later the old advances no longer count
+    assert advance(days=7).status_code == 200
+
+
+def test_a_reset_gives_a_full_budget_again(gate):
+    write_status(last_reset_at="2026-01-01T00:00:00+00:00")
+    for _ in range(4):
+        advance(days=7)
+    assert advance(days=7).status_code == 409
+    write_status(last_reset_at="2026-01-01T06:00:00+00:00")  # the host reset: a new reset id (the host also deletes the file)
+    assert advance(days=7).status_code == 200
+    (Path(settings.demo_control_dir) / "clock-budget.json").unlink()
+    demo_controls.forget()  # the API restarts during a reset
+    assert advance(days=7).status_code == 200
+
+
+def test_the_budget_survives_an_api_restart(gate):
+    for _ in range(4):
+        advance(days=7)
+    demo_controls.forget()
+    assert advance(days=7).status_code == 409
+
+
+def test_outside_the_demo_gate_advance_is_unchanged(monkeypatch):
+    monkeypatch.setattr(auth, "demo_controls_active", lambda: False)
+    assert advance(days=400).status_code == 200
+    assert advance(days=400).status_code == 200
+    assert not (Path(settings.demo_control_dir) / "clock-budget.json").exists()
+
+
+def test_the_reset_script_deletes_the_budget_file():
+    s = (API_DIR.parent / "deploy/gcp/vm/demo-reset-watch.sh").read_text()
+    assert s.count("clock-budget.json") >= 3  # the header note and both places that clear the baseline

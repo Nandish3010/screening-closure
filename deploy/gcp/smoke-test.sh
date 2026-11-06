@@ -54,5 +54,7 @@ n429=$(seq 1 120 | xargs -P 40 -I{} curl -s -o /dev/null -m 15 -w '%{http_code}\
 [ "$n429" -gt 0 ] && ok "rate limit active ($n429 of 120 got 429)" || bad "no 429 in a burst of 120 requests (rate limit not active?)"
 hsts=$(curl -sI -m 15 "$BASE/" | tr -d '\r' | grep -i '^strict-transport-security' || true)
 [ -n "$hsts" ] && ok "HSTS header present" || bad "no Strict-Transport-Security header"
+csp=$(curl -sI -m 15 "$BASE/" | tr -d '\r' | grep -i '^content-security-policy' || true)
+{ echo "$csp" | grep -q "frame-ancestors 'none'" && echo "$csp" | grep -q "script-src 'self'" && ! echo "$csp" | grep -q "unsafe-eval"; } && ok "Content-Security-Policy present (script-src 'self', frame-ancestors 'none')" || bad "no (or a weak) Content-Security-Policy header on the web app"
 echo; [ $fail = 0 ] && echo "SMOKE TEST PASSED for $BASE" || echo "SMOKE TEST FAILED for $BASE"
 exit $fail

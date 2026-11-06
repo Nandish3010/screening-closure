@@ -15,6 +15,7 @@
 #   status.json         written by this script: {last_reset_at, last_reset_by, last_reset_reason, last_request_at, duration_s,
 #                       last_scheduled_at (the timer's last pass, even a skipped one: the API adds DEMO_AUTO_RESET_HOURS to it)}
 #   api-restart.json    written by sc-api-restart.sh: {at, reason, mode}; the API shows it in the demo block of /health
+#   clock-budget.json   written by the API (days the shared clock has been advanced in the rolling window); removed here too
 #   baseline.json       written by the API (the event count of every case just after a reset); removed here so it is re-taken
 #
 # Run it from a systemd timer every 15 s for the request check and every 6 h with --scheduled (units: see the PR notes of ADR-058;
@@ -74,7 +75,7 @@ PY
 }
 
 if [ "$mode" = record-seed ]; then
-  rm -f "$CTL/baseline.json"
+  rm -f "$CTL/baseline.json" "$CTL/clock-budget.json"
   update_status "last_reset_at=$(now_iso)" "last_reset_by=the seed" "last_reset_reason=seed"
   echo "demo-reset-watch: recorded the seed snapshot as the first reset point"; exit 0
 fi
@@ -104,7 +105,7 @@ else
   by="the schedule"; reason=scheduled
 fi
 
-rm -f "$REQ" "$CTL/baseline.json"
+rm -f "$REQ" "$CTL/baseline.json" "$CTL/clock-budget.json"
 started=$(date +%s)
 echo "demo-reset-watch: resetting ($reason, by $by)"
 "$SC_REPO/deploy/gcp/vm/demo-reset-on-vm.sh"

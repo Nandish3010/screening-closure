@@ -1,6 +1,6 @@
 # Screening Closure
 
-**Live demo: https://34-18-228-79.sslip.io** (synthetic data, simulated time, one VM, no failover; judge logins are in the submission form, not in this repository).
+**Live demo: https://34-18-228-79.sslip.io** (synthetic data, simulated time, one VM, no failover; no password needed: pick a role on the sign-in page and click once; no logins are in this repository).
 
 [![check](https://github.com/Nandish3010/screening-closure/actions/workflows/check.yml/badge.svg)](https://github.com/Nandish3010/screening-closure/actions/workflows/check.yml)
 
@@ -38,7 +38,7 @@ People act on decisions and conversations; the system does the rest. The phone c
 
 ## Judge path (about half an hour the first time, about 5 minutes after that)
 
-**Hosted demo: live since 6 November 2026 at https://34-18-228-79.sslip.io (Google Cloud, me-central1, one e2-medium VM, no failover; synthetic data, simulated time). It resets itself to the seeded snapshot every 6 hours and when a supervisor asks. Judge logins are in the submission form, never in this repository.** Details and what is still unverified: [docs/governance/hosting-gcp.md](docs/governance/hosting-gcp.md). The local path below also works and does not depend on it.
+**Hosted demo: live since 6 November 2026 at https://34-18-228-79.sslip.io (Google Cloud, me-central1, one e2-medium VM, no failover; synthetic data, simulated time). It resets itself to the seeded snapshot every 6 hours and when a supervisor asks. On the hosted demo a judge picks a role and clicks once; there is no password to enter, and none is in this repository.** Details and what is still unverified: [docs/governance/hosting-gcp.md](docs/governance/hosting-gcp.md). The local path below also works and does not depend on it.
 
 **What the local path needs.** Docker with Compose, Python 3.12 or later (for the `.venv`), Node 22 (for the web app) and a network for the first image pulls. Step 0 (the live reply-triage model) runs only on Apple-silicon macOS because it uses MLX; on any other machine skip it and every reply fails safe to a person, so the demo still runs but the model's reading is not shown. The times were measured on a 10-core Mac. Two parts are timed: the first demo seed takes about 12 minutes and `make demo-reset` about 25 s. Image pulls and the `pip` and `npm` installs depend on your network and are not timed, so plan on about half an hour for the first run on a fresh clone; once the saved state exists, a later session (steps 1 to 3) takes about 5 minutes.
 
@@ -59,7 +59,7 @@ Then:
 
 The scripted walkthrough is [docs/submission/demo-script.md](docs/submission/demo-script.md).
 
-**On the hosted demo** (live since 6 November 2026), you will find: the sign-in page shows one card per role (coordinator, clinician, supervisor, patient), a banner says "Demo, synthetic data, simulated time", and the Judge tour opens on the challenge owner's five steps with things to try. Passwords go in the submission, not in the page. The seeded demo holds 26 cases: 22 bowel-screening cases and 4 long-term-condition cases.
+**On the hosted demo** (live since 6 November 2026), you will find: the sign-in page shows one card per role (coordinator, clinician, supervisor, patient), a banner says "Demo, synthetic data, simulated time", and the Judge tour opens on the challenge owner's five steps with things to try. There is no password to type: one click per role signs you in (the password sign-in stays as a fallback, and its logins are never in the repository). The seeded demo holds 26 cases: 22 bowel-screening cases and 4 long-term-condition cases.
 
 ## Quickstart (stack up and tests; this is not the demo path)
 
