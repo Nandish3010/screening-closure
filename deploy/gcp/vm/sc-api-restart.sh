@@ -21,6 +21,7 @@ DAILY_PCT=${SC_RESTART_DAILY_PCT:-40}
 MIN_GAP=${SC_RESTART_MIN_GAP_S:-3600}
 LOG=${SC_RESTART_LOG:-/var/lib/sc/api-restart.log}
 STATE=${SC_RESTART_STATE:-/var/lib/sc/api-restart.last}
+CTL=${DEMO_CONTROL_DIR:-/var/lib/sc-demo}   # the demo's control folder (ADR-058): the API reads api-restart.json from here, as data
 CGROOT=${SC_CGROUP_ROOT:-/sys/fs/cgroup}
 MEMINFO=${SC_MEMINFO:-/proc/meminfo}
 
@@ -77,3 +78,16 @@ fi
 docker compose restart api
 mkdir -p "$(dirname "$STATE")" 2>/dev/null && echo "$now" > "$STATE" || true
 log "$MODE: api RESTARTED, reason: $reason; $reading"
+# Tell the demo's /health when and why (read-only for the API, host-written, no secret in it). Never fails the restart.
+if [ -d "$CTL" ]; then
+  python3 -I - "$CTL/api-restart.json" "$MODE" "$reason" <<'PY' 2>/dev/null || true
+import json, os, sys, tempfile
+from datetime import datetime, timezone
+path, mode, reason = sys.argv[1:4]
+fd, tmp = tempfile.mkstemp(dir=os.path.dirname(path), prefix=".api-restart.")
+with os.fdopen(fd, "w") as fh:
+    json.dump({"at": datetime.now(timezone.utc).isoformat(), "mode": mode, "reason": reason[:200]}, fh)
+os.chmod(tmp, 0o644)
+os.replace(tmp, path)
+PY
+fi

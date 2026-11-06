@@ -128,11 +128,14 @@ async def lifespan(app: FastAPI):
 
 
 # Every route passes through the policy table; a route without an entry is refused.
+# In production the interactive docs and the schema are not served (the edge also answers 404 for them): they are a map of every
+# route for anyone who asks. `app.openapi()` still works in-process, so the generated web types and the tests are unaffected.
 app = FastAPI(
     title="Screening Closure Engine",
     version="0.1.0",
     lifespan=lifespan,
     dependencies=[Depends(policy.enforce_route_policy)],
+    **({"docs_url": None, "redoc_url": None, "openapi_url": None} if settings.app_env == "production" else {}),
 )
 # M7-8 (ADR-048): a bounded number of requests in flight per process; the rest get 503 + Retry-After. Added first, so it sits inside
 # the CORS and metrics middleware (a shed answer still carries the CORS headers, and the request metrics count it).
