@@ -41,6 +41,9 @@ CLAIM_SECONDS = 30 * 60  # a case picked for a judge session is held for it this
 BASELINE_MAX = 5000
 SCAN_BUDGET = 1000
 PAGE = 200
+ADVANCE_MAX_DAYS_PER_CALL = 7  # POST /clock/advance under the demo gate: the most one call may move the shared clock
+ADVANCE_WINDOW_HOURS = 6  # ... and the most it may move in total (ADVANCE_MAX_DAYS_PER_WINDOW) in any rolling window this long
+ADVANCE_MAX_DAYS_PER_WINDOW = 30
 MAX_JUMP_DAYS = 45  # "Simulate a missed follow-up" refuses to move the shared clock further than this
 
 
@@ -151,12 +154,53 @@ def request_reset(identity: Identity) -> dict:
     return {"requested": True, **body, "message": "Reset requested. The demo restarts in about a minute and comes back at the same sign-in."}
 
 
+# ---- the shared clock's advance budget ------------------------------------------------------------------------------
+
+def guard_advance(days: float) -> None:
+    """Demo gate only: let one POST /clock/advance move the shared clock `days` (days + hours/24), or refuse it. Moving the clock
+    is irreversible until the next reset and every judge shares it, so a call is capped (422) and so is the total over a rolling
+    window (409). The budget lives in `clock-budget.json` beside the status and is tied to the reset it was taken after, so the
+    host's reset (which also deletes the file) and a changed `reset_id` both give the next judge a full budget. Recorded on accept."""
+    if days > ADVANCE_MAX_DAYS_PER_CALL:
+        raise DemoError(422, f"On the hosted demo the clock moves at most {ADVANCE_MAX_DAYS_PER_CALL} days per click, so every judge keeps a "
+                             f"usable demo. Advance by {ADVANCE_MAX_DAYS_PER_CALL} days or fewer.")
+    now = _wall()
+    rid = status()["reset_id"]
+    with _lock:
+        saved = _read("clock-budget.json")
+        if saved and saved.get("reset_id") == rid and isinstance(saved.get("entries"), list):
+            raw = saved["entries"]
+        else:
+            raw = [[at.isoformat(), d] for at, d in _advances] if not saved and _advances_rid == [rid] else []
+        cutoff = now - timedelta(hours=ADVANCE_WINDOW_HOURS)
+        entries: list[tuple[datetime, float]] = []
+        for item in raw:
+            at = _parse(item[0]) if isinstance(item, list) and len(item) == 2 else None
+            if at is not None and at > cutoff and isinstance(item[1], (int, float)):
+                entries.append((at, float(item[1])))
+        used = sum(d for _, d in entries)
+        if used + days > ADVANCE_MAX_DAYS_PER_WINDOW + 1e-9:
+            free_at = min((at for at, _ in entries), default=now) + timedelta(hours=ADVANCE_WINDOW_HOURS)
+            mins = max(1, int((free_at - now).total_seconds() // 60) + 1)
+            raise DemoError(409, f"The demo clock has already moved {used:g} of the {ADVANCE_MAX_DAYS_PER_WINDOW} days allowed every "
+                                 f"{ADVANCE_WINDOW_HOURS} hours (it is shared by all judges). Try again in about {mins} minute(s), or after the next demo reset.")
+        entries.append((now, days))
+        _advances[:] = entries
+        _advances_rid[:] = [rid]
+        try:
+            _write("clock-budget.json", {"reset_id": rid, "entries": [[at.isoformat(), d] for at, d in entries]})
+        except OSError as exc:
+            log.warning("demo clock budget not persisted to %s: %s", settings.demo_control_dir, exc.strerror)
+
+
 # ---- fresh cases for the guided path --------------------------------------------------------------------------------
 
 _lock = threading.Lock()
 _baseline: dict | None = None  # {"reset_id": str, "counts": {case_id: events}} for this process
 _claims: dict[str, tuple[str, float]] = {}  # case_id -> (session, expires monotonic)
 _picks: dict[tuple[str, str], str] = {}  # (session, step) -> case_id
+_advances_rid: list[str] = []  # the reset_id `_advances` belongs to
+_advances: list[tuple[datetime, float]] = []  # in-process fallback of the advance budget when the control dir is unwritable
 
 
 def forget() -> None:
@@ -167,6 +211,8 @@ def forget() -> None:
         _baseline = None
         _claims.clear()
         _picks.clear()
+        _advances.clear()
+        _advances_rid.clear()
 
 
 def _mono() -> float:

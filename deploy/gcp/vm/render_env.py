@@ -25,7 +25,8 @@ from pathlib import Path
 TOKEN_SECRETS = ("dev-auth-secret", "scheduler-token", "watchdog-token", "automation-token", "agency-token", "metrics-token")
 DB_SECRETS = ("postgres-password", "app-db-password", "keycloak-db-password", "keycloak-admin-password")
 USER_SECRETS = ("pw-coordinator", "pw-clinician", "pw-supervisor", "pw-patient", "pw-lab", "pw-owner", "pw-specialist")
-REQUIRED = TOKEN_SECRETS + DB_SECRETS + USER_SECRETS
+DEMO_SECRETS = ("demo-client-secret",)  # the secret of the confidential one-click client (ADR-060 addendum); the API and Keycloak only
+REQUIRED = TOKEN_SECRETS + DB_SECRETS + USER_SECRETS + DEMO_SECRETS
 
 REALM = "screening-closure"
 DEMO_CLIENT_ID = "screening-closure-demo"  # the Keycloak client with direct access grants (vm/render_realm.py), demo only
@@ -73,6 +74,7 @@ def build_files(host: str, secrets: dict[str, str], mode: str = "production", de
         "KC_PW_CLINICIAN": s["pw-clinician"],
         "KC_PW_SUPERVISOR": s["pw-supervisor"],
         "KC_PW_PATIENT": s["pw-patient"],
+        "KC_DEMO_CLIENT_SECRET": s["demo-client-secret"],
         "KC_PW_LAB": s["pw-lab"],
         "KC_PW_OWNER": s["pw-owner"],
         "KC_PW_SPECIALIST": s["pw-specialist"],
@@ -103,6 +105,7 @@ def build_files(host: str, secrets: dict[str, str], mode: str = "production", de
         # returns tokens; they never reach the browser. Production-demo mode only: the seed phase (dev login) has no use for them.
         api["DEMO_SIGNIN_TOKEN_URL"] = f"http://keycloak-prod:8080/auth/realms/{REALM}/protocol/openid-connect/token"
         api["DEMO_SIGNIN_CLIENT_ID"] = DEMO_CLIENT_ID
+        api["DEMO_SIGNIN_CLIENT_SECRET"] = s["demo-client-secret"]
         api["DEMO_SIGNIN_PW_COORDINATOR"] = s["pw-coordinator"]
         api["DEMO_SIGNIN_PW_CLINICIAN"] = s["pw-clinician"]
         api["DEMO_SIGNIN_PW_SUPERVISOR"] = s["pw-supervisor"]

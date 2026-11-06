@@ -65,12 +65,33 @@ def test_direct_grants_only_on_the_demo_client_in_the_rendered_realm_and_never_i
     web = next(c for c in out["clients"] if c["clientId"] == "screening-closure-web")
     assert web["directAccessGrantsEnabled"] is False and web["standardFlowEnabled"] is True
     demo = next(c for c in out["clients"] if c["clientId"] == "screening-closure-demo")
-    assert demo["publicClient"] is True and demo["standardFlowEnabled"] is False and demo["serviceAccountsEnabled"] is False
+    assert demo["publicClient"] is False and demo["clientAuthenticatorType"] == "client-secret"  # confidential: the public cannot use it
+    assert demo["secret"] == "${KC_DEMO_CLIENT_SECRET}" and "secret" not in web  # a placeholder Keycloak fills from its environment
+    assert demo["standardFlowEnabled"] is False and demo["serviceAccountsEnabled"] is False
     assert demo["redirectUris"] == [] and demo["webOrigins"] == []
     assert "localhost" not in json.dumps(out) and out["bruteForceProtected"] is True
     # the same token shape as the web client: the API's audience and the claims it reads
     assert [m["name"] for m in demo["protocolMappers"]] == [m["name"] for m in web["protocolMappers"]]
     assert all(u["credentials"][0]["value"].startswith("${KC_PW_") for u in out["users"])  # still no password in the file
+
+
+def test_demo_client_secret_reaches_only_the_api_and_keycloak():
+    prod = render_env.build_files(HOST, SECRETS, "production")
+    secret = SECRETS["demo-client-secret"]
+    assert "demo-client-secret" in render_env.REQUIRED
+    assert prod["api.env"]["DEMO_SIGNIN_CLIENT_SECRET"] == secret and prod["compose.env"]["KC_DEMO_CLIENT_SECRET"] == secret
+    for name in ("scheduler.env", "watchdog.env"):
+        assert secret not in json.dumps(prod[name])
+    assert "DEMO_SIGNIN_CLIENT_SECRET" not in json.dumps(render_env.build_files(HOST, SECRETS, "seed")["api.env"])
+    assert "KC_DEMO_CLIENT_SECRET" in (GCP / "compose.gcp.yml").read_text()  # Keycloak gets it for the import and for ensure-demo-client.sh
+    assert "demo-client-secret" in (GCP / "lib.sh").read_text()  # deploy.sh creates every SC_ITEMS secret, idempotently
+
+
+def test_brute_force_lockouts_are_temporary_and_short():
+    out = _realm()
+    assert out["bruteForceProtected"] is True and out["permanentLockout"] is False
+    assert out["maxFailureWaitSeconds"] <= 60 and out["waitIncrementSeconds"] <= out["maxFailureWaitSeconds"]
+    assert out["maxDeltaTimeSeconds"] <= 3600  # failures are forgotten quickly too
 
 
 def test_rendering_the_realm_twice_does_not_duplicate_the_client():
@@ -96,6 +117,15 @@ def test_ensure_script_is_idempotent_and_prints_no_secret():
     assert "ensure-demo-client.sh" in (GCP / "vm/sc-up.sh").read_text()
 
 
+def test_ensure_script_updates_an_existing_client_in_place_to_confidential_with_the_secret_and_sets_the_realm_lockouts():
+    s = (GCP / "vm/ensure-demo-client.sh").read_text()
+    assert 'kc update "clients/$uuid"' in s and '"publicClient": False' in s and "client-secret" in s  # runs whether or not it was created
+    assert "$KC_DEMO_CLIENT_SECRET" in s and "-f -" in s  # the secret comes from the container's environment, over stdin
+    assert "--secret" not in s and "secret=" not in s  # never an argument (it would show in a process list)
+    assert "update realms/screening-closure" in s and "maxFailureWaitSeconds" in s
+    assert 'c.pop("secret"' in s  # the create path never stores the import placeholder as the secret
+
+
 def test_smoke_test_signs_in_as_the_coordinator_and_reads_cases_with_the_token():
     s = (GCP / "smoke-test.sh").read_text()
     assert "/api/demo/sign-in" in s and '"role":"coordinator"' in s
@@ -112,3 +142,39 @@ def test_jwks_and_token_urls_name_the_keycloak_service_the_overlay_actually_defi
     f = render_env.build_files(HOST, SECRETS)
     for url in (f["compose.env"]["OIDC_JWKS_URL"], f["api.env"]["DEMO_SIGNIN_TOKEN_URL"]):
         assert url.split("//")[1].split(":")[0] in services, url
+
+
+def _edge_csp() -> dict[str, list[str]]:
+    import re
+
+    t = (GCP / "edge/nginx.conf.template").read_text()
+    loc = t[t.index("    location / {"):]
+    loc = loc[:loc.index("\n    }")]
+    m = re.search(r'add_header Content-Security-Policy "([^"]+)" always;', loc)
+    assert m, "the web app location must send a Content-Security-Policy"
+    assert all(h in loc for h in ("X-Content-Type-Options", "Referrer-Policy", "X-Frame-Options"))  # a location's own add_header drops the inherited ones
+    return {d.split()[0]: d.split()[1:] for d in m.group(1).split("; ")}
+
+
+def test_edge_sends_a_csp_the_built_web_app_satisfies():
+    csp = _edge_csp()
+    assert csp["frame-ancestors"] == ["'none'"] and csp["object-src"] == ["'none'"] and csp["base-uri"] == ["'self'"]
+    assert csp["script-src"] == ["'self'"]  # no inline script, no eval, no third-party script
+    assert csp["default-src"] == ["'self'"] and csp["connect-src"] == ["'self'"]  # the API (/api) and Keycloak (/auth) are the same origin
+    assert "'unsafe-eval'" not in json.dumps(csp) and "*" not in json.dumps(csp)
+    # what the app needs: React style attributes, self-hosted fonts, data/blob images, the service worker and manifest
+    assert "'unsafe-inline'" in csp["style-src"] and csp["font-src"] == ["'self'"] and csp["worker-src"] == ["'self'"]
+    assert set(csp["img-src"]) == {"'self'", "data:", "blob:"}
+    html = (REPO_ROOT / "web/index.html").read_text()  # the entry page: one external module, nothing inline, no third-party host
+    import re
+
+    assert not re.search(r"<script(?![^>]*\bsrc=)", html) and "<style" not in html and "onclick" not in html and "http" not in html.replace("http-equiv", "")
+
+
+def test_csp_is_not_applied_to_keycloak_and_the_smoke_test_checks_it():
+    t = (GCP / "edge/nginx.conf.template").read_text()
+    kc = t[t.index("location /auth/ {"):]
+    assert "Content-Security-Policy" not in kc[:kc.index("\n    }")]
+    s = (GCP / "smoke-test.sh").read_text()
+    assert "content-security-policy" in s.lower() and "frame-ancestors 'none'" in s and "script-src 'self'" in s
+    assert subprocess.run(["bash", "-n", str(GCP / "smoke-test.sh")]).returncode == 0

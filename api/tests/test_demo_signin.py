@@ -217,7 +217,7 @@ def test_exchange_posts_a_form_and_parses_json_and_reports_refusals_and_outages(
     try:
         assert demo_signin._exchange(url, {"password": "right", "username": "u"}) == (200, {"access_token": "AT"})
         assert seen["ctype"] == "application/x-www-form-urlencoded" and seen["form"]["username"] == "u"
-        assert demo_signin._exchange(url, {"password": "wrong"}) == (401, None)
+        assert demo_signin._exchange(url, {"password": "wrong"}) == (401, {"error": "invalid_grant"})
     finally:
         srv.shutdown()
         srv.server_close()
@@ -225,3 +225,37 @@ def test_exchange_posts_a_form_and_parses_json_and_reports_refusals_and_outages(
         demo_signin._exchange(url, {"password": "right"})  # nothing listening any more
     with pytest.raises(OSError):
         demo_signin._exchange("file:///etc/passwd", {})
+
+
+def test_the_client_secret_is_sent_when_configured_and_never_returned(monkeypatch):
+    monkeypatch.setattr(settings, "demo_signin_client_secret", "client-SECRET-xyz")
+    idp = Idp()
+    monkeypatch.setattr(demo_signin, "_exchange", idp)
+    r = post("coordinator")
+    assert r.status_code == 200 and "client-SECRET-xyz" not in r.text and "client_secret" not in r.text
+    assert idp.calls[-1][1]["client_secret"] == "client-SECRET-xyz"
+
+
+def test_no_client_secret_field_when_none_is_configured(monkeypatch):
+    monkeypatch.setattr(settings, "demo_signin_client_secret", "")
+    idp = Idp()
+    monkeypatch.setattr(demo_signin, "_exchange", idp)
+    assert post("coordinator").status_code == 200 and "client_secret" not in idp.calls[-1][1]
+
+
+@pytest.mark.parametrize("status,body", [(400, {"error": "invalid_grant", "error_description": "Account temporarily disabled"}),
+                                         (400, {"error": "invalid_grant", "error_description": "Account disabled"}),
+                                         (401, {"error": "invalid_grant", "error_description": "User is locked"})])
+def test_a_locked_user_is_reported_as_a_temporary_lock_with_a_wait_not_an_opaque_503(monkeypatch, status, body):
+    monkeypatch.setattr(demo_signin, "_exchange", lambda url, form: (status, body))
+    r = post("supervisor")
+    assert r.status_code == 503
+    msg = r.json()["detail"]
+    assert "supervisor" in msg and "temporarily locked" in msg and f"{demo_signin.LOCKOUT_RETRY_SECONDS} s" in msg
+    assert PWS["supervisor"] not in r.text
+
+
+def test_other_refusals_stay_the_generic_message(monkeypatch):
+    monkeypatch.setattr(demo_signin, "_exchange", lambda url, form: (401, {"error": "unauthorized_client", "error_description": "Invalid client secret"}))
+    r = post("supervisor")
+    assert r.status_code == 503 and "temporarily locked" not in r.json()["detail"] and "refused" in r.json()["detail"]

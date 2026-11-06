@@ -11,6 +11,7 @@ The one exception is the declared hosted demo (DEMO_SIMULATED_CLOCK=1 and DEMO_D
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, ConfigDict, Field
 
+from app import auth
 from app.clock import clock
 from app.routers import cases
 
@@ -29,6 +30,13 @@ def advance(body: Advance) -> dict:
     """Move the sim clock forward by `days` and/or `hours`. It never moves backwards."""
     if not (body.days or body.hours):
         raise HTTPException(422, "give days and/or hours, greater than zero")
+    if auth.demo_controls_active():  # the hosted demo's shared clock: capped per call and per window (ADR-060 addendum)
+        from app import demo_controls
+
+        try:
+            demo_controls.guard_advance((body.days or 0) + (body.hours or 0) / 24)
+        except demo_controls.DemoError as exc:
+            raise HTTPException(exc.status, exc.message) from exc
     return {"sim_time": clock.advance(days=body.days or 0, hours=body.hours or 0).isoformat()}
 
 

@@ -2,7 +2,7 @@
 """Render the Keycloak realm for the hosted demo from the committed realm (config/keycloak/screening-closure-realm.json).
 
 Changes, all in memory the web client's redirect URIs and web origins become the public host only (no localhost), brute-force
-protection goes on, and the `sslRequired` stays `external`. ADR-060 adds a second client, `screening-closure-demo`, with direct access
+protection goes on (short, temporary lockouts), and the `sslRequired` stays `external`. ADR-060 adds a second client, `screening-closure-demo`, with direct access
 grants, used only by the API's one-click demo sign-in over the private network; the committed realm and the web client never allow
 direct grants. Passwords stay as the committed `${KC_PW_*}` placeholders, which
 Keycloak fills from its environment at import. Usage: render_realm.py HOST SRC.json DST.json
@@ -13,17 +13,25 @@ import json
 import sys
 
 DEMO_CLIENT_ID = "screening-closure-demo"
+# Brute-force protection for the public Keycloak login page: ~10 bad passwords lock a user, but only briefly and never permanently, so
+# a stranger guessing at a public demo username cannot take a role away from the judges for more than a minute. ensure-demo-client.sh
+# applies the same values to a live realm (an existing realm is not touched by the import).
+BRUTE_FORCE = {"bruteForceProtected": True, "failureFactor": 10, "permanentLockout": False, "waitIncrementSeconds": 30,
+               "maxFailureWaitSeconds": 60, "minimumQuickLoginWaitSeconds": 30, "quickLoginCheckMilliSeconds": 1000,
+               "maxDeltaTimeSeconds": 600}
+SECRET_PLACEHOLDER = "${KC_DEMO_CLIENT_SECRET}"  # filled by Keycloak from its environment at import, like the user passwords
 
 
 def demo_client(realm: dict) -> dict:
     """The web client's token shape (audience, name, provider, patient_ref claims) with the password grant instead of the browser flow.
-    A public client with no redirect URIs and no web origins, so the browser flows cannot use it. Its token endpoint is Keycloak's
-    ordinary one (also reachable through the edge, as the web client's is), where brute-force protection (render() turns it on)
-    covers guessing; the only caller that holds the demo passwords is the API (ADR-060)."""
+    A CONFIDENTIAL client (client secret, held only by the API) with no redirect URIs and no web origins: the token endpoint is
+    reachable through the edge, but without the secret nobody else can use this client for password grants, so the public cannot
+    guess demo passwords through it and lock a role (ADR-060 addendum). The only caller that holds the secret and the demo
+    passwords is the API."""
     web = next(c for c in realm["clients"] if c["clientId"] == "screening-closure-web")
     c = copy.deepcopy(web)
     c.update(clientId=DEMO_CLIENT_ID, name="Screening Closure hosted-demo one-click sign-in (API only)",
-             publicClient=True, standardFlowEnabled=False, implicitFlowEnabled=False, directAccessGrantsEnabled=True,
+             publicClient=False, clientAuthenticatorType="client-secret", secret=SECRET_PLACEHOLDER, standardFlowEnabled=False, implicitFlowEnabled=False, directAccessGrantsEnabled=True,
              serviceAccountsEnabled=False, redirectUris=[], webOrigins=[])
     c.pop("attributes", None)
     return c
@@ -35,8 +43,7 @@ def render(realm: dict, host: str) -> dict:
             c["redirectUris"] = [f"https://{host}/*"]
             c["webOrigins"] = [f"https://{host}"]
     realm["clients"] = [c for c in realm["clients"] if c["clientId"] != DEMO_CLIENT_ID] + [demo_client(realm)]
-    realm["bruteForceProtected"] = True
-    realm["failureFactor"] = 10
+    realm.update(BRUTE_FORCE)
     realm["sslRequired"] = "external"
     return realm
 

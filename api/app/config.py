@@ -60,6 +60,7 @@ class Settings(BaseSettings):
     # deploy/gcp/vm/render_env.py in production-demo mode only; they are never logged or returned. Empty = that role cannot be used.
     demo_signin_token_url: str = ""  # default: the JWKS URL with /certs replaced by /token
     demo_signin_client_id: str = "screening-closure-demo"
+    demo_signin_client_secret: str = Field(default="", repr=False)  # the confidential demo client's secret; only the API holds it
     demo_signin_pw_coordinator: str = Field(default="", repr=False)
     demo_signin_pw_clinician: str = Field(default="", repr=False)
     demo_signin_pw_supervisor: str = Field(default="", repr=False)

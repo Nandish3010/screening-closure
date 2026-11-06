@@ -22,4 +22,16 @@ describe("the simulated-time banner", () => {
     await screen.findByText(/Role|Sign out/);
     await waitFor(() => expect(screen.queryByTestId("demo-clock-banner")).toBeNull());
   });
+
+  it("limits the supervisor's Advance to the 7 days the hosted demo's API allows, and not on a plain deployment", async () => {
+    const adv = async () => "2026-01-12T08:00:00Z";
+    const hosted = { ...withHealth(createMockAdapter(null), { simulated_clock: true, deployment: true } as never), advanceClock: adv } as ApiClient;
+    const { unmount } = renderWithApp(<Header />, { api: hosted, role: "supervisor" });
+    const input = (await screen.findByLabelText("Days to advance the simulation clock")) as HTMLInputElement;
+    await waitFor(() => expect(input.max).toBe("7"));
+    unmount();
+    const plain = { ...withHealth(createMockAdapter(null), { simulated_clock: true }), advanceClock: adv } as ApiClient;
+    renderWithApp(<Header />, { api: plain, role: "supervisor" });
+    expect(((await screen.findByLabelText("Days to advance the simulation clock")) as HTMLInputElement).max).toBe("365");
+  });
 });

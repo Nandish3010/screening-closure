@@ -73,6 +73,7 @@ services:
       KC_PW_CLINICIAN: ${KC_PW_CLINICIAN:?}
       KC_PW_SUPERVISOR: ${KC_PW_SUPERVISOR:?}
       KC_PW_PATIENT: ${KC_PW_PATIENT:?}
+      KC_DEMO_CLIENT_SECRET: ${KC_DEMO_CLIENT_SECRET:?}
       DEMO_PATIENT_REF: ${DEMO_PATIENT_REF:-Patient/demo-patient}
     volumes:
       - /etc/sc/keycloak-import:/opt/keycloak/data/import:ro

@@ -33,6 +33,9 @@ ROLES = tuple(DEMO_USERS)
 TOKEN_FIELDS = ("access_token", "refresh_token", "id_token", "token_type", "expires_in", "refresh_expires_in", "scope")
 
 
+LOCKOUT_RETRY_SECONDS = 60  # the realm's longest brute-force wait (render_realm.BRUTE_FORCE maxFailureWaitSeconds)
+
+
 class SignInError(Exception):
     def __init__(self, status: int, message: str):
         super().__init__(message)
@@ -97,11 +100,23 @@ def _exchange(url: str, form: dict[str, str]) -> tuple[int, object]:
         with urllib.request.urlopen(req, timeout=8.0) as resp:  # noqa: S310 - scheme checked above
             status, raw = resp.status, resp.read(1_000_000)
     except urllib.error.HTTPError as exc:  # the provider answered with a refusal: a status, not an outage
-        return exc.code, None
+        try:
+            refusal = json.loads(exc.read(100_000))
+        except (ValueError, OSError):
+            refusal = None
+        return exc.code, refusal
     try:
         return status, json.loads(raw)
     except ValueError:
         return status, None
+
+
+def _locked(body: object) -> bool:
+    """True when Keycloak's refusal says the user is disabled or temporarily locked (brute-force protection), whatever the status."""
+    if not isinstance(body, dict):
+        return False
+    text = f"{body.get('error_description', '')} {body.get('error', '')}".lower()
+    return "disabled" in text or "locked" in text
 
 
 def sign_in(role: str, ip: str) -> dict:
@@ -114,12 +129,18 @@ def sign_in(role: str, ip: str) -> dict:
     _admit(ip)
     form = {"grant_type": "password", "client_id": settings.demo_signin_client_id,
             "username": DEMO_USERS[role], "password": password, "scope": "openid profile"}
+    if settings.demo_signin_client_secret:  # the demo client is confidential (ADR-060 addendum): only this API holds the secret
+        form["client_secret"] = settings.demo_signin_client_secret
     try:
         status, body = _exchange(token_url(), form)
     except OSError as exc:  # URLError, timeouts and refused connections are OSErrors
         log.error("demo sign-in role=%s: identity provider unreachable (%s)", role, type(exc).__name__)
         raise SignInError(503, "The identity provider did not answer. Try again, or use the password sign-in.") from exc
     if status != 200:
+        if _locked(body):  # the public can guess at the demo usernames; the realm locks a user briefly (render_realm.BRUTE_FORCE)
+            log.warning("demo sign-in role=%s: the demo user is temporarily locked by the identity provider", role)
+            raise SignInError(503, f"The {role} demo role is temporarily locked after repeated failed sign-ins by someone else. "
+                                   f"Try again in {LOCKOUT_RETRY_SECONDS} s, or pick another role.")
         log.error("demo sign-in role=%s: identity provider refused (status %s)", role, status)
         raise SignInError(503, "The identity provider refused the sign-in. Use the password sign-in.")
     if not isinstance(body, dict) or not body.get("access_token"):
