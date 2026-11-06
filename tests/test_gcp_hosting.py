@@ -345,3 +345,17 @@ def test_compose_env_carries_app_env_so_the_base_compose_default_cannot_win():
     seed = render_env.build_files("demo.example", SECRETS, mode="seed")
     assert prod["compose.env"]["APP_ENV"] == "production" == prod["api.env"]["APP_ENV"]
     assert seed["compose.env"]["APP_ENV"] == "dev"
+
+
+def test_hosted_seed_stages_the_rich_opening_state_in_the_right_order():
+    """The hosted demo opens staged (simulator/stage_demo_state.py): the overdue case is created BEFORE the cohort's cases (the clock
+    moves once, so none of the others is overdue), the draft, sign-off and closed cases come after the chronic cases, and all of it
+    is before the snapshot that 'reset demo' restores. Hosted only: the local video demo's seed does not run it."""
+    script = (GCP / "vm" / "seed-on-vm.sh").read_text()
+    code = "\n".join(l for l in script.splitlines() if not l.lstrip().startswith("#"))
+    order = ["simulator/generate_results.py", "stage_demo_state.py --phase overdue", "simulator/create_cases.py",
+             "simulator/create_chronic_cases.py", "stage_demo_state.py --phase rest", "tools/demo/snapshot.sh save"]
+    at = [code.index(x) for x in order]
+    assert at == sorted(at)
+    assert code.index("stage_demo_state.py --phase rest") < code.index("echo production > /var/lib/sc/mode")
+    assert "stage_demo_state" not in (REPO_ROOT / "Makefile").read_text().split("\ndemo-seed:\n", 1)[1].split("\n\n", 1)[0]

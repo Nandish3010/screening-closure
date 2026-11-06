@@ -6,12 +6,17 @@
 #      (simulator/*.py) authenticate with the dev login, which production refuses by design.
 #   2. Synthea (deterministic: seed 20261017, 300 patients, in a container) -> HAPI -> FIT results -> cases, as `make demo-seed`,
 #      then the four long-term-conditions demo cases (blood pressure, HbA1c, BMI; `make demo-seed-chronic`) so Today shows them.
+#      Staging (simulator/stage_demo_state.py, real API calls as the demo cast, hosted-only): ONE case is created first and taken past
+#      its follow-up date so the real scheduler marks it overdue and escalates it to the supervisor (the other cases are created after the
+#      clock moved, so none is overdue); after the chronic cases: a case with a pending AI draft (recorded Claude output, nothing sent), one
+#      at the clinician's sign-off and one closed with documented evidence. So the clock does NOT stay at 2026-01-05 on the hosted demo.
 #   3. tools/demo/snapshot.sh save: the reset point ("reset demo" restores it).
 #   4. mode=production: APP_ENV=production, OIDC, no dev login, FHIR evidence check on, demo-approval off, simulated clock under the demo
 #      gate; Caddy opens 80/443.
 #
-# The simulation clock starts at the repository default (2026-01-05T08:00:00Z), exactly as in the local demo: same cohort, same cases,
-# same dates, so the recorded Claude drafts (api/app/ai/cache, keyed by prompt content) replay. Production keeps that clock (demo gate).
+# The simulation clock starts at the repository default (2026-01-05T08:00:00Z) and the staging moves it a few working days on (to the
+# overdue case's supervisor rung); same cohort and cases as the local demo. The recorded Claude drafts (api/app/ai/cache) are keyed by
+# prompt content, not by date, so they replay. Production keeps the clock where the snapshot left it (demo gate).
 # Re-running starts from an empty database only if you pass --fresh (it deletes the volumes).
 set -euo pipefail
 export SC_REPO=${SC_REPO:-/srv/sc/repo}
@@ -37,7 +42,7 @@ else
 fi
 
 docker run --rm --network host -v "$SC_REPO":/repo -w /repo python:3.12-slim sh -c \
-  'pip install -q --no-cache-dir httpx pyyaml && python simulator/load_cohort.py --skip-if-loaded && python simulator/generate_results.py && python simulator/create_cases.py && python simulator/create_chronic_cases.py'
+  'pip install -q --no-cache-dir httpx pyyaml && python simulator/load_cohort.py --skip-if-loaded && python simulator/generate_results.py && python simulator/stage_demo_state.py --phase overdue && python simulator/create_cases.py && python simulator/create_chronic_cases.py && python simulator/stage_demo_state.py --phase rest'
 
 ref=$(docker compose exec -T postgres psql -U closure -d closure -At -c "SELECT payload->>'patient_ref' FROM events WHERE payload ? 'patient_ref' ORDER BY id LIMIT 1")
 echo "seed: demo patient reference for the patient login: ${ref:-<none>}"

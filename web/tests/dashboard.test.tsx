@@ -3,7 +3,8 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createMockAdapter } from "../src/api/mockAdapter";
 import { ApiError } from "../src/api/contract";
-import { ALERT_POLL_MS, DashboardPage, minutesSince, stoppedWording } from "../src/pages/DashboardPage";
+import { readFileSync } from "node:fs";
+import { ALERT_POLL_MS, DashboardPage, SCHEDULER_SILENT_ALERT_SECONDS, beatAge, minutesSince, stoppedWording } from "../src/pages/DashboardPage";
 import { renderWithApp } from "./helpers";
 
 const cid = (n: number) => `c${String(n).padStart(7, "0")}-0000-4000-8000-${String(n).padStart(12, "0")}`;
@@ -151,5 +152,29 @@ describe("outcomes split", () => {
     const modelled = container.querySelector('[data-testid="outcomes-modelled"]')!;
     expect(modelled.textContent).toMatch(/51% → 67%/);
     expect(modelled.textContent).toMatch(/40% target is not met/);
+  });
+
+  it("shows the safety-net status (scheduler and watchdog heartbeats) where the API exposes it, and nothing where it does not", async () => {
+    const base = createMockAdapter(null);
+    const api = { ...base, getHeartbeats: async () => ({
+      scheduler: { service: "scheduler", last_beat_at: "2026-01-05T08:00:00Z", age_seconds: 4.2 },
+      watchdog: { service: "watchdog", last_beat_at: "2026-01-05T08:00:00Z", age_seconds: 7 },
+    }) };
+    const { unmount } = renderWithApp(<DashboardPage />, { api });
+    const line = await screen.findByTestId("safety-net-status");
+    expect(line).toHaveTextContent(/scheduler last reported 4 seconds ago/);
+    expect(line).toHaveTextContent(/watchdog last checked 7 seconds ago/);
+    expect(line).toHaveTextContent(/silent for 60 seconds/);
+    unmount();
+    renderWithApp(<DashboardPage />, { api: base }); // the mock adapter has no heartbeats
+    await screen.findByTestId("nobody-panel");
+    expect(screen.queryByTestId("safety-net-status")).toBeNull();
+  });
+
+  it("the 60 s in the copy is the engine's heartbeat limit", () => {
+    expect(readFileSync("../api/app/ops.py", "utf8")).toMatch(new RegExp(`^HEARTBEAT_MAX_AGE_SECONDS = ${SCHEDULER_SILENT_ALERT_SECONDS}\\b`, "m"));
+    expect(beatAge({ age_seconds: 1 })).toBe("1 second");
+    expect(beatAge({ age_seconds: 200 })).toBe("3 minutes");
+    expect(beatAge(null)).toBeNull();
   });
 });
