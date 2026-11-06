@@ -1,6 +1,6 @@
 # Screening Closure, one page
 
-**Live demo: https://34-18-228-79.sslip.io** (synthetic data, simulated time, one VM, no failover; judge logins are in the submission form).
+**Live demo: https://34-18-228-79.sslip.io** (synthetic data, simulated time, one VM, no failover; no password needed: pick a role on the sign-in page).
 
 Team Humans Decide, Challenge 05, "Closing the Screening-to-Care Loop". **Everything shown is synthetic data in simulated time. Nothing is diagnosed, no message reaches a phone, and no clinician, native Arabic speaker or buyer has reviewed anything.**
 
@@ -36,7 +36,7 @@ Independent AI re-scores (not human judges) and what is being fixed: [rescore.md
 
 ## How to see it
 
-- **Hosted demo: live since 6 November 2026** at https://34-18-228-79.sslip.io (Google Cloud, me-central1, one VM, no failover; synthetic data, simulated time). Judge logins are in the submission form, not in the repository. See the [README](../../README.md) and the [submission index](README.md).
+- **Hosted demo: live since 6 November 2026** at https://34-18-228-79.sslip.io (Google Cloud, me-central1, one VM, no failover; synthetic data, simulated time). **No passwords needed on the hosted demo: open the link and pick a role** (Coordinator, Physician, Supervisor or Patient); the fallback password logins are in the submission form, not in the repository. See the [README](../../README.md) and the [submission index](README.md).
 - **Video:** a 3-minute recorded pitch on the five steps (no code on screen); linked in the submission form.
 - **Locally:** Docker, Python 3.12, Node 22; the first run takes about half an hour (the demo seed alone is about 12 minutes), later runs about 5 minutes. Steps: "Judge path" in the [README](../../README.md). The live reply-triage model needs Apple-silicon macOS; elsewhere replies fail safe to a person.
 - **Read next:** [assumptions and limitations](assumptions-and-limitations.md), [evaluation summary](evaluation-summary.md), [technical documentation](technical-documentation.md).

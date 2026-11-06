@@ -85,7 +85,7 @@ def _probe(**extra: str) -> dict:
 
 
 ALL_ROLES = ["lab", "primary_care_owner", "specialist_owner", "coordinator", "patient", "supervisor"]
-ROUTES = ["/demo/guide", "/demo/missed-followup", "/demo/reset"]
+ROUTES = ["/demo/guide", "/demo/missed-followup", "/demo/reset", "/demo/sign-in"]
 
 
 def test_the_controls_exist_only_under_both_flags_with_the_sim_clock_outside_dev():
@@ -242,7 +242,7 @@ def _demo_rows():
 def test_every_demo_path_is_404_without_the_gate_for_every_method_and_caller():
     """The policy table lists the /demo/* paths; a process without the gate must not serve any of them, to anyone."""
     rows = _demo_rows()
-    assert [p for _, p in rows] == ["/demo/guide", "/demo/missed-followup", "/demo/reset"]
+    assert [p for _, p in rows] == ["/demo/guide", "/demo/missed-followup", "/demo/reset", "/demo/sign-in"]
     for extra in (dict(APP_ENV="dev"), dict(APP_ENV="dev", DEMO_SIMULATED_CLOCK="1", DEMO_DEPLOYMENT="1", CLOCK_MODE="sim"),
                   dict(APP_ENV="production", CLOCK_MODE="sim", DEMO_SIMULATED_CLOCK="1"),
                   dict(APP_ENV="production", CLOCK_MODE="wall", DEMO_DEPLOYMENT="1"), dict(APP_ENV="production", CLOCK_MODE="wall")):
@@ -252,7 +252,7 @@ def test_every_demo_path_is_404_without_the_gate_for_every_method_and_caller():
             "tok = {r: c.post('/auth/dev-login', json={'role': r, 'name': 'x'}).json().get('token') for r in "
             "['coordinator','supervisor','patient']} if app.openapi() else {}\n"
             "out = {}\n"
-            "for m, p in [('GET','/demo/guide?session=abcdefgh'),('POST','/demo/reset'),('POST','/demo/missed-followup'),('GET','/demo/credentials')]:\n"
+            "for m, p in [('GET','/demo/guide?session=abcdefgh'),('POST','/demo/reset'),('POST','/demo/missed-followup'),('POST','/demo/sign-in'),('GET','/demo/credentials')]:\n"
             "    out[m+p] = [c.request(m, p, json={} if m == 'POST' else None).status_code] + [c.request(m, p, json={} if m == 'POST' else None, headers={'Authorization': 'Bearer ' + t}).status_code for t in tok.values() if t]\n"
             "print(json.dumps({'out': out, 'paths': [p for p in app.openapi()['paths'] if p.startswith('/demo')]}))\n")
         env = {k: v for k, v in os.environ.items() if k not in ("APP_ENV", "DATABASE_URL", "DEV_LOGIN_ENABLED", "CLOCK_MODE", "DEMO_SIMULATED_CLOCK", "DEMO_DEPLOYMENT")}
@@ -271,10 +271,14 @@ def test_the_demo_routes_are_probed_for_every_role_in_the_rbac_matrix_sense():
     every role and anonymous, against the real router behind the real policy dependency."""
     (cid,) = new_case()
     bodies = {("GET", "/demo/guide"): (None, "?session=abcdefgh"), ("POST", "/demo/reset"): (None, ""),
+              ("POST", "/demo/sign-in"): ({"role": "nobody"}, ""),  # public by design; ADR-060 (tests/test_demo_signin.py holds its behaviour)
               ("POST", "/demo/missed-followup"): ({"case_id": cid}, "")}
     for (method, path), allowed in sorted((k, v) for k, v in policy.ROUTE_POLICY.items() if k[1].startswith("/demo/")):
         body, qs = bodies[(method, path)]
         anon = demo.request(method, path + qs, json=body)
+        if allowed == policy.PUBLIC:  # the one deliberately public demo route: it answers anyone, and an unknown role gets 422, never a token
+            assert anon.status_code == 422 and "access_token" not in anon.text, (path, anon.status_code)
+            continue
         assert anon.status_code == 401, (path, anon.status_code)  # nothing anonymous
         for role in ALL_ROLES:
             demo_controls.forget()
@@ -301,7 +305,9 @@ def test_missed_followup_is_rate_limited_and_names_who_asked(caplog):
     assert second.status_code == 429 and "few seconds" in second.json()["detail"]
 
 
-def test_no_committed_config_turns_the_credentials_route_on_and_the_route_does_not_exist():
+def test_no_public_credentials_listing_exists_and_no_config_turns_one_on():
+    """ADR-060 reverses the old "no credential shortcut" rule in ONE way only: a gated sign-in that returns tokens. A route that LISTS or
+    returns passwords, and the opt-in switches an earlier draft had for it, still do not exist (the password never leaves the API)."""
     repo = API_DIR.parent
     assert "/demo/credentials" not in policy.ROUTE_POLICY and not hasattr(demo_controls, "judge_logins")
     assert "/demo/credentials" not in [r.path for r in demo_router.router.routes]

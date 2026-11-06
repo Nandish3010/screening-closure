@@ -50,6 +50,21 @@ export function Header() {
   const tour = useTour();
   const { pathname } = useLocation();
 
+  /** "Sign in as": one click on the hosted demo (ADR-060), a fresh start as that person; otherwise (or if that fails) the identity provider. */
+  const switchTo = async (username: string) => {
+    const judge = demoDeployment && api.demoSignIn ? JUDGE_ROLES.find((r) => r.username === username) : undefined;
+    if (judge) {
+      try {
+        await api.demoSignIn!(judge.role);
+        window.location.assign("/"); // a clean start as the new person: /me, the tour and every page re-read
+        return;
+      } catch {
+        /* fall through to the password sign-in */
+      }
+    }
+    void api.oidc!.signIn({ loginHint: username, forceLogin: true });
+  };
+
   const onRole = (r: Role) => {
     setRole(r);
     if (r === "patient") {
@@ -95,7 +110,7 @@ export function Header() {
                 <select
                   value=""
                   aria-label="Sign in as"
-                  onChange={(e) => e.target.value && void api.oidc!.signIn({ loginHint: e.target.value, forceLogin: true })}
+                  onChange={(e) => e.target.value && void switchTo(e.target.value)}
                 >
                   <option value="">{role}</option>
                   {(demoDeployment ? JUDGE_ROLES.map((r) => ({ username: r.username, name: r.title, role: r.role })) : DEMO_USERS).map((u) => (

@@ -555,6 +555,20 @@
         "title": "Scan",
         "type": "object"
       },
+      "SignIn": {
+        "additionalProperties": false,
+        "properties": {
+          "role": {
+            "title": "Role",
+            "type": "string"
+          }
+        },
+        "required": [
+          "role"
+        ],
+        "title": "SignIn",
+        "type": "object"
+      },
       "ValidationError": {
         "properties": {
           "ctx": {
@@ -2051,6 +2065,50 @@
           }
         ],
         "summary": "Reset",
+        "tags": [
+          "demo"
+        ]
+      }
+    },
+    "/demo/sign-in": {
+      "post": {
+        "description": "ADR-060: one click per role on the hosted demo. Public (it is how a judge gets a session), rate limited, 404 outside the gate.",
+        "operationId": "sign_in_demo_sign_in_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SignIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Sign In Demo Sign In Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Sign In",
         "tags": [
           "demo"
         ]

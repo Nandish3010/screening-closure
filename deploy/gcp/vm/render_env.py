@@ -28,6 +28,7 @@ USER_SECRETS = ("pw-coordinator", "pw-clinician", "pw-supervisor", "pw-patient",
 REQUIRED = TOKEN_SECRETS + DB_SECRETS + USER_SECRETS
 
 REALM = "screening-closure"
+DEMO_CLIENT_ID = "screening-closure-demo"  # the Keycloak client with direct access grants (vm/render_realm.py), demo only
 
 
 def _lines(d: dict[str, str]) -> str:
@@ -98,6 +99,14 @@ def build_files(host: str, secrets: dict[str, str], mode: str = "production", de
         # The narrow, explicit demo gate: BOTH flags, and the API refuses to start with one alone or with another clock mode.
         api["DEMO_SIMULATED_CLOCK"] = "1"
         api["DEMO_DEPLOYMENT"] = "1"
+        # ADR-060: one-click judge sign-in. The API exchanges these four demo users' passwords with Keycloak on the private network and
+        # returns tokens; they never reach the browser. Production-demo mode only: the seed phase (dev login) has no use for them.
+        api["DEMO_SIGNIN_TOKEN_URL"] = f"http://keycloak-prod:8080/auth/realms/{REALM}/protocol/openid-connect/token"
+        api["DEMO_SIGNIN_CLIENT_ID"] = DEMO_CLIENT_ID
+        api["DEMO_SIGNIN_PW_COORDINATOR"] = s["pw-coordinator"]
+        api["DEMO_SIGNIN_PW_CLINICIAN"] = s["pw-clinician"]
+        api["DEMO_SIGNIN_PW_SUPERVISOR"] = s["pw-supervisor"]
+        api["DEMO_SIGNIN_PW_PATIENT"] = s["pw-patient"]
         api["DEMO_AUTO_RESET_HOURS"] = "6"  # informational: the web's "next scheduled reset" line (the timer is deploy/gcp/vm/sc-demo-reset-scheduled.timer)
     return {
         "compose.env": compose,

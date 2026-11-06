@@ -200,6 +200,17 @@ export function createHttpAdapter(baseUrl: string, fetchImpl: typeof fetch = (..
     health: () => request("/health"),
     login,
     oidc,
+    demoSignIn: oidc
+      ? async (role: Role): Promise<void> => {
+          const res = await fetchImpl(`${base}/demo/sign-in`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Accept: "application/json" },
+            body: JSON.stringify({ role }),
+          });
+          if (!res.ok) throw await failure(res);
+          oidc.adoptTokens((await res.json()) as Parameters<OidcClient["adoptTokens"]>[0]);
+        }
+      : undefined,
     async loginPatientFor(caseId: string, name = "Patient"): Promise<void> {
       if (oidc) return; // the patient's token already carries its patient_ref
       // A patient token needs the patient's own `patient_ref`, which only staff can read from the case.
