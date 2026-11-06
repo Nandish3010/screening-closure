@@ -725,3 +725,34 @@ table, pre, .mono { max-width: 100%; }
 .outcomes-split { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: var(--s-4); margin: var(--s-4) 0; }
 .outcomes-split .panel { margin: 0; }
 .outcomes-big { font-size: var(--fs-lg); margin: var(--s-1) 0; }
+
+/* Phone header (<= 480px): the prototype / demo notices are one 44px line, the role switch is one compact select. Nothing is removed:
+   the full wording stays in the page, visually hidden (so screen readers still read it) until "More" opens it. Wider screens are unchanged. */
+.ps-compact, .ps-more, .rs-short, .ob-compact, .ob-more { display: none; }
+@media (max-width: 480px) {
+  .proto-strip { flex-wrap: nowrap; justify-content: space-between; gap: var(--s-2); min-height: 44px; padding-block: 0; padding-inline: var(--s-3); }
+  .proto-strip .ps-compact { display: block; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .proto-strip .ps-more { display: inline-flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; flex: none; font: inherit; font-weight: 700; background: none; border: 0; color: inherit; text-decoration: underline; cursor: pointer; }
+  .proto-strip:not(.is-open) .ps-full { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .proto-strip.is-open { flex-wrap: wrap; padding-block: var(--s-1); }
+  .proto-strip.is-open .ps-compact { display: none; }
+  .proto-strip.is-open .ps-full { flex: 1; min-width: 0; text-align: start; }
+  /* the demo notice now lives in the strip above; keep this one for screen readers only */
+  .demo-strip-merged { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; padding: 0; margin: 0; border: 0; }
+  .role-switch { flex: none; gap: var(--s-2); white-space: nowrap; }
+  .role-switch .rs-long { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .role-switch .rs-short { display: inline; }
+  .role-switch select { min-width: 0; }
+  .app-header .header-tools .who { flex: 1 1 5rem; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  /* brand and Judge tour share a line; the simulated-time badge takes the next one */
+  .app-header .header-row:first-of-type .header-tools { display: contents; }
+  .app-header .header-row:first-of-type .sim-badge { flex-basis: 100%; }
+  .outreach-banner { display: flex; align-items: center; gap: var(--s-2); margin: var(--s-2) 0; padding: 0 var(--s-3); min-height: 44px; font-size: var(--fs-sm); }
+  .outreach-banner .ob-compact { display: block; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 700; }
+  .outreach-banner .ob-more { display: inline-flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; flex: none; font: inherit; font-weight: 700; background: none; border: 0; color: inherit; text-decoration: underline; cursor: pointer; }
+  .outreach-banner .ob-full { margin: 0; }
+  .outreach-banner:not(.is-open) .ob-full { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .outreach-banner.is-open { flex-wrap: wrap; padding-block: var(--s-2); }
+  .outreach-banner.is-open .ob-compact { display: none; }
+  .outreach-banner.is-open .ob-full { flex: 1; min-width: 0; }
+}

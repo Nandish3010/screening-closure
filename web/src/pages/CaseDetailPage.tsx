@@ -26,7 +26,7 @@ import {
   patientLang, pendingEscalation, personId, rejectionReasons,
 } from "../lib/derive";
 import { modelWords } from "../lib/models";
-import { fmtDate, fmtDateTime, plainError, titleCase } from "../lib/format";
+import { fmtDate, fmtDateTime, plainError, shortId, titleCase } from "../lib/format";
 import { STAFF } from "../i18n/strings";
 import { ESCALATION_LADDER, HANDOFF_RESPONSE_WORKING_DAYS, REFUSAL_FROM_STATES, RUNG_LABEL, handoffReasonLabel, milestonesFor, pathwayMeta, procedurePlural, procedureSlug } from "../lib/pathway";
 import { PriorityBadge } from "../components/PriorityBadge";
@@ -249,7 +249,7 @@ export function CaseDetailPage() {
   return (
     <main className="container">
       <p><Link to="/coordinator">&larr; Worklist</Link></p>
-      <h1>Case <span className="mono">{detail.case_id.slice(0, 8)}</span> <StatePill state={state} /> <PathwayBadge pathway={detail.pathway} /></h1>
+      <h1>Case <span className="mono">{shortId(detail.case_id)}</span> <StatePill state={state} /> <PathwayBadge pathway={detail.pathway} /></h1>
       <LoopStrip events={events} prioritised={!!detail.priority} closed={closed} declined={detail.closure_outcome === "declined"} />
       <OutreachDemoBanner />
       <AgencyChip caseId={detail.case_id} version={`${detail.state}:${events.length}`} />

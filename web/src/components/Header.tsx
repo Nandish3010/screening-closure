@@ -107,7 +107,8 @@ export function Header() {
             </>
           ) : (
             <label className="role-switch">
-              <span>Role, view as <span className="demo-only">(demo only)</span></span>
+              <span className="rs-long">Role, view as <span className="demo-only">(demo only)</span></span>
+              <span className="rs-short" aria-hidden="true">View as <span className="demo-only">(demo)</span></span>
               <select value={role} onChange={(e) => onRole(e.target.value as Role)} aria-label="Switch role">
                 {ROLES.map((r) => (
                   <option key={r} value={r}>{r}</option>
