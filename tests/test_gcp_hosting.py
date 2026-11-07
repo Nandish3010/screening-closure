@@ -381,7 +381,7 @@ def test_hosted_seed_fails_loudly_when_the_staging_fails():
     code = "\n".join(l for l in script.splitlines() if not l.lstrip().startswith("#"))
     assert re.search(r"^set -[A-Za-z]*e[A-Za-z]*u[A-Za-z]* pipefail$", code, re.M)
     assert "sh -ec '" in code and "sh -c " not in code  # not a bare `sh -c` chain
-    block = code[code.index("docker run --rm --network host"):code.index("ref=$(docker compose")]
+    block = code[code.index("if ! docker run"):code.index("ref=$(docker compose")]
     assert "if ! docker run" in block and "exit 1" in block
     for step in ("load_cohort.py", "generate_results.py", "stage_demo_state.py --phase overdue", "create_cases.py",
                  "create_chronic_cases.py", "stage_demo_state.py --phase rest"):
