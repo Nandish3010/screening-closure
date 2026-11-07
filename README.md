@@ -59,7 +59,7 @@ Then:
 
 The scripted walkthrough is [docs/submission/demo-script.md](docs/submission/demo-script.md).
 
-**On the hosted demo** (live since 6 November 2026), you will find: the sign-in page shows one card per role (coordinator, clinician, supervisor, patient), a banner says "Demo, synthetic data, simulated time", and the Judge tour opens on the challenge owner's five steps with things to try. There is no password to type: one click per role signs you in (the password sign-in stays as a fallback, and its logins are never in the repository). The seeded demo holds 26 cases: 22 bowel-screening cases and 4 long-term-condition cases.
+**On the hosted demo** (live since 6 November 2026), you will find: the sign-in page shows one card per role (coordinator, physician, supervisor, patient), a banner says "Demo, synthetic data, simulated time", and the Judge tour opens on the challenge owner's five steps with things to try. There is no password to type: one click per role signs you in (no password is handed to judges, ADR-060; the role passwords are deploy-time operator secrets and are never in the repository). The seeded demo holds 26 cases: 22 bowel-screening cases and 4 long-term-condition cases.
 
 ## Quickstart (stack up and tests; this is not the demo path)
 
@@ -163,7 +163,7 @@ project/     plan, tracker, decisions, log, test cases
 | Run | `demo-seed-cervical` | Opt-in: a few synthetic cervical-screening cases (the second pathway) on the running stack; kept out of the demo snapshot and the video (`make demo-seed DEMO_SECOND_PATHWAY=1` does it after the seed) |
 | Test | `test` | Unit and property tests, no database |
 | Test | `verify` | Exhaustive model check of the state machine (`tools/verify/`, ADR-038), run on every pathway pack: 23,730 abstract states for each of bowel, cervical and long-term conditions, 8 invariants, about 80 seconds, no database |
-| Test | `verify-quick` | A labelled SLICE of `verify` in about 25 seconds: the bowel pack, messaging and ownership slices (11,552 of 71,190 states), invariants I1 to I8 checked on those; not a substitute for `verify` |
+| Test | `verify-quick` | A labelled SLICE of `verify` in about 25 seconds: the bowel pack, messaging and ownership slices (11,552 of the bowel pack's 23,730 abstract states), invariants I1 to I8 checked on those; not a substitute for `verify` |
 | Test | `test-db` (`test-db-create`, `test-db-reset`) | Integration tests against `closure_test`; create or recreate that database |
 | Test | `test-chaos` | Chaos-marked tests: duplicate delivery, clock skew and store failures through the fault harness (F3), a sweep killed part-way (F4), bad model output and consent withdrawn mid-send (F5), and the scheduler container stopped and restarted with the watchdog alert |
 | Test | `test-oidc` | The committed Keycloak realm against a real Keycloak (own compose project, throw-away passwords; skips without Docker) |

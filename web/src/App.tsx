@@ -147,7 +147,7 @@ function JudgeSignIn({ error }: { error?: string | null }) {
       {oneClick ? (
         <p className="lead">Pick a role and you are in: <strong>no password needed</strong> on this demo. Everything here is synthetic.</p>
       ) : (
-        <p className="lead">Pick a role. You sign in through the real identity provider; the username is filled in and the <strong>password for each role is in the submission</strong>. Everything here is synthetic.</p>
+        <p className="lead">Pick a role. You sign in through the real identity provider; the username is filled in and the identity provider asks for the password (operators only; judges use the one-click sign-in where it is offered). Everything here is synthetic.</p>
       )}
       {phase.kind === "warming" && (
         <div role="status" className="why" data-testid="signin-warming">
@@ -187,8 +187,8 @@ function JudgeSignIn({ error }: { error?: string | null }) {
       </ul>
       {oneClick && (
         <p className="muted">
-          <button className="linklike" data-testid="password-signin" onClick={() => void oidc.signIn({ forceLogin: true })}>Sign in with a password instead</button>
-          {" "}(the real identity provider; the passwords are in the submission).
+          <button className="linklike" data-testid="password-signin" onClick={() => void oidc.signIn({ forceLogin: true })}>Operator sign-in (password)</button>
+          {" "}(the real identity provider; for operators who hold a password).
         </p>
       )}
       <p className="preview-link"><Link className="btn" to="/preview" data-testid="preview-link">Preview without signing in</Link> <span className="muted">Screenshots of the five steps on synthetic data, and the headline numbers. No password needed.</span></p>
