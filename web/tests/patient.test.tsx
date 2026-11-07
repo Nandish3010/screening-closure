@@ -295,3 +295,29 @@ describe("SEC-2: the redacted patient case", () => {
     expect(owner).toHaveTextContent("Dr. Layla Haddad");
   });
 });
+
+describe("Patient start page on the hosted (http) adapter", () => {
+  it("opens the patient's OWN case from the API, never the fixture 'Demo case' id (which does not exist on a real API)", async () => {
+    const { PatientHome } = await import("../src/pages/PatientPage");
+    const mock = createMockAdapter(null);
+    const OWN = "fc2f2747-bd86-54ad-aa1d-ad9d478ac523";
+    const calls: string[] = [];
+    const api = {
+      ...mock,
+      adapter: "http",
+      listCases: async () => [{ case_id: OWN }],
+      getCase: async (id: string) => {
+        calls.push(id);
+        if (id !== OWN) throw new ApiError(404, "case not found"); // what the hosted API answers for the fixture id
+        await mock.login("coordinator", "Maryam Al Suwaidi");
+        try { return await mock.getCase(DEMO_PATIENT_CASE_ID); } finally { await mock.login("patient", "Patient"); }
+      },
+    } as unknown as ApiClient;
+    renderWithApp(<PatientHome />, { api, role: "patient" });
+    await screen.findByText(STRINGS.en.resultBody);
+    expect(calls).toContain(OWN);
+    expect(calls).not.toContain(DEMO_PATIENT_CASE_ID);
+    expect(screen.queryByText("Demo case")).toBeNull();
+    expect(screen.queryByText(STRINGS.en.loadError)).toBeNull();
+  });
+});

@@ -56,7 +56,11 @@ log = logging.getLogger("stage_demo_state")
 
 DEFAULT_API = "http://localhost:8000"
 # Rows of the cohort manifest (seed order). Rows 0 (the named patient of tools/demo/scenario.py) and 1 are left to the local demo.
-ROW_OVERDUE, ROW_SIGNOFF, ROW_CLOSED, ROW_DRAFT = 4, 5, 6, 7
+ROW_OVERDUE, ROW_CLOSED, ROW_DRAFT = 4, 6, 7
+# The sign-off case is chosen, not fixed: the first row from SIGNOFF_FROM_ROW whose registered provider is the PHYSICIAN's, so the
+# hosted "Physician" one-click login (Dr. Huda Rahman, Marina Digestive Health) OWNS it and its sign-off panel is hers.
+SIGNOFF_FROM_ROW = 8
+PHYSICIAN = ("primary_care_owner", "Dr. Huda Rahman", "Marina Digestive Health")
 NAMESPACE = uuid.UUID("5b0c1a4e-7d3e-4a6f-9a51-2f0e8c7d9b10")  # for this script's event ids (never change: idempotency)
 
 COORDINATOR = ("coordinator", "Maryam Al Suwaidi", None)
@@ -231,42 +235,56 @@ class Stager:
         role = owner.get("role") if isinstance(owner, dict) else None
         return (role or "primary_care_owner", name, None)
 
-    def walk(self, case_id: str, patient_ref: str, target: str) -> str:
-        """Run the steps still to do to `target`; each is a real event by the person whose step it is. Returns the state reached."""
+    def walk(self, case_id: str, patient_ref: str, target: str, via_specialist: bool = True) -> str:
+        """Run the steps still to do to `target`; each is a real event by the person whose step it is. Returns the state reached.
+        `via_specialist`: the owner hands the case to the specialist, who does the rest (the closed case). Without it the case's own
+        owner does every step and signs (the sign-off case: the physician login owns it)."""
+        self.team = SPECIALIST if via_specialist else self.assigned_owner(case_id)
+        self.via_specialist = via_specialist
         for step in steps_to_run(self.case(case_id)["state"], target):
             self._step(step, case_id, patient_ref)
         return self.case(case_id)["state"]
 
     def _step(self, step: str, case_id: str, patient_ref: str) -> None:
+        team = self.team  # whoever carries the case from here: the specialist, or the owner themself
         if step == "accept_ownership":
             self.event(self.assigned_owner(case_id), case_id, "accept_ownership")
         elif step == "hand_off":
-            if owner_name(self.case(case_id)) != SPECIALIST[1]:
+            if self.via_specialist and owner_name(self.case(case_id)) != SPECIALIST[1]:
                 self.event(self.assigned_owner(case_id), case_id, "handoff_requested", {"to_provider": SPECIALIST_PROVIDER})
                 self.event(SPECIALIST, case_id, "handoff_accepted")
         elif step == "contact_patient":
-            self.event(SPECIALIST, case_id, "contact_patient", {"channel": "phone"})
+            self.event(team, case_id, "contact_patient", {"channel": "phone"})
         elif step == "patient_acknowledge":
             self.event(("patient", "demo patient", None), case_id, "patient_acknowledge", {"lang": "ar"}, patient_ref=patient_ref)
         elif step == "book_confirmatory":
             when = (self.sim_now() + timedelta(days=APPOINTMENT_IN_DAYS)).date().isoformat()
-            self.event(SPECIALIST, case_id, "book_confirmatory", {"appointment_ref": f"APPT-DEMO-{case_id[:8]}", "appointment_date": when})
+            self.event(team, case_id, "book_confirmatory", {"appointment_ref": f"APPT-DEMO-{case_id[:8]}", "appointment_date": when})
         elif step == "record_result":
-            out = self.call(SPECIALIST, "POST", f"/cases/{case_id}/confirmatory-result")
-            self.event(SPECIALIST, case_id, "complete_confirmatory", {"result_ref": out["evidence_ref"]})
+            out = self.call(team, "POST", f"/cases/{case_id}/confirmatory-result")
+            self.event(team, case_id, "complete_confirmatory", {"result_ref": out["evidence_ref"]})
         elif step in ("clinician_review", "close"):
-            signer = f"Practitioner/{self.login(SPECIALIST)['user_id']}"
+            signer = f"Practitioner/{self.login(team)['user_id']}"
             payload = {"signed_by": signer}
             if step == "close":
                 payload["evidence_ref"] = f"Procedure/colonoscopy-{case_id}"
-            self.event(SPECIALIST, case_id, step, payload)
+            self.event(team, case_id, step, payload)
         else:
             raise StageError(f"unknown step {step!r}")
 
+    def signoff_row(self) -> int:
+        """The manifest row of the sign-off case: the first from SIGNOFF_FROM_ROW registered with the physician's provider."""
+        for i in range(SIGNOFF_FROM_ROW, len(self.rows)):
+            if create_cases.registered_provider_for(self.rows[i]["patient_id"], self.providers) == PHYSICIAN[2]:
+                return i
+        raise StageError(f"no cohort row from {SIGNOFF_FROM_ROW} on is registered with {PHYSICIAN[2]!r}: the physician would own no sign-off case")
+
     def stage_signoff(self) -> str:
-        case_id, ref, _ = self.ensure_case(ROW_SIGNOFF)
-        state = self.walk(case_id, ref, "confirmatory_completed")
-        return self._note("signoff", f"case {case_id[:8]} is at {state!r}, waiting for the clinician's review and signature")
+        case_id, ref, _ = self.ensure_case(self.signoff_row())
+        if owner_name(self.case(case_id)) != PHYSICIAN[1]:
+            raise StageError(f"case {case_id[:8]} is owned by {owner_name(self.case(case_id))!r}, not {PHYSICIAN[1]!r}")
+        state = self.walk(case_id, ref, "confirmatory_completed", via_specialist=False)  # the physician owns it: no hand-off
+        return self._note("signoff", f"case {case_id[:8]} is owned by {PHYSICIAN[1]} and is at {state!r}, waiting for her review and signature")
 
     def stage_closed(self) -> str:
         case_id, ref, _ = self.ensure_case(ROW_CLOSED)

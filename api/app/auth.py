@@ -101,6 +101,9 @@ class Identity:
     provider: str | None = None
     # The identity provider's stable `sub` (oidc mode). The opaque id derives from it, never from the display name.
     subject: str | None = None
+    # The hosted demo's fixed cast only (`demo_seed_name`): the display name the SEEDED event log was written under. When set, the
+    # opaque id derives from it instead of `sub`, so a one-click login IS the person the seed made the owner (see DEMO_CAST).
+    seed_name: str | None = None
 
     @property
     def effective_provider(self) -> str:
@@ -109,7 +112,7 @@ class Identity:
     @property
     def user_id(self) -> str:
         """The opaque id for a user (A14); a service is its own id (`system:<service>`)."""
-        return f"system:{self.name}" if self.kind == "service" else opaque_user_id(self.role, self.subject or self.name)
+        return f"system:{self.name}" if self.kind == "service" else opaque_user_id(self.role, self.seed_name or self.subject or self.name)
 
     @property
     def actor(self) -> str:
@@ -233,6 +236,29 @@ def _display_name(claims: dict, user_id_hint: str) -> str:
     return f"user {user_id_hint}"
 
 
+# The hosted demo's fixed cast (ADR-060): Keycloak username -> (role, the display name the seed wrote the event log under).
+# The seed (simulator/stage_demo_state.py, create_cases.py via config/providers.yaml) runs on the dev login, where the opaque id is
+# uuid5(role | NAME). A hosted one-click login is an OIDC token whose id is uuid5(role | SUB), and Keycloak makes `sub` a random UUID
+# per realm import, so without this map "Dr. Huda Rahman" the login is a stranger to "Dr. Huda Rahman" the case owner (empty worklist,
+# 403 on every case). Applied only under the demo gate and only when the token's role is the cast member's role; a real deployment
+# keeps ids from `sub`. A test keeps these names equal to config/providers.yaml and to the realm's users.
+DEMO_CAST: dict[str, tuple[str, str]] = {
+    "maryam.alsuwaidi": ("coordinator", "Maryam Al Suwaidi"),
+    "noura.alhammadi": ("supervisor", "Dr. Noura Al Hammadi"),
+    "layla.haddad": ("primary_care_owner", "Dr. Layla Haddad"),
+    "huda.rahman": ("primary_care_owner", "Dr. Huda Rahman"),
+    "karim.nasser": ("specialist_owner", "Dr. Karim Nasser"),
+}
+
+
+def demo_seed_name(claims: dict, role: str) -> str | None:
+    """The seed name for a token of the hosted demo's fixed cast, else None (always None outside the demo gate)."""
+    if not demo_controls_active():
+        return None
+    entry = DEMO_CAST.get(claims.get("preferred_username")) if isinstance(claims.get("preferred_username"), str) else None
+    return entry[1] if entry and entry[0] == role else None
+
+
 def oidc_identity(token: str) -> Identity:
     """Verify an OIDC access token and build the Identity (A29). Raises AuthError on anything wrong."""
     from app import oidc  # late: keeps PyJWT out of the import path of dev-only tools
@@ -252,7 +278,7 @@ def oidc_identity(token: str) -> Identity:
     if provider is not None and not (isinstance(provider, str) and PROVIDER_RE.match(provider)):
         provider = None
     name = _display_name(claims, opaque_user_id(role, sub)[:6])
-    return Identity("user", role, name, patient_ref, provider, subject=sub)
+    return Identity("user", role, name, patient_ref, provider, subject=sub, seed_name=demo_seed_name(claims, role))
 
 
 def service_identity(token: str) -> Identity | None:

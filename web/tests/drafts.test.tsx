@@ -346,7 +346,7 @@ describe("provenance of a model draft and of a template", () => {
   it("a model draft names the model and the owner who approves it before sending", () => {
     panel([aiDraft()]);
     const item = screen.getByTestId("draft-d-ai");
-    expect(within(item).getByTestId("provenance-d-ai")).toHaveTextContent("Drafted by AI (model claude-haiku-5-5), approved by Dr. Huda Rahman before sending.");
+    expect(within(item).getByTestId("provenance-d-ai")).toHaveTextContent("Drafted by AI (model claude-haiku-5-5), and will need approval by Dr. Huda Rahman before sending.");
     expect(item).toHaveTextContent("AI draft");
     expect(within(item).queryByTestId("template-d-ai")).toBeNull();
     expect(within(item).queryByTestId("ar-review-d-ai")).toBeNull();
@@ -355,7 +355,7 @@ describe("provenance of a model draft and of a template", () => {
   it("a template says template, not AI, and still names who approves", () => {
     panel([aiDraft({ draft_id: "d-t", provider: "template", model_id: null })]);
     const item = screen.getByTestId("draft-d-t");
-    expect(within(item).getByTestId("provenance-d-t")).toHaveTextContent("Template message (reviewed wording, no AI model), approved by Dr. Huda Rahman before sending.");
+    expect(within(item).getByTestId("provenance-d-t")).toHaveTextContent("Template message (reviewed wording, no AI model), and will need approval by Dr. Huda Rahman before sending.");
     expect(within(item).getByTestId("template-d-t")).toHaveTextContent("Template");
     expect(item).not.toHaveTextContent("AI draft");
     expect(item.textContent).not.toMatch(/Drafted by AI/);
@@ -364,7 +364,7 @@ describe("provenance of a model draft and of a template", () => {
   it("a fallback after an abstention is shown as a template, with the reason", () => {
     panel([aiDraft({ draft_id: "d-f", provider: "template", model_id: "template-v1", fallback_used: true, abstention_reason: "cache_miss" })]);
     const item = screen.getByTestId("draft-d-f");
-    expect(within(item).getByTestId("provenance-d-f")).toHaveTextContent(/^Template message \(the AI could not draft this one\), approved by Dr\. Huda Rahman before sending\./);
+    expect(within(item).getByTestId("provenance-d-f")).toHaveTextContent(/^Template message \(the AI could not draft this one\), and will need approval by Dr\. Huda Rahman before sending\./);
     expect(within(item).getByTestId("abstention-d-f")).toHaveTextContent(/no recorded AI output/);
     expect(item).not.toHaveTextContent("Drafted by AI");
   });
@@ -378,13 +378,21 @@ describe("provenance of a model draft and of a template", () => {
     const approved = aiDraft({ status: "approved", approved_by: "primary_care_owner:abc", approved_at: "2026-11-05T09:00:00Z" });
     expect(provenanceLine(approved, "Someone Else")).toContain("approved by abc before sending");
     expect(provenanceLine(aiDraft({ status: "rejected", rejected_by: "specialist_owner:x9" }), null)).toBe("Drafted by AI (model claude-haiku-5-5), rejected by x9. Nothing was sent.");
-    expect(provenanceLine(aiDraft(), null)).toContain("approved by the case owner before sending");
+    expect(provenanceLine(aiDraft(), null)).toContain("will need approval by the case owner before sending");
     expect(provenanceLine(aiDraft({ model_id: null }), "A")).toContain("model not recorded");
+  });
+
+  it("a pending draft never says approved while the panel says it is waiting; the past tense appears only once approved", () => {
+    panel([aiDraft()]);
+    const item = screen.getByTestId("draft-d-ai");
+    expect(item).toHaveTextContent("Waiting for the case owner to approve or reject");
+    expect(within(item).getByTestId("provenance-d-ai").textContent).not.toMatch(/approved by/i);
+    expect(provenanceLine(aiDraft({ status: "approved", approved_by: "primary_care_owner:abc" }), "Dr. X")).toMatch(/, approved by abc before sending\.$/);
   });
 
   it("the case page passes the owner's name through", async () => {
     openCase(cid(2), "coordinator");
     const item = await screen.findByTestId("draft-d-seed-2");
-    expect(within(item).getByTestId("provenance-d-seed-2")).toHaveTextContent(/approved by .+ before sending\./);
+    expect(within(item).getByTestId("provenance-d-seed-2")).toHaveTextContent(/will need approval by .+ before sending\./);
   });
 });
