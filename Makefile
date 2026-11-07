@@ -1,4 +1,4 @@
-.PHONY: k8s-up k8s-down scale-report scale-report-check evaluate-outcomes evaluate-outcomes-check rai-fairness rai-fairness-check rai-oversight rai-oversight-check rai-check claude-smoke claude-record redteam-generate triage-serve up-obs check-full evaluate-smoke test-redteam validate validate-check validate-targets evaluate-refusal evaluate-abudhabi oidc-up oidc-down test-oidc up-scale agency-run test-demo test-e2e-live demo-scenario demo-stage demo-snapshot demo-restore demo-reset demo-kill-scheduler check docs-check docs-numbers tracker-lint test-security test-tools test-load load-check up down logs test test-db test-db-create test-db-reset test-chaos synthea demo-seed demo-seed-cervical demo-seed-chronic demo-seed-clean evaluate evaluate-capacity evaluate-capacity-check simulate evaluate-check sensitivity sensitivity-check reset web-install web-dev web-build web-test web-e2e test-e2e review-packs review-packs-check test-review-packs test-phi-logs rbac-matrix test-offline fresh-clone risk-report risk-check calibrate-fetch calibrate-fit calibrate-check effort effort-check video video-check video-blank-check video-deps verify hl7-demo hl7-samples judge-headline judge-headline-check judge-pages-data judge-pages-data-check api-types api-types-check
+.PHONY: verify-quick evaluation-counts evaluation-counts-check k8s-up k8s-down scale-report scale-report-check evaluate-outcomes evaluate-outcomes-check rai-fairness rai-fairness-check rai-oversight rai-oversight-check rai-check claude-smoke claude-record redteam-generate triage-serve up-obs check-full evaluate-smoke test-redteam validate validate-check validate-targets evaluate-refusal evaluate-abudhabi oidc-up oidc-down test-oidc up-scale agency-run test-demo test-e2e-live demo-scenario demo-stage demo-snapshot demo-restore demo-reset demo-kill-scheduler check docs-check docs-numbers tracker-lint test-security test-tools test-load load-check up down logs test test-db test-db-create test-db-reset test-chaos synthea demo-seed demo-seed-cervical demo-seed-chronic demo-seed-clean evaluate evaluate-capacity evaluate-capacity-check simulate evaluate-check sensitivity sensitivity-check reset web-install web-dev web-build web-test web-e2e test-e2e review-packs review-packs-check test-review-packs test-phi-logs rbac-matrix test-offline fresh-clone risk-report risk-check calibrate-fetch calibrate-fit calibrate-check effort effort-check video video-check video-blank-check video-deps verify hl7-demo hl7-samples judge-headline judge-headline-check judge-pages-data judge-pages-data-check api-types api-types-check
 
 up:
 	docker compose up -d --build
@@ -102,6 +102,15 @@ test:
 # exits non-zero on a violation. Pure Python, no database, under a minute. docs/governance/verification.md.
 verify:
 	PYTHONPATH=$(CURDIR)/api $(PY) tools/verify/model_check.py --all-pathways
+
+# A SLICE of `make verify` for a quick look (about 25 s on a laptop, against about 2 minutes): the bowel pack only, and only the
+# messaging and ownership slices (11,552 of the 71,190 abstract states). Every invariant I1 to I8 is checked on those states, the
+# same code, saturated, with the same abstraction, non-interference and table-probe checks; what it leaves out is the SLA-ladder
+# slice and the cervical and long-term-conditions packs. It proves nothing about them: `make verify` is the full check (and the CI job).
+VERIFY_QUICK_ARGS = --pathway colorectal_fit --slice messaging --slice ownership
+verify-quick:
+	@echo "verify-quick: a SLICE (colorectal_fit pack; messaging and ownership slices), not the full check. Run 'make verify' for all 3 pathways and 3 slices."
+	PYTHONPATH=$(CURDIR)/api $(PY) tools/verify/model_check.py $(VERIFY_QUICK_ARGS)
 
 # Integration tests run against their own database, `closure_test`, in the same compose postgres
 # (published on host port 5433). The dev database `closure` is never used: the test session
@@ -543,6 +552,15 @@ review-packs:
 # Fails if the committed packs differ from a fresh build.
 review-packs-check:
 	$(PY) tools/review/build_packs.py --check
+
+# The test-count table in docs/submission/evaluation-summary.md is generated: collected tests per suite (the same selection as each
+# suite's make target; not a pass count), written between markers. Needs web/node_modules (`make web-install`). About 15 s.
+evaluation-counts:
+	$(PY) tools/check/evaluation_counts.py
+
+# Fails if the block differs from a fresh count (a stage of `make check` and `make check-full`).
+evaluation-counts-check:
+	$(PY) tools/check/evaluation_counts.py --check
 
 # T-E17: packs equal a fresh build and contain every string in the sources.
 test-review-packs:

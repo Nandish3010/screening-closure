@@ -346,6 +346,28 @@ def test_the_command_line_names_packs_and_reports_each_pathways_counts(capsys):
     assert "model-check summary: PASS" in out and "chronic_conditions:" in out and "cervical_hpv:" in out and "colorectal_fit:" in out
 
 
+def test_make_verify_quick_runs_a_labelled_slice_and_reports_the_invariants(capsys):
+    """`make verify-quick`: the Makefile's own arguments, run for real; a slice (bowel pack, two slices), labelled as one."""
+    import re
+    import shutil
+    import subprocess
+
+    if shutil.which("make") is None:
+        pytest.skip("make is not installed")
+    root = Path(__file__).resolve().parents[2]
+    dry = subprocess.run(["make", "-n", "verify-quick"], cwd=root, capture_output=True, text=True, check=True).stdout
+    assert "SLICE" in dry and "not the full check" in dry  # the banner says what it is
+    argv = re.search(r"model_check\.py (.+)", dry.splitlines()[-1]).group(1).split()
+    assert argv.count("--slice") == 2 and "--all-pathways" not in argv and argv.count("--pathway") == 1
+    code = mc.main(argv)
+    out = capsys.readouterr().out
+    assert code == 0 and "model-check: PASS" in out and "saturated            True" in out
+    for inv in ("I1 closures", "I2 human decisions", "I3 sends", "I4 frozen transitions", "I5 open states",
+                "I6 replays", "I7 states", "I8 erasures"):
+        assert inv in out, inv
+    assert "slice ladders" not in out  # the slice leaves the ladders slice out, and says so in the Makefile
+
+
 # ---- ADR-059 (F1): the informed refusal's route gate, mutation-tested ---------------------------------------------------
 # The machine alone compares strings: it accepts a refusal naming a counsellor nobody is and a record that does not exist.
 # The route gate (`routers.cases._check_signature_and_evidence`) refuses them; the checker runs that real gate against a

@@ -103,6 +103,8 @@ All of these need `make k8s-up` first, touch only the cluster `sc-m76` (and, for
 | Gated API restart (memory-growth workaround, BUG-77) | `deploy/gcp/vm/sc-api-restart.timer` (every 15 min) and `sc-api-restart-daily.timer` (08:00 UTC), both run `sc-api-restart.sh`; installed by `sc-up.sh` on every boot and deploy | restarts only the `api` container, only when its anonymous memory is at or above 70% of its 1024 MiB limit (daily fallback: 40%), at most once an hour; each restart is logged with its reason (journal, `/var/lib/sc/api-restart.log`). State is in Postgres; requests in flight fail once. `sc-api-restart.sh check` prints the reading. Verified to run on the VM, not yet triggered: on 6 November 2026 `sc-api-restart.timer` ran there and its gate logged "no restart; api memory 8%/14% of 1 GiB" (journalctl). An actual restart has not been triggered yet. |
 | Token for manual calls | `.venv/bin/python tools/k8s/mint_token.py --role coordinator --name me` | See [deployment.md](deployment.md) |
 
+BUG-77 investigation: an 80-minute memray soak on local Docker (7 November 2026) saw 8 to 24 MiB/h of anonymous growth per replica and only about 4 MiB/h of growing live Python allocations; the cause is not established and nothing is fixed. See [docs/results/memory-investigation.md](../results/memory-investigation.md).
+
 Run the watchdog-heavy tests with the watchdog scaled to 0 (`kubectl --context kind-sc-m76 -n closure scale deploy/closure-watchdog --replicas 0`) if the question is the API alone, and say so in the label of the result: the report separates `watchdog_off` from `watchdog_on_as_deployed`. The numbers apply to a laptop-class shared host and are not a cloud capacity claim.
 
 ## Failure modes
