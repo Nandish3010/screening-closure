@@ -225,7 +225,7 @@ export const CHALLENGE_STEPS: Step[] = [
     route: (cases, now, g) => (g ? `/coordinator/${g.case_id}` : caseRoute(caseIn(["patient_contacted", "patient_acknowledged", "owner_accepted", "referral_rejected"]))(cases, now)),
     target: '[data-testid="insurance"], [data-testid="timeline"]',
     lookFor: ["The Insurance line: the scheme (for example Thiqa, Enhanced or Basic) and which providers are in its network.", "An out-of-network choice is flagged with a reason; it is never blocked.", "In the timeline, a hand-off is a request: the owner does not change until the other service accepts."],
-    tryIt: ["Sign in as the clinician who owns the case, pick a provider in the hand-off panel and watch the network note change."],
+    tryIt: ["Sign in as the physician who owns the case, pick a provider in the hand-off panel and watch the network note change."],
     links: [DOCS.clinician],
   },
   {
@@ -263,7 +263,7 @@ export const CHALLENGE_STEPS: Step[] = [
     route: () => "/dashboard",
     target: '[data-testid="funnel-card"], [data-testid="kpi-p50"]',
     lookFor: ["Five funnel steps with counts, and the cases at risk of being lost.", "Where there are too few cases to compare, the share is replaced by a note instead of a percentage."],
-    tryIt: ["Change the priority filter on the funnel and watch the counts follow.", "Then open the sign-off case (link below) as the clinician and try a made-up evidence reference: the guard refuses it and the case stays open."],
+    tryIt: ["Change the priority filter on the funnel and watch the counts follow.", "Then open the sign-off case (link below) as the physician and try a made-up evidence reference: the guard refuses it and the case stays open."],
     also: [{ label: "Open a case at sign-off", to: "/coordinator?state=confirmatory_completed" }, { label: "Judge summary", to: "/judge" }],
     links: [DOCS.results, DOCS.limits],
   },
