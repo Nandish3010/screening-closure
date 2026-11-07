@@ -54,6 +54,7 @@ class Settings(BaseSettings):
     demo_control_dir: str = "/var/lib/sc-demo"
     demo_reset_min_interval_seconds: int = Field(default=600, ge=60, le=86400)  # one accepted reset request per this long
     demo_auto_reset_hours: float = Field(default=6.0, ge=0, le=168)  # informational: when the scheduled reset is due (0 = none)
+    demo_auto_reset_at_utc: str = Field(default="", pattern=r"^([01]\d|2[0-3]):[0-5]\d$|^$")  # "HH:MM" UTC: the timer fires daily at this clock time (hosted demo: 23:00 = 03:00 Dubai); empty = every demo_auto_reset_hours
     # One-click demo sign-in (ADR-060). POST /demo/sign-in exists ONLY under the same gate (app.auth.demo_controls_active). The API
     # exchanges a fixed demo user's password with Keycloak over the private network (direct access grant on a dedicated client) and
     # returns the token response; the password never reaches the browser. The four passwords are rendered into api.env by

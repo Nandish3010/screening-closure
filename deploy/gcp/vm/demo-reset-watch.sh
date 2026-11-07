@@ -2,7 +2,7 @@
 # The host side of the web "Reset the demo" button and of the scheduled reset (ADR-058). On the VM, as root.
 #
 #   demo-reset-watch.sh             one pass: if the API left a reset request, act on it (restore the snapshot), record who and when
-#   demo-reset-watch.sh --scheduled the scheduled reset (the timer calls this every DEMO_AUTO_RESET_HOURS, default 6)
+#   demo-reset-watch.sh --scheduled the scheduled reset (the timer calls this once a day at 23:00 UTC = 03:00 Asia/Dubai)
 #   demo-reset-watch.sh --record-seed  reset nothing; record "the seed's snapshot" as the first reset point (seed-on-vm.sh, after
 #                                   `snapshot.sh save`), so /health shows last_reset_at and next_auto_reset_at from the start
 #
@@ -13,12 +13,12 @@
 # Files in $CTL (default /var/lib/sc-demo):
 #   reset-request.json  written by the API: {requested_at, requested_by}; removed by this script when it takes the job
 #   status.json         written by this script: {last_reset_at, last_reset_by, last_reset_reason, last_request_at, duration_s,
-#                       last_scheduled_at (the timer's last pass, even a skipped one: the API adds DEMO_AUTO_RESET_HOURS to it)}
+#                       last_scheduled_at (the timer's last pass, even a skipped one; the API shows the next 23:00 UTC after it)}
 #   api-restart.json    written by sc-api-restart.sh: {at, reason, mode}; the API shows it in the demo block of /health
 #   clock-budget.json   written by the API (days the shared clock has been advanced in the rolling window); removed here too
 #   baseline.json       written by the API (the event count of every case just after a reset); removed here so it is re-taken
 #
-# Run it from a systemd timer every 15 s for the request check and every 6 h with --scheduled (units: see the PR notes of ADR-058;
+# Run it from a systemd timer every 15 s for the request check and once a day with --scheduled (units: see the PR notes of ADR-058;
 # deploy/gcp/vm/sc-demo-reset-watch.{service,timer} are examples). Safe to run twice at once: a lock directory serialises passes.
 set -euo pipefail
 export SC_REPO=${SC_REPO:-/srv/sc/repo}

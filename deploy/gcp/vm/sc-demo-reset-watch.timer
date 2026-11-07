@@ -1,5 +1,5 @@
 # Timer (ADR-058), installed and enabled by deploy/gcp/vm/sc-up.sh: look for a reset request every 15 s. The scheduled reset is a second timer calling
-# `demo-reset-watch.sh --scheduled` every 6 h (OnUnitActiveSec=6h, Persistent=true); see the PR notes.
+# `demo-reset-watch.sh --scheduled` once a day (OnCalendar=*-*-* 23:00:00 UTC = 03:00 Asia/Dubai, Persistent=false); see sc-demo-reset-scheduled.timer.
 [Unit]
 Description=Look for a demo reset request every 15 seconds
 

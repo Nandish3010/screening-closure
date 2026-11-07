@@ -95,10 +95,15 @@ def _text(v: object, limit: int = 200) -> str | None:
     return v[:limit] if isinstance(v, str) and v else None
 
 
-def _next_scheduled(st: dict, hours: float, now: datetime) -> str | None:
+def _next_scheduled(st: dict, hours: float, now: datetime, at_utc: str = "") -> str | None:
     """When the timer fires next: its last pass (`last_scheduled_at`, written by the host even when the pass was skipped) plus
     the interval, else the last reset plus the interval (the seed's snapshot counts). A late timer rolls forward to the next
-    slot, so the answer is never in the past. None while nothing is known or when scheduled resets are off."""
+    slot, so the answer is never in the past. None while nothing is known or when scheduled resets are off.
+    With `at_utc` ("HH:MM") the timer is a daily clock-time one (OnCalendar), so the answer is the next such time after now."""
+    if at_utc and hours > 0:
+        hh, mm = (int(x) for x in at_utc.split(":"))
+        nxt = now.astimezone(UTC).replace(hour=hh, minute=mm, second=0, microsecond=0)
+        return (nxt if nxt > now else nxt + timedelta(days=1)).isoformat()
     anchor = _parse(st.get("last_scheduled_at")) or _parse(st.get("last_reset_at"))
     if anchor is None or hours <= 0:
         return None
@@ -117,7 +122,7 @@ def status() -> dict:
     st = _read("status.json") or {}
     req = _read("reset-request.json")
     rs = _read("api-restart.json") or {}
-    nxt = _next_scheduled(st, settings.demo_auto_reset_hours, _wall())
+    nxt = _next_scheduled(st, settings.demo_auto_reset_hours, _wall(), settings.demo_auto_reset_at_utc)
     restarted = _parse(rs.get("at"))
     return {
         "last_reset_at": st.get("last_reset_at"),

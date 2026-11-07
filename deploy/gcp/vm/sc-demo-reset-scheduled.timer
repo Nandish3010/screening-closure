@@ -1,12 +1,15 @@
-# Timer (ADR-058), installed and enabled by deploy/gcp/vm/sc-up.sh: reset the demo every 6 hours (and once after boot if one was missed). Set DEMO_AUTO_RESET_HOURS in the
-# api env to the same number so the web's "next reset" line is right.
+# Timer (ADR-058, addendum for judging week), installed and enabled by deploy/gcp/vm/sc-up.sh: reset the demo ONCE A DAY at 03:00 Asia/Dubai
+# (23:00 UTC, when nobody is judging). Persistent=false on purpose: a run missed while the VM was down is NOT caught up in the middle of the day,
+# which would wipe a judge's work. There is no OnBootSec for the same reason. The API env carries DEMO_AUTO_RESET_HOURS=24 and
+# DEMO_AUTO_RESET_AT_UTC=23:00 (render_env.py) so the web's "next scheduled reset" line is right. The request-based reset
+# (sc-demo-reset-watch.timer) is unchanged.
 [Unit]
-Description=Reset the judge demo every 6 hours
+Description=Reset the judge demo once a day at 03:00 Asia/Dubai (23:00 UTC)
 
 [Timer]
-OnBootSec=6h
-OnUnitActiveSec=6h
-Persistent=true
+OnCalendar=*-*-* 23:00:00 UTC
+Persistent=false
+AccuracySec=1min
 
 [Install]
 WantedBy=timers.target
