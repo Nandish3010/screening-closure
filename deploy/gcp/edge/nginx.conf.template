@@ -1,6 +1,9 @@
 # Rendered by the official nginx image (envsubst, only variables starting with SC_). Listens on 8080 inside the network; Caddy is in front.
 limit_req_zone $binary_remote_addr zone=api_ip:10m rate=10r/s;
-limit_req_zone $binary_remote_addr zone=login_ip:10m rate=5r/s;
+limit_req_zone $binary_remote_addr zone=login_ip:10m rate=10r/s;
+# One-click demo sign-in (S1): a judging panel of ~30 behind one office address may all click within a second or two, so this is
+# generous per second; the API's own per-address and global counters (10 minutes) are the real abuse bound.
+limit_req_zone $binary_remote_addr zone=signin_ip:10m rate=20r/s;
 limit_req_status 429;
 limit_conn_zone $binary_remote_addr zone=conn_ip:10m;
 
@@ -40,11 +43,11 @@ server {
         proxy_set_header Host $host;
         proxy_read_timeout 60s;
     }
-    # One-click demo sign-in (ADR-060): public by design, so the edge allows few and the API adds a per-address limit of its own. The
+    # One-click demo sign-in (ADR-060): public by design, so the edge allows a panel's burst and the API adds a per-address limit of its own. The
     # visitor's address is passed in X-Forwarded-For (overwritten here, so a client cannot choose its own bucket in the API).
     location = /api/demo/sign-in {
-        limit_req zone=login_ip burst=5 nodelay;
-        limit_conn conn_ip 5;
+        limit_req zone=signin_ip burst=60 nodelay;
+        limit_conn conn_ip 40;
         rewrite ^/api/(.*)$ /$1 break;
         proxy_pass http://api:8000;
         proxy_set_header Host $host;
@@ -66,7 +69,7 @@ server {
     # --- Keycloak (judge sign-in) under /auth. The admin console and the master realm are not public. ------------------------
     location ~ ^/auth/(admin|realms/master) { return 404; }
     location /auth/ {
-        limit_req zone=login_ip burst=20 nodelay;
+        limit_req zone=login_ip burst=60 nodelay;
         proxy_pass http://keycloak-prod:8080;
         proxy_set_header Host $host;
         proxy_set_header X-Forwarded-Proto https;

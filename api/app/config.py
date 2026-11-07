@@ -65,8 +65,8 @@ class Settings(BaseSettings):
     demo_signin_pw_clinician: str = Field(default="", repr=False)
     demo_signin_pw_supervisor: str = Field(default="", repr=False)
     demo_signin_pw_patient: str = Field(default="", repr=False)
-    demo_signin_per_ip_limit: int = Field(default=20, ge=1, le=10000)  # sign-ins per visitor address per window
-    demo_signin_global_limit: int = Field(default=400, ge=1, le=100000)  # and in all, to protect the identity provider
+    demo_signin_per_ip_limit: int = Field(default=120, ge=1, le=10000)  # per visitor address per window: a shared-NAT judging panel of ~30 (S1)
+    demo_signin_global_limit: int = Field(default=1000, ge=1, le=100000)  # and in all, to protect the identity provider; failed upstream attempts are not counted
     demo_signin_window_seconds: int = Field(default=600, ge=10, le=86400)
     leader_lease_ttl_seconds: float = Field(default=30.0, gt=1, le=3600)
     watchdog_idle_days: int = 7

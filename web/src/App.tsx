@@ -15,8 +15,8 @@ import { PreviewPage } from "./pages/PreviewPage";
 const PatientPage = lazy(() => import("./pages/PatientPage").then((m) => ({ default: m.PatientPage })));
 const PatientHome = lazy(() => import("./pages/PatientPage").then((m) => ({ default: m.PatientHome })));
 import { DEMO_PATIENT_CASE_ID } from "./api/fixtures";
-import { Suspense, lazy, useEffect, useState, useSyncExternalStore } from "react";
-import type { Role } from "./api/contract";
+import { Suspense, lazy, useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { ApiError, type Role } from "./api/contract";
 import { useApp } from "./app/AppContext";
 import { DEMO_USERS, JUDGE_ROLES } from "./api/identities";
 import { DemoBanner, PrototypeStrip } from "./components/DemoBanner";
@@ -61,6 +61,24 @@ function SignInLoading() {
   );
 }
 
+/** S1: how the one-click sign-in copes with a demo that is still starting (VM restart) and with a shared network that has used its allowance. */
+export const SIGNIN_RETRY_MAX_MS = 120_000; // keep trying on its own for about two minutes, then hand the button back
+const FINAL_SIGNIN_CODES = new Set(["signin_locked", "signin_refused", "signin_not_configured", "signin_unknown_role"]);
+/** True when the identity provider (or the edge in front of it) is not ready yet: 502/503/504 or no answer at all, unless the API said it is final. */
+export function signInIsWarming(e: unknown): boolean {
+  return e instanceof ApiError && !(e.code && FINAL_SIGNIN_CODES.has(e.code)) && [0, 502, 503, 504].includes(e.status);
+}
+/** 3, 3, 4, 4, 5, 5, ... seconds (never less than the server's Retry-After, never more than 5 s unless it asks for more). */
+export function signInRetryDelayMs(attempt: number, retryAfter?: number): number {
+  return Math.max(Math.min(5, 3 + Math.floor(attempt / 2)), retryAfter && retryAfter <= 10 ? retryAfter : 0) * 1000;
+}
+type SignInPhase =
+  | { kind: "idle" }
+  | { kind: "signing"; role: Role }
+  | { kind: "warming"; role: Role }
+  | { kind: "gave-up"; role: Role }
+  | { kind: "limited"; seconds: number };
+
 /**
  * The hosted judge demo's sign-in page (item 8). One card per role; each starts the real OIDC sign-in (authorization code with PKCE)
  * with that role's username pre-filled. The password is not in the page, the bundle or the health answer: it is a deploy-time
@@ -71,19 +89,55 @@ function JudgeSignIn({ error }: { error?: string | null }) {
   const { api } = useApp();
   const oidc = api.oidc!;
   const oneClick = typeof api.demoSignIn === "function";
-  const [busy, setBusy] = useState<string | null>(null);
+  const [phase, setPhase] = useState<SignInPhase>({ kind: "idle" });
   const [failed, setFailed] = useState<string | null>(null);
-  async function go(role: Role) {
-    setBusy(role);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const alive = useRef(true);
+  const stop = useCallback(() => {
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = null;
+  }, []);
+  useEffect(() => {
+    alive.current = true;
+    return () => {
+      alive.current = false;
+      stop();
+    };
+  }, [stop]);
+  /** One click: try, and while the demo is starting up retry by itself (S1). `startedAt` is the first try of this click. */
+  const go = useCallback(async (role: Role, attempt = 0, startedAt = Date.now()) => {
+    stop();
     setFailed(null);
+    setPhase(attempt === 0 ? { kind: "signing", role } : { kind: "warming", role });
     try {
       await api.demoSignIn!(role);
-      setBusy(null); // normally the page is replaced by the signed-in app before this matters
+      if (alive.current) setPhase({ kind: "idle" }); // normally the page is replaced by the signed-in app before this matters
     } catch (e) {
-      setFailed(e instanceof Error && e.message ? e.message : "One-click sign-in did not work.");
-      setBusy(null);
+      if (!alive.current) return;
+      if (signInIsWarming(e)) {
+        if (Date.now() - startedAt >= SIGNIN_RETRY_MAX_MS) {
+          setPhase({ kind: "gave-up", role });
+          return;
+        }
+        setPhase({ kind: "warming", role });
+        timer.current = setTimeout(() => void go(role, attempt + 1, startedAt), signInRetryDelayMs(attempt, e instanceof ApiError ? e.retryAfter : undefined));
+      } else if (e instanceof ApiError && e.status === 429) {
+        setPhase({ kind: "limited", seconds: e.retryAfter ?? 60 });
+      } else {
+        setFailed(e instanceof Error && e.message ? e.message : "One-click sign-in did not work.");
+        setPhase({ kind: "idle" });
+      }
     }
-  }
+  }, [api, stop]);
+  // The "please wait N seconds" count-down for a 429; the buttons come back at zero.
+  const waiting = phase.kind === "limited";
+  useEffect(() => {
+    if (!waiting) return;
+    const id = setInterval(() => setPhase((p) => (p.kind !== "limited" ? p : p.seconds <= 1 ? { kind: "idle" } : { kind: "limited", seconds: p.seconds - 1 })), 1000);
+    return () => clearInterval(id);
+  }, [waiting]);
+  const busy = phase.kind === "signing" ? phase.role : phase.kind === "warming" || phase.kind === "gave-up" ? phase.role : null;
+  const locked = phase.kind !== "idle" && phase.kind !== "gave-up"; // buttons are off while a try, a retry or a wait is under way
   return (
     <main className="container" id="main" data-testid="judge-signin">
       <PrototypeStrip />
@@ -95,6 +149,22 @@ function JudgeSignIn({ error }: { error?: string | null }) {
       ) : (
         <p className="lead">Pick a role. You sign in through the real identity provider; the username is filled in and the <strong>password for each role is in the submission</strong>. Everything here is synthetic.</p>
       )}
+      {phase.kind === "warming" && (
+        <div role="status" className="why" data-testid="signin-warming">
+          <p>The demo is starting up. Retrying automatically...</p>
+          <button className="btn" onClick={() => void go(phase.role)}>Retry now</button>{" "}
+          <button className="linklike" onClick={() => { stop(); setPhase({ kind: "idle" }); }}>Stop retrying</button>
+        </div>
+      )}
+      {phase.kind === "gave-up" && (
+        <div role="alert" className="why" data-testid="signin-gave-up">
+          <p>The demo is taking longer than usual to start. Please try again in a minute, or sign in with a password.</p>
+          <button className="btn" onClick={() => void go(phase.role)}>Retry</button>
+        </div>
+      )}
+      {phase.kind === "limited" && (
+        <p role="status" className="why" data-testid="signin-limited">Too many sign-ins from this network, please wait {phase.seconds} second{phase.seconds === 1 ? "" : "s"}, or sign in with a password.</p>
+      )}
       {(error || failed) && <p role="alert" className="why">{failed ?? error}</p>}
       <ul className="role-cards" data-testid="role-cards">
         {JUDGE_ROLES.map((r) => (
@@ -103,8 +173,8 @@ function JudgeSignIn({ error }: { error?: string | null }) {
             <span>{r.does}</span>
             <span className="muted">{r.tryThis}</span>
             {oneClick ? (
-              <button className="btn btn-primary" disabled={busy !== null} onClick={() => void go(r.role)}>
-                {busy === r.role ? "Signing in..." : `Log in as ${r.label}`}
+              <button className="btn btn-primary" disabled={locked} onClick={() => void go(r.role)}>
+                {busy === r.role && locked ? (phase.kind === "warming" ? "Starting up..." : "Signing in...") : `Log in as ${r.label}`}
               </button>
             ) : (
               <>

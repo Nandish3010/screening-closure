@@ -1655,6 +1655,8 @@ export class ApiError extends Error {
     message: string,
     /** Seconds from the `Retry-After` header of a 503 (load shedding, ADR-048), when there was one. */
     public retryAfter?: number,
+    /** A stable machine-readable code from the API when it sent one (the hosted demo's sign-in: `signin_warming_up`, `signin_rate_limited`, ...). */
+    public code?: string,
   ) {
     super(message);
     this.name = "ApiError";

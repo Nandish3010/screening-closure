@@ -24,8 +24,13 @@ iss=$(curl -s -m 15 "$BASE/auth/realms/screening-closure/.well-known/openid-conf
 check "cases need a token" 401 "$BASE/api/cases"
 check "dev login is closed" 404 -X POST -H 'Content-Type: application/json' -d '{"role":"supervisor","name":"x"}' "$BASE/api/auth/dev-login"
 # ADR-060: one-click demo sign-in. The coordinator's tokens come back without any password, and the access token works against the API.
-signin=$(curl -s -m 30 -X POST -H 'Content-Type: application/json' -d '{"role":"coordinator"}' "$BASE/api/demo/sign-in" -w '\n%{http_code}' || true)
-signin_code=${signin##*$'\n'}; signin_body=${signin%$'\n'*}
+# S1: right after a VM restart Keycloak is still warming and the API answers 503 (signin_warming_up) or the edge 502/504. Those attempts are
+# not counted against the limit, so wait for them (up to ~2 minutes, one request per 10 s) instead of failing; one counted sign-in per run.
+for _try in 1 2 3 4 5 6 7 8 9 10 11 12; do
+  signin=$(curl -s -m 30 -X POST -H 'Content-Type: application/json' -d '{"role":"coordinator"}' "$BASE/api/demo/sign-in" -w '\n%{http_code}' || true)
+  signin_code=${signin##*$'\n'}; signin_body=${signin%$'\n'*}
+  case "$signin_code" in 502|503|504|000) echo "WAIT  sign-in not ready ($signin_code), retrying in 10 s ($_try/12)"; sleep 10 ;; *) break ;; esac
+done
 [ "$signin_code" = 200 ] && ok "one-click demo sign-in as coordinator (200)" || bad "one-click demo sign-in: wanted 200, got $signin_code"
 echo "$signin_body" | grep -qi 'password' && bad "the sign-in answer contains the substring 'password'" || ok "sign-in answer carries no password"
 tok=$(echo "$signin_body" | python3 -c 'import sys,json;print(json.load(sys.stdin).get("access_token",""))' 2>/dev/null || true)

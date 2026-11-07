@@ -80,6 +80,26 @@ export function createHttpAdapter(baseUrl: string, fetchImpl: typeof fetch = (..
   }
 
   /**
+   * The hosted demo's one-click sign-in refusals (S1): keep the API's stable `code` and the wait from `Retry-After`, so the page can tell
+   * "the demo is starting up" (retry on its own) from "too many sign-ins" (wait N seconds) from a final refusal. An edge 502/504 has no JSON body.
+   */
+  async function signInFailure(res: Response): Promise<ApiError> {
+    const n = Number.parseInt(res.headers.get("Retry-After") ?? "", 10);
+    const retryAfter = Number.isFinite(n) && n > 0 ? n : undefined;
+    let msg = "";
+    let code: string | undefined;
+    try {
+      const j = await res.json();
+      if (typeof j.detail === "string") msg = j.detail;
+      if (typeof j.code === "string") code = j.code;
+    } catch {
+      /* not JSON (a proxy error page) */
+    }
+    if (!msg) msg = res.status === 429 ? "Too many sign-ins from this network." : res.status >= 500 ? "The demo is starting up." : res.statusText || "One-click sign-in did not work.";
+    return new ApiError(res.status, msg, retryAfter, code);
+  }
+
+  /**
    * POST /auth/dev-login {role (backend role), name, provider?, patient_ref?} -> {token, token_type, user_id, role, display_name, ...}.
    * `provider` is sent for the owner roles only, `patient_ref` for patients only (the real API refuses a patient login
    * without one). A 404 means the backend has no auth: carry on without a token.
@@ -207,7 +227,7 @@ export function createHttpAdapter(baseUrl: string, fetchImpl: typeof fetch = (..
             headers: { "Content-Type": "application/json", Accept: "application/json" },
             body: JSON.stringify({ role }),
           });
-          if (!res.ok) throw await failure(res);
+          if (!res.ok) throw await signInFailure(res);
           oidc.adoptTokens((await res.json()) as Parameters<OidcClient["adoptTokens"]>[0]);
         }
       : undefined,

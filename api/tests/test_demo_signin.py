@@ -32,6 +32,7 @@ def configured(monkeypatch):
     monkeypatch.setattr(settings, "demo_signin_token_url", "http://keycloak-prod:8080/auth/realms/screening-closure/protocol/openid-connect/token")
     monkeypatch.setattr(settings, "demo_signin_per_ip_limit", 3)
     monkeypatch.setattr(settings, "demo_signin_global_limit", 100)
+    monkeypatch.setattr(settings, "demo_signin_window_seconds", 600)
     demo_signin.forget()
     yield
     demo_signin.forget()
@@ -98,6 +99,83 @@ def test_per_address_rate_limit_then_another_address_still_works(monkeypatch):
     assert post("patient", ip="198.51.100.9").status_code == 200
 
 
+def test_a_429_carries_a_stable_code_and_retry_after(monkeypatch):
+    monkeypatch.setattr(demo_signin, "_exchange", Idp())
+    for _ in range(3):
+        post("patient")
+    r = post("patient")
+    assert r.status_code == 429 and r.json()["code"] == "signin_rate_limited"
+    assert 1 <= int(r.headers["Retry-After"]) <= 600 and r.json()["retry_after"] == int(r.headers["Retry-After"])
+    monkeypatch.setattr(settings, "demo_signin_global_limit", 3)
+    g = post("patient", ip="198.51.100.77")
+    assert g.status_code == 429 and g.json()["code"] == "signin_busy" and int(g.headers["Retry-After"]) >= 1
+
+
+def test_the_retry_after_shrinks_as_the_window_moves(monkeypatch):
+    monkeypatch.setattr(demo_signin, "_exchange", Idp())
+    t = [1000.0]
+    monkeypatch.setattr(demo_signin, "_mono", lambda: t[0])
+    for _ in range(3):
+        post("patient")
+    t[0] += 500
+    assert int(post("patient").headers["Retry-After"]) == 100
+    t[0] += 101  # the first attempts have aged out of the 600 s window
+    assert post("patient").status_code == 200
+
+
+def _default(name):
+    return type(settings).model_fields[name].default
+
+
+def test_the_default_limits_let_a_shared_nat_panel_in_but_still_bound_abuse():
+    assert _default("demo_signin_per_ip_limit") >= 120
+    assert _default("demo_signin_global_limit") >= 4 * _default("demo_signin_per_ip_limit") // 1  # several such panels at once
+    assert _default("demo_signin_global_limit") <= 5000  # and still a ceiling
+
+
+def test_sixty_sign_ins_from_one_address_are_not_limited_at_the_defaults(monkeypatch):
+    monkeypatch.setattr(settings, "demo_signin_per_ip_limit", _default("demo_signin_per_ip_limit"))
+    monkeypatch.setattr(settings, "demo_signin_global_limit", _default("demo_signin_global_limit"))
+    monkeypatch.setattr(demo_signin, "_exchange", Idp())
+    assert {post("coordinator", ip="203.0.113.50").status_code for _ in range(60)} == {200}
+    r = [post("coordinator", ip="203.0.113.50").status_code for _ in range(70)]
+    assert r.count(429) == 10  # the 121st and later are refused
+
+
+def test_attempts_that_failed_because_the_provider_was_not_ready_are_not_counted(monkeypatch):
+    # the limit is 3 per address: these failures must not use any of it
+    for idp in (Idp(raises=ConnectionRefusedError("boom")), Idp(status=502), Idp(status=503), Idp(status=404), Idp(body={"nope": 1})):
+        monkeypatch.setattr(demo_signin, "_exchange", idp)
+        for _ in range(4):
+            r = post("coordinator")
+            assert r.status_code == 503 and r.json()["code"] == "signin_warming_up" and r.headers["Retry-After"] == "5", idp.status
+    monkeypatch.setattr(demo_signin, "_exchange", Idp())
+    assert [post("coordinator").status_code for _ in range(4)] == [200, 200, 200, 429]  # the full allowance is still there
+
+
+def test_a_provider_refusal_and_a_lockout_are_not_counted_either_but_are_not_warming_up(monkeypatch):
+    monkeypatch.setattr(demo_signin, "_exchange", Idp(status=401))
+    for _ in range(5):
+        r = post("coordinator")
+        assert r.status_code == 503 and r.json()["code"] == "signin_refused" and "Retry-After" not in r.headers
+
+    class Locked(Idp):
+        def __call__(self, url, form):
+            return 400, {"error": "invalid_grant", "error_description": "Account temporarily disabled"}
+    monkeypatch.setattr(demo_signin, "_exchange", Locked())
+    r = post("coordinator")
+    assert r.status_code == 503 and r.json()["code"] == "signin_locked" and r.headers["Retry-After"] == "60"
+    assert len(demo_signin._all) == 0
+
+
+def test_successes_are_still_counted_when_failures_are_mixed_in(monkeypatch):
+    monkeypatch.setattr(demo_signin, "_exchange", Idp(raises=ConnectionRefusedError("x")))
+    post("patient")
+    monkeypatch.setattr(demo_signin, "_exchange", Idp())
+    post("patient"); post("patient")
+    assert len(demo_signin._all) == 2 and len(demo_signin._per_ip["203.0.113.7"]) == 2
+
+
 def test_global_rate_limit(monkeypatch):
     monkeypatch.setattr(settings, "demo_signin_global_limit", 2)
     monkeypatch.setattr(demo_signin, "_exchange", Idp())
@@ -117,7 +195,7 @@ def test_identity_provider_failures_are_plain_503s_without_secrets(monkeypatch, 
         monkeypatch.setattr(demo_signin, "_exchange", idp)
         with caplog.at_level(logging.INFO, logger="app.demo"):
             r = post("coordinator")
-        assert r.status_code == 503 and "password sign-in" in r.json()["detail"]
+        assert r.status_code == 503 and r.json()["code"].startswith("signin_") and r.json()["detail"]
         assert "Traceback" not in r.text and not any(pw in r.text for pw in PWS.values())
     assert not any(pw in rec.getMessage() for rec in caplog.records for pw in PWS.values())
 
