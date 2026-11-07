@@ -43,8 +43,9 @@ class FakeApi:
         for i in range(other_cases):
             self._new(str(uuid.uuid4()))
 
-    def _new(self, cid: str) -> dict:
-        c = {"case_id": cid, "state": "acknowledged", "owner": {"display_name": "Dr. Layla Haddad", "role": "primary_care_owner"},
+    def _new(self, cid: str, registered: str | None = None) -> dict:
+        owner = "Dr. Huda Rahman" if registered == "Marina Digestive Health" else "Dr. Layla Haddad"  # config/providers.yaml
+        c = {"case_id": cid, "state": "acknowledged", "owner": {"display_name": owner, "role": "primary_care_owner"},
              "due_at": (self.now + timedelta(days=1)).isoformat(), "overdue": False, "escalation_level": 0,
              "read_model": {"escalation_accepted": False}, "events": [], "priority": None}
         self.cases[cid] = c
@@ -75,7 +76,7 @@ class FakeApi:
         if path == "/cases" and method == "POST":
             if body["case_id"] in self.cases:
                 return httpx.Response(409, text="CaseAlreadyExists")
-            self._new(body["case_id"])
+            self._new(body["case_id"], body.get("registered_provider"))
             return httpx.Response(201, json={})
         if path == "/cases" and method == "GET":
             return httpx.Response(200, json=list(self.cases.values())[: int(request.url.params.get("limit", 100))])
@@ -124,12 +125,16 @@ def run(fake: FakeApi, phase: str) -> st.Stager:
     return s
 
 
+def signoff_row() -> int:
+    return st.Stager(httpx.Client(transport=httpx.MockTransport(FakeApi().handler)), "http://api", ROWS).signoff_row()
+
+
 def by_row(fake: FakeApi, row: int) -> dict:
     return fake.cases[st.case_id_of(ROWS[row])]
 
 
 def test_the_rows_are_distinct_and_leave_the_local_demo_rows_alone():
-    rows = {st.ROW_OVERDUE, st.ROW_SIGNOFF, st.ROW_CLOSED, st.ROW_DRAFT}
+    rows = {st.ROW_OVERDUE, signoff_row(), st.ROW_CLOSED, st.ROW_DRAFT}
     assert len(rows) == 4 and not rows & {0, 1}  # row 0 is the named patient of scenario.py, row 1 the local second case
 
 
@@ -155,7 +160,10 @@ def test_staging_produces_every_stage_the_demo_needs():
     over = by_row(fake, st.ROW_OVERDUE)
     assert over["overdue"] and over["escalation_level"] == 2 and not over["read_model"]["escalation_accepted"]  # waiting for a person
     assert over["state"] == "acknowledged"  # untouched: nobody accepted it
-    assert by_row(fake, st.ROW_SIGNOFF)["state"] == "confirmatory_completed"
+    signoff = by_row(fake, signoff_row())
+    assert signoff["state"] == "confirmatory_completed"
+    # the PHYSICIAN login (Dr. Huda Rahman, the hosted "Physician" role) owns it and no hand-off happened: the sign-off panel is hers
+    assert signoff["owner"]["display_name"] == "Dr. Huda Rahman" and "handoff_requested" not in signoff["events"]
     closed = by_row(fake, st.ROW_CLOSED)
     assert closed["state"] == "closed" and closed["events"][-2:] == ["clinician_review", "close"]
     draft_case = st.case_id_of(ROWS[st.ROW_DRAFT])
@@ -210,3 +218,20 @@ def test_the_hosted_seed_runs_the_phases_in_the_right_places():
     order = ["generate_results.py", "stage_demo_state.py --phase overdue", "create_cases.py", "create_chronic_cases.py", "stage_demo_state.py --phase rest"]
     assert [cmd.index(x) for x in order] == sorted(cmd.index(x) for x in order)
     assert "stage_demo_state" not in (REPO / "Makefile").read_text().split("\ndemo-seed:\n", 1)[1].split("\n\n", 1)[0]  # the local video demo is untouched
+
+
+def test_the_sign_off_case_belongs_to_the_physician_login_not_to_the_specialist():
+    fake = FakeApi()
+    run(fake, "rest")
+    case = by_row(fake, signoff_row())
+    assert case["owner"]["display_name"] == st.PHYSICIAN[1] == "Dr. Huda Rahman"
+    assert case["state"] == "confirmatory_completed" and case["events"][-1] == "complete_confirmatory"
+    # it is a different case from the one the specialist closes
+    assert by_row(fake, st.ROW_CLOSED)["owner"]["display_name"] == "Dr. Karim Nasser"
+
+
+def test_no_physician_row_in_the_manifest_is_an_error_not_a_silent_specialist_case():
+    few = ROWS[:8]
+    s = st.Stager(httpx.Client(transport=httpx.MockTransport(FakeApi().handler)), "http://api", few)
+    with pytest.raises(st.StageError):
+        s.signoff_row()

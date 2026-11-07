@@ -92,8 +92,9 @@ export function provenanceLine(
       ? "Template message (the AI could not draft this one)"
       : "Template message (reviewed wording, no AI model)";
   if (d.status === "rejected") return `${author}, rejected by ${actorName(d.rejected_by ?? "") || d.rejected_by || "the case owner"}. Nothing was sent.`;
-  const who = d.status === "approved" ? actorName(d.approved_by ?? "") || d.approved_by : ownerName;
-  return `${author}, approved by ${who || "the case owner"} before sending.`;
+  if (d.status === "approved") return `${author}, approved by ${actorName(d.approved_by ?? "") || d.approved_by || "the case owner"} before sending.`;
+  // Pending: nothing has been approved yet, so say what WILL happen (future tense), never "approved by" while the panel says it is waiting.
+  return `${author}, and will need approval by ${ownerName || "the case owner"} before sending.`;
 }
 
 /**

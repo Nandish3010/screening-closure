@@ -50,19 +50,36 @@ function readLang(): Lang | null {
   }
 }
 
-/** /patient: the installed PWA's start page. Sends the patient to the last case they opened. */
+/**
+ * /patient: the installed PWA's start page. Sends the patient to the last case they opened.
+ * Against the real API (http adapter) the fixture "Demo case" id does not exist, so a signed-in patient is taken to THEIR OWN case,
+ * read from the API (a patient token lists only its own cases). Against the mock adapter the fixture case is the demo.
+ */
 export function PatientHome() {
+  const { api, role } = useApp();
   const last = lastCaseId();
   const [lang] = useState<Lang>(readLang() ?? "en");
   const t = STRINGS[lang];
-  if (last) return <PatientView caseId={last} />;
+  const live = api.adapter === "http";
+  const [own, setOwn] = useState<string | null | undefined>(undefined); // undefined: looking; null: none
+  useEffect(() => {
+    if (!live || role !== "patient") return;
+    let on = true;
+    api.listCases({ limit: 1 }).then((rows) => on && setOwn(rows[0]?.case_id ?? null), () => on && setOwn(null));
+    return () => {
+      on = false;
+    };
+  }, [api, live, role]);
+  if (live && role === "patient" && own) return <PatientView caseId={own} />;
+  if (!live && last) return <PatientView caseId={last} />;
   return (
     <PhoneFrame>
       <main className="pa" lang={lang} dir={DIR[lang]} data-testid="patient-root">
         <div className="pa-body">
           <h1 className="pa-title">{t.homeTitle}</h1>
           <p className="pa-lead">{t.homeBody}</p>
-          <p><Link className="btn btn-primary btn-xl" to={`/patient/${DEMO_PATIENT_CASE_ID}`}>Demo case</Link></p>
+          {!live && <p><Link className="btn btn-primary btn-xl" to={`/patient/${DEMO_PATIENT_CASE_ID}`}>Demo case</Link></p>}
+          {live && role !== "patient" && <p className="pa-lead" data-testid="patient-signin-needed">Choose the Patient role in the header to see the patient's own case.</p>}
         </div>
       </main>
     </PhoneFrame>

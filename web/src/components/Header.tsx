@@ -99,7 +99,7 @@ export function Header() {
           <NavLink to="/coordinator" className={({ isActive }) => (isActive && pathname !== "/coordinator/today" ? "active" : undefined)}>Coordinator</NavLink>
           <NavLink to="/dashboard">Dashboard</NavLink>
           {(role === "coordinator" || role === "supervisor") && <NavLink to="/agency">Agency</NavLink>}
-          <NavLink to={`/patient/${DEMO_PATIENT_CASE_ID}`}>Patient view</NavLink>
+          <NavLink to={api.adapter === "http" ? "/patient" : `/patient/${DEMO_PATIENT_CASE_ID}`}>Patient view</NavLink>
           <NavLink to="/judge">Judge</NavLink>
           <NavLink to="/safety">AI and safety</NavLink>
           <NavLink to="/integrations">Integrations</NavLink>
