@@ -8,7 +8,7 @@ Status as of 2026-11-06: **code and unit tests done; real-VM verification NOT ye
 
 - the gated restart script against a fake `docker`: no restart below the gate, restart of the `api` container only above 70% of its limit, the daily fallback at 40%, the one-hour loop guard, `check` mode, the `docker stats` and host-memory fallbacks, and the reason written to the log;
 - `sc-up.sh` installs and enables all four units on every run, `startup.sh` no longer carries a conditional copy, `deploy.sh` refreshes the startup-script metadata on an existing VM, and `compose.gcp.yml` gives the `api` service `mem_limit: 1024m` (gate about 717 MiB).
-- `sc-up.sh` also creates `/var/lib/sc-demo` (owner uid 10001, the API container's user) and installs and enables the ADR-058 reset units `sc-demo-reset-watch.timer` (15 s) and `sc-demo-reset-scheduled.timer` (6 h); `compose.gcp.yml` bind-mounts the folder into `api`. No cron and no other restart is added.
+- `sc-up.sh` also creates `/var/lib/sc-demo` (owner uid 10001, the API container's user) and installs and enables the ADR-058 reset units `sc-demo-reset-watch.timer` (15 s) and `sc-demo-reset-scheduled.timer` (daily, 03:00 Asia/Dubai = 23:00 UTC, `Persistent=false`); `compose.gcp.yml` bind-mounts the folder into `api`. No cron and no other restart is added.
 
 ## To verify on the real VM (owner or an authorised session)
 

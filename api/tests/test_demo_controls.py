@@ -179,6 +179,25 @@ def test_next_scheduled_reset_follows_the_timer_not_only_the_last_reset():
     assert (nxt - datetime.fromisoformat(old)) % timedelta(hours=6) == timedelta(0)
 
 
+def test_next_scheduled_reset_at_a_daily_clock_time(monkeypatch):
+    """Judging window (S3): the hosted demo resets daily at 23:00 UTC (03:00 Asia/Dubai); /health shows the next such time."""
+    from datetime import timedelta
+
+    monkeypatch.setattr(settings, "demo_auto_reset_hours", 24)
+    monkeypatch.setattr(settings, "demo_auto_reset_at_utc", "23:00")
+    write_status(last_reset_at="2026-11-20T08:00:00+00:00")
+    for now, want in (
+        (datetime(2026, 11, 20, 10, 0, tzinfo=UTC), "2026-11-20T23:00:00+00:00"),  # 14:00 Dubai: tonight
+        (datetime(2026, 11, 20, 23, 0, tzinfo=UTC), "2026-11-21T23:00:00+00:00"),  # exactly on the slot: tomorrow's
+        (datetime(2026, 11, 20, 23, 30, tzinfo=UTC), "2026-11-21T23:00:00+00:00"),
+    ):
+        assert demo_controls._next_scheduled({"last_reset_at": "2026-11-20T08:00:00+00:00"}, 24, now, "23:00") == want
+    assert datetime.fromisoformat(demo_controls.status()["next_auto_reset_at"]).strftime("%H:%M") == "23:00"
+    assert datetime.fromisoformat(demo_controls.status()["next_auto_reset_at"]) - datetime.now(UTC) <= timedelta(days=1)
+    # still off when scheduled resets are off
+    assert demo_controls._next_scheduled({"last_reset_at": "2026-11-20T08:00:00+00:00"}, 0, datetime.now(UTC), "23:00") is None
+
+
 def test_no_scheduled_reset_means_no_next_time(monkeypatch):
     monkeypatch.setattr(settings, "demo_auto_reset_hours", 0)
     write_status(last_reset_at="2026-11-08T06:00:00+00:00")

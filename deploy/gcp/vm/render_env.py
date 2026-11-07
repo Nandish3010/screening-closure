@@ -110,7 +110,8 @@ def build_files(host: str, secrets: dict[str, str], mode: str = "production", de
         api["DEMO_SIGNIN_PW_CLINICIAN"] = s["pw-clinician"]
         api["DEMO_SIGNIN_PW_SUPERVISOR"] = s["pw-supervisor"]
         api["DEMO_SIGNIN_PW_PATIENT"] = s["pw-patient"]
-        api["DEMO_AUTO_RESET_HOURS"] = "6"  # informational: the web's "next scheduled reset" line (the timer is deploy/gcp/vm/sc-demo-reset-scheduled.timer)
+        api["DEMO_AUTO_RESET_HOURS"] = "24"  # informational: the web's "next scheduled reset" line (the timer is deploy/gcp/vm/sc-demo-reset-scheduled.timer)
+        api["DEMO_AUTO_RESET_AT_UTC"] = "23:00"  # once a day at 03:00 Asia/Dubai
     return {
         "compose.env": compose,
         "api.env": api,
