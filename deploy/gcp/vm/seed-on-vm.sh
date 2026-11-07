@@ -18,7 +18,10 @@
 # overdue case's supervisor rung); same cohort and cases as the local demo. The recorded Claude drafts (api/app/ai/cache) are keyed by
 # prompt content, not by date, so they replay. Production keeps the clock where the snapshot left it (demo gate).
 # Re-running starts from an empty database only if you pass --fresh (it deletes the volumes).
-set -euo pipefail
+set -Eeuo pipefail
+# A failed step must fail the whole seed (non-zero exit, so ssh, systemd and the caller see it) and must leave the stack in seed mode
+# rather than switch it to production on a half-staged database.
+trap 'rc=$?; echo "seed: FAILED (exit $rc) at line $LINENO: $BASH_COMMAND; the stack stays in seed mode, nothing was snapshotted" >&2' ERR
 export SC_REPO=${SC_REPO:-/srv/sc/repo}
 SYNTH_POP=${SYNTHEA_POPULATION:-300}
 if [ "${1:-}" = "--fresh" ]; then
@@ -41,8 +44,19 @@ else
   echo "seed: using the cohort already in data/synthea/out/fhir"
 fi
 
-docker run --rm --network host -v "$SC_REPO":/repo -w /repo python:3.12-slim sh -c \
-  'pip install -q --no-cache-dir httpx pyyaml && python simulator/load_cohort.py --skip-if-loaded && python simulator/generate_results.py && python simulator/stage_demo_state.py --phase overdue && python simulator/create_cases.py && python simulator/create_chronic_cases.py && python simulator/stage_demo_state.py --phase rest'
+# One command per line under `sh -e`: the first failing step (a stager that exits 1 or 2 included) ends the container non-zero.
+if ! docker run --rm --network host -v "$SC_REPO":/repo -w /repo python:3.12-slim sh -ec '
+  pip install -q --no-cache-dir httpx pyyaml
+  python simulator/load_cohort.py --skip-if-loaded
+  python simulator/generate_results.py
+  python simulator/stage_demo_state.py --phase overdue
+  python simulator/create_cases.py
+  python simulator/create_chronic_cases.py
+  python simulator/stage_demo_state.py --phase rest
+'; then
+  echo "seed: the seeding/staging container failed (see its log above); not snapshotting, not switching to production" >&2
+  exit 1
+fi
 
 ref=$(docker compose exec -T postgres psql -U closure -d closure -At -c "SELECT payload->>'patient_ref' FROM events WHERE payload ? 'patient_ref' ORDER BY id LIMIT 1")
 echo "seed: demo patient reference for the patient login: ${ref:-<none>}"
