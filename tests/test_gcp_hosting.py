@@ -373,6 +373,23 @@ def test_hosted_seed_stages_the_rich_opening_state_in_the_right_order():
     assert code.index("stage_demo_state.py --phase rest") < code.index("echo production > /var/lib/sc/mode")
     assert "stage_demo_state" not in (REPO_ROOT / "Makefile").read_text().split("\ndemo-seed:\n", 1)[1].split("\n\n", 1)[0]
 
+def test_hosted_seed_fails_loudly_when_the_staging_fails():
+    """A stager that exits non-zero (the PR #67 sign-off 403) must end seed-on-vm.sh non-zero, before the snapshot and before the
+    switch to production: -e on the script, -e inside the seeding container (one command per line), an explicit check on docker run."""
+    import re
+    script = (GCP / "vm" / "seed-on-vm.sh").read_text()
+    code = "\n".join(l for l in script.splitlines() if not l.lstrip().startswith("#"))
+    assert re.search(r"^set -[A-Za-z]*e[A-Za-z]*u[A-Za-z]* pipefail$", code, re.M)
+    assert "sh -ec '" in code and "sh -c " not in code  # not a bare `sh -c` chain
+    block = code[code.index("docker run --rm --network host"):code.index("ref=$(docker compose")]
+    assert "if ! docker run" in block and "exit 1" in block
+    for step in ("load_cohort.py", "generate_results.py", "stage_demo_state.py --phase overdue", "create_cases.py",
+                 "create_chronic_cases.py", "stage_demo_state.py --phase rest"):
+        assert re.search(rf"^\s+python simulator/{re.escape(step)}.*$", block, re.M), step  # each on its own line, no `|| true` after it
+    assert "|| true" not in block and "&&" not in block
+    assert code.index("exit 1", code.index("if ! docker run")) < code.index("tools/demo/snapshot.sh save") < code.index("echo production > /var/lib/sc/mode")
+
+
 def test_snapshot_script_is_posix_sh_because_the_vm_runs_it_under_dash():
     """`tools/demo/snapshot.sh` has a /bin/sh shebang and is run directly on the VM (Debian: dash): no bashisms such as ${@:2}
     ("45: Bad substitution" in the hosted reset)."""

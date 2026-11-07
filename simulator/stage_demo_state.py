@@ -238,7 +238,10 @@ class Stager:
     def walk(self, case_id: str, patient_ref: str, target: str, via_specialist: bool = True) -> str:
         """Run the steps still to do to `target`; each is a real event by the person whose step it is. Returns the state reached.
         `via_specialist`: the owner hands the case to the specialist, who does the rest (the closed case). Without it the case's own
-        owner does every step and signs (the sign-off case: the physician login owns it)."""
+        owner does every step it may (the sign-off case: the physician login owns it). One step is not an owner's to write: the
+        policy lets only a specialist post `complete_confirmatory` (EVENT_POLICY), and a specialist may act only on a case it
+        owns. So on a case a primary-care owner keeps, the owner records the colonoscopy and the evidence scan (the scheduler
+        container, as in production) completes the step and proposes the closure; the stager waits for it."""
         self.team = SPECIALIST if via_specialist else self.assigned_owner(case_id)
         self.via_specialist = via_specialist
         for step in steps_to_run(self.case(case_id)["state"], target):
@@ -258,11 +261,17 @@ class Stager:
         elif step == "patient_acknowledge":
             self.event(("patient", "demo patient", None), case_id, "patient_acknowledge", {"lang": "ar"}, patient_ref=patient_ref)
         elif step == "book_confirmatory":
-            when = (self.sim_now() + timedelta(days=APPOINTMENT_IN_DAYS)).date().isoformat()
+            # The owner path needs the appointment to have begun, or the evidence scan will not look for the colonoscopy.
+            days = APPOINTMENT_IN_DAYS if self.via_specialist else 0
+            when = (self.sim_now() + timedelta(days=days)).date().isoformat()
             self.event(team, case_id, "book_confirmatory", {"appointment_ref": f"APPT-DEMO-{case_id[:8]}", "appointment_date": when})
         elif step == "record_result":
             out = self.call(team, "POST", f"/cases/{case_id}/confirmatory-result")
-            self.event(team, case_id, "complete_confirmatory", {"result_ref": out["evidence_ref"]})
+            if self.via_specialist:  # a specialist owns the case: complete_confirmatory is theirs to post
+                self.event(team, case_id, "complete_confirmatory", {"result_ref": out["evidence_ref"]})
+            else:  # a primary-care owner may not post it: the scheduler's evidence scan finds the Procedure and completes the step
+                self.wait_for("the evidence scan to complete the confirmatory step",
+                              lambda: self.case(case_id)["state"] != "confirmatory_booked", 120)
         elif step in ("clinician_review", "close"):
             signer = f"Practitioner/{self.login(team)['user_id']}"
             payload = {"signed_by": signer}
@@ -284,6 +293,8 @@ class Stager:
         if owner_name(self.case(case_id)) != PHYSICIAN[1]:
             raise StageError(f"case {case_id[:8]} is owned by {owner_name(self.case(case_id))!r}, not {PHYSICIAN[1]!r}")
         state = self.walk(case_id, ref, "confirmatory_completed", via_specialist=False)  # the physician owns it: no hand-off
+        if state != "confirmatory_completed":
+            raise StageError(f"case {case_id[:8]} is at {state!r}, not 'confirmatory_completed': nothing for the physician to sign")
         return self._note("signoff", f"case {case_id[:8]} is owned by {PHYSICIAN[1]} and is at {state!r}, waiting for her review and signature")
 
     def stage_closed(self) -> str:

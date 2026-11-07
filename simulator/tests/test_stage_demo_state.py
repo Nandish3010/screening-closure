@@ -22,6 +22,7 @@ sys.path.insert(0, str(REPO / "simulator"))
 sys.path.insert(0, str(REPO / "api"))
 
 import stage_demo_state as st  # noqa: E402
+from app import policy  # noqa: E402  (the API's own role policy: the fake enforces it, so a role the real API refuses fails here too)
 
 START = datetime(2026, 1, 5, 8, 0, tzinfo=timezone.utc)
 TRANSITIONS = {  # event type -> (from, to)
@@ -45,7 +46,7 @@ class FakeApi:
 
     def _new(self, cid: str, registered: str | None = None) -> dict:
         owner = "Dr. Huda Rahman" if registered == "Marina Digestive Health" else "Dr. Layla Haddad"  # config/providers.yaml
-        c = {"case_id": cid, "state": "acknowledged", "owner": {"display_name": owner, "role": "primary_care_owner"},
+        c = {"case_id": cid, "state": "acknowledged", "booked_for": None, "result_recorded": False, "pending_handoff": False, "owner": {"display_name": owner, "role": "primary_care_owner"},
              "due_at": (self.now + timedelta(days=1)).isoformat(), "overdue": False, "escalation_level": 0,
              "read_model": {"escalation_accepted": False}, "events": [], "priority": None}
         self.cases[cid] = c
@@ -60,6 +61,23 @@ class FakeApi:
             if late > 0:
                 c["overdue"] = True
                 c["escalation_level"] = 3 if late >= 7 else 2 if late >= 3 else 1
+
+    def refuse(self, c: dict, role: str, name: str, allowed, what: str) -> httpx.Response | None:
+        """The API's role policy and owner scope (api/app/policy.py: EVENT_POLICY / ROUTE_POLICY, authorize_owner_scope)."""
+        if role not in allowed:
+            return httpx.Response(403, json={"detail": f"role {role!r} may not emit {what!r}"})
+        owner_ok = c["owner"]["display_name"] == name or (what == "handoff_accepted" and c["pending_handoff"])
+        if role in policy.OWNER_SCOPED and not owner_ok and what != "accept_ownership":
+            return httpx.Response(403, json={"detail": f"{role} {name!r} may only act on cases they own"})
+        return None
+
+    def scan(self, c: dict) -> None:
+        """automation.scan_evidence: a booked case whose appointment has begun and whose Procedure is in HAPI is completed by the
+        automation (not by a person) and gets a closure proposal."""
+        if c["state"] == "confirmatory_booked" and c["result_recorded"] and datetime.fromisoformat(c["booked_for"]).date() <= self.now.date():
+            c["state"] = "confirmatory_completed"
+            c["events"].append("complete_confirmatory")
+            c["events"].append("closure_proposed")
 
     def handler(self, request: httpx.Request) -> httpx.Response:
         path, method = request.url.path, request.method
@@ -84,9 +102,17 @@ class FakeApi:
         assert m, f"unexpected route {method} {path}"
         cid, sub = m.group(1), m.group(2)
         c = self.cases[cid]
+        role, name = request.headers["authorization"].removeprefix("Bearer t-").split("-", 1)
         if sub is None:
+            self.scan(c)  # the scheduler container's evidence scan runs between the stager's calls
             return httpx.Response(200, json=c)
         if sub == "confirmatory-result":
+            denied = self.refuse(c, role, name, policy.ROUTE_POLICY[("POST", "/cases/{case_id}/confirmatory-result")], "confirmatory-result")
+            if denied:
+                return denied
+            if c["state"] != "confirmatory_booked":
+                return httpx.Response(409, text="no colonoscopy to record in this state")
+            c["result_recorded"] = True
             return httpx.Response(201, json={"evidence_ref": f"Procedure/colonoscopy-{cid}"})
         if sub == "drafts":
             if method == "GET":
@@ -99,9 +125,14 @@ class FakeApi:
             return httpx.Response(200, json={"duplicate": True})
         self.seen.add(body["event_id"])
         t = body["type"]
+        denied = self.refuse(c, role, name, policy.EVENT_POLICY[t], t)
+        if denied:
+            self.seen.discard(body["event_id"])
+            return denied
         if t == "handoff_requested":
-            pass
+            c["pending_handoff"] = True
         elif t == "handoff_accepted":
+            c["pending_handoff"] = False
             c["owner"] = {"display_name": "Dr. Karim Nasser", "role": "specialist_owner"}
         elif t == "escalation_accepted":
             c["read_model"]["escalation_accepted"] = True
@@ -109,6 +140,8 @@ class FakeApi:
             frm, to = TRANSITIONS[t]
             assert c["state"] == frm, f"{t} in {c['state']}"
             c["state"] = to
+            if t == "book_confirmatory":
+                c["booked_for"] = body["payload"]["appointment_date"]
         c["events"].append(t)
         return httpx.Response(201, json={})
 
@@ -225,7 +258,7 @@ def test_the_sign_off_case_belongs_to_the_physician_login_not_to_the_specialist(
     run(fake, "rest")
     case = by_row(fake, signoff_row())
     assert case["owner"]["display_name"] == st.PHYSICIAN[1] == "Dr. Huda Rahman"
-    assert case["state"] == "confirmatory_completed" and case["events"][-1] == "complete_confirmatory"
+    assert case["state"] == "confirmatory_completed" and "complete_confirmatory" in case["events"]
     # it is a different case from the one the specialist closes
     assert by_row(fake, st.ROW_CLOSED)["owner"]["display_name"] == "Dr. Karim Nasser"
 
@@ -235,3 +268,35 @@ def test_no_physician_row_in_the_manifest_is_an_error_not_a_silent_specialist_ca
     s = st.Stager(httpx.Client(transport=httpx.MockTransport(FakeApi().handler)), "http://api", few)
     with pytest.raises(st.StageError):
         s.signoff_row()
+
+
+def test_the_sign_off_staging_obeys_the_real_role_policy():
+    """Regression (PR #67): the stager had the primary-care owner post `complete_confirmatory`, which EVENT_POLICY gives to the
+    specialist only; the hosted seed died on the 403. The fake now enforces the API's own policy, so the same slip fails here."""
+    assert policy.EVENT_POLICY["complete_confirmatory"] == frozenset({policy.SPEC})  # the premise: not a primary-care step
+    fake = FakeApi()
+    run(fake, "rest")  # every event of every stage went through policy.EVENT_POLICY / ROUTE_POLICY and the owner scope
+    case = by_row(fake, signoff_row())
+    assert case["owner"]["display_name"] == st.PHYSICIAN[1]  # still hers: nobody was handed the case
+    assert case["events"].count("complete_confirmatory") == 1 and case["events"][-1] == "closure_proposed"  # completed by the scan
+    assert "handoff_requested" not in case["events"]
+
+
+def test_the_fake_refuses_what_the_policy_refuses():
+    fake = FakeApi()
+    s = run(fake, "overdue")
+    case_id, ref, _ = s.ensure_case(signoff_row())
+    s.walk(case_id, ref, "confirmatory_completed", via_specialist=False)
+    owner = s.assigned_owner(case_id)
+    assert owner[0] == "primary_care_owner"
+    with pytest.raises(st.StageError, match="403"):
+        s.event(owner, case_id, "complete_confirmatory", {"result_ref": "Procedure/x"})  # the owner may not
+    with pytest.raises(st.StageError, match="403"):
+        s.event(st.SPECIALIST, case_id, "complete_confirmatory", {"result_ref": "Procedure/x"})  # nor may a specialist who is not the owner
+
+
+def test_a_sign_off_case_the_scan_never_completes_is_an_error():
+    fake = FakeApi()
+    fake.scan = lambda c: None  # the scheduler container is not running
+    with pytest.raises(st.StageError, match="evidence scan"):
+        run(fake, "rest")
