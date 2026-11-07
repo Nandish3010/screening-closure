@@ -327,7 +327,19 @@ def test_demo_reset_watcher_units_are_installed_by_sc_up():
     assert "demo-reset-watch.sh --scheduled" in (vm / "sc-demo-reset-scheduled.service").read_text()
     assert "demo-reset-watch.sh" in (vm / "sc-demo-reset-watch.service").read_text()
     assert "OnUnitActiveSec=15" in (vm / "sc-demo-reset-watch.timer").read_text()
-    assert "OnUnitActiveSec=6h" in (vm / "sc-demo-reset-scheduled.timer").read_text()
+    # judging window (S3): once a day at 03:00 Asia/Dubai = 23:00 UTC, never caught up mid-day, no boot-time or interval reset
+    sched = (vm / "sc-demo-reset-scheduled.timer").read_text()
+    live = "\n".join(l for l in sched.splitlines() if not l.lstrip().startswith("#"))
+    assert "OnCalendar=*-*-* 23:00:00 UTC" in live  # 23:00 UTC == 03:00 Asia/Dubai (UTC+4, no DST)
+    assert "Persistent=false" in live and "Persistent=true" not in live
+    assert "OnBootSec" not in live and "OnUnitActiveSec" not in live
+    assert "6h" not in live
+    assert "Asia/Dubai" in sched and "03:00" in sched
+    # the request-based reset keeps its 15 s poll; sc-up.sh reloads systemd and restarts both timers so a changed timer takes effect
+    assert up.index("daemon-reload", up.index("sc-demo-reset-scheduled.timer")) < up.index("try-restart sc-demo-reset-watch.timer sc-demo-reset-scheduled.timer")
+    # the web's "next scheduled reset" line follows the same clock time
+    env_py = (vm / "render_env.py").read_text()
+    assert 'api["DEMO_AUTO_RESET_HOURS"] = "24"' in env_py and 'api["DEMO_AUTO_RESET_AT_UTC"] = "23:00"' in env_py
     # no cron, and startup.sh does not carry the units
     assert "cron" not in up.lower()
     assert "sc-demo-reset" not in "\n".join(l for l in (vm / "startup.sh").read_text().splitlines() if not l.lstrip().startswith("#"))
