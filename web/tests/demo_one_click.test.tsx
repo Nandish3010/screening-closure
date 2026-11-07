@@ -39,7 +39,7 @@ describe("one-click role buttons", () => {
     await waitFor(() => expect(demoSignIn).toHaveBeenCalledWith("clinician"));
   });
 
-  it("keeps a 'Sign in with a password instead' link to the normal flow, and the preview link", async () => {
+  it("keeps a 'Operator sign-in (password)' link to the normal flow, and the preview link", async () => {
     const { signIn } = page(vi.fn(async () => undefined));
     fireEvent.click(await screen.findByTestId("password-signin"));
     expect(signIn).toHaveBeenCalledWith({ forceLogin: true });

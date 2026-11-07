@@ -31,7 +31,7 @@ describe("role cards on the hosted demo's sign-in page", () => {
     const cards = await screen.findByTestId("role-cards");
     expect(cards.querySelectorAll("li")).toHaveLength(4);
     expect(screen.getByTestId("demo-clock-banner").textContent).toContain("Demo, synthetic data, simulated time");
-    expect(screen.getByTestId("judge-signin").textContent).toMatch(/password for each role is in the submission/);
+    expect(screen.getByTestId("judge-signin").textContent).toMatch(/identity provider asks for the password/);
     fireEvent.click(screen.getByRole("button", { name: /sign in as supervisor/i }));
     expect(signIn).toHaveBeenCalledWith({ loginHint: "noura.alhammadi", forceLogin: true });
   });

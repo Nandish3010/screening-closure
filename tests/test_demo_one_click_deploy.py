@@ -104,7 +104,8 @@ def test_edge_has_a_tight_location_for_the_sign_in_and_the_api_keeps_its_own_lim
     t = (GCP / "edge/nginx.conf.template").read_text()
     block = t[t.index("location = /api/demo/sign-in"):]
     block = block[:block.index("}")]
-    assert "limit_req zone=login_ip burst=5" in block and "limit_conn conn_ip 5" in block
+    assert "limit_req zone=signin_ip burst=60" in block and "limit_conn conn_ip 40" in block  # S1: a shared-NAT panel of ~30 can click at once
+    assert "limit_req_zone $binary_remote_addr zone=signin_ip:10m rate=20r/s" in t
     assert "proxy_set_header X-Forwarded-For $remote_addr" in block  # the visitor's address, overwritten, for the API's bucket
     assert t.index("location = /api/demo/sign-in") < t.index("location /api/ {")
     assert "proxy_pass http://api:8000" in block

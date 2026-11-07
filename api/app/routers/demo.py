@@ -15,6 +15,7 @@ import re
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict
 
 from app import demo_controls, demo_signin
@@ -51,7 +52,9 @@ def sign_in(body: SignIn, request: Request) -> dict:
     try:
         return demo_signin.sign_in(body.role, _visitor(request))
     except demo_signin.SignInError as exc:
-        raise HTTPException(exc.status, exc.message) from exc
+        # `detail` as every other refusal; `code` is stable for the web to act on (S1); Retry-After on 429 and on "warming up".
+        headers = {"Retry-After": str(exc.retry_after)} if exc.retry_after else None
+        return JSONResponse({"detail": exc.message, "code": exc.code, "retry_after": exc.retry_after}, status_code=exc.status, headers=headers)
 
 
 @router.get("/guide")
