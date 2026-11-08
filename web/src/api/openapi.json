@@ -2904,6 +2904,28 @@
         "summary": "Pathways"
       }
     },
+    "/ready": {
+      "get": {
+        "description": "Readiness (db, HAPI, scheduler), unlike the cheap liveness `/health`. 200 when all pass, else 503 with the same body.",
+        "operationId": "ready_ready_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Ready"
+      }
+    },
     "/scheduler/agency-run": {
       "post": {
         "description": "One agency run at the current simulation time, on the scheduler's own timer (M7-8, ADR-047). Synchronous, so the scheduler\nmeasures it and never starts a second while it runs; this process's run lock makes a second concurrent request answer\n`busy` instead of queueing. Fenced at entry, and every ledger write re-checks the lease inside its transaction (the agency\nwrites no case event of its own; a draft it asks for is the drafting route's, unchanged). `{\"enabled\": false}` while the\nagency is switched off (`AGENCY_EVERY_SWEEPS=0`). Counts only.",
