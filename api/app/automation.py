@@ -103,6 +103,12 @@ class NegativeCache:
         with self._lock:
             self._at[case_id] = now
 
+    def forget(self, case_id: UUID) -> None:
+        """Drop one case's remembered "no". Called when new evidence for it has just been written: a "no" asked BEFORE the write
+        says nothing about the world after it, and the TTL is in simulated time, which does not move while a stager seeds."""
+        with self._lock:
+            self._at.pop(case_id, None)
+
     def prune(self, now: datetime) -> None:
         """Forget the entries that have expired, so the cache stays the size of the cases asked about in one TTL."""
         with self._lock:
@@ -117,6 +123,13 @@ class NegativeCache:
 
 
 evidence_negatives = NegativeCache()  # the evidence scan's; tests clear it
+
+
+def evidence_recorded(case_id: UUID) -> None:
+    """The colonoscopy of this case was just recorded in HAPI (the confirmatory-result route, the HL7 colonoscopy path): the
+    evidence scan must ask again at its next pass, not after the TTL. Seed race: a scan that asked between "booked" and the
+    recording cached a "no" for 6 simulated hours, and the case then sat as `skipped_recent_no` for good."""
+    evidence_negatives.forget(case_id)
 
 
 class HeldLog:

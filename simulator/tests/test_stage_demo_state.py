@@ -43,6 +43,8 @@ class FakeApi:
         self.log: list[tuple[str, str]] = []
         self.drafts: dict[str, list[dict]] = {}
         self.agency_runs = 0
+        self.on_demand_scan_only = False  # the scheduler's own loop is not running: a scan happens only when the stager asks
+        self.scan_posts = 0
         for i in range(other_cases):
             self._new(str(uuid.uuid4()))
 
@@ -87,6 +89,13 @@ class FakeApi:
         self.log.append((method, path))
         if path == "/auth/dev-login":
             return httpx.Response(200, json={"token": f"t-{body['role']}-{body['name']}", "user_id": f"u-{body['name'].replace(' ', '')}"})
+        if path == "/scheduler/evidence-scan":
+            self.scan_posts += 1
+            if request.headers.get("authorization") != "Bearer automation-token":
+                return httpx.Response(401, json={"detail": "bad token"})
+            for c in self.cases.values():
+                self.scan(c)
+            return httpx.Response(200, json={"asked": 1})
         if path == "/health":
             return httpx.Response(200, json={"status": "ok", "sim_time": self.now.isoformat()})
         if path == "/clock/advance":
@@ -112,7 +121,8 @@ class FakeApi:
         c = self.cases[cid]
         role, name = request.headers["authorization"].removeprefix("Bearer t-").split("-", 1)
         if sub is None:
-            self.scan(c)  # the scheduler container's evidence scan runs between the stager's calls
+            if not self.on_demand_scan_only:
+                self.scan(c)  # the scheduler container's evidence scan runs between the stager's calls
             return httpx.Response(200, json=c)
         if sub == "confirmatory-result":
             denied = self.refuse(c, role, name, policy.ROUTE_POLICY[("POST", "/cases/{case_id}/confirmatory-result")], "confirmatory-result")
@@ -370,3 +380,33 @@ def test_an_agency_run_with_no_work_fails_the_stage_instead_of_snapshotting_an_e
     s.client = httpx.Client(transport=httpx.MockTransport(lambda r: httpx.Response(200, json={"status": "done", "counts": {"total": 0}}) if r.url.path == "/agency/run" else fake.handler(r)))
     with pytest.raises(st.StageError):
         s.stage_agency()
+
+
+def run_signoff(fake: FakeApi, token: str | None, sleeps: list) -> None:
+    client = httpx.Client(transport=httpx.MockTransport(fake.handler))
+    s = st.Stager(client, "http://api", ROWS, sleep=sleeps.append, scan_token=token)
+    s.stage_signoff()
+
+
+def test_the_sign_off_step_asks_for_the_evidence_scan_once_instead_of_waiting_for_the_scheduler():
+    fake, sleeps = FakeApi(), []
+    fake.on_demand_scan_only = True
+    run_signoff(fake, "automation-token", sleeps)
+    assert fake.scan_posts == 1
+    assert by_row(fake, signoff_row())["state"] == "confirmatory_completed"
+    assert sleeps == []  # the scan had already run when the first poll looked: nothing to wait for
+
+
+def test_without_the_token_it_only_polls_and_gives_up_after_about_thirty_seconds():
+    fake, sleeps = FakeApi(), []
+    fake.on_demand_scan_only = True
+    with pytest.raises(st.StageError, match="evidence scan"):
+        run_signoff(fake, None, sleeps)
+    assert fake.scan_posts == 0
+    assert 28 <= sum(sleeps) <= 32 and st.EVIDENCE_WAIT_SECONDS == 30
+
+
+def test_a_refused_scan_request_does_not_stop_the_stager_when_the_scheduler_does_the_scan():
+    fake, sleeps = FakeApi(), []
+    run_signoff(fake, "wrong-token", sleeps)  # 401 from the scan route: logged, the scheduler's loop (the fake's GET) completes it
+    assert fake.scan_posts == 1 and by_row(fake, signoff_row())["state"] == "confirmatory_completed"

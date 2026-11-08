@@ -44,8 +44,13 @@ else
   echo "seed: using the cohort already in data/synthea/out/fhir"
 fi
 
+# The stager may ask the API for the evidence scan right after it records the colonoscopy (POST /scheduler/evidence-scan, open to the
+# automation token): hand it that token if the rendered api.env has one. Read here, passed by NAME (never on a command line or in a log).
+AUTOMATION_SERVICE_TOKEN=$(sed -n 's/^AUTOMATION_SERVICE_TOKEN=//p' /etc/sc/api.env 2>/dev/null | head -1 || true)
+export AUTOMATION_SERVICE_TOKEN
+
 # One command per line under `sh -e`: the first failing step (a stager that exits 1 or 2 included) ends the container non-zero.
-if ! docker run --rm --network host -v "$SC_REPO":/repo -w /repo python:3.12-slim sh -ec '
+if ! docker run --rm --network host -e AUTOMATION_SERVICE_TOKEN -v "$SC_REPO":/repo -w /repo python:3.12-slim sh -ec '
   pip install -q --no-cache-dir httpx pyyaml
   python simulator/load_cohort.py --skip-if-loaded
   python simulator/generate_results.py

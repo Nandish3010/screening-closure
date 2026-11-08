@@ -66,6 +66,7 @@ ROW_OVERDUE, ROW_CLOSED, ROW_DRAFT = 4, 6, 7
 # The sign-off case is chosen, not fixed: the first row from SIGNOFF_FROM_ROW whose registered provider is the PHYSICIAN's, so the
 # hosted "Physician" one-click login (Dr. Huda Rahman, Marina Digestive Health) OWNS it and its sign-off panel is hers.
 SIGNOFF_FROM_ROW = 8
+EVIDENCE_WAIT_SECONDS = 30  # the sign-off step waits this long for the evidence scan (it was 120 while a cached "no" could hide the case)
 PHYSICIAN = ("primary_care_owner", "Dr. Huda Rahman", "Marina Digestive Health")
 NAMESPACE = uuid.UUID("5b0c1a4e-7d3e-4a6f-9a51-2f0e8c7d9b10")  # for this script's event ids (never change: idempotency)
 
@@ -83,7 +84,7 @@ FIRST_STEP = {"acknowledged": 0, "owner_accepted": 1, "patient_contacted": 3, "p
 TARGET_INDEX = {"patient_contacted": 3, "confirmatory_completed": 6, "closed": len(STEPS)}  # steps to run: STEPS[FIRST:TARGET]
 
 # The tour pool (the guided tour, `GET /demo/guide`, hands each judge session an untouched case per step; a case a judge acts on is
-# used up until the daily reset). The cohort is small (about 25 positive results), so the pool is a share of it, not 10 per step:
+# used up until the daily reset). The cohort is small (22 positive results), so the pool is a share of it, not 10 per step:
 # these cases are staged in the states the steps ask for, AND the API gives any case that still fits a step once the untouched
 # ones are gone (api/app/demo_controls.py, `fresh: false`). Counts are the most each state gets; MIN_UNTOUCHED rows are always
 # left alone for "record" and "prioritise", so on a small cohort the pool shrinks first.
@@ -133,8 +134,10 @@ def escalation_waiting(case: dict) -> bool:
 
 
 class Stager:
-    def __init__(self, client: httpx.Client, api: str, rows: list[dict], sleep=time.sleep, poll_seconds: float = 2.0) -> None:
+    def __init__(self, client: httpx.Client, api: str, rows: list[dict], sleep=time.sleep, poll_seconds: float = 2.0,
+                 scan_token: str | None = None) -> None:
         self.client, self.api, self.rows = client, api, rows
+        self.scan_token = scan_token  # the automation service token, when the stager is given it (see trigger_evidence_scan)
         self.sleep, self.poll = sleep, poll_seconds
         self.tokens: dict[tuple, dict] = {}
         self.providers = create_cases.registration_providers()
@@ -157,6 +160,22 @@ class Stager:
         if r.status_code not in ok:
             raise StageError(f"{method} {path} as {who[0]} {who[1]!r}: HTTP {r.status_code} {r.text[:300]}")
         return r.json()
+
+    def trigger_evidence_scan(self) -> bool:
+        """Ask the API to run the evidence scan now (`POST /scheduler/evidence-scan`, open to the automation service token), so the
+        sign-off step does not depend on the scheduler's cadence. Idempotent (deterministic event ids). Needs the token (env
+        AUTOMATION_SERVICE_TOKEN); without it, or if the API refuses (404/403/409 fence), the scheduler's own loop does the scan
+        and the wait below simply polls. Never raises: it is a nudge, the wait is the check."""
+        if not self.scan_token:
+            return False
+        try:
+            r = self.client.post(f"{self.api}/scheduler/evidence-scan", headers={"Authorization": f"Bearer {self.scan_token}"})
+        except httpx.HTTPError as exc:
+            log.warning("evidence scan not triggered (%s); waiting for the scheduler's own", type(exc).__name__)
+            return False
+        if r.status_code != 200:
+            log.warning("evidence scan not triggered: HTTP %s; waiting for the scheduler's own", r.status_code)
+        return r.status_code == 200
 
     def event(self, who, case_id: str, type_: str, payload: dict | None = None, patient_ref: str | None = None):
         return self.call(who, "POST", f"/cases/{case_id}/events",
@@ -284,8 +303,11 @@ class Stager:
             if self.via_specialist:  # a specialist owns the case: complete_confirmatory is theirs to post
                 self.event(team, case_id, "complete_confirmatory", {"result_ref": out["evidence_ref"]})
             else:  # a primary-care owner may not post it: the scheduler's evidence scan finds the Procedure and completes the step
+                # The API forgets its remembered "no" when the result is recorded (automation.evidence_recorded), so one scan
+                # after the write finds it: ask for it once, then poll for at most EVIDENCE_WAIT_SECONDS.
+                self.trigger_evidence_scan()
                 self.wait_for("the evidence scan to complete the confirmatory step",
-                              lambda: self.case(case_id)["state"] != "confirmatory_booked", 120)
+                              lambda: self.case(case_id)["state"] != "confirmatory_booked", EVIDENCE_WAIT_SECONDS)
         elif step in ("clinician_review", "close"):
             signer = f"Practitioner/{self.login(team)['user_id']}"
             payload = {"signed_by": signer}
@@ -422,7 +444,7 @@ def main(argv: list[str] | None = None) -> int:
         except httpx.HTTPError as exc:
             log.error("the API at %s is not reachable (%s); start the stack first", api, exc)
             return 2
-        stager = Stager(client, api, rows)
+        stager = Stager(client, api, rows, scan_token=os.environ.get("AUTOMATION_SERVICE_TOKEN") or None)
         try:
             if args.phase in ("overdue", "all"):
                 stager.stage_overdue()

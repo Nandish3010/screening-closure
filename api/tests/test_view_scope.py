@@ -9,7 +9,7 @@ timeline at all.
 
 from __future__ import annotations
 
-from api_helpers import actor_of, login_headers, make_client
+from api_helpers import actor_of, login_headers, make_client, worklist
 
 client = make_client()
 
@@ -44,10 +44,22 @@ def test_a_clinician_cannot_read_another_clinicians_case_or_timeline():
 def test_the_worklist_of_a_clinician_holds_only_the_cases_they_need_to_know():
     mine, theirs = owned_case("Dr A", "Patient/vs-2"), owned_case("Dr C", "Patient/vs-3")
     unowned = client.post("/cases", json={"patient_ref": "Patient/vs-4"}, headers=H("coordinator")).json()["case_id"]
-    ids = {r["case_id"] for r in client.get("/cases", headers=H("primary_care_owner", "Dr A")).json()}
+    ids = {r["case_id"] for r in worklist(client, H("primary_care_owner", "Dr A"))}
     assert mine in ids and unowned in ids and theirs not in ids  # an unowned case can be taken, so it can be seen
-    assert {mine, theirs, unowned} <= {r["case_id"] for r in client.get("/cases", headers=H("coordinator")).json()}
-    assert {mine, theirs, unowned} <= {r["case_id"] for r in client.get("/cases", headers=H("supervisor")).json()}
+    assert {mine, theirs, unowned} <= {r["case_id"] for r in worklist(client, H("coordinator"))}
+    assert {mine, theirs, unowned} <= {r["case_id"] for r in worklist(client, H("supervisor"))}
+
+
+def test_the_worklist_check_holds_when_the_store_has_more_cases_than_one_page():
+    """Regression (CI run 42420776596): `GET /cases` is one page of 100 rows in random id order, so a bare lookup flaked once the
+    shared store held more than 100 cases. `worklist` follows the cursor, so the answer does not depend on the ids drawn."""
+    for i in range(130):
+        client.post("/cases", json={"patient_ref": f"Patient/vs-bulk-{i}"}, headers=H("coordinator"))
+    mine = owned_case("Dr A", "Patient/vs-bulk-mine")
+    page = client.get("/cases", headers=H("coordinator"))
+    assert len(page.json()) == 100 and page.headers.get("X-Next-Cursor")  # the trap is real: one page is not the worklist
+    assert len(worklist(client, H("coordinator"))) > 130
+    assert mine in {r["case_id"] for r in worklist(client, H("primary_care_owner", "Dr A"))}
 
 
 def test_an_unowned_case_can_be_read_to_be_taken_and_a_participant_keeps_reading_it():

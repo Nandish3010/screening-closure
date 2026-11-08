@@ -21,6 +21,22 @@ def login_headers(client: TestClient, role: str, name: str | None = None, patien
     return {"Authorization": f"Bearer {resp.json()['token']}"}
 
 
+def worklist(client: TestClient, headers: dict, **params) -> list[dict]:
+    """Every row of `GET /cases` for these filters: follows `X-Next-Cursor` to the last page. A bare `GET /cases` is ONE page of
+    100 rows in random case-id order, so a test that looks a case up in it fails whenever the shared in-memory store of its file
+    holds more than 100 cases (CI run 42420776596). Use this whenever a test asserts that a case is, or is not, on a worklist."""
+    rows: list[dict] = []
+    cursor = None
+    for _ in range(1000):
+        resp = client.get("/cases", headers=headers, params={**params, "limit": 500, **({"cursor": cursor} if cursor else {})})
+        assert resp.status_code == 200, resp.text
+        rows += resp.json()
+        cursor = resp.headers.get("X-Next-Cursor")
+        if not cursor:
+            return rows
+    raise AssertionError("the worklist did not end")
+
+
 def actor_of(role: str, name: str | None = None) -> str:
     """The actor string the API records for `role` logging in as `name` (A14: `role:opaque_id`)."""
     from app.auth import opaque_user_id

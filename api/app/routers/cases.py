@@ -663,4 +663,5 @@ def record_confirmatory_result(
         refs = confirmatory.recorder.record(case_id, _patient_ref(case_id), clock.now(), completeness, rule.procedure)
     except confirmatory.RecorderUnavailable as exc:
         raise HTTPException(503, f"cannot record the {rule.procedure} result: {exc}")
+    automation.evidence_recorded(case_id)  # new evidence: the scan's remembered "no" for this case is out of date
     return {"case_id": str(case_id), "evidence_ref": refs["procedure_ref"], **refs, "recorded_at": clock.now().isoformat()}
