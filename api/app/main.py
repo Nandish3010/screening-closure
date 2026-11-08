@@ -3,9 +3,11 @@ import os
 from contextlib import asynccontextmanager
 
 from fastapi import Depends, FastAPI, HTTPException
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 
-from app import access_audit, auth, automation, confirmatory, evidence, fhir_projection, leader, loadshed, memtrace, notify, observability, ops, outreach_policy, policy, users
+from app import build_info
+from app import access_audit, auth, automation, confirmatory, evidence, fhir_projection, leader, loadshed, memtrace, notify, observability, ops, outreach_policy, policy, readiness, users
 from app.clock import clock
 from app.config import settings
 from app.events import InMemoryEventStore
@@ -182,12 +184,20 @@ def health() -> dict:
     """Public, no patient data. `outreach` (A26, ADR-037) says whether automatic patient messages are signed off:
     `demo_approval` is true while they run only on the demo placeholder, and the web shows an amber banner with
     `approved_by`."""
-    body = {"status": "ok", "sim_time": clock.now().isoformat(), "clock_mode": clock.mode, "outreach": outreach_policy.public_status()}
+    body = {"status": "ok", "sim_time": clock.now().isoformat(), "clock_mode": clock.mode, "outreach": outreach_policy.public_status(),
+            "commit": build_info.commit()}  # which commit is running (docs/governance/hosting-gcp.md); "dev" outside a built image
     if auth.demo_controls_active():  # the web app shows the "Demo, synthetic data, simulated time" banner and the judge role cards whenever this is present
         from app import demo_controls
 
         body["demo"] = {"simulated_clock": True, "deployment": True, **demo_controls.status()}
     return body
+
+
+@app.get("/ready")
+def ready() -> JSONResponse:
+    """Readiness (db, HAPI, scheduler), unlike the cheap liveness `/health`. 200 when all pass, else 503 with the same body."""
+    ok, body = readiness.check()
+    return JSONResponse(body, status_code=200 if ok else 503)
 
 
 @app.get("/pathways")

@@ -21,7 +21,7 @@ from app import observability
 
 log = logging.getLogger("app.loadshed")
 
-EXEMPT_PREFIXES = ("/health", "/scheduler/", "/watchdog/", "/metrics")
+EXEMPT_PREFIXES = ("/health", "/ready", "/scheduler/", "/watchdog/", "/metrics")
 BODY = json.dumps({"detail": "overloaded: too many requests in flight, retry after the delay in Retry-After"}).encode()
 
 

@@ -1,0 +1,27 @@
+{
+  "_comment": "Patient ids of the committed HL7 samples (the seed 20261017 cohort). The samples and their tests use THESE, never data/results/manifest.json, which is gitignored and differs on every machine (the fresh-clone workflow failed on it).",
+  "ids": [
+    "10242",
+    "358524",
+    "324419",
+    "93588",
+    "243944",
+    "273718",
+    "232220",
+    "288286",
+    "178140",
+    "227510",
+    "63083",
+    "397029",
+    "41100",
+    "204388",
+    "331578",
+    "69921",
+    "395958",
+    "304421",
+    "86493",
+    "140854",
+    "253248",
+    "174074"
+  ]
+}

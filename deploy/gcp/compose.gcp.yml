@@ -6,9 +6,18 @@
 #
 # Secrets come from Secret Manager through deploy/gcp/vm/render_env.py into /etc/sc/*.env (root, mode 0600); none is in this file.
 
+# Container logs: json-file with a size cap, so a chatty container (the API at LOG_FORMAT=json, HAPI, Keycloak) cannot fill the
+# 10-20 GB boot disk over the judging window. 3 files x 10 MB per container is about 300 MB for the ten of them. Applied to every service.
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 services:
   api:
     restart: unless-stopped
+    logging: *logging
     env_file:
       - path: /etc/sc/api.env
         required: true
@@ -16,6 +25,10 @@ services:
     # BUG-77: a limit makes "memory is high" mean something. deploy/gcp/vm/sc-api-restart.sh restarts the API at 70% of it (about
     # 717 MiB) and, once a day, at 40%; an OOM kill at the limit would also be restarted by the policy above, but abruptly.
     mem_limit: 1024m
+    # Reliability review (8 Nov 2026), memory: glibc keeps one malloc arena per thread; on a 4 GB host that fragmentation is the slow
+    # climb BUG-77 restarts away. Two arenas cost nothing measurable here and cap it. (Idle on the VM: api 192 MiB of 1 GiB.)
+    environment:
+      MALLOC_ARENA_MAX: "2"
     # ADR-058: the folder through which the web's "Reset the demo" asks the host (deploy/gcp/vm/demo-reset-watch.sh) and the host
     # answers (status.json). Create it on the VM first (the watch script does): it must be writable by uid 10001.
     volumes:
@@ -24,24 +37,28 @@ services:
   scheduler:
     # The lease/fencing design (ADR-041) is kept as is; ONE scheduler here (no scale profile), so the lease is trivially held.
     restart: unless-stopped
+    logging: *logging
     env_file:
       - path: /etc/sc/scheduler.env
         required: true
 
   watchdog:
     restart: unless-stopped
+    logging: *logging
     env_file:
       - path: /etc/sc/watchdog.env
         required: true
 
   fhir:
     restart: unless-stopped
+    logging: *logging
     environment:
       JAVA_TOOL_OPTIONS: -Xmx${FHIR_HEAP_MB:-768}m
     mem_limit: 1300m
 
   postgres:
     restart: unless-stopped
+    logging: *logging
 
   # Keycloak in PRODUCTION mode (`start`, not `start-dev`): its own database in the same Postgres server, behind the edge at /auth.
   # The realm is the committed one with the public host as the only redirect URI (vm/render_realm.py). Admin console is not routed
@@ -50,6 +67,7 @@ services:
     image: quay.io/keycloak/keycloak:26.0.7
     profiles: [public]
     restart: unless-stopped
+    logging: *logging
     command: ["start", "--import-realm"]
     mem_limit: 700m
     environment:
@@ -89,10 +107,14 @@ services:
     image: ${TRIAGE_LLAMA_IMAGE:-ghcr.io/ggml-org/llama.cpp:server}
     profiles: [triage]
     restart: unless-stopped
+    logging: *logging
     command: ["-m", "/models/triage.gguf", "--host", "0.0.0.0", "--port", "8081", "-c", "2048", "-t", "2", "--parallel", "1", "--no-webui"]
     volumes:
       - /srv/sc/models:/models:ro
     mem_limit: 1500m
+    # Two shared vCPUs serve sign-in (Keycloak password hashing), HAPI, Postgres and the API. One reply classification would take both
+    # and starve a judge's sign-in for seconds; one vCPU for the model keeps the rest responsive (the template fallback covers a slow reply).
+    cpus: 1.0
     # The image's own healthcheck curls :8080, but this server listens on 8081 (--port above), so it reported unhealthy while working.
     healthcheck:
       test: ["CMD", "curl", "-fs", "http://localhost:8081/health"]
@@ -108,6 +130,7 @@ services:
       target: runtime
     profiles: [triage]
     restart: unless-stopped
+    logging: *logging
     command: ["python", "-m", "app.triage.gguf_server", "--llama-url", "http://triage-llama:8081", "--port", "8765"]
     environment:
       TRIAGE_CALIBRATION_PATH: /app/app/triage/calibration_gguf.json
@@ -118,6 +141,7 @@ services:
   web:
     profiles: [public]
     restart: unless-stopped
+    logging: *logging
     build:
       context: .
       dockerfile: deploy/gcp/edge/Dockerfile
@@ -125,6 +149,11 @@ services:
         VITE_PUBLIC_HOST: ${SC_PUBLIC_HOST:?set by render_env.py}
     environment:
       SC_PUBLIC_HOST: ${SC_PUBLIC_HOST}
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/healthz"]
+      interval: 15s
+      timeout: 3s
+      retries: 3
     depends_on: [api]
     networks: [closure]
 
@@ -133,6 +162,7 @@ services:
     image: caddy:2.8.4-alpine@sha256:af32e97399febea808609119bb21544d0265c58a02836576e32a2d082c262c17
     profiles: [public]
     restart: unless-stopped
+    logging: *logging
     ports:
       - "80:80"
       - "443:443"

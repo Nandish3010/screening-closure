@@ -86,6 +86,22 @@ def render(data: dict) -> str:
     return json.dumps(data, indent=2, sort_keys=True) + "\n"
 
 
+def same_figures(have: str, want: str) -> bool:
+    """Equal in every figure. `run.git_commit` is provenance, not a figure: `make evaluate` stamps the HEAD it ran at into results.json, so
+    on any clone whose HEAD is newer than the commit that produced the committed results (a fresh clone, every weekly run of the
+    fresh-clone workflow) the regenerated headline differs from the committed one in that one line and in nothing a judge reads."""
+    def bare(text: str):
+        try:
+            data = json.loads(text)
+        except ValueError:
+            return text
+        if isinstance(data.get("run"), dict):
+            data["run"].pop("git_commit", None)
+        return data
+
+    return bare(have) == bare(want)
+
+
 def generate() -> str:
     return render(build(json.loads(SRC.read_text())))
 
@@ -94,7 +110,7 @@ def main(argv: list[str]) -> int:
     text = generate()
     if "--check" in argv:
         have = OUT.read_text() if OUT.exists() else ""
-        if have != text:
+        if not same_figures(have, text):
             print(f"{OUT.relative_to(ROOT)} is out of date with {SRC.relative_to(ROOT)}; run `make judge-headline` and commit it.", file=sys.stderr)
             return 1
         print("judge headline: up to date")

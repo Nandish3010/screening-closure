@@ -151,11 +151,24 @@ def test_reset_is_refused_for_a_while_after_a_reset_and_the_message_is_plain():
     assert demo.post("/demo/reset", headers=SUP).status_code == 202  # long ago: allowed
 
 
-def test_status_shows_when_who_and_the_next_scheduled_reset():
+def test_status_shows_when_who_and_the_next_scheduled_reset(monkeypatch):
+    monkeypatch.setattr(demo_controls, "_wall", lambda: datetime(2026, 11, 8, 7, 0, tzinfo=UTC))  # "now" is fixed: the 6 h slot after 06:00 is 12:00
     assert demo_controls.status()["last_reset_at"] is None and demo_controls.status()["reset_id"] == "initial"
     write_status(last_reset_at="2026-11-08T06:00:00+00:00", last_reset_by="Noura (supervisor)", last_reset_reason="manual")
     st = demo_controls.status()
     assert st["last_reset_by"] == "Noura (supervisor)" and st["next_auto_reset_at"].startswith("2026-11-08T12:00:00")
+
+
+def test_status_shows_a_failed_reset_until_the_next_good_one():
+    """The host writes last_reset_error when a reset failed (demo-reset-watch.sh); /health's demo block carries it."""
+    assert demo_controls.status()["last_reset_error"] is None
+    write_status(last_reset_at="2026-11-08T05:00:00+00:00", last_reset_error="manual reset by x failed (exit 3)",
+                 last_reset_error_at="2026-11-08T06:00:00+00:00")
+    st = demo_controls.status()
+    assert st["last_reset_error"].startswith("manual reset by x failed") and st["last_reset_error_at"] == "2026-11-08T06:00:00+00:00"
+    assert st["last_reset_at"] == "2026-11-08T05:00:00+00:00"  # the failed reset did not become the last reset
+    write_status(last_reset_at="2026-11-08T07:00:00+00:00", last_reset_error="", last_reset_error_at="")  # the host clears it
+    assert demo_controls.status()["last_reset_error"] is None
 
 
 def test_next_scheduled_reset_follows_the_timer_not_only_the_last_reset():

@@ -12,7 +12,25 @@ STALE = ["64.9", "65.6", "51.1", "52.3", "45.7", "20.8", "18.3", "33.4"]
 
 
 def test_committed_headline_matches_a_fresh_generation():
-    assert mh.OUT.read_text() == mh.generate(), "run `make judge-headline`"
+    # Every figure must match. The run's git commit is provenance and differs after a clean `make evaluate` on a newer HEAD
+    # (the fresh-clone workflow), so it is the one field left out of the comparison.
+    assert mh.same_figures(mh.OUT.read_text(), mh.generate()), "run `make judge-headline`"
+
+
+def test_a_different_run_commit_is_tolerated_and_a_different_figure_is_not():
+    import json
+
+    have = mh.OUT.read_text()
+    other_commit = json.loads(have)
+    other_commit["run"]["git_commit"] = "0" * 40
+    assert mh.same_figures(mh.render(other_commit), have)
+    other_figure = json.loads(have)
+    other_figure["completion_180d"]["ratio"]["value"] = "9.99"
+    assert not mh.same_figures(mh.render(other_figure), have)
+    other_replications = json.loads(have)
+    other_replications["run"]["replications"] += 1
+    assert not mh.same_figures(mh.render(other_replications), have)
+    assert not mh.same_figures("not json", have)
 
 
 def test_headline_values_are_the_literature_anchored_ones():
