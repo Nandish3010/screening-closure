@@ -35,7 +35,8 @@ void ready.then(() => {
 });
 
 if ("serviceWorker" in navigator && import.meta.env.PROD) {
-  window.addEventListener("load", () => {
-    navigator.serviceWorker.register("/sw.js").catch(() => undefined);
-  });
+  // The module now awaits before it gets here (top-level await), so `load` may already have fired: register at once in that case.
+  const register = () => void navigator.serviceWorker.register("/sw.js").catch(() => undefined);
+  if (document.readyState === "complete") register();
+  else window.addEventListener("load", register);
 }
