@@ -83,7 +83,7 @@ def closure(response: Response = None) -> dict:  # response: None when the agenc
 def effort_metrics(response: Response = None, limit: int = Query(default=500, ge=1, le=5000)) -> dict:
     """Human effort versus automation (A21, ADR-032): per case, the actions people took and the actions the automation
     took, the automation share, and the minutes (all ASSUMED, see app.effort) a person spent against what the same case
-    would have cost with no automation. `totals.reduction_pct` is compared with the 40% target. `per_case` is capped at
+    would have cost with no automation. `scope` says what the figures measure: arithmetic on these demo cases, never the programme result. `per_case` is capped at
     `limit` rows (the totals cover every case that replays)."""
     now = clock.now()
     pg = _postgres(cases.store)
@@ -101,6 +101,7 @@ def effort_metrics(response: Response = None, limit: int = Query(default=500, ge
         "per_case": report["per_case"],
         "per_case_truncated": report["cases"] > limit,
         "replay_failures": {"count": report["failed"]},
+        "scope": effort.scope(report["cases"]),
         "assumptions": effort.assumptions(),
     }
 

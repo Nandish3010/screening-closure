@@ -237,12 +237,12 @@ export const CHALLENGE_STEPS: Step[] = [
     role: "coordinator",
     body: (
       <>
-        <p>Messages to the patient are short, in their language, and say one next step. A draft is approved by the case owner before it is sent, and the pre-approved reminders the system sends on its own are marked as automatic. The patient app shows the same next step in plain words.</p>
+        <p>Messages to the patient are short, in their language, and say one next step. The system drafts them (an AI draft, labelled as AI, or a fixed template) and the case owner approves or rejects each one. Nothing is sent automatically on this demo: the automatic-reminder policy is unsigned, and even an approved message is only recorded in a demo log, so nothing reaches a phone. The patient app shows the same next step in plain words.</p>
       </>
     ),
     route: (c, n, g) => guidedOr(g, nth(["patient_contacted", "owner_accepted"], 1), c, n),
     target: '[data-testid="drafts-panel"], [data-testid="worklist"]',
-    lookFor: ["The Messages panel: drafts show who wrote them and wait for a person to approve.", "Reminders the system sent itself carry an automatic marker in the timeline."],
+    lookFor: ["The Messages panel: each draft shows who wrote it (labelled AI where a model did) and waits for the case owner to approve.", "The timeline: a message is shown as recorded only after a person approved it. Nothing here is sent to a phone."],
     tryIt: ["Open the patient app (link below) to see the next step as the patient reads it, then switch the language."],
     also: [{ label: "Patient app", to: "/patient" }],
     links: [DOCS.agency],
@@ -479,8 +479,8 @@ function TourPanel({ onClose, track, start, onTrack }: { onClose: () => void; tr
         </p>
       )}
       {step.claim && <p className="tour-claim" data-testid="tour-claim"><strong>{step.claim}</strong></p>}
-      {demoDeployment && track === "challenge" && step.guide && guideLoaded && guide && !guide[step.guide] && (
-        <p className="muted" data-testid="tour-no-fresh">No untouched case is left for this step, so this shows the first fitting case. A supervisor can use &quot;Reset the demo&quot; to start clean.</p>
+      {demoDeployment && track === "challenge" && step.guide && guideLoaded && guide && (!guide[step.guide] || guide[step.guide]!.fresh === false) && (
+        <p className="muted" data-testid="tour-no-fresh">No untouched case is left for this step, so this shows a case that fits it but may already have been worked on by another visitor. A supervisor can use &quot;Reset the demo&quot; to start clean.</p>
       )}
       {step.lookFor && (
         <div className="tour-look" data-testid="tour-look">

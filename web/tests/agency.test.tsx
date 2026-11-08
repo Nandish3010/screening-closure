@@ -19,6 +19,26 @@ describe("A22: agency page", () => {
     expect(p).toHaveTextContent(/no agent can close a case/i);
   });
 
+  it("summarises what the agents have done from the ledger, with the scope of the numbers in words", async () => {
+    const { api } = renderWithApp(<AgencyPage />);
+    const org = await api.agencyOrg();
+    const box = await screen.findByTestId("agency-activity");
+    expect(within(box).getByTestId("activity-line")).toHaveTextContent(new RegExp(`${org.totals!.tasks} tasks prepared on ${org.totals!.cases_touched} cases in ${org.totals!.runs} run`));
+    expect(org.totals!.tasks).toBeGreaterThan(0);
+    expect(within(box).getByTestId("count-needs_human")).toHaveTextContent(new RegExp(`needs human\\s*${org.totals!.counts.needs_human}`));
+    expect(within(box).getByTestId("activity-scope")).toHaveTextContent(/since it was last reset.*synthetic cases.*none of it is a decision/i);
+  });
+
+  it("says plainly that no run has happened, instead of 'Nothing needs a person', on a ledger that was never run", async () => {
+    const base = createMockAdapter(null);
+    const empty = { runs: 0, tasks: 0, counts: { queued: 0, running: 0, done: 0, failed: 0, needs_human: 0 }, cases_touched: 0, first_run_at: null, last_run_at: null, scope: "Every agent task recorded on this demo since it was last reset." };
+    const api: ApiClient = { ...base, agencyInbox: async () => [], agencyRuns: async () => [], agencyOrg: async () => ({ ...(await base.agencyOrg()), totals: empty, last_run: null }) };
+    renderWithApp(<AgencyPage />, { api });
+    expect(await screen.findByTestId("activity-none")).toHaveTextContent(/no agency run has been recorded/i);
+    expect(screen.getByTestId("inbox-empty")).toHaveTextContent(/no agency run has been recorded yet/i);
+    expect(screen.queryByText("Nothing needs a person right now.")).toBeNull();
+  });
+
   it("falls back to the built-in principle when the API sends none", async () => {
     const base = createMockAdapter(null);
     const api: ApiClient = { ...base, agencyOrg: async () => ({ ...(await base.agencyOrg()), principle: "" }) };

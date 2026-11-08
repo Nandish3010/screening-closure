@@ -10,7 +10,8 @@ Four small pieces, none of which touches the state machine:
   per `demo_reset_min_interval_seconds`, and none while one is pending.
 * **Fresh cases** (`pick_cases`): the guided path gives each judge session a case nobody has touched since the last reset, in the
   state the step needs, and holds it for that session for `CLAIM_SECONDS`, so two judges walking the same step get different cases.
-  "Untouched" is a baseline of event counts taken once per reset (persisted next to the status), compared with the log now.
+  "Untouched" is a baseline of event counts taken once per reset (persisted next to the status), compared with the log now. When
+  no untouched case is left for a step, any open case that still fits it is given instead, marked `fresh: false`.
 * **Simulated missed follow-up** (`missed_followup`): moves the simulation clock just past a case's follow-up date and the
   supervisor rung, and runs the real sweep (and the watchdog's idle scan when the quiet stretch is long enough). Everything that
   appears on the case (overdue, the reminder, the supervisor escalation, a watchdog flag) is written by the engine's own paths
@@ -19,6 +20,7 @@ Four small pieces, none of which touches the state machine:
 
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 import os
@@ -322,9 +324,12 @@ def pick_cases(session: str) -> dict[str, dict | None]:
                          and r["case_id"] not in used_here and not (r["case_id"] in mine and (session, step) not in _picks)]
                 # Most helpful first: nearest follow-up date, then the case id, so the choice is stable and spread by claims.
                 cands.sort(key=lambda r: (r.get("due_at") or "9999", r["case_id"]))
-                if not cands and step in ("prioritise", "privacy"):  # these read well on any open case, touched or not
+                if not cands:
+                    # No untouched case is left for this step: any open case that still FITS it (the same state test) is better than
+                    # none, because the step reads well on it (a touched case is where a judge before you left it, and the answer says
+                    # `fresh: false` so the tour says so). Spread by session so two judges do not land on the same one.
                     cands = [r for r in rows if want(r) and r["case_id"] not in used_here]
-                    cands.sort(key=lambda r: r["case_id"])
+                    cands.sort(key=lambda r: hashlib.sha256(f"{session}|{step}|{r['case_id']}".encode()).hexdigest())
                 chosen = cands[0] if cands else None
             if chosen is not None:
                 used_here.add(chosen["case_id"])

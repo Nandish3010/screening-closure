@@ -279,3 +279,15 @@ def test_every_simulator_action_id_exists_in_the_real_simulator_table():
     minutes, source, priced = effort.load_minutes(sim)
     assert source == "simulator/sim/effort.py" and set(priced) == set(effort.SIMULATOR_ACTION)
     assert all(minutes[a] == float(sim.MINUTES[i]) for a, i in effort.SIMULATOR_ACTION.items())
+
+
+def test_the_effort_route_says_what_its_figures_measure_and_never_calls_the_target_met(fresh):
+    booked_case()
+    body = client.get("/metrics/effort", headers=login_headers(client, "supervisor")).json()
+    sc = body["scope"]
+    assert sc["kind"] == "demo_cases_event_log" and sc["cases"] == body["cases"] == 1
+    assert "assumed minutes" in sc["reduction_pct"] and "arithmetic on a few synthetic demo cases" in sc["reduction_pct"]
+    assert "actions" in sc["automation_share"] and "minutes" in sc["automation_share"]
+    assert "NOT a programme result" in sc["meets_target"]
+    assert sc["programme_target_met"] is False and "below the 40% target" in sc["programme_result"]
+    assert not any(ch.isdigit() for ch in sc["programme_result"].replace("40%", "")), "the programme figures live in docs/results only"

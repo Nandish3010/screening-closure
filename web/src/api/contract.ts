@@ -1030,8 +1030,9 @@ export interface ClosureMetrics {
 }
 
 /**
- * GET /metrics/effort (coordinator, supervisor; A21, LIVE) -> EffortMetrics. The share of human work the automation took
- * over, against the programme target of 40%. The minutes behind it are ASSUMED (`assumptions.status === "assumed"`) and
+ * GET /metrics/effort (coordinator, supervisor; A21, LIVE) -> EffortMetrics. Arithmetic on the demo cases' event log: the share of
+ * the logged staff minutes the automation took over. It is NOT the programme result (`scope` says so) and `meets_target` must never be
+ * shown as "target met". The minutes behind it are ASSUMED (`assumptions.status === "assumed"`) and
  * must be sourced before the number is quoted as a result; the UI says so wherever it shows the percentage.
  * The http adapter answers `null` when the route is missing (404) or the role may not read it (403).
  */
@@ -1039,6 +1040,15 @@ export interface EffortTotals extends CaseEffort {
   /** The programme target, in percent (40). */
   target_pct: number;
   meets_target: boolean;
+}
+export interface EffortScope {
+  kind: string;
+  cases: number;
+  reduction_pct: string;
+  automation_share: string;
+  meets_target: string;
+  programme_result: string;
+  programme_target_met: boolean;
 }
 export interface EffortPerCase {
   case_id: string;
@@ -1053,6 +1063,8 @@ export interface EffortMetrics {
   cases: number;
   totals: EffortTotals;
   per_case: EffortPerCase[];
+  /** What the figures measure, in words (the API's own definitions); absent on older servers. */
+  scope?: EffortScope;
   assumptions: {
     /** "assumed": the minutes are an estimate, not a measurement. */
     status: "assumed" | string;
@@ -1321,6 +1333,21 @@ export interface AgencyOrg {
   last_run: AgencyRun | null;
   /** One paragraph: agents prepare work, people decide. */
   principle: string;
+  /** What the agents have done on this ledger since it was last reset: real task rows, in the same counting as the departments' own. */
+  totals?: AgencyTotals;
+}
+
+export interface AgencyTotals {
+  runs: number;
+  /** Executioner tasks of every run (a dispatch note is not work). */
+  tasks: number;
+  counts: StatusCounts;
+  cases_touched: number;
+  /** Simulated times of the first and the latest run; null before any run. */
+  first_run_at: string | null;
+  last_run_at: string | null;
+  /** The words for the screen: the scope of these numbers. */
+  scope: string;
 }
 
 /** A `needs_human` task, with the material a person needs to decide. Nothing here acts on the case. */

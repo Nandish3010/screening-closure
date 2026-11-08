@@ -64,6 +64,22 @@ def _counts(rows: list[Task]) -> dict:
     return out
 
 
+def _totals(everything: list[Task], L) -> dict:
+    """What the agents have done on this ledger, from real task rows (nothing seeded by hand): the executioner tasks of every run
+    (a dispatch note is not a task of work), by status, the cases they touched, and the span of simulated time they cover. `scope`
+    says so on the screen. A fresh ledger with no run answers zeros and `runs: 0`."""
+    work = [t for t in everything if t.department in DEPARTMENTS and t.agent_type != "department_head"]
+    runs = L.runs(1000)
+    sims = sorted(str(r.input.get("sim_at")) for r in runs if r.input.get("sim_at"))
+    return {
+        "runs": len(runs), "tasks": len(work), "counts": _counts(work),
+        "cases_touched": len({t.case_id for t in work if t.case_id}),
+        "first_run_at": sims[0] if sims else None, "last_run_at": sims[-1] if sims else None,
+        "scope": ("Every agent task recorded on this demo since it was last reset, on synthetic cases at simulated time. "
+                  "Agents prepare work and stop; none of it is a decision."),
+    }
+
+
 @router.get("/agency/org")
 def org() -> dict:
     L = runner.ledger()
@@ -88,6 +104,7 @@ def org() -> dict:
         })
     latest = L.runs(1)
     return {"principle": PRINCIPLE,
+            "totals": _totals(everything, L),
             "supervisor": {"actor": runner.SUPERVISOR_ACTOR, "agent_type": "supervisor", "tools": list(SUPERVISOR_TOOLS)},
             "departments": departments,
             "last_run": runner.run_summary(latest[0], L) if latest else None}

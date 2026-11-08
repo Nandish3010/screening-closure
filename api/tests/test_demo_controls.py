@@ -277,7 +277,25 @@ def test_a_case_touched_before_the_first_look_is_taken_as_the_seed_and_a_later_t
     assert demo.get("/demo/guide?session=session-aaaa", headers=COORD).json()["steps"]["record"]["case_id"] == cid
     main.post(f"/cases/{cid}/events", json={"type": "acknowledge", "payload": {}}, headers=COORD)
     demo_controls.forget()
-    assert demo.get("/demo/guide?session=session-cccc", headers=COORD).json()["steps"]["record"] is None
+    # touched since the seed: not fresh any more, but the step still fits it, so it is offered and says so (never an empty step)
+    again = demo.get("/demo/guide?session=session-cccc", headers=COORD).json()["steps"]["record"]
+    assert again["case_id"] == cid and again["fresh"] is False
+
+
+def test_when_every_case_has_been_used_each_step_still_gets_a_fitting_case_and_judges_are_spread_over_them():
+    ids = new_case(6)
+    demo.get("/demo/guide?session=session-seed1", headers=COORD)  # the first look takes the baseline
+    for cid in ids:  # other judges have used every case
+        assert main.post(f"/cases/{cid}/events", json={"type": "acknowledge", "payload": {}}, headers=COORD).status_code in (200, 201)
+    picks = {}
+    for n in range(6):
+        steps = demo.get(f"/demo/guide?session=judge-session-{n}", headers=COORD).json()["steps"]
+        assert steps["record"] and steps["record"]["fresh"] is False, "a touched case, offered honestly"
+        assert steps["privacy"] and steps["privacy"]["fresh"] is False
+        picks[n] = steps["record"]["case_id"]
+    assert len(set(picks.values())) > 1, "the judges are not all sent to the same case"
+    # a step whose state test no case meets is still empty: nothing is invented
+    assert demo.get("/demo/guide?session=judge-session-0", headers=COORD).json()["steps"]["outcome"] is None
 
 
 # ---- simulate a missed follow-up ------------------------------------------------------------------------------------
