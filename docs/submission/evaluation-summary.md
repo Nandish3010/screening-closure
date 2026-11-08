@@ -19,7 +19,7 @@ The table below is generated, not typed: `make evaluation-counts` lists the test
 | Security and RBAC matrix (pytest part); the RBAC matrix probes 1,167 role, route and scope combinations | 73 | `make test-security` |
 | Tools (demo, video, pilot cost model, AI-safety, reviews, calibration, repository checks) | 383 | `make test-tools` |
 | Red team (abuse, injection, authorisation; includes known-limitation xfails) | 981 | `make test-redteam` |
-| Web unit and component (vitest) (counted by running the suite: vitest cannot list parameterised tests) | 680 | `make web-test` |
+| Web unit and component (vitest) (counted by running the suite: vitest cannot list parameterised tests) | 708 | `make web-test` |
 | Web browser (Playwright, including the accessibility audit) | 94 | `make web-e2e` |
 | Chaos (stops and restarts containers) and identity provider (real Keycloak) | not counted; not part of `check-full` | `make test-chaos`, `make test-oidc` |
 | Documented test cases, each with a pass criterion | see [../../project/TEST-CASES.md](../../project/TEST-CASES.md) |  |

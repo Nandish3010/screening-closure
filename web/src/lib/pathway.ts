@@ -161,7 +161,7 @@ export const MILESTONES: readonly MilestoneDef[] = [
   {
     name: "referral_requested", from_event: "case_created", until_event: "handoff_requested", working_days: 15,
     label: "Referral within 15 working days of result",
-    source: "DoH IFHAS standard, July 2025 (see the evidence base)",
+    source: "DoH IFHAS standard July 2025 via docs/evidence.md section 8",
   },
   {
     name: "confirmatory_completed", from_event: "handoff_requested", until_event: "complete_confirmatory", working_days: 31,
