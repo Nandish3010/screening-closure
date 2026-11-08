@@ -39,7 +39,7 @@ def _hapi() -> dict:
 
 def _scheduler() -> dict:
     beat = ops.store.heartbeats().get("scheduler")
-    status, detail = ops.scheduler_status(beat, time.monotonic() - _STARTED)
+    status, detail = ops.scheduler_status(beat, time.monotonic() - _STARTED)  # wall-clock-ok: process age for the warm-up
     out = {"ok": status in ("ok", "warming"), "status": status}
     if beat is not None:
         out["age_seconds"] = round(beat.age_seconds, 1)
