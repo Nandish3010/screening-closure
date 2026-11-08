@@ -16,6 +16,8 @@
 #                       last_scheduled_at (the timer's last pass, even a skipped one; the API shows the next 23:00 UTC after it)}
 #   api-restart.json    written by sc-api-restart.sh: {at, reason, mode}; the API shows it in the demo block of /health
 #   clock-budget.json   written by the API (days the shared clock has been advanced in the rolling window); removed here too
+#                       On a FAILED reset it also holds last_reset_error (what failed, when) and last_reset_error_at; the API shows them
+#                       in /health demo.last_reset_error. The next successful reset clears them.
 #   baseline.json       written by the API (the event count of every case just after a reset); removed here so it is re-taken
 #
 # Run it from a systemd timer every 15 s for the request check and once a day with --scheduled (units: see the PR notes of ADR-058;
@@ -107,9 +109,24 @@ fi
 
 rm -f "$REQ" "$CTL/baseline.json" "$CTL/clock-budget.json"
 started=$(date +%s)
+
+# A reset that fails half way leaves the API, scheduler, watchdog and HAPI stopped (the reset stops them first). Without this the site
+# stayed down until the 15-minute API timer or an operator noticed, and /health still showed the PREVIOUS reset as the last one.
+# Armed only around the reset itself, so an error in the bookkeeping above cannot trigger a recovery.
+on_reset_failure() {
+  local rc=$? line=$1
+  trap - ERR
+  echo "demo-reset-watch: RESET FAILED (exit $rc, line $line); bringing the stack back up" >&2
+  update_status "last_reset_error=${reason} reset by ${by} failed (exit ${rc}); the stack was restarted, the data may be as before the reset" \
+                "last_reset_error_at=$(now_iso)" || true
+  "$SC_REPO/deploy/gcp/vm/demo-recover.sh" || echo "demo-reset-watch: recovery also failed; run deploy/gcp/vm/sc-up.sh on the VM" >&2
+  exit "$rc"
+}
+trap 'on_reset_failure $LINENO' ERR
 echo "demo-reset-watch: resetting ($reason, by $by)"
 "$SC_REPO/deploy/gcp/vm/demo-reset-on-vm.sh"
+trap - ERR
 finished=$(date +%s)
 
-update_status "last_reset_at=$(now_iso)" "last_reset_by=$by" "last_reset_reason=$reason" "duration_s=$((finished - started))"
+update_status "last_reset_at=$(now_iso)" "last_reset_by=$by" "last_reset_reason=$reason" "duration_s=$((finished - started))" "last_reset_error=" "last_reset_error_at="
 echo "demo-reset-watch: done in $((finished - started)) s"

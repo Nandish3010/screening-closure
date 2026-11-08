@@ -117,8 +117,8 @@ def _next_scheduled(st: dict, hours: float, now: datetime, at_utc: str = "") -> 
 
 
 def status() -> dict:
-    """`{last_reset_at, last_reset_by, last_reset_reason, next_auto_reset_at, reset_pending, reset_id, last_api_restart_at,
-    last_api_restart_reason}` (nulls when unknown). Everything here is read from files the HOST writes (the API only writes the
+    """`{last_reset_at, last_reset_by, last_reset_reason, next_auto_reset_at, reset_pending, reset_id, last_reset_error,
+    last_reset_error_at, last_api_restart_at, last_api_restart_reason}` (nulls when unknown). Everything here is read from files the HOST writes (the API only writes the
     request file): `status.json` by demo-reset-watch.sh (and once by the seed, `--record-seed`), `api-restart.json` by
     sc-api-restart.sh when its memory gate restarts the API."""
     st = _read("status.json") or {}
@@ -132,6 +132,8 @@ def status() -> dict:
         "last_reset_reason": st.get("last_reset_reason"),
         "next_auto_reset_at": nxt,
         "reset_pending": req is not None,
+        "last_reset_error": _text(st.get("last_reset_error")),  # set by the host when a reset failed; cleared by the next good one
+        "last_reset_error_at": _text(st.get("last_reset_error_at"), 40),
         "reset_id": st.get("last_reset_at") or "initial",
         "last_api_restart_at": restarted.isoformat() if restarted else None,
         "last_api_restart_reason": _text(rs.get("reason")) if restarted else None,

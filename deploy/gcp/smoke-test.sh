@@ -48,6 +48,11 @@ check "redoc not public" 404 "$BASE/api/redoc"
 # the demo block must show that the seed's snapshot (or a later reset) was recorded: last_reset_at and next_auto_reset_at set
 lr=$(echo "$body" | python3 -c 'import sys,json;print((json.load(sys.stdin).get("demo") or {}).get("last_reset_at") or "")' 2>/dev/null || true)
 [ -n "$lr" ] && ok "health demo.last_reset_at is recorded ($lr)" || bad "health demo.last_reset_at is null (the seed did not record its snapshot)"
+# Reliability review: /health is liveness; /ready asks the database, HAPI and the scheduler heartbeat (200 only when all three answer),
+# and /health says which commit is running and whether the last reset failed.
+check "readiness: database, HAPI and scheduler answer" 200 "$BASE/api/ready"
+echo "$body" | grep -Eq '"commit": *"[0-9a-f]{12}"' && ok "health reports the running commit" || bad "health.commit is missing or 'dev' (the image was not built from a git archive)"
+echo "$body" | grep -q '"last_reset_error": *null' && ok "the last reset did not fail" || bad "health demo.last_reset_error is set (or missing): see /var/lib/sc-demo/status.json"
 check "scheduler path blocked at the edge" 404 -X POST "$BASE/api/scheduler/sweep"
 check "metrics endpoint blocked at the edge" 404 "$BASE/api/metrics"
 check "Keycloak admin console not public" 404 "$BASE/auth/admin/master/console/"

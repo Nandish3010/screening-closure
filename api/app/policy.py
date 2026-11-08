@@ -34,6 +34,7 @@ HL7 = frozenset({HL7_ROLE})  # A28, ADR-039: system:hl7
 # (method, path template) -> PUBLIC | ANY_IDENTITY | frozenset of roles
 ROUTE_POLICY: dict[tuple[str, str], object] = {
     ("GET", "/health"): PUBLIC,
+    ("GET", "/ready"): PUBLIC,  # readiness: db, HAPI, scheduler (booleans only)
     ("POST", "/auth/dev-login"): PUBLIC,
     ("GET", "/me"): ANY_IDENTITY,
     ("GET", "/pathways"): ANY_IDENTITY,

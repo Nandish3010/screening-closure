@@ -3,8 +3,9 @@
 
     python tools/hl7/make_samples.py
 
-Patient ids come from data/results/manifest.json (the positive FIT results `make demo-seed` created; the committed seed
-20261017 gives the ids used here when the file is absent). Every value is synthetic: the name field carries the HAPI
+Patient ids come from the committed tools/hl7/cohort_ids.json (the seed 20261017 cohort), so the samples are the same on every
+machine and the tests that compare them do not depend on a local `make demo-seed`. `--from-manifest` writes them for YOUR cohort
+(data/results/manifest.json, gitignored) instead, for a live demo against the local stack; do not commit that output. Every value is synthetic: the name field carries the HAPI
 patient id, the telephone number is not a real one, there is no date of birth. Segments are written one per line for
 reading; `send.py` and the parser accept either line ends or the HL7 carriage return.
 """
@@ -17,18 +18,23 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[1]
 SAMPLES = HERE / "samples"
-SEED_IDS = ["10242", "358524", "324419", "93588", "243944", "273718", "232220", "288286", "178140", "227510", "63083",
-            "397029", "41100", "204388", "331578", "69921", "395958", "304421", "86493", "140854", "253248", "174074"]
+COHORT_FIXTURE = HERE / "cohort_ids.json"
 SYSTEM = "SCREENING-CLOSURE"
 GOOD_PHONE = "^PRN^CP^^971^50^0000000"  # a plausible, non-existent mobile number
 BAD_PHONE = "^PRN^PH^^^^123"  # too short to be a number
 
 
+def committed_ids() -> list[str]:
+    """The ids the committed samples carry (tools/hl7/cohort_ids.json)."""
+    return list(json.loads(COHORT_FIXTURE.read_text())["ids"])
+
+
 def cohort_ids() -> list[str]:
+    """The ids of THIS machine's cohort (the positive FIT results `make demo-seed` created), else the committed ones."""
     path = ROOT / "data" / "results" / "manifest.json"
     if path.exists():
         return [r["patient_id"] for r in json.loads(path.read_text())["results"]]
-    return SEED_IDS
+    return committed_ids()
 
 
 def msh(kind: str, control: str, when: str = "20260106083000") -> str:
@@ -40,8 +46,8 @@ def pid(pid_: str, phone: str = "") -> str:
     return f"PID|1||{pid_}^^^{SYSTEM}^MR||SYNTHETIC^{pid_}||||||||{phone}"
 
 
-def build() -> dict[str, str]:
-    ids = cohort_ids()
+def build(ids: list[str] | None = None) -> dict[str, str]:
+    ids = committed_ids() if ids is None else ids
     first, second, third = ids[0], ids[1], ids[2]
     new_positive, other = ids[-1], ids[-2]
     colon = lambda ctrl, completeness: "\n".join([  # noqa: E731
@@ -72,9 +78,12 @@ def build() -> dict[str, str]:
     }
 
 
-def main() -> None:
+def main(argv: list[str] | None = None) -> None:
+    import sys
+
     SAMPLES.mkdir(exist_ok=True)
-    for name, text in build().items():
+    local = "--from-manifest" in (sys.argv[1:] if argv is None else argv)
+    for name, text in build(cohort_ids() if local else None).items():
         (SAMPLES / name).write_text(text + "\n", encoding="utf-8")
         print("wrote", (SAMPLES / name).relative_to(ROOT))
 

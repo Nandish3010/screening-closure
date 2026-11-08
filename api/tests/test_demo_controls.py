@@ -204,6 +204,18 @@ def test_status_shows_when_who_and_the_next_scheduled_reset(monkeypatch):
     assert datetime.fromisoformat(st["next_auto_reset_at"]) == last + timedelta(hours=6)
 
 
+def test_status_shows_a_failed_reset_until_the_next_good_one():
+    """The host writes last_reset_error when a reset failed (demo-reset-watch.sh); /health's demo block carries it."""
+    assert demo_controls.status()["last_reset_error"] is None
+    write_status(last_reset_at="2026-11-08T05:00:00+00:00", last_reset_error="manual reset by x failed (exit 3)",
+                 last_reset_error_at="2026-11-08T06:00:00+00:00")
+    st = demo_controls.status()
+    assert st["last_reset_error"].startswith("manual reset by x failed") and st["last_reset_error_at"] == "2026-11-08T06:00:00+00:00"
+    assert st["last_reset_at"] == "2026-11-08T05:00:00+00:00"  # the failed reset did not become the last reset
+    write_status(last_reset_at="2026-11-08T07:00:00+00:00", last_reset_error="", last_reset_error_at="")  # the host clears it
+    assert demo_controls.status()["last_reset_error"] is None
+
+
 def test_next_scheduled_reset_follows_the_timer_not_only_the_last_reset():
     """The host records the timer's last pass (even a skipped one) and the seed's snapshot as the first reset point."""
     from datetime import timedelta
