@@ -588,3 +588,66 @@ def test_a_failing_scan_still_stops_the_heartbeat_thread_and_the_loop_goes_on(sc
         sched.loop_once(sched.LoopState())
     # BeatWhile's __exit__ ran (it joins the thread): no beat thread is left behind
     assert [t for t in threading.enumerate() if t.name == "scheduler-heartbeat" and t.is_alive()] == []
+
+
+# ---------------------------------------------------------------------------------------------------------------------
+# The seed race: a "no" asked before the colonoscopy was recorded must not outlive the recording
+# ---------------------------------------------------------------------------------------------------------------------
+
+
+class RecordingHapi:
+    """HAPI as the stager meets it: the finder answers "nothing" until the recorder has written the Procedure, as the real pair
+    does (the recorder PUTs into the same server the finder searches)."""
+
+    def __init__(self):
+        self.written: set[str] = set()
+        self.asked = 0
+
+    # the finder side
+    def find(self, *, case_id, patient_ref=None, after=None, codes=None):
+        self.asked += 1
+        return [f"Procedure/colonoscopy-{case_id}"] if str(case_id) in self.written else []
+
+    # the recorder side
+    def record(self, case_id, patient_ref, performed_at, completeness="complete", procedure="colonoscopy"):
+        self.written.add(str(case_id))
+        return {"procedure_ref": f"Procedure/colonoscopy-{case_id}", "report_ref": f"DiagnosticReport/colonoscopy-{case_id}",
+                "completeness": completeness, "written": True}
+
+
+@pytest.fixture
+def race(fresh, monkeypatch):
+    from app import confirmatory
+
+    hapi = RecordingHapi()
+    monkeypatch.setattr(evidence, "finder", hapi)
+    monkeypatch.setattr(confirmatory, "recorder", hapi)
+    return hapi
+
+
+def test_the_scan_that_asked_before_the_recording_does_not_hide_the_case_afterwards(race):
+    """The seed race (about 1 run in 10): booked, appointment begun; the scheduler's scan asks HAPI (no); THEN the stager
+    records the colonoscopy; the sim clock does not move while seeding, so the cached "no" (6 simulated hours) used to make
+    every later scan answer `skipped_recent_no` and the case never completed."""
+    cid = booked_case()
+    appointment_passed()
+    assert evidence_scan()["asked"] == 1 and len(automation.evidence_negatives) == 1  # 1. the scan asks first and is told no
+    assert evidence_scan()["skipped_recent_no"] == 1  # (the cache does its job while nothing has been recorded)
+    r = client.post(f"/cases/{cid}/confirmatory-result", headers=login(*KARIM))  # 2. then the recording
+    assert r.status_code == 201, r.text
+    assert len(automation.evidence_negatives) == 0  # the recording forgot the "no"
+    out = evidence_scan()  # 3. same simulated instant: the next scan asks again and finds it
+    assert out["asked"] == 1 and out["found"] == 1 and "skipped_recent_no" not in out
+    assert out["completed"] == 1 and out["closure_proposed"] == 1
+    assert model(cid).state == "confirmatory_completed" and "closure_proposed" in types(cid)
+
+
+def test_a_failed_recording_keeps_the_remembered_no(race, monkeypatch):
+    from app import confirmatory
+
+    cid = booked_case()
+    appointment_passed()
+    evidence_scan()
+    monkeypatch.setattr(confirmatory, "recorder", confirmatory.StaticRecorder(fail="HAPI is down"))
+    assert client.post(f"/cases/{cid}/confirmatory-result", headers=login(*KARIM)).status_code == 503
+    assert evidence_scan()["skipped_recent_no"] == 1  # nothing new was written: nothing to ask again

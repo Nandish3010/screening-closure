@@ -47,7 +47,10 @@ PYEOF
 )
 ref=""
 [ -f /var/lib/sc/demo_patient_ref ] && ref=$(cat /var/lib/sc/demo_patient_ref)
-printf '%s' "$secrets_json" | python3 "$PY/render_env.py" --host "$HOST" --mode "$MODE" --out-dir /etc/sc --demo-patient-ref "$ref"
+# Judging protection (ADR-058 addendum): the operator turns it on with `touch /var/lib/sc/judging_mode` (off: `rm`), then re-runs sc-up.sh.
+jm=""
+[ -f /var/lib/sc/judging_mode ] && jm="--judging-mode"
+printf '%s' "$secrets_json" | python3 "$PY/render_env.py" --host "$HOST" --mode "$MODE" --out-dir /etc/sc --demo-patient-ref "$ref" $jm
 unset secrets_json
 
 mkdir -p /etc/sc/keycloak-import
