@@ -37,7 +37,7 @@ export function ResetDemoControl() {
   const before = useRef<string | null>(null);
   const timer = useRef<number | undefined>(undefined);
   useEffect(() => () => window.clearInterval(timer.current), []);
-  if (!api.requestDemoReset || !demoStatus) return null;
+  if (!api.requestDemoReset || !demoStatus || role === "patient") return null; // a patient never sees a staff control, not even a disabled one
   const allowed = role === "supervisor";
 
   const waitForRestart = () => {
@@ -77,15 +77,15 @@ export function ResetDemoControl() {
     <span className="reset-demo" data-testid="reset-demo">
       {step === "idle" && (
         <>
-          <button type="button" className="btn btn-small" onClick={() => setStep("confirm")} disabled={!allowed} aria-describedby="reset-why" data-testid="reset-demo-open">Reset the demo</button>
+          <button type="button" className="btn btn-small btn-danger" onClick={() => setStep("confirm")} disabled={!allowed} aria-describedby="reset-why" data-testid="reset-demo-open">Reset the demo</button>
           {!allowed && <span id="reset-why" className="muted"> Supervisors only: sign in as the supervisor.</span>}
         </>
       )}
       {step === "confirm" && (
         <span role="alertdialog" aria-label="Confirm reset" data-testid="reset-demo-confirm">
-          Everyone using the demo loses their changes and it restarts for about a minute.{" "}
-          <button type="button" className="btn btn-small btn-primary" onClick={() => void go()} data-testid="reset-demo-yes">Reset now</button>{" "}
-          <button type="button" className="btn btn-small" onClick={() => setStep("idle")}>Cancel</button>
+          <strong>This resets the shared demo for every judge. Continue?</strong> Everyone loses their changes and the demo restarts for about a minute.{" "}
+          <button type="button" className="btn btn-small btn-danger btn-danger-solid" onClick={() => void go()} data-testid="reset-demo-yes">Yes, reset for everyone</button>{" "}
+          <button type="button" className="btn btn-small" onClick={() => setStep("idle")} data-testid="reset-demo-cancel">Cancel</button>
         </span>
       )}
       {step === "waiting" && <span role="status" data-testid="reset-demo-waiting">Resetting. This page reloads when the demo is back.</span>}

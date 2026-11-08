@@ -75,7 +75,7 @@ describe("PriorityBadge", () => {
     expect(badge).toHaveTextContent("Urgent");
     expect(badge).toHaveAttribute("data-priority", "urgent");
     expect(badge.getAttribute("title")).toMatch(/Reason urgent/);
-    expect(badge.getAttribute("title")).toMatch(/Threshold is a placeholder pending clinician sign-off \(H1\)/);
+    expect(badge.getAttribute("title")).toMatch(/Threshold is a placeholder pending clinician sign-off\./);
   });
   it("leaves the placeholder note out for a sourced basis, and renders nothing without a priority", () => {
     const { rerender, container } = renderWithApp(<PriorityBadge priority={prio("soon", 1, "Guideline X, table 2")} />);
@@ -93,8 +93,8 @@ describe("the third pathway's metadata", () => {
     expect(pathwayMeta("chronic_conditions")).toMatchObject({ label: "Long-term conditions", procedure: "care plan visit", placeholderTimings: true });
     const clock = milestonesFor("chronic_conditions").find((m) => m.name === "confirmatory_completed")!;
     expect(clock.working_days).toBe(20);
-    expect(clock.label).toBe("Family physician visit with a care plan within 20 working days of referral (placeholder, H1)");
-    expect(clock.source).toMatch(/Placeholder design value, not a standard \(H1\)/);
+    expect(clock.label).toBe("Family physician visit with a care plan within 20 working days of referral (placeholder, pending clinician sign-off)");
+    expect(clock.source).toMatch(/Placeholder design value, not a standard:/);
     expect(milestonesFor("colorectal_fit")).toBe(MILESTONES);
     expect(milestonesFor("cervical_hpv").find((m) => m.name === "confirmatory_completed")!.working_days).toBe(31);
     expect(procedureSlug("care plan visit")).toBe("care-plan-visit");
@@ -166,9 +166,9 @@ describe("worklist and case page with priorities", () => {
     expect(within(fact).getByTestId("priority-badge")).toHaveAttribute("data-priority", "urgent");
     expect(within(fact).getByTestId("priority-reason")).toHaveTextContent("Very high blood pressure");
     expect(within(fact).getByTestId("priority-note")).toHaveTextContent("It does not change the SLA clock, the escalation ladder or who may close the case.");
-    expect(within(fact).getByTestId("priority-note")).toHaveTextContent("The threshold is a placeholder pending clinician sign-off (H1).");
+    expect(within(fact).getByTestId("priority-note")).toHaveTextContent("The threshold is a placeholder pending clinician sign-off.");
     expect(screen.getAllByTestId("pathway-badge")[0]).toHaveAttribute("data-pathway", "chronic_conditions");
-    expect(screen.getByText("Family physician visit with a care plan within 20 working days of referral (placeholder, H1)")).toBeInTheDocument();
+    expect(screen.getByText("Family physician visit with a care plan within 20 working days of referral (placeholder, pending clinician sign-off)")).toBeInTheDocument();
   });
   it("shows no Priority row for a case with no priority", async () => {
     renderWithApp(<CaseDetailPage />, { api: threePathways(), route: `/coordinator/${caseIdFor(9)}`, path: "/coordinator/:caseId" });

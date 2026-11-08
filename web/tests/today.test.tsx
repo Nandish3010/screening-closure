@@ -134,7 +134,7 @@ describe("the screen", () => {
     expect(within(row).getByTestId("today-priority").getAttribute("data-priority")).toBe("urgent");
     expect(within(row).getByTestId("today-why").textContent).toBe("An urgent result came in 2 days ago and nobody has acted on it yet.");
     expect(within(row).getByTestId("today-priority-text").textContent).toBe("Very high blood pressure.");
-    expect(within(row).getByTestId("today-priority-placeholder").textContent).toMatch(/placeholder pending clinician sign-off \(H1\)/);
+    expect(within(row).getByTestId("today-priority-placeholder").textContent).toMatch(/placeholder pending clinician sign-off$/);
     expect(within(row).getByTestId("today-open-case")).toBeTruthy();
     expect(screen.getByTestId("today-count-urgent").textContent).toBe("1");
   });
@@ -322,9 +322,10 @@ describe("landing", () => {
     app("coordinator", "/coordinator");
     expect(await screen.findByRole("heading", { level: 1, name: "Worklist" })).toBeTruthy();
   });
-  it("a clinician sees the entry cards, not Today", async () => {
+  it("a physician does not get the Today screen: she lands on her own work", async () => {
     app("owner");
-    expect(await screen.findByRole("heading", { level: 1, name: "Screening Closure" })).toBeTruthy();
+    await waitFor(() => expect(screen.queryByRole("heading", { level: 1, name: "Today" })).toBeNull());
+    await waitFor(() => expect(document.body.textContent).toMatch(/Your cases|Case\s+c[0-9a-f]+/i));
     expect(screen.queryByRole("link", { name: "Today" })).toBeNull();
   });
 });

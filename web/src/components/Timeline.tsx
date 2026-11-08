@@ -2,7 +2,7 @@ import type { ActorKind, CaseEvent, TimelineItem } from "../api/contract";
 import { STAFF } from "../i18n/strings";
 import { MILESTONES, RUNG_LABEL, handoffReasonLabel } from "../lib/pathway";
 import { fmtDateTime, plainRef, titleCase } from "../lib/format";
-import { actorKindOf, actorName, actorRole, itemKey, kindOfEvent, type DraftView } from "../lib/derive";
+import { actorKindOf, actorName, actorRole, itemKey, kindOfEvent, signerDisplay, type DraftView } from "../lib/derive";
 import { WATCHDOG_TEXT, watchdogDetail } from "./WatchdogMarker";
 import { WhyPanel } from "./WhyPanel";
 
@@ -119,6 +119,8 @@ export function plainWho(actor: string, kind: ActorKind): string {
 }
 
 const intentText = (p: Record<string, unknown>) => String(p.intent ?? "unknown").replace(/_/g, " ");
+/** A signer in words: the person's name when the API gave it, else the plain record phrase. */
+const signedByText = (ref: string): string => { const n = signerDisplay(ref); return n !== ref ? n : plainRef(ref); };
 const str = (v: unknown): string => (typeof v === "string" ? v : typeof v === "number" ? String(v) : "");
 const refOf = (p: Record<string, unknown>) => str(p.evidence_ref) || str(p.result_ref);
 const channelText = (v: unknown) => str(v).replace(/_/g, " ");
@@ -146,8 +148,8 @@ export function plainSummary(type: string, p: Record<string, unknown>): string {
     case "consent_updated": return payloadSummary(type, p);
     case "complete_confirmatory": return refText ? `Result recorded: ${refText}.` : "Result recorded.";
     case "closure_proposed": return refText ? `The system proposed closing on ${refText}. A clinician must sign.` : "The system proposed closing. A clinician must sign.";
-    case "clinician_review": return refText ? `Evidence reviewed: ${refText}${p.signed_by ? `, signed by ${plainRef(str(p.signed_by))}` : ""}.` : "Evidence reviewed by a clinician.";
-    case "close": return `Closed${refText ? ` on ${refText}` : ""}${p.signed_by ? `, signed by ${plainRef(str(p.signed_by))}` : ""}.`;
+    case "clinician_review": return refText ? `Evidence reviewed: ${refText}${p.signed_by ? `, signed by ${signedByText(str(p.signed_by))}` : ""}.` : "Evidence reviewed by a clinician.";
+    case "close": return `Closed${refText ? ` on ${refText}` : ""}${p.signed_by ? `, signed by ${signedByText(str(p.signed_by))}` : ""}.`;
     case "reopen": return p.reason ? `Reopened: ${str(p.reason).replace(/_/g, " ")}.` : "Reopened by a clinician.";
     case "book_confirmatory": return p.appointment_ref ? `Booked: ${plainRef(str(p.appointment_ref))}.` : "";
     case "assign_ownership": return p.owner ? `Owner: ${actorName(str(p.owner)) || str(p.owner)}${p.provider ? ` at ${str(p.provider)}` : ""}.` : "";

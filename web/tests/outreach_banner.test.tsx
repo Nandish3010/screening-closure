@@ -11,7 +11,7 @@ import { DashboardPage } from "../src/pages/DashboardPage";
 import { CaseDetailPage } from "../src/pages/CaseDetailPage";
 import { renderWithApp } from "./helpers";
 
-const DEMO = "DEMO PLACEHOLDER (clinical sign-off pending, H1)";
+const DEMO = "DEMO PLACEHOLDER (clinical sign-off pending)";
 const withHealth = (api: ApiClient, outreach: OutreachStatus | undefined): ApiClient =>
   ({ ...api, health: async () => ({ status: "ok", sim_time: "2026-11-03T09:00:00Z", ...(outreach ? { outreach } : {}) }) }) as ApiClient;
 
@@ -29,6 +29,12 @@ describe("the demo-approval banner", () => {
     const id = (await api.listCases())[0].case_id;
     renderWithApp(<CaseDetailPage />, { api, role: "coordinator", route: `/coordinator/${id}`, path: "/coordinator/:caseId" });
     expect((await screen.findByTestId("outreach-demo-text")).textContent).toBe(DEMO);
+  });
+
+  it("drops an internal tracking code from the API's text but keeps the caveat", async () => {
+    const api = withHealth(createMockAdapter(null), { signed: false, demo_approval: true, approved_by: "DEMO PLACEHOLDER (clinical sign-off pending, H1)" });
+    renderWithApp(<DashboardPage />, { api });
+    expect((await screen.findByTestId("outreach-demo-text")).textContent).toBe("DEMO PLACEHOLDER (clinical sign-off pending)");
   });
 
   it("shows whatever text the API sends", async () => {

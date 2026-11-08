@@ -15,7 +15,7 @@ const HEADLINE: { value: string; label: string; note: string }[] = [
   {
     value: `${H.completion_180d.orchestrated.value} vs ${H.completion_180d.baseline.value}`,
     label: "Colonoscopy completed within 180 days (orchestrated vs baseline)",
-    note: `A ratio of ${H.completion_180d.ratio.value}. It is calibrated to published navigation trials: the reach parameter was fitted so that the ratio matches the pooled navigation risk ratio (95% CI 1.10 to 1.46) anchored at 1.27, and was not refitted after the B21 timing change. The model shows the mechanism and what drives it, not new evidence of effect. Only the Azulay comparison in the validation is independent of that fit, and managed-programme completion levels are under-predicted by about ${H.managed_gap_points.low} to ${H.managed_gap_points.high} points.`,
+    note: `A ratio of ${H.completion_180d.ratio.value}. It is calibrated to published navigation trials: the reach parameter was fitted so that the ratio matches the pooled navigation risk ratio (95% CI 1.10 to 1.46) anchored at 1.27, and was not refitted after the latest timing change. The model shows the mechanism and what drives it, not new evidence of effect. Only the comparison with a published SMS-reminder trial in the validation is independent of that fit, and managed-programme completion levels are under-predicted by about ${H.managed_gap_points.low} to ${H.managed_gap_points.high} points.`,
   },
   {
     value: `${H.closed_share.orchestrated.value} vs ${H.closed_share.baseline.value}`,
@@ -60,12 +60,12 @@ export function JudgePage() {
       <p>
         <button type="button" className="btn btn-primary" onClick={() => tour.open("challenge")} data-testid="judge-start-five">Start the five-step tour</button>{" "}
         <button type="button" className="btn" onClick={() => tour.open("story")} data-testid="judge-start-tour">Demo story (seven steps)</button>{" "}
-        <span className="muted">Both run on the data you are looking at (the {api.adapter} adapter) and only navigate; they post nothing. The five steps are the challenge owner&apos;s loop, with things to try.</span>
+        <span className="muted">Both run on the data you are looking at ({api.adapter === "http" ? "the live demo" : "built-in mock"} data) and only navigate; they post nothing. The five steps are the challenge owner&apos;s loop, with things to try.</span>
       </p>
 
       <section aria-labelledby="headline-h">
         <h2 id="headline-h">Headline, with its caveats</h2>
-        <p className="muted">Literature-anchored scenario, 20 replications of 2,000 synthetic cases, 360 days of follow-up, quoted from <span className="mono">docs/results/results.md</span>.</p>
+        <p className="muted">Literature-anchored scenario, 20 replications of 2,000 synthetic cases, 360 days of follow-up, quoted from the evaluation results document (linked below).</p>
         <dl className="judge-grid" data-testid="judge-headline">
           {HEADLINE.map((h) => (
             <div key={h.label} className="judge-stat">
@@ -84,7 +84,7 @@ export function JudgePage() {
         <h2 id="docs-h">Documents in the repository</h2>
         <ul className="plain judge-docs" data-testid="judge-docs">
           {DOC_LIST.map((d) => (
-            <li key={d.path}><a href={docHref(d)} target="_blank" rel="noopener noreferrer">{d.label}</a> <span className="mono muted">{d.path}</span></li>
+            <li key={d.path}><a href={docHref(d)} title={d.path} target="_blank" rel="noopener noreferrer">{d.label}</a></li>
           ))}
         </ul>
       </section>
@@ -95,7 +95,7 @@ export function JudgePage() {
         <code className="judge-cmd mono" data-testid="judge-make-check">make check</code>
         <p className="muted">The fast tier, the gate before every merge: the API and database tests, the web unit and browser tests (including the accessibility audit), the web build, the docs checks, the security and red-team tests, and a quick determinism check of the evaluation. <span className="mono">make check-full</span> adds the simulator-heavy checks, including <span className="mono">make evaluate-check</span>, which regenerates the results and fails on any difference.</p>
         <code className="judge-cmd mono">make web-install &amp;&amp; make web-dev</code>
-        <p className="muted">The web app on <span className="mono">http://localhost:5173</span> with the mock adapter, fully offline. <span className="mono">make web-test</span> and <span className="mono">make web-e2e</span> run the web unit and browser tests on their own.</p>
+        <p className="muted">The web app on <span className="mono">http://localhost:5173</span> with the built-in mock data, fully offline. <span className="mono">make web-test</span> and <span className="mono">make web-e2e</span> run the web unit and browser tests on their own.</p>
       </section>
 
       <p data-testid="judge-more-pages">More for judges: <Link to="/safety">AI and safety</Link> · <Link to="/integrations">Integrations</Link> · <Link to="/pilot-value">Pilot value calculator</Link></p>

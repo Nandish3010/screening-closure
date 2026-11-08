@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { Link, NavLink, matchPath, useLocation, useNavigate } from "react-router-dom";
-import { useApp } from "../app/AppContext";
+import { isOwnerScoped, useApp } from "../app/AppContext";
 import { ROLES, type Role } from "../api/contract";
+import { SignInNotice, useDemoSignIn } from "../app/demoSignIn";
 import { DEMO_PATIENT_CASE_ID } from "../api/fixtures";
-import { DEMO_USERS, JUDGE_ROLES } from "../api/identities";
+import { DEMO_USERS, JUDGE_ROLES, ROLE_DISPLAY } from "../api/identities";
 import { useTour } from "../judge/JudgeTour";
 import { fmtDateTime } from "../lib/format";
 import { DemoBanner } from "./DemoBanner";
@@ -52,19 +53,16 @@ export function Header() {
   const navigate = useNavigate();
   const tour = useTour();
   const { pathname } = useLocation();
+  // S4: on the hosted demo the "Sign in as" switch is the same one-click sign-in as the role cards (same warming-up retry, same 429
+  // handling) and never falls back to the password flow. A clean start as the new person: /me, the tour and every page re-read.
+  const oneClick = !!(demoDeployment && api.oidc && api.demoSignIn);
+  const si = useDemoSignIn(api, () => window.location.assign("/"));
+  const patient = role === "patient";
+  const staffTools = !patient;
 
-  /** "Sign in as": one click on the hosted demo (ADR-060), a fresh start as that person; otherwise (or if that fails) the identity provider. */
-  const switchTo = async (username: string) => {
-    const judge = demoDeployment && api.demoSignIn ? JUDGE_ROLES.find((r) => r.username === username) : undefined;
-    if (judge) {
-      try {
-        await api.demoSignIn!(judge.role);
-        window.location.assign("/"); // a clean start as the new person: /me, the tour and every page re-read
-        return;
-      } catch {
-        /* fall through to the password sign-in */
-      }
-    }
+  const switchTo = (username: string) => {
+    const judge = oneClick ? JUDGE_ROLES.find((r) => r.username === username) : undefined;
+    if (judge) return si.go(judge.role);
     void api.oidc!.signIn({ loginHint: username, forceLogin: true });
   };
 
@@ -80,31 +78,38 @@ export function Header() {
     }
   };
 
+  const ownerRole = isOwnerScoped(role);
   return (
-    <header className={`app-header${pathname.startsWith("/patient") ? " app-header-patient" : ""}`}>
-      <DemoBanner />
-      <div className="header-row">
+    <header className={`app-header${pathname.startsWith("/patient") ? " app-header-patient" : ""}${patient ? " app-header-role-patient" : ""}`}>
+      <div className="header-row header-row-main">
         <Link className="brand" to="/">
           <BrandLockup /><span className="visually-hidden"> home</span>
         </Link>
-        <div className="header-tools">
-          <button type="button" className="btn btn-small btn-tour" onClick={() => tour.open()} aria-haspopup="dialog" data-testid="judge-tour-button">Judge tour</button>
-          <SimBadge />
-        </div>
+        {staffTools && (
+          <nav aria-label="Main">
+            {ownerRole && <NavLink to="/physician">My cases</NavLink>}
+            {demoDeployment && <NavLink to="/start">Start here</NavLink>}
+            {(role === "coordinator" || role === "supervisor") && <NavLink to="/coordinator/today">Today</NavLink>}
+            <NavLink to="/coordinator" className={({ isActive }) => (isActive && pathname !== "/coordinator/today" ? "active" : undefined)}>{ownerRole ? "All cases" : "Coordinator"}</NavLink>
+            <NavLink to="/dashboard">Dashboard</NavLink>
+            {(role === "coordinator" || role === "supervisor") && <NavLink to="/agency">Agency</NavLink>}
+            <NavLink to={api.adapter === "http" ? "/patient" : `/patient/${DEMO_PATIENT_CASE_ID}`}>Patient view</NavLink>
+            <NavLink to="/judge">Judge</NavLink>
+            <NavLink to="/safety">AI and safety</NavLink>
+            <NavLink to="/integrations">Integrations</NavLink>
+            <NavLink to="/pilot-value">Pilot value</NavLink>
+          </nav>
+        )}
+        {staffTools && (
+          <div className="header-tools">
+            <button type="button" className="btn btn-small btn-tour" onClick={() => tour.open()} aria-haspopup="dialog" data-testid="judge-tour-button">Judge tour</button>
+          </div>
+        )}
+        {patient && <SimBadge />}
       </div>
-      <div className="header-row">
-        <nav aria-label="Main">
-          {demoDeployment && role !== "patient" && <NavLink to="/start">Start here</NavLink>}
-          {(role === "coordinator" || role === "supervisor") && <NavLink to="/coordinator/today">Today</NavLink>}
-          <NavLink to="/coordinator" className={({ isActive }) => (isActive && pathname !== "/coordinator/today" ? "active" : undefined)}>Coordinator</NavLink>
-          <NavLink to="/dashboard">Dashboard</NavLink>
-          {(role === "coordinator" || role === "supervisor") && <NavLink to="/agency">Agency</NavLink>}
-          <NavLink to={api.adapter === "http" ? "/patient" : `/patient/${DEMO_PATIENT_CASE_ID}`}>Patient view</NavLink>
-          <NavLink to="/judge">Judge</NavLink>
-          <NavLink to="/safety">AI and safety</NavLink>
-          <NavLink to="/integrations">Integrations</NavLink>
-          <NavLink to="/pilot-value">Pilot value</NavLink>
-        </nav>
+      <div className="header-row header-row-sub">
+        {staffTools && <SimBadge />}
+        <DemoBanner />
         <div className="header-tools">
           {api.oidc ? (
             <>
@@ -113,11 +118,12 @@ export function Header() {
                 <select
                   value=""
                   aria-label="Sign in as"
-                  onChange={(e) => e.target.value && void switchTo(e.target.value)}
+                  disabled={si.locked}
+                  onChange={(e) => e.target.value && switchTo(e.target.value)}
                 >
-                  <option value="">{role}</option>
-                  {(demoDeployment ? JUDGE_ROLES.map((r) => ({ username: r.username, name: r.title, role: r.role })) : DEMO_USERS).map((u) => (
-                    <option key={u.username} value={u.username}>{u.name} ({u.role})</option>
+                  <option value="">{ROLE_DISPLAY[role]}</option>
+                  {(demoDeployment ? JUDGE_ROLES.map((r) => ({ username: r.username, name: r.title, role: r.role })) : DEMO_USERS.map((u) => ({ ...u, name: `${u.name} (${ROLE_DISPLAY[u.role]})` }))).map((u) => (
+                    <option key={u.username} value={u.username}>{u.name}</option>
                   ))}
                 </select>
               </label>
@@ -129,26 +135,27 @@ export function Header() {
               <span className="rs-short" aria-hidden="true">View as <span className="demo-only">(demo)</span></span>
               <select value={role} onChange={(e) => onRole(e.target.value as Role)} aria-label="Switch role">
                 {ROLES.map((r) => (
-                  <option key={r} value={r}>{r}</option>
+                  <option key={r} value={r}>{ROLE_DISPLAY[r]}</option>
                 ))}
               </select>
             </label>
           )}
-          <span className="who" title="Acting as">{actorName}</span>
+          {staffTools && <span className="who" title="Acting as">{actorName}</span>}
           {role === "supervisor" && <ClockControl />}
           {role === "supervisor" && demoDeployment && <ResetDemoControl />}
-          <span className={`adapter adapter-${api.adapter}`} title="API adapter">{api.adapter}</span>
-          {api.automation !== undefined && (
+          {staffTools && !demoDeployment && <span className={`adapter adapter-${api.adapter}`} title="Where the data comes from">{api.adapter === "http" ? "live API" : "mock data"}</span>}
+          {staffTools && !demoDeployment && api.automation !== undefined && (
             <span className="adapter" title="The mock plays the automation actor (system:automation); add ?automation=off to the URL to switch it off" data-testid="automation-mode">
               automation {api.automation ? "on" : "off"}
             </span>
           )}
-          {api.resetDemo && !demoDeployment && (
+          {staffTools && api.resetDemo && !demoDeployment && (
             <button className="btn btn-small" onClick={() => api.resetDemo!().then(() => location.reload())}>
               Reset demo
             </button>
           )}
         </div>
+        <SignInNotice s={si} compact />
       </div>
     </header>
   );

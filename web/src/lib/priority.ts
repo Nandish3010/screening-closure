@@ -13,7 +13,7 @@ export type PriorityTier = (typeof PRIORITY_TIERS)[number];
 export const PRIORITY_LABEL: Record<PriorityTier, string> = { urgent: "Urgent", soon: "Soon", routine: "Routine" };
 
 /** Shown wherever the tier is explained, so nobody reads a placeholder threshold as a clinical standard. */
-export const PRIORITY_PLACEHOLDER_NOTE = "Threshold is a placeholder pending clinician sign-off (H1)";
+export const PRIORITY_PLACEHOLDER_NOTE = "Threshold is a placeholder pending clinician sign-off";
 export const PRIORITY_NOT_SLA_NOTE = "Orders the worklist and explains why. It does not change the SLA clock, the escalation ladder or who may close the case.";
 
 /**

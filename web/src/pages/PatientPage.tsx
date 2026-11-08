@@ -577,7 +577,7 @@ export function PatientView({ caseId }: { caseId: string }) {
         <div className="pa-body">
           {offline && <p className="banner banner-warn" role="status">{t.offline}</p>}
           {tab === "home" ? homePanel : privacyPanel}
-          {lang === "ar" && <p className="muted pa-review-note" data-testid="arabic-review-note"><span lang="en" dir="ltr">Arabic text pending native-speaker review (H2).</span> {t.arabicReviewNote}</p>}
+          {lang === "ar" && <p className="muted pa-review-note" data-testid="arabic-review-note"><span lang="en" dir="ltr">Arabic text pending native-speaker review.</span> {t.arabicReviewNote}</p>}
         </div>
 
         <nav className="pa-nav" aria-label={t.navLabel}>

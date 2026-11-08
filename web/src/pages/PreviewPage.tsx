@@ -60,11 +60,11 @@ export function PreviewPage() {
       <p className="preview-actions"><Link className="btn btn-primary" to="/" data-testid="preview-back">Back to sign in</Link></p>
 
       <ol className="preview-steps plain" data-testid="preview-steps">
-        {PREVIEW_STEPS.map((s) => (
+        {PREVIEW_STEPS.map((s, i) => (
           <li key={s.id} data-testid={`preview-step-${s.id}`}>
             <figure>
               <h2>{s.title}</h2>
-              <img src={s.src} alt={s.alt} width={1280} height={800} loading="lazy" decoding="async" />
+              <img src={s.src} alt={s.alt} width={1280} height={800} loading={i < 2 ? "eager" : "lazy"} fetchPriority={i === 0 ? "high" : undefined} decoding="async" />
               <figcaption>{s.caption}</figcaption>
             </figure>
           </li>

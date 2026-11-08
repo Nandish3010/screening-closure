@@ -264,7 +264,7 @@ export function CaseDetailPage() {
             <dt>Priority</dt>
             <dd data-testid="priority">
               <PriorityBadge priority={detail.priority} /> <span data-testid="priority-reason">{priorityReason(detail.priority)}</span>
-              <div className="muted" data-testid="priority-note">{PRIORITY_NOT_SLA_NOTE}{priorityIsPlaceholder(detail.priority) ? " The threshold is a placeholder pending clinician sign-off (H1)." : ""}</div>
+              <div className="muted" data-testid="priority-note">{PRIORITY_NOT_SLA_NOTE}{priorityIsPlaceholder(detail.priority) ? " The threshold is a placeholder pending clinician sign-off." : ""}</div>
             </dd>
           </div>
         )}
@@ -372,7 +372,7 @@ export function CaseDetailPage() {
                     Assigned to {detail.owner}{detail.provider ? ` (${detail.provider})` : ""}. {mine ? "Accept the case to own it." : `${detail.owner} must accept it.`} If nobody does, the escalation ladder runs.
                   </p>
                 )}
-                <ActionButton primary testId="accept-ownership" busy={busy} disabledReason={why("accept", "owner, specialist or clinician") ?? (notMine ? `This case is assigned to ${detail.owner}, who must accept it.` : null)} onClick={() => act(() => post("accept_ownership", {}), "You now own this case.")}>
+                <ActionButton primary testId="accept-ownership" busy={busy} disabledReason={why("accept", "owner, specialist or physician") ?? (notMine ? `This case is assigned to ${detail.owner}, who must accept it.` : null)} onClick={() => act(() => post("accept_ownership", {}), "You now own this case.")}>
                   Accept ownership
                 </ActionButton>
               </>
@@ -403,7 +403,7 @@ export function CaseDetailPage() {
             {state === "confirmatory_booked" && (
               <>
                 <label className="field"><span>Confirmatory result reference</span><input value={resultRef} onChange={(e) => setResultRef(e.target.value)} placeholder={`Procedure/${procedureSlug(procedure)}-0001`} /></label>
-                <ActionButton testId="record-colonoscopy" busy={busy} disabledReason={why("recordColonoscopy", "owner, specialist or clinician (the case owner)", true)} onClick={() => act(async () => { const r = await api.recordConfirmatoryResult(caseId); setResultRef(r.evidence_ref); return r; }, (r) => `${procedure.charAt(0).toUpperCase()}${procedure.slice(1)} recorded in the FHIR store as ${r.evidence_ref}. Now record the confirmatory result.`)}>
+                <ActionButton testId="record-colonoscopy" busy={busy} disabledReason={why("recordColonoscopy", "owner, specialist or physician (the case owner)", true)} onClick={() => act(async () => { const r = await api.recordConfirmatoryResult(caseId); setResultRef(r.evidence_ref); return r; }, (r) => `${procedure.charAt(0).toUpperCase()}${procedure.slice(1)} recorded in the FHIR store as ${r.evidence_ref}. Now record the confirmatory result.`)}>
                   Record {procedure} result
                 </ActionButton>
                 <ActionButton primary testId="record-result" busy={busy} disabledReason={why("recordResult", "specialist", true) ?? (resultRef.trim() ? null : "Enter the result reference first.")} onClick={() => act(() => post("complete_confirmatory", { result_ref: resultRef.trim() }), "Confirmatory result recorded.")}>
@@ -432,6 +432,7 @@ export function CaseDetailPage() {
                 extraWhy={scopeWhy}
                 defaultEvidence={proposal?.evidence_ref ?? recordedEvidence}
                 signer={userId ? `Practitioner/${userId}` : undefined}
+                signerName={userId ? actorName : undefined}
                 procedure={procedure}
                 caseId={detail.case_id}
                 refusal={signoffRefusal}
@@ -461,7 +462,7 @@ export function CaseDetailPage() {
                   testId="sign-declined"
                   busy={busy}
                   disabledReason={
-                    why("signDeclined", "owner, specialist or clinician (the case owner)", true)
+                    why("signDeclined", "owner, specialist or physician (the case owner)", true)
                     ?? (personId(detail.refusal.counselled_by) === personId(actor) || personId(detail.refusal.counselled_by) === personId(userId ? `Practitioner/${userId}` : actor)
                       ? "You counselled this patient: another physician must sign the closure. A coordinator or supervisor can reassign the case."
                       : null)
@@ -565,7 +566,7 @@ export function CaseDetailPage() {
               <ActionButton
                 testId="reopen"
                 busy={busy}
-                disabledReason={why("reopen", "owner, specialist or clinician", true)}
+                disabledReason={why("reopen", "owner, specialist or physician", true)}
                 onClick={() => act(async () => { await post("reopen", { reason: reopenReason }); setReopenReason(REOPEN_REASONS[0]); }, "Case reopened.")}
               >
                 Reopen case
@@ -610,7 +611,7 @@ export function CaseDetailPage() {
                     {PROVIDERS.map((p) => <option key={p} value={p}>{detail.insurance?.providers.find((x) => x.name === p)?.network === "out_of_network" ? `${p} (out of network)` : p}</option>)}
                   </select>
                 </label>
-                <ActionButton testId="hand-off" busy={busy} disabledReason={closedWhy ?? frozenWhy ?? why("handOff", "owner, specialist or clinician (the case owner)", true) ?? (detail.owner ? null : "Nobody owns this case yet: accept ownership first.")} onClick={() => act(() => post("handoff_requested", { to_provider: provider }), "Hand-off requested. Waiting for acceptance.")}>
+                <ActionButton testId="hand-off" busy={busy} disabledReason={closedWhy ?? frozenWhy ?? why("handOff", "owner, specialist or physician (the case owner)", true) ?? (detail.owner ? null : "Nobody owns this case yet: accept ownership first.")} onClick={() => act(() => post("handoff_requested", { to_provider: provider }), "Hand-off requested. Waiting for acceptance.")}>
                   Request hand-off
                 </ActionButton>
               </>
@@ -733,7 +734,7 @@ export function CaseDetailPage() {
             ownerName={detail.owner ?? null}
             canDecide={can(role, "decideDraft") && !scopeWhy}
             requestWhy={closedWhy ?? frozenWhy ?? why("draft", "coordinator or owner", true)}
-            decideWhy={why("decideDraft", "owner, specialist or clinician (the case owner)", true)}
+            decideWhy={why("decideDraft", "owner, specialist or physician (the case owner)", true)}
             approveWhy={frozenWhy ?? closedWhy}
             onRequest={(body) => act(
               () => api.requestDraft(caseId, body),

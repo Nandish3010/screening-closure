@@ -85,6 +85,15 @@ export function mockDemoFromEnv(search: string = typeof location === "undefined"
   }
 }
 
+/** localStorage where the browser allows it (private windows and blocked site data can throw), else nothing: the session then stays per tab. */
+function safeLocalStorage(): Storage | undefined {
+  try {
+    return localStorage;
+  } catch {
+    return undefined;
+  }
+}
+
 /** Chosen at build time by VITE_API_ADAPTER=mock|http (default mock). */
 export function createClientFromEnv(): ApiClient {
   const env = import.meta.env;
@@ -95,7 +104,7 @@ export function createClientFromEnv(): ApiClient {
       issuer: env.VITE_OIDC_ISSUER || "http://localhost:8180/realms/screening-closure",
       clientId: env.VITE_OIDC_CLIENT_ID || "screening-closure-web",
       redirectUri: `${location.origin}/`,
-    });
+    }, { persist: safeLocalStorage() });
     return createHttpAdapter(url, (...a) => fetch(...a), { oidc });
   }
   return createMockAdapter(undefined, { automation: mockAutomationFromEnv(), secondPathway: mockSecondPathwayFromEnv(), thirdPathway: mockThirdPathwayFromEnv(), demo: mockDemoFromEnv() });

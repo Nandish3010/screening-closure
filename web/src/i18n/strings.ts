@@ -580,7 +580,7 @@ export const STAFF = {
   },
   /** A26: shown while the automatic messages run on the demo placeholder approval (`GET /health` -> `outreach.demo_approval`). */
   outreachDemoBanner: {
-    fallback: "DEMO PLACEHOLDER (clinical sign-off pending, H1)",
+    fallback: "DEMO PLACEHOLDER (clinical sign-off pending)",
     /** One-line phone form; the full text stays in the page for screen readers and "More". */
     compact: "Demo placeholder, not signed off.",
     explanation: "The automatic patient messages on this system run on a demo approval, not on a clinical lead's signature. No clinician has approved the message texts or the rules that send them. Real patients would receive nothing until the policy is signed.",
@@ -626,7 +626,7 @@ export const STAFF = {
     automated: "Automated actions",
     share: "Automation share",
     saved: "Estimated minutes saved",
-    assumed: "assumed minutes, to source",
+    assumed: "assumed minutes, not measured",
     summary: (human: number, automated: number) => `Human actions ${human} / Automated actions ${automated}`,
   },
   funnel: {
@@ -676,7 +676,7 @@ export const STAFF = {
     share: "Automation share",
     minutes: "Human minutes / baseline minutes",
     saved: "Minutes saved",
-    caveat: "Assumed minutes, to source: the minutes behind these figures are estimates, not measurements.",
+    caveat: "Assumed minutes, not measured: the minutes behind these figures are estimates, not measurements.",
     unavailable: "Effort metrics are not available for this role or this server.",
   },
 } as const;
@@ -712,7 +712,7 @@ export const TODAY = {
     default: "Someone else changed this case first. The list has been refreshed.",
   } as Record<string, string>,
   loading: "Loading what needs a person...",
-  notForRole: "The Today screen is for the care coordinator and the supervisor. Clinicians work from their own cases in the worklist.",
+  notForRole: "The Today screen is for the care coordinator and the supervisor. Physicians work from their own cases in the worklist.",
   lookFurther: "Look further",
   lookingFurther: "Reading more cases...",
   showMore: "Show more",

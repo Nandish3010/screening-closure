@@ -3,10 +3,11 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useApp } from "../app/AppContext";
 import type { ApiClient, CaseSummary, GuideStepId, GuidedCase, Role } from "../api/contract";
-import { JUDGE_ROLES } from "../api/identities";
+import { JUDGE_ROLES, ROLE_DISPLAY } from "../api/identities";
 import { DEFAULT_FILTERS, worklist } from "../lib/worklist";
 import { DOCS, docHref, type DocLink } from "./links";
 import { markSeen, useGuide } from "./guide";
+import { SignInNotice, useDemoSignIn } from "../app/demoSignIn";
 
 /**
  * Judge tour (C13): a guided, step-by-step walk through the demo story on whatever data the app currently has.
@@ -435,19 +436,19 @@ function TourPanel({ onClose, track, start, onTrack }: { onClose: () => void; tr
     return () => document.body.classList.remove("tour-open");
   }, []);
 
-  // Switch to the step's role. The hosted demo signs in with one click (ADR-060) and otherwise a sign-in provider means leaving the page, so the tour's place is kept and picked up again on return.
+  // Switch to the step's role. On the hosted demo this is the same one-click sign-in as the role cards and the header (S4: warming-up retry,
+  // rate-limit wait, never the password flow), and the tour's place is kept and picked up again after the page restarts as the new person.
+  // With a real sign-in provider the switch means leaving the page; without one (the mock) it just changes the role.
+  const oneClick = !!(api.oidc && demoDeployment && api.demoSignIn);
+  const si = useDemoSignIn(api, () => window.location.assign("/"));
   const switchTo = () => {
     if (!step.role) return;
     if (api.oidc) {
       const u = JUDGE_ROLES.find((r) => r.role === step.role);
       if (!u || !demoDeployment) return;
       try { sessionStorage.setItem(RESUME_KEY, JSON.stringify({ track, index } satisfies Resume)); } catch { /* the tour just closes */ }
-      void (async () => {
-        if (api.demoSignIn) {
-          try { await api.demoSignIn(u.role); window.location.assign("/"); return; } catch { /* fall through to the password sign-in */ }
-        }
-        void api.oidc!.signIn({ loginHint: u.username, forceLogin: true });
-      })();
+      if (oneClick) si.go(u.role);
+      else void api.oidc.signIn({ loginHint: u.username, forceLogin: true });
     } else {
       setRole(step.role);
     }
@@ -473,10 +474,11 @@ function TourPanel({ onClose, track, start, onTrack }: { onClose: () => void; tr
       <div className="tour-fold">
       <div id="tour-body" className="tour-body">{step.body}</div>
       {step.role && role !== step.role && (
-        <p className="muted" data-testid="tour-role-hint">
-          This step is clearest as the <strong>{step.role}</strong> (you are the {role}).{" "}
-          <button type="button" className="btn btn-small" onClick={switchTo} data-testid="tour-switch-role">Sign in as {step.role}</button>
-        </p>
+        <div className="muted" data-testid="tour-role-hint">
+          This step is clearest as the <strong>{ROLE_DISPLAY[step.role].toLowerCase()}</strong> (you are the {ROLE_DISPLAY[role].toLowerCase()}).{" "}
+          <button type="button" className="btn btn-small" onClick={switchTo} disabled={si.locked} data-testid="tour-switch-role">{si.locked ? "Switching..." : `Sign in as ${ROLE_DISPLAY[step.role].toLowerCase()}`}</button>
+          <SignInNotice s={si} compact />
+        </div>
       )}
       {step.claim && <p className="tour-claim" data-testid="tour-claim"><strong>{step.claim}</strong></p>}
       {demoDeployment && track === "challenge" && step.guide && guideLoaded && guide && !guide[step.guide] && (
@@ -503,7 +505,7 @@ function TourPanel({ onClose, track, start, onTrack }: { onClose: () => void; tr
         <ul className="plain tour-links" aria-label="Documents for this step">
           {step.links.map((l) => (
             <li key={l.path}>
-              <a href={docHref(l)} target="_blank" rel="noopener noreferrer">{l.label}</a> <span className="mono muted">{l.path}</span>
+              <a href={docHref(l)} title={l.path} target="_blank" rel="noopener noreferrer">{l.label}</a>
             </li>
           ))}
         </ul>

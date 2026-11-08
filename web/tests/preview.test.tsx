@@ -90,6 +90,9 @@ describe("/preview", () => {
       expect(img.getAttribute("alt")!.length).toBeGreaterThan(40);
       expect(li.querySelector("figcaption")!.textContent!.length).toBeGreaterThan(20);
     });
+    // The first two pictures are above the fold: they load at once, not on scroll; the rest stay lazy.
+    const loading = Array.from(steps).map((li) => li.querySelector("img")!.getAttribute("loading"));
+    expect(loading).toEqual(["eager", "eager", "lazy", "lazy", "lazy"]);
     const text = screen.getByTestId("preview-numbers").textContent!;
     expect(text).toContain(`${headline.completion_180d.baseline.value} to ${headline.completion_180d.orchestrated.value}`);
     expect(text).toContain(`${headline.closed_share.baseline.value} to ${headline.closed_share.orchestrated.value}`);

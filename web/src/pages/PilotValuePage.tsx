@@ -115,7 +115,7 @@ export function PilotValuePage() {
       </p>
       <div className="banner banner-warn" data-testid="pilot-illustrative">
         <strong>Illustrative, synthetic.</strong> The completion and staff-minute effects come from a simulator calibrated to published studies, not
-        from patients or a trial. The costs are assumptions in <span className="mono">{MODEL_DOC.path}</span>, not quotes. Nothing here is a forecast or an offer.
+        from patients or a trial. The costs are assumptions set out in the cost model document (linked below), not quotes. Nothing here is a forecast or an offer.
       </div>
 
       <section aria-labelledby={`${uid}-in`} className="jp-section">
@@ -212,11 +212,11 @@ export function PilotValuePage() {
             })}
             <div>
               <dt>Completion ratio: <span className="mono">{PILOT.completion.ratio_360d.toFixed(2)}</span><span className="jp-status">synthetic</span></dt>
-              <dd>Orchestrated over baseline completion at 360 days in the Abu Dhabi scenario of <span className="mono">docs/results/abudhabi.json</span>. Calibrated to published navigation trials, so it shows the mechanism and is not new evidence of effect.</dd>
+              <dd>Orchestrated over baseline completion at 360 days in the Abu Dhabi scenario of the published results. Calibrated to published navigation trials, so it shows the mechanism and is not new evidence of effect.</dd>
             </div>
             <div>
               <dt>Minutes per case by role<span className="jp-status">synthetic</span></dt>
-              <dd>From <span className="mono">docs/results/results.json</span>, effort, literature-anchored, all cases. The minutes per action are assumptions drawn from time studies where they exist.</dd>
+              <dd>From the published results: effort, literature-anchored, all cases. The minutes per action are assumptions drawn from time studies where they exist.</dd>
             </div>
           </dl>
         </aside>
@@ -254,10 +254,10 @@ export function PilotValuePage() {
         <h2 id={`${uid}-docs`}>Where the numbers come from</h2>
         <ul className="plain jp-links">
           {[MODEL_DOC, COST_DOC, GTM_DOC, PLAN_DOC, DOCS.results].map((d) => (
-            <li key={d.path}><a href={docHref(d)} target="_blank" rel="noopener noreferrer">{d.label}</a> <span className="mono muted">{d.path}</span></li>
+            <li key={d.path}><a href={docHref(d)} title={d.path} target="_blank" rel="noopener noreferrer">{d.label}</a></li>
           ))}
         </ul>
-        <p className="jp-note">Regenerate the data behind this page with <span className="mono">make judge-pages-data</span>; <span className="mono">python3 tools/pilot/cost_model.py</span> prints the same model on the command line.</p>
+        <p className="jp-note">The data behind this page is regenerated from the published results, and the cost model can be re-run from the repository.</p>
         <p><Link to="/judge">Back to the judge summary</Link></p>
       </section>
     </main>

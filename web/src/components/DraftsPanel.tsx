@@ -204,7 +204,7 @@ export function DraftsPanel({
               </p>
               <p className="prov" data-testid={`provenance-${d.draft_id}`}>
                 {provenanceLine(d, ownerName)}
-                {d.language === "ar" && <> <span className="chip" data-testid={`ar-review-${d.draft_id}`}>Arabic wording pending native-speaker review (H2)</span></>}
+                {d.language === "ar" && <> <span className="chip" data-testid={`ar-review-${d.draft_id}`}>Arabic wording pending native-speaker review</span></>}
               </p>
               {d.abstention_reason && (
                 <p className="banner banner-warn" data-testid={`abstention-${d.draft_id}`} title={d.abstention_reason}>

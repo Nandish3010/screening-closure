@@ -143,3 +143,54 @@ describe("token lifetime", () => {
     expect(await h.client.accessToken()).toBeNull();
   });
 });
+
+describe("a hosted-demo session survives a new tab (and only that)", () => {
+  const demoTokens = { access_token: "A1", refresh_token: "R1", expires_in: 300, client_id: "screening-closure-demo" };
+  function two() {
+    const shared = memoryStorage();
+    const mk = () => {
+      const storage = memoryStorage();
+      let t = 1_000_000;
+      return { storage, client: createOidcClient(CFG, { storage, persist: shared, crypto: webcrypto as unknown as Crypto, redirect: vi.fn(), now: () => t, fetch: vi.fn() as unknown as typeof fetch }) };
+    };
+    return { shared, tabA: mk(), tabB: mk() };
+  }
+
+  it("a one-click demo session is copied, and a second tab with an empty sessionStorage is signed in", async () => {
+    const { shared, tabA, tabB } = two();
+    expect(tabB.client.signedIn()).toBe(false);
+    tabA.client.adoptTokens(demoTokens);
+    expect(shared.m.size).toBe(1);
+    expect(tabB.client.signedIn()).toBe(true);
+    expect(await tabB.client.accessToken()).toBe("A1");
+  });
+
+  it("signing out in one tab clears the shared copy, so a later new tab starts at the role cards", () => {
+    const { shared, tabA, tabB } = two();
+    tabA.client.adoptTokens(demoTokens);
+    tabA.client.signOut();
+    expect(shared.m.size).toBe(0);
+    expect(tabB.client.signedIn()).toBe(false);
+  });
+
+  it("a normal sign-in (the web client, not the demo client) is never copied", () => {
+    const { shared, tabA, tabB } = two();
+    tabA.client.adoptTokens({ access_token: "A1", refresh_token: "R1", expires_in: 300 });
+    expect(tabA.client.signedIn()).toBe(true);
+    expect(shared.m.size).toBe(0);
+    expect(tabB.client.signedIn()).toBe(false);
+  });
+
+  it("a shared copy that is not a demo session is ignored", () => {
+    const { shared, tabB } = two();
+    shared.setItem("sc.oidc.session", JSON.stringify({ accessToken: "X", expiresAt: 9e15 }));
+    expect(tabB.client.signedIn()).toBe(false);
+  });
+
+  it("without a shared store (private window) it behaves as before: per tab", () => {
+    const storage = memoryStorage();
+    const c = createOidcClient(CFG, { storage, crypto: webcrypto as unknown as Crypto, redirect: vi.fn(), fetch: vi.fn() as unknown as typeof fetch });
+    c.adoptTokens(demoTokens);
+    expect(c.signedIn()).toBe(true);
+  });
+});

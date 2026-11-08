@@ -331,7 +331,7 @@ const CHRONIC_IDS = new Set(chronicDefs.map((d) => d.id));
 /** The pathway a seeded case runs on (a case the mock files itself is a bowel case, like the API's default). */
 export const pathwayOfCase = (id: string): string => (CHRONIC_IDS.has(id) ? CHRONIC_PATHWAY : CERVICAL_IDS.has(id) ? CERVICAL_PATHWAY : "colorectal_fit");
 
-const PLACEHOLDER_BASIS = "PLACEHOLDER, needs clinician sign-off (H1)";
+const PLACEHOLDER_BASIS = "PLACEHOLDER, needs clinician sign-off";
 /**
  * The result priority of a seeded case, as the API puts it on a staff row (api/app/priority.py `describe`). Bowel cases have none.
  * The Arabic wording is the pack's and awaits native review (H2). Never shown to a patient.

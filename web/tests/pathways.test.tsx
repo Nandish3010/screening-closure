@@ -31,10 +31,10 @@ describe("pathway metadata", () => {
     const cervical = milestonesFor("cervical_hpv");
     expect(cervical.map((m) => m.name)).toEqual(MILESTONES.map((m) => m.name));
     const colposcopy = cervical.find((m) => m.name === "confirmatory_completed")!;
-    expect(colposcopy.label).toBe("Colposcopy within 31 working days of referral (placeholder, H1)");
-    expect(colposcopy.source).toMatch(/^Placeholder, needs clinician sign-off \(H1\)/);
+    expect(colposcopy.label).toBe("Colposcopy within 31 working days of referral (placeholder, pending clinician sign-off)");
+    expect(colposcopy.source).toMatch(/^Placeholder, needs clinician sign-off/);
     expect(colposcopy.working_days).toBe(31);
-    expect(cervical.find((m) => m.name === "referral_requested")!.source).toMatch(/IFHAS.*to be confirmed by H1/);
+    expect(cervical.find((m) => m.name === "referral_requested")!.source).toMatch(/IFHAS.*to be confirmed by a clinical lead/);
     // the bowel definitions are untouched
     expect(MILESTONES.find((m) => m.name === "confirmatory_completed")!.label).toBe("Colonoscopy within 31 working days of referral");
   });
@@ -46,7 +46,7 @@ describe("PathwayBadge", () => {
     const badge = screen.getByTestId("pathway-badge");
     expect(badge).toHaveTextContent("Cervical screening");
     expect(badge).toHaveAttribute("data-pathway", "cervical_hpv");
-    expect(badge.getAttribute("title")).toMatch(/placeholders pending clinician sign-off \(H1\)/);
+    expect(badge.getAttribute("title")).toMatch(/placeholders pending clinician sign-off./);
     rerender(<PathwayBadge pathway="colorectal_fit" />);
     expect(screen.getByTestId("pathway-badge")).toHaveTextContent("Bowel screening");
     expect(screen.getByTestId("pathway-badge").getAttribute("title")).not.toMatch(/placeholder/);
@@ -117,7 +117,7 @@ describe("worklist and case page with both pathways", () => {
     renderWithApp(<CaseDetailPage />, { api: twoPathways(), route: `/coordinator/${id}`, path: "/coordinator/:caseId" });
     expect(await screen.findByTestId("pathway-badge")).toHaveAttribute("data-pathway", "cervical_hpv");
     expect(screen.getByText("Referral within 15 working days of result")).toBeInTheDocument();
-    expect(screen.getByText("Colposcopy within 31 working days of referral (placeholder, H1)")).toBeInTheDocument();
+    expect(screen.getByText("Colposcopy within 31 working days of referral (placeholder, pending clinician sign-off)")).toBeInTheDocument();
     expect(screen.queryByText("Colonoscopy within 31 working days of referral")).toBeNull();
     expect(screen.getByTestId("milestone-confirmatory_completed")).toBeInTheDocument();
   });

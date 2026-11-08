@@ -125,7 +125,7 @@ test("dashboard: the human-effort card shows the reduction against the 40% targe
   await expect(page.getByTestId("effort-target")).toContainText("Target: 40%");
   await expect(page.getByTestId("effort-target-status")).toBeVisible();
   await expect(page.getByTestId("effort-total-automated")).not.toHaveText("0");
-  await expect(page.getByTestId("effort-caveat")).toContainText("Assumed minutes, to source");
+  await expect(page.getByTestId("effort-caveat")).toContainText("Assumed minutes, not measured");
   await page.getByLabel("Switch role").selectOption("owner");
   await expect(page.getByTestId("effort-card")).toHaveCount(0);
 });

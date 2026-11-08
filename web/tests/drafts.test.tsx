@@ -371,7 +371,7 @@ describe("provenance of a model draft and of a template", () => {
 
   it("an Arabic draft is marked as pending native-speaker review, an English one is not", () => {
     panel([aiDraft({ draft_id: "d-ar", language: "ar", text: "نتيجة فحصك جاهزة." })]);
-    expect(screen.getByTestId("ar-review-d-ar")).toHaveTextContent("pending native-speaker review (H2)");
+    expect(screen.getByTestId("ar-review-d-ar")).toHaveTextContent("pending native-speaker review");
   });
 
   it("after a decision the person who decided is named; with no owner it says the case owner", () => {

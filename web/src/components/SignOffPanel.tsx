@@ -5,9 +5,10 @@ import { can } from "../app/AppContext";
 import { fmtDateTime, plainError, shortId } from "../lib/format";
 import type { CaseEvent } from "../api/contract";
 import { ActionButton } from "./ActionButton";
+import { signerDisplay } from "../lib/derive";
 
 /**
- * Clinician sign-off. The Close button stays disabled until BOTH an evidence reference and a
+ * Physician sign-off. The Close button stays disabled until BOTH an evidence reference and a
  * signer are present (and the acting role is a clinician: an owner role), and it says why while disabled.
  * The engine enforces the same rule (state_machine.apply) - this is the UI mirror, not the guard.
  *
@@ -28,7 +29,7 @@ export function ClosedReceipt({ events, caseId }: { events: CaseEvent[]; caseId:
       <h3 id="receipt-h"><span aria-hidden="true">{"\u2713"} </span>Case {shortId(caseId)} is closed</h3>
       <dl>
         <div><dt>Evidence</dt><dd className="mono">{evidence || "none recorded"}</dd></div>
-        <div><dt>Signed by</dt><dd>{signedBy || "not recorded"}</dd></div>
+        <div><dt>Signed by</dt><dd title={signedBy || undefined} data-testid="receipt-signer">{signedBy ? signerDisplay(signedBy) : "not recorded"}</dd></div>
         <div><dt>When</dt><dd>{fmtDateTime(close.at)}</dd></div>
       </dl>
       <p className="muted">The patient's app now shows this case as complete. The audit trail below is final unless a physician reopens it.</p>
@@ -37,7 +38,7 @@ export function ClosedReceipt({ events, caseId }: { events: CaseEvent[]; caseId:
 }
 
 export function SignOffPanel({
-  role, onSignOff, busy, needsReview, extraWhy, defaultEvidence, signer: fixedSigner, onRecordResult, procedure = "colonoscopy", refusal, caseId, onClearRefusal,
+  role, onSignOff, busy, needsReview, extraWhy, defaultEvidence, signer: fixedSigner, signerName, onRecordResult, procedure = "colonoscopy", refusal, caseId, onClearRefusal,
 }: {
   role: Role;
   /** A reason the acting clinician may not sign this case off, e.g. they do not own it (A5). */
@@ -50,6 +51,8 @@ export function SignOffPanel({
   defaultEvidence?: string;
   /** The signer the API will accept (`Practitioner/<own user id>`); fixed and read-only. Without it the field is free text (mock). */
   signer?: string;
+  /** The signer's display name (for example "Dr. Huda Rahman"), shown instead of the id; the id stays in a tooltip. */
+  signerName?: string;
   /** Records the confirmatory procedure as FHIR evidence and returns its reference (owners only; absent = no button). */
   onRecordResult?: () => Promise<string>;
   /** The pathway's confirmatory procedure (colonoscopy, colposcopy): words the hint, the placeholder and the button. */
@@ -70,10 +73,10 @@ export function SignOffPanel({
   }, [defaultEvidence]);
 
   const reasons: string[] = [];
-  if (!can(role, "signOff")) reasons.push(`Only a physician who owns this case can sign off. You are viewing as the ${role}. Switch the role to owner, specialist or clinician in the header.`);
+  if (!can(role, "signOff")) reasons.push(`Only a physician who owns this case can sign off. You are viewing as the ${role}. Sign in as the physician (case owner).`);
   else if (extraWhy) reasons.push(extraWhy);
   if (!evidence.trim()) reasons.push(`Add an evidence reference (for example the ${procedure} report id).`);
-  if (!signer.trim()) reasons.push("Enter the name of the clinician who signs.");
+  if (!signer.trim()) reasons.push("Enter the name of the physician who signs.");
 
   const record = async () => {
     if (!onRecordResult) return;
@@ -90,7 +93,7 @@ export function SignOffPanel({
 
   return (
     <fieldset className="panel signoff" id="signoff-panel" tabIndex={-1} data-testid="signoff-panel">
-      <legend>Clinician sign-off and closure</legend>
+      <legend>Physician sign-off and closure</legend>
       <p className="muted">
         A case closes only with evidence and a named human sign-off. Nothing automated can close a case.
         {needsReview && " Signing off also records the clinician review."}
@@ -124,7 +127,7 @@ export function SignOffPanel({
       <label className="field">
         <span>Signed by</span>
         {fixedSigner ? (
-          <input value={fixedSigner} readOnly aria-readonly="true" data-testid="signer" />
+          <input value={signerName || signerDisplay(fixedSigner)} title={fixedSigner} readOnly aria-readonly="true" data-testid="signer" />
         ) : (
           <input value={signerText} onChange={(e) => setSignerText(e.target.value)} placeholder="Dr. Huda Rahman" />
         )}
@@ -134,7 +137,7 @@ export function SignOffPanel({
         <dl>
           {caseId && <div><dt>Case</dt><dd className="mono">{shortId(caseId)}</dd></div>}
           <div><dt>Evidence</dt><dd className="mono" data-testid="check-evidence">{evidence.trim() || <span className="muted">Not entered yet</span>}</dd></div>
-          <div><dt>Signed by</dt><dd data-testid="check-signer">{signer.trim() || <span className="muted">Not entered yet</span>}</dd></div>
+          <div><dt>Signed by</dt><dd data-testid="check-signer" title={fixedSigner || undefined}>{(fixedSigner ? signerName || signerDisplay(fixedSigner) : signer.trim()) || <span className="muted">Not entered yet</span>}</dd></div>
           <div><dt>Result</dt><dd>Closes the case. The evidence and the signer's name go on the audit trail.</dd></div>
         </dl>
       </section>

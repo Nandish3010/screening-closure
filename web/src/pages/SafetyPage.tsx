@@ -51,22 +51,22 @@ const GUARDS = [
   {
     name: "The closure guard",
     how: "A case closes only with a reference to evidence that exists and belongs to that case, and a clinician's signature. The state machine refuses any automated actor, whoever asks. An incomplete colonoscopy is recorded as incomplete and cannot close a case.",
-    where: "ADR-001, ADR-036; model-checked invariant; decision matrix, event `close`",
+    where: "model-checked invariant; decision matrix, closing a case",
   },
   {
     name: "Clinician signature",
     how: "Only the owning clinician roles can review and close, and the signature must be the reviewer's own identity. A coordinator, supervisor, lab or patient cannot close a case, by the route and again inside the state machine.",
-    where: "ADR-044; decision matrix, events `clinician_review` and `close`",
+    where: "decision matrix, physician review and closing a case",
   },
   {
     name: "Default-deny",
     how: "A route with no access rule is refused for everyone. An actor or service with no row in the permissions table cannot write any event. The HL7 adapter's token reaches one route and cannot close, sign, reassign or change consent.",
-    where: "`policy.py` route table; `ACTOR_EVENTS`; RBAC matrix; hl7-adapter.md",
+    where: "role-based access matrix; the HL7 adapter document",
   },
   {
     name: "The consent hold",
     how: "When a patient withdraws consent, outreach freezes, a person is asked to review, and a pending referral is held (and its timer stops) until a person records consent again. Nothing is sent to a withdrawn channel.",
-    where: "ADR-044; patient app and privacy centre; decision matrix, event `consent_updated`",
+    where: "patient app and privacy centre; decision matrix, consent changes",
   },
 ];
 
@@ -229,10 +229,10 @@ export function SafetyPage() {
         <h2 id={`${uid}-docs`}>Model cards, hazard log and data protection impact assessment</h2>
         <ul className="plain jp-links" data-testid="safety-docs">
           {docs.map((d) => (
-            <li key={d.path}><a href={docHref(d)} target="_blank" rel="noopener noreferrer">{d.label}</a> <span className="mono muted">{d.path}</span></li>
+            <li key={d.path}><a href={docHref(d)} title={d.path} target="_blank" rel="noopener noreferrer">{d.label}</a></li>
           ))}
         </ul>
-        <p className="jp-note">Regenerate this page's figures with <span className="mono">make judge-pages-data</span>. They are read from <span className="mono">docs/results/triage/*.json</span> and <span className="mono">docs/results/fairness.json</span>.</p>
+        <p className="jp-note">These figures are read from the published triage and fairness results files (linked above) and can be regenerated from them.</p>
         <p><Link to="/judge">Back to the judge summary</Link></p>
       </section>
     </main>

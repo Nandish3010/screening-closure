@@ -36,7 +36,7 @@ test("worklist to reopen against the real API", async ({ page }) => {
     }
   });
   await page.goto("/coordinator");
-  await expect(page.locator(".adapter")).toHaveText("http");
+  await expect(page.locator(".adapter")).toHaveText("live API");
   await expect(page.getByTestId("worklist-row").first()).toBeVisible();
   expect(await page.getByTestId("worklist-row").count()).toBeGreaterThanOrEqual(22);
   await expect(page.getByTestId("sim-badge")).toContainText("SIMULATED TIME");
