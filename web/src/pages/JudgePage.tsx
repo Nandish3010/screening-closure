@@ -39,7 +39,7 @@ const CAVEATS = [
   "The literature-anchored scenario is the one to quote; the upper-range scenario is a ceiling for the mechanism, not a forecast.",
   "Minutes saved are assumed (no time-and-motion study yet), so the labour percentage is an estimate to be sourced.",
   "The risk score only orders the worklist; it never closes, escalates or decides care, and it is trained on simulator output.",
-  "AI drafts need a person's approval. The automatic messages in the demo run on a demo approval, not a clinical lead's signature.",
+  "AI drafts need a person's approval. Nothing is sent automatically on the hosted demo (the reminder policy is unsigned), and an approved message is only recorded in a demo log. On a local rehearsal, automatic reminders run on a demo approval, not a clinical lead's signature, and are still only logged.",
   "Arabic strings were written by engineering and are marked for native-speaker review before any patient use.",
   "Nothing here diagnoses anyone.",
 ];

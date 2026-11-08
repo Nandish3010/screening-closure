@@ -241,6 +241,24 @@ def effort_report(per_case: dict) -> dict:
     return {"rows": rows, "totals": totals_from_sums({k: sum(r[k] for r in rows.values()) for k in TOTAL_KEYS})}
 
 
+def scope(cases: int) -> dict:
+    """What the figures of `GET /metrics/effort` measure, in words, so no screen has to guess. Number-free on purpose: the
+    programme figures live in docs/results (one source), and nothing here may be read as a result or as the 40% target met."""
+    return {
+        "kind": "demo_cases_event_log",
+        "cases": cases,
+        "reduction_pct": ("Of the staff minutes logged on these cases so far (assumed minutes per action), the share the system took "
+                          "over. Only the steps already taken are counted, so the later, human-heavy steps (calls, reviews) are "
+                          "not in it yet. It is arithmetic on a few synthetic demo cases."),
+        "automation_share": "Automated actions as a share of all logged staff and automated actions on these cases. A count of actions, not of minutes or labour.",
+        "meets_target": ("Compares the demo-case arithmetic above with the programme target. It is NOT a programme result and must "
+                         "not be shown as the target met."),
+        "programme_result": ("The programme-wide figure comes from the behaviour simulation on synthetic data (docs/results/results.md) "
+                             "and is below the 40% target."),
+        "programme_target_met": False,
+    }
+
+
 def assumptions() -> dict:
     """What the page must say next to the percentage: where the minutes come from and that they are not measurements."""
     from_sim = bool(FROM_SIMULATOR)

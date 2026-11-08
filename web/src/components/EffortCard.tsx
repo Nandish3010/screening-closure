@@ -1,5 +1,6 @@
 import type { EffortMetrics } from "../api/contract";
 import { STAFF } from "../i18n/strings";
+import headline from "../judge/headline.json";
 
 const pct = (x: number | null | undefined) => (x === null || x === undefined ? "n/a" : `${Math.round(x * 100)}%`);
 
@@ -36,43 +37,52 @@ function EffortChart({ t }: { t: NonNullable<EffortMetrics["totals"]> }) {
 }
 
 /**
- * "Human effort" card for the dashboard (A21, coordinator and supervisor): the reduction in human time against the programme
- * target, and the human versus automated actions behind it. The minutes are assumed, not measured; the caveat is always shown.
+ * "Human effort" card for the dashboard (A21, coordinator and supervisor). It shows TWO measures and keeps them apart, the honest one
+ * first: the programme result (the behaviour simulation on synthetic data, below the 40% target) and then arithmetic on the demo
+ * cases' own event log (assumed minutes, only the steps taken so far). The second is never shown larger than the first and never
+ * beside a target marker, so it cannot be read as a result.
  */
 export function EffortCard({ metrics }: { metrics: EffortMetrics | null }) {
   const s = STAFF.effortCard;
   const t = metrics?.totals;
   const reduction = t?.reduction_pct ?? null;
+  const labour = headline.labour_reduction;
   return (
     <section className="panel effort-card" aria-labelledby="effort-h" data-testid="effort-card">
       <h2 id="effort-h">{s.heading}</h2>
       <p className="muted">{s.intro}</p>
-      {!metrics || !t ? (
-        <p className="muted" data-testid="effort-empty">{s.noData}</p>
-      ) : (
-        <>
-          <div className="effort-headline">
-            <span className="kpi-value" data-testid="effort-reduction">{reduction === null ? "n/a" : `${reduction}%`}</span>{" "}
-            <span className="kpi-label">{s.reduction}</span>
-            {" "}
-            {/* Never a "Target met" verdict here: this is a handful of demo cases with assumed minutes, not a programme result. */}
-            <span className="chip chip-neutral" data-testid="effort-target-status">
-              {reduction === null ? s.notEnoughData : s.sampleLabel}
-            </span>
-          </div>
-          {/* No meter and no target marker: a bar that fills past a 40% tick would read as "met" for what is only a demo sample. */}
-          <p className="muted" data-testid="effort-target">{s.target}: {t.target_pct}% (the programme target; see the estimate below)</p>
-          <p className="muted" data-testid="effort-programme">{s.programme}</p>
-          <EffortChart t={t} />
-          <dl className="facts effort-facts">
-            <div><dt>{s.humanActions}</dt><dd data-testid="effort-total-human">{t.human_actions}</dd></div>
-            <div><dt>{s.automatedActions}</dt><dd data-testid="effort-total-automated">{t.automated_actions}</dd></div>
-            <div><dt>{s.share}</dt><dd data-testid="effort-total-share">{pct(t.automation_share)}</dd></div>
-            <div><dt>{s.minutes}</dt><dd>{t.human_minutes} / {t.baseline_minutes}</dd></div>
-            <div><dt>{s.saved}</dt><dd data-testid="effort-total-saved">{t.minutes_saved}</dd></div>
-          </dl>
-        </>
-      )}
+      <div className="effort-programme-block" data-testid="effort-programme">
+        <h3>{s.programmeHeading}</h3>
+        <p className="outcomes-big"><strong>{labour.literature_all.value}</strong> fewer staff minutes across the whole programme; <strong>{labour.literature_in_reach.value}</strong> where the system reaches a case.</p>
+        <p><strong>{s.programmeVerdict(headline.run.replications, headline.run.cases_per_replication)}</strong></p>
+      </div>
+      <div className="effort-demo-block" data-testid="effort-demo">
+        <h3>{s.demoHeading(metrics?.cases ?? null)}</h3>
+        {!metrics || !t ? (
+          <p className="muted" data-testid="effort-empty">{s.noData}</p>
+        ) : (
+          <>
+            <div className="effort-headline">
+              <span className="kpi-value" data-testid="effort-reduction">{reduction === null ? "n/a" : `${reduction}%`}</span>{" "}
+              <span className="kpi-label">{s.reduction}</span>
+              {" "}
+              <span className="chip chip-neutral" data-testid="effort-target-status">
+                {reduction === null ? s.notEnoughData : s.sampleLabel}
+              </span>
+            </div>
+            <p className="muted" data-testid="effort-definition">{metrics.scope?.reduction_pct ?? s.reductionDefinition}</p>
+            <EffortChart t={t} />
+            <dl className="facts effort-facts">
+              <div><dt>{s.humanActions}</dt><dd data-testid="effort-total-human">{t.human_actions}</dd></div>
+              <div><dt>{s.automatedActions}</dt><dd data-testid="effort-total-automated">{t.automated_actions}</dd></div>
+              <div><dt>{s.share}</dt><dd data-testid="effort-total-share">{pct(t.automation_share)}</dd></div>
+              <div><dt>{s.minutes}</dt><dd>{t.human_minutes} / {t.baseline_minutes}</dd></div>
+              <div><dt>{s.saved}</dt><dd data-testid="effort-total-saved">{t.minutes_saved}</dd></div>
+            </dl>
+            <p className="muted" data-testid="effort-share-definition">{metrics.scope?.automation_share ?? s.shareDefinition}</p>
+          </>
+        )}
+      </div>
       <p className="banner banner-warn" data-testid="effort-caveat">
         {s.caveat}
         {metrics?.assumptions.note ? ` ${metrics.assumptions.note}` : ""}

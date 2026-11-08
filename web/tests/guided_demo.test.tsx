@@ -54,6 +54,24 @@ describe("role cards on the hosted demo's sign-in page", () => {
   });
 });
 
+describe("what the tour says about sending", () => {
+  const text = (s: (typeof CHALLENGE_STEPS)[number]) => renderToStaticMarkup(<>{s.body}</>) + " " + (s.lookFor ?? []).join(" ");
+  it("never says the system sends on its own: it drafts, a person approves, and nothing reaches a phone", () => {
+    const remind = text(CHALLENGE_STEPS.find((s) => s.id === "remind")!);
+    expect(remind).toMatch(/case owner approves or rejects each one/i);
+    expect(remind).toMatch(/nothing is sent automatically/i);
+    expect(remind).toMatch(/nothing reaches a phone/i);
+    expect(remind).toMatch(/labelled as AI/i);
+    for (const s of [...CHALLENGE_STEPS]) {
+      expect(text(s), s.id).not.toMatch(/sends on its own|sent itself|went out on its own|automatic marker/i);
+    }
+  });
+  it("matches the deck and the form: the hosted seed switches the demo approval off, so the policy stays unsigned", () => {
+    const env = readFileSync("../deploy/gcp/vm/render_env.py", "utf8");
+    expect(env).toMatch(/"OUTREACH_DEMO_APPROVAL": "0"/);
+  });
+});
+
 describe("the five-step tour", () => {
   it("is the challenge owner's loop, deep-linked into the real screens, with try-it prompts", () => {
     expect(CHALLENGE_STEPS.map((s) => s.id)).toEqual(["record", "prioritise", "refer", "remind", "outcome", "safety", "watchdog", "privacy"]);
