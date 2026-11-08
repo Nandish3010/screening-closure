@@ -6,10 +6,10 @@ import "@fontsource/noto-sans-arabic/arabic-700.css";
 import App from "./App";
 import { AppProvider, DEFAULT_NAMES, readRole } from "./app/AppContext";
 import { ROLE_PROVIDERS } from "./api/identities";
-import { createClientFromEnv } from "./api";
+import { createClientFromEnv } from "./api/client";
 import "./styles.css";
 
-const api = createClientFromEnv();
+const api = await createClientFromEnv();
 
 // Log in as the remembered (or default) role BEFORE the first render so the first requests carry a token.
 // If the backend is down or has no auth, render anyway: pages show their own errors.
@@ -35,7 +35,8 @@ void ready.then(() => {
 });
 
 if ("serviceWorker" in navigator && import.meta.env.PROD) {
-  window.addEventListener("load", () => {
-    navigator.serviceWorker.register("/sw.js").catch(() => undefined);
-  });
+  // The module now awaits before it gets here (top-level await), so `load` may already have fired: register at once in that case.
+  const register = () => void navigator.serviceWorker.register("/sw.js").catch(() => undefined);
+  if (document.readyState === "complete") register();
+  else window.addEventListener("load", register);
 }

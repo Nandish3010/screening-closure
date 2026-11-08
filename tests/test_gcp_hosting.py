@@ -485,3 +485,14 @@ def test_a_failed_reset_has_a_recovery_script_that_only_starts_the_stack():
     assert "docker compose up -d" in code and "down" not in code and "--build" not in code and "rm " not in code
     watch = (REPO_ROOT / "deploy/gcp/vm/demo-reset-watch.sh").read_text()
     assert "trap 'on_reset_failure $LINENO' ERR" in watch and "demo-recover.sh" in watch and "last_reset_error" in watch
+
+
+def test_edge_caches_hashed_assets_forever_and_revalidates_the_shell():
+    t = (GCP / "edge/nginx.conf.template").read_text()
+    assets = t[t.index("    location /assets/ {"):]
+    assets = assets[:assets.index("\n    }")]
+    assert "immutable" in assets and "max-age=31536000" in assets and "try_files $uri =404" in assets
+    shell = t[t.index("    location / {"):]
+    shell = shell[:shell.index("\n    }")]
+    assert 'add_header Cache-Control "no-cache"' in shell  # index.html is revalidated, so a deploy reaches the next load
+    assert "encode" in (GCP / "edge/Caddyfile").read_text()  # compression stays on at the edge

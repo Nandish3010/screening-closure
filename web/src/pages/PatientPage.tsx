@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
 import { Link, useParams } from "react-router-dom";
 import { useApp } from "../app/AppContext";
 import type { AccessLog, CaseDetail, ConsentChanges, Lang } from "../api/contract";
-import { DEMO_PATIENT_CASE_ID } from "../api/fixtures";
+import { DEMO_PATIENT_CASE_ID } from "../api/demoIds";
 import { DIR, STRINGS, roleLabel } from "../i18n/strings";
 import { consentOf, hasCallbackPending, patientLang, patientOwnerOf } from "../lib/derive";
 import {
