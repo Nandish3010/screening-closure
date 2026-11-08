@@ -436,6 +436,24 @@ def test_t_a65_the_org_chart_is_one_supervisor_five_heads_fourteen_executioners(
     assert org["last_run"]["status"] == "done"
 
 
+def test_t_a65_the_org_totals_are_the_real_ledger_and_zero_before_any_run(cohort):
+    sup = login_headers(client, "supervisor")
+    empty = client.get("/agency/org", headers=sup).json()["totals"]
+    assert empty["runs"] == 0 and empty["tasks"] == 0 and sum(empty["counts"].values()) == 0
+    assert empty["last_run_at"] is None and "reset" in empty["scope"] and "none of it is a decision" in empty["scope"]
+    s = runner.run_agency(trigger="manual")
+    org = client.get("/agency/org", headers=sup).json()
+    t = org["totals"]
+    rows = [x for x in client.get("/agency/tasks", headers=sup).json()
+            if x["agent_type"] != "department_head" and x["department"] != "supervisor"]
+    assert t["runs"] == 1 and t["tasks"] == len(rows) > 0 and sum(t["counts"].values()) == t["tasks"]
+    assert t["counts"]["needs_human"] == sum(x["status"] == "needs_human" for x in rows) > 0
+    assert t["cases_touched"] == len({x["case_id"] for x in rows if x["case_id"]})
+    assert t["first_run_at"] == t["last_run_at"] == s["sim_at"]
+    # the departments' own counts add up to the same total: one definition on the whole page
+    assert sum(sum(d["counts"].values()) for d in org["departments"]) == t["tasks"]
+
+
 def test_t_a65_tasks_filter_and_runs_summarise(cohort):
     s = runner.run_agency(trigger="manual")
     sup = login_headers(client, "supervisor")

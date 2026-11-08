@@ -452,11 +452,18 @@ export function orgOf(ledger: AgencyLedger): AgencyOrg {
       counts: countsOf(own),
     };
   });
+  const work = ledger.tasks.filter((t) => AGENCY_DEPARTMENTS.includes(t.department as never) && t.agent_type !== "department_head");
+  const simTimes = ledger.runs.map((r) => r.sim_at).sort();
   return {
     supervisor: { actor: actorOf("supervisor"), agent_type: "supervisor", tools: ["read_active_cases", "read_metrics", "read_alerts", "read_ledger"] },
     departments,
     last_run: ledger.runs[0] ? withCounts(ledger.runs[0], ledger) : null,
     principle: AGENCY_PRINCIPLE,
+    totals: {
+      runs: ledger.runs.length, tasks: work.length, counts: countsOf(work), cases_touched: new Set(work.map((t) => t.case_id).filter(Boolean)).size,
+      first_run_at: simTimes[0] ?? null, last_run_at: simTimes[simTimes.length - 1] ?? null,
+      scope: "Every agent task recorded on this demo since it was last reset, on synthetic cases at simulated time. Agents prepare work and stop; none of it is a decision.",
+    },
   };
 }
 

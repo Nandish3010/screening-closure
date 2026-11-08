@@ -584,7 +584,9 @@ p.banner-ok[data-testid$="-empty"], .today-clear { background: var(--ok-bg); col
 .effort-bar-base > i { background: transparent; border: 2px solid var(--muted); }
 .effort-bar-num { font-weight: 700; font-variant-numeric: tabular-nums; }
 @media (max-width: 480px) { .effort-row { grid-template-columns: 1fr; gap: var(--s-1); } }
-.effort-headline .kpi-value { font-size: 2.75rem; color: var(--brand); }
+.effort-headline .kpi-value { font-size: 1.5rem; color: var(--muted); }
+.effort-programme-block h3, .effort-demo-block h3 { font-size: var(--fs-md); margin: var(--s-2) 0 var(--s-1); }
+.effort-demo-block { border-top: 1px solid var(--border); margin-top: var(--s-3); padding-top: var(--s-2); }
 
 /* Funnel: each step's bar is a hatched-end bar with its share printed beside it. */
 .funnel-bar { height: 12px; border-radius: 6px; background: color-mix(in srgb, var(--chart-track) 60%, transparent); }

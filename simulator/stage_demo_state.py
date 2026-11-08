@@ -20,6 +20,12 @@ Two phases, because a case can only be overdue if the clock passes its due date,
   --phase rest      AFTER `create_chronic_cases.py`: a case with a PENDING AI DRAFT for the case owner to review (the recorded
                     Claude output, replay only, never sent), a case at the clinician's sign-off, and a case CLOSED with a documented
                     outcome, so the funnel's last step is not empty.
+                    It also stages the TOUR POOL (see TOUR_POOL): a few more cases brought to the states the guided tour's steps need
+                    (a patient asked for a call-back: the coordinator's own work; reached by phone, for "remind" and "refer"; the
+                    colonoscopy recorded, for "outcome"), so many judges can walk the tour in one day without the pool running out.
+                    Last, ONE agency run (`POST /agency/run` as the supervisor, the same call as `make agency-run`): the agents'
+                    tasks on the cases as they stand, so the Agency page shows real work from the first visit. The stack's scheduler
+                    never starts a run by itself (AGENCY_EVERY_SWEEPS=0, so the snapshot stays deterministic).
   --phase all       both (the first refuses on a database that already has cases, the second still runs).
 
 What it never does (the product rules hold): it approves no draft, so no message goes to a patient (the hosted outreach policy stays
@@ -75,7 +81,15 @@ STEPS = ["accept_ownership", "hand_off", "contact_patient", "patient_acknowledge
          "clinician_review", "close"]
 FIRST_STEP = {"acknowledged": 0, "owner_accepted": 1, "patient_contacted": 3, "patient_acknowledged": 4, "confirmatory_booked": 5,
               "confirmatory_completed": 6, "clinician_reviewed": 7, "closed": len(STEPS)}
-TARGET_INDEX = {"confirmatory_completed": 6, "closed": len(STEPS)}  # steps to run: STEPS[FIRST:TARGET]
+TARGET_INDEX = {"patient_contacted": 3, "confirmatory_completed": 6, "closed": len(STEPS)}  # steps to run: STEPS[FIRST:TARGET]
+
+# The tour pool (the guided tour, `GET /demo/guide`, hands each judge session an untouched case per step; a case a judge acts on is
+# used up until the daily reset). The cohort is small (22 positive results), so the pool is a share of it, not 10 per step:
+# these cases are staged in the states the steps ask for, AND the API gives any case that still fits a step once the untouched
+# ones are gone (api/app/demo_controls.py, `fresh: false`). Counts are the most each state gets; MIN_UNTOUCHED rows are always
+# left alone for "record" and "prioritise", so on a small cohort the pool shrinks first.
+TOUR_POOL = {"callback": 2, "contacted": 4, "completed": 3}
+MIN_UNTOUCHED = 6
 
 
 class StageError(RuntimeError):
@@ -339,6 +353,64 @@ class Stager:
         origin = "a recorded Claude output" if d.get("provider") == "anthropic" and not d.get("fallback_used") else f"provider {d.get('provider')!r}, fallback={d.get('fallback_used')}"
         return self._note("draft", f"case {case_id[:8]} has a draft ({origin}) waiting for the owner to approve or reject; nothing is sent")
 
+    # ---- the tour pool and the agency run -------------------------------------------------------------------------------
+    def pool_rows(self) -> dict[str, list[int]]:
+        """Manifest rows for each tour-pool state: rows not used above (0 and 1 stay for the local demo), taken from the END of
+        the manifest so the early rows stay untouched, and never more than leaves MIN_UNTOUCHED rows alone. Deterministic."""
+        reserved = {0, 1, ROW_OVERDUE, ROW_CLOSED, ROW_DRAFT, self.signoff_row()}
+        free = [i for i in range(len(self.rows)) if i not in reserved]
+        room = max(0, len(free) - MIN_UNTOUCHED)
+        out: dict[str, list[int]] = {}
+        taken = 0
+        for name in ("callback", "contacted", "completed"):  # the order is the priority when the cohort is small
+            n = min(TOUR_POOL[name], max(0, room - taken))
+            out[name] = [free[-1 - (taken + k)] for k in range(n)]
+            taken += n
+        return out
+
+    def stage_callbacks(self, rows: list[int]) -> str:
+        """The patient asks for a call-back (their own button in the patient app); the case needs a person to phone them, which the
+        coordinator may do (EVENT_POLICY: contact_patient). The owner has accepted the case first, so the call is a step the case allows."""
+        done = []
+        for row in rows:
+            case_id, ref, _ = self.ensure_case(row)
+            if self.case(case_id)["state"] == "acknowledged":
+                self.event(self.assigned_owner(case_id), case_id, "accept_ownership")
+            if self.case(case_id)["state"] == "owner_accepted":
+                self.event(("patient", "demo patient", None), case_id, "callback_requested",
+                           {"reason": "wants_to_speak_to_clinician", "lang": "ar"}, patient_ref=ref)
+            done.append(case_id[:8])
+        return self._note("callbacks", f"{len(done)} case(s) with a patient's call-back request for the coordinator: {', '.join(done) or 'none'}")
+
+    def stage_to(self, rows: list[int], target: str, note: str) -> str:
+        reached = []
+        for row in rows:
+            case_id, ref, _ = self.ensure_case(row)
+            state = self.walk(case_id, ref, target, via_specialist=False)
+            if state != target:
+                raise StageError(f"case {case_id[:8]} is at {state!r}, not {target!r}")
+            reached.append(case_id[:8])
+        return self._note(note, f"{len(reached)} case(s) at {target!r} for the tour: {', '.join(reached) or 'none'}")
+
+    def stage_tour_pool(self) -> dict[str, list[int]]:
+        pool = self.pool_rows()
+        self.stage_callbacks(pool["callback"])
+        self.stage_to(pool["contacted"], "patient_contacted", "pool_contacted")
+        self.stage_to(pool["completed"], "confirmatory_completed", "pool_completed")
+        return pool
+
+    def stage_agency(self) -> str:
+        """One agency run at the current simulated time, as the supervisor: the agents prepare work on the cases as they now stand and
+        stop (they write no case event as the agency; a draft they cause goes through the drafting route and waits for the owner).
+        The same call as `make agency-run`. A second call at the same simulated time returns the same run."""
+        out = self.call(SUPERVISOR, "POST", "/agency/run")
+        counts = out.get("counts", {})
+        by = counts.get("by_status", {})
+        if out.get("status") not in ("done", "budget_exhausted") or not counts.get("total"):
+            raise StageError(f"the agency run did not produce work: {json.dumps({k: out.get(k) for k in ('status', 'counts')})[:300]}")
+        return self._note("agency", f"run {str(out.get('run_id'))[:8]} is {out['status']}: {counts['total']} task(s), "
+                                    f"{by.get('done', 0)} done, {by.get('needs_human', 0)} waiting for a person, {by.get('failed', 0)} failed")
+
     def check_urgent_chronic(self) -> str:
         r = self.client.get(f"{self.api}/cases", params={"limit": 100, "pathway": "chronic_conditions"},
                             headers={"Authorization": f"Bearer {self.login(COORDINATOR)['token']}"})
@@ -380,7 +452,9 @@ def main(argv: list[str] | None = None) -> int:
                 stager.stage_draft()
                 stager.stage_signoff()
                 stager.stage_closed()
+                stager.stage_tour_pool()
                 stager.check_urgent_chronic()
+                stager.stage_agency()  # last: the agents read the cases as staged
         except (StageError, httpx.HTTPError, KeyError) as exc:
             log.error("FAILED: %s: %s", type(exc).__name__, exc)
             return 1

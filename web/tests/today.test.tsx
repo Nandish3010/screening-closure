@@ -87,7 +87,7 @@ describe("words and rules", () => {
     expect(actionState("accept_escalation", "supervisor", esc).allowed).toBe(true);
     const denied = actionState("accept_escalation", "coordinator", esc);
     expect(denied).toMatchObject({ allowed: false });
-    expect(denied.why).toBe("Only a supervisor can accept this rung.");
+    expect(denied.why).toBe("This rung is for a supervisor to accept. You track the case: open it to see what is waiting.");
     expect(actionState("take_ownership", "coordinator", item()).allowed).toBe(false);
     expect(actionState("take_ownership", "supervisor", item()).allowed).toBe(true);
     expect(actionState("take_ownership", "owner", item()).allowed).toBe(true);
@@ -236,7 +236,7 @@ describe("one-click actions", () => {
     page(withToday(createMockAdapter(null), async () => response([...empty().filter((g) => g.group !== "escalations"), group("escalations", [supOnly])])), "coordinator");
     const btn = (await screen.findByTestId("today-accept_escalation")) as HTMLButtonElement;
     expect(btn.disabled).toBe(true);
-    expect(screen.getByTestId("today-accept_escalation-why").textContent).toBe("Only a supervisor can accept this rung.");
+    expect(screen.getByTestId("today-accept_escalation-why").textContent).toBe("This rung is for a supervisor to accept. You track the case: open it to see what is waiting.");
     expect(btn.getAttribute("aria-describedby")).toBe(screen.getByTestId("today-accept_escalation-why").id);
   });
 
@@ -245,7 +245,7 @@ describe("one-click actions", () => {
     const mk = () => withToday(createMockAdapter(null), async () => response([...empty().filter((g) => g.group !== "flagged"), group("flagged", [flagged])]));
     const { unmount } = page(mk(), "coordinator");
     expect(((await screen.findByTestId("today-take_ownership")) as HTMLButtonElement).disabled).toBe(true);
-    expect(screen.getByTestId("today-take_ownership-why").textContent).toContain("Only the case-owner clinician or a supervisor");
+    expect(screen.getByTestId("today-take_ownership-why").textContent).toContain("The case-owner physician takes this one; a coordinator tracks and chases");
     unmount();
     page(mk(), "supervisor");
     expect(((await screen.findByTestId("today-take_ownership")) as HTMLButtonElement).disabled).toBe(false);
@@ -340,5 +340,37 @@ describe("http adapter", () => {
     await api.getToday({ limit: 10, cursor: "c1", agencyCursor: "a1", groups: ["overdue", "flagged"] });
     await api.getToday();
     expect(calls).toEqual(["http://api.test/today?limit=10&cursor=c1&agency_cursor=a1&group=overdue&group=flagged", "http://api.test/today"]);
+  });
+});
+
+
+describe("Today for the coordinator: the role is told what it does, and has work it can do", () => {
+  it("shows the coordinator's own line (you track; the physician decides) and nobody else's", async () => {
+    const mk = () => withToday(createMockAdapter(null), async () => response(empty()));
+    const { unmount } = page(mk(), "coordinator");
+    const note = await screen.findByTestId("today-coordinator-note");
+    expect(note).toHaveTextContent(/you track and chase; the physician decides/i);
+    expect(note).toHaveTextContent(/phone patients back/i);
+    unmount();
+    page(mk(), "supervisor");
+    await screen.findByTestId("today-summary");
+    expect(screen.queryByTestId("today-coordinator-note")).toBeNull();
+  });
+
+  it("a patient's call-back request is the coordinator's to answer: the button is enabled for them, with no 'only a supervisor' wall", async () => {
+    const cb = item({ why: { code: "callback_waiting", reason: "wants_to_speak_to_clinician" }, actions: ["record_callback", "open_case"], state: "owner_accepted" });
+    page(withToday(createMockAdapter(null), async () => response([...empty().filter((g) => g.group !== "replies"), group("replies", [cb])])), "coordinator");
+    const btn = (await screen.findByTestId("today-record_callback")) as HTMLButtonElement;
+    expect(btn.disabled).toBe(false);
+    expect(screen.queryByTestId("today-record_callback-why")).toBeNull();
+    expect(actionState("record_callback", "coordinator", cb).allowed).toBe(true);
+  });
+
+  it("every denial a coordinator can meet is worded as whose call it is, not as a refusal", () => {
+    const esc = item({ escalation: { rung: "supervisor", level: 2, target: "supervisor", accepted_by: ["supervisor"], milestone: null, at: null } });
+    for (const why of [actionState("accept_escalation", "coordinator", esc).why, actionState("take_ownership", "coordinator", item()).why, actionState("record_callback", "patient" as never, item()).why]) {
+      expect(why).toBeTruthy();
+      expect(why).not.toMatch(/^Only |cannot do this|Your role cannot/i);
+    }
   });
 });
