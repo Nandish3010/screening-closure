@@ -304,7 +304,7 @@ def test_the_routes_return_the_same_body_as_the_replay(pg):
     same(eff["totals"], ref["totals"])
     same(eff["per_case"], ref["per_case"])
     assert eff["cases"] == ref["cases"] and eff["per_case_truncated"] is (ref["cases"] > 5)
-    assert set(eff) == {"sim_time", "cases", "totals", "per_case", "per_case_truncated", "replay_failures", "assumptions"}
+    assert set(eff) == {"sim_time", "cases", "totals", "per_case", "per_case_truncated", "replay_failures", "scope", "assumptions"}
 
 
 def test_a_route_call_that_runs_out_of_budget_says_how_far_behind_it_is(pg, monkeypatch):
