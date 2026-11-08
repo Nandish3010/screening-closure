@@ -17,7 +17,7 @@ The table below is generated, not typed: `make evaluation-counts` lists the test
 | API against a real Postgres (integration; each skips itself if Postgres is down) | 328 | `make test-db` |
 | Model check of the state machine (exhaustive search, not a list of tests; state counts in [verification.md](../governance/verification.md)) | n/a | `make verify` (full), `make verify-quick` (a labelled slice) |
 | Security and RBAC matrix (pytest part); the RBAC matrix probes 1,167 role, route and scope combinations | 73 | `make test-security` |
-| Tools (demo, video, pilot cost model, AI-safety, reviews, calibration, repository checks) | 382 | `make test-tools` |
+| Tools (demo, video, pilot cost model, AI-safety, reviews, calibration, repository checks) | 383 | `make test-tools` |
 | Red team (abuse, injection, authorisation; includes known-limitation xfails) | 981 | `make test-redteam` |
 | Web unit and component (vitest) (counted by running the suite: vitest cannot list parameterised tests) | 680 | `make web-test` |
 | Web browser (Playwright, including the accessibility audit) | 94 | `make web-e2e` |
