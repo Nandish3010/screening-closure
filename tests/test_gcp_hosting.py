@@ -66,6 +66,17 @@ def test_seed_mode_is_dev_and_never_production(monkeypatch):
     assert files["api.env"]["APP_ENV"] == "dev" and files["compose.env"]["CLOCK_MODE"] == "sim"
 
 
+def test_judging_mode_is_off_by_default_and_rendered_only_when_asked(monkeypatch):
+    off = render_env.build_files(HOST, SECRETS, "production")
+    on = render_env.build_files(HOST, SECRETS, "production", judging_mode=True)
+    assert off["api.env"]["SC_JUDGING_MODE"] == "0" and on["api.env"]["SC_JUDGING_MODE"] == "1"
+    assert "SC_JUDGING_MODE" not in render_env.build_files(HOST, SECRETS, "seed")["api.env"]  # the seed phase has no judges
+    assert _settings_from(on, monkeypatch).sc_judging_mode is True
+    assert _settings_from(off, monkeypatch).sc_judging_mode is False
+    up = (REPO_ROOT / "deploy/gcp/vm/sc-up.sh").read_text()
+    assert "/var/lib/sc/judging_mode" in up and "--judging-mode" in up
+
+
 def test_llm_is_replay_only_with_a_zero_spend_cap_and_no_key():
     f = render_env.build_files(HOST, SECRETS)
     c = f["compose.env"]
@@ -435,3 +446,53 @@ def test_api_restart_leaves_a_note_for_the_demo_health_block(tmp_path):
     (tmp_path / "b").mkdir()
     r, restarted, _ = _run_restart(tmp_path / "b", "gate", anon_mib=760, extra_env={"DEMO_CONTROL_DIR": str(tmp_path / "nope")})
     assert r.returncode == 0 and restarted
+
+
+# ---- reliability review (8 Nov 2026): log rotation, memory caps, healthchecks, reset recovery -----------------------------------
+
+def _overlay():
+    import yaml
+
+    return yaml.safe_load((REPO_ROOT / "deploy/gcp/compose.gcp.yml").read_text())
+
+
+def test_every_service_rotates_its_logs_so_the_disk_cannot_fill():
+    services = _overlay()["services"]
+    assert services, "no services"
+    for name, svc in services.items():
+        log = svc.get("logging") or {}
+        assert log.get("driver") == "json-file", name
+        opts = log.get("options") or {}
+        assert opts.get("max-size") == "10m" and int(opts.get("max-file")) >= 2, name
+
+
+def test_memory_and_cpu_caps_for_the_four_gigabyte_vm():
+    services = _overlay()["services"]
+    assert services["api"]["environment"]["MALLOC_ARENA_MAX"] == "2"
+    assert float(services["triage-llama"]["cpus"]) <= 1.0  # one of the two vCPUs stays for sign-in, HAPI and the API
+    assert services["api"]["mem_limit"] == "1024m"  # the BUG-77 restart gate's 70% is computed from it
+
+
+def test_the_edge_has_a_healthcheck_on_its_own_health_path():
+    web = _overlay()["services"]["web"]
+    assert "http://127.0.0.1:8080/healthz" in web["healthcheck"]["test"]
+    assert 'location = /healthz' in (REPO_ROOT / "deploy/gcp/edge/nginx.conf.template").read_text()
+
+
+def test_a_failed_reset_has_a_recovery_script_that_only_starts_the_stack():
+    rec = (REPO_ROOT / "deploy/gcp/vm/demo-recover.sh").read_text()
+    code = "\n".join(l for l in rec.splitlines() if not l.lstrip().startswith("#"))
+    assert "docker compose up -d" in code and "down" not in code and "--build" not in code and "rm " not in code
+    watch = (REPO_ROOT / "deploy/gcp/vm/demo-reset-watch.sh").read_text()
+    assert "trap 'on_reset_failure $LINENO' ERR" in watch and "demo-recover.sh" in watch and "last_reset_error" in watch
+
+
+def test_edge_caches_hashed_assets_forever_and_revalidates_the_shell():
+    t = (GCP / "edge/nginx.conf.template").read_text()
+    assets = t[t.index("    location /assets/ {"):]
+    assets = assets[:assets.index("\n    }")]
+    assert "immutable" in assets and "max-age=31536000" in assets and "try_files $uri =404" in assets
+    shell = t[t.index("    location / {"):]
+    shell = shell[:shell.index("\n    }")]
+    assert 'add_header Cache-Control "no-cache"' in shell  # index.html is revalidated, so a deploy reaches the next load
+    assert "encode" in (GCP / "edge/Caddyfile").read_text()  # compression stays on at the edge

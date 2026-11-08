@@ -1,7 +1,7 @@
 import type { ApiClient } from "./contract";
 import { createHttpAdapter } from "./httpAdapter";
+import { createHttpClientFromEnv } from "./client";
 import { createMockAdapter } from "./mockAdapter";
-import { createOidcClient } from "./oidc";
 
 export * from "./contract";
 export { createMockAdapter, createHttpAdapter };
@@ -85,27 +85,8 @@ export function mockDemoFromEnv(search: string = typeof location === "undefined"
   }
 }
 
-/** localStorage where the browser allows it (private windows and blocked site data can throw), else nothing: the session then stays per tab. */
-function safeLocalStorage(): Storage | undefined {
-  try {
-    return localStorage;
-  } catch {
-    return undefined;
-  }
-}
-
-/** Chosen at build time by VITE_API_ADAPTER=mock|http (default mock). */
+/** Chosen at build time by VITE_API_ADAPTER=mock|http (default mock). The app itself boots through ./client, which keeps the mock out of http builds. */
 export function createClientFromEnv(): ApiClient {
-  const env = import.meta.env;
-  if (env.VITE_API_ADAPTER === "http") {
-    const url = env.VITE_API_URL || "http://localhost:8000";
-    if (env.VITE_AUTH_MODE !== "oidc") return createHttpAdapter(url);
-    const oidc = createOidcClient({
-      issuer: env.VITE_OIDC_ISSUER || "http://localhost:8180/realms/screening-closure",
-      clientId: env.VITE_OIDC_CLIENT_ID || "screening-closure-web",
-      redirectUri: `${location.origin}/`,
-    }, { persist: safeLocalStorage() });
-    return createHttpAdapter(url, (...a) => fetch(...a), { oidc });
-  }
+  if (import.meta.env.VITE_API_ADAPTER === "http") return createHttpClientFromEnv();
   return createMockAdapter(undefined, { automation: mockAutomationFromEnv(), secondPathway: mockSecondPathwayFromEnv(), thirdPathway: mockThirdPathwayFromEnv(), demo: mockDemoFromEnv() });
 }

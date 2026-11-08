@@ -122,7 +122,7 @@ test("dashboard: the human-effort card shows the reduction against the 40% targe
   const card = page.getByTestId("effort-card");
   await expect(card).toContainText("Human effort");
   await expect(page.getByTestId("effort-reduction")).toContainText("%");
-  await expect(page.getByTestId("effort-target")).toContainText("Target: 40%");
+  await expect(page.getByTestId("effort-programme")).toContainText("40% target is not met");
   await expect(page.getByTestId("effort-target-status")).toBeVisible();
   await expect(page.getByTestId("effort-total-automated")).not.toHaveText("0");
   await expect(page.getByTestId("effort-caveat")).toContainText("Assumed minutes, not measured");

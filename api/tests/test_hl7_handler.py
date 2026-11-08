@@ -10,7 +10,7 @@ from datetime import UTC, datetime
 import pytest
 
 from api_helpers import actor_of
-from app import confirmatory, policy
+from app import automation, confirmatory, policy
 from app.clock import clock
 from app.events import CASE_CREATED, Event, InMemoryEventStore
 from app.hl7 import contacts, handler
@@ -231,6 +231,21 @@ def test_a_complete_colonoscopy_is_recorded_through_the_confirmatory_recorder(re
     assert recorder.completeness == ["complete"]
     assert recorder.calls[0][0] == case_id and recorder.calls[0][1] == f"Patient/{PATIENT}"
     assert len(cases.store.events_for(case_id)) == 6  # it appended nothing: closing is still a person's act
+
+
+def test_a_recorded_colonoscopy_makes_the_evidence_scan_ask_again(recorder):
+    """The seed race, HL7 path: a "no" the scan cached before the report arrived must not hide the case afterwards."""
+    case_id = make_case(upto="confirmatory_booked")
+    automation.evidence_negatives.clear()
+    automation.evidence_negatives.remember(case_id, clock.now())
+    assert automation.evidence_negatives.fresh(case_id, clock.now())
+    assert ack_of(colonoscopy("C1", "complete"))[0] == "AA"
+    assert not automation.evidence_negatives.fresh(case_id, clock.now())
+    # a rejected report records nothing, so it forgets nothing
+    automation.evidence_negatives.remember(case_id, clock.now())
+    assert ack_of(colonoscopy("C2", "mostly"))[0] == "AE"
+    assert automation.evidence_negatives.fresh(case_id, clock.now())
+    automation.evidence_negatives.clear()
 
 
 def test_an_incomplete_colonoscopy_is_recorded_as_incomplete_never_as_complete(recorder):

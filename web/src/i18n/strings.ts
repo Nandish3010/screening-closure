@@ -1,4 +1,3 @@
-import { PROGRAMME_LABOUR } from "../lib/programmeFigures";
 /**
  * Patient-facing strings, English and Arabic. Grade-6 reading level: short, plain sentences.
  *
@@ -624,8 +623,8 @@ export const STAFF = {
     label: "Effort on this case",
     human: "Human actions",
     automated: "Automated actions",
-    share: "Automation share",
-    saved: "Estimated minutes saved",
+    share: "System share of this case's logged actions",
+    saved: "Minutes the system took over",
     assumed: "assumed minutes, not measured",
     summary: (human: number, automated: number) => `Human actions ${human} / Automated actions ${automated}`,
   },
@@ -664,21 +663,25 @@ export const STAFF = {
   },
   effortCard: {
     heading: "Human effort",
-    intro: "How much routine work the system now does so that people act only at final decisions.",
-    reduction: "Reduction in human time",
-    target: "Target",
+    intro: "Two different measures, kept apart. The first is the result; the second is arithmetic on this demo's own cases.",
+    programmeHeading: "Programme result: simulation on synthetic data",
+    programmeVerdict: (runs: number, cases: number) => `The 40% target is not met. Simulated, not measured on patients (${runs} runs of ${cases} cases).`,
+    demoHeading: (cases: number | null) => `Demo cases only${cases !== null ? ` (${cases})` : ""}: arithmetic on the event log, not a result`,
+    reduction: "of the logged staff minutes were done by the system",
+    reductionDefinition: "Of the staff minutes logged on these demo cases so far (assumed minutes per action), the share the system took over. Only the steps already taken are counted, so the human-heavy later steps are not in it yet.",
+    shareDefinition: "System share of logged actions: automated actions as a share of all logged staff and automated actions. A count of actions, not of minutes or labour.",
     sampleLabel: "Demo cases, assumed minutes: not a programme result",
-    programme: `Programme estimate (simulation, synthetic): ${PROGRAMME_LABOUR.inReachPct}% fewer staff minutes per handled case and ${PROGRAMME_LABOUR.programmePct}% across the programme; the ${PROGRAMME_LABOUR.targetPct}% target is not met in realistic scenarios.`,
     notEnoughData: "Not enough data yet",
     noData: "No effort data yet.",
     humanActions: "Human actions",
     automatedActions: "Automated actions",
-    share: "Automation share",
-    minutes: "Human minutes / baseline minutes",
-    saved: "Minutes saved",
+    share: "System share of logged actions",
+    minutes: "Human minutes / minutes by hand (assumed)",
+    saved: "Minutes the system took over (assumed)",
     caveat: "Assumed minutes, not measured: the minutes behind these figures are estimates, not measurements.",
     unavailable: "Effort metrics are not available for this role or this server.",
   },
+
 } as const;
 
 /**
@@ -689,6 +692,8 @@ export const STAFF = {
 export const TODAY = {
   heading: "Today",
   intro: "What needs a person now, longest-waiting first. The system prepares the work and a person decides: nothing here closes a case.",
+  /** The coordinator's own line: what the role does here, said as work, so that disabled buttons read as "someone else's call" and not as a wall. */
+  coordinatorNote: "You track and chase; the physician decides. Your part: phone patients back, record what they wrote, book and cancel appointments, escalate and reassign. Taking a case on, reviewing the evidence and signing a closure stay with the case-owner physician, and a supervisor accepts supervisor-level escalations.",
   fullWorklist: "Open the full worklist",
   jumpLabel: "Jump to a queue",
   filterLabel: "Filter the list",
@@ -742,9 +747,9 @@ export const TODAY = {
     record_callback: "Call-back recorded.",
   },
   denied: {
-    accept_escalation: (roles: string) => `Only ${roles} can accept this rung.`,
-    take_ownership: "Only the case-owner clinician or a supervisor can take ownership. You can open the case and see who owns it.",
-    contact: "Your role cannot record this.",
+    accept_escalation: (roles: string) => `This rung is for ${roles} to accept. You track the case: open it to see what is waiting.`,
+    take_ownership: "The case-owner physician takes this one; a coordinator tracks and chases. Open the case to see who owns it.",
+    contact: "Recording this call belongs to the coordinator, a supervisor or the case owner.",
   },
   signatureNote: "Only a physician signs. Open the case to review the evidence.",
   reasons: {

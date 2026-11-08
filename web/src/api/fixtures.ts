@@ -9,7 +9,8 @@ export const SIM_NOW = "2026-11-04T09:00:00.000Z";
 const DAY = 86_400_000;
 const at = (daysAgo: number) => new Date(new Date(SIM_NOW).getTime() - daysAgo * DAY).toISOString();
 
-export const DEMO_PATIENT_CASE_ID = "c0000007-0000-4000-8000-000000000007";
+import { DEMO_PATIENT_CASE_ID } from "./demoIds";
+export { DEMO_PATIENT_CASE_ID };
 /** Most overdue case: sits at confirmatory_completed, ready for escalate -> draft -> sign-off. */
 export const DEMO_OVERDUE_CASE_ID = "c0000001-0000-4000-8000-000000000001";
 

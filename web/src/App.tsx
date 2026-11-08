@@ -1,8 +1,8 @@
 import { Link, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { Header } from "./components/Header";
-import { CoordinatorPage } from "./pages/CoordinatorPage";
-import { TodayPage } from "./pages/TodayPage";
-import { CaseDetailPage } from "./pages/CaseDetailPage";
+const CoordinatorPage = lazy(() => import("./pages/CoordinatorPage").then((m) => ({ default: m.CoordinatorPage })));
+const TodayPage = lazy(() => import("./pages/TodayPage").then((m) => ({ default: m.TodayPage })));
+const CaseDetailPage = lazy(() => import("./pages/CaseDetailPage").then((m) => ({ default: m.CaseDetailPage })));
 const AgencyPage = lazy(() => import("./pages/AgencyPage").then((m) => ({ default: m.AgencyPage })));
 const JudgePage = lazy(() => import("./pages/JudgePage").then((m) => ({ default: m.JudgePage })));
 const SafetyPage = lazy(() => import("./pages/SafetyPage").then((m) => ({ default: m.SafetyPage })));
@@ -10,12 +10,12 @@ const IntegrationsPage = lazy(() => import("./pages/IntegrationsPage").then((m) 
 const PilotValuePage = lazy(() => import("./pages/PilotValuePage").then((m) => ({ default: m.PilotValuePage })));
 import { TourProvider } from "./judge/JudgeTour";
 const DashboardPage = lazy(() => import("./pages/DashboardPage").then((m) => ({ default: m.DashboardPage })));
-import { StartHerePage } from "./pages/StartHerePage";
-import { PreviewPage } from "./pages/PreviewPage";
+const StartHerePage = lazy(() => import("./pages/StartHerePage").then((m) => ({ default: m.StartHerePage })));
+const PreviewPage = lazy(() => import("./pages/PreviewPage").then((m) => ({ default: m.PreviewPage })));
 import { PhysicianLanding, PhysicianPage } from "./pages/PhysicianPage";
 const PatientPage = lazy(() => import("./pages/PatientPage").then((m) => ({ default: m.PatientPage })));
 const PatientHome = lazy(() => import("./pages/PatientPage").then((m) => ({ default: m.PatientHome })));
-import { DEMO_PATIENT_CASE_ID } from "./api/fixtures";
+import { DEMO_PATIENT_CASE_ID } from "./api/demoIds";
 import { Suspense, lazy, useEffect, useSyncExternalStore } from "react";
 import { SIGNIN_RETRY_MAX_MS, SignInNotice, signInIsWarming, signInRetryDelayMs, useDemoSignIn } from "./app/demoSignIn";
 import { isOwnerScoped, useApp } from "./app/AppContext";
@@ -23,14 +23,18 @@ import { DEMO_USERS, JUDGE_ROLES } from "./api/identities";
 import { DemoBanner, PrototypeStrip } from "./components/DemoBanner";
 import { BrandLockup } from "./components/Brand";
 
+const hostedBuild = () => String(import.meta.env?.VITE_HOSTED_DEMO ?? "") === "1";
+
 /** OIDC mode (A29): shown until someone has signed in at the identity provider. Demo users are listed to pre-fill the login form. */
 export function SignInPage({ error }: { error?: string | null }) {
   const { api, demoDeployment, healthKnown } = useApp();
   const oidc = api.oidc!;
   // Whether this is the hosted judge demo is only known once GET /health has answered: until then show a neutral loading state,
   // never the developer's "make oidc-up" page (it flashed up before the role cards).
-  if (!healthKnown) return <SignInLoading />;
-  if (demoDeployment) return <JudgeSignIn error={error} />;
+  // The hosted judge build (VITE_HOSTED_DEMO=1, set only by the GCP edge image) is the demo by construction, so its role cards are shown
+  // at once instead of after the /health round trip (about 1 s on a cold start); /health still decides for every other build.
+  if (!healthKnown && !hostedBuild()) return <SignInLoading />;
+  if (demoDeployment || (!healthKnown && hostedBuild())) return <JudgeSignIn error={error} />;
   return (
     <main className="container" id="main">
       <PrototypeStrip />
@@ -172,7 +176,7 @@ export default function App({ signInError = null }: { signInError?: string | nul
   );
   const { pathname } = useLocation();
   // The public preview (screenshots only, no API call) is reachable without signing in, and signed in too.
-  if (pathname === "/preview" || pathname.startsWith("/preview/")) return <PreviewPage />;
+  if (pathname === "/preview" || pathname.startsWith("/preview/")) return <Suspense fallback={<main className="container"><p role="status">Loading...</p></main>}><PreviewPage /></Suspense>;
   if (api.oidc && !signedIn) return <SignInPage error={signInError} />;
   // A patient only ever sees the patient app: a staff link opened as the patient goes to /patient instead of a dead end.
   if (api.oidc && roleKnown && role === "patient" && !pathname.startsWith("/patient")) return <Navigate to="/patient" replace />;

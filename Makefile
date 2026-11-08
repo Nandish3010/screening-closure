@@ -331,7 +331,7 @@ web-dev:
 	cd web && npm run dev
 
 web-build:
-	cd web && npm run build
+	cd web && npm run build && node scripts/bundle-budget.mjs
 
 web-test:
 	cd web && npm run typecheck && npm test

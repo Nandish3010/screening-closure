@@ -113,3 +113,56 @@ def test_the_scheduled_pass_records_when_the_timer_fired_even_when_it_skips(tmp_
     second.mkdir()
     resets, st, _ = run(second, "--scheduled", status={"last_reset_at": old})
     assert resets == 1 and st["last_scheduled_at"] and st["last_reset_at"] != old
+
+
+def run_failing(tmp_path, *args, request=None, status=None, recover_ok=True):
+    """The real reset fails (exit 3) half way. A stub of demo-recover.sh records that the stack was brought back."""
+    repo = tmp_path / "repo"
+    (repo / "deploy/gcp/vm").mkdir(parents=True, exist_ok=True)
+    stub = repo / "deploy/gcp/vm/demo-reset-on-vm.sh"
+    stub.write_text(f"#!/bin/bash\necho reset >> {tmp_path}/resets.log\nexit 3\n")
+    stub.chmod(0o755)
+    rec = repo / "deploy/gcp/vm/demo-recover.sh"
+    rec.write_text(f"#!/bin/bash\necho recovered >> {tmp_path}/recover.log\n{'' if recover_ok else 'exit 1'}\n")
+    rec.chmod(0o755)
+    ctl = tmp_path / "ctl"
+    ctl.mkdir(exist_ok=True)
+    if status is not None:
+        (ctl / "status.json").write_text(json.dumps(status))
+    if request is not None:
+        (ctl / "reset-request.json").write_text(json.dumps(request))
+    env = {**os.environ, "SC_REPO": str(repo), "DEMO_CONTROL_DIR": str(ctl), "DEMO_API_UID": str(os.getuid())}
+    out = subprocess.run(["bash", str(SCRIPT), *args], env=env, capture_output=True, text=True, timeout=60)
+    st = json.loads((ctl / "status.json").read_text()) if (ctl / "status.json").exists() else {}
+    recovered = (tmp_path / "recover.log").read_text().count("recovered") if (tmp_path / "recover.log").exists() else 0
+    return out, st, ctl, recovered
+
+
+def test_a_failed_reset_brings_the_stack_back_and_records_why(tmp_path):
+    before = "2026-11-08T05:00:00+00:00"
+    out, st, ctl, recovered = run_failing(tmp_path, request={"requested_at": "x", "requested_by": "Noura (supervisor)"},
+                                          status={"last_reset_at": before, "last_request_at": before})
+    assert out.returncode == 3 and "RESET FAILED" in out.stderr  # the failure is not swallowed
+    assert recovered == 1  # the stack that the reset stopped was started again
+    assert "manual reset by Noura (supervisor) failed (exit 3)" in st["last_reset_error"]
+    assert datetime.fromisoformat(st["last_reset_error_at"]) > datetime.now(UTC) - timedelta(minutes=2)
+    assert st["last_reset_at"] == before and st["last_request_at"] == before  # the failed reset is not recorded as a reset
+    assert not (ctl / ".lock").exists()  # and the lock is released for the next pass
+
+
+def test_a_failed_scheduled_reset_is_recorded_too_and_a_failed_recovery_does_not_hide_it(tmp_path):
+    old = (datetime.now(UTC) - timedelta(hours=7)).isoformat()
+    out, st, _, recovered = run_failing(tmp_path, "--scheduled", status={"last_reset_at": old}, recover_ok=False)
+    assert out.returncode == 3 and recovered == 1 and "recovery also failed" in out.stderr
+    assert "scheduled reset by the schedule failed" in st["last_reset_error"]
+
+
+def test_the_next_good_reset_clears_the_error(tmp_path):
+    resets, st, _ = run(tmp_path, request={"requested_at": "x", "requested_by": "Noura (supervisor)"},
+                        status={"last_reset_error": "manual reset by x failed (exit 3)", "last_reset_error_at": "2026-11-08T05:00:00+00:00"})
+    assert resets == 1 and not st["last_reset_error"] and not st["last_reset_error_at"]
+
+
+def test_a_failure_before_the_reset_starts_does_not_run_the_recovery(tmp_path):
+    out, st, _, recovered = run_failing(tmp_path)  # no request: nothing to reset, nothing to recover
+    assert out.returncode == 0 and recovered == 0 and "last_reset_error" not in st

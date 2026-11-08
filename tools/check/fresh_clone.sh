@@ -110,6 +110,9 @@ run_step "wait until the API and HAPI answer" "$CLONE" sh -c \
   "for i in \$(seq 1 90); do curl -fsS $API_URL/health >/dev/null 2>&1 && curl -fsS $FHIR_BASE_URL/metadata >/dev/null 2>&1 && exit 0; sleep 3; done; echo 'stack did not become healthy in 270 s'; exit 1"
 run_step "make demo-seed" "$CLONE" make demo-seed
 run_step "make evaluate" "$CLONE" make evaluate
+# Diagnosis aid: which committed result files did a clean `make evaluate` change? (Expected: only the git commit stamped into
+# results.json / results.md; tests/test_judge_headline.py tolerates that one field. Anything else is real drift: look here first.)
+run_step "diff of docs/results after a clean evaluate (informational)" "$CLONE" sh -c "git diff --stat -- docs/results web/src/judge; git diff -U0 -- docs/results/results.json | head -40; true"
 if [ "$SKIP_CHECK" -eq 0 ]; then
   run_step "make check" "$CLONE" make check
 fi

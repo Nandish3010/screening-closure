@@ -10,7 +10,8 @@ Four small pieces, none of which touches the state machine:
   per `demo_reset_min_interval_seconds`, and none while one is pending.
 * **Fresh cases** (`pick_cases`): the guided path gives each judge session a case nobody has touched since the last reset, in the
   state the step needs, and holds it for that session for `CLAIM_SECONDS`, so two judges walking the same step get different cases.
-  "Untouched" is a baseline of event counts taken once per reset (persisted next to the status), compared with the log now.
+  "Untouched" is a baseline of event counts taken once per reset (persisted next to the status), compared with the log now. When
+  no untouched case is left for a step, any open case that still fits it is given instead, marked `fresh: false`.
 * **Simulated missed follow-up** (`missed_followup`): moves the simulation clock just past a case's follow-up date and the
   supervisor rung, and runs the real sweep (and the watchdog's idle scan when the quiet stretch is long enough). Everything that
   appears on the case (overdue, the reminder, the supervisor escalation, a watchdog flag) is written by the engine's own paths
@@ -19,6 +20,7 @@ Four small pieces, none of which touches the state machine:
 
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 import os
@@ -115,8 +117,8 @@ def _next_scheduled(st: dict, hours: float, now: datetime, at_utc: str = "") -> 
 
 
 def status() -> dict:
-    """`{last_reset_at, last_reset_by, last_reset_reason, next_auto_reset_at, reset_pending, reset_id, last_api_restart_at,
-    last_api_restart_reason}` (nulls when unknown). Everything here is read from files the HOST writes (the API only writes the
+    """`{last_reset_at, last_reset_by, last_reset_reason, next_auto_reset_at, reset_pending, reset_id, last_reset_error,
+    last_reset_error_at, last_api_restart_at, last_api_restart_reason}` (nulls when unknown). Everything here is read from files the HOST writes (the API only writes the
     request file): `status.json` by demo-reset-watch.sh (and once by the seed, `--record-seed`), `api-restart.json` by
     sc-api-restart.sh when its memory gate restarts the API."""
     st = _read("status.json") or {}
@@ -130,6 +132,8 @@ def status() -> dict:
         "last_reset_reason": st.get("last_reset_reason"),
         "next_auto_reset_at": nxt,
         "reset_pending": req is not None,
+        "last_reset_error": _text(st.get("last_reset_error")),  # set by the host when a reset failed; cleared by the next good one
+        "last_reset_error_at": _text(st.get("last_reset_error_at"), 40),
         "reset_id": st.get("last_reset_at") or "initial",
         "last_api_restart_at": restarted.isoformat() if restarted else None,
         "last_api_restart_reason": _text(rs.get("reason")) if restarted else None,
@@ -148,6 +152,15 @@ def request_reset(identity: Identity) -> dict:
     if last is not None and (now - last).total_seconds() < wait:
         left = int(wait - (now - last).total_seconds())
         raise DemoError(429, f"The demo was reset a moment ago. Please wait {max(1, left // 60 + (1 if left % 60 else 0))} minute(s) before resetting again.")
+    if settings.sc_judging_mode:  # judging protection: manual resets only, one per window for ALL visitors (status.json is global)
+        asked = _parse(st.get("last_request_at"))
+        window = settings.sc_judging_reset_interval_seconds
+        if asked is not None and 0 <= (now - asked).total_seconds() < window:
+            left = int(window - (now - asked).total_seconds())
+            mins = max(1, left // 60 + (1 if left % 60 else 0))
+            raise DemoError(429, f"Judging is under way, so the demo can be reset by hand only once every {window // 60} minutes "
+                                 f"(it was last reset by hand {int((now - asked).total_seconds() // 60)} minute(s) ago). Please try again in about {mins} minute(s); "
+                                 "the demo also resets by itself every day at 03:00 Dubai time.")
     body = {"requested_at": now.isoformat(), "requested_by": f"{identity.name} ({identity.role})"}
     try:
         _write("reset-request.json", body)
@@ -169,6 +182,16 @@ def guard_advance(days: float) -> None:
     if days > ADVANCE_MAX_DAYS_PER_CALL:
         raise DemoError(422, f"On the hosted demo the clock moves at most {ADVANCE_MAX_DAYS_PER_CALL} days per click, so every judge keeps a "
                              f"usable demo. Advance by {ADVANCE_MAX_DAYS_PER_CALL} days or fewer.")
+    charge_clock(days)
+
+
+def charge_clock(days: float) -> None:
+    """Take `days` of simulated time from the rolling window budget (409 when it would overspend), or record nothing. Shared by every
+    way a visitor can move the shared clock: `POST /clock/advance` (guard_advance) and "Simulate a missed follow-up" (S10), so the
+    two cannot add up to more than ADVANCE_MAX_DAYS_PER_WINDOW between them. Recorded on accept."""
+    if days > ADVANCE_MAX_DAYS_PER_WINDOW:  # no wait would ever make room for it
+        raise DemoError(409, f"That would move the shared demo clock {days:.0f} days, more than the {ADVANCE_MAX_DAYS_PER_WINDOW} days "
+                             f"all judges together may move it in {ADVANCE_WINDOW_HOURS} hours. Pick a case that is due sooner.")
     now = _wall()
     rid = status()["reset_id"]
     with _lock:
@@ -188,7 +211,8 @@ def guard_advance(days: float) -> None:
             free_at = min((at for at, _ in entries), default=now) + timedelta(hours=ADVANCE_WINDOW_HOURS)
             mins = max(1, int((free_at - now).total_seconds() // 60) + 1)
             raise DemoError(409, f"The demo clock has already moved {used:g} of the {ADVANCE_MAX_DAYS_PER_WINDOW} days allowed every "
-                                 f"{ADVANCE_WINDOW_HOURS} hours (it is shared by all judges). Try again in about {mins} minute(s), or after the next demo reset.")
+                                 f"{ADVANCE_WINDOW_HOURS} hours (it is shared by all judges), and this would move it {days:g} more. "
+                                 f"Try again in about {mins} minute(s), or after the next demo reset.")
         entries.append((now, days))
         _advances[:] = entries
         _advances_rid[:] = [rid]
@@ -322,9 +346,12 @@ def pick_cases(session: str) -> dict[str, dict | None]:
                          and r["case_id"] not in used_here and not (r["case_id"] in mine and (session, step) not in _picks)]
                 # Most helpful first: nearest follow-up date, then the case id, so the choice is stable and spread by claims.
                 cands.sort(key=lambda r: (r.get("due_at") or "9999", r["case_id"]))
-                if not cands and step in ("prioritise", "privacy"):  # these read well on any open case, touched or not
+                if not cands:
+                    # No untouched case is left for this step: any open case that still FITS it (the same state test) is better than
+                    # none, because the step reads well on it (a touched case is where a judge before you left it, and the answer says
+                    # `fresh: false` so the tour says so). Spread by session so two judges do not land on the same one.
                     cands = [r for r in rows if want(r) and r["case_id"] not in used_here]
-                    cands.sort(key=lambda r: r["case_id"])
+                    cands.sort(key=lambda r: hashlib.sha256(f"{session}|{step}|{r['case_id']}".encode()).hexdigest())
                 chosen = cands[0] if cands else None
             if chosen is not None:
                 used_here.add(chosen["case_id"])
@@ -390,6 +417,7 @@ def missed_followup(case_id: UUID, who: str = "") -> dict:
     jump = (second - now).total_seconds() / 86400
     if jump > MAX_JUMP_DAYS:
         raise DemoError(409, f"This case's follow-up is {int(jump)} days away; that is too far to skip in one go. Pick a case that is due sooner.")
+    charge_clock(max(jump, 0.0))  # S10: the skip spends the same shared budget as "Advance"; 409 (nothing moved) when it would overspend
     before_events = row["_events"]
     before_level = row["escalation_level"]
     clock_from = clock.now()

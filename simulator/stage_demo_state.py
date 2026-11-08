@@ -20,6 +20,12 @@ Two phases, because a case can only be overdue if the clock passes its due date,
   --phase rest      AFTER `create_chronic_cases.py`: a case with a PENDING AI DRAFT for the case owner to review (the recorded
                     Claude output, replay only, never sent), a case at the clinician's sign-off, and a case CLOSED with a documented
                     outcome, so the funnel's last step is not empty.
+                    It also stages the TOUR POOL (see TOUR_POOL): a few more cases brought to the states the guided tour's steps need
+                    (a patient asked for a call-back: the coordinator's own work; reached by phone, for "remind" and "refer"; the
+                    colonoscopy recorded, for "outcome"), so many judges can walk the tour in one day without the pool running out.
+                    Last, ONE agency run (`POST /agency/run` as the supervisor, the same call as `make agency-run`): the agents'
+                    tasks on the cases as they stand, so the Agency page shows real work from the first visit. The stack's scheduler
+                    never starts a run by itself (AGENCY_EVERY_SWEEPS=0, so the snapshot stays deterministic).
   --phase all       both (the first refuses on a database that already has cases, the second still runs).
 
 What it never does (the product rules hold): it approves no draft, so no message goes to a patient (the hosted outreach policy stays
@@ -60,6 +66,7 @@ ROW_OVERDUE, ROW_CLOSED, ROW_DRAFT = 4, 6, 7
 # The sign-off case is chosen, not fixed: the first row from SIGNOFF_FROM_ROW whose registered provider is the PHYSICIAN's, so the
 # hosted "Physician" one-click login (Dr. Huda Rahman, Marina Digestive Health) OWNS it and its sign-off panel is hers.
 SIGNOFF_FROM_ROW = 8
+EVIDENCE_WAIT_SECONDS = 30  # the sign-off step waits this long for the evidence scan (it was 120 while a cached "no" could hide the case)
 PHYSICIAN = ("primary_care_owner", "Dr. Huda Rahman", "Marina Digestive Health")
 NAMESPACE = uuid.UUID("5b0c1a4e-7d3e-4a6f-9a51-2f0e8c7d9b10")  # for this script's event ids (never change: idempotency)
 
@@ -74,7 +81,15 @@ STEPS = ["accept_ownership", "hand_off", "contact_patient", "patient_acknowledge
          "clinician_review", "close"]
 FIRST_STEP = {"acknowledged": 0, "owner_accepted": 1, "patient_contacted": 3, "patient_acknowledged": 4, "confirmatory_booked": 5,
               "confirmatory_completed": 6, "clinician_reviewed": 7, "closed": len(STEPS)}
-TARGET_INDEX = {"confirmatory_completed": 6, "closed": len(STEPS)}  # steps to run: STEPS[FIRST:TARGET]
+TARGET_INDEX = {"patient_contacted": 3, "confirmatory_completed": 6, "closed": len(STEPS)}  # steps to run: STEPS[FIRST:TARGET]
+
+# The tour pool (the guided tour, `GET /demo/guide`, hands each judge session an untouched case per step; a case a judge acts on is
+# used up until the daily reset). The cohort is small (22 positive results), so the pool is a share of it, not 10 per step:
+# these cases are staged in the states the steps ask for, AND the API gives any case that still fits a step once the untouched
+# ones are gone (api/app/demo_controls.py, `fresh: false`). Counts are the most each state gets; MIN_UNTOUCHED rows are always
+# left alone for "record" and "prioritise", so on a small cohort the pool shrinks first.
+TOUR_POOL = {"callback": 2, "contacted": 4, "completed": 3}
+MIN_UNTOUCHED = 6
 
 
 class StageError(RuntimeError):
@@ -119,8 +134,10 @@ def escalation_waiting(case: dict) -> bool:
 
 
 class Stager:
-    def __init__(self, client: httpx.Client, api: str, rows: list[dict], sleep=time.sleep, poll_seconds: float = 2.0) -> None:
+    def __init__(self, client: httpx.Client, api: str, rows: list[dict], sleep=time.sleep, poll_seconds: float = 2.0,
+                 scan_token: str | None = None) -> None:
         self.client, self.api, self.rows = client, api, rows
+        self.scan_token = scan_token  # the automation service token, when the stager is given it (see trigger_evidence_scan)
         self.sleep, self.poll = sleep, poll_seconds
         self.tokens: dict[tuple, dict] = {}
         self.providers = create_cases.registration_providers()
@@ -143,6 +160,22 @@ class Stager:
         if r.status_code not in ok:
             raise StageError(f"{method} {path} as {who[0]} {who[1]!r}: HTTP {r.status_code} {r.text[:300]}")
         return r.json()
+
+    def trigger_evidence_scan(self) -> bool:
+        """Ask the API to run the evidence scan now (`POST /scheduler/evidence-scan`, open to the automation service token), so the
+        sign-off step does not depend on the scheduler's cadence. Idempotent (deterministic event ids). Needs the token (env
+        AUTOMATION_SERVICE_TOKEN); without it, or if the API refuses (404/403/409 fence), the scheduler's own loop does the scan
+        and the wait below simply polls. Never raises: it is a nudge, the wait is the check."""
+        if not self.scan_token:
+            return False
+        try:
+            r = self.client.post(f"{self.api}/scheduler/evidence-scan", headers={"Authorization": f"Bearer {self.scan_token}"})
+        except httpx.HTTPError as exc:
+            log.warning("evidence scan not triggered (%s); waiting for the scheduler's own", type(exc).__name__)
+            return False
+        if r.status_code != 200:
+            log.warning("evidence scan not triggered: HTTP %s; waiting for the scheduler's own", r.status_code)
+        return r.status_code == 200
 
     def event(self, who, case_id: str, type_: str, payload: dict | None = None, patient_ref: str | None = None):
         return self.call(who, "POST", f"/cases/{case_id}/events",
@@ -270,8 +303,11 @@ class Stager:
             if self.via_specialist:  # a specialist owns the case: complete_confirmatory is theirs to post
                 self.event(team, case_id, "complete_confirmatory", {"result_ref": out["evidence_ref"]})
             else:  # a primary-care owner may not post it: the scheduler's evidence scan finds the Procedure and completes the step
+                # The API forgets its remembered "no" when the result is recorded (automation.evidence_recorded), so one scan
+                # after the write finds it: ask for it once, then poll for at most EVIDENCE_WAIT_SECONDS.
+                self.trigger_evidence_scan()
                 self.wait_for("the evidence scan to complete the confirmatory step",
-                              lambda: self.case(case_id)["state"] != "confirmatory_booked", 120)
+                              lambda: self.case(case_id)["state"] != "confirmatory_booked", EVIDENCE_WAIT_SECONDS)
         elif step in ("clinician_review", "close"):
             signer = f"Practitioner/{self.login(team)['user_id']}"
             payload = {"signed_by": signer}
@@ -317,6 +353,64 @@ class Stager:
         origin = "a recorded Claude output" if d.get("provider") == "anthropic" and not d.get("fallback_used") else f"provider {d.get('provider')!r}, fallback={d.get('fallback_used')}"
         return self._note("draft", f"case {case_id[:8]} has a draft ({origin}) waiting for the owner to approve or reject; nothing is sent")
 
+    # ---- the tour pool and the agency run -------------------------------------------------------------------------------
+    def pool_rows(self) -> dict[str, list[int]]:
+        """Manifest rows for each tour-pool state: rows not used above (0 and 1 stay for the local demo), taken from the END of
+        the manifest so the early rows stay untouched, and never more than leaves MIN_UNTOUCHED rows alone. Deterministic."""
+        reserved = {0, 1, ROW_OVERDUE, ROW_CLOSED, ROW_DRAFT, self.signoff_row()}
+        free = [i for i in range(len(self.rows)) if i not in reserved]
+        room = max(0, len(free) - MIN_UNTOUCHED)
+        out: dict[str, list[int]] = {}
+        taken = 0
+        for name in ("callback", "contacted", "completed"):  # the order is the priority when the cohort is small
+            n = min(TOUR_POOL[name], max(0, room - taken))
+            out[name] = [free[-1 - (taken + k)] for k in range(n)]
+            taken += n
+        return out
+
+    def stage_callbacks(self, rows: list[int]) -> str:
+        """The patient asks for a call-back (their own button in the patient app); the case needs a person to phone them, which the
+        coordinator may do (EVENT_POLICY: contact_patient). The owner has accepted the case first, so the call is a step the case allows."""
+        done = []
+        for row in rows:
+            case_id, ref, _ = self.ensure_case(row)
+            if self.case(case_id)["state"] == "acknowledged":
+                self.event(self.assigned_owner(case_id), case_id, "accept_ownership")
+            if self.case(case_id)["state"] == "owner_accepted":
+                self.event(("patient", "demo patient", None), case_id, "callback_requested",
+                           {"reason": "wants_to_speak_to_clinician", "lang": "ar"}, patient_ref=ref)
+            done.append(case_id[:8])
+        return self._note("callbacks", f"{len(done)} case(s) with a patient's call-back request for the coordinator: {', '.join(done) or 'none'}")
+
+    def stage_to(self, rows: list[int], target: str, note: str) -> str:
+        reached = []
+        for row in rows:
+            case_id, ref, _ = self.ensure_case(row)
+            state = self.walk(case_id, ref, target, via_specialist=False)
+            if state != target:
+                raise StageError(f"case {case_id[:8]} is at {state!r}, not {target!r}")
+            reached.append(case_id[:8])
+        return self._note(note, f"{len(reached)} case(s) at {target!r} for the tour: {', '.join(reached) or 'none'}")
+
+    def stage_tour_pool(self) -> dict[str, list[int]]:
+        pool = self.pool_rows()
+        self.stage_callbacks(pool["callback"])
+        self.stage_to(pool["contacted"], "patient_contacted", "pool_contacted")
+        self.stage_to(pool["completed"], "confirmatory_completed", "pool_completed")
+        return pool
+
+    def stage_agency(self) -> str:
+        """One agency run at the current simulated time, as the supervisor: the agents prepare work on the cases as they now stand and
+        stop (they write no case event as the agency; a draft they cause goes through the drafting route and waits for the owner).
+        The same call as `make agency-run`. A second call at the same simulated time returns the same run."""
+        out = self.call(SUPERVISOR, "POST", "/agency/run")
+        counts = out.get("counts", {})
+        by = counts.get("by_status", {})
+        if out.get("status") not in ("done", "budget_exhausted") or not counts.get("total"):
+            raise StageError(f"the agency run did not produce work: {json.dumps({k: out.get(k) for k in ('status', 'counts')})[:300]}")
+        return self._note("agency", f"run {str(out.get('run_id'))[:8]} is {out['status']}: {counts['total']} task(s), "
+                                    f"{by.get('done', 0)} done, {by.get('needs_human', 0)} waiting for a person, {by.get('failed', 0)} failed")
+
     def check_urgent_chronic(self) -> str:
         r = self.client.get(f"{self.api}/cases", params={"limit": 100, "pathway": "chronic_conditions"},
                             headers={"Authorization": f"Bearer {self.login(COORDINATOR)['token']}"})
@@ -350,7 +444,7 @@ def main(argv: list[str] | None = None) -> int:
         except httpx.HTTPError as exc:
             log.error("the API at %s is not reachable (%s); start the stack first", api, exc)
             return 2
-        stager = Stager(client, api, rows)
+        stager = Stager(client, api, rows, scan_token=os.environ.get("AUTOMATION_SERVICE_TOKEN") or None)
         try:
             if args.phase in ("overdue", "all"):
                 stager.stage_overdue()
@@ -358,7 +452,9 @@ def main(argv: list[str] | None = None) -> int:
                 stager.stage_draft()
                 stager.stage_signoff()
                 stager.stage_closed()
+                stager.stage_tour_pool()
                 stager.check_urgent_chronic()
+                stager.stage_agency()  # last: the agents read the cases as staged
         except (StageError, httpx.HTTPError, KeyError) as exc:
             log.error("FAILED: %s: %s", type(exc).__name__, exc)
             return 1

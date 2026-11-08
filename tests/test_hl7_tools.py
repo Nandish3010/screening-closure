@@ -30,6 +30,19 @@ def test_the_committed_samples_equal_the_generator_output():
         assert (SAMPLES / name).read_text(encoding="utf-8") == text + "\n", f"{name} is stale: run make hl7-samples"
 
 
+def test_the_samples_do_not_depend_on_a_local_manifest(tmp_path, monkeypatch):
+    """fresh-clone failed 3 of 4 weekly runs: `make demo-seed` wrote a manifest with another cohort, and the generator used it."""
+    other = tmp_path / "data" / "results"
+    other.mkdir(parents=True)
+    (other / "manifest.json").write_text('{"results": [{"patient_id": "1"}, {"patient_id": "2"}, {"patient_id": "3"}]}')
+    monkeypatch.setattr(make_samples, "ROOT", tmp_path)
+    assert make_samples.cohort_ids() == ["1", "2", "3"]  # the live-demo helper still sees the local cohort
+    for name, text in make_samples.build().items():
+        assert (SAMPLES / name).read_text(encoding="utf-8") == text + "\n", name  # but the committed samples are built from the fixture
+    assert make_samples.build(["1", "2", "3"])["oru_fit_positive.hl7"] != make_samples.build()["oru_fit_positive.hl7"]
+    assert len(make_samples.committed_ids()) >= 20 and all(i.isdigit() for i in make_samples.committed_ids())
+
+
 def test_one_sample_per_supported_message_type():
     names = {f.name for f in SAMPLES.glob("*.hl7")}
     assert {"oru_fit_positive.hl7", "oru_fit_negative.hl7", "oru_colonoscopy_complete.hl7", "siu_s12_book.hl7", "siu_s14_reschedule.hl7",
@@ -60,7 +73,7 @@ def test_each_sample_gets_its_ack(world, name, code):
 
 
 def test_every_sample_but_the_malformed_one_parses_and_carries_a_cohort_patient():
-    ids = set(make_samples.cohort_ids())
+    ids = set(make_samples.committed_ids())  # not the local manifest: it is gitignored and differs on every machine
     for f in SAMPLES.glob("*.hl7"):
         if f.name.startswith("malformed"):
             with pytest.raises(p.Hl7ParseError):

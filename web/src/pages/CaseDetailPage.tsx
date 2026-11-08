@@ -226,7 +226,9 @@ export function CaseDetailPage() {
   const scopeWhy = notMine ? `You do not own this case (the owner is ${detail.owner}). Clinicians act only on cases they own.` : null;
 
   const why = (action: Parameters<typeof can>[1], who: string, scoped = false) =>
-    can(role, action) ? (scoped ? scopeWhy : null) : `Your role (${role}) cannot do this. Switch the role to ${who}.`;
+    can(role, action) ? (scoped ? scopeWhy : null) : role === "coordinator"
+      ? `This step belongs to the ${who}. You track and chase this case; switch the role to see that step.`
+      : `Your role (${role}) cannot do this. Switch the role to ${who}.`;
   const closedWhy = closed ? "This case is closed." : null;
   const escalateRungs = ESCALATION_LADDER.filter((r) => r.rung !== "reminder");
   const rungTarget = ESCALATION_LADDER.find((r) => r.rung === rung)?.target_role ?? rung;

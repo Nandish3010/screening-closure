@@ -61,7 +61,7 @@ describe("Case detail actions", () => {
     expect(within(drafted.at(-1)!).getByText(/تنظير القولون/)).toBeInTheDocument();
     const approve = within(draftItem).getByRole("button", { name: /approve draft/i });
     expect(approve).toBeDisabled();
-    expect(within(screen.getByTestId("drafts-panel")).getByTestId("decide-why")).toHaveTextContent(/only the case owner can approve or reject.*cannot do this/i);
+    expect(within(screen.getByTestId("drafts-panel")).getByTestId("decide-why")).toHaveTextContent(/only the case owner can approve or reject.*belongs to the owner/i);
     expect(approve).toHaveAccessibleDescription(/only the case owner/i);
     const types = (await api.getCase(DEMO_OVERDUE_CASE_ID)).events.slice(-2).map((e) => e.type);
     expect(types).toEqual(["escalate", "message_drafted"]);
@@ -280,7 +280,7 @@ describe("Reopen (clinician only, closed cases only)", () => {
     openCase(11);
     const btn = await screen.findByTestId("reopen");
     expect(btn).toBeDisabled();
-    expect(screen.getByTestId("reopen-why")).toHaveTextContent(/only|cannot|clinician/i);
+    expect(screen.getByTestId("reopen-why")).toHaveTextContent(/only|cannot|clinician|physician/i);
   });
 
   it("a clinician picks a reason from the taxonomy; then the case is reopened through the client", async () => {

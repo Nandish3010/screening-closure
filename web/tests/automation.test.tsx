@@ -431,19 +431,29 @@ describe("Worklist demo control", () => {
 });
 
 describe("Dashboard: the human-effort card", () => {
-  it("shows the reduction against the 40% target, human versus automated actions, and the assumed-minutes caveat", async () => {
+  it("keeps the programme result and the demo-case arithmetic apart, labelled with their scope, the honest one first", async () => {
     const api = auto();
     renderWithApp(<DashboardPage />, { api, role: "coordinator" });
     const card = await screen.findByTestId("effort-card");
     await waitFor(() => expect(within(card).getByTestId("effort-total-automated")).not.toHaveTextContent(/^$/));
     const m = (await api.getEffortMetrics())!;
     expect(within(card).getByTestId("effort-reduction")).toHaveTextContent(`${m.totals.reduction_pct}%`);
-    expect(within(card).getByTestId("effort-target")).toHaveTextContent(/^Target: 40%/);
+    // the programme result (19.7% / 36.0%, target not met) comes BEFORE the demo-case percentage in the page, and says what it is
+    const programme = within(card).getByTestId("effort-programme");
+    expect(programme).toHaveTextContent(/simulation on synthetic data/i);
+    expect(programme).toHaveTextContent(/19\.7% fewer staff minutes across the whole programme/);
+    expect(programme).toHaveTextContent(/36\.0% where the system reaches a case/);
+    const demo = within(card).getByTestId("effort-demo");
+    expect(programme.compareDocumentPosition(demo) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(demo).toHaveTextContent(/demo cases only.*arithmetic on the event log, not a result/i);
+    expect(within(card).getByTestId("effort-definition")).toHaveTextContent(/assumed minutes per action.*only the steps already taken/i);
+    expect(within(card).getByTestId("effort-share-definition")).toHaveTextContent(/a count of actions, not of minutes or labour/i);
+    expect(within(card).queryByTestId("effort-target")).toBeNull(); // no "Target: 40%" beside a bigger demo number
     expect(within(card).getByTestId("effort-total-human")).toHaveTextContent(String(m.totals.human_actions));
     expect(within(card).getByTestId("effort-total-automated")).toHaveTextContent(String(m.totals.automated_actions));
     expect(within(card).getByTestId("effort-target-status")).toHaveTextContent(/not a programme result/);
     expect(card).not.toHaveTextContent(/target met/i);
-    expect(within(card).getByTestId("effort-programme")).toHaveTextContent(/40% target is not met/);
+    expect(programme).toHaveTextContent(/40% target is not met/);
     expect(within(card).queryByRole("meter")).toBeNull(); // no bar past a target tick for a demo sample
     expect(within(card).getByTestId("effort-caveat")).toHaveTextContent(/assumed minutes, not measured/i);
   });

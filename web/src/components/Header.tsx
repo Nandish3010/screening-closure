@@ -3,7 +3,7 @@ import { Link, NavLink, matchPath, useLocation, useNavigate } from "react-router
 import { isOwnerScoped, useApp } from "../app/AppContext";
 import { ROLES, type Role } from "../api/contract";
 import { SignInNotice, useDemoSignIn } from "../app/demoSignIn";
-import { DEMO_PATIENT_CASE_ID } from "../api/fixtures";
+import { DEMO_PATIENT_CASE_ID } from "../api/demoIds";
 import { DEMO_USERS, JUDGE_ROLES, ROLE_DISPLAY } from "../api/identities";
 import { useTour } from "../judge/JudgeTour";
 import { fmtDateTime } from "../lib/format";

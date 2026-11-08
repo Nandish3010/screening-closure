@@ -159,6 +159,7 @@ export function TodayPage() {
     <main className="container today">
       <div className="page-head"><h1>{TODAY.heading}</h1><span className="chip chip-synthetic">Synthetic data</span></div>
       <p className="muted">{TODAY.intro}</p>
+      {role === "coordinator" && <p className="banner banner-ok" data-testid="today-coordinator-note">{TODAY.coordinatorNote}</p>}
       {loaded && (
         <p className="today-summary" data-testid="today-summary" role="status">{TODAY.summary(present.map((g) => ({ g, n: shown[g].length, plus: more[g] || (!complete && g !== "agency") })), complete)}</p>
       )}

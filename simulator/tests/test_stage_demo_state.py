@@ -32,6 +32,7 @@ TRANSITIONS = {  # event type -> (from, to)
     "close": ("clinician_reviewed", "closed"),
 }
 ROWS = [{"report_id": f"r{i}", "patient_id": f"p{i}"} for i in range(10)]
+BIG_ROWS = [{"report_id": f"r{i}", "patient_id": f"p{i}"} for i in range(26)]  # the size of the hosted cohort
 
 
 class FakeApi:
@@ -41,6 +42,9 @@ class FakeApi:
         self.seen: set[str] = set()
         self.log: list[tuple[str, str]] = []
         self.drafts: dict[str, list[dict]] = {}
+        self.agency_runs = 0
+        self.on_demand_scan_only = False  # the scheduler's own loop is not running: a scan happens only when the stager asks
+        self.scan_posts = 0
         for i in range(other_cases):
             self._new(str(uuid.uuid4()))
 
@@ -85,12 +89,25 @@ class FakeApi:
         self.log.append((method, path))
         if path == "/auth/dev-login":
             return httpx.Response(200, json={"token": f"t-{body['role']}-{body['name']}", "user_id": f"u-{body['name'].replace(' ', '')}"})
+        if path == "/scheduler/evidence-scan":
+            self.scan_posts += 1
+            if request.headers.get("authorization") != "Bearer automation-token":
+                return httpx.Response(401, json={"detail": "bad token"})
+            for c in self.cases.values():
+                self.scan(c)
+            return httpx.Response(200, json={"asked": 1})
         if path == "/health":
             return httpx.Response(200, json={"status": "ok", "sim_time": self.now.isoformat()})
         if path == "/clock/advance":
             self.now += timedelta(hours=body["hours"])
             self.sweep()
             return httpx.Response(200, json={"sim_time": self.now.isoformat()})
+        if path == "/agency/run":
+            assert request.headers["authorization"] == "Bearer t-supervisor-Dr. Noura Al Hammadi", "the supervisor starts the run"
+            self.agency_runs += 1
+            n = sum(1 for c in self.cases.values() if c["state"] != "closed")
+            return httpx.Response(200, json={"run_id": "8f1c2d3e-0000", "status": "done", "created": self.agency_runs == 1,
+                                             "counts": {"total": n, "by_status": {"done": n - 1, "needs_human": 1, "failed": 0}}})
         if path == "/cases" and method == "POST":
             if body["case_id"] in self.cases:
                 return httpx.Response(409, text="CaseAlreadyExists")
@@ -104,7 +121,8 @@ class FakeApi:
         c = self.cases[cid]
         role, name = request.headers["authorization"].removeprefix("Bearer t-").split("-", 1)
         if sub is None:
-            self.scan(c)  # the scheduler container's evidence scan runs between the stager's calls
+            if not self.on_demand_scan_only:
+                self.scan(c)  # the scheduler container's evidence scan runs between the stager's calls
             return httpx.Response(200, json=c)
         if sub == "confirmatory-result":
             denied = self.refuse(c, role, name, policy.ROUTE_POLICY[("POST", "/cases/{case_id}/confirmatory-result")], "confirmatory-result")
@@ -136,6 +154,8 @@ class FakeApi:
             c["owner"] = {"display_name": "Dr. Karim Nasser", "role": "specialist_owner"}
         elif t == "escalation_accepted":
             c["read_model"]["escalation_accepted"] = True
+        elif t == "callback_requested":
+            assert c["state"] == "owner_accepted", "a call-back is a request the coordinator can answer only where contact is allowed"
         else:
             frm, to = TRANSITIONS[t]
             assert c["state"] == frm, f"{t} in {c['state']}"
@@ -146,15 +166,17 @@ class FakeApi:
         return httpx.Response(201, json={})
 
 
-def run(fake: FakeApi, phase: str) -> st.Stager:
+def run(fake: FakeApi, phase: str, rows=ROWS) -> st.Stager:
     client = httpx.Client(transport=httpx.MockTransport(fake.handler))
-    s = st.Stager(client, "http://api", ROWS, sleep=lambda _s: None)
+    s = st.Stager(client, "http://api", rows, sleep=lambda _s: None)
     if phase in ("overdue", "all"):
         s.stage_overdue()
-    if phase in ("rest", "all"):
+    if phase in ("rest", "all"):  # the order main() runs them in
         s.stage_draft()
         s.stage_signoff()
         s.stage_closed()
+        s.pool = s.stage_tour_pool()
+        s.stage_agency()
     return s
 
 
@@ -162,8 +184,8 @@ def signoff_row() -> int:
     return st.Stager(httpx.Client(transport=httpx.MockTransport(FakeApi().handler)), "http://api", ROWS).signoff_row()
 
 
-def by_row(fake: FakeApi, row: int) -> dict:
-    return fake.cases[st.case_id_of(ROWS[row])]
+def by_row(fake: FakeApi, row: int, rows=ROWS) -> dict:
+    return fake.cases[st.case_id_of(rows[row])]
 
 
 def test_the_rows_are_distinct_and_leave_the_local_demo_rows_alone():
@@ -300,3 +322,91 @@ def test_a_sign_off_case_the_scan_never_completes_is_an_error():
     fake.scan = lambda c: None  # the scheduler container is not running
     with pytest.raises(st.StageError, match="evidence scan"):
         run(fake, "rest")
+
+
+# ---- the tour pool and the agency run ------------------------------------------------------------------------------------
+
+def test_the_tour_pool_is_staged_from_unused_rows_and_leaves_enough_untouched_cases():
+    fake = FakeApi()
+    s = run(fake, "rest", BIG_ROWS)
+    pool = s.pool
+    assert {k: len(v) for k, v in pool.items()} == st.TOUR_POOL  # 2 call-backs, 4 reached by phone, 3 with the result recorded
+    used = {0, 1, st.ROW_OVERDUE, st.ROW_CLOSED, st.ROW_DRAFT, s.signoff_row()}
+    rows = [r for v in pool.values() for r in v]
+    assert len(rows) == len(set(rows)) == 9 and not set(rows) & used, "no row is staged twice or taken from the other stages"
+    untouched = [i for i in range(len(BIG_ROWS)) if i not in used | set(rows)]
+    assert len(untouched) >= st.MIN_UNTOUCHED
+    for r in pool["callback"]:
+        c = by_row(fake, r, BIG_ROWS)
+        assert c["state"] == "owner_accepted" and c["events"][-1] == "callback_requested"
+    for r in pool["contacted"]:
+        assert by_row(fake, r, BIG_ROWS)["state"] == "patient_contacted"
+    for r in pool["completed"]:
+        assert by_row(fake, r, BIG_ROWS)["state"] == "confirmatory_completed"
+    assert not [r for r in untouched if st.case_id_of(BIG_ROWS[r]) in fake.cases], "the stager creates and touches none of the rest"
+
+
+def test_a_small_cohort_shrinks_the_pool_before_it_touches_the_untouched_rows():
+    pool = st.Stager(httpx.Client(transport=httpx.MockTransport(FakeApi().handler)), "http://api", ROWS).pool_rows()
+    assert pool == {"callback": [], "contacted": [], "completed": []}  # 10 rows: nothing to spare
+    mid = [{"report_id": f"r{i}", "patient_id": f"p{i}"} for i in range(16)]
+    pool = st.Stager(httpx.Client(transport=httpx.MockTransport(FakeApi().handler)), "http://api", mid).pool_rows()
+    assert sum(map(len, pool.values())) == 16 - 6 - st.MIN_UNTOUCHED and len(pool["callback"]) == st.TOUR_POOL["callback"]
+
+
+def test_the_callback_is_the_patients_own_request_and_the_coordinator_may_answer_it():
+    fake = FakeApi()
+    s = run(fake, "rest", BIG_ROWS)
+    assert "callback_requested" in policy.EVENT_POLICY and policy.PATIENT in policy.EVENT_POLICY["callback_requested"]
+    assert policy.COORD in policy.EVENT_POLICY["contact_patient"], "the call-back the coordinator records is an event the policy gives them"
+    assert s.summary["callbacks"].startswith("2 case(s)")
+
+
+def test_one_agency_run_is_started_last_by_the_supervisor_and_a_rerun_adds_nothing():
+    fake = FakeApi()
+    s = run(fake, "rest", BIG_ROWS)
+    runs = [i for i, r in enumerate(fake.log) if r == ("POST", "/agency/run")]
+    writes = [i for i, r in enumerate(fake.log) if r[0] == "POST" and (r[1].endswith("/events") or r[1].endswith("/drafts"))]
+    assert len(runs) == 1 and runs[0] > max(writes), "the agents read the cases after every stage has run"
+    assert "task(s)" in s.summary["agency"] and "waiting for a person" in s.summary["agency"]
+    events = {k: list(c["events"]) for k, c in fake.cases.items()}
+    run(fake, "rest", BIG_ROWS)
+    assert {k: list(c["events"]) for k, c in fake.cases.items()} == events, "a rerun posts no new case event"
+
+
+def test_an_agency_run_with_no_work_fails_the_stage_instead_of_snapshotting_an_empty_page():
+    fake = FakeApi()
+    s = run(fake, "rest", BIG_ROWS)
+    s.client = httpx.Client(transport=httpx.MockTransport(lambda r: httpx.Response(200, json={"status": "done", "counts": {"total": 0}}) if r.url.path == "/agency/run" else fake.handler(r)))
+    with pytest.raises(st.StageError):
+        s.stage_agency()
+
+
+def run_signoff(fake: FakeApi, token: str | None, sleeps: list) -> None:
+    client = httpx.Client(transport=httpx.MockTransport(fake.handler))
+    s = st.Stager(client, "http://api", ROWS, sleep=sleeps.append, scan_token=token)
+    s.stage_signoff()
+
+
+def test_the_sign_off_step_asks_for_the_evidence_scan_once_instead_of_waiting_for_the_scheduler():
+    fake, sleeps = FakeApi(), []
+    fake.on_demand_scan_only = True
+    run_signoff(fake, "automation-token", sleeps)
+    assert fake.scan_posts == 1
+    assert by_row(fake, signoff_row())["state"] == "confirmatory_completed"
+    assert sleeps == []  # the scan had already run when the first poll looked: nothing to wait for
+
+
+def test_without_the_token_it_only_polls_and_gives_up_after_about_thirty_seconds():
+    fake, sleeps = FakeApi(), []
+    fake.on_demand_scan_only = True
+    with pytest.raises(st.StageError, match="evidence scan"):
+        run_signoff(fake, None, sleeps)
+    assert fake.scan_posts == 0
+    assert 28 <= sum(sleeps) <= 32 and st.EVIDENCE_WAIT_SECONDS == 30
+
+
+def test_a_refused_scan_request_does_not_stop_the_stager_when_the_scheduler_does_the_scan():
+    fake, sleeps = FakeApi(), []
+    run_signoff(fake, "wrong-token", sleeps)  # 401 from the scan route: logged, the scheduler's loop (the fake's GET) completes it
+    assert fake.scan_posts == 1 and by_row(fake, signoff_row())["state"] == "confirmatory_completed"

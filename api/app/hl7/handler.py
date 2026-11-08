@@ -32,7 +32,7 @@ from uuid import UUID
 
 from fastapi import HTTPException
 
-from app import confirmatory, integration_feed, payloads, policy
+from app import automation, confirmatory, integration_feed, payloads, policy
 from app.clock import clock
 from app.events import Event, EventContentConflict, EventIdConflict
 from app.hl7 import contacts
@@ -327,6 +327,7 @@ def _colonoscopy(msg: Message, obr: Segment, cfg: Hl7Config) -> Outcome:
         raise Reject("AE", "207", R_RECORDER) from None
     except HTTPException:
         raise Reject("AE", "207", R_DENIED) from None
+    automation.evidence_recorded(lc.case_id)  # new evidence: the scan's remembered "no" for this case is out of date
     return Outcome("AA", None, None, "colonoscopy")
 
 

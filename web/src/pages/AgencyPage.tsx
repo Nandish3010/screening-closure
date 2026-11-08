@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useApp } from "../app/AppContext";
 import type {
-  AgencyDepartmentNode, AgencyInboxItem, AgencyOrg, AgencyProvenance, AgencyRun, AgencyTask, AgencyTaskStatus, Role, StatusCounts,
+  AgencyDepartmentNode, AgencyInboxItem, AgencyOrg, AgencyProvenance, AgencyRun, AgencyTask, AgencyTaskStatus, AgencyTotals, Role, StatusCounts,
 } from "../api/contract";
 import { AGENCY_DEPARTMENTS, AGENCY_DEPARTMENT_LABEL, AGENCY_TASK_STATUSES, ApiError } from "../api/contract";
 import { fmtDateTime, plainRefs, shortId, titleCase } from "../lib/format";
@@ -122,14 +122,37 @@ export function Material({ data }: { data: Record<string, unknown> }) {
   );
 }
 
-function Inbox({ items, error, loaded }: { items: AgencyInboxItem[]; error: string | null; loaded: boolean }) {
+/** What the agents have done so far, from the task ledger: one line of counts and the scope of those counts in words. */
+export function ActivitySummary({ totals }: { totals: AgencyTotals }) {
+  return (
+    <section className="panel agency-activity" aria-labelledby="activity-h" data-testid="agency-activity">
+      <h2 id="activity-h">What the agents have done</h2>
+      {totals.runs === 0 ? (
+        <p data-testid="activity-none">No agency run has been recorded on this demo yet, so there is no agent work to show. A supervisor can start a run below.</p>
+      ) : (
+        <>
+          <p data-testid="activity-line">
+            <strong>{totals.tasks}</strong> tasks prepared on <strong>{totals.cases_touched}</strong> cases in <strong>{totals.runs}</strong> {totals.runs === 1 ? "run" : "runs"}
+            {totals.last_run_at && <>; latest at simulated time <time dateTime={totals.last_run_at}>{fmtDateTime(totals.last_run_at)}</time></>}.
+          </p>
+          <StatusBadges counts={totals.counts} label="All agent task counts" />
+        </>
+      )}
+      <p className="muted" data-testid="activity-scope">{totals.scope}</p>
+    </section>
+  );
+}
+
+function Inbox({ items, error, loaded, ran }: { items: AgencyInboxItem[]; error: string | null; loaded: boolean; ran: boolean }) {
   return (
     <section className="panel" aria-labelledby="inbox-h" data-testid="agency-inbox-panel">
       <h2 id="inbox-h">Needs a person</h2>
       <p className="muted">Agents prepared these and stopped. Open the case and use its own controls to decide; nothing on this page changes a case.</p>
       {error && <p className="banner banner-bad" role="alert">Could not load the inbox: {error}</p>}
       {!loaded && !error && <p role="status">Loading the inbox...</p>}
-      {loaded && !error && items.length === 0 && <p className="banner banner-ok" data-testid="inbox-empty">Nothing needs a person right now.</p>}
+      {loaded && !error && items.length === 0 && (ran
+        ? <p className="banner banner-ok" data-testid="inbox-empty">Nothing needs a person right now.</p>
+        : <p className="banner banner-warn" data-testid="inbox-empty">Nothing is listed because no agency run has been recorded yet.</p>)}
       {items.length > 0 && (
         <ul className="plain agency-inbox" data-testid="agency-inbox">
           {items.map((it) => (
@@ -324,7 +347,9 @@ function AgencyBody({ role }: { role: Role }) {
         </p>
       )}
 
-      <Inbox items={inbox} error={inboxError} loaded={inboxLoaded} />
+      {staff && org?.totals && <ActivitySummary totals={org.totals} />}
+
+      <Inbox items={inbox} error={inboxError} loaded={inboxLoaded} ran={!staff || !org?.totals || org.totals.runs > 0} />
 
       {staff && (
         <>

@@ -6,7 +6,7 @@ import json
 import os
 import subprocess
 import sys
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
@@ -151,11 +151,69 @@ def test_reset_is_refused_for_a_while_after_a_reset_and_the_message_is_plain():
     assert demo.post("/demo/reset", headers=SUP).status_code == 202  # long ago: allowed
 
 
-def test_status_shows_when_who_and_the_next_scheduled_reset():
+@pytest.fixture
+def judging(monkeypatch):
+    monkeypatch.setattr(settings, "sc_judging_mode", True)
+    monkeypatch.setattr(settings, "sc_judging_reset_interval_seconds", 1800)
+
+
+def test_judging_mode_off_leaves_the_ten_minute_reset_limit_alone():
+    assert settings.sc_judging_mode is False  # the default: nothing changes unless the host turns it on
+    write_status(last_request_at=(datetime.now(UTC) - timedelta(minutes=11)).isoformat())
+    assert demo.post("/demo/reset", headers=SUP).status_code == 202
+
+
+def test_judging_mode_allows_one_manual_reset_per_thirty_minutes_for_everybody(judging):
+    """Judging protection: any visitor can sign in as supervisor, so a manual reset is limited globally, not per person."""
+    other_sup = login_headers(main, "supervisor", "another visitor")
+    first = demo.post("/demo/reset", headers=SUP)
+    assert first.status_code == 202
+    (Path(settings.demo_control_dir) / "reset-request.json").unlink()  # the host took the request (reset done)
+    write_status(last_request_at=(datetime.now(UTC) - timedelta(minutes=12)).isoformat())  # past the 10 min limit, inside the 30
+    r = demo.post("/demo/reset", headers=other_sup)  # a different supervisor session: the limit is global
+    assert r.status_code == 429
+    assert "30 minutes" in r.json()["detail"] and "03:00" in r.json()["detail"] and "18 minute" in r.json()["detail"]
+    assert not (Path(settings.demo_control_dir) / "reset-request.json").exists()
+    write_status(last_request_at=(datetime.now(UTC) - timedelta(minutes=31)).isoformat())
+    assert demo.post("/demo/reset", headers=other_sup).status_code == 202
+
+
+def test_the_scheduled_reset_is_not_a_request_and_judging_mode_does_not_touch_it(judging):
+    """The daily reset is the host timer's (demo-reset-watch.sh --scheduled); it never goes through request_reset, and a scheduled
+    reset a minute ago (last_reset_at only, no manual request) does not use up the manual allowance beyond the 10 min rule."""
+    write_status(last_reset_at=(datetime.now(UTC) - timedelta(minutes=20)).isoformat(), last_reset_by="the schedule",
+                 last_reset_reason="scheduled")
+    assert demo.post("/demo/reset", headers=SUP).status_code == 202
+    s = (API_DIR.parent / "deploy/gcp/vm/demo-reset-watch.sh").read_text()
+    assert "--scheduled" in s and "judging" not in s.lower()  # no judging-mode branch in the host script
+
+
+def test_supervisor_advance_still_works_in_judging_mode(judging):
+    assert demo_controls.guard_advance(3) is None
+
+
+def test_status_shows_when_who_and_the_next_scheduled_reset(monkeypatch):
+    monkeypatch.setattr(demo_controls, "_wall", lambda: datetime(2026, 11, 8, 7, 0, tzinfo=UTC))  # "now" is fixed: the 6 h slot after 06:00 is 12:00
     assert demo_controls.status()["last_reset_at"] is None and demo_controls.status()["reset_id"] == "initial"
-    write_status(last_reset_at="2026-11-08T06:00:00+00:00", last_reset_by="Noura (supervisor)", last_reset_reason="manual")
+    from datetime import timedelta
+
+    last = datetime.now(UTC) - timedelta(hours=1)  # relative to now: a fixed date goes stale the day it passes
+    write_status(last_reset_at=last.isoformat(), last_reset_by="Noura (supervisor)", last_reset_reason="manual")
     st = demo_controls.status()
-    assert st["last_reset_by"] == "Noura (supervisor)" and st["next_auto_reset_at"].startswith("2026-11-08T12:00:00")
+    assert st["last_reset_by"] == "Noura (supervisor)"
+    assert datetime.fromisoformat(st["next_auto_reset_at"]) == last + timedelta(hours=6)
+
+
+def test_status_shows_a_failed_reset_until_the_next_good_one():
+    """The host writes last_reset_error when a reset failed (demo-reset-watch.sh); /health's demo block carries it."""
+    assert demo_controls.status()["last_reset_error"] is None
+    write_status(last_reset_at="2026-11-08T05:00:00+00:00", last_reset_error="manual reset by x failed (exit 3)",
+                 last_reset_error_at="2026-11-08T06:00:00+00:00")
+    st = demo_controls.status()
+    assert st["last_reset_error"].startswith("manual reset by x failed") and st["last_reset_error_at"] == "2026-11-08T06:00:00+00:00"
+    assert st["last_reset_at"] == "2026-11-08T05:00:00+00:00"  # the failed reset did not become the last reset
+    write_status(last_reset_at="2026-11-08T07:00:00+00:00", last_reset_error="", last_reset_error_at="")  # the host clears it
+    assert demo_controls.status()["last_reset_error"] is None
 
 
 def test_next_scheduled_reset_follows_the_timer_not_only_the_last_reset():
@@ -277,7 +335,25 @@ def test_a_case_touched_before_the_first_look_is_taken_as_the_seed_and_a_later_t
     assert demo.get("/demo/guide?session=session-aaaa", headers=COORD).json()["steps"]["record"]["case_id"] == cid
     main.post(f"/cases/{cid}/events", json={"type": "acknowledge", "payload": {}}, headers=COORD)
     demo_controls.forget()
-    assert demo.get("/demo/guide?session=session-cccc", headers=COORD).json()["steps"]["record"] is None
+    # touched since the seed: not fresh any more, but the step still fits it, so it is offered and says so (never an empty step)
+    again = demo.get("/demo/guide?session=session-cccc", headers=COORD).json()["steps"]["record"]
+    assert again["case_id"] == cid and again["fresh"] is False
+
+
+def test_when_every_case_has_been_used_each_step_still_gets_a_fitting_case_and_judges_are_spread_over_them():
+    ids = new_case(6)
+    demo.get("/demo/guide?session=session-seed1", headers=COORD)  # the first look takes the baseline
+    for cid in ids:  # other judges have used every case
+        assert main.post(f"/cases/{cid}/events", json={"type": "acknowledge", "payload": {}}, headers=COORD).status_code in (200, 201)
+    picks = {}
+    for n in range(6):
+        steps = demo.get(f"/demo/guide?session=judge-session-{n}", headers=COORD).json()["steps"]
+        assert steps["record"] and steps["record"]["fresh"] is False, "a touched case, offered honestly"
+        assert steps["privacy"] and steps["privacy"]["fresh"] is False
+        picks[n] = steps["record"]["case_id"]
+    assert len(set(picks.values())) > 1, "the judges are not all sent to the same case"
+    # a step whose state test no case meets is still empty: nothing is invented
+    assert demo.get("/demo/guide?session=judge-session-0", headers=COORD).json()["steps"]["outcome"] is None
 
 
 # ---- simulate a missed follow-up ------------------------------------------------------------------------------------
@@ -386,6 +462,34 @@ def test_missed_followup_is_rate_limited_and_names_who_asked(caplog):
     assert any("demo sup" in r.getMessage() for r in caplog.records)  # who, in the log with the clock move
     second = demo.post("/demo/missed-followup", json={"case_id": cid}, headers=SUP)
     assert second.status_code == 429 and "few seconds" in second.json()["detail"]
+
+
+def test_a_missed_followup_spends_the_same_clock_budget_as_advance():
+    """S10: Advance and "Simulate a missed follow-up" draw on ONE rolling budget (30 days / 6 h), so a visitor cannot add 45 days
+    every 10 s through the second."""
+    a, b = new_case(2)
+    demo_controls.charge_clock(29)  # as if Advance had moved the clock 29 days
+    before = clock_module.clock.now()
+    r = demo.post("/demo/missed-followup", json={"case_id": a}, headers=SUP)  # needs more than the 1 day that is left
+    assert r.status_code == 409 and "29 of the 30 days" in r.json()["detail"] and "more" in r.json()["detail"]
+    assert clock_module.clock.now() == before  # refused before anything moved
+
+
+def test_a_missed_followup_charges_the_days_it_skipped():
+    (cid,) = new_case()
+    r = demo.post("/demo/missed-followup", json={"case_id": cid}, headers=SUP)
+    assert r.status_code == 200, r.text
+    spent = json.loads((Path(settings.demo_control_dir) / "clock-budget.json").read_text())["entries"]
+    assert len(spent) == 1 and spent[0][1] == pytest.approx((clock_module.clock.now() - datetime.fromisoformat(r.json()["clock_from"])).total_seconds() / 86400, abs=0.5)
+    with pytest.raises(demo_controls.DemoError) as exc:  # and Advance now sees it
+        demo_controls.charge_clock(31 - spent[0][1] + 1)
+    assert exc.value.status == 409
+
+
+def test_a_skip_larger_than_the_whole_budget_says_so_instead_of_asking_to_wait():
+    with pytest.raises(demo_controls.DemoError) as exc:
+        demo_controls.charge_clock(demo_controls.ADVANCE_MAX_DAYS_PER_WINDOW + 5)
+    assert exc.value.status == 409 and "due sooner" in exc.value.message and "Try again" not in exc.value.message
 
 
 def test_no_public_credentials_listing_exists_and_no_config_turns_one_on():
