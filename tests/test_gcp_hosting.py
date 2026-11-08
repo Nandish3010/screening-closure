@@ -66,6 +66,17 @@ def test_seed_mode_is_dev_and_never_production(monkeypatch):
     assert files["api.env"]["APP_ENV"] == "dev" and files["compose.env"]["CLOCK_MODE"] == "sim"
 
 
+def test_judging_mode_is_off_by_default_and_rendered_only_when_asked(monkeypatch):
+    off = render_env.build_files(HOST, SECRETS, "production")
+    on = render_env.build_files(HOST, SECRETS, "production", judging_mode=True)
+    assert off["api.env"]["SC_JUDGING_MODE"] == "0" and on["api.env"]["SC_JUDGING_MODE"] == "1"
+    assert "SC_JUDGING_MODE" not in render_env.build_files(HOST, SECRETS, "seed")["api.env"]  # the seed phase has no judges
+    assert _settings_from(on, monkeypatch).sc_judging_mode is True
+    assert _settings_from(off, monkeypatch).sc_judging_mode is False
+    up = (REPO_ROOT / "deploy/gcp/vm/sc-up.sh").read_text()
+    assert "/var/lib/sc/judging_mode" in up and "--judging-mode" in up
+
+
 def test_llm_is_replay_only_with_a_zero_spend_cap_and_no_key():
     f = render_env.build_files(HOST, SECRETS)
     c = f["compose.env"]

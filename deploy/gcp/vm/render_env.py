@@ -39,7 +39,8 @@ def _lines(d: dict[str, str]) -> str:
     return "".join(f"{k}={v}\n" for k, v in d.items())
 
 
-def build_files(host: str, secrets: dict[str, str], mode: str = "production", demo_patient_ref: str = "") -> dict[str, dict[str, str]]:
+def build_files(host: str, secrets: dict[str, str], mode: str = "production", demo_patient_ref: str = "",
+                judging_mode: bool = False) -> dict[str, dict[str, str]]:
     missing = [n for n in REQUIRED if not secrets.get(n)]
     if missing:
         raise ValueError("missing secrets: " + ", ".join(missing))
@@ -112,6 +113,9 @@ def build_files(host: str, secrets: dict[str, str], mode: str = "production", de
         api["DEMO_SIGNIN_PW_PATIENT"] = s["pw-patient"]
         api["DEMO_AUTO_RESET_HOURS"] = "24"  # informational: the web's "next scheduled reset" line (the timer is deploy/gcp/vm/sc-demo-reset-scheduled.timer)
         api["DEMO_AUTO_RESET_AT_UTC"] = "23:00"  # once a day at 03:00 Asia/Dubai
+        # Judging protection (ADR-058 addendum, 8 Nov 2026): OFF unless the host asks (sc-up.sh passes --judging-mode when
+        # /var/lib/sc/judging_mode exists). On: a manual demo reset is accepted once per 30 minutes for everybody.
+        api["SC_JUDGING_MODE"] = "1" if judging_mode else "0"
     return {
         "compose.env": compose,
         "api.env": api,
@@ -126,8 +130,9 @@ def main() -> int:
     ap.add_argument("--mode", default="production")
     ap.add_argument("--out-dir", required=True)
     ap.add_argument("--demo-patient-ref", default="")
+    ap.add_argument("--judging-mode", action="store_true", help="turn on SC_JUDGING_MODE (rate-limited manual demo reset); default off")
     a = ap.parse_args()
-    files = build_files(a.host, json.load(sys.stdin), a.mode, a.demo_patient_ref)
+    files = build_files(a.host, json.load(sys.stdin), a.mode, a.demo_patient_ref, a.judging_mode)
     out = Path(a.out_dir)
     out.mkdir(parents=True, exist_ok=True)
     for name, values in files.items():
