@@ -153,9 +153,13 @@ def test_reset_is_refused_for_a_while_after_a_reset_and_the_message_is_plain():
 
 def test_status_shows_when_who_and_the_next_scheduled_reset():
     assert demo_controls.status()["last_reset_at"] is None and demo_controls.status()["reset_id"] == "initial"
-    write_status(last_reset_at="2026-11-08T06:00:00+00:00", last_reset_by="Noura (supervisor)", last_reset_reason="manual")
+    from datetime import timedelta
+
+    last = datetime.now(UTC) - timedelta(hours=1)  # relative to now: a fixed date goes stale the day it passes
+    write_status(last_reset_at=last.isoformat(), last_reset_by="Noura (supervisor)", last_reset_reason="manual")
     st = demo_controls.status()
-    assert st["last_reset_by"] == "Noura (supervisor)" and st["next_auto_reset_at"].startswith("2026-11-08T12:00:00")
+    assert st["last_reset_by"] == "Noura (supervisor)"
+    assert datetime.fromisoformat(st["next_auto_reset_at"]) == last + timedelta(hours=6)
 
 
 def test_next_scheduled_reset_follows_the_timer_not_only_the_last_reset():
