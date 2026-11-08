@@ -119,7 +119,7 @@ describe("the five-step tour", () => {
     expect(await screen.findByTestId("tour-progress")).toHaveTextContent("Step 1 of 8");
     expect(screen.getByTestId("tour-try")).toHaveTextContent("Try it");
     fireEvent.click(screen.getByTestId("tour-next")); fireEvent.click(screen.getByTestId("tour-next"));
-    expect(screen.getByTestId("tour-role-hint")).toHaveTextContent("clinician"); // step 3 is clearest as the clinician
+    expect(screen.getByTestId("tour-role-hint")).toHaveTextContent("physician"); // step 3 is clearest as the physician
     fireEvent.click(screen.getByTestId("tour-switch-role"));
     await waitFor(() => expect(screen.queryByTestId("tour-role-hint")).toBeNull());
     fireEvent.click(screen.getByTestId("track-story"));

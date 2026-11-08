@@ -14,13 +14,13 @@ describe("SignOffPanel", () => {
     const btn = screen.getByTestId("signoff");
     expect(btn).toBeDisabled();
     expect(screen.getByTestId("signoff-why")).toHaveTextContent(/evidence reference/i);
-    expect(screen.getByTestId("signoff-why")).toHaveTextContent(/name of the clinician/i);
+    expect(screen.getByTestId("signoff-why")).toHaveTextContent(/name of the physician/i);
     expect(btn).toHaveAccessibleDescription(/evidence reference/i);
 
     await user.type(screen.getByLabelText("Evidence reference"), "DiagnosticReport/c-1");
     expect(btn).toBeDisabled();
     expect(screen.getByTestId("signoff-why")).not.toHaveTextContent(/evidence reference/i);
-    expect(screen.getByTestId("signoff-why")).toHaveTextContent(/name of the clinician/i);
+    expect(screen.getByTestId("signoff-why")).toHaveTextContent(/name of the physician/i);
 
     await user.type(screen.getByLabelText("Signed by"), "Dr. Huda Rahman");
     expect(btn).toBeEnabled();

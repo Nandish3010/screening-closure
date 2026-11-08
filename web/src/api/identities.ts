@@ -15,6 +15,16 @@ export const ROLE_NAMES: Record<Role, string> = {
   patient: "Patient",
 };
 
+/** The role as a judge reads it. The API role key stays "clinician"; the people call that role a physician. */
+export const ROLE_DISPLAY: Record<Role, string> = {
+  coordinator: "Coordinator",
+  owner: "Owner physician",
+  specialist: "Specialist",
+  clinician: "Physician",
+  supervisor: "Supervisor",
+  patient: "Patient",
+};
+
 /** The provider each clinician login acts for. Coordinators and patients have none. */
 export const ROLE_PROVIDERS: Partial<Record<Role, string>> = {
   owner: "Riverside Primary Care",

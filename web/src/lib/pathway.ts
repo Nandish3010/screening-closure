@@ -108,14 +108,14 @@ export const PATHWAYS: Record<string, PathwayMeta> = {
   },
   cervical_hpv: {
     name: "cervical_hpv", label: "Cervical screening", programme: "Cervical screening: abnormal HPV or cytology result to colposcopy",
-    procedure: "colposcopy", confirmatoryMilestoneLabel: "Colposcopy within 31 working days of referral (placeholder, H1)",
+    procedure: "colposcopy", confirmatoryMilestoneLabel: "Colposcopy within 31 working days of referral (placeholder, pending clinician sign-off)",
     placeholderTimings: true,
   },
   chronic_conditions: {
     name: "chronic_conditions", label: "Long-term conditions",
     programme: "Long-term conditions: abnormal cardiometabolic screening result to the family physician, closed on a care plan",
     procedure: "care plan visit",
-    confirmatoryMilestoneLabel: "Family physician visit with a care plan within 20 working days of referral (placeholder, H1)",
+    confirmatoryMilestoneLabel: "Family physician visit with a care plan within 20 working days of referral (placeholder, pending clinician sign-off)",
     placeholderTimings: true, confirmatoryWorkingDays: 20,
   },
 };
@@ -179,11 +179,11 @@ export function milestonesFor(pathway?: string | null): readonly MilestoneDef[] 
       ...m, label: meta.confirmatoryMilestoneLabel,
       working_days: meta.confirmatoryWorkingDays ?? m.working_days,
       source: meta.confirmatoryWorkingDays !== undefined
-        ? "Placeholder design value, not a standard (H1): no primary-care follow-up timeline is cited anywhere in the repository, and the tier of a case does not change it"
-        : meta.placeholderTimings ? "Placeholder, needs clinician sign-off (H1): carried over from the colorectal pathway, not a standard for this pathway" : m.source,
+        ? "Placeholder design value, not a standard: no primary-care follow-up timeline is cited anywhere in the repository, and the tier of a case does not change it"
+        : meta.placeholderTimings ? "Placeholder, needs clinician sign-off: carried over from the colorectal pathway, not a standard for this pathway" : m.source,
     }
     : m.name === "referral_requested" && meta.placeholderTimings
-      ? { ...m, source: `${m.source} (applicability to this pathway to be confirmed by H1)` }
+      ? { ...m, source: `${m.source} (applicability to this pathway to be confirmed by a clinical lead)` }
       : m);
 }
 

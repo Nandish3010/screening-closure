@@ -61,6 +61,19 @@ export function actorName(actor: string): string {
   return i < 0 ? "" : actor.slice(i + 1);
 }
 
+/**
+ * A signer as a person: `Practitioner/<user_id>` or `role:user_id` becomes the display name the API gave for that user (when known),
+ * else the value unchanged. The id stays available to the caller for a tooltip.
+ */
+export function signerDisplay(ref: string): string {
+  if (!ref) return ref;
+  const id = ref.startsWith("Practitioner/") ? ref.slice("Practitioner/".length) : ref.includes(":") ? ref.slice(ref.indexOf(":") + 1) : ref;
+  const direct = knownActors.get(ref);
+  if (direct) return direct;
+  for (const [actor, name] of knownActors) if (actor.endsWith(`:${id}`)) return name;
+  return ref;
+}
+
 /** The user id inside an actor (`role:user_id`) or a Practitioner reference (`Practitioner/user_id`); the machine compares people by it (A33). */
 export function personId(identity: string): string {
   return identity.startsWith("Practitioner/") ? identity.slice("Practitioner/".length) : identity.slice(identity.indexOf(":") + 1);

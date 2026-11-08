@@ -4,7 +4,8 @@
  * secret, the code is bound to a verifier only this tab knows, and `state` ties the callback to the request.
  *
  * Tokens live in sessionStorage (gone when the tab closes; readable by script on the page, which is the usual trade-off
- * of a browser-held token; docs/governance/identity.md lists it). The access token is short; a refresh token, if the
+ * of a browser-held token; docs/governance/identity.md lists it). One exception, for the hosted judge demo only: a one-click demo session
+ * is also copied to `persist` (localStorage) so a deep link opened in a new tab keeps the judge signed in. A real sign-in is never copied. The access token is short; a refresh token, if the
  * provider issues one, renews it shortly before it expires. Everything with a side effect is injected for tests.
  */
 
@@ -39,6 +40,11 @@ export interface OidcDeps {
   /** Send the browser to the provider (default: `location.assign`). */
   redirect: (url: string) => void;
   now: () => number;
+  /**
+   * Where a hosted-demo (one-click) session is also kept so that it survives a new tab. Absent in tests unless injected. Only sessions
+   * issued to the demo client are written here; signing out removes the copy.
+   */
+  persist?: Pick<Storage, "getItem" | "setItem" | "removeItem">;
 }
 
 const SESSION_KEY = "sc.oidc.session";
@@ -108,6 +114,7 @@ export function createOidcClient(cfg: OidcConfig, deps: Partial<OidcDeps> = {}):
     crypto: deps.crypto ?? crypto,
     redirect: deps.redirect ?? ((url) => location.assign(url)),
     now: deps.now ?? Date.now,
+    persist: deps.persist,
   };
   const listeners = new Set<() => void>();
   const emit = () => listeners.forEach((l) => l());
@@ -117,10 +124,22 @@ export function createOidcClient(cfg: OidcConfig, deps: Partial<OidcDeps> = {}):
   function load(): OidcSession | null {
     try {
       const raw = d.storage.getItem(SESSION_KEY);
-      return raw ? (JSON.parse(raw) as OidcSession) : null;
+      if (raw) return JSON.parse(raw) as OidcSession;
     } catch {
       return null;
     }
+    // A new tab has no sessionStorage: pick up the hosted demo's session from the shared copy, and only a demo session.
+    try {
+      const shared = d.persist?.getItem(SESSION_KEY);
+      const s = shared ? (JSON.parse(shared) as OidcSession) : null;
+      if (s && s.clientId && s.clientId !== cfg.clientId) {
+        d.storage.setItem(SESSION_KEY, shared!);
+        return s;
+      }
+    } catch {
+      /* no shared copy */
+    }
+    return null;
   }
   function save(s: OidcSession | null): void {
     try {
@@ -128,6 +147,12 @@ export function createOidcClient(cfg: OidcConfig, deps: Partial<OidcDeps> = {}):
       else d.storage.removeItem(SESSION_KEY);
     } catch {
       /* storage unavailable: the session lasts only until reload */
+    }
+    try {
+      if (s && s.clientId && s.clientId !== cfg.clientId) d.persist?.setItem(SESSION_KEY, JSON.stringify(s));
+      else d.persist?.removeItem(SESSION_KEY); // a real sign-in is never shared, and signing out (or a failed refresh) clears the copy
+    } catch {
+      /* ignore */
     }
     emit();
   }

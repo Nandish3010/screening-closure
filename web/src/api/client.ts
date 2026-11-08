@@ -2,6 +2,15 @@ import type { ApiClient } from "./contract";
 import { createHttpAdapter } from "./httpAdapter";
 import { createOidcClient } from "./oidc";
 
+/** localStorage where the browser allows it (private windows and blocked site data can throw), else nothing: a demo session then stays per tab. */
+function safeLocalStorage(): Storage | undefined {
+  try {
+    return localStorage;
+  } catch {
+    return undefined;
+  }
+}
+
 /**
  * The client the app boots with. Kept apart from `./index` so a hosted build (VITE_API_ADAPTER=http) does not bundle the mock
  * adapter and its fixtures: the mock modules run code when imported, so they are not tree-shaken once anything imports them
@@ -16,7 +25,7 @@ export function createHttpClientFromEnv(): ApiClient {
     issuer: env.VITE_OIDC_ISSUER || "http://localhost:8180/realms/screening-closure",
     clientId: env.VITE_OIDC_CLIENT_ID || "screening-closure-web",
     redirectUri: `${location.origin}/`,
-  });
+  }, { persist: safeLocalStorage() });
   return createHttpAdapter(url, (...a) => fetch(...a), { oidc });
 }
 

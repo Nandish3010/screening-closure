@@ -51,3 +51,16 @@ export function plainRefs(s: string): string {
 export function plainError(s: string): string {
   return s.replace(/\bevidence_ref\b/g, "evidence reference");
 }
+
+/**
+ * Judge-facing text must not carry internal tracking codes ("(H1)", ", H2"). The API's own wording for the demo approval and
+ * the priority thresholds still includes them, so they are removed where that text is shown. The caveat itself is kept.
+ */
+export function stripInternalCodes(s: string): string {
+  return s
+    .replace(/,\s*H\d+\)/g, ")")
+    .replace(/\s*\(H\d+\)/g, "")
+    .replace(/\s+H\d+\b/g, "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+}

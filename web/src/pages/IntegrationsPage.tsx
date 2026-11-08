@@ -54,8 +54,8 @@ function RowsTable({ caption, rows }: { caption: string; rows: Row[] }) {
     <div className="jp-tablewrap">
       <table className="jp-table">
         <caption>{caption}</caption>
-        <thead><tr><th scope="col">Piece</th><th scope="col">What it does</th><th scope="col">Where in the repository</th></tr></thead>
-        <tbody>{rows.map((r) => <tr key={r.piece}><th scope="row">{r.piece}</th><td>{r.what}</td><td className="mono">{r.where}</td></tr>)}</tbody>
+        <thead><tr><th scope="col">Piece</th><th scope="col">What it does</th><th scope="col">Technical details</th></tr></thead>
+        <tbody>{rows.map((r) => <tr key={r.piece}><th scope="row">{r.piece}</th><td>{r.what}</td><td><details className="tech-details"><summary>Show</summary><span className="mono">{r.where}</span></details></td></tr>)}</tbody>
       </table>
     </div>
   );
@@ -182,7 +182,7 @@ export function IntegrationsPage() {
       <section aria-labelledby={`${uid}-d`} className="jp-section">
         <h2 id={`${uid}-d`}>Read more</h2>
         <ul className="plain jp-links">
-          {DOC_LIST.map((d) => <li key={d.path}><a href={docHref(d)} target="_blank" rel="noopener noreferrer">{d.label}</a> <span className="mono muted">{d.path}</span></li>)}
+          {DOC_LIST.map((d) => <li key={d.path}><a href={docHref(d)} title={d.path} target="_blank" rel="noopener noreferrer">{d.label}</a></li>)}
         </ul>
         <p><Link to="/judge">Back to the judge summary</Link></p>
       </section>

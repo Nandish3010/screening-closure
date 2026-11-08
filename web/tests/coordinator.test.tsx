@@ -280,7 +280,7 @@ describe("Reopen (clinician only, closed cases only)", () => {
     openCase(11);
     const btn = await screen.findByTestId("reopen");
     expect(btn).toBeDisabled();
-    expect(screen.getByTestId("reopen-why")).toHaveTextContent(/only|cannot|clinician/i);
+    expect(screen.getByTestId("reopen-why")).toHaveTextContent(/only|cannot|clinician|physician/i);
   });
 
   it("a clinician picks a reason from the taxonomy; then the case is reopened through the client", async () => {

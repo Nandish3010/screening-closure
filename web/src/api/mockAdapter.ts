@@ -459,7 +459,7 @@ export function createMockAdapter(
           last_reset_at: demoReset?.at ?? null, last_reset_by: demoReset?.by ?? null, last_reset_reason: demoReset?.reason ?? null, next_auto_reset_at: null,
         } } : {}),
         outreach: automation
-          ? { usable: true, signed: false, demo_approval: true, approved_by: "DEMO PLACEHOLDER (clinical sign-off pending, H1)", automatic_sending: true }
+          ? { usable: true, signed: false, demo_approval: true, approved_by: "DEMO PLACEHOLDER (clinical sign-off pending)", automatic_sending: true }
           : { usable: true, signed: false, demo_approval: false, approved_by: null, automatic_sending: false },
       };
     },

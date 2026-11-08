@@ -61,7 +61,7 @@ describe("phone header", () => {
     const user = userEvent.setup();
     renderWithApp(<OutreachDemoBanner />, { api: createMockAdapter(null, { automation: true }) });
     const banner = await screen.findByTestId("outreach-demo-banner");
-    expect(screen.getByTestId("outreach-demo-text").textContent).toBe("DEMO PLACEHOLDER (clinical sign-off pending, H1)");
+    expect(screen.getByTestId("outreach-demo-text").textContent).toBe("DEMO PLACEHOLDER (clinical sign-off pending)");
     expect(banner.className).toContain("banner-warn");
     const more = screen.getByTestId("outreach-banner-more");
     expect(more.getAttribute("aria-expanded")).toBe("false");

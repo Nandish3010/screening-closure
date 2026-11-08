@@ -7,7 +7,7 @@ import { pathwayMeta } from "../lib/pathway";
  */
 export function PathwayBadge({ pathway, testId = "pathway-badge" }: { pathway?: string | null; testId?: string }) {
   const meta = pathwayMeta(pathway);
-  const title = meta.placeholderTimings ? `${meta.programme}. Timings are placeholders pending clinician sign-off (H1).` : meta.programme;
+  const title = meta.placeholderTimings ? `${meta.programme}. Timings are placeholders pending clinician sign-off.` : meta.programme;
   return (
     <span className={`chip chip-pathway chip-pathway-${meta.name}`} data-testid={testId} data-pathway={meta.name} title={title}>
       {meta.label}

@@ -7,6 +7,7 @@ import { DemoStatusLine, ResetDemoControl } from "../components/DemoStatus";
 import { BrandLockup } from "../components/Brand";
 import headline from "../judge/headline.json";
 import { DOCS, docHref } from "../judge/links";
+import { ROLE_DISPLAY } from "../api/identities";
 
 const pct = (mean: number) => `${Math.round(mean * 100)}%`;
 
@@ -57,7 +58,7 @@ export function StartHerePage() {
           {status === "todo" && LOOP.includes(s.id) && <span className="chip chip-neutral" data-testid={`start-tag-${s.id}`}>Not yet</span>}
         </h2>
         <p className="start-claim">{s.claim}</p>
-        <p className="muted start-meta">About {s.seconds ?? 45} s · best as the {s.role === "clinician" ? "clinician" : s.role}{loaded && guide && s.guide && !g ? " · no untouched case left, the first fitting case is used" : ""}</p>
+        <p className="muted start-meta">About {s.seconds ?? 45} s · best as the {s.role ? ROLE_DISPLAY[s.role].toLowerCase() : ""}{loaded && guide && s.guide && !g ? " · no untouched case left, the first fitting case is used" : ""}</p>
         <button type="button" className="btn btn-primary" onClick={() => tour.open("challenge", i)} data-testid={`start-open-${s.id}`}>
           {done ? "Show me again" : "Show me"}
         </button>

@@ -378,7 +378,7 @@ describe("Case page: the effort counter and the review reasons", () => {
     expect(counter).toHaveTextContent("Human actions 5 / Automated actions 5");
     expect(screen.getByTestId("effort-share")).toHaveTextContent("50%");
     expect(screen.getByTestId("effort-saved")).toHaveTextContent("14");
-    expect(screen.getByTestId("effort-saved")).toHaveTextContent(/assumed minutes, to source/);
+    expect(screen.getByTestId("effort-saved")).toHaveTextContent(/assumed minutes, not measured/);
   });
 
   it("is also shown with automation off (all human)", async () => {
@@ -455,7 +455,7 @@ describe("Dashboard: the human-effort card", () => {
     expect(card).not.toHaveTextContent(/target met/i);
     expect(programme).toHaveTextContent(/40% target is not met/);
     expect(within(card).queryByRole("meter")).toBeNull(); // no bar past a target tick for a demo sample
-    expect(within(card).getByTestId("effort-caveat")).toHaveTextContent(/assumed minutes, to source/i);
+    expect(within(card).getByTestId("effort-caveat")).toHaveTextContent(/assumed minutes, not measured/i);
   });
 
   it("is for the coordinator and supervisor only", async () => {

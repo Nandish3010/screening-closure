@@ -85,7 +85,7 @@ test("reopen: only a clinician can reopen a closed case, with a reason", async (
   await page.getByTestId("worklist-row").first().getByRole("link").click();
   await expect(page.locator("h1")).toContainText("Closed");
   await expect(page.getByTestId("reopen")).toBeDisabled();
-  await expect(page.getByTestId("reopen-why")).toContainText("clinician");
+  await expect(page.getByTestId("reopen-why")).toContainText("physician");
   await page.getByLabel("Switch role").selectOption("clinician");
   await expect(page.getByTestId("reopen-why")).toHaveCount(0); // the reason is a taxonomy select with a default
   await page.getByLabel("Reason for reopening").selectOption("new_finding");

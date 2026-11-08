@@ -136,11 +136,37 @@ describe("the header's 'Sign in as' on the hosted demo", () => {
     }
   });
 
-  it("falls back to the password sign-in when the one-click route fails", async () => {
+  it("never falls back to the password sign-in when the one-click route fails: it says why and leaves the switch usable", async () => {
     const { signIn, select } = await header(vi.fn(async () => { throw new Error("down"); }));
     const { default: userEvent } = await import("@testing-library/user-event");
     await waitFor(() => expect(screen.getByRole("option", { name: /Physician/ })).toBeTruthy());
     await userEvent.setup().selectOptions(select, "huda.rahman");
-    await waitFor(() => expect(signIn).toHaveBeenCalledWith({ loginHint: "huda.rahman", forceLogin: true }));
+    expect((await screen.findByRole("alert")).textContent).toMatch(/down/);
+    expect(signIn).not.toHaveBeenCalled();
+    expect((screen.getByLabelText("Sign in as") as HTMLSelectElement).disabled).toBe(false);
+  });
+
+  it("uses the same warming-up retry as the role cards (signin_warming_up) and never opens the password flow while it waits", async () => {
+    const { ApiError } = await import("../src/api/contract");
+    let n = 0;
+    const demoSignIn = vi.fn(async () => { if (++n < 2) throw new ApiError(503, "The demo is starting up.", 1, "signin_warming_up"); });
+    const { signIn, select } = await header(demoSignIn);
+    const { default: userEvent } = await import("@testing-library/user-event");
+    await waitFor(() => expect(screen.getByRole("option", { name: /Physician/ })).toBeTruthy());
+    await userEvent.setup().selectOptions(select, "huda.rahman");
+    expect((await screen.findByTestId("signin-warming")).textContent).toMatch(/starting up/i);
+    expect((screen.getByLabelText("Sign in as") as HTMLSelectElement).disabled).toBe(true);
+    await waitFor(() => expect(demoSignIn).toHaveBeenCalledTimes(2), { timeout: 6000 });
+    expect(signIn).not.toHaveBeenCalled();
+  }, 10_000);
+
+  it("shows the wait for a 429 (signin_rate_limited) instead of the password flow", async () => {
+    const { ApiError } = await import("../src/api/contract");
+    const { signIn, select } = await header(vi.fn(async () => { throw new ApiError(429, "Too many sign-ins from this address.", 30, "signin_rate_limited"); }));
+    const { default: userEvent } = await import("@testing-library/user-event");
+    await waitFor(() => expect(screen.getByRole("option", { name: /Physician/ })).toBeTruthy());
+    await userEvent.setup().selectOptions(select, "huda.rahman");
+    expect((await screen.findByTestId("signin-limited")).textContent).toMatch(/please wait 30 seconds/);
+    expect(signIn).not.toHaveBeenCalled();
   });
 });

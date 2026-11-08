@@ -32,6 +32,8 @@ export interface AppState {
   demoDeployment: boolean;
   /** `GET /health` -> `demo` as a whole (ADR-058): when the demo was last reset and by whom, when the next scheduled reset is due. null outside the demo. */
   demoStatus: DemoHealth | null;
+  /** False until the signed-in person's role is known from `GET /me` (sign-in provider mode); always true otherwise. The first screen waits for it so it never guesses from a stale role. */
+  roleKnown: boolean;
   /** True once `GET /health` has answered (or failed) at least once: whether this is the demo is not known before. */
   healthKnown: boolean;
 }
@@ -113,7 +115,7 @@ export function AppProvider({ api, children, initialRole }: { api: ApiClient; ch
     // Against the real API the actor is `role:user_id` (opaque id, A14): compared with `owner.actor` to tell "mine".
     const userId = api.adapter === "http" && me && me.role === role ? me.user_id : undefined;
     const actor = userId ? `${BACKEND_ROLE[role]}:${userId}` : backendActor(role, actorName);
-    return { api, role, setRole, me, actorName, actor, provider: ROLE_PROVIDERS[role], userId, simTime, refreshSim, outreach, demoClock, demoDeployment, demoStatus, healthKnown };
+    return { api, role, setRole, me, actorName, actor, provider: ROLE_PROVIDERS[role], userId, simTime, refreshSim, outreach, demoClock, demoDeployment, demoStatus, healthKnown, roleKnown: !api.oidc || (me !== null && me.role === role) };
   }, [api, role, setRole, me, simTime, refreshSim, outreach, demoClock, demoDeployment, demoStatus, healthKnown]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
