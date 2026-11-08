@@ -85,9 +85,23 @@ server {
     # script, self-hosted fonts and icons, same-origin API (/api) and Keycloak (/auth) calls; React sets style attributes, hence
     # 'unsafe-inline' for style only. data:/blob: images are the QR/PNG and download blobs. nginx drops server-level add_header lines in a
     # location that sets its own, so the three above are repeated here.
+    # Hashed build output (Vite names every file under /assets/ after its content): cached for a year and never revalidated, so a
+    # returning visitor makes no request for it at all. A missing hashed file is a real 404, not index.html (a stale tab asking for a
+    # chunk of an older build must fail loudly instead of getting HTML where it expected JavaScript). Caddy compresses on the way out.
+    location /assets/ {
+        root /usr/share/nginx/html;
+        try_files $uri =404;
+        add_header Cache-Control "public, max-age=31536000, immutable";
+        add_header X-Content-Type-Options nosniff always;
+        add_header Referrer-Policy no-referrer always;
+        add_header X-Frame-Options DENY always;
+    }
+    # Everything else the app shell serves (index.html and the unhashed icons and manifest): revalidated on every visit (a 304 when
+    # unchanged), so a new deploy reaches the next page load, while the hashed files above stay cached.
     location / {
         root /usr/share/nginx/html;
         try_files $uri /index.html;
+        add_header Cache-Control "no-cache";
         add_header X-Content-Type-Options nosniff always;
         add_header Referrer-Policy no-referrer always;
         add_header X-Frame-Options DENY always;

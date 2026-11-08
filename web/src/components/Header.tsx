@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link, NavLink, matchPath, useLocation, useNavigate } from "react-router-dom";
 import { useApp } from "../app/AppContext";
 import { ROLES, type Role } from "../api/contract";
-import { DEMO_PATIENT_CASE_ID } from "../api/fixtures";
+import { DEMO_PATIENT_CASE_ID } from "../api/demoIds";
 import { DEMO_USERS, JUDGE_ROLES } from "../api/identities";
 import { useTour } from "../judge/JudgeTour";
 import { fmtDateTime } from "../lib/format";

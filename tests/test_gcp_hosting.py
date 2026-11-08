@@ -446,3 +446,14 @@ def test_api_restart_leaves_a_note_for_the_demo_health_block(tmp_path):
     (tmp_path / "b").mkdir()
     r, restarted, _ = _run_restart(tmp_path / "b", "gate", anon_mib=760, extra_env={"DEMO_CONTROL_DIR": str(tmp_path / "nope")})
     assert r.returncode == 0 and restarted
+
+
+def test_edge_caches_hashed_assets_forever_and_revalidates_the_shell():
+    t = (GCP / "edge/nginx.conf.template").read_text()
+    assets = t[t.index("    location /assets/ {"):]
+    assets = assets[:assets.index("\n    }")]
+    assert "immutable" in assets and "max-age=31536000" in assets and "try_files $uri =404" in assets
+    shell = t[t.index("    location / {"):]
+    shell = shell[:shell.index("\n    }")]
+    assert 'add_header Cache-Control "no-cache"' in shell  # index.html is revalidated, so a deploy reaches the next load
+    assert "encode" in (GCP / "edge/Caddyfile").read_text()  # compression stays on at the edge

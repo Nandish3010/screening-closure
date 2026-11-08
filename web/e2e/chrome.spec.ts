@@ -33,6 +33,7 @@ test("the role switcher is visible in the header and tagged demo only", async ({
 
 test("the keyboard focus ring is dark teal with a white halo on a light page", async ({ page }) => {
   await page.goto("/coordinator/today");
+  await expect(page.getByLabel("Switch role")).toBeVisible(); // the app renders after load: wait for it before pressing keys
   await page.keyboard.press("Tab");
   await page.keyboard.press("Tab");
   const ring = await page.evaluate(() => {
