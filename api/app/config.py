@@ -53,6 +53,11 @@ class Settings(BaseSettings):
     # which also writes status.json: when, by whom). Bind-mount it read-write into the api container.
     demo_control_dir: str = "/var/lib/sc-demo"
     demo_reset_min_interval_seconds: int = Field(default=600, ge=60, le=86400)  # one accepted reset request per this long
+    # Judging protection (ADR-058 addendum, 8 Nov 2026). Off by default. When on (SC_JUDGING_MODE=1, rendered by deploy/gcp/vm/render_env.py
+    # from the host's /var/lib/sc/judging_mode file), a MANUAL "Reset the demo" is accepted at most once per this long, GLOBALLY (the
+    # request log is the host's status.json), with a plain 429. The daily scheduled reset is not a request and is not limited.
+    sc_judging_mode: bool = False
+    sc_judging_reset_interval_seconds: int = Field(default=1800, ge=60, le=86400)
     demo_auto_reset_hours: float = Field(default=6.0, ge=0, le=168)  # informational: when the scheduled reset is due (0 = none)
     demo_auto_reset_at_utc: str = Field(default="", pattern=r"^([01]\d|2[0-3]):[0-5]\d$|^$")  # "HH:MM" UTC: the timer fires daily at this clock time (hosted demo: 23:00 = 03:00 Dubai); empty = every demo_auto_reset_hours
     # One-click demo sign-in (ADR-060). POST /demo/sign-in exists ONLY under the same gate (app.auth.demo_controls_active). The API
